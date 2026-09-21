@@ -98,9 +98,23 @@ def find_root(start=None):
         if (p / CONFIG_NAME).exists():
             return p
     for p in (here, *here.parents):
-        if (p / ".git").exists():
+        if (p / ".git").exists() or (p / ".svn").exists():
             return p
     return here
+
+
+def vcs():
+    """"git", "svn" or "" — the nearest working copy ROOT sits in. Nothing in the gate, INDEX.md or the board asks:
+    only what a version control system does differently does — hooks, ignore rules, and a pass's *last worked on*."""
+    for p in (ROOT, *ROOT.parents):
+        if (p / ".git").exists():
+            return "git"
+        if (p / ".svn").exists():
+            return "svn"
+    return ""
+
+
+PY = "python" if os.name == "nt" else "python3"         # the name a message, a hook and the contract can be pasted under
 
 
 def configure(root=None):
@@ -133,9 +147,9 @@ def configure(root=None):
     ROW_ID_RE = re.compile(rf"^\| \[((?:{alt})-\d+)\]")
     TRACKER_LINK_RE = re.compile(rf"\]\(((?:{alt})-\d+-[a-z0-9-]+\.md)\)")
     try:
-        CMD = "python3 " + str(pathlib.Path(__file__).resolve().relative_to(ROOT))
+        CMD = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
     except ValueError:
-        CMD = "python3 " + str(pathlib.Path(__file__).resolve())
+        CMD = PY + " " + str(pathlib.Path(__file__).resolve())
     CMD = os.environ.get("SHOALMARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
@@ -1157,8 +1171,10 @@ def last_worked_on(path):
     """The date of the last commit that was ABOUT this tracker — a commit touching more than eight
     trackers is a sweep and says nothing about any of them, and neither does one whose subject says
     `[sweep]` (a repair run over a few trackers must not make them look worked on)."""
+    if vcs() == "svn":
+        return svn_last_worked_on(path)
     log = subprocess.run(["git", "log", "--format=%H %cs %s", "--", str(path)], cwd=ROOT,
-                         capture_output=True, text=True).stdout.splitlines()
+                         capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.splitlines()
     for line in log:
         commit, day, subject = (line.split(" ", 2) + [""])[:3]
         if "[sweep]" in subject:
@@ -1168,6 +1184,28 @@ def last_worked_on(path):
         if len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
             return day
     return log[-1].split()[1] if log else "—"
+
+
+_SVN_LOG = None
+
+
+def svn_last_worked_on(path):
+    """The same rule from Subversion — ONE `svn log -v --xml` over the tracker directory, read once: a log is a
+    round trip to the server, and a pass asks about every tracker."""
+    global _SVN_LOG
+    if _SVN_LOG is None:
+        import xml.etree.ElementTree as ET
+        out = subprocess.run(["svn", "log", "-v", "--xml", str(TRACKER_DIR)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        try:
+            _SVN_LOG = [((e.findtext("date") or "")[:10], e.findtext("msg") or "", [x.text or "" for x in e.iter("path")])
+                        for e in ET.fromstring(out.stdout).iter("logentry")] if out.returncode == 0 and out.stdout.strip() else []
+        except ET.ParseError:
+            _SVN_LOG = []
+    mine = [(day, msg, names) for day, msg, names in _SVN_LOG if any(n.rsplit("/", 1)[-1] == path.name for n in names)]   # newest first
+    for day, msg, names in mine:
+        if "[sweep]" not in msg and len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
+            return day
+    return mine[-1][0] if mine else "—"
 
 
 def repos_naming():
@@ -1506,7 +1544,8 @@ def parse_args(argv):
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
-    add("--install-hook", action="store_true", help="write plain git hooks (pre-commit, post-merge, post-checkout) — no hook runner needed; never overwrites a hook that is not its own")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
              "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
@@ -1549,14 +1588,16 @@ def run_deriver(trackers, mode="write", flags=()):
     for t in trackers:
         t["x"], t["xd"], t["x_needs"] = {}, {}, []
     exe = TRACKER_DIR / "derive"
-    if not (exe.is_file() and os.access(exe, os.X_OK)):
+    if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
         return None, []
     # `mode` — write · check · board (the git-ignored page only: nothing the run produces can be committed) · read.
     # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
     # a hook inherits the environment of whatever shell ran `git commit`, and a stray export would reach every run.
     ask = json.dumps({"root": str(ROOT), "mode": mode, "flags": sorted(set(flags)), "trackers": [{"id": t["id"], "status": t["status"], "file": t["file"], "fm": t.get("fm", {})} for t in trackers]})
     try:
-        run = subprocess.run([str(exe)], input=ask, capture_output=True, text=True, cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
+        # Windows has no executable bit and reads no `#!` line: there a deriver is run by this interpreter
+        run = subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)], input=ask, capture_output=True, text=True, encoding="utf-8",
+                             cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
     except subprocess.TimeoutExpired:
         return EXIT_LINT, [f"{exe.relative_to(ROOT)} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit and every checkout; make it fast, or make it fail"]
     if run.returncode:
@@ -1679,12 +1720,14 @@ Newest first — one paragraph per pass: its date, what it changed, its workshee
 
 CONTRACT_BEGIN = "<!-- BEGIN shoalmark: the work-tracker contract — regenerated by --init, edit outside these markers -->"
 CONTRACT_END = "<!-- END shoalmark -->"
+GATE_SAYS = {"svn": "checked by a gate: **run `{cmd}` before every `svn commit`** and commit the `INDEX.md` it writes — Subversion's\ncommand line has no client-side hook (TortoiseSVN runs the gate itself, once `--install-hook` has set its properties)",
+             "": "checked by a gate on every\ncommit"}
 LEGACY_CONTRACT = ("<!-- BEGIN fathom-mark:", "<!-- END fathom-mark -->")      # the name until 0.6.0
 CONTRACT = """\
 ## The work tracker — read this before you change anything
 
-Work in this repository is tracked in `{dir}/` — one Markdown file per work item, checked by a gate on every
-commit. **Start here:** `{cmd} --next` says what to work on and what is true now.
+Work in this repository is tracked in `{dir}/` — one Markdown file per work item, {gate}.
+**Start here:** `{cmd} --next` says what to work on and what is true now.
 
 1. **The tracker is canonical.** The spec, the state and the record of a piece of work live in its tracker —
    never in a side plan, a chat or a TODO comment. Its *What is true now* section is rewritten in place when
@@ -1763,12 +1806,65 @@ fi
 }
 
 
+TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
+
+
+def svn_ignore_board():
+    """Subversion ignores by a property on the directory, and only a versioned directory can carry one: the tracker
+    directory is scheduled for addition if it is not yet (nothing is committed), so the FIRST `svn add` of its
+    contents already leaves the board out."""
+    svn = lambda *a: subprocess.run(["svn", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    TRACKER_DIR.mkdir(parents=True, exist_ok=True)
+    if svn("info", rel).returncode:                         # not versioned yet
+        if svn("add", "--parents", "--depth=empty", rel).returncode:
+            print(f"could not `svn add {rel}` — add it, then run --install-hook for svn:ignore", file=sys.stderr)
+            return EXIT_LINT
+    lines = svn("propget", "svn:ignore", rel).stdout.split()        # an unset property is an error to svn, and empty to us
+    if not {"index.html", "view"} <= set(lines):
+        svn("propset", "svn:ignore", "\n".join(dict.fromkeys(lines + ["index.html", "view"])) + "\n", rel)
+        print(f"set svn:ignore on {rel}/ — the board is never committed")
+    return EXIT_OK
+
+
+def install_hook_svn():
+    """What Subversion has. Its command line runs NO client-side hook; TortoiseSVN does, from versioned properties,
+    after asking the user once. The board is ignored by property, not by file."""
+    svn = lambda *a: subprocess.run(["svn", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
+    url = svn("info", "--show-item", "relative-url", ".")
+    if url.returncode:
+        print(f"--install-hook: `svn info` failed in {ROOT} — {url.stderr.strip() or 'is svn on the PATH?'}", file=sys.stderr)
+        return EXIT_LINT
+    here = pathlib.Path(__file__).resolve()
+    tool = here.relative_to(ROOT).as_posix() if ROOT in here.parents else "tools/shoalmark/shoalmark.py"
+    base = "%REPOROOT%" + url.stdout.strip().lstrip("^").rstrip("/")
+    code = EXIT_OK
+    for prop, kind in TSVN_HOOKS.items():
+        # four lines: the command · wait for it · hide its window. TortoiseSVN is Windows: the interpreter is `python`
+        value = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
+        have = svn("propget", prop, ".").stdout
+        if have.strip() and "--tsvn-hook" not in have:
+            print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `python {base}/{tool} --tsvn-hook {kind}`", file=sys.stderr)
+            code = EXIT_LINT
+            continue
+        if have.strip() != value.strip():
+            svn("propset", prop, value, ".")
+            print(f"set {prop} on {ROOT.name}/ — TortoiseSVN asks once before it runs it")
+    code = svn_ignore_board() or code
+    print(f"Commit the property changes (`svn update` first if Subversion calls the directory out of date). `svn commit` on the command line runs no hook — Subversion has none on the client: "
+          f"run `{CMD}` before it and commit the INDEX.md it writes (the contract in AGENTS.md says so). "
+          f"For a gate nobody can skip, call `{CMD} --check` from the server's pre-commit hook.")
+    return code
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
+    if vcs() == "svn":
+        return install_hook_svn()
     out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks"], capture_output=True, text=True, env=nested_git_env())
     if out.returncode:
-        print(f"--install-hook: {ROOT} is not a git repository", file=sys.stderr)
+        print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT
     hooks = (ROOT / out.stdout.strip()).resolve()
     hooks.mkdir(parents=True, exist_ok=True)
@@ -1802,7 +1898,7 @@ def init(key=None):
             wrote.append(path)
     if fresh_config:
         configure(ROOT)
-    section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT), cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
+    section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
     agents = ROOT / "AGENTS.md"
     have = agents.read_text(encoding="utf-8") if agents.exists() else ""
     if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
@@ -1818,10 +1914,12 @@ def init(key=None):
     if not claude.exists():                                 # Claude Code reads CLAUDE.md, not AGENTS.md — a router, never a second copy
         claude.write_text("# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n", encoding="utf-8")
         wrote.append(claude)
-    ignore, rel = ROOT / ".gitignore", str(TRACKER_DIR.relative_to(ROOT))
+    ignore, rel = ROOT / ".gitignore", TRACKER_DIR.relative_to(ROOT).as_posix()
     have = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
-    if lines:
+    if vcs() == "svn":                                      # Subversion ignores by property, not by file
+        svn_ignore_board()
+    elif lines:
         ignore.write_text(have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n", encoding="utf-8")
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT)}" for p in wrote] or ["nothing to write — already initialised"]))
@@ -1883,7 +1981,16 @@ def new_tracker(words, trackers):
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
+        if hasattr(stream, "reconfigure") and (getattr(stream, "encoding", "") or "").lower().replace("-", "") != "utf8":
+            stream.reconfigure(encoding="utf-8", errors="replace")
     args = parse_args(argv)
+    if args.tsvn_hook:
+        # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
+        # one this copy of the tool lives in. `start` runs before the commit dialog lists its files, so the INDEX.md
+        # it writes is on the list; `pre` refuses the commit on a violation, the message in TortoiseSVN's error box.
+        configure(HERE)
+        args = parse_args(["--root", str(ROOT)] + ([] if args.tsvn_hook[0] == "start" else ["--check"]))
     if args.root:
         configure(args.root)
     # under --print-written stdout carries ONE thing: the path list the caller stages

@@ -10,6 +10,7 @@ import io
 import os
 import re
 import subprocess
+import datetime
 import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
@@ -698,6 +699,57 @@ with tempfile.TemporaryDirectory() as tmp:
     except SystemExit as e: refused = "headings" in str(e)
     check("`[headings]` — a mistyped key is refused, naming the seven", refused)
 fm.configure(HERE)
+
+# --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------
+_TOOL = [sys.executable, str(HERE / "shoalmark.py")]
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nW = "Work"\n', encoding="utf-8")
+    tracker(root, "W-001", title="a dash — an arrow → a half moon ◐")
+    r = subprocess.run(_TOOL + ["--root", str(root), "--next"], capture_output=True, env={**os.environ, "PYTHONIOENCODING": "cp1252"})
+    check("W2 · a console that cannot encode `—` `→` `◐` (cp1252, the Windows default) does not crash a run", r.returncode == 0 and b"Traceback" not in r.stderr)
+    fm.configure(root)
+    check("W3 · every message names an interpreter that exists where it ran — `python` on Windows, `python3` elsewhere — and a path it can be pasted with",
+          fm.CMD.split()[0] == ("python" if os.name == "nt" else "python3") and "\\" not in fm.CMD.split()[0] and fm.PY == fm.CMD.split()[0])
+fm.configure(HERE)
+
+_SVN = shutil.which("svn") and shutil.which("svnadmin")
+if not _SVN:
+    print("  skip  S1–S3 · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c2"); run(root, "--new", "Arbeitspaket 1")
+        made = next((root / "docs/work-tracker").glob("C2-001-*.md")); made.write_text(made.read_text(encoding="utf-8").replace("considered:", "considered: none"), encoding="utf-8")
+        code, _, _ = run(root)
+        svn("add", "--force", ".", cwd=root); svn("commit", "-m", "C2-001", cwd=root)
+        listed = svn("ls", "-R", url + "/trunk").stdout
+        check("S1 · in a Subversion working copy with no git: init, a new tracker, the gate and INDEX.md work — and the first `svn add` already leaves the board out",
+              code == 0 and not (root / ".git").exists() and not (root / ".gitignore").exists() and fm.vcs() == "svn" and "INDEX.md" in listed and "index.html" not in listed
+              and (root / "docs/work-tracker/index.html").exists())
+        contract = (root / "AGENTS.md").read_text(encoding="utf-8")
+        check("S3 · the contract says the true thing for Subversion: run the tool before `svn commit` — its command line has no hook", "before every `svn commit`" in contract and "gate on every\ncommit" not in contract)
+        svn("update", cwd=root); code, out, _ = run(root, "--install-hook")
+        props = {p_: svn("propget", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
+        again = run(root, "--install-hook")[1]
+        check("S2 · --install-hook wires what Subversion has: the two TortoiseSVN properties, by repository URL, four-line form — says the command line runs no hook, and is idempotent",
+              code == 0 and all(v.startswith("python %REPOROOT%/trunk/") and f"--tsvn-hook {k}\ntrue\nhide" in v.replace("\r", "") for (p_, k), v in zip(fm.TSVN_HOOKS.items(), props.values()))
+              and "runs no hook" in out and "set tsvn" not in again)
+        svn("propset", "tsvn:precommithook", "wscript theirs.js\ntrue\nhide\n", ".", cwd=root)
+        code, _, err = run(root, "--install-hook")
+        check("S2 · a TortoiseSVN hook that is not ours is left alone, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "theirs.js" in svn("propget", "tsvn:precommithook", ".", cwd=root).stdout)
+        hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
+        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark")); fm.configure(root)
+        hook("start")                                           # the vendored copy names its own command in INDEX.md — it writes it first
+        ok = hook("pre"); made.write_text(made.read_text(encoding="utf-8").replace("status: Proposed", "status: Bogus"), encoding="utf-8"); bad = hook("pre")
+        made.write_text(made.read_text(encoding="utf-8").replace("status: Bogus", "status: In Progress"), encoding="utf-8"); start = hook("start")
+        check("S2 · called as TortoiseSVN calls it — from anywhere, with its own arguments — `pre` refuses a violation and `start` writes the INDEX.md the dialog will list",
+              ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "status" in bad.stdout + bad.stderr and start.returncode == 0 and "INDEX.md" in svn("status", cwd=root).stdout)
+        svn("propdel", "tsvn:precommithook", ".", cwd=root); svn("commit", "-m", "in Arbeit", cwd=root); svn("update", cwd=root); fm._SVN_LOG = None
+        check("S1 · a pass's *last worked on* comes from `svn log` — one call for the whole directory", fm.last_worked_on(made) == datetime.date.today().isoformat() or re.fullmatch(r"\d{4}-\d\d-\d\d", fm.last_worked_on(made)))
+    fm.configure(HERE)
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:

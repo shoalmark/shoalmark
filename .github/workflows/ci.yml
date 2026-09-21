@@ -1,0 +1,39 @@
+# The proof that is not the author's machine: both suites on three systems, with Subversion installed on each.
+name: ci
+on:
+  push: {branches: [main]}
+  pull_request:
+  workflow_dispatch:
+jobs:
+  suites:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: "3.9"}
+          - {os: ubuntu-latest, python: "3.12"}
+          - {os: macos-latest, python: "3.12"}
+          - {os: windows-latest, python: "3.9"}
+          - {os: windows-latest, python: "3.12"}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python }}"}
+      - name: Subversion (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q subversion
+      - name: Subversion (macOS)
+        if: runner.os == 'macOS'
+        run: brew install subversion
+      - name: Subversion (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install sliksvn -y --no-progress
+          echo "C:\Program Files\SlikSvn\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Subversion is really there — the S checks must run, not skip
+        run: svn --version --quiet
+      - name: git identity for the suites
+        run: git config --global user.email ci@example.invalid && git config --global user.name ci && git config --global init.defaultBranch main
+      - run: python test_shoalmark.py
+      - run: python test_core.py
