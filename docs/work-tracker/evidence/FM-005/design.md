@@ -71,6 +71,15 @@ before it lists questions; and every ask is classed by kind before anything else
 none of the six was stated anywhere as a question; each had to be dug out of a file of 112 to 513 lines, and my first
 reading of one was wrong (corrected from the tracker's own words before filing). **Stating the ask is the work.**
 
+**3.8 Office hours and budgets — the Owner, 2026-09-21:** *"humans have office hours, agents token budgets — a calendar
+invite and a fixed standup in the morning to go through stuff … we did this when I had to manually run commands."* This
+is §3.7's *one prepared sitting*, given a clock. **Built as 0.13.0:** `--standup` is the agenda — rulings, then his
+hands in the order that frees the most, then what evidence could settle, then buttons; `--standup FILE.ics` is the
+invite. It also fixes the unit of §3.2: **a deadline is counted in standups, not in hours** — *"the agents proceed with
+the default after two standups"* is fair to a person in a way *"after 24 hours"* is not. And it gives agents their
+side of the bargain: asks are written *before* the standup, and between standups nobody interrupts him except for what
+cannot be undone.
+
 ## 4. Against rubber-stamping — the question the Owner asked
 
 Stamping moves up a level unless the design prevents it. Seven mechanisms, cheapest first:

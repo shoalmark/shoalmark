@@ -498,6 +498,15 @@ view.all: alle
 scheme.auto: automatisch
 scheme.light: hell
 scheme.dark: dunkel
+waiting.oldest: älteste seit {0} Tagen
+waiting.holds: hält {0} weitere auf
+waiting.days: seit {0} Tagen
+waiting.holds.ids: hält auf: {0}
+waiting.unasked: noch nicht als Frage gestellt
+ask.ruling: eine Entscheidung
+ask.action: nur Ihre Hände
+ask.determination: ließe sich durch einen Versuch klären
+ask.ceremony: ein Knopfdruck
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -728,7 +737,45 @@ with tempfile.TemporaryDirectory() as tmp:
         f_.write_text(f_.read_text().replace("considered:\n", "considered: none\n" + ("next: owner\n" if "AP-037" in f_.name else "")).replace("status: Proposed", "status: In Progress" if "AP-038" in f_.name else "status: Proposed"))
     code, out, _ = run(root, "--next")
     check("--next answers before any pass has run: open work, work in progress first, whose move each is — and what waits for the Owner",
-          code == 0 and "Nothing is ranked" in out and out.index("AP-038") < out.index("AP-037 ·") and "next: owner" in out and "WAITING FOR THE OWNER: AP-037" in out)
+          code == 0 and "Nothing is ranked" in out and out.index("AP-038") < out.index("AP-037 ·") and "next: owner" in out and "1 NEED THE OWNER" in out and "NOT YET STATED AS A QUESTION" in out)
+fm.configure(HERE)
+
+# --- FM-005: the Owner's queue — every ask stated as the question it is, oldest first, with what it holds up --------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    old = (datetime.date.today() - datetime.timedelta(days=3)).isoformat(); new_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    tracker(root, "AP-022", extra=f'next: owner\nask: "DATEV format, or a plain CSV?"\nask-kind: ruling\nask-since: {old}\n', title="export")
+    tracker(root, "AP-021", extra=f'next: owner\nask: "Read the scraper log for instrument 27."\nask-kind: action\nask-since: {new_}\n', title="model")
+    tracker(root, "AP-020", extra="next: owner\n", title="buried in the body")
+    tracker(root, "AP-037", status="Proposed", extra="blocked-by: AP-022\n", title="roles"); tracker(root, "AP-041", status="Proposed", extra="blocked-by: AP-037\n", title="audit")
+    tracker(root, "AP-019", status="Shipped", extra='next: owner\nask: "done long ago"\n', title="shipped")
+    code, out, _ = run(root, "--owner")
+    check("--owner is the digest: how many need the Owner, the oldest ask's age, what is held up — transitively — and each ask as its question, oldest first; finished work never asks",
+          code == 0 and out.startswith("3 NEED THE OWNER · oldest 3 day(s) · holding up 2: AP-037, AP-041") and out.index("AP-022 · ruling · asked 3 day(s) ago · holds up AP-037, AP-041") < out.index("AP-021 · action · asked 1 day(s) ago")
+          and "DATEV format, or a plain CSV?" in out and "done long ago" not in out)
+    check("an ask that was never stated is said to be so, with the file to write it in — it is not hidden behind an id", "AP-020" in out and "NOT YET STATED AS A QUESTION" in out and "write `ask:` in AP-020-x.md" in out)
+    bad = tracker(root, "AP-050", extra="next: owner\nask-kind: favour\n", title="bad kind"); code, _, err = run(root)
+    check("`ask-kind:` is one of four words — the gate refuses a fifth", code == fm.EXIT_LINT and "ask-kind" in err + _); bad.unlink()
+    code, out2, _ = run(root, "--next")
+    check("--next ends with the same digest — a cold session is told what its Owner owes before it starts", code == 0 and "3 NEED THE OWNER" in out2)
+    tracker(root, "AP-030", extra=f'next: owner\nask: "Open the pull request."\nask-kind: ceremony\nask-since: {new_}\n', title="button")
+    code, out3, _ = run(root, "--standup")
+    check("--standup is the agenda of one sitting: rulings first, then the Owner's hands, then buttons — inside a kind what frees the most comes first — and what was never stated is named",
+          code == 0 and out3.startswith("STANDUP") and out3.index("RULINGS") < out3.index("YOUR HANDS") < out3.index("BUTTONS") and "[frees AP-037, AP-041]" in out3 and "not yet stated as a question" in out3)
+    code, _, err = run(root, "--standup", str(root / "s.ics"))
+    (root / "shoalmark.toml").write_text('name = "q"\nstandup = "09:00"\nstandup_minutes = 20\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    code2, _, _ = run(root, "--standup", str(root / "s.ics")); ics = (root / "s.ics").read_bytes() if (root / "s.ics").exists() else b""
+    check("--standup FILE.ics writes the recurring invite — weekdays, the configured time and length, CRLF as a calendar file must — and refuses until a time is configured",
+          code == fm.EXIT_LINT and "standup = " in err and code2 == 0 and b"RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\n" in ics and b"T090000\r\n" in ics and b"T092000\r\n" in ics and ics.count(b"\n") == ics.count(b"\r\n"))
+    (root / "AP-030-x.md").unlink() if (root / "AP-030-x.md").exists() else [p_.unlink() for p_ in (root / "docs/work-tracker").glob("AP-030-*.md")]
+    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    run(root); page = (root / "docs/work-tracker/index.html").read_text()
+    if _CHROME:
+        dom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+        shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
+        check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
+              "waiting for you: 3 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("Read the scraper log") and "not yet stated as a question" in shown
+              and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
 fm.configure(HERE)
 
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------

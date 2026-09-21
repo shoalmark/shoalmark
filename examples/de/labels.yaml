@@ -71,3 +71,12 @@ viewer.from_move: aus dem Schritt
 viewer.true_now: was jetzt gilt
 viewer.no_move: ohne benannten Schritt
 viewer.none_in_progress: nichts in Arbeit
+waiting.oldest: älteste seit {0} Tagen
+waiting.holds: hält {0} weitere auf
+waiting.days: seit {0} Tagen
+waiting.holds.ids: hält auf: {0}
+waiting.unasked: noch nicht als Frage gestellt
+ask.ruling: eine Entscheidung
+ask.action: nur Ihre Hände
+ask.determination: ließe sich durch einen Versuch klären
+ask.ceremony: ein Knopfdruck

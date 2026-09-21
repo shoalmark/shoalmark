@@ -4,6 +4,9 @@ status: In Progress
 considered: FM-004, FM-001
 tags: research
 next: owner
+ask: "Write the three intent lines of the shadow mandate in the origin (its FEAT-190) and sign it — or say the shadow week does not start."
+ask-kind: ruling
+ask-since: 2026-09-21
 hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal three agents named the Owner's unanswered questions as their top brake. Blocking and stamping have one root: a human asked for many small decisions mid-flight. The direction: sign once, then the road is clear."
 ---
 

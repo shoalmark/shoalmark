@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.12.1"
+__version__ = "0.13.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -54,6 +54,10 @@ DEFAULTS = {
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
     "triage_days": 7,
+    # humans have office hours, agents have budgets: ONE fixed sitting a day in which the Owner goes through what
+    # needs him. Agents write their asks before it; a deadline is counted in standups, not in hours.
+    "standup": "",                               # "09:00" — local time; empty = no standup
+    "standup_minutes": 15,
     "tags": {
         "bug": "something that worked, or was meant to, and does not",
         "research": "explores a question; commits to nothing being built",
@@ -211,6 +215,9 @@ def front_matter_schema():
         "blocked-by":      (rf"(?:{_IDS}|{_OWNER})(?:\s*,\s*(?:{_IDS}|{_OWNER}))*", False, "any seat",
                             "what this open work waits on — tracker ids, and `Owner` or `Owner — <the ruling awaited>`. *Blocked* is derived from it and clears itself; it orders nothing"),
         "considered":      (rf"none|{_IDS}(?:\s*,\s*{_IDS})*", False, "the filing seat", "the existing trackers this filing was held against — listed means LOOKED AT, not merged — or none. Triage at intake: run `--related` first; the gate refuses a new tracker without this line"),
+        "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence he can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
+        "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk"),
+        "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -483,6 +490,8 @@ def extract(path):
         # marks are derived from the file, never typed (see `ready_needs`).
         "fm": fm,
         "next": (fm.get("next") or "").strip().lower(),
+        "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
+        "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
         # `kind-of-problem: complicated`: the kind of problem that is LEFT, which picks the dispatch.
         "problem": (fm.get("kind-of-problem") or "").strip().lower(),
         "fm_tier": (fm.get("tier") or "").strip(),
@@ -529,6 +538,78 @@ def blocked_now(t, by_id):
     if t.get("status") not in OPEN_STATUSES:
         return []
     return [b for b in t.get("blocked_by", []) if b.startswith("Owner") or (b in by_id and by_id[b]["status"] in OPEN_STATUSES)]
+
+
+def held_up_by(t, trackers):
+    """The open work that waits on this tracker, directly or through another — what an unanswered ask really costs."""
+    held, frontier = [], [t["id"]]
+    while frontier:
+        nxt = [o["id"] for o in trackers if o["status"] in OPEN_STATUSES and o["id"] not in held and o["id"] != t["id"] and set(o.get("blocked_by", [])) & set(frontier)]
+        held += nxt
+        frontier = nxt
+    return held
+
+
+def owner_queue(trackers):
+    """What waits for the Owner, oldest ask first: (tracker, age in days or None, what it holds up)."""
+    today = datetime.date.today()
+    age = lambda t: (today - datetime.date.fromisoformat(t["ask_since"])).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.get("ask_since") or "") else None
+    q = [(t, age(t), held_up_by(t, trackers)) for t in trackers if t["status"] in OPEN_STATUSES and t.get("next") == "owner"]
+    return sorted(q, key=lambda r: (-(r[1] if r[1] is not None else -1), r[0]["id"]))
+
+
+def owner_digest(trackers):
+    """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened."""
+    q = owner_queue(trackers)
+    if not q:
+        print("NOTHING NEEDS THE OWNER.")
+        return EXIT_OK
+    ages, held = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs})
+    print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else ""))
+    for t, a, hs in q:
+        print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
+        print("   " + (t["ask"] or f"NOT YET STATED AS A QUESTION — {t['title']}: write `ask:` in {t['file']}"))
+    return EXIT_OK
+
+
+STANDUP_ORDER = (("ruling", "RULINGS — answer; a provisional answer is an answer"), ("", "NOT SAID WHICH KIND — the seat owes `ask-kind:`"),
+                 ("action", "YOUR HANDS — one sitting, in this order: what frees the most comes first"),
+                 ("determination", "EVIDENCE COULD SETTLE THESE — agree to the experiment, rule on its result later"),
+                 ("ceremony", "BUTTONS — reviewed and accepted, waiting for a click"))
+
+
+def standup(trackers, invite=None):
+    """`--standup`: the agenda of the Owner's one sitting — by kind, and inside a kind by what frees the most.
+    `--standup FILE.ics`: the recurring calendar invite for it, weekdays at `standup` for `standup_minutes`."""
+    at = str(CONFIG.get("standup") or "").strip()
+    if invite is not None and invite != "":
+        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", at):
+            print(f'--standup FILE: set the time first — `standup = "09:00"` in {CONFIG_NAME}', file=sys.stderr)
+            return EXIT_LINT
+        day = datetime.date.today()
+        while day.weekday() > 4:
+            day += datetime.timedelta(days=1)
+        start = datetime.datetime.combine(day, datetime.time(int(at[:2]), int(at[3:])))
+        end = start + datetime.timedelta(minutes=int(CONFIG.get("standup_minutes") or 15))
+        name = CONFIG["name"] or ROOT.name
+        f = lambda d: d.strftime("%Y%m%dT%H%M%S")                # floating time: the Owner's own clock, wherever he is
+        lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//standup//EN", "BEGIN:VEVENT",
+                 f"UID:standup-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", f"DTSTAMP:{f(datetime.datetime(2000, 1, 1))}Z",
+                 f"DTSTART:{f(start)}", f"DTEND:{f(end)}", "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+                 f"SUMMARY:{name} — standup: what needs you", f"DESCRIPTION:Run `{CMD} --standup` — or open the board: its first lines are the agenda.",
+                 "END:VEVENT", "END:VCALENDAR"]
+        pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
+        print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
+        return EXIT_OK
+    q = owner_queue(trackers)
+    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + ("" if q else " — nothing needs the Owner today."))
+    for kind, title in STANDUP_ORDER:
+        rows = sorted((r for r in q if (r[0].get("ask_kind") or "") == kind), key=lambda r: (-len(r[2]), -(r[1] if r[1] is not None else -1), r[0]["id"]))
+        if rows:
+            print(f"\n{title}")
+        for n, (t, a, hs) in enumerate(rows, 1):
+            print(f"  {n}. {t['id']} — " + (t["ask"] or f"not yet stated as a question: {t['title']}") + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+    return EXIT_OK
 
 
 def ready_needs(t, by_id):
@@ -734,7 +815,13 @@ function draw(){
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q&&HOME.path?"<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path)+"\n\n"+(w=>`<b>${l("waiting.title")}: ${w.length}</b>${w.length?" — "+l("waiting.detail")+": "+w.slice(0,14).map(t=>`<a href="#=${t[0]}">${t[0]}</a>`).join(" · ")+(w.length>14?" …":""):""}`)(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner")):"";
+  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q?(w=>{
+    // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
+    const days=t=>t[29][2]?Math.floor((Date.now()-Date.parse(t[29][2]))/864e5):null,old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
+    w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
+    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+"\n"+w.slice(0,14).map(t=>
+      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"))
+    +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -811,6 +898,9 @@ LABELS = {
     "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
+    "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
+    "waiting.unasked": "not yet stated as a question",
+    "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
     "word.missing": "missing", "word.stated": "stated",
@@ -1011,7 +1101,8 @@ def render_html(trackers):
              t.get("epic", "—"), t.get("state", "") if t["id"] in epics else "",
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
-             intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {}],
+             intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else []]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -1558,6 +1649,8 @@ def parse_args(argv):
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
+    add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -1757,7 +1850,10 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
 6. **Close out by asking what this made obsolete — and delete it in the same change.** Done means finished
    *and simpler afterwards*, not wider. A defect found on the way gets one line in the tracker, or its own
    tracker if it is real work — not a bundled side-fix.
-7. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
+7. **What you need from the Owner is an `ask:`** — ONE sentence he can answer, with `ask-kind:` (ruling · action ·
+   determination · ceremony), `ask-since:` and `next: owner`. Write it before his standup; never bury it in the body.
+   He has office hours, you have a budget: **end a session's last message with `{cmd} --owner`.**
+8. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
 """
 
@@ -1972,8 +2068,8 @@ def next_up(trackers):
                   + (f" · needs {needs}" if needs else "") + f"\n   {t['title']} — {t['file']}\n   {t.get('state') or '(no *' + HEAD['state'] + '* — open the tracker, and leave one when you stop)'}")
         if len(live) > 15:
             print(f"\n… and {len(live) - 15} more — {OUT.relative_to(ROOT).as_posix()} lists them all.")
-        waits = [t["id"] for t in live if t.get("next") == "owner"]
-        print("\nWAITING FOR THE OWNER: " + (", ".join(waits) if waits else "nothing"))
+        print()
+        owner_digest(trackers)
         return EXIT_OK
     mine = [t for t in ranked if t.get("next") not in ("owner", "wait")]
     for t in ranked:
@@ -1981,6 +2077,8 @@ def next_up(trackers):
         print(f"\n#{t['rank']} {t['id']} · {t['tier']} · next: {t.get('next') or '—'}" + (f" · blocked by {', '.join(t['blocked_now'])}" if t.get("blocked_now") else "")
               + (f" · needs {needs}" if needs else "") + f"\n   {t['title']} — {t['file']}\n   {t.get('state') or '(no *What is true now* — open the tracker, and leave one when you stop)'}")
     print(f"\nSTART WITH: {mine[0]['id']}" if mine else "\nEvery ranked move is the Owner's or waits — nothing here is yours to start.")
+    print()
+    owner_digest(trackers)
     return EXIT_OK
 
 
@@ -2056,6 +2154,10 @@ def main(argv=None):
         return refused
     if args.new:
         return new_tracker(args.new, trackers)
+    if args.owner:
+        return owner_digest(trackers)
+    if args.standup is not None:
+        return standup(trackers, args.standup)
     if args.next:
         return next_up(trackers)
     if args.html_only:

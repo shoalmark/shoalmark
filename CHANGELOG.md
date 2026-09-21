@@ -2,6 +2,23 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.13.0 — 2026-09-21
+
+**What needs the Owner comes first** (FM-005; three outside agents and one real queue agreed on this and on little else):
+
+- **`ask:` · `ask-kind:` · `ask-since:`** — what is asked of the Owner, as one sentence he can answer; its kind
+  (`ruling` · `action` — hands only he has · `determination` — evidence could settle it · `ceremony` — a button);
+  and since when. With `next: owner`. Optional: nothing that exists turns red.
+- **The board's first words are the answer:** *waiting for you: 2 · oldest 3 days · holding up 2 more*, then each
+  question — oldest first, with its kind, its age and what it holds up, transitively — above the path and the table.
+  An ask never stated is shown as exactly that.
+- **`--owner`** — the same as a digest; `--next` ends with it. **The contract asks a session to end its last message
+  with it:** a board has to be opened, a message arrives.
+- **`--standup`** — humans have office hours, agents have budgets: the agenda of the Owner's one sitting, by kind,
+  and inside a kind what frees the most first. **`--standup FILE.ics`** writes the recurring calendar invite
+  (weekdays at `standup = "09:00"`, for `standup_minutes`).
+- Nine new labels (`waiting.*`, `ask.*`); `examples/de/labels.yaml` has them in German.
+
 ## 0.12.1 — 2026-09-21
 
 What three outside agents hit in their first twenty minutes (FM-004):
