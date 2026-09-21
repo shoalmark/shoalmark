@@ -2,6 +2,24 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.7.1 — 2026-09-21
+
+Found by an independent review of the first port onto this tool. **If you have a deriver, read the first item.**
+
+- **A deriver no longer sees the environment, and is told things on stdin.** It now receives `mode`
+  (`write` · `check` · `board` · `read`) and `flags` — whatever was typed as the new `--derive-flag NAME` on that
+  run — and runs with `PATH`, `HOME` and the locale only. A deriver that took an override from an environment
+  variable let a stray `export` in the committing shell rewrite derived cells and stage them, exit 0. **Move any
+  such switch to `flags`.** `mode: board` is how a deriver knows it may stand a guard down: nothing that run
+  produces can be committed.
+- A deriver that does not answer within 60 s is refused; it used to hang the gate for as long as it liked.
+- **A vendored copy whose `PIN` was deleted is refused.** It used to pass, silently, with its integrity check off.
+  Messages about the pin name a repository-relative path.
+- `--help` names the command the repository teaches (`SHOALMARK_CMD`). The write log says how many trackers are
+  `In Progress` and how many files the deriver generated.
+- Two behaviours the hook contract rests on have checks again: `--print-written` still names its paths under a lint
+  while exiting 4; `--check --print-written` writes and prints nothing.
+
 ## 0.7.0 — 2026-09-21
 
 - **Licensed under `Apache-2.0 OR MIT`, at your option.** It was *proprietary, no licence chosen*. `LICENSE-APACHE`,

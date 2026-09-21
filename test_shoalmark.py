@@ -251,6 +251,12 @@ with tempfile.TemporaryDirectory() as d:
     ok = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
     (dest / "shoalmark.py").write_text((dest / "shoalmark.py").read_text() + "\n# edited in place\n")
     bad = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    (dest / "shoalmark.py").write_text((dest / "shoalmark.py").read_text().replace("\n# edited in place\n", ""))
+    (dest / "PIN").rename(dest / "PIN.gone")
+    nopin = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    (dest / "PIN.gone").rename(dest / "PIN")
+    check("a vendored copy whose PIN was deleted is refused — the integrity check cannot be switched off silently, and the message names a path a reader can use",
+          nopin.returncode == fm.EXIT_LINT and "tools/shoalmark/PIN is missing" in nopin.stderr and str(root) not in nopin.stderr)
     check("a vendored copy runs from where it sits — and one edited in place is refused by its own gate",
           ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "differs from its PIN" in bad.stderr)
 
@@ -378,6 +384,46 @@ with tempfile.TemporaryDirectory() as d:
     (root / "GARBLE").unlink(); (root / "REDEFINE").write_text("")
     code, _, err = run(root)
     check("a deriver may add a key, never redefine one of the core's", code == fm.EXIT_LINT and "never redefine" in err)
+# --- what an independent review of the first port found (the origin's RV-251 … RV-264) ------------------------
+TOLD = """#!/usr/bin/env python3
+import json, os, sys, time
+ask = json.load(sys.stdin)
+if "sleep" in ask["flags"]:
+    time.sleep(5)
+if "refuse" in ask["flags"] or os.environ.get("STRAY_EXPORT"):
+    print("refused", file=sys.stderr); sys.exit(5)
+json.dump({"_problems": [], "_notes": ["mode=" + ask["mode"] + " flags=" + ",".join(ask["flags"])]}, sys.stdout)
+"""
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", status="Proposed")
+    exe = root / "docs/work-tracker/derive"; exe.write_text(TOLD); exe.chmod(0o755)
+    run(root, "--derive-flag", "b", "--derive-flag", "a")
+    check("a deriver is told the mode and the flags typed on THIS run — on stdin", "mode=write flags=a,b" in (root / "docs/work-tracker/INDEX.md").read_text())
+    os.environ["STRAY_EXPORT"] = "1"
+    try:
+        stray = run(root)[0]
+    finally:
+        del os.environ["STRAY_EXPORT"]
+    check("what is exported in the shell that ran the commit never reaches a deriver — a stray variable cannot change what is staged",
+          stray == 0 and run(root, "--derive-flag", "refuse")[0] == 5)
+    check("the board's run says so: a deriver may skip a guard there, because nothing it produces can be committed",
+          run(root, "--html-only")[0] == 0 and "mode=board" not in (root / "docs/work-tracker/INDEX.md").read_text())
+    _t, fm.DERIVE_TIMEOUT = fm.DERIVE_TIMEOUT, 1
+    try:
+        code, _, err = run(root, "--derive-flag", "sleep")
+    finally:
+        fm.DERIVE_TIMEOUT = _t
+    check("a deriver that hangs does not hang the gate: it is refused after a bounded wait, and says what ran long", code == fm.EXIT_LINT and "did not answer within 1 s" in err)
+    exe.unlink()
+    broken = root / "docs/work-tracker/MSR-002-x.md"; broken.write_text('---\nid: MSR-002\nstatus: Proposed\nnope: 1\nhook: "h"\n---\n\n# MSR-002 — t\n')
+    code, out, _ = run(root, "--print-written")
+    check("under a lint --print-written still names the paths while exiting 4 — a hook's `&&` is what keeps them unstaged", code == fm.EXIT_LINT and out.strip() == "docs/work-tracker/INDEX.md")
+    broken.unlink(); run(root)
+    code, out, _ = run(root, "--check", "--print-written")
+    check("--check --print-written writes nothing and prints nothing", code == 0 and out.strip() == "")
+fm.configure(HERE)
+
 # --- the seam, after the origin's port was explored (FM-001) --------------------------------------------------
 PORT_DERIVER = """#!/usr/bin/env python3
 import json, sys

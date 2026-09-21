@@ -149,7 +149,7 @@ The core knows nothing about releases, deploys or product areas. A repository th
 at **`<tracker dir>/derive`**. The core runs it first, on **every** run — so keep it fast — with this on stdin:
 
 ```json
-{ "root": "/abs/path", "trackers": [ { "id": "MSR-012", "status": "Shipped", "file": "MSR-012-x.md", "fm": { "version": "1.2.0" } } ] }
+{ "root": "/abs/path", "mode": "write", "flags": [], "trackers": [ { "id": "MSR-012", "status": "Shipped", "file": "MSR-012-x.md", "fm": { "version": "1.2.0" } } ] }
 ```
 
 and reads this from stdout:
@@ -171,7 +171,13 @@ and reads this from stdout:
   `_needs` (per tracker) are shown beside the core's own marks. `_notes` go into `INDEX.md`'s header.
 - `_files` are written, drift-checked (`--check`) and staged (`--print-written`) **by the core**. A deriver has no
   side effects, and nothing derived is ever stored — so nothing derived can be stale.
-- **A non-zero exit refuses the run before anything is written** — a crash included. Say why on stderr.
+- **A non-zero exit refuses the run before anything is written** — a crash included, and silence past 60 s. Say
+  why on stderr.
+- `mode` is `write` · `check` · `board` (only the git-ignored page is produced — a guard that protects committed
+  output may stand down) · `read`. `flags` are what was typed as `--derive-flag NAME` on **this** run.
+- **A deriver is told things on stdin and never reads the environment** — the core runs it with `PATH`, `HOME`,
+  the locale and nothing else. A git hook inherits whatever the shell that ran `git commit` had exported; a deriver
+  that listened to that would let a stray variable decide what gets staged.
 - A wrapper script may set `SHOALMARK_CMD` so every message names the repository's own command.
 
 ## 8. Working on shoalmark

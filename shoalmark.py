@@ -38,7 +38,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -1286,7 +1286,7 @@ def drift_normalize(text):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(prog="shoalmark", description="A work tracker that lives in the repository it tracks.")
+    parser = argparse.ArgumentParser(prog=os.environ.get("SHOALMARK_CMD") or "shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
     add("--root", metavar="DIR", help="the repository to track; default: the nearest shoalmark.toml or git toplevel above the working directory")
     add("--check", action="store_true",
@@ -1303,6 +1303,9 @@ def parse_args(argv):
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="write plain git hooks (pre-commit, post-merge, post-checkout) — no hook runner needed; never overwrites a hook that is not its own")
+    add("--derive-flag", action="append", default=[], metavar="NAME",
+        help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
+             "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy")
@@ -1316,7 +1319,18 @@ DERIVED_NOTES = []            # paragraphs for INDEX.md's header: what its colum
 DERIVED_FILES = {}            # other files it wants generated: {repo-relative path: text} — the core writes, checks and stages them
 
 
-def run_deriver(trackers):
+def deriver_env():
+    """The environment a deriver runs in: what a program needs to start and to find git — nothing else. A deriver's
+    answer decides what a commit stages, so it must not depend on what happens to be exported in the shell that ran
+    the commit: one stray variable once rewrote eighty cells and staged them, exit 0. It is told things in `flags`."""
+    keep = ("PATH", "HOME", "LANG", "TMPDIR", "SYSTEMROOT", "PYTHONPATH", "VIRTUAL_ENV")
+    return {k: v for k, v in os.environ.items() if k in keep or k.startswith("LC_")}
+
+
+DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit and every checkout; one that hangs must not hang the gate
+
+
+def run_deriver(trackers, mode="write", flags=()):
     """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run: nothing
     derived is stored, so nothing derived can be stale. stdin: every tracker's id, status, file and front matter.
     stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
@@ -1331,8 +1345,14 @@ def run_deriver(trackers):
     exe = TRACKER_DIR / "derive"
     if not (exe.is_file() and os.access(exe, os.X_OK)):
         return None, []
-    ask = json.dumps({"root": str(ROOT), "trackers": [{"id": t["id"], "status": t["status"], "file": t["file"], "fm": t.get("fm", {})} for t in trackers]})
-    run = subprocess.run([str(exe)], input=ask, capture_output=True, text=True, cwd=ROOT, env=nested_git_env())
+    # `mode` — write · check · board (the git-ignored page only: nothing the run produces can be committed) · read.
+    # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
+    # a hook inherits the environment of whatever shell ran `git commit`, and a stray export would reach every run.
+    ask = json.dumps({"root": str(ROOT), "mode": mode, "flags": sorted(set(flags)), "trackers": [{"id": t["id"], "status": t["status"], "file": t["file"], "fm": t.get("fm", {})} for t in trackers]})
+    try:
+        run = subprocess.run([str(exe)], input=ask, capture_output=True, text=True, cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return EXIT_LINT, [f"{exe.relative_to(ROOT)} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit and every checkout; make it fast, or make it fail"]
     if run.returncode:
         print(run.stderr.rstrip() or f"{exe.relative_to(ROOT)} exited {run.returncode}", file=sys.stderr)
         return run.returncode, []
@@ -1378,13 +1398,16 @@ def pin_problems():
     """A vendored copy carries a PIN — `sha256  path` per file. A copy that was edited in place is refused by the
     gate: fix it upstream and vendor again, so two repositories never run two tools under one name."""
     pin = HERE / "PIN"
+    here = str(HERE.relative_to(ROOT)) if ROOT in HERE.parents else str(HERE)
     if not pin.exists():
-        return []
+        # the tool sitting INSIDE the repository it tracks, and not at its root, is a vendored copy — and a vendored
+        # copy without its PIN has had its integrity check switched off, silently
+        return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in HERE.parents else []
     out = []
     for line in pin.read_text(encoding="utf-8").splitlines():
         want, _, rel = line.partition("  ")
         if rel and (not (HERE / rel).exists() or hashlib.sha256((HERE / rel).read_bytes()).hexdigest() != want):
-            out.append(f"{(HERE / rel)}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
+            out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
 
@@ -1666,7 +1689,8 @@ def main(argv=None):
     if args.install_hook:
         return install_hook()
     trackers = load_trackers()
-    refused, derived_problems = run_deriver(trackers)
+    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related) else "read"
+    refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
         return EXIT_OK
@@ -1698,7 +1722,7 @@ def main(argv=None):
         sheets = sorted(out.parent.glob("triage-*.md"))
         applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today) if sheets else ([], [])
         trackers = load_trackers()
-        run_deriver(trackers)
+        run_deriver(trackers, "write", args.derive_flag)
         earlier = out.read_text(encoding="utf-8") if out.exists() else ""
         text, left = triage_worksheet(trackers, today, last_worked_on, earlier, repos_naming())
         out.write_text(text, encoding="utf-8")
@@ -1764,6 +1788,7 @@ def main(argv=None):
         HTML_OUT.write_text(render_html(trackers), encoding="utf-8")   # git-ignored; never staged
         write_views(trackers)
         print(f"wrote {OUT.relative_to(ROOT)} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
+        print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
         for path, text in sorted(DERIVED_FILES.items()):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
