@@ -61,3 +61,4 @@ core is made in one place.
 | 2026-09-21 | **0.4.0 — the seam, merged on the Owner's ruling after R&D.** What is left of this tracker is the port itself. |
 | 2026-09-21 | **The debt's first instalment, the same day:** 0.2.1 fixed six things found on a second repository. Three of them are in the origin's copy too and are now owed there — a hook's quotation marks in the INDEX row, a tracker's own id linking to itself in the viewer, `--related` reading only a–z. |
 | 2026-09-21 | Filed with the first commit. |
+| 2026-09-21 | **The origin's brand has a folder of its own.** 0.9.0 reads a repository's brand from `<tracker dir>/brand/` and re-bases a theme's paths from the theme file onto the page; the origin's branch carries its three files there, vendored at 0.9.0, its board rendered and looked at, its index unchanged. |
