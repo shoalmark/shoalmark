@@ -347,7 +347,7 @@ with tempfile.TemporaryDirectory() as d:
     code, _, err = run(root)
     index = (root / "docs/work-tracker/INDEX.md").read_text(); page = (root / "docs/work-tracker/index.html").read_text()
     check("a deriver at the one conventional path adds its keys to the schema and its values as columns — in INDEX.md and on the board, where each is also a view",
-          code == 0 and "| Triaged | Ver | Live |" in index and "| 1.2.0 | live |" in index and 'COLS=["Ver", "Live"]' in page
+          code == 0 and "| Triaged | Ver | Live |" in index and "| 1.2.0 | live |" in index and 'COLS=["Ver", "Live"],BCOLS=["Ver", "Live"]' in page
           and '<th class="x">ver<th class="x">live' in page and "`version:`" in fm.render_schema())
     git(root, "tag", "-d", "v1.2.0")
     run(root)
@@ -368,6 +368,46 @@ with tempfile.TemporaryDirectory() as d:
     (root / "GARBLE").unlink(); (root / "REDEFINE").write_text("")
     code, _, err = run(root)
     check("a deriver may add a key, never redefine one of the core's", code == fm.EXIT_LINT and "never redefine" in err)
+# --- the seam, after the origin's port was explored (FM-001) --------------------------------------------------
+PORT_DERIVER = """#!/usr/bin/env python3
+import json, sys
+ask = json.load(sys.stdin)
+out = {"_index": ["Ver"], "_board": ["Release"], "_notes": ["**Ver** = the release it shipped in."],
+       "_keys": {"version": {"says": "the release"}, "target": {"says": "the plan"}}}
+for t in ask["trackers"]:
+    v, g = t["fm"].get("version", ""), t["fm"].get("target", "")
+    out[t["id"]] = {"Ver": v or "—", "Release": [v, v + " ✓"] if v else [g, "→ " + g] if g else "—",
+                    "_needs": [] if v or g else ["target"]}
+json.dump(out, sys.stdout)
+"""
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    home = root / "docs/work-tracker/TRIAGE.md"; home.write_text(home.read_text().replace("1.\n", "1. MSR-002 first.\n")); fm.configure(root)
+    tracker(root, "MSR-001", status="Shipped", extra="version: 1.2.0\n"); tracker(root, "MSR-002", extra="target: 1.3.x\nrank: 1\ntier: P1\nnext: run\n")
+    tracker(root, "MSR-003", extra="rank: 2\ntier: P2\nnext: run\n")
+    exe = root / "docs/work-tracker/derive"; exe.write_text(PORT_DERIVER); exe.chmod(0o755)
+    (root / "docs/work-tracker/theme.css").write_text(":root{--bg:#123456}")
+    code, _, err = run(root)
+    index, page = (root / "docs/work-tracker/INDEX.md").read_text(), (root / "docs/work-tracker/index.html").read_text()
+    check("one model, two renderings: the deriver says which values INDEX.md prints and which the board shows — every one stays a view",
+          code == 0 and "| Triaged | Ver |" in index and "Release |" not in index and 'COLS=["Ver", "Release"],BCOLS=["Release"]' in page and '<th class="x">release<th>title' in page)
+    check("a derived value may carry a display form — the value groups, sorts and is what INDEX.md prints; the form is for the board's cells",
+          '{"Ver": "—", "Release": "1.3.x"}, {"Release": "→ 1.3.x"}' in page and '{"Release": "1.2.0 ✓"}' in page and "→" not in index.split("## Work")[1])
+    check("a deriver may say what open work still needs, and explain its columns in INDEX.md's header",
+          "| run | *complex* | intended, target | [MSR-003]" in index and "| run | *complex* | intended | [MSR-002]" in index and "> **Ver** = the release it shipped in." in index)
+    check("a repository's own look is a convention, not a setting: `theme.css` beside the trackers is appended to the page's style", "--bg:#123456}</style>" in page)
+    os.environ["FATHOM_MARK_CMD"] = "python3 scripts/tracker.py"
+    try:
+        fm.configure(root); (root / "docs/work-tracker/INDEX.md").write_text("stale"); code, _, err = run(root, "--check")
+    finally:
+        del os.environ["FATHOM_MARK_CMD"]
+    check("a repository that wraps the tool is named by its own command in every message", code == fm.EXIT_DRIFT and "Run: python3 scripts/tracker.py" in err)
+    if _CHROME:
+        run(root)
+        body = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{root}/docs/work-tracker/index.html"], capture_output=True, text=True, timeout=60).stdout
+        shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
+        check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
 fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
