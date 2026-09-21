@@ -47,4 +47,5 @@ core is made in one place.
 
 | Date | Event |
 |---|---|
+| 2026-09-21 | **The debt's first instalment, the same day:** 0.2.1 fixed six things found on a second repository. Three of them are in the origin's copy too and are now owed there — a hook's quotation marks in the INDEX row, a tracker's own id linking to itself in the viewer, `--related` reading only a–z. |
 | 2026-09-21 | Filed with the first commit. |
