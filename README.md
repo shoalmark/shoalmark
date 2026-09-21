@@ -85,5 +85,7 @@ No release targets, no deploy axis, no product areas — a repository that needs
 
 ## Develop
 
-`python3 test_shoalmark.py` — every check builds its own throwaway repository; where Chrome or Chromium is
+`python3 test_shoalmark.py` and `python3 test_core.py` — 210 checks. `test_core.py` pins the core's behaviour on a
+synthetic corpus (the checks the tracker carried in the repository it was cut from); `test_shoalmark.py` pins what
+was built here. Every check builds its own throwaway repository; where Chrome or Chromium is
 installed the board is rendered and read back. Run it under the oldest Python you promise: `/usr/bin/python3 test_shoalmark.py`.

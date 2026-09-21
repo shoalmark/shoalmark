@@ -396,6 +396,13 @@ with tempfile.TemporaryDirectory() as d:
           '{"Ver": "—", "Release": "1.3.x"}, {"Release": "→ 1.3.x"}' in page and '{"Release": "1.2.0 ✓"}' in page and "→" not in index.split("## Work")[1])
     check("a deriver may say what open work still needs, and explain its columns in INDEX.md's header",
           "| run | *complex* | intended, target | [MSR-003]" in index and "| run | *complex* | intended | [MSR-002]" in index and "> **Ver** = the release it shipped in." in index)
+    exe.write_text(PORT_DERIVER.replace('json.dump(out, sys.stdout)', 'out["_files"] = {"docs/RELEASES.md": "# Releases\\n\\n1.2.0\\n", "../outside.md": "x"} if ask["root"].endswith("ESCAPE") else {"docs/RELEASES.md": "# Releases\\n\\n1.2.0\\n"}\njson.dump(out, sys.stdout)'))
+    code, out, _ = run(root, "--print-written"); rel = root / "docs/RELEASES.md"
+    wrote_ok = code == 0 and rel.read_text() == "# Releases\n\n1.2.0\n" and out.split() == ["docs/work-tracker/INDEX.md", "docs/RELEASES.md"]
+    rel.write_text("tampered"); drift = run(root, "--check")[0]; run(root)
+    check("a deriver has no side effects: the files it wants are written, staged and drift-checked by the core",
+          wrote_ok and drift == fm.EXIT_DRIFT and rel.read_text() == "# Releases\n\n1.2.0\n")
+    exe.write_text(PORT_DERIVER)
     check("a repository's own look is a convention, not a setting: `theme.css` beside the trackers is appended to the page's style", "--bg:#123456}</style>" in page)
     os.environ["SHOALMARK_CMD"] = "python3 scripts/tracker.py"
     try:
