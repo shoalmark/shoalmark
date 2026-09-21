@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The origin's release axis as a fathom-mark deriver (R&D spike). Everything here is the origin's business and the
+"""The origin's release axis as a shoalmark deriver (R&D spike). Everything here is the origin's business and the
 core knows none of it: the release-target registry, the tag lookups, the submodule refusal, the three release lints."""
 import json, os, pathlib, re, subprocess, sys
 

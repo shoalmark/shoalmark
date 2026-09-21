@@ -2,6 +2,14 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.6.0 — 2026-09-21
+
+- **The tool is called `shoalmark`** — it was `fathom-mark` until here. The file is `shoalmark.py`, the configuration
+  `shoalmark.toml`, the vendored directory `tools/shoalmark/`, the environment variable `SHOALMARK_CMD`.
+  **To move a repository:** vendor into `tools/shoalmark/`, delete `tools/fathom-mark/`, rename `fathom-mark.toml` to
+  `shoalmark.toml`, run `--init` and `--install-hook` — a contract block and hooks written under the old name are
+  recognised and replaced, never left stranded. Tracker ids do not change: an id never does.
+
 ## 0.5.0 — 2026-09-21
 
 What the exploration of the first real port forced — each item answers a measured difference

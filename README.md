@@ -1,4 +1,6 @@
-# fathom-mark
+# shoalmark
+
+*A shoal mark is a mark set to show shallow water — a stake or a buoy. It tells you where not to run aground.*
 
 A work tracker that lives in the repository it tracks. Markdown files with a small front matter, one Python
 file that reads them all, no server, no database, no dependency beyond Python 3.9 — the one that ships with macOS.
@@ -20,21 +22,21 @@ Built for repositories worked by agents under one Owner: **the seat judges, the 
 ## Start
 
 ```bash
-python3 fathom_mark.py --vendor <repo>/tools/fathom-mark     # a pinned, self-contained copy
+python3 shoalmark.py --vendor <repo>/tools/shoalmark     # a pinned, self-contained copy
 cd <repo>
-python3 tools/fathom-mark/fathom_mark.py --init --key MSR    # fathom-mark.toml · docs/work-tracker/TRIAGE.md · .gitignore
+python3 tools/shoalmark/shoalmark.py --init --key MSR    # shoalmark.toml · docs/work-tracker/TRIAGE.md · .gitignore
 # the Owner writes the intent and the current path in TRIAGE.md
-python3 tools/fathom-mark/fathom_mark.py --new "what is wrong, in a sentence"     # becomes MSR-001
-python3 tools/fathom-mark/fathom_mark.py                     # regenerate; exit 4 on a violation
+python3 tools/shoalmark/shoalmark.py --new "what is wrong, in a sentence"     # becomes MSR-001
+python3 tools/shoalmark/shoalmark.py                     # regenerate; exit 4 on a violation
 ```
 
-Hooks — plain git hooks, no runner needed; a hook that is not fathom-mark's is never overwritten:
+Hooks — plain git hooks, no runner needed; a hook that is not shoalmark's is never overwritten:
 
 ```bash
-python3 tools/fathom-mark/fathom_mark.py --install-hook      # pre-commit stages the regenerated INDEX.md; a violation refuses the commit
+python3 tools/shoalmark/shoalmark.py --install-hook      # pre-commit stages the regenerated INDEX.md; a violation refuses the commit
 ```
 
-Upgrade: `python3 <fathom-mark>/fathom_mark.py --vendor <repo>/tools/fathom-mark` prints what changed since the
+Upgrade: `python3 <shoalmark>/shoalmark.py --vendor <repo>/tools/shoalmark` prints what changed since the
 version it replaces ([CHANGELOG](CHANGELOG.md)) and refuses a copy that was edited in place; then run `--init`
 again to refresh the contract in `AGENTS.md`.
 
@@ -75,7 +77,7 @@ Nothing derived is stored, so nothing derived can be stale. It runs on every run
 ## A vendored copy is pinned
 
 `--vendor` writes a `PIN` of sha256 hashes beside the copy. A copy edited in place is refused by its own
-gate: change fathom-mark here, run `--vendor` again. Two repositories never run two tools under one name.
+gate: change shoalmark here, run `--vendor` again. Two repositories never run two tools under one name.
 
 ## What it is not
 
@@ -83,5 +85,5 @@ No release targets, no deploy axis, no product areas — a repository that needs
 
 ## Develop
 
-`python3 test_fathom_mark.py` — every check builds its own throwaway repository; where Chrome or Chromium is
-installed the board is rendered and read back. Run it under the oldest Python you promise: `/usr/bin/python3 test_fathom_mark.py`.
+`python3 test_shoalmark.py` — every check builds its own throwaway repository; where Chrome or Chromium is
+installed the board is rendered and read back. Run it under the oldest Python you promise: `/usr/bin/python3 test_shoalmark.py`.

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""fathom-mark — a work tracker that lives in the repository it tracks.
+"""shoalmark — a work tracker that lives in the repository it tracks.
 
 Markdown trackers with a small front matter, and one command that reads them all:
 
-    fathom_mark.py                 regenerate INDEX.md and the local board (idempotent)
-    fathom_mark.py --check         read-only gate: write nothing, fail on drift or a violation
-    fathom_mark.py --related "…"   before filing: the existing trackers closest to an id or to words
-    fathom_mark.py --new KIND "…"  file a tracker — it prints what is related first, and the gate
+    shoalmark.py                 regenerate INDEX.md and the local board (idempotent)
+    shoalmark.py --check         read-only gate: write nothing, fail on drift or a violation
+    shoalmark.py --related "…"   before filing: the existing trackers closest to an id or to words
+    shoalmark.py --new KIND "…"  file a tracker — it prints what is related first, and the gate
                                    refuses the file until `considered:` says what it was held against
-    fathom_mark.py --triage        a triage pass: the seat judges a worksheet, the command applies it
-    fathom_mark.py --schema        every front-matter key, its shape, who writes it
-    fathom_mark.py --init          scaffold the tracker directory, TRIAGE.md and fathom-mark.toml
-    fathom_mark.py --vendor DIR    copy this tool, pinned by hash, into another repository
+    shoalmark.py --triage        a triage pass: the seat judges a worksheet, the command applies it
+    shoalmark.py --schema        every front-matter key, its shape, who writes it
+    shoalmark.py --init          scaffold the tracker directory, TRIAGE.md and shoalmark.toml
+    shoalmark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
 One seam, by convention: if `<tracker dir>/derive` exists and is executable it runs first, on every run — it may add
 columns (each also a view on the board), front-matter keys, problems and other generated files, or refuse the run.
@@ -20,7 +20,7 @@ The INDEX is a *pointer*, not a copy: each row is a terse hook and a machine-rea
 lives in the tracker. `status` is the code lifecycle — `Shipped` means merged, not deployed.
 
 Both modes FAIL on a ledger-integrity violation: a gate that always lands green is not a gate.
-Configuration is `fathom-mark.toml` at the repository root; every key has a default.
+Configuration is `shoalmark.toml` at the repository root; every key has a default.
 """
 
 import argparse
@@ -37,10 +37,10 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
-CONFIG_NAME = "fathom-mark.toml"
+CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty
     "tracker_dir": "docs/work-tracker",
@@ -85,7 +85,7 @@ def read_config(text):
 
 def find_root(start=None):
     """The repository this run tracks: the nearest ancestor of the working directory that holds a
-    fathom-mark.toml, else the git toplevel, else the working directory."""
+    shoalmark.toml, else the git toplevel, else the working directory."""
     here = pathlib.Path(start or os.getcwd()).resolve()
     for p in (here, *here.parents):
         if (p / CONFIG_NAME).exists():
@@ -123,7 +123,7 @@ def configure(root=None):
         CMD = "python3 " + str(pathlib.Path(__file__).resolve().relative_to(ROOT))
     except ValueError:
         CMD = "python3 " + str(pathlib.Path(__file__).resolve())
-    CMD = os.environ.get("FATHOM_MARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
+    CMD = os.environ.get("SHOALMARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
 
@@ -1285,9 +1285,9 @@ def drift_normalize(text):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(prog="fathom-mark", description="A work tracker that lives in the repository it tracks.")
+    parser = argparse.ArgumentParser(prog="shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
-    add("--root", metavar="DIR", help="the repository to track; default: the nearest fathom-mark.toml or git toplevel above the working directory")
+    add("--root", metavar="DIR", help="the repository to track; default: the nearest shoalmark.toml or git toplevel above the working directory")
     add("--check", action="store_true",
         help=f"read-only gate: write nothing; exit {EXIT_DRIFT} if INDEX.md is stale, {EXIT_LINT} on a ledger-integrity violation")
     add("--print-written", action="store_true",
@@ -1302,7 +1302,7 @@ def parse_args(argv):
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="write plain git hooks (pre-commit, post-merge, post-checkout) — no hook runner needed; never overwrites a hook that is not its own")
-    add("--init", action="store_true", help="scaffold fathom-mark.toml, the tracker directory and TRIAGE.md; never overwrites")
+    add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy")
     add("--version", action="version", version=__version__)
@@ -1370,7 +1370,7 @@ def load_trackers():
     return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
 
 
-TOOL_FILES = ("fathom_mark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "CHANGELOG.md")
+TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "CHANGELOG.md")
 
 
 def pin_problems():
@@ -1383,7 +1383,7 @@ def pin_problems():
     for line in pin.read_text(encoding="utf-8").splitlines():
         want, _, rel = line.partition("  ")
         if rel and (not (HERE / rel).exists() or hashlib.sha256((HERE / rel).read_bytes()).hexdigest() != want):
-            out.append(f"{(HERE / rel)}: differs from its PIN — a vendored fathom-mark is not edited in place; change it upstream and run --vendor again")
+            out.append(f"{(HERE / rel)}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
 
@@ -1414,7 +1414,7 @@ def vendor(dest):
         shutil.copyfile(src, dest / rel)
         lines.append(f"{hashlib.sha256(src.read_bytes()).hexdigest()}  {rel}")
     (dest / "PIN").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"vendored fathom-mark {__version__} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
+    print(f"vendored shoalmark {__version__} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
     if had and had != __version__ and changes_since(had):
         print("\nWhat changes for this repository:\n\n" + changes_since(had))
     return EXIT_OK
@@ -1447,8 +1447,9 @@ Newest first — one paragraph per pass: its date, what it changed, its workshee
 *None yet.*
 """
 
-CONTRACT_BEGIN = "<!-- BEGIN fathom-mark: the work-tracker contract — regenerated by --init, edit outside these markers -->"
-CONTRACT_END = "<!-- END fathom-mark -->"
+CONTRACT_BEGIN = "<!-- BEGIN shoalmark: the work-tracker contract — regenerated by --init, edit outside these markers -->"
+CONTRACT_END = "<!-- END shoalmark -->"
+LEGACY_CONTRACT = ("<!-- BEGIN fathom-mark:", "<!-- END fathom-mark -->")      # the name until 0.6.0
 CONTRACT = """\
 ## The work tracker — read this before you change anything
 
@@ -1475,7 +1476,7 @@ commit. **Start here:** `{cmd} --next` says what to work on and what is true now
 """
 
 CONFIG_TEMPLATE = """\
-# fathom-mark — every key is optional; these are the defaults.
+# shoalmark — every key is optional; these are the defaults.
 name = "{name}"
 tracker_dir = "docs/work-tracker"
 blob = ""            # URL prefix of a tracker file on the forge, e.g. https://github.com/me/repo/blob/main/docs/work-tracker/
@@ -1517,7 +1518,8 @@ hook: "{title}"
 """
 
 
-HOOK_MARK = "# fathom-mark"
+HOOK_MARK = "# shoalmark"
+LEGACY_HOOK_MARK = "# fathom-mark"          # the name until 0.6.0 — a hook it wrote is still ours to rewrite
 HOOKS = {
     "pre-commit": """#!/bin/sh
 {mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
@@ -1532,7 +1534,7 @@ fi
 
 
 def install_hook():
-    """Plain git hooks — a repository that vendors fathom-mark needs Python and nothing else. A hook that is not
+    """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
     out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks"], capture_output=True, text=True, env=nested_git_env())
     if out.returncode:
@@ -1541,12 +1543,12 @@ def install_hook():
     hooks = (ROOT / out.stdout.strip()).resolve()
     hooks.mkdir(parents=True, exist_ok=True)
     fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT), config=CONFIG_NAME,
-                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT) if ROOT in pathlib.Path(__file__).resolve().parents else "tools/fathom-mark")
+                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT) if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
     code = EXIT_OK
     for name, text in HOOKS.items():
         path = hooks / name
-        if path.exists() and HOOK_MARK not in path.read_text(encoding="utf-8", errors="replace"):
-            print(f"{path} exists and is not fathom-mark's — left alone. Add to it: `{CMD} {'--print-written' if name == 'pre-commit' else '--html-only'}`", file=sys.stderr)
+        if path.exists() and not any(m in path.read_text(encoding="utf-8", errors="replace") for m in (HOOK_MARK, LEGACY_HOOK_MARK)):
+            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{CMD} {'--print-written' if name == 'pre-commit' else '--html-only'}`", file=sys.stderr)
             code = EXIT_LINT
             continue
         path.write_text(text.format(**fill), encoding="utf-8")
@@ -1573,6 +1575,8 @@ def init(key=None):
     section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT), cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
     agents = ROOT / "AGENTS.md"
     have = agents.read_text(encoding="utf-8") if agents.exists() else ""
+    if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
+        a = have.index(LEGACY_CONTRACT[0]); have = have[:a] + have[have.index(LEGACY_CONTRACT[1]) + len(LEGACY_CONTRACT[1]):].lstrip("\n")
     if CONTRACT_BEGIN in have and CONTRACT_END in have:
         new = have[:have.index(CONTRACT_BEGIN)] + section + have[have.index(CONTRACT_END) + len(CONTRACT_END):].lstrip("\n")
     else:

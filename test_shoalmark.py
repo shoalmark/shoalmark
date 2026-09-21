@@ -1,4 +1,4 @@
-"""fathom-mark's gate, pinned. Run: `python3 test_fathom_mark.py` — no dependency, so a git hook can run it.
+"""shoalmark's gate, pinned. Run: `python3 test_shoalmark.py` — no dependency, so a git hook can run it.
 
 Every check builds what it needs in a throwaway repository; nothing here reads a real corpus. main() is called
 in-process with an argv list, so a non-zero exit is observable without a subprocess.
@@ -16,7 +16,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-_spec = importlib.util.spec_from_file_location("fm", HERE / "fathom_mark.py")
+_spec = importlib.util.spec_from_file_location("fm", HERE / "shoalmark.py")
 fm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fm)
 
@@ -68,12 +68,12 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "init", "-q")
     code, out, _ = run(root, "--init", "--key", "msr")
     check("--init scaffolds the configuration with ONE id space keyed by the project, the triage home and the ignore lines",
-          code == 0 and 'MSR = "Work"' in (root / "fathom-mark.toml").read_text() and "MSR-001" in out and (root / "docs/work-tracker/TRIAGE.md").exists()
+          code == 0 and 'MSR = "Work"' in (root / "shoalmark.toml").read_text() and "MSR-001" in out and (root / "docs/work-tracker/TRIAGE.md").exists()
           and "docs/work-tracker/index.html" in (root / ".gitignore").read_text() and "next:" in out)
-    before = (root / "fathom-mark.toml").read_text()
-    (root / "fathom-mark.toml").write_text(before + "\n# mine\n")
+    before = (root / "shoalmark.toml").read_text()
+    (root / "shoalmark.toml").write_text(before + "\n# mine\n")
     run(root, "--init")
-    check("--init never overwrites", (root / "fathom-mark.toml").read_text().endswith("# mine\n"))
+    check("--init never overwrites", (root / "shoalmark.toml").read_text().endswith("# mine\n"))
     code, out, _ = run(root, "--new", "Stock is booked per warehouse")
     made = sorted((root / "docs/work-tracker").glob("MSR-*.md"))
     check("--new needs no id prefix where the repository has one: the next free id from the title, and nothing related yet",
@@ -116,12 +116,12 @@ with tempfile.TemporaryDirectory() as d:
 # --- configuration: kinds are the repository's own ------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
-    (root / "fathom-mark.toml").write_text('name = "lager"\ntracker_dir = "tracker"\n[kinds]\nTASK = "Tasks"\n[considered_from]\nTASK = 5\n')
+    (root / "shoalmark.toml").write_text('name = "lager"\ntracker_dir = "tracker"\n[kinds]\nTASK = "Tasks"\n[considered_from]\nTASK = 5\n')
     (root / "tracker").mkdir()
     (root / "tracker" / "TASK-001-a.md").write_text('---\nid: TASK-001\nstatus: Proposed\nhook: "h"\n---\n\n# TASK-001 — a\n')
     code, _, err = run(root)
     index = (root / "tracker" / "INDEX.md").read_text()
-    check("kinds, the tracker directory and the first id owing `considered:` come from fathom-mark.toml",
+    check("kinds, the tracker directory and the first id owing `considered:` come from shoalmark.toml",
           code == 0 and "## Tasks" in index and "[TASK-001]" in index and "<title>lager — work tracker</title>" in (root / "tracker/index.html").read_text())
     (root / "tracker" / "TASK-001-a.md").write_text('---\nid: TASK-001\nstatus: Proposed\nstaus: x\nhook: "h"\n---\n\n# TASK-001 — a\n')
     code, _, err = run(root)
@@ -228,18 +228,18 @@ with tempfile.TemporaryDirectory() as d:
 # --- a vendored copy is pinned -----------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
-    dest = root / "tools" / "fathom-mark"
+    dest = root / "tools" / "shoalmark"
     out = io.StringIO()
     with redirect_stdout(out):
         fm.vendor(dest)
     pin = (dest / "PIN").read_text()
     check("--vendor copies the tool and its one vendored renderer, and pins each by sha256",
-          (dest / "fathom_mark.py").exists() and (dest / "vendor/marked-18.0.13.umd.js").exists()
-          and hashlib.sha256((dest / "fathom_mark.py").read_bytes()).hexdigest() in pin)
+          (dest / "shoalmark.py").exists() and (dest / "vendor/marked-18.0.13.umd.js").exists()
+          and hashlib.sha256((dest / "shoalmark.py").read_bytes()).hexdigest() in pin)
     tracker(root, "FEAT-001", status="Proposed")
-    tool = [sys.executable, str(dest / "fathom_mark.py"), "--root", str(root)]
+    tool = [sys.executable, str(dest / "shoalmark.py"), "--root", str(root)]
     ok = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
-    (dest / "fathom_mark.py").write_text((dest / "fathom_mark.py").read_text() + "\n# edited in place\n")
+    (dest / "shoalmark.py").write_text((dest / "shoalmark.py").read_text() + "\n# edited in place\n")
     bad = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
     check("a vendored copy runs from where it sits — and one edited in place is refused by its own gate",
           ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "differs from its PIN" in bad.stderr)
@@ -278,10 +278,10 @@ with tempfile.TemporaryDirectory() as d:
           and "INDEX.md" in subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, env=_ENV).stdout)
     hook.write_text("#!/bin/sh\n# somebody else's hook\n")
     code, _, err = run(root, "--install-hook")
-    check("a hook that is not fathom-mark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
+    check("a hook that is not shoalmark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
-    dest = Path(d).resolve() / "tools" / "fathom-mark"
+    dest = Path(d).resolve() / "tools" / "shoalmark"
     with redirect_stdout(io.StringIO()):
         fm.vendor(dest)
     (dest / "VERSION").write_text("0.2.0\n")
@@ -290,11 +290,11 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stdout(out):
         fm.vendor(dest)
     check("vendoring again says which version it replaces and what changed since", "(was 0.2.0)" in out.getvalue() and "## 0.3.0" in out.getvalue() and "## 0.2.0" not in out.getvalue())
-    (dest / "fathom_mark.py").write_text("# edited\n")
+    (dest / "shoalmark.py").write_text("# edited\n")
     err = io.StringIO()
     with redirect_stderr(err):
         code = fm.vendor(dest)
-    check("vendoring never overwrites a copy that was edited in place", code == fm.EXIT_LINT and "edited in place" in err.getvalue() and (dest / "fathom_mark.py").read_text() == "# edited\n")
+    check("vendoring never overwrites a copy that was edited in place", code == fm.EXIT_LINT and "edited in place" in err.getvalue() and (dest / "shoalmark.py").read_text() == "# edited\n")
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
@@ -397,17 +397,31 @@ with tempfile.TemporaryDirectory() as d:
     check("a deriver may say what open work still needs, and explain its columns in INDEX.md's header",
           "| run | *complex* | intended, target | [MSR-003]" in index and "| run | *complex* | intended | [MSR-002]" in index and "> **Ver** = the release it shipped in." in index)
     check("a repository's own look is a convention, not a setting: `theme.css` beside the trackers is appended to the page's style", "--bg:#123456}</style>" in page)
-    os.environ["FATHOM_MARK_CMD"] = "python3 scripts/tracker.py"
+    os.environ["SHOALMARK_CMD"] = "python3 scripts/tracker.py"
     try:
         fm.configure(root); (root / "docs/work-tracker/INDEX.md").write_text("stale"); code, _, err = run(root, "--check")
     finally:
-        del os.environ["FATHOM_MARK_CMD"]
+        del os.environ["SHOALMARK_CMD"]
     check("a repository that wraps the tool is named by its own command in every message", code == fm.EXIT_DRIFT and "Run: python3 scripts/tracker.py" in err)
     if _CHROME:
         run(root)
         body = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{root}/docs/work-tracker/index.html"], capture_output=True, text=True, timeout=60).stdout
         shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
         check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
+fm.configure(HERE)
+
+# --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q")
+    (root / "AGENTS.md").write_text("# mine\n\n<!-- BEGIN fathom-mark: the work-tracker contract — regenerated by --init, edit outside these markers -->\nold rules\n<!-- END fathom-mark -->\n\nkept.\n")
+    (root / ".git/hooks").mkdir(parents=True, exist_ok=True)
+    (root / ".git/hooks/pre-commit").write_text("#!/bin/sh\n# fathom-mark — old hook\npython3 tools/fathom-mark/fathom_mark.py --print-written\n")
+    run(root, "--init", "--key", "msr"); code, _, _ = run(root, "--install-hook")
+    agents, hook = (root / "AGENTS.md").read_text(), (root / ".git/hooks/pre-commit").read_text()
+    check("a contract block and a hook written under the old name are replaced, not stranded — the repository's own text is kept",
+          code == 0 and "old rules" not in agents and "fathom-mark" not in agents and agents.count(fm.CONTRACT_BEGIN) == 1 and "kept." in agents and agents.startswith("# mine")
+          and "fathom" not in hook and "shoalmark.py --print-written" in hook)
 fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",

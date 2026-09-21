@@ -1,6 +1,6 @@
 # Work Tracker — Index
 
-> **GENERATED — do not hand-edit.** Run `python3 fathom_mark.py` after changing any tracker's front matter
+> **GENERATED — do not hand-edit.** Run `python3 shoalmark.py` after changing any tracker's front matter
 > (or its `# title`). Rows are *pointers* — the detail lives in the tracker, never duplicated here.
 >
 > **Status** = code lifecycle; `Shipped` means merged, **not** a production claim.

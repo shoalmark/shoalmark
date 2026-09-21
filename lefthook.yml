@@ -2,11 +2,11 @@ pre-commit:
   commands:
     tests:
       glob: "*.py"
-      run: for py in python3 /usr/bin/python3; do [ -x "$(command -v $py)" ] && { $py test_fathom_mark.py >/dev/null || { $py --version; $py test_fathom_mark.py | grep -v "^  ok"; exit 1; }; }; done
+      run: for py in python3 /usr/bin/python3; do [ -x "$(command -v $py)" ] && { $py test_shoalmark.py >/dev/null || { $py --version; $py test_shoalmark.py | grep -v "^  ok"; exit 1; }; }; done
     tracker-index:
       glob: "docs/work-tracker/*.md"
-      run: written=$(python3 fathom_mark.py --print-written) && printf '%s\n' "$written" | git add --pathspec-from-file=-
+      run: written=$(python3 shoalmark.py --print-written) && printf '%s\n' "$written" | git add --pathspec-from-file=-
 post-merge:
   commands:
     tracker-board:
-      run: python3 fathom_mark.py --html-only || true
+      run: python3 shoalmark.py --html-only || true

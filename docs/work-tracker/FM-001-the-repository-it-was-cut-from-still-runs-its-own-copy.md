@@ -50,6 +50,7 @@ core is made in one place.
 
 | Date | Event |
 |---|---|
+| 2026-09-21 | **0.6.0 — the tool is called `shoalmark`** (Owner, after five name screens and three runs of a second reader on the same evidence). It was `fathom-mark`; the record below and under `evidence/` keeps the old name where it was written. **This tracker stays `FM-001`: an id never changes** — the key encoded the project's name, which is exactly what the rule warns against. |
 | 2026-09-21 | **0.5.0 — the port explored in full, in a scratch copy** ([record](evidence/FM-001/port-rd.md)): the rendered board differs in 0 of 506 rows, 159 of the origin's 167 runnable checks pass unchanged, the artefacts are kept in [`port/`](evidence/FM-001/port/). **Owner: proceed — take the tracker out of the origin and make it a dependency.** Next, here: the coverage gap — ~145 of the origin's checks test behaviour that lives in this core, ~25 have a counterpart in this suite. |
 | 2026-09-21 | **0.4.0 — the seam, merged on the Owner's ruling after R&D.** What is left of this tracker is the port itself. |
 | 2026-09-21 | **The debt's first instalment, the same day:** 0.2.1 fixed six things found on a second repository. Three of them are in the origin's copy too and are now owed there — a hook's quotation marks in the INDEX row, a tracker's own id linking to itself in the viewer, `--related` reading only a–z. |
