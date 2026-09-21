@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-21 · 1 trackers (1 features, 0 bugs).
+> Generated 2026-09-21 · 1 trackers (1 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -25,14 +25,8 @@
 *Nothing is ranked yet — no triage pass has run.*
 
 
-## Features
+## Work
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
-| [FEAT-001](FEAT-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | — | "fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still run… | Proposed | triage | — |
-
-
-## Bugs
-
-| ID | Tier | Hook | Status | Board | Triaged |
-|----|------|------|--------|-------|---------|
+| [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | — | "fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still run… | Proposed | triage | — |

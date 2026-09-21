@@ -20,9 +20,9 @@ Built for repositories worked by agents under one Owner: **the seat judges, the 
 ```bash
 python3 fathom_mark.py --vendor <repo>/tools/fathom-mark     # a pinned, self-contained copy
 cd <repo>
-python3 tools/fathom-mark/fathom_mark.py --init              # fathom-mark.toml · docs/work-tracker/TRIAGE.md · .gitignore
+python3 tools/fathom-mark/fathom_mark.py --init --key MSR    # fathom-mark.toml · docs/work-tracker/TRIAGE.md · .gitignore
 # the Owner writes the intent and the current path in TRIAGE.md
-python3 tools/fathom-mark/fathom_mark.py --new FEAT "what is wrong, in a sentence"
+python3 tools/fathom-mark/fathom_mark.py --new "what is wrong, in a sentence"     # becomes MSR-001
 python3 tools/fathom-mark/fathom_mark.py                     # regenerate; exit 4 on a violation
 ```
 
@@ -39,6 +39,19 @@ post-merge:
     tracker-board:
       run: python3 tools/fathom-mark/fathom_mark.py --html-only || true
 ```
+
+## Ids, files and branches
+
+- **One id space per repository, keyed by the project** — `MSR-012`, not `BUG-012`. The id is the routing key
+  (filename = front matter = first heading, and every link, `considered:` and `epic:` names it), so it encodes
+  nothing that can change: the kind of work is a tag (`tags: bug`), being a story is a field (`epic:`). A project
+  key also keeps `MSR-001` and `FM-001` apart when two repositories are talked about in one place.
+  `--init --key MSR` writes it; several prefixes are still possible under `[kinds]`.
+- **One flat directory, the id in the filename** — `docs/work-tracker/MSR-012-stock-is-booked-twice.md`. No
+  folder per kind: a number would name three files, every link would cross directories, and re-classifying
+  a tracker would be a move that breaks them.
+- **The work type lives on the branch**, where it is cheap and may change: `feat/msr-012-booking`,
+  `fix/msr-013-double-count`. The tool finds a tracker's work from branch and commit text.
 
 ## A vendored copy is pinned
 

@@ -58,18 +58,18 @@ def tracker(root, tid, status="In Progress", extra="", body="## What is true now
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q")
-    code, out, _ = run(root, "--init")
-    check("--init scaffolds the configuration, the triage home and the ignore lines, and says what is next",
-          code == 0 and (root / "fathom-mark.toml").exists() and (root / "docs/work-tracker/TRIAGE.md").exists()
+    code, out, _ = run(root, "--init", "--key", "msr")
+    check("--init scaffolds the configuration with ONE id space keyed by the project, the triage home and the ignore lines",
+          code == 0 and 'MSR = "Work"' in (root / "fathom-mark.toml").read_text() and "MSR-001" in out and (root / "docs/work-tracker/TRIAGE.md").exists()
           and "docs/work-tracker/index.html" in (root / ".gitignore").read_text() and "next:" in out)
     before = (root / "fathom-mark.toml").read_text()
     (root / "fathom-mark.toml").write_text(before + "\n# mine\n")
     run(root, "--init")
     check("--init never overwrites", (root / "fathom-mark.toml").read_text().endswith("# mine\n"))
-    code, out, _ = run(root, "--new", "feat", "Stock is booked per warehouse")
-    made = sorted((root / "docs/work-tracker").glob("FEAT-*.md"))
-    check("--new files the next free id from the title, and says nothing related exists yet",
-          code == 0 and [p.name for p in made] == ["FEAT-001-stock-is-booked-per-warehouse.md"] and "Nothing related" in out)
+    code, out, _ = run(root, "--new", "Stock is booked per warehouse")
+    made = sorted((root / "docs/work-tracker").glob("MSR-*.md"))
+    check("--new needs no id prefix where the repository has one: the next free id from the title, and nothing related yet",
+          code == 0 and [p.name for p in made] == ["MSR-001-stock-is-booked-per-warehouse.md"] and "Nothing related" in out)
     code, _, err = run(root)
     check("a new tracker without `considered:` is refused — a filing looks first", code == fm.EXIT_LINT and "held against" in err)
     made[0].write_text(made[0].read_text().replace("considered:\n", "considered: none\n"))
@@ -79,17 +79,22 @@ with tempfile.TemporaryDirectory() as d:
     made[0].write_text(made[0].read_text().replace("status: Proposed", "status: In Progress"))
     check("--check reports drift with its own exit code", run(root, "--check")[0] == fm.EXIT_DRIFT)
     run(root)
-    code, out, _ = run(root, "--new", "bug", "Warehouse stock is booked twice")
-    check("the second filing is shown the first — the tracker that already owns the words", "FEAT-001" in out and "looks first" in out)
-    check("--new refuses a kind the configuration does not name", run(root, "--new", "epic", "x")[0] == fm.EXIT_LINT)
+    code, out, _ = run(root, "--new", "Warehouse stock is booked twice")
+    check("the second filing is shown the first — the tracker that already owns the words", "MSR-001" in out and "looks first" in out
+          and (root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md").exists())
     code, _, err = run(root, "--triage")
     check("--triage refuses while the Owner has written no current path", code == fm.EXIT_LINT and "names no current path" in err)
     page = (root / "docs/work-tracker/index.html").read_text()
     check("the board is one static page: no unfilled placeholder, the configured kinds in its id patterns, five sections in order",
-          not re.search(r"__[A-Z_]+__", page) and "(?:FEAT|BUG)-" in page
+          not re.search(r"__[A-Z_]+__", page) and "(?:MSR)-" in page
           and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*done:", page, re.S) is not None
           and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "(7+1)*864e5" in page)
-    check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/FEAT-001.js").exists())
+    check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/MSR-001.js").exists())
+    second = root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md"
+    second.write_text(second.read_text().replace("considered:\n", "considered: MSR-001\n"))
+    made[0].write_text(made[0].read_text().replace("considered: none\n", "considered: none\ntags: bug\n"))
+    check("the kind of work is a tag — `bug` is in the vocabulary, a synonym is refused", run(root)[0] == 0
+          and (made[0].write_text(made[0].read_text().replace("tags: bug", "tags: defect")) or run(root)[0] == fm.EXIT_LINT))
 
 # --- configuration: kinds are the repository's own ------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
@@ -157,7 +162,7 @@ with tempfile.TemporaryDirectory() as d:
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q")
-    run(root, "--init")
+    run(root, "--init", "--key", "FEAT")
     home = root / "docs/work-tracker/TRIAGE.md"
     home.write_text(home.read_text().replace("1.\n", "1. FEAT-001 to its end.\n").replace("- **never** —", "- **never** — a Jira clone"))
     tracker(root, "FEAT-001"); tracker(root, "FEAT-002"); tracker(root, "FEAT-003", status="Proposed")
@@ -193,7 +198,7 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "commit", "-qam", "touch all ten", day="2026-03-03")
     (wt / names[0]).write_text("d\n"); git(root, "commit", "-qam", "repair [sweep]", day="2026-04-04")
     sub = root / "parts" / "service"; sub.mkdir(parents=True); git(sub, "init", "-q"); (sub / "f").write_text("x")
-    git(sub, "add", "-A"); git(sub, "commit", "-qm", "fix(BUG-7): named here, and feat/123-slug too", day="2026-01-01")
+    git(sub, "add", "-A"); git(sub, "commit", "-qm", "fix(BUG-7): named here, and feat/123-slug too, and fix/bug-1204-four-digits", day="2026-01-01")
     (root / "gone").mkdir()
     (root / ".gitmodules").write_text('[submodule "a"]\n\tpath = parts/service\n[submodule "b"]\n\tpath = gone\n')
     check("last worked on is the last commit ABOUT the tracker — a `[sweep]` commit and one touching more than eight trackers say nothing",
@@ -201,7 +206,7 @@ with tempfile.TemporaryDirectory() as d:
     check("a tracker only ever swept falls back to its oldest commit; one git never saw has no date",
           fm.last_worked_on(wt / names[1]) == "2026-01-01" and fm.last_worked_on(wt / "BUG-999-none.md") == "—")
     check("repos naming a tracker come from the submodules' subjects and branches; one not checked out is skipped",
-          fm.repos_naming() == {"BUG-007": ["service"], "FEAT-123": ["service"]})
+          fm.repos_naming() == {"BUG-007": ["service"], "FEAT-123": ["service"], "BUG-1204": ["service"]})
 
 # --- a vendored copy is pinned -----------------------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:

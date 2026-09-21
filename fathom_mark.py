@@ -35,18 +35,23 @@ import subprocess
 import sys
 import tomllib
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "fathom-mark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty
     "tracker_dir": "docs/work-tracker",
-    "kinds": {"FEAT": "Features", "BUG": "Bugs"},  # id prefix -> the INDEX section it is listed under
+    # id prefix -> the INDEX section it is listed under. ONE id space per repository, keyed by the project
+    # (`MSR-012`), is what `--init` writes: an id is the routing key and encodes nothing that can change — not the
+    # kind of work (a tag says `bug`), not being a story (`epic:` is a field). This two-kind default is only for a
+    # repository with no configuration at all.
+    "kinds": {"FEAT": "Features", "BUG": "Bugs"},
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
     "triage_days": 7,
     "tags": {
+        "bug": "something that worked, or was meant to, and does not",
         "research": "explores a question; commits to nothing being built",
         "security": "credentials, exposure, access — a fix or a finding",
         "process": "how the work is done: rules, gates, tooling, the tracker itself",
@@ -934,7 +939,7 @@ def repos_naming():
             continue
         said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True,
                                       env=nested_git_env()).stdout for cmd in (["log", "--all", "--format=%s %D"], ["branch", "-r"]))
-        for kind, num in re.findall(r"\b(%s)[-/](\d{1,3})\b" % "|".join(KINDS), said, re.I):
+        for kind, num in re.findall(r"\b(%s)[-/](\d+)\b" % "|".join(KINDS), said, re.I):
             found.setdefault(f"{kind.upper()}-{int(num):03d}", set()).add(sub.rsplit("/", 1)[-1])
     return {k: sorted(v) for k, v in found.items()}
 
@@ -1252,13 +1257,15 @@ def parse_args(argv):
     add("--print-written", action="store_true",
         help="write mode: print every file written, one repo-relative path per line on stdout, so a hook stages exactly that")
     add("--related", metavar="ID_OR_WORDS", help="before filing: the existing trackers closest to a tracker id or a quoted phrase. Read-only")
-    add("--new", nargs=2, metavar=("KIND", "TITLE"),
-        help="file a tracker: prints what is related, writes the next free id with a front matter whose `considered:` is yours to fill")
+    add("--new", nargs="+", metavar="[KEY] TITLE",
+        help="file a tracker: prints what is related, writes the next free id with a front matter whose `considered:` is yours to fill; "
+             "the id prefix is needed only where the configuration names several")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--init", action="store_true", help="scaffold fathom-mark.toml, the tracker directory and TRIAGE.md; never overwrites")
+    add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy")
     add("--version", action="version", version=__version__)
     return parser.parse_args(argv)
@@ -1334,11 +1341,11 @@ tracker_dir = "docs/work-tracker"
 blob = ""            # URL prefix of a tracker file on the forge, e.g. https://github.com/me/repo/blob/main/docs/work-tracker/
 triage_days = 7
 
-[kinds]              # id prefix = the INDEX section it is listed under
-FEAT = "Features"
-BUG = "Bugs"
+[kinds]              # id prefix = the INDEX section it is listed under. One id space, keyed by the project:
+{key} = "Work"       # an id encodes nothing that can change — the kind of work is a tag, a story is `epic:`
 
 [tags]               # a closed vocabulary: a synonym is how tags rot
+bug = "something that worked, or was meant to, and does not"
 research = "explores a question; commits to nothing being built"
 security = "credentials, exposure, access — a fix or a finding"
 process = "how the work is done: rules, gates, tooling, the tracker itself"
@@ -1370,9 +1377,14 @@ hook: "{title}"
 """
 
 
-def init():
+def init(key=None):
     wrote = []
-    for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name)),
+    key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
+    if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
+        print(f"--key: {key!r} is not an id prefix — letters and digits, starting with a letter", file=sys.stderr)
+        return EXIT_LINT
+    fresh_config = not (ROOT / CONFIG_NAME).exists()
+    for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
                        (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD))):
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -1385,15 +1397,19 @@ def init():
         ignore.write_text(have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n", encoding="utf-8")
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT)}" for p in wrote] or ["nothing to write — already initialised"]))
+    if fresh_config:
+        configure(ROOT)
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT)}; "
-          f"file the first tracker with `{CMD} --new {KINDS[0]} \"…\"`; wire `{CMD} --print-written` into pre-commit")
+          f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; wire `{CMD} --print-written` into pre-commit")
     return EXIT_OK
 
 
-def new_tracker(kind, title, trackers):
-    kind = kind.upper()
+def new_tracker(words, trackers):
+    kind, title = (words[0].upper(), " ".join(words[1:])) if len(words) > 1 and words[0].upper() in KINDS else (KINDS[0] if len(KINDS) == 1 else "", " ".join(words))
+    if not kind and len(words) > 1:
+        kind, title = words[0].upper(), " ".join(words[1:])
     if kind not in KINDS:
-        print(f"--new: {kind} is not a kind — {', '.join(KINDS)} ({CONFIG_NAME}, [kinds])", file=sys.stderr)
+        print(f"--new: {kind or 'no id prefix given'} — this repository files under {', '.join(KINDS)} ({CONFIG_NAME}, [kinds]); say which", file=sys.stderr)
         return EXIT_LINT
     near = related_trackers(trackers, title, limit=5)
     print("A filing looks first. The default is a slice of a tracker that exists, not a new one." if near
@@ -1422,10 +1438,10 @@ def main(argv=None):
     if args.vendor:
         return vendor(args.vendor)
     if args.init:
-        return init()
+        return init(args.key)
     trackers = load_trackers()
     if args.new:
-        return new_tracker(args.new[0], args.new[1], trackers)
+        return new_tracker(args.new, trackers)
     if args.html_only:
         if TRACKER_DIR.is_dir():
             HTML_OUT.write_text(render_html(trackers), encoding="utf-8")

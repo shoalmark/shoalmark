@@ -1,12 +1,12 @@
 ---
-id: FEAT-001
+id: FM-001
 status: Proposed
 considered: none
 next: build
 hook: "fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs its own 1,900-line copy. Two tools under one idea diverge with every fix. Port it onto this core, with its release axis kept as an extension around the core, and delete the copy."
 ---
 
-# FEAT-001 — The repository it was cut from still runs its own copy
+# FM-001 — The repository it was cut from still runs its own copy
 
 ## What is true now
 
