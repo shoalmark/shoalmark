@@ -1,0 +1,233 @@
+"""fathom-mark's gate, pinned. Run: `python3 test_fathom_mark.py` — no dependency, so a git hook can run it.
+
+Every check builds what it needs in a throwaway repository; nothing here reads a real corpus. main() is called
+in-process with an argv list, so a non-zero exit is observable without a subprocess.
+"""
+
+import hashlib
+import importlib.util
+import io
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location("fm", HERE / "fathom_mark.py")
+fm = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(fm)
+
+FAILS = []
+
+
+def check(name, ok):
+    print(("  ok    " if ok else "  FAIL  ") + name)
+    if not ok:
+        FAILS.append(name)
+
+
+def run(root, *argv):
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        code = fm.main(["--root", str(root), *argv])
+    return code, out.getvalue(), err.getvalue()
+
+
+_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+_ENV.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+
+
+def git(cwd, *a, day=None):
+    env = dict(_ENV, **({"GIT_COMMITTER_DATE": day + "T12:00:00", "GIT_AUTHOR_DATE": day + "T12:00:00"} if day else {}))
+    subprocess.run(["git", "-C", str(cwd), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *a],
+                   check=True, capture_output=True, env=env)
+
+
+def tracker(root, tid, status="In Progress", extra="", body="## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n", title="t"):
+    d = root / "docs" / "work-tracker"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / f"{tid}-x.md"
+    p.write_text(f'---\nid: {tid}\nstatus: {status}\nconsidered: none\n{extra}hook: "h of {tid}"\n---\n\n# {tid} — {title}\n\n{body}', encoding="utf-8")
+    return p
+
+
+# --- a fresh repository: init, file, gate ---------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q")
+    code, out, _ = run(root, "--init")
+    check("--init scaffolds the configuration, the triage home and the ignore lines, and says what is next",
+          code == 0 and (root / "fathom-mark.toml").exists() and (root / "docs/work-tracker/TRIAGE.md").exists()
+          and "docs/work-tracker/index.html" in (root / ".gitignore").read_text() and "next:" in out)
+    before = (root / "fathom-mark.toml").read_text()
+    (root / "fathom-mark.toml").write_text(before + "\n# mine\n")
+    run(root, "--init")
+    check("--init never overwrites", (root / "fathom-mark.toml").read_text().endswith("# mine\n"))
+    code, out, _ = run(root, "--new", "feat", "Stock is booked per warehouse")
+    made = sorted((root / "docs/work-tracker").glob("FEAT-*.md"))
+    check("--new files the next free id from the title, and says nothing related exists yet",
+          code == 0 and [p.name for p in made] == ["FEAT-001-stock-is-booked-per-warehouse.md"] and "Nothing related" in out)
+    code, _, err = run(root)
+    check("a new tracker without `considered:` is refused — a filing looks first", code == fm.EXIT_LINT and "held against" in err)
+    made[0].write_text(made[0].read_text().replace("considered:\n", "considered: none\n"))
+    code, out, _ = run(root, "--print-written")
+    check("with `considered: none` the gate is green, and --print-written names exactly the INDEX", code == 0 and out.strip() == "docs/work-tracker/INDEX.md")
+    check("--check is green on what was just written, and writes nothing", run(root, "--check")[0] == 0)
+    made[0].write_text(made[0].read_text().replace("status: Proposed", "status: In Progress"))
+    check("--check reports drift with its own exit code", run(root, "--check")[0] == fm.EXIT_DRIFT)
+    run(root)
+    code, out, _ = run(root, "--new", "bug", "Warehouse stock is booked twice")
+    check("the second filing is shown the first — the tracker that already owns the words", "FEAT-001" in out and "looks first" in out)
+    check("--new refuses a kind the configuration does not name", run(root, "--new", "epic", "x")[0] == fm.EXIT_LINT)
+    code, _, err = run(root, "--triage")
+    check("--triage refuses while the Owner has written no current path", code == fm.EXIT_LINT and "names no current path" in err)
+    page = (root / "docs/work-tracker/index.html").read_text()
+    check("the board is one static page: no unfilled placeholder, the configured kinds in its id patterns, five sections in order",
+          not re.search(r"__[A-Z_]+__", page) and "(?:FEAT|BUG)-" in page
+          and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*done:", page, re.S) is not None
+          and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "(7+1)*864e5" in page)
+    check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/FEAT-001.js").exists())
+
+# --- configuration: kinds are the repository's own ------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    (root / "fathom-mark.toml").write_text('name = "lager"\ntracker_dir = "tracker"\n[kinds]\nTASK = "Tasks"\n[considered_from]\nTASK = 5\n')
+    (root / "tracker").mkdir()
+    (root / "tracker" / "TASK-001-a.md").write_text('---\nid: TASK-001\nstatus: Proposed\nhook: "h"\n---\n\n# TASK-001 — a\n')
+    code, _, err = run(root)
+    index = (root / "tracker" / "INDEX.md").read_text()
+    check("kinds, the tracker directory and the first id owing `considered:` come from fathom-mark.toml",
+          code == 0 and "## Tasks" in index and "[TASK-001]" in index and "<title>lager — work tracker</title>" in (root / "tracker/index.html").read_text())
+    (root / "tracker" / "TASK-001-a.md").write_text('---\nid: TASK-001\nstatus: Proposed\nstaus: x\nhook: "h"\n---\n\n# TASK-001 — a\n')
+    code, _, err = run(root)
+    check("an unknown front-matter key is refused, and the near miss is named", code == fm.EXIT_LINT and "did you mean `status:`" in err)
+    (root / "tracker" / "TASK-001-a.md").write_text('---\nid: TASK-002\nstatus: Proposed\nhook: "h"\n---\n\n# TASK-001 — a\n')
+    code, _, err = run(root)
+    check("identity drift refuses before anything is written", code == fm.EXIT_LINT and "identity drift" in err)
+fm.configure(HERE)
+
+# --- the board, the story rule, the apply layer ---------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    fm.configure(root)
+    base = dict(id="FEAT-001", num=1, kind="FEAT", status="Proposed", triaged="")
+    b = lambda **kw: fm.board(dict(base, **kw))
+    check("one board definition: `triage` is exactly what the next pass lists — work in progress and new filings; older undated work is backlog",
+          [b(status="Shipped"), b(status="In Progress"), b(status="In Progress", triaged="2026-01-01"), b(status="Parked", triaged="2026-01-01"), b()]
+          == ["done", "triage", "progress", "backlog", "triage"]
+          and fm.board(dict(base, kind="OLD")) == "backlog")
+    row = lambda i, **kw: {**dict(id=i, num=int(i[-1]), kind="FEAT", file=f"{i}-x.md", status="In Progress", links=[], considered=["none"], tags=[], blocked_by=[]), **kw}
+    check("a story is open while a chapter is — a done tracker that open work names in `epic:` is refused",
+          any("A story is open" in p for p in fm.lint([row("FEAT-001", status="Shipped"), row("FEAT-002", epic="FEAT-001")]))
+          and not any("A story is open" in p for p in fm.lint([row("FEAT-001", status="Shipped"), row("FEAT-002", status="Shipped", epic="FEAT-001")])))
+    check("a rank names one tracker, on open work only",
+          any("also on" in p for p in fm.lint([row("FEAT-001", rank=1), row("FEAT-002", rank=1)]))
+          and any("remove it when" in p for p in fm.lint([row("FEAT-001", status="Shipped", rank=1)])))
+    check("a blocker is another tracker or the Owner; a tracker cannot block itself",
+          any("blocked-by" in p for p in fm.lint([row("FEAT-001", blocked_by=["FEAT-001"])]))
+          and not any("blocked-by" in p for p in fm.lint([row("FEAT-001", blocked_by=["Owner — the ruling"]), row("FEAT-002")])))
+    for n in (1, 2, 3):
+        tracker(root, f"FEAT-00{n}", extra="rank: 1\n" if n == 1 else "")
+    (root / "docs/work-tracker/FEAT-004-x.md").write_text("# FEAT-004 — no front matter\n\n---\n\nbody\n")
+    tk = [dict(id=f"FEAT-00{n}", file=f"FEAT-00{n}-x.md", rank=1 if n == 1 else 0, triaged="", status="In Progress") for n in (1, 2, 3, 4)]
+    hd = "| Tracker | Tier | Verdict | Reason |\n|---|---|---|---|\n"
+    sheet = lambda i, v, r="r": f"| [{i}](../../{i}-x.md) — t | P2 | {v} | {r} |\n"
+    rd = lambda i: (root / f"docs/work-tracker/{i}-x.md").read_text()
+    l1, e1 = fm.apply_worksheet(hd + sheet("FEAT-002", "merge FEAT-003", "keep P3 | see FEAT-003"), True, tk, "2026-01-10")
+    check("a `|` typed into the Reason is refused by name — a fragment of the reason never becomes the verdict", not l1 and len(e1) == 1 and "FEAT-002" in e1[0])
+    l2, e2 = fm.apply_worksheet(hd + sheet("FEAT-002", "keep #1 run"), True, tk, "2026-01-10")
+    check("a verdict that does not stand takes no rank from its holder", e2 and "rank: 1\n" in rd("FEAT-001"))
+    l3, e3 = fm.apply_worksheet(hd + sheet("FEAT-002", "keep P1 #2 run") + sheet("FEAT-003", "keep P1 #2 build"), True, tk, "2026-01-10")
+    check("one rank names one row on a sheet", len(e3) == 1 and "already claimed by FEAT-002" in e3[0])
+    l4, e4 = fm.apply_worksheet(hd + sheet("FEAT-004", "keep P2"), True, tk, "2026-01-10")
+    check("a tracker with no front matter is refused and left byte for byte", len(e4) == 1 and rd("FEAT-004").startswith("# FEAT-004 — no front matter"))
+    l5, e5 = fm.apply_worksheet(hd + sheet("FEAT-003", "keep P1 #1 build"), True, tk, "2026-01-10")
+    check("a rank that moves is freed from its holder, and the move is logged",
+          any("rank #1 freed" in l for l in l5) and "rank:" not in rd("FEAT-001") and "rank: 1\n" in rd("FEAT-003") and "next: build\n" in rd("FEAT-003"))
+    l6, e6 = fm.apply_worksheet(hd + sheet("FEAT-002", "park P3"), True, tk, "2026-01-10")
+    check("a park is applied by the command: status, tier and the date — never by hand", "status: Parked\n" in rd("FEAT-002") and "tier: P3\n" in rd("FEAT-002") and "triaged: 2026-01-10\n" in rd("FEAT-002"))
+    l7, e7 = fm.apply_worksheet(hd + sheet("FEAT-001", "keep P1 #3"), True, [dict(t, status="Shipped") if t["id"] == "FEAT-001" else t for t in tk], "2026-01-10")
+    check("a tracker that shipped since its verdict is left alone by a same-day re-run", not l7 and not e7)
+    check("a P0 or P1 is never parked", fm.apply_verdict(rd("FEAT-003"), "park P1", "2026-01-10", set())[2])
+
+# --- a whole pass, end to end -----------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q")
+    run(root, "--init")
+    home = root / "docs/work-tracker/TRIAGE.md"
+    home.write_text(home.read_text().replace("1.\n", "1. FEAT-001 to its end.\n").replace("- **never** —", "- **never** — a Jira clone"))
+    tracker(root, "FEAT-001"); tracker(root, "FEAT-002"); tracker(root, "FEAT-003", status="Proposed")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "file three", day="2020-01-01")
+    code, out, _ = run(root, "--triage")
+    sheets = sorted((root / "docs/work-tracker/evidence/triage").glob("triage-*.md"))
+    text = sheets[0].read_text() if sheets else ""
+    check("--triage writes the worksheet, prints the Owner's intent and path above the rules, and lists work in progress and new filings",
+          code == 0 and "a Jira clone" in out and "FEAT-001 to its end" in out and "3 trackers to judge" in out
+          and "FAILS" in text and "NEW FILING" in text and "ends with fewer" not in out and "BY TODAY'S JUDGEMENT" in out)
+    filled = re.sub(r"(\| \[FEAT-001\].*?)\| \| \|\n", r"\1| keep P1 #1 build | the path names it |\n", text)
+    filled = re.sub(r"(\| \[FEAT-002\].*?)\| \| \|\n", r"\1| park P3 | nobody is on it; the Owner ranks it |\n", filled)
+    sheets[0].write_text(filled)
+    code, out, err = run(root, "--triage")
+    t1, t2 = (root / "docs/work-tracker/FEAT-001-x.md").read_text(), (root / "docs/work-tracker/FEAT-002-x.md").read_text()
+    check("a re-run applies what the seat filled, refreshes the INDEX, and lists what is left",
+          "rank: 1\n" in t1 and "next: build\n" in t1 and "status: Parked\n" in t2 and "Applied 2" in out and "1 trackers to judge" in out
+          and "| 1 | P1 | build |" in (root / "docs/work-tracker/INDEX.md").read_text())
+
+# --- git-derived facts: the keep test stands on these -----------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q")
+    fm.configure(root)
+    wt = root / "docs/work-tracker"; wt.mkdir(parents=True)
+    names = [f"BUG-{n:03d}-x.md" for n in range(1, 11)]
+    for n in names:
+        (wt / n).write_text("a\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "file ten", day="2026-01-01")
+    (wt / names[0]).write_text("b\n"); git(root, "commit", "-qam", "fix: real work", day="2026-02-02")
+    for n in names:
+        (wt / n).write_text("c\n")
+    git(root, "commit", "-qam", "touch all ten", day="2026-03-03")
+    (wt / names[0]).write_text("d\n"); git(root, "commit", "-qam", "repair [sweep]", day="2026-04-04")
+    sub = root / "parts" / "service"; sub.mkdir(parents=True); git(sub, "init", "-q"); (sub / "f").write_text("x")
+    git(sub, "add", "-A"); git(sub, "commit", "-qm", "fix(BUG-7): named here, and feat/123-slug too", day="2026-01-01")
+    (root / "gone").mkdir()
+    (root / ".gitmodules").write_text('[submodule "a"]\n\tpath = parts/service\n[submodule "b"]\n\tpath = gone\n')
+    check("last worked on is the last commit ABOUT the tracker — a `[sweep]` commit and one touching more than eight trackers say nothing",
+          fm.last_worked_on(wt / names[0]) == "2026-02-02")
+    check("a tracker only ever swept falls back to its oldest commit; one git never saw has no date",
+          fm.last_worked_on(wt / names[1]) == "2026-01-01" and fm.last_worked_on(wt / "BUG-999-none.md") == "—")
+    check("repos naming a tracker come from the submodules' subjects and branches; one not checked out is skipped",
+          fm.repos_naming() == {"BUG-007": ["service"], "FEAT-123": ["service"]})
+
+# --- a vendored copy is pinned -----------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    dest = root / "tools" / "fathom-mark"
+    out = io.StringIO()
+    with redirect_stdout(out):
+        fm.vendor(dest)
+    pin = (dest / "PIN").read_text()
+    check("--vendor copies the tool and its one vendored renderer, and pins each by sha256",
+          (dest / "fathom_mark.py").exists() and (dest / "vendor/marked-18.0.13.umd.js").exists()
+          and hashlib.sha256((dest / "fathom_mark.py").read_bytes()).hexdigest() in pin)
+    tracker(root, "FEAT-001", status="Proposed")
+    tool = [sys.executable, str(dest / "fathom_mark.py"), "--root", str(root)]
+    ok = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    (dest / "fathom_mark.py").write_text((dest / "fathom_mark.py").read_text() + "\n# edited in place\n")
+    bad = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    check("a vendored copy runs from where it sits — and one edited in place is refused by its own gate",
+          ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "differs from its PIN" in bad.stderr)
+
+check("the vendored renderer is the pinned one — an update is a deliberate act",
+      hashlib.sha256((HERE / "vendor/marked-18.0.13.umd.js").read_bytes()).hexdigest().startswith("b147274a9ce27d17"))
+check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
+
+print()
+if FAILS:
+    print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")
+    sys.exit(1)
+print("all green")

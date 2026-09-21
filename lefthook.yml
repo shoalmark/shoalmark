@@ -1,0 +1,12 @@
+pre-commit:
+  commands:
+    tests:
+      glob: "*.py"
+      run: python3 test_fathom_mark.py >/dev/null || python3 test_fathom_mark.py | grep -v "^  ok"
+    tracker-index:
+      glob: "docs/work-tracker/*.md"
+      run: written=$(python3 fathom_mark.py --print-written) && printf '%s\n' "$written" | git add --pathspec-from-file=-
+post-merge:
+  commands:
+    tracker-board:
+      run: python3 fathom_mark.py --html-only || true

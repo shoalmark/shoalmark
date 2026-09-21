@@ -1,0 +1,7 @@
+name = "fathom-mark"
+tracker_dir = "docs/work-tracker"
+triage_days = 7
+
+[kinds]
+FEAT = "Features"
+BUG = "Bugs"
