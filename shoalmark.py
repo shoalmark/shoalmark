@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 """shoalmark — a work tracker that lives in the repository it tracks.
 
 Markdown trackers with a small front matter, and one command that reads them all:
@@ -37,7 +38,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.6.1"
+__version__ = "0.7.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -1370,7 +1371,7 @@ def load_trackers():
     return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
 
 
-TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
+TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
 
 
 def pin_problems():

@@ -239,6 +239,10 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stdout(out):
         fm.vendor(dest)
     pin = (dest / "PIN").read_text()
+    check("a vendored copy carries its licence: both texts, the notice, and the SPDX line in the tool",
+          all((dest / f).exists() and f in pin for f in ("LICENSE-APACHE", "LICENSE-MIT", "NOTICE"))
+          and "Apache License" in (dest / "LICENSE-APACHE").read_text() and "Apache-2.0 OR MIT" in (dest / "shoalmark.py").read_text().split("\n")[1]
+          and hashlib.sha256((dest / "LICENSE-APACHE").read_bytes()).hexdigest().startswith("cfc7749b96f63bd3"))
     check("--vendor copies the tool and its one vendored renderer, and pins each by sha256",
           (dest / "shoalmark.py").exists() and (dest / "vendor/marked-18.0.13.umd.js").exists()
           and hashlib.sha256((dest / "shoalmark.py").read_bytes()).hexdigest() in pin)

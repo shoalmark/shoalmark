@@ -1,6 +1,12 @@
 shoalmark
+Copyright 2026 the shoalmark authors
 
-Proprietary. No licence has been chosen yet — that is the Owner's decision. Until one is, this copy may be
-used inside the repository it was vendored into and not redistributed.
+Licensed under either of
 
-vendor/marked-18.0.13.umd.js — marked, © MarkedJS and Christopher Jeffrey, MIT License, https://github.com/markedjs/marked
+  * Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+  * MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+
+at your option.
+
+This product bundles marked (vendor/marked-18.0.13.umd.js), Copyright (c) 2018-2026 MarkedJS and
+Copyright (c) 2011-2018 Christopher Jeffrey, under the MIT License — https://github.com/markedjs/marked

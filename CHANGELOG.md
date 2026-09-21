@@ -2,6 +2,14 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.7.0 — 2026-09-21
+
+- **Licensed under `Apache-2.0 OR MIT`, at your option.** It was *proprietary, no licence chosen*. `LICENSE-APACHE`,
+  `LICENSE-MIT` and `NOTICE` ship in the vendored copy, pinned like the rest. A repository that vendors shoalmark may
+  use, change and redistribute it under either licence; a copy edited in place still refuses itself — that is the
+  tool's own integrity check, not a licence term: re-vendor, or write a new `PIN`.
+- `--next` prints the links in the current path as their labels.
+
 ## 0.6.1 — 2026-09-21
 
 - **Fixed: `epic <ID>` and `merge <ID>` verdicts were refused in a repository whose ids are not `FEAT-`/`BUG-`.** One
