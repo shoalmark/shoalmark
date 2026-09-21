@@ -99,4 +99,57 @@ a product's brand, not the consultancy's, and it must not leak into a client rep
 
 ## Outcome
 
-*(written after the spike — below this line)*
+**The design holds: one rule, three files, four places — and no setting. Nine of eleven claims held outright; one held
+after the spike found it false as first built (C10); one bar was missed without killing anything (C8's size). The
+two claims I feared most were the two I was most wrong about.** Spike on `rd/fm-002-brand-layers`; the origin was
+never written to — everything ran in scratch copies. Worked examples kept beside this file:
+[the origin's theme](examples/origin.theme.css) (8 lines) and [a German board](examples/german.labels.yaml).
+
+| # | Forecast | Outcome | Measured |
+|---|---|---|---|
+| C1 | 0.85 | **held** | a hostile person folder (a magenta ground, statuses renamed, a logo) laid over three beds — this repository, a copy of msr-lager, a copy of the origin's 502 trackers: `INDEX.md` **hash-identical** in all three, `--check` 0 → 0, `--print-written` 1 · 1 · 11 paths, while the person's theme *did* reach each board. In the suite too, with a hostile organisation folder on top |
+| C2 | 0.85 | **held** | the places are read organisation → repository → person and the later wins: each theme its own stylesheet in that order, labels merged key by key, the last logo found; `--brand` reports the same chain. Reordering the places fails a check |
+| C3 | 0.90 | **held** | no brand file, `HOME` and `XDG_CONFIG_HOME` both unset: exit 0, no theme element, no image, English words |
+| C4 | **0.60** | **held — cleanly** | 70 labels. A German `labels.yaml` of 69 lines; rendered in headless Chrome, the chrome of the board and of a tracker page holds **0** of 26 English words probed; search finds a status by its English word *and* its German one. The page's logic was not touched: it compares `"In Progress"`, it *shows* `In Arbeit` |
+| C5 | 0.85 | **held** | svg and png inlined as data URIs, in the header and as the favicon; an SVG with a `<script>` did nothing (it sits in an image); a file over 200 kB is skipped with a warning |
+| C6 | 0.85 | **held** | `#888888` on `#777777` → *contrast 1.3:1 — below 4.5:1*, names the two colours and whose file, exit 0. The WCAG formula is eight lines |
+| C7 | 0.80 | **held** | `--vendor` copies `brand/*` and lists it in `PIN`; a client's `labels.yaml` beside its trackers overrides the organisation's footer while the organisation's colour still applies — without touching the pinned copy |
+| C8 | 0.80 | **half** | cost **held at the edge**: 1.46–1.52 s against 1.38 s, +6…10 % (bar: +10 %). Size **missed its bar, not its kill**: the core grew 1,812 → ~1,990 lines, about +175 (bar ≤ 120, kill > 200) — 70 labels are 35 of them, the starter 18 |
+| C9 | 0.70 | **held on lines and keys, missed on tables** | README §9 is 20 lines (bar ≤ 25) and `shoalmark.toml` gained no key — but it needs **two** tables (files · places), not one |
+| C10 | 0.65 | **false as first built — then held** | with the tokens imported and Geist loaded from the origin's submodule, its board wears its real brand in both schemes from an **8-line** `theme.css` — relative URLs from the git-ignored page into a submodule *do* resolve from disk. **But with that submodule absent the first spike rendered white on black with its status squares gone:** a variable mapped onto a missing import is *invalid*, it does not fall back to the previous place. Fixed in the tool: a theme whose `@import` is not there is left out whole, with one warning — and a second render showed *that* fix had also dropped the repository's tagline, because it skipped the whole place. Both caught by looking at the screenshot, neither by a check; both have checks now |
+| C11 | **0.45** | **held — I was simply wrong** | the origin's micro mark is teal, and teal reads on Chalk and on Deep alike. No `logo-dark.svg` is needed; the convention does not grow |
+
+**All eleven: forecast 0.30.** Nine held outright. My two lowest forecasts — the German board (0.60) and the logo on
+a dark ground (0.45) — were the cleanest results; the claim I was comfortable with (C10, 0.65) was the one that was
+false. The record's pattern, again: I fear the visible risk and miss the mechanical one.
+
+## Found that nobody had named
+
+1. **A mapped theme is all-or-nothing.** Importing the brand tokens instead of copying them is the right design —
+   one place to change a colour — and it means a missing import cannot degrade gracefully by itself. The tool now
+   decides that, not the stylesheet.
+2. **Looking found what checking did not — twice.** The white-on-black board and the vanished tagline both passed
+   every check that existed. The suite renders the board; it does not *look* at it. Nothing here fixes that.
+3. **A mistyped label was silently taken.** A mutation showed no check covered it: `tagine:` is now named in a
+   warning and never reaches the page.
+4. **The logo can be a symlink** into a submodule (`logo.svg → ../../portdive-com/public/logo/…`): one source of
+   truth for the mark too, and it disappears quietly — not loudly — when the submodule is absent.
+5. **`Status` is German.** The English-word probe needed the word list edited, not the board.
+
+## Unproven
+
+Only one real logo was tried, and it happens to suit both grounds. Fonts were loaded from the repository's own
+files only — a font in the person's or the organisation's place is documented as *installed fonts only* and was not
+tested. The organisation layer was exercised with a made-up brand, never with a real consultancy's. No person other
+than this seat has written a `labels.yaml`; whether 70 flat keys are pleasant to translate is a guess. The
+contrast warning reads hex colours only — the origin's theme, which maps variables, gets no warning either way.
+Windows paths and `%APPDATA%` were not considered.
+
+## For the Owner to rule
+
+1. **Merge as 0.8.0?** Then: the origin takes the 8-line theme, the symlinked mark and a tagline on its next
+   `--vendor`; msr-lager takes the German labels.
+2. **The one rule lets a person's theme override a client's brand on that person's own machine.** I would keep it —
+   it is their screen — but it is the Owner's call.
+3. **The size:** +175 lines for branding in a ~1,800-line tool. The labels could live in a file beside the tool
+   instead of inside it (−35 lines, one more file to vendor). I would leave them inside.

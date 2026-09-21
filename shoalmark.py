@@ -814,7 +814,14 @@ def brand():
         f = d / "theme.css"
         if f.is_file():
             css = f.read_text(encoding="utf-8")
-            themes.append((who, css)); src["theme.css"].append(who)
+            # a theme that maps colours onto an imported file's variables is ALL-OR-NOTHING: with the import missing —
+            # a submodule not checked out — every mapped colour is invalid, not the previous place's; so it is left out
+            gone = [u for u in re.findall(r"""@import\s+(?:url\()?["']?([^"')\s;]+)""", css) if not re.match(r"[a-z]+:|/", u) and not (d / u).exists()]
+            if gone:
+                warn.append(f"{who}'s theme.css imports {gone[0]}, which is not there — that theme is left out, the board keeps the colours it had")
+                css = ""                                      # only the theme: this place's logo and labels still apply
+            else:
+                themes.append((who, css)); src["theme.css"].append(who)
             bg, ink = re.findall(r"--bg\s*:\s*(#[0-9a-fA-F]{6})\b", css), re.findall(r"--ink\s*:\s*(#[0-9a-fA-F]{6})\b", css)
             for b, i in zip(bg, ink):                       # the light pair, then the dark one, as a theme writes them
                 if contrast(b, i) < 4.5:

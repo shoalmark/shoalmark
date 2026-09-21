@@ -16,6 +16,7 @@ them all, a gate on every commit. No server, no database, no dependency beyond P
 | adding it to a repository | [§6 Install](#6-install-and-upgrade) |
 | making it know about releases, deploys, anything of the repository's own | [§7 The deriver](#7-the-one-seam-a-deriver) |
 | changing shoalmark itself | [§8 Working on shoalmark](#8-working-on-shoalmark) |
+| giving the board a name, a logo, colours, another language | [§9 Branding](#9-branding-the-board) |
 
 `<cmd>` below is `python3 tools/shoalmark/shoalmark.py` in a repository that vendors it — or whatever command that
 repository's own messages name. Every command finds the repository by itself: the nearest `shoalmark.toml`, else the
@@ -179,6 +180,27 @@ and reads this from stdout:
   the locale and nothing else. A git hook inherits whatever the shell that ran `git commit` had exported; a deriver
   that listened to that would let a stray variable decide what gets staged.
 - A wrapper script may set `SHOALMARK_CMD` so every message names the repository's own command.
+
+## 9. Branding the board
+
+Three optional files, the same names in every place — the board is built from the places in order, **the later one
+wins**. Only the git-ignored board reads them: `INDEX.md` and the gate are the same whoever runs them.
+
+| File | Carries |
+|---|---|
+| `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work. A theme whose import is missing is left out whole |
+| `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
+| `labels.yaml` | every word of the board — flat `key: value` lines. A German board is this file |
+
+| Place | Whose |
+|---|---|
+| `tools/shoalmark/brand/` | the organisation that set the repository up — `--vendor` copies and pins it |
+| `<tracker dir>/` | the repository |
+| `~/.config/shoalmark/` | the person, on their own machine, in every repository |
+
+The name is `name` in `shoalmark.toml`; `tagline` and `footer` are labels. `--brand` says which place gave the
+board its theme, logo and labels; `--brand DIR` writes a commented starter there. A theme that is hard to read gets
+a warning, never a failure. The four status colours keep their meaning whatever their shade.
 
 ## 8. Working on shoalmark
 
