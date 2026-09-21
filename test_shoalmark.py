@@ -258,12 +258,12 @@ with tempfile.TemporaryDirectory() as d:
           and fm.digest(dest / "shoalmark.py") in pin)
     tracker(root, "FEAT-001", status="Proposed")
     tool = [sys.executable, str(dest / "shoalmark.py"), "--root", str(root)]
-    ok = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    ok = subprocess.run(tool, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     (dest / "shoalmark.py").write_text((dest / "shoalmark.py").read_text() + "\n# edited in place\n")
-    bad = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    bad = subprocess.run(tool, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     (dest / "shoalmark.py").write_text((dest / "shoalmark.py").read_text().replace("\n# edited in place\n", ""))
     (dest / "PIN").rename(dest / "PIN.gone")
-    nopin = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
+    nopin = subprocess.run(tool, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     (dest / "PIN.gone").rename(dest / "PIN")
     check("a vendored copy whose PIN was deleted is refused — the integrity check cannot be switched off silently, and the message names a path a reader can use",
           nopin.returncode == fm.EXIT_LINT and "tools/shoalmark/PIN is missing" in nopin.stderr and str(root) not in nopin.stderr)
@@ -299,9 +299,10 @@ with tempfile.TemporaryDirectory() as d:
     hook = root / ".git/hooks/pre-commit"
     check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",
           code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text() and (root / ".git/hooks/post-merge").exists())
-    git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, env=_ENV)
-    check(f"the installed hook runs on a real commit and stages the regenerated INDEX{'' if git2.returncode == 0 else ' — git said: ' + (git2.stderr + git2.stdout)[-400:]!r}", git2.returncode == 0
-          and "INDEX.md" in subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, env=_ENV).stdout)
+    git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
+    check("the installed hook runs on a real commit and stages the regenerated INDEX" + said, git2.returncode == 0
+          and "INDEX.md" in subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout)
     hook.write_text("#!/bin/sh\n# somebody else's hook\n")
     code, _, err = run(root, "--install-hook")
     check("a hook that is not shoalmark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
@@ -333,7 +334,7 @@ if _CHROME:
         tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Shipped", title="A shipped one")
         run(root)
         dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
-                                           (root / "docs/work-tracker/index.html").as_uri() + frag], capture_output=True, text=True, timeout=60).stdout
+                                           (root / "docs/work-tracker/index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
         board_dom, view_dom = dom(""), dom("#=MSR-001")
         shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
         check("the board renders in a browser: five sections in order, the open tracker under `triage`, the done one folded away",
@@ -352,7 +353,7 @@ if os.path.exists(os.path.join(ask["root"], "REFUSE")):
     print("refusing: the precondition is not met", file=sys.stderr); sys.exit(5)
 if os.path.exists(os.path.join(ask["root"], "GARBLE")):
     print("not json"); sys.exit(0)
-tags = set(subprocess.run(["git", "-C", ask["root"], "tag", "--list"], capture_output=True, text=True).stdout.split())
+tags = set(subprocess.run(["git", "-C", ask["root"], "tag", "--list"], capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.split())
 out = {"_keys": {"version": {"shape": r"\\d+\\.\\d+\\.\\d+", "says": "the release it shipped in"}}, "_problems": []}
 if os.path.exists(os.path.join(ask["root"], "REDEFINE")):
     out["_keys"]["status"] = {"says": "mine now"}
@@ -663,7 +664,7 @@ with tempfile.TemporaryDirectory() as d:
         (base / "client/docs/work-tracker").mkdir(parents=True)
         (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
         (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("footer: ours\n")
-        r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
+        r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
         check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" in cpage)
         with redirect_stdout(io.StringIO()):

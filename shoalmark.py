@@ -161,7 +161,7 @@ def configure(root=None):
     try:
         CMD = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
     except ValueError:
-        CMD = PY + " " + str(pathlib.Path(__file__).resolve())
+        CMD = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
     CMD = os.environ.get("SHOALMARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
