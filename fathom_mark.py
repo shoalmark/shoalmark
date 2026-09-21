@@ -123,6 +123,7 @@ def configure(root=None):
         CMD = "python3 " + str(pathlib.Path(__file__).resolve().relative_to(ROOT))
     except ValueError:
         CMD = "python3 " + str(pathlib.Path(__file__).resolve())
+    CMD = os.environ.get("FATHOM_MARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
 
@@ -509,7 +510,7 @@ def needs_of(t, by_id):
     """What open work is missing, for both renderings: the failing ready marks, `intended` where neither the
     tracker nor its story carries the Owner's intent, `kind` where a `build` names no kind of problem."""
     return (ready_needs(t, by_id) + ([] if intent_of(t, by_id) else ["intended"])
-            + (["kind"] if t.get("next") == "build" and not t.get("problem") else []))
+            + (["kind"] if t.get("next") == "build" and not t.get("problem") else []) + list(t.get("x_needs") or []))
 
 
 def intent_of(t, by_id):
@@ -521,13 +522,13 @@ def render(rows, kind_label):
     rows = sorted(rows, key=lambda r: (STATUS_ORDER.get(r["status"], 9), -r["num"]))
     out = [
         f"## {kind_label}\n",
-        "| ID | Tier | Hook | Status | Board | Triaged |" + "".join(f" {c} |" for c in DERIVED_COLUMNS),
-        "|----|------|------|--------|-------|---------|" + "".join("-" * (len(c) + 2) + "|" for c in DERIVED_COLUMNS),
+        "| ID | Tier | Hook | Status | Board | Triaged |" + "".join(f" {c} |" for c in INDEX_COLUMNS),
+        "|----|------|------|--------|-------|---------|" + "".join("-" * (len(c) + 2) + "|" for c in INDEX_COLUMNS),
     ]
     for r in rows:
         out.append(
             f"| [{r['id']}]({r['file']}) | {r['tier']} | {r['hook']} | {status_cell(r)} "
-            f"| {board(r)} | {r.get('triaged') or '—'} |" + "".join(f" {(r.get('x') or {}).get(c, '—').replace('|', chr(92) + '|')} |" for c in DERIVED_COLUMNS)
+            f"| {board(r)} | {r.get('triaged') or '—'} |" + "".join(f" {(r.get('x') or {}).get(c, '—').replace('|', chr(92) + '|')} |" for c in INDEX_COLUMNS)
         )
     out.append("")
     return "\n".join(out)
@@ -630,7 +631,7 @@ tr.c td:first-child{padding-left:20px}
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
-const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -679,8 +680,8 @@ function draw(){
     const story=kids.length?` · ${kids.length} chapter${kids.length==1?"":"s"}: ${kids.length-open.length} done · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} open</span>${open.some(t=>t[17])?` · triaged ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
-    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${esc(k=="—"?"no "+gname:k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:""}</tr>${state}`;
-    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${blocked(t)?"Blocked":t[2]}${COLS.map(c=>`<td class="m x">${esc(xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(t[2])} · blocked by ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">triaged ${esc(t[17])}${t[20].length?" · needs "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${esc(k=="—"?"no "+gname:k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
+    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${blocked(t)?"Blocked":t[2]}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(t[2])} · blocked by ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">triaged ${esc(t[17])}${t[20].length?" · needs "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?"around "+hood[0]:every?"trackers":"open"} · ${hot} P0/P1 · ${go} in progress${stuck?` · ${stuck} blocked`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} untriaged`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
@@ -707,7 +708,7 @@ function view(id){
   if(!MD.has(id)){const s=document.createElement("script");s.src="view/"+id+".js";
     s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">← board</a> · no rendered copy of ${id} — run __CMD__ --html-only</p>`;
     v.innerHTML=`<p class="m">${id} …</p>`;return document.head.append(s)}
-  const facts=[blocked(t)?"Blocked":t[2],t[1]!="—"&&t[1],t[18]&&"#"+t[18],board(t).at(-1),t[25]&&"reads "+(t[25]/1000).toFixed(1)+"k",t[17]&&"triaged "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+xv(t,c)),...t[15]];
+  const facts=[blocked(t)?"Blocked":t[2],t[1]!="—"&&t[1],t[18]&&"#"+t[18],board(t).at(-1),t[25]&&"reads "+(t[25]/1000).toFixed(1)+"k",t[17]&&"triaged "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
   v.innerHTML=`<p class="m"><a href="#">← board</a> · <a href="#~${id}">neighbours</a> · <a href="${esc(t[5])}">file</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">forge</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · epic <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>intent</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(from ${esc(t[23])})</a>`:""):"<i>missing — the Owner states it on the tracker or its story</i>"}<br>
@@ -784,7 +785,7 @@ def render_html(trackers):
              t.get("epic", "—"), t.get("state", "") if t["id"] in epics else "",
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
-             intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}],
+             intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {}],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -793,7 +794,9 @@ def render_html(trackers):
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", CONFIG["name"] or ROOT.name)
-            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in DERIVED_COLUMNS)).replace("__COLSPAN__", str(4 + len(DERIVED_COLUMNS))).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT))).replace("__CMD__", CMD))
+            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT))).replace("__CMD__", CMD))
+    theme = TRACKER_DIR / "theme.css"            # by convention: a repository's own palette and fonts, no setting
+    page = page.replace("</style>", (theme.read_text(encoding="utf-8").replace("</", "<\\/") if theme.exists() else "") + "</style>", 1)
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
         "__ROWS__", ",\n".join(rows)
     )
@@ -1307,6 +1310,8 @@ def parse_args(argv):
 
 
 DERIVED_COLUMNS = []          # the columns a deriver contributed on this run, in the order it named them
+INDEX_COLUMNS, BOARD_COLUMNS = [], []   # which derived values are columns where — all of them, unless the deriver says (`_index`, `_board`)
+DERIVED_NOTES = []            # paragraphs for INDEX.md's header: what its columns mean, what it could not derive
 DERIVED_FILES = {}            # other files it wants generated: {repo-relative path: text} — the core writes, checks and stages them
 
 
@@ -1318,10 +1323,10 @@ def run_deriver(trackers):
     generated files: the deriver stays free of side effects — the core writes them, reports them under --print-written
     and counts them as drift under --check. A non-zero exit REFUSES the run before anything is written.
     Returns (exit code or None, problems)."""
-    global DERIVED_COLUMNS, DERIVED_FILES, FRONT_MATTER
-    DERIVED_COLUMNS, DERIVED_FILES, FRONT_MATTER = [], {}, front_matter_schema()
+    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
+    DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS = [], {}, [], front_matter_schema(), [], []
     for t in trackers:
-        t["x"] = {}
+        t["x"], t["xd"], t["x_needs"] = {}, {}, []
     exe = TRACKER_DIR / "derive"
     if not (exe.is_file() and os.access(exe, os.X_OK)):
         return None, []
@@ -1342,8 +1347,17 @@ def run_deriver(trackers):
     for tid, values in said.items():
         if tid.startswith("_") or tid not in by_id or not isinstance(values, dict):
             continue
-        by_id[tid]["x"] = {str(k): str(v) for k, v in values.items()}
+        # a value may be a pair — [value, how it is shown on the board]: the value groups, sorts, searches and is what
+        # INDEX.md prints; the display form is only for the board's cells (`→ 0.16.x`, `0.16.4 ✓`)
+        by_id[tid]["x_needs"] = [str(n) for n in values.pop("_needs", None) or []]      # what open work is missing, in the deriver's terms
+        by_id[tid]["x"] = {str(k): str(v[0] if isinstance(v, list) and v else v) for k, v in values.items()}
+        by_id[tid]["xd"] = {str(k): str(v[1]) for k, v in values.items() if isinstance(v, list) and len(v) > 1 and str(v[1]) != str(v[0])}
         DERIVED_COLUMNS += [k for k in by_id[tid]["x"] if k not in DERIVED_COLUMNS]
+    DERIVED_NOTES = [str(n) for n in said.get("_notes") or []]
+    # one model, two renderings: INDEX.md is what an agent reads, the board what the Owner reads, and they may want
+    # different columns. Every derived value stays a view, a fact and a search word on the board either way.
+    INDEX_COLUMNS = [c for c in (said.get("_index") or DERIVED_COLUMNS) if c in DERIVED_COLUMNS]
+    BOARD_COLUMNS = [c for c in (said.get("_board") or DERIVED_COLUMNS) if c in DERIVED_COLUMNS]
     for rel, text in (said.get("_files") or {}).items():
         path = (ROOT / rel).resolve()
         if ROOT not in path.parents:
@@ -1717,7 +1731,8 @@ def main(argv=None):
         "> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `done`.\n"
         f"> One rule this file cannot show, because it has no clock: a judgement on work in progress older than {TRIAGE_DAYS} days\n"
         "> counts as `triage` again.\n>\n"
-        f"> Generated {today} · {len(trackers)} trackers ({counts})."
+        + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
+        + f"> Generated {today} · {len(trackers)} trackers ({counts})."
     )
     if problems:
         header += f"\n>\n> ❌ {len(problems)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in problems)
