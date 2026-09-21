@@ -16,6 +16,13 @@ import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
+# The SUITE reads and writes UTF-8 whatever the machine's locale is (a Windows runner's is cp1252). The TOOL never
+# relies on this: it names its encoding on every read and write — a check below holds it to that.
+_rt, _wt = Path.read_text, Path.write_text
+Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=encoding, errors=errors)
+Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
+
+
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location("fm", HERE / "shoalmark.py")
 fm = importlib.util.module_from_spec(_spec)
@@ -315,6 +322,7 @@ with tempfile.TemporaryDirectory() as d:
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
+_CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []     # a CI container has no user namespace for the sandbox
 _CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome") if os.path.exists(c)), None)
 if _CHROME:
     with tempfile.TemporaryDirectory() as d:
@@ -322,7 +330,7 @@ if _CHROME:
         run(root, "--init", "--key", "msr")
         tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Shipped", title="A shipped one")
         run(root)
-        dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom",
+        dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
                                            f"file://{root}/docs/work-tracker/index.html{frag}"], capture_output=True, text=True, timeout=60).stdout
         board_dom, view_dom = dom(""), dom("#=MSR-001")
         shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
@@ -470,7 +478,7 @@ with tempfile.TemporaryDirectory() as d:
     check("a repository that wraps the tool is named by its own command in every message", code == fm.EXIT_DRIFT and "Run: python3 scripts/tracker.py" in err)
     if _CHROME:
         run(root)
-        body = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{root}/docs/work-tracker/index.html"], capture_output=True, text=True, timeout=60).stdout
+        body = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", f"file://{root}/docs/work-tracker/index.html"], capture_output=True, text=True, timeout=60).stdout
         shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
         check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
 fm.configure(HERE)
@@ -601,7 +609,7 @@ with tempfile.TemporaryDirectory() as d:
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
               set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
         if _CHROME:
-            dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{wt}/index.html{frag}"], capture_output=True, text=True, timeout=60).stdout
+            dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", f"file://{wt}/index.html{frag}"], capture_output=True, text=True, timeout=60).stdout
             text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
             chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
             shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
@@ -616,7 +624,7 @@ with tempfile.TemporaryDirectory() as d:
             (wt / "brand/theme.css").write_text(":root{--bg:#010203}\n@media screen and (prefers-color-scheme:dark){:root{--bg:#040506}}\n", encoding="utf-8"); run(root)
             probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
             (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{wt}/probe.html"], capture_output=True, text=True, timeout=60).stdout
+            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", f"file://{wt}/probe.html"], capture_output=True, text=True, timeout=60).stdout
             seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
             check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
                   "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
@@ -712,6 +720,9 @@ with tempfile.TemporaryDirectory() as tmp:
           fm.CMD.split()[0] == ("python" if os.name == "nt" else "python3") and "\\" not in fm.CMD.split()[0] and fm.PY == fm.CMD.split()[0])
 fm.configure(HERE)
 
+_src = (HERE / "shoalmark.py").read_text()
+check("W1 · the tool names its encoding on every read, write and subprocess that returns text — a locale never decides what it reads",
+      not re.search(r"\.read_text\(\)|\.write_text\(", _src) and all("encoding=" in c for c in re.findall(r"subprocess\.run\([^\n]*text=True[^\n]*(?:\n[^\n]*){0,1}", _src)))
 _SVN = shutil.which("svn") and shutil.which("svnadmin")
 if not _SVN:
     print("  skip  S1–S3 · Subversion is not installed here — these run in CI")

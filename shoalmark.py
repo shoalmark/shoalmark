@@ -114,6 +114,18 @@ def vcs():
     return ""
 
 
+def put(path, text):
+    """Every file the tool writes is UTF-8 with `\\n` line ends on every system — what is committed must not depend on
+    who ran the tool."""
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
+def digest(path):
+    """A PIN hash survives a checkout that converts line ends (git's autocrlf, svn:eol-style)."""
+    return hashlib.sha256(pathlib.Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 PY = "python" if os.name == "nt" else "python3"         # the name a message, a hook and the contract can be pasted under
 
 
@@ -901,7 +913,7 @@ def brand_report(dest=None):
         for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
                                                            + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
             if not (dest / name).exists():
-                (dest / name).write_text(text, encoding="utf-8"); print(f"wrote {dest / name}")
+                put(dest / name, text); print(f"wrote {dest / name}")
         print("a logo is logo.svg or logo.png beside them; the name is `name` in " + CONFIG_NAME)
         return EXIT_OK
     themes, logo, labels, src, warn = brand()
@@ -962,7 +974,7 @@ def write_views(trackers):
         out, text = VIEW_DIR / f'{t["id"]}.js', f'V({json.dumps(t["id"])},{json.dumps(body, ensure_ascii=False)})\n'
         keep.add(out.name)
         if not out.exists() or out.read_text(encoding="utf-8") != text:
-            out.write_text(text, encoding="utf-8")
+            put(out, text)
     for stray in VIEW_DIR.glob("*.js"):
         if stray.name not in keep:
             stray.unlink()
@@ -1180,7 +1192,7 @@ def last_worked_on(path):
         if "[sweep]" in subject:
             continue
         names = subprocess.run(["git", "show", "--name-only", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT))],
-                               cwd=ROOT, capture_output=True, text=True).stdout.split()
+                               cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.split()
         if len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
             return day
     return log[-1].split()[1] if log else "—"
@@ -1216,7 +1228,7 @@ def repos_naming():
     for sub in re.findall(r"^\s*path\s*=\s*(\S+)", modules.read_text(encoding="utf-8"), re.M) if modules.exists() else []:
         if not (ROOT / sub / ".git").exists():
             continue
-        said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True,
+        said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True, encoding="utf-8", errors="replace",
                                       env=nested_git_env()).stdout for cmd in (["log", "--all", "--format=%s %D"], ["branch", "-r"]))
         for kind, num in re.findall(r"\b(%s)[-/](\d+)\b" % "|".join(KINDS), said, re.I):
             found.setdefault(f"{kind.upper()}-{int(num):03d}", set()).add(sub.rsplit("/", 1)[-1])
@@ -1389,11 +1401,11 @@ def apply_worksheet(sheet, sheet_is_todays, trackers, today):
     for t in trackers:                                    # a rank names one tracker: the newest judgement that STANDS wins
         if str(t.get("rank") or "") in ranks and t["id"] not in judged:
             path = TRACKER_DIR / t["file"]
-            path.write_text(set_front(path.read_text(encoding="utf-8"), "rank", None), encoding="utf-8")
+            put(path, set_front(path.read_text(encoding="utf-8"), "rank", None))
             log.append(f'{t["id"]}: rank #{t["rank"]} freed — {ranks[str(t["rank"])]} holds it now')
     for tid, verdict, path, old, new, hand in plan:
         if new != old:
-            path.write_text(new, encoding="utf-8")
+            put(path, new)
             log.append(f"{tid}: {verdict}" + (f" — BY HAND: {hand}" if hand else ""))
     return log, errors
 
@@ -1653,7 +1665,7 @@ def pin_problems():
     out = []
     for line in pin.read_text(encoding="utf-8").splitlines():
         want, _, rel = line.partition("  ")
-        if rel and (not (HERE / rel).exists() or hashlib.sha256((HERE / rel).read_bytes()).hexdigest() != want):
+        if rel and (not (HERE / rel).exists() or digest(HERE / rel) != want):
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
@@ -1672,7 +1684,7 @@ def vendor(dest):
     had = (dest / "VERSION").read_text(encoding="utf-8").strip() if (dest / "VERSION").exists() else ""
     edited = [l.partition("  ")[2] for l in ((dest / "PIN").read_text(encoding="utf-8").splitlines() if (dest / "PIN").exists() else [])
               if l.partition("  ")[2] and (dest / l.partition("  ")[2]).exists()
-              and hashlib.sha256((dest / l.partition("  ")[2]).read_bytes()).hexdigest() != l.partition("  ")[0]]
+              and digest(dest / l.partition("  ")[2]) != l.partition("  ")[0]]
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
         return EXIT_LINT
@@ -1683,8 +1695,8 @@ def vendor(dest):
             continue
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dest / rel)
-        lines.append(f"{hashlib.sha256(src.read_bytes()).hexdigest()}  {rel}")
-    (dest / "PIN").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        lines.append(f"{digest(src)}  {rel}")
+    put((dest / "PIN"), "\n".join(lines) + "\n")
     print(f"vendored shoalmark {__version__} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
     if had and had != __version__ and changes_since(had):
         print("\nWhat changes for this repository:\n\n" + changes_since(had))
@@ -1862,7 +1874,7 @@ def install_hook():
     ours is never overwritten: it is named, with the line to add to it."""
     if vcs() == "svn":
         return install_hook_svn()
-    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks"], capture_output=True, text=True, env=nested_git_env())
+    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode:
         print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT
@@ -1877,7 +1889,7 @@ def install_hook():
             print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{CMD} {'--print-written' if name == 'pre-commit' else '--html-only'}`", file=sys.stderr)
             code = EXIT_LINT
             continue
-        path.write_text(text.format(**fill), encoding="utf-8")
+        put(path, text.format(**fill))
         path.chmod(0o755)
         print(f"wrote {path}")
     return code
@@ -1894,7 +1906,7 @@ def init(key=None):
                        (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))):
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
+            put(path, text)
             wrote.append(path)
     if fresh_config:
         configure(ROOT)
@@ -1908,11 +1920,11 @@ def init(key=None):
     else:
         new = (have.rstrip("\n") + "\n\n" if have.strip() else f"# {CONFIG['name'] or ROOT.name} — for agents\n\n") + section
     if new != have:
-        agents.write_text(new, encoding="utf-8")
+        put(agents, new)
         wrote.append(agents)
     claude = ROOT / "CLAUDE.md"
     if not claude.exists():                                 # Claude Code reads CLAUDE.md, not AGENTS.md — a router, never a second copy
-        claude.write_text("# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n", encoding="utf-8")
+        put(claude, "# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n")
         wrote.append(claude)
     ignore, rel = ROOT / ".gitignore", TRACKER_DIR.relative_to(ROOT).as_posix()
     have = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
@@ -1920,7 +1932,7 @@ def init(key=None):
     if vcs() == "svn":                                      # Subversion ignores by property, not by file
         svn_ignore_board()
     elif lines:
-        ignore.write_text(have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n", encoding="utf-8")
+        put(ignore, have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n")
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT)}" for p in wrote] or ["nothing to write — already initialised"]))
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT)}; "
@@ -1975,7 +1987,7 @@ def new_tracker(words, trackers):
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    path.write_text(TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD), encoding="utf-8")
+    put(path, TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
     print(f"wrote {path.relative_to(ROOT)} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
 
@@ -2020,7 +2032,7 @@ def main(argv=None):
         return next_up(trackers)
     if args.html_only:
         if TRACKER_DIR.is_dir():
-            HTML_OUT.write_text(render_html(trackers), encoding="utf-8")
+            put(HTML_OUT, render_html(trackers))
             write_views(trackers)
         return EXIT_OK
     if not TRACKER_DIR.is_dir():
@@ -2040,7 +2052,7 @@ def main(argv=None):
         run_deriver(trackers, "write", args.derive_flag)
         earlier = out.read_text(encoding="utf-8") if out.exists() else ""
         text, left = triage_worksheet(trackers, today, last_worked_on, earlier, repos_naming())
-        out.write_text(text, encoding="utf-8")
+        put(out, text)
         print(TRIAGE_RULES.format(path=out.relative_to(ROOT), left=left, home=home.relative_to(ROOT), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
                                   intent=triage_home()["intent"] or "  (none is written — the Owner writes it in the triage home)"))
         print("\n".join([f"Applied {len(applied)}:"] + [f"  {l}" for l in applied] if applied else ["Applied nothing — no new filled rows."]))
@@ -2099,17 +2111,17 @@ def main(argv=None):
         if not drifted:
             print(f"{OUT.relative_to(ROOT)} is up to date — {len(trackers)} trackers.", file=log)
     else:
-        OUT.write_text(body, encoding="utf-8")
-        HTML_OUT.write_text(render_html(trackers), encoding="utf-8")   # git-ignored; never staged
+        put(OUT, body)
+        put(HTML_OUT, render_html(trackers))   # git-ignored; never staged
         write_views(trackers)
         print(f"wrote {OUT.relative_to(ROOT)} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
         print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
         for path, text in sorted(DERIVED_FILES.items()):
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
+            put(path, text)
         if args.print_written:                 # the caller stages what we OWN, never a guessed glob
             for path in [OUT, *sorted(DERIVED_FILES)]:
-                print(path.relative_to(ROOT))
+                print(path.relative_to(ROOT).as_posix())
 
     for p in problems:
         print(f"  lint: {p}", file=sys.stderr)
