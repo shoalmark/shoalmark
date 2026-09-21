@@ -696,7 +696,7 @@ $("q").oninput=draw;
 $("g").onclick=()=>{gi=(gi+1)%GROUPS.length;draw()};
 for(const[id,v]of[["o",false],["a",true]])$(id).onclick=()=>{all=v;$("o").setAttribute("aria-pressed",!v);$("a").setAttribute("aria-pressed",v);draw()};
 onkeydown=e=>{if(e.key=="/"&&document.activeElement!=$("q")){e.preventDefault();$("q").focus()}if(e.key=="Escape"&&!$("v").hidden)location.hash=""};
-// the viewer: `#=FEAT-180` shows that tracker rendered. Markdown comes from view/<ID>.js (a script tag works from
+// the viewer: `#=MSR-012` shows that tracker rendered. Markdown comes from view/<ID>.js (a script tag works from
 // disk, a fetch does not); embedded HTML is shown, never run; bare ids and tracker links stay inside the page.
 const MD=new Map(),TID=/(?:__KINDS__)-\d+\b/;
 marked.use({renderer:{html:k=>esc(k.raw||k.text||"")},extensions:[{name:"tid",level:"inline",start:s=>s.match(new RegExp("\\b"+TID.source))?.index,
