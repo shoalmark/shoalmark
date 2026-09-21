@@ -35,7 +35,7 @@ import subprocess
 import sys
 import tomllib
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "fathom-mark.toml"
@@ -376,7 +376,7 @@ def extract(path):
     tier = tier_match(body)
     orphans = [n + text[: len(text) - len(body)].count("\n") for n in orphan_rows(body)]
     # A literal `|` in a hook silently shears the row into the wrong columns. Escape before the row is assembled.
-    hook = hook.replace("|", "\\|")
+    hook = hook_full.replace("|", "\\|")
     if len(hook) > HOOK_MAX:
         hook = hook[: HOOK_MAX - 1].rstrip() + "…"
 
@@ -672,7 +672,7 @@ onkeydown=e=>{if(e.key=="/"&&document.activeElement!=$("q")){e.preventDefault();
 // disk, a fetch does not); embedded HTML is shown, never run; bare ids and tracker links stay inside the page.
 const MD=new Map(),TID=/(?:__KINDS__)-\d+\b/;
 marked.use({renderer:{html:k=>esc(k.raw||k.text||"")},extensions:[{name:"tid",level:"inline",start:s=>s.match(new RegExp("\\b"+TID.source))?.index,
-  tokenizer(s){if(this.lexer.state.inLink)return;const m=new RegExp("^"+TID.source).exec(s);if(m&&byId.has(m[0]))return{type:"tid",raw:m[0]}},
+  tokenizer(s){if(this.lexer.state.inLink)return;const m=new RegExp("^"+TID.source).exec(s);if(m&&byId.has(m[0])&&"#="+m[0]!=dec(location.hash))return{type:"tid",raw:m[0]}},
   renderer:k=>`<a href="#=${k.raw}">${k.raw}</a>`}]});
 V=(id,md)=>{MD.set(id,md);if(dec(location.hash)=="#="+id)view(id)};
 function view(id){
@@ -709,7 +709,10 @@ def triage_home():
     text = home.read_text(encoding="utf-8") if home.exists() else ""
     part = lambda name: (re.search(rf"^## {name}\n(.*?)(?=^## |\Z)", text, re.S | re.M) or ["", ""])[1].strip()
     passes = [p for p in re.split(r"\n\s*\n", part("Passes")) if p.strip() and not p.lstrip().startswith(("Newest first", "*None"))]
-    return {"path": part("The current path"), "last": passes[0] if passes else "", "intent": part("The intent")}
+    # an unfilled home is not a path and not an intent: what is left once the italic notes and the bare list
+    # markers are gone has to say something, or INDEX.md and the board would print the template as if it were one
+    said = lambda text: text if re.search(r"\w{3,}", re.sub(r"\*\*[^*]*\*\*|\*[^*]*\*", "", text)) else ""
+    return {"path": said(part("The current path")), "last": passes[0] if passes else "", "intent": said(part("The intent"))}
 
 
 def write_views(trackers):
@@ -823,14 +826,14 @@ def related_trackers(trackers, query, limit=8):
     """
     def bag(t):
         text = " ".join([t["file"].replace("-", " "), t["hook_full"], t["hook_full"], t.get("state", "")])
-        return collections.Counter(w for w in re.findall(r"[a-z][a-z0-9_]{2,}", text.lower()) if w not in _STOP)
+        return collections.Counter(w for w in re.findall(r"[^\W\d_]\w{2,}", text.lower()) if w not in _STOP)
     bags = {t["id"]: bag(t) for t in trackers}
     df = collections.Counter(w for b in bags.values() for w in set(b))
     n = len(trackers)
     by_id = {t["id"]: t for t in trackers}
     qid = query.strip().upper()
     q = bags[qid] if qid in bags else collections.Counter(
-        w for w in re.findall(r"[a-z][a-z0-9_]{2,}", query.lower()) if w not in _STOP)
+        w for w in re.findall(r"[^\W\d_]\w{2,}", query.lower()) if w not in _STOP)
     scored = []
     for tid, b in bags.items():
         if tid == qid:
@@ -1404,6 +1407,16 @@ def init(key=None):
     return EXIT_OK
 
 
+_TRANSLIT = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "é": "e", "è": "e", "ê": "e", "á": "a", "à": "a", "â": "a",
+                            "ó": "o", "ò": "o", "ô": "o", "ú": "u", "ù": "u", "û": "u", "í": "i", "î": "i", "ç": "c", "ñ": "n", "å": "a", "ø": "o", "æ": "ae"})
+
+
+def slug_of(title, limit=60):
+    """The filename's slug: lower case, ASCII, cut at a word — never mid-word, never ending in a dash."""
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower().translate(_TRANSLIT)).strip("-")
+    return slug if len(slug) <= limit else slug[:limit + 1].rsplit("-", 1)[0].strip("-")
+
+
 def new_tracker(words, trackers):
     kind, title = (words[0].upper(), " ".join(words[1:])) if len(words) > 1 and words[0].upper() in KINDS else (KINDS[0] if len(KINDS) == 1 else "", " ".join(words))
     if not kind and len(words) > 1:
@@ -1412,13 +1425,13 @@ def new_tracker(words, trackers):
         print(f"--new: {kind or 'no id prefix given'} — this repository files under {', '.join(KINDS)} ({CONFIG_NAME}, [kinds]); say which", file=sys.stderr)
         return EXIT_LINT
     near = related_trackers(trackers, title, limit=5)
-    print("A filing looks first. The default is a slice of a tracker that exists, not a new one." if near
+    print("A filing looks first — the closest trackers that exist. Where one of them already owns this, make it a slice of that one:" if near
           else "Nothing related is filed yet.")
     for score, t in near:
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
     tid = f"{kind}-{num:03d}"
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:80]
+    slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat()), encoding="utf-8")
@@ -1452,7 +1465,7 @@ def main(argv=None):
         return EXIT_LINT
     if args.triage:
         home, path_now = TRACKER_DIR / "TRIAGE.md", triage_home()["path"]
-        if not re.search(r"\w{3,}", re.sub(r"\*[^*]*\*", "", path_now)):
+        if not path_now:
             print(f"--triage: {home.relative_to(ROOT)} names no current path — tiers cannot be judged; the Owner writes it first", file=sys.stderr)
             return EXIT_LINT
         today = datetime.date.today().isoformat()

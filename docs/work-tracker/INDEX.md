@@ -18,9 +18,7 @@
 > Everything unranked follows below by status; a triage pass (`--triage`) re-judges open work weekly.
 > *Kind* is the kind of problem that is left: plain where a seat judged it (`kind-of-problem:`), *italic* where the move already says it.
 
-*The Owner's. A pass judges every tier against it; only the Owner changes it.*
-
-1.
+*No current path is written — the Owner names it in `TRIAGE.md`.*
 
 *Nothing is ranked yet — no triage pass has run.*
 
@@ -29,4 +27,4 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
-| [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | — | "fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still run… | Proposed | triage | — |
+| [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | — | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | Proposed | triage | — |

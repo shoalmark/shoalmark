@@ -80,8 +80,17 @@ with tempfile.TemporaryDirectory() as d:
     check("--check reports drift with its own exit code", run(root, "--check")[0] == fm.EXIT_DRIFT)
     run(root)
     code, out, _ = run(root, "--new", "Warehouse stock is booked twice")
+    de = [dict(id="MSR-00%d" % n, file="MSR-00%d-x.md" % n, hook_full=h, state="") for n, h in ((1, "Mindestbestände je Lager prüfen"), (2, "Fotos verkleinern"))]
+    check("related reads words with umlauts whole", [t["id"] for _s, t in fm.related_trackers(de, "Mindestbestände")][:1] == ["MSR-001"])
     check("the second filing is shown the first — the tracker that already owns the words", "MSR-001" in out and "looks first" in out
           and (root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md").exists())
+    index = (root / "docs/work-tracker/INDEX.md").read_text()
+    check("an unfilled triage home is not a path: INDEX.md says none is written, and a hook is shown without its quotation marks",
+          "No current path is written" in index and "only the Owner changes it" not in index and '| "' not in index
+          and '"path": ""' in (root / "docs/work-tracker/index.html").read_text())
+    check("a slug ends on a word and speaks more than ASCII",
+          fm.slug_of("Bestände für Stück und Größe — " + "sehr " * 20) == "bestaende-fuer-stueck-und-groesse-sehr-sehr-sehr-sehr-sehr"
+          and not fm.slug_of("x " * 80).endswith("-") and len(fm.slug_of("word " * 40)) <= 60)
     code, _, err = run(root, "--triage")
     check("--triage refuses while the Owner has written no current path", code == fm.EXIT_LINT and "names no current path" in err)
     page = (root / "docs/work-tracker/index.html").read_text()
