@@ -135,7 +135,7 @@ What lives where, by convention — no setting names any of it:
 
 | Path | What |
 |---|---|
-| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` |
+| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[headings]` the seven section names the tool reads and writes (`state` `why` `done` `log` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
@@ -205,6 +205,9 @@ a warning, never a failure. The four status colours keep their meaning whatever 
 **Light and dark:** write the dark colours under `@media (prefers-color-scheme:dark)`, as the starter does. The board's
 `◐` button (auto → light → dark) switches that rule by hand for any theme and remembers the choice in the viewer's
 browser — nothing in the repository changes, and paper stays light.
+
+**Another language** is two things: the board's words are `labels.yaml`; the section names the *gate* reads are
+`[headings]` in `shoalmark.toml` — they decide what the gate says, so they belong to the repository, not to a brand.
 
 ## 8. Working on shoalmark
 

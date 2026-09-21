@@ -668,6 +668,37 @@ with tempfile.TemporaryDirectory() as d:
             os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
 
+# --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True)
+    (root / "shoalmark.toml").write_text('name = "lager"\n[kinds]\nMSR = "Arbeit"\n[headings]\nstate = "Was jetzt gilt"\nwhy = "Warum"\ndone = "Fertig, wenn"\nlog = "Verlauf"\n'
+                                         'intent = "Die Absicht"\npath = "Der aktuelle Weg"\npasses = "Durchgänge"\n', encoding="utf-8")
+    run(root, "--init"); wt = root / "docs/work-tracker"
+    run(root, "--new", "Mengen werden gerundet")
+    made = next(wt.glob("MSR-001-*.md")); body = made.read_text(encoding="utf-8")
+    home = (wt / "TRIAGE.md").read_text(encoding="utf-8")
+    check("`[headings]` — `--new` and `--init` write the repository's own section names",
+          all(f"## {h}\n" in body for h in ("Was jetzt gilt", "Warum", "Fertig, wenn", "Verlauf")) and "What is true now" not in body
+          and all(f"## {h}\n" in home for h in ("Die Absicht", "Der aktuelle Weg", "Durchgänge")))
+    made.write_text(body.replace("considered:", "considered: none").replace("## Fertig, wenn\n", "## Fertig, wenn\n\nEine Länge behält ihre Nachkommastellen.\n")
+                    .replace("nothing is built.**", "nothing is built.** Gebucht wird gerundet."), encoding="utf-8")
+    (wt / "TRIAGE.md").write_text(home.replace("1.\n", "1. MSR-001 zuerst, dann der Rest.\n").replace("*None yet.*", "**2026-09-21 — der erste Durchgang.** Alles gesichtet."), encoding="utf-8")
+    for f_ in (made, wt / "TRIAGE.md"):                     # German whatever the templates wrote — this check is about READING
+        x = f_.read_text(encoding="utf-8")
+        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge"}[en] + "\n")
+        f_.write_text(x, encoding="utf-8")
+    home = (wt / "TRIAGE.md").read_text(encoding="utf-8").replace("1. MSR-001 zuerst, dann der Rest.\n", "1.\n")
+    fm.configure(root); now = made.read_text(encoding="utf-8"); th = fm.triage_home()
+    check("`[headings]` — the gate and the pass READ them: a German tracker is stated and provable, a German TRIAGE.md gives its path and its newest pass",
+          "Gebucht wird gerundet" in fm.current_truth(now) and "## Was jetzt gilt" in now and fm.DONE_RE.search("## Fertig, wenn") and not fm.DONE_RE.search("## Verlauf") and "MSR-001 zuerst" in th["path"] and th["last"].startswith("**2026-09-21") and not th["intent"])
+    (wt / "TRIAGE.md").write_text(home.replace("## Der aktuelle Weg", "## The current path").replace("1.\n", "1. english heading still read.\n"), encoding="utf-8")
+    check("`[headings]` — the English names stay understood, so a repository can change language a file at a time", "english heading still read" in fm.triage_home()["path"])
+    (root / "shoalmark.toml").write_text('[headings]\nstaet = "x"\n', encoding="utf-8")
+    try: fm.configure(root); refused = False
+    except SystemExit as e: refused = "headings" in str(e)
+    check("`[headings]` — a mistyped key is refused, naming the seven", refused)
+fm.configure(HERE)
+
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()

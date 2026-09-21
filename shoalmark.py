@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -60,6 +60,11 @@ DEFAULTS = {
         "security": "credentials, exposure, access — a fix or a finding",
         "process": "how the work is done: rules, gates, tooling, the tracker itself",
     },
+    # the section names the tool READS in a tracker and in TRIAGE.md, and writes with `--new` and `--init` — in the
+    # repository's language. They are here and not in a brand's labels.yaml because the gate depends on them: what
+    # the gate says is a function of the repository alone. The English ones are always understood as well.
+    "headings": {"state": "What is true now", "why": "Why", "done": "Done when", "log": "Ship log",
+                 "intent": "The intent", "path": "The current path", "passes": "Passes"},
 }
 
 
@@ -103,6 +108,7 @@ def configure(root=None):
     directory, and again by `--root` and by the tests."""
     global ROOT, CONFIG, TRACKER_DIR, OUT, HTML_OUT, VIEW_DIR, REPO_BLOB, TAGS, CONSIDERED_FROM, TRIAGE_DAYS
     global KINDS, KIND_LABELS, KIND_RE, TITLE_RE, TRACKER_LINK_RE, H1_ID_RE, ROW_ID_RE, _IDS, FRONT_MATTER, CMD
+    global HEAD, STATE_HEAD_RE, DONE_RE
     ROOT = find_root(root)
     path = ROOT / CONFIG_NAME
     CONFIG = {**DEFAULTS, **(read_config(path.read_text(encoding="utf-8")) if path.exists() else {})}
@@ -110,6 +116,11 @@ def configure(root=None):
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
     KIND_LABELS = dict(CONFIG["kinds"])
+    HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
+    if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
+        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
+    STATE_HEAD_RE = re.compile(_STATE_HEADS[:-3] + "|" + re.escape(HEAD["state"]) + r")\b", re.I)
+    DONE_RE = re.compile(_DONE_WORDS + "|" + re.escape(HEAD["done"]), re.I)
     KINDS = tuple(KIND_LABELS)
     if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
         raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
@@ -187,11 +198,13 @@ def front_matter_schema():
 NOW_MAX = 600              # the worksheet's Now cell: the opening of a tracker's *What is true now* — at 320 it cut
                            # mid-sentence and a reader had to open the tracker
 SIZED_LINES = 600          # past this a cold session pays for the reading before it can act
-DONE_RE = re.compile(r"done when|acceptance|exit criteri|definition of done|falsifier", re.I)
+_DONE_WORDS = r"done when|acceptance|exit criteri|definition of done|falsifier"
+DONE_RE = re.compile(_DONE_WORDS, re.I)                 # `configure` adds the repository's own `[headings] done`
 
 # an epic's "state of the epic" is the first paragraph of the current-truth head the
 # doctrine already asks for (trackers-say-what-is-true-now); no new field to keep in step.
-STATE_HEAD_RE = re.compile(r"^#{2,3}\s+(what is true now|current (state|truth|status)|state of play)\b", re.I)
+_STATE_HEADS = r"^#{2,3}\s+(what is true now|current (state|truth|status)|state of play)\b"
+STATE_HEAD_RE = re.compile(_STATE_HEADS, re.I)          # `configure` adds the repository's own `[headings] state`
 
 
 def current_truth(body):
@@ -916,12 +929,14 @@ def triage_home():
     """TRIAGE.md as the command and the dashboard read it: the Owner's current path, and the newest pass."""
     home = TRACKER_DIR / "TRIAGE.md"
     text = home.read_text(encoding="utf-8") if home.exists() else ""
-    part = lambda name: (re.search(rf"^## {name}\n(.*?)(?=^## |\Z)", text, re.S | re.M) or ["", ""])[1].strip()
-    passes = [p for p in re.split(r"\n\s*\n", part("Passes")) if p.strip() and not p.lstrip().startswith(("Newest first", "*None"))]
+    # a section is found by the repository's own name for it, or by the English one
+    part = lambda k: (re.search(rf"^## (?:{re.escape(HEAD[k])}|{re.escape(DEFAULTS['headings'][k])})[ \t]*\n(.*?)(?=^## |\Z)", text, re.S | re.M) or ["", ""])[1].strip()
+    # a pass is a paragraph that carries its date — the template's own notes do not, in any language
+    passes = [p for p in re.split(r"\n\s*\n", part("passes")) if re.search(r"\d{4}-\d\d-\d\d", p) and not p.lstrip().startswith(("Newest first", "*None"))]
     # an unfilled home is not a path and not an intent: what is left once the italic notes and the bare list
     # markers are gone has to say something, or INDEX.md and the board would print the template as if it were one
     said = lambda text: text if re.search(r"\w{3,}", re.sub(r"\*\*[^*]*\*\*|\*[^*]*\*", "", text)) else ""
-    return {"path": said(part("The current path")), "last": passes[0] if passes else "", "intent": said(part("The intent"))}
+    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": said(part("intent"))}
 
 
 def write_views(trackers):
@@ -1641,7 +1656,7 @@ TRIAGE_HOME = """\
 The home of the recurring triage pass: `{cmd} --triage`. The command prints the rules and the two sections
 below; its worksheets are the record, in `evidence/triage/`.
 
-## The intent
+## {intent}
 
 *The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
 
@@ -1649,13 +1664,13 @@ below; its worksheets are the record, in `evidence/triage/`.
 - **so that** —
 - **never** —
 
-## The current path
+## {path}
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
 1.
 
-## Passes
+## {passes}
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
@@ -1717,15 +1732,15 @@ hook: "{title}"
 
 # {id} — {title}
 
-## What is true now
+## {state}
 
 **Filed {today}; nothing is built.**
 
-## Why
+## {why}
 
-## Done when
+## {done}
 
-## Ship log
+## {log}
 
 | Date | Event |
 |---|---|
@@ -1780,7 +1795,7 @@ def init(key=None):
         return EXIT_LINT
     fresh_config = not (ROOT / CONFIG_NAME).exists()
     for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
-                       (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD))):
+                       (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))):
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
@@ -1862,7 +1877,7 @@ def new_tracker(words, trackers):
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    path.write_text(TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat()), encoding="utf-8")
+    path.write_text(TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD), encoding="utf-8")
     print(f"wrote {path.relative_to(ROOT)} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
 

@@ -2,6 +2,16 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.11.0 — 2026-09-21
+
+- **A repository that is not in English: `[headings]` in `shoalmark.toml`** names the seven sections the tool reads
+  and writes — `state`, `why`, `done`, `log` in a tracker; `intent`, `path`, `passes` in `TRIAGE.md`. `--new` and
+  `--init` write them; the gate and the triage pass read them. The English names stay understood, so a repository
+  can change language a file at a time. They are configuration and not a label because the gate depends on them —
+  what the gate says stays a function of the repository alone. **No table, no change.**
+- A pass under *Passes* is a paragraph that carries its date (it always was, by the contract) — the template's notes
+  are told apart by that, not by their English words.
+
 ## 0.10.0 — 2026-09-21
 
 - **The board has a light / dark button**, in the header: `◐ auto` → `light` → `dark`. It switches every theme's
