@@ -103,7 +103,7 @@ a product's brand, not the consultancy's, and it must not leak into a client rep
 after the spike found it false as first built (C10); one bar was missed without killing anything (C8's size). The
 two claims I feared most were the two I was most wrong about.** Spike on `rd/fm-002-brand-layers`; the origin was
 never written to — everything ran in scratch copies. Worked examples kept beside this file:
-[the origin's theme](examples/origin.theme.css) (8 lines) and [a German board](examples/german.labels.yaml).
+[the origin's theme](examples/origin.theme.css) (8 lines) and [a German board](../../../../examples/de/labels.yaml).
 
 | # | Forecast | Outcome | Measured |
 |---|---|---|---|
