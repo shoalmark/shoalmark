@@ -1,6 +1,6 @@
 ---
 id: FM-001
-status: Proposed
+status: In Progress
 considered: none
 next: build
 hook: "fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs its own 1,900-line copy. Two tools under one idea diverge with every fix. Port it onto this core, with its release axis kept as an extension around the core, and delete the copy."
@@ -50,6 +50,7 @@ core is made in one place.
 
 | Date | Event |
 |---|---|
+| 2026-09-21 | **0.5.0 — the port explored in full, in a scratch copy** ([record](evidence/FM-001/port-rd.md)): the rendered board differs in 0 of 506 rows, 159 of the origin's 167 runnable checks pass unchanged, the artefacts are kept in [`port/`](evidence/FM-001/port/). **Owner: proceed — take the tracker out of the origin and make it a dependency.** Next, here: the coverage gap — ~145 of the origin's checks test behaviour that lives in this core, ~25 have a counterpart in this suite. |
 | 2026-09-21 | **0.4.0 — the seam, merged on the Owner's ruling after R&D.** What is left of this tracker is the port itself. |
 | 2026-09-21 | **The debt's first instalment, the same day:** 0.2.1 fixed six things found on a second repository. Three of them are in the origin's copy too and are now owed there — a hook's quotation marks in the INDEX row, a tracker's own id linking to itself in the viewer, `--related` reading only a–z. |
 | 2026-09-21 | Filed with the first commit. |

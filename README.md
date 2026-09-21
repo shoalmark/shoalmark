@@ -65,7 +65,9 @@ back:
   "_files":    { "docs/RELEASES.md": "…the whole file…" } }
 ```
 
-Each value key becomes a column in `INDEX.md` and on the board — and a view on the board. `_keys` join the schema gate.
+Each value key becomes a column in `INDEX.md` and on the board — and a view on the board. `_index` and `_board` narrow
+which goes where; a value may be `[value, display]`; `_notes` explain the columns in `INDEX.md`'s header; a per-tracker
+`_needs` says what open work is missing. A `theme.css` beside the trackers restyles the page. `_keys` join the schema gate.
 `_problems` fail the commit like the core's own. `_files` are written, drift-checked and staged by the core, so a
 deriver has no side effects. **A non-zero exit refuses the run before anything is written** — a crash included.
 Nothing derived is stored, so nothing derived can be stale. It runs on every run, the post-checkout refresh too: keep it fast.

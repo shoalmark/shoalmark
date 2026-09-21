@@ -2,6 +2,21 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.5.0 — 2026-09-21
+
+What the exploration of the first real port forced — each item answers a measured difference
+(`docs/work-tracker/evidence/FM-001/port-rd.md`). All of it is the deriver's output or a convention; no setting.
+
+- **One model, two renderings.** `_index` and `_board` say which derived values `INDEX.md` prints and which the board
+  shows — default: all. Every derived value stays a view, a fact and a search word on the board.
+- **A value may be a pair, `[value, display]`.** The value groups, sorts, searches and is what `INDEX.md` prints; the
+  display form is for the board's cells (`→ 0.16.x`, `0.16.4 ✓`).
+- **`_notes`** — paragraphs for `INDEX.md`'s header. **`_needs`** (per tracker) — what open work still needs, shown
+  with the core's own marks on the ranked table and the board.
+- **A group header on the board sums its rows up by the board's columns.**
+- **`theme.css` beside the trackers** is appended to the page's style — a repository's own palette and fonts.
+- **`FATHOM_MARK_CMD`** — a repository that wraps the tool is named by its own command in every message.
+
 ## 0.4.0 — 2026-09-21
 
 - **One seam, by convention — a deriver.** If `<tracker dir>/derive` exists and is executable, the core runs it first,
