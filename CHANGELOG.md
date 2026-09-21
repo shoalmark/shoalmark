@@ -2,6 +2,14 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.6.1 — 2026-09-21
+
+- **Fixed: `epic <ID>` and `merge <ID>` verdicts were refused in a repository whose ids are not `FEAT-`/`BUG-`.** One
+  pattern in the verdict parser still named that pair; it reads the configured prefixes now. Found by checking the
+  README's verdict table against the tool.
+- **`README.md` is written for the agent that uses the tool, and ships in the vendored copy** (pinned like the rest):
+  start · file · stop · triage · what to do when the gate refuses · install · the deriver's JSON · working on the tool.
+
 ## 0.6.0 — 2026-09-21
 
 - **The tool is called `shoalmark`** — it was `fathom-mark` until here. The file is `shoalmark.py`, the configuration

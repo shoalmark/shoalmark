@@ -37,7 +37,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -1078,7 +1078,7 @@ def sheet_rows(sheet):
 def apply_verdict(text, verdict, today, ids):
     """One worksheet verdict → (the tracker's new text, what is left to do by hand, error). Mechanical lines only."""
     word = verdict.split()[0].lower() if verdict.split() else ""
-    tier, other, rank = (re.search(rx, verdict) for rx in (r"\bP[0-3]\b", r"\b(?:FEAT|BUG)-\d+\b", r"#(\d+)\b"))
+    tier, other, rank = (re.search(rx, verdict) for rx in (r"\bP[0-3]\b", rf"\b{_IDS}\b", r"#(\d+)\b"))      # the repository's own id prefixes, never a fixed pair
     if word not in ("keep", "epic", "park", "merge", "close", "fix"):
         return text, "", f"`{verdict}` is no verdict"
     if not text.startswith("---\n") or text.find("\n---", 4) == -1:
@@ -1370,7 +1370,7 @@ def load_trackers():
     return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
 
 
-TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "CHANGELOG.md")
+TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
 
 
 def pin_problems():
