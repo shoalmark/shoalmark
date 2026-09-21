@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -782,7 +782,7 @@ def brand_places():
         home = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or pathlib.Path.home() / ".config") / "shoalmark"
     except (RuntimeError, KeyError):                        # no HOME — a hook, CI, an agent: the person simply has no place
         home = None
-    return [(who, d) for who, d in (("organisation", HERE / "brand"), ("repository", TRACKER_DIR), ("person", home)) if d and d.is_dir()]
+    return [(who, d) for who, d in (("organisation", HERE / "brand"), ("repository", TRACKER_DIR / "brand"), ("person", home)) if d and d.is_dir()]
 
 
 def read_flat(text):
@@ -814,12 +814,18 @@ def brand():
         f = d / "theme.css"
         if f.is_file():
             css = f.read_text(encoding="utf-8")
-            # a theme that maps colours onto an imported file's variables is ALL-OR-NOTHING: with the import missing —
-            # a submodule not checked out — every mapped colour is invalid, not the previous place's; so it is left out
-            gone = [u for u in re.findall(r"""@import\s+(?:url\()?["']?([^"')\s;]+)""", css) if not re.match(r"[a-z]+:|/", u) and not (d / u).exists()]
+            # A path in a theme is written relative to THE FILE IT IS IN — what an editor resolves, what a person expects.
+            # The page inlines the css, so each is re-based onto the page's directory; that also makes an import or a
+            # font work from the organisation's and the person's place, not only from beside the trackers.
+            # A theme that maps colours onto an imported file's variables is ALL-OR-NOTHING: with the import missing — a
+            # submodule not checked out — every mapped colour is invalid, not the previous place's; so it is left out.
+            local = lambda u: not re.match(r"[a-z][a-z0-9+.-]*:|/|#", u, re.I)
+            refs = re.findall(r"""@import\s+(?:url\(\s*)?["']?([^"')\s;]+)""", css)
+            gone = [u for u in refs if local(u) and not (d / u).exists()]
+            css = re.sub(r"""(url\(\s*["']?|@import\s+["'])([^"')\s;]+)""",
+                         lambda m: m.group(1) + (os.path.relpath(os.path.normpath(d / m.group(2)), TRACKER_DIR).replace(os.sep, "/") if local(m.group(2)) else m.group(2)), css)
             if gone:
                 warn.append(f"{who}'s theme.css imports {gone[0]}, which is not there — that theme is left out, the board keeps the colours it had")
-                css = ""                                      # only the theme: this place's logo and labels still apply
             else:
                 themes.append((who, css)); src["theme.css"].append(who)
             bg, ink = re.findall(r"--bg\s*:\s*(#[0-9a-fA-F]{6})\b", css), re.findall(r"--ink\s*:\s*(#[0-9a-fA-F]{6})\b", css)
@@ -841,6 +847,10 @@ def brand():
             if unknown:
                 warn.append(f"{who}'s labels.yaml: {', '.join(unknown[:6])} {'are' if len(unknown) > 1 else 'is'} not a label — `--brand` lists them")
             labels.update({k: v for k, v in given.items() if k in LABELS}); src["labels.yaml"].append(who)
+    loose = [n for n in BRAND_FILES if (TRACKER_DIR / n).is_file() or (TRACKER_DIR / n).is_symlink()]
+    if loose:
+        warn.append(f"{', '.join(loose)} beside the trackers {'are' if len(loose) > 1 else 'is'} not read — a repository's brand lives in "
+                    f"{(TRACKER_DIR / 'brand').relative_to(ROOT)}/ (since 0.9.0); move {'them' if len(loose) > 1 else 'it'} there")
     return themes, logo, labels, src, warn
 
 

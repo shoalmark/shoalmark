@@ -443,7 +443,7 @@ with tempfile.TemporaryDirectory() as d:
     tracker(root, "MSR-001", status="Shipped", extra="version: 1.2.0\n"); tracker(root, "MSR-002", extra="target: 1.3.x\nrank: 1\ntier: P1\nnext: run\n")
     tracker(root, "MSR-003", extra="rank: 2\ntier: P2\nnext: run\n")
     exe = root / "docs/work-tracker/derive"; exe.write_text(PORT_DERIVER); exe.chmod(0o755)
-    (root / "docs/work-tracker/theme.css").write_text(":root{--bg:#123456}")
+    (root / "docs/work-tracker/brand").mkdir(); (root / "docs/work-tracker/brand/theme.css").write_text(":root{--bg:#123456}")
     code, _, err = run(root)
     index, page = (root / "docs/work-tracker/INDEX.md").read_text(), (root / "docs/work-tracker/index.html").read_text()
     check("one model, two renderings: the deriver says which values INDEX.md prints and which the board shows — every one stays a view",
@@ -459,7 +459,8 @@ with tempfile.TemporaryDirectory() as d:
     check("a deriver has no side effects: the files it wants are written, staged and drift-checked by the core",
           wrote_ok and drift == fm.EXIT_DRIFT and rel.read_text() == "# Releases\n\n1.2.0\n")
     exe.write_text(PORT_DERIVER)
-    check("a repository's own look is a convention, not a setting: `theme.css` beside the trackers is appended to the page's style", "--bg:#123456}</style>" in page)
+    check("a repository's own look is a convention, not a setting: `brand/theme.css` beside the trackers becomes a stylesheet of its own, after the tool's",
+          '<style data-from="repository">:root{--bg:#123456}</style>' in page and page.index('data-from="repository"') > page.index("@media print"))
     os.environ["SHOALMARK_CMD"] = "python3 scripts/tracker.py"
     try:
         fm.configure(root); (root / "docs/work-tracker/INDEX.md").write_text("stale"); code, _, err = run(root, "--check")
@@ -557,11 +558,12 @@ with tempfile.TemporaryDirectory() as d:
         """files: place_file=text — place is org | repo | me. Returns (INDEX.md bytes, page, --brand report)."""
         for place in (org, home):
             shutil.rmtree(place, ignore_errors=True)
+        shutil.rmtree(wt / "brand", ignore_errors=True)
         for f in fm.BRAND_FILES:
             (wt / f).unlink(missing_ok=True)
         for key, text in files.items():
             place, _, name = key.partition("_")
-            d_ = {"org": org, "repo": wt, "me": home}[place]; d_.mkdir(parents=True, exist_ok=True)
+            d_ = {"org": org, "repo": wt / "brand", "me": home, "loose": wt}[place]; d_.mkdir(parents=True, exist_ok=True)
             (d_ / name.replace("_", ".")).write_text(text, encoding="utf-8")
         os.environ["XDG_CONFIG_HOME"] = str(base / "home")
         code, _, err = run(root)
@@ -606,7 +608,7 @@ with tempfile.TemporaryDirectory() as d:
             _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
             ldom = dom("")
             check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
-        (wt / "logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "logo.svg").unlink(missing_ok=True)
+        (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
         _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
@@ -615,6 +617,17 @@ with tempfile.TemporaryDirectory() as d:
         _, i_page, _, i_err, i_code = board_with(repo_theme_css='@import url("../../gone/tokens.css");\n:root{--bg:var(--x)}', repo_labels_yaml="tagline: still here\n", me_theme_css=":root{--mute:#123123}")
         check("C10 · a theme whose import is missing is left out whole — the board keeps its colours, says so once, and the other places still apply",
               i_code == 0 and "imports ../../gone/tokens.css, which is not there" in i_err and "var(--x)" not in i_page and "--mute:#123123" in i_page and '"tagline": "still here"' in i_page)
+        (wt / "brand/fonts").mkdir(parents=True, exist_ok=True); (wt / "brand/fonts/mine.woff2").write_bytes(b"x"); (home / "tokens.css").parent.mkdir(parents=True, exist_ok=True)
+        _, u_page, _, u_err, _ = board_with(repo_theme_css='@font-face{font-family:"Mine";src:url("fonts/mine.woff2")}\na{background:url(https://example.org/x.png)}',
+                                            me_theme_css='@import url("tokens.css");\n:root{--mute:#abcabc}', me_tokens_css=":root{--x:1}")
+        (wt / "brand/fonts").mkdir(parents=True, exist_ok=True); (wt / "brand/fonts/mine.woff2").write_bytes(b"x"); run(root)
+        u_page = (wt / "index.html").read_text(encoding="utf-8")
+        check("a path in a theme is written relative to the file it is in, and re-based onto the page — so a font beside the theme, and an import in the person's own folder, both resolve; an absolute URL is left alone",
+              'src:url("brand/fonts/mine.woff2")' in u_page and "url(https://example.org/x.png)" in u_page
+              and re.search(r'@import url\("(\.\./)+.*home/shoalmark/tokens\.css"\)', u_page) is not None and "is not there" not in u_err)
+        _, l_page, _, l_err, l_code = board_with(loose_theme_css=":root{--bg:#010203}", loose_labels_yaml="tagline: old place\n")
+        check("brand files left loose beside the trackers are not read — and the warning says where they belong",
+              l_code == 0 and "--bg:#010203" not in l_page and "old place" not in l_page and "theme.css, labels.yaml beside the trackers are not read" in l_err and "docs/work-tracker/brand/" in l_err)
         _, t_page, _, t_err, t_code = board_with(repo_labels_yaml="tagine: a typo\nstatus.Shipped: Live\n")
         check("a mistyped label is named in a warning and never reaches the page — the rest of the file still applies",
               t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
@@ -626,7 +639,7 @@ with tempfile.TemporaryDirectory() as d:
               (dest / "brand/theme.css").read_text() == ":root{--blue:#123456}" and "brand/theme.css" in (dest / "PIN").read_text() and "brand/labels.yaml" in (dest / "PIN").read_text())
         (base / "client/docs/work-tracker").mkdir(parents=True)
         (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
-        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/labels.yaml").write_text("footer: ours\n")
+        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("footer: ours\n")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
         check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" in cpage)

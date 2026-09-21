@@ -142,7 +142,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
-| `<tracker dir>/theme.css` | optional — appended to the board's style |
+| `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `labels.yaml`, fonts (§9) |
 
 ## 7. The one seam: a deriver
 
@@ -188,14 +188,14 @@ wins**. Only the git-ignored board reads them: `INDEX.md` and the gate are the s
 
 | File | Carries |
 |---|---|
-| `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work. A theme whose import is missing is left out whole |
+| `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work, **with paths written relative to the `theme.css` they are in** — a font goes in `brand/fonts/`. A theme whose import is missing is left out whole |
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
 | `labels.yaml` | every word of the board — flat `key: value` lines. A German board is this file |
 
 | Place | Whose |
 |---|---|
 | `tools/shoalmark/brand/` | the organisation that set the repository up — `--vendor` copies and pins it |
-| `<tracker dir>/` | the repository |
+| `<tracker dir>/brand/` | the repository — a folder of its own, never loose among the trackers |
 | `~/.config/shoalmark/` | the person, on their own machine, in every repository |
 
 The name is `name` in `shoalmark.toml`; `tagline` and `footer` are labels. `--brand` says which place gave the

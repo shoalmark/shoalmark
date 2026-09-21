@@ -2,6 +2,16 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.9.0 — 2026-09-21
+
+- **A repository's brand has a folder of its own: `<tracker dir>/brand/`** — the same name the organisation's place
+  has (`tools/shoalmark/brand/`). **Move `theme.css`, `logo.svg` / `logo.png` and `labels.yaml` there**: left loose
+  beside the trackers they are no longer read, and a warning says so.
+- **A path in a `theme.css` is written relative to that file**, as an editor resolves it, and the tool re-bases it onto
+  the page — so `url("fonts/mine.woff2")` finds `brand/fonts/mine.woff2`, and an `@import` or a font now works from the
+  organisation's and the person's place too. **If your theme imports something, its path changes** (one `../` more,
+  from inside `brand/`).
+
 ## 0.8.0 — 2026-09-21
 
 - **A board anyone can brand — three optional files, no setting** (README §9). `theme.css` (colours, fonts),
