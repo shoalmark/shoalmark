@@ -902,7 +902,7 @@ def brand():
     loose = [n for n in BRAND_FILES if (TRACKER_DIR / n).is_file() or (TRACKER_DIR / n).is_symlink()]
     if loose:
         warn.append(f"{', '.join(loose)} beside the trackers {'are' if len(loose) > 1 else 'is'} not read — a repository's brand lives in "
-                    f"{(TRACKER_DIR / 'brand').relative_to(ROOT)}/ (since 0.9.0); move {'them' if len(loose) > 1 else 'it'} there")
+                    f"{(TRACKER_DIR / 'brand').relative_to(ROOT).as_posix()}/ (since 0.9.0); move {'them' if len(loose) > 1 else 'it'} there")
     return themes, logo, labels, src, warn
 
 
@@ -1020,7 +1020,7 @@ def render_html(trackers):
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
-            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT))).replace("__CMD__", CMD))
+            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD))
     themes, logo, labels, _src, warnings = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
@@ -1191,7 +1191,7 @@ def last_worked_on(path):
         commit, day, subject = (line.split(" ", 2) + [""])[:3]
         if "[sweep]" in subject:
             continue
-        names = subprocess.run(["git", "show", "--name-only", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT))],
+        names = subprocess.run(["git", "show", "--name-only", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT).as_posix())],
                                cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.split()
         if len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
             return day
@@ -1611,17 +1611,17 @@ def run_deriver(trackers, mode="write", flags=()):
         run = subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)], input=ask, capture_output=True, text=True, encoding="utf-8",
                              cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
     except subprocess.TimeoutExpired:
-        return EXIT_LINT, [f"{exe.relative_to(ROOT)} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit and every checkout; make it fast, or make it fail"]
+        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit and every checkout; make it fast, or make it fail"]
     if run.returncode:
-        print(run.stderr.rstrip() or f"{exe.relative_to(ROOT)} exited {run.returncode}", file=sys.stderr)
+        print(run.stderr.rstrip() or f"{exe.relative_to(ROOT).as_posix()} exited {run.returncode}", file=sys.stderr)
         return run.returncode, []
     try:
         said = json.loads(run.stdout or "{}")
     except ValueError as e:
-        return EXIT_LINT, [f"{exe.relative_to(ROOT)}: its output is not JSON — {e}"]
+        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()}: its output is not JSON — {e}"]
     for key, spec in (said.get("_keys") or {}).items():
         if key in FRONT_MATTER:
-            return EXIT_LINT, [f"{exe.relative_to(ROOT)}: `_keys` may add a key, never redefine one — `{key}:` is the core's"]
+            return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()}: `_keys` may add a key, never redefine one — `{key}:` is the core's"]
         FRONT_MATTER[key] = (spec.get("shape") or None, spec.get("required") or False, spec.get("who", "the deriver's owner"), spec.get("says", ""))
     by_id = {t["id"]: t for t in trackers}
     for tid, values in said.items():
@@ -1641,7 +1641,7 @@ def run_deriver(trackers, mode="write", flags=()):
     for rel, text in (said.get("_files") or {}).items():
         path = (ROOT / rel).resolve()
         if ROOT not in path.parents:
-            return EXIT_LINT, [f"{exe.relative_to(ROOT)}: `_files` names {rel} — outside the repository"]
+            return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()}: `_files` names {rel} — outside the repository"]
         DERIVED_FILES[path] = str(text)
     return None, [str(p) for p in said.get("_problems") or []]
 
@@ -1657,7 +1657,7 @@ def pin_problems():
     """A vendored copy carries a PIN — `sha256  path` per file. A copy that was edited in place is refused by the
     gate: fix it upstream and vendor again, so two repositories never run two tools under one name."""
     pin = HERE / "PIN"
-    here = str(HERE.relative_to(ROOT)) if ROOT in HERE.parents else str(HERE)
+    here = str(HERE.relative_to(ROOT).as_posix()) if ROOT in HERE.parents else str(HERE)
     if not pin.exists():
         # the tool sitting INSIDE the repository it tracks, and not at its root, is a vendored copy — and a vendored
         # copy without its PIN has had its integrity check switched off, silently
@@ -1880,8 +1880,8 @@ def install_hook():
         return EXIT_LINT
     hooks = (ROOT / out.stdout.strip()).resolve()
     hooks.mkdir(parents=True, exist_ok=True)
-    fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT), config=CONFIG_NAME,
-                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT) if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
+    fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT).as_posix(), config=CONFIG_NAME,
+                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
     code = EXIT_OK
     for name, text in HOOKS.items():
         path = hooks / name
@@ -1934,8 +1934,8 @@ def init(key=None):
     elif lines:
         put(ignore, have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n")
         wrote.append(ignore)
-    print("\n".join([f"wrote {p.relative_to(ROOT)}" for p in wrote] or ["nothing to write — already initialised"]))
-    print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT)}; "
+    print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
+    print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
           f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate")
     return EXIT_OK
 
@@ -1955,7 +1955,7 @@ def next_up(trackers):
     with its next move and the opening of its *What is true now*; what waits on the Owner is said, not hidden."""
     home, by_id = triage_home(), {t["id"]: t for t in trackers}
     ranked = sorted((t for t in trackers if t.get("rank") and t["status"] in OPEN_STATUSES), key=lambda t: t["rank"])
-    print("THE CURRENT PATH — " + str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT)))
+    print("THE CURRENT PATH — " + str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix()))
     print(strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", home["path"])) or "  none is written — the Owner names it; until then nothing can be ranked")
     if not ranked:
         owed = [t for t in trackers if board(t) == "triage"]
@@ -1988,14 +1988,14 @@ def new_tracker(words, trackers):
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
     put(path, TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
-    print(f"wrote {path.relative_to(ROOT)} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
+    print(f"wrote {path.relative_to(ROOT).as_posix()} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
 
 
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
-        if hasattr(stream, "reconfigure") and (getattr(stream, "encoding", "") or "").lower().replace("-", "") != "utf8":
-            stream.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
+            stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
     args = parse_args(argv)
     if args.tsvn_hook:
         # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
@@ -2041,7 +2041,7 @@ def main(argv=None):
     if args.triage:
         home, path_now = TRACKER_DIR / "TRIAGE.md", triage_home()["path"]
         if not path_now:
-            print(f"--triage: {home.relative_to(ROOT)} names no current path — tiers cannot be judged; the Owner writes it first", file=sys.stderr)
+            print(f"--triage: {home.relative_to(ROOT).as_posix()} names no current path — tiers cannot be judged; the Owner writes it first", file=sys.stderr)
             return EXIT_LINT
         today = datetime.date.today().isoformat()
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
@@ -2053,7 +2053,7 @@ def main(argv=None):
         earlier = out.read_text(encoding="utf-8") if out.exists() else ""
         text, left = triage_worksheet(trackers, today, last_worked_on, earlier, repos_naming())
         put(out, text)
-        print(TRIAGE_RULES.format(path=out.relative_to(ROOT), left=left, home=home.relative_to(ROOT), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
+        print(TRIAGE_RULES.format(path=out.relative_to(ROOT).as_posix(), left=left, home=home.relative_to(ROOT).as_posix(), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
                                   intent=triage_home()["intent"] or "  (none is written — the Owner writes it in the triage home)"))
         print("\n".join([f"Applied {len(applied)}:"] + [f"  {l}" for l in applied] if applied else ["Applied nothing — no new filled rows."]))
         if errors:
@@ -2103,18 +2103,18 @@ def main(argv=None):
         on_disk = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
         drifted = drift_normalize(on_disk) != drift_normalize(body)
         if drifted:
-            print(f"{OUT.relative_to(ROOT)} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
+            print(f"{OUT.relative_to(ROOT).as_posix()} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
         for path, text in sorted(DERIVED_FILES.items()):
             if not path.exists() or path.read_text(encoding="utf-8") != text:
                 drifted = True
-                print(f"{path.relative_to(ROOT)} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
+                print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
         if not drifted:
-            print(f"{OUT.relative_to(ROOT)} is up to date — {len(trackers)} trackers.", file=log)
+            print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
     else:
         put(OUT, body)
         put(HTML_OUT, render_html(trackers))   # git-ignored; never staged
         write_views(trackers)
-        print(f"wrote {OUT.relative_to(ROOT)} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
+        print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
         print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
         for path, text in sorted(DERIVED_FILES.items()):
             path.parent.mkdir(parents=True, exist_ok=True)

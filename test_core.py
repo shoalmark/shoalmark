@@ -18,6 +18,8 @@ from pathlib import Path
 
 # The SUITE reads and writes UTF-8 whatever the machine's locale is (a Windows runner's is cp1252). The TOOL never
 # relies on this: it names its encoding on every read and write — a check below holds it to that.
+for _s in (sys.stdout, sys.stderr):
+    _s.reconfigure(encoding="utf-8", errors="replace")
 _rt, _wt = Path.read_text, Path.write_text
 Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=encoding, errors=errors)
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)

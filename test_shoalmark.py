@@ -18,6 +18,8 @@ from pathlib import Path
 
 # The SUITE reads and writes UTF-8 whatever the machine's locale is (a Windows runner's is cp1252). The TOOL never
 # relies on this: it names its encoding on every read and write — a check below holds it to that.
+for _s in (sys.stdout, sys.stderr):
+    _s.reconfigure(encoding="utf-8", errors="replace")
 _rt, _wt = Path.read_text, Path.write_text
 Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=encoding, errors=errors)
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
@@ -250,10 +252,10 @@ with tempfile.TemporaryDirectory() as d:
     check("a vendored copy carries its licence: both texts, the notice, and the SPDX line in the tool",
           all((dest / f).exists() and f in pin for f in ("LICENSE-APACHE", "LICENSE-MIT", "NOTICE"))
           and "Apache License" in (dest / "LICENSE-APACHE").read_text() and "Apache-2.0 OR MIT" in (dest / "shoalmark.py").read_text().split("\n")[1]
-          and hashlib.sha256((dest / "LICENSE-APACHE").read_bytes()).hexdigest().startswith("cfc7749b96f63bd3"))
+          and fm.digest(dest / "LICENSE-APACHE").startswith("cfc7749b96f63bd3"))
     check("--vendor copies the tool and its one vendored renderer, and pins each by sha256",
           (dest / "shoalmark.py").exists() and (dest / "vendor/marked-18.0.13.umd.js").exists()
-          and hashlib.sha256((dest / "shoalmark.py").read_bytes()).hexdigest() in pin)
+          and fm.digest(dest / "shoalmark.py") in pin)
     tracker(root, "FEAT-001", status="Proposed")
     tool = [sys.executable, str(dest / "shoalmark.py"), "--root", str(root)]
     ok = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
@@ -309,7 +311,7 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stdout(io.StringIO()):
         fm.vendor(dest)
     (dest / "VERSION").write_text("0.2.0\n")
-    (dest / "PIN").write_text("\n".join(f"{hashlib.sha256((dest / l.partition('  ')[2]).read_bytes()).hexdigest()}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines()) + "\n")
+    (dest / "PIN").write_text("\n".join(f"{fm.digest(dest / l.partition('  ')[2])}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines()) + "\n")
     out = io.StringIO()
     with redirect_stdout(out):
         fm.vendor(dest)
@@ -777,7 +779,7 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
-      hashlib.sha256((HERE / "vendor/marked-18.0.13.umd.js").read_bytes()).hexdigest().startswith("b147274a9ce27d17"))
+      fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 print()
