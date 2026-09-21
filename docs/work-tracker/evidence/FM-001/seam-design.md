@@ -1,5 +1,10 @@
 # FM-001 — the extension seam: a design to rule on, no code
 
+> **Ruled and superseded, 2026-09-21.** The Owner asked for *convention over configuration*, which neither candidate
+> below honours; candidate B was reworked into **B′ — a deriver by convention**, proven in
+> [seam-bprime-rd.md](seam-bprime-rd.md) and merged as 0.4.0. This page is kept for the seven needs it reads out of
+> the origin and for the reasons A was not taken.
+
 Principal, 2026-09-21. One consumer exists — the origin's release axis — so the seam is designed against that
 and nothing else. **Two candidates; a recommendation; what each costs. Nothing here is built.**
 

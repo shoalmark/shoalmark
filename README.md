@@ -51,6 +51,25 @@ again to refresh the contract in `AGENTS.md`.
 - **The work type lives on the branch**, where it is cheap and may change: `feat/msr-012-booking`,
   `fix/msr-013-double-count`. The tool finds a tracker's work from branch and commit text.
 
+## One seam, by convention: a deriver
+
+The core knows nothing about releases, deploys, product areas or whatever else a repository tracks beside its
+work. A repository that needs that puts one executable at **`<tracker dir>/derive`** — no setting names it. The core
+runs it first, on every run, with every tracker's id, status, file and front matter as JSON on stdin, and reads JSON
+back:
+
+```json
+{ "MSR-012": { "Ver": "1.2.0", "Live": "live ✓" },
+  "_keys":     { "version": { "shape": "\\d+\\.\\d+\\.\\d+", "says": "the release it shipped in" } },
+  "_problems": [ "MSR-014: version on work that has not shipped" ],
+  "_files":    { "docs/RELEASES.md": "…the whole file…" } }
+```
+
+Each value key becomes a column in `INDEX.md` and on the board — and a view on the board. `_keys` join the schema gate.
+`_problems` fail the commit like the core's own. `_files` are written, drift-checked and staged by the core, so a
+deriver has no side effects. **A non-zero exit refuses the run before anything is written** — a crash included.
+Nothing derived is stored, so nothing derived can be stale. It runs on every run, the post-checkout refresh too: keep it fast.
+
 ## A vendored copy is pinned
 
 `--vendor` writes a `PIN` of sha256 hashes beside the copy. A copy edited in place is refused by its own
@@ -58,8 +77,7 @@ gate: change fathom-mark here, run `--vendor` again. Two repositories never run 
 
 ## What it is not
 
-No release targets, no deploy axis, no product areas — a repository that needs them adds them around the
-core. No sprint, no estimate, no assignee, no comment thread.
+No release targets, no deploy axis, no product areas — a repository that needs them adds them with a deriver. No sprint, no estimate, no assignee, no comment thread.
 
 ## Develop
 

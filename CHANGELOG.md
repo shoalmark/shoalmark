@@ -2,6 +2,18 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.4.0 — 2026-09-21
+
+- **One seam, by convention — a deriver.** If `<tracker dir>/derive` exists and is executable, the core runs it first,
+  on every run: every tracker's id, status, file and front matter go in as JSON on stdin; JSON comes back on stdout.
+  `{"<ID>": {"Column": "value"}}` adds columns to `INDEX.md` and the board, and each is also a view on the board ·
+  `_keys` adds front-matter keys to the schema gate (never redefines one) · `_problems` are counted with the core's ·
+  `_files: {path: text}` are other generated files — the deriver has no side effects; the core writes them, lists them
+  under `--print-written` and counts them as drift under `--check`. A non-zero exit — a crash included — **refuses the
+  run before anything is written**. Nothing derived is stored, so nothing derived can be stale. No setting.
+- **A repository without a deriver pays nothing**: same `INDEX.md`, byte for byte.
+- Proven before it was merged, against a 501-tracker corpus: `docs/work-tracker/evidence/FM-001/seam-bprime-rd.md`.
+
 ## 0.3.0 — 2026-09-21
 
 - **Runs on Python 3.9** — the Python that ships with macOS. The configuration is read without `tomllib`; the

@@ -24,10 +24,12 @@ ported. This tracker is that cost, written down.
 
 ## What it needs
 
-- **The seam has a design to rule on — [two candidates, a recommendation](evidence/FM-001/seam-design.md), no code.**
-- An **extension seam** in the core, which has none today: extra front-matter keys with their shapes, extra
-  lints, extra INDEX columns and page fields, contributed by a module the configuration names. The origin's
-  release axis (`target:` / `version:` / `Live` / product areas) becomes that module, living in the origin.
+- **The seam exists since 0.4.0 — a deriver by convention** (`<tracker dir>/derive`), proven before it was merged against
+  the origin's 501 trackers: 0 differing cells, its six refusals intact, its release view identical in a browser bar the
+  header words, its 19 roster files byte-identical — [the R&D record](evidence/FM-001/seam-bprime-rd.md), with the
+  [deriver the spike ran](evidence/FM-001/spike/origin-release-axis.derive.py) (128 lines). **Left for the port itself:**
+  the *work packages* roll-up (it leaves `INDEX.md` for a generated file), two header notes, and the
+  `--allow-missing-submodules` override, which a deriver can only take from the environment.
 - **The project-key ids go back with it — ruled by the Owner on 2026-09-21, parked the same hour (*"mark this
   for later"*), nothing built:** the origin's existing trackers keep their ids forever (the rule that motivates
   the change forbids renaming them); new filings carry the key **`PD`**, the counter starts at **400** — above
@@ -48,5 +50,6 @@ core is made in one place.
 
 | Date | Event |
 |---|---|
+| 2026-09-21 | **0.4.0 — the seam, merged on the Owner's ruling after R&D.** What is left of this tracker is the port itself. |
 | 2026-09-21 | **The debt's first instalment, the same day:** 0.2.1 fixed six things found on a second repository. Three of them are in the origin's copy too and are now owed there — a hook's quotation marks in the INDEX row, a tracker's own id linking to itself in the viewer, `--related` reading only a–z. |
 | 2026-09-21 | Filed with the first commit. |

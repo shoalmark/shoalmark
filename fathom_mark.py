@@ -13,6 +13,9 @@ Markdown trackers with a small front matter, and one command that reads them all
     fathom_mark.py --init          scaffold the tracker directory, TRIAGE.md and fathom-mark.toml
     fathom_mark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
+One seam, by convention: if `<tracker dir>/derive` exists and is executable it runs first, on every run — it may add
+columns (each also a view on the board), front-matter keys, problems and other generated files, or refuse the run.
+
 The INDEX is a *pointer*, not a copy: each row is a terse hook and a machine-read status; the detail
 lives in the tracker. `status` is the code lifecycle — `Shipped` means merged, not deployed.
 
@@ -34,7 +37,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "fathom-mark.toml"
