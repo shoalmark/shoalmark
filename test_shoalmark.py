@@ -269,12 +269,12 @@ with tempfile.TemporaryDirectory() as d:
     home = root / "docs/work-tracker/TRIAGE.md"
     code, out, _ = run(root, "--next")
     check("--next says so when no path is written and nothing is ranked", code == 0 and "none is written" in out and "Nothing is ranked" in out)
-    home.write_text(home.read_text().replace("1.\n", "1. MSR-002 first.\n"))
+    home.write_text(home.read_text().replace("1.\n", "1. [MSR-002](MSR-002-x.md) first.\n"))
     fm.configure(root)
     tracker(root, "MSR-001", extra="rank: 1\ntier: P1\nnext: owner\n"); tracker(root, "MSR-002", extra="rank: 2\ntier: P1\nnext: build\n")
     code, out, _ = run(root, "--next")
     check("--next lists the ranked work in order with each move and what is true now, and starts a seat on the first move that is its own",
-          code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out)
+          code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out and "](" not in out)
     code, out, _ = run(root, "--install-hook")
     hook = root / ".git/hooks/pre-commit"
     check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",

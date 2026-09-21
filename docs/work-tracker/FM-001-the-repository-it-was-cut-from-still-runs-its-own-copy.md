@@ -33,7 +33,10 @@ ported. This tracker is that cost, written down.
 - **The project-key ids go back with it — ruled by the Owner on 2026-09-21, parked the same hour (*"mark this
   for later"*), nothing built:** the origin's existing trackers keep their ids forever (the rule that motivates
   the change forbids renaming them); new filings carry the key **`PD`**, the counter starts at **400** — above
-  every existing number, so a bare spoken number stays unambiguous; its gate refuses a new id under the old
+  every existing number, so a bare spoken number stays unambiguous. **A hazard that arrives with it (Owner, 2026-09-21):**
+  there the branch type doubles as the id prefix — `feat/180-slug` is read as FEAT-180 — so once `PD` ids exist a habitual
+  `feat/400-slug` is read as *FEAT-400*, the wrong tracker, silently. The switch needs the convention `feat/pd-400-slug`
+  and a check that refuses a branch carrying a bare number where a keyed id is owed; its gate refuses a new id under the old
   prefixes from the first unfiled number on. Touches its generator's kinds and page patterns, one docs-lint
   pattern, and four pages of its agent contract that spell the old convention — under a line ceiling with
   eight lines of headroom.

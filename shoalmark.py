@@ -1616,7 +1616,7 @@ def next_up(trackers):
     home, by_id = triage_home(), {t["id"]: t for t in trackers}
     ranked = sorted((t for t in trackers if t.get("rank") and t["status"] in OPEN_STATUSES), key=lambda t: t["rank"])
     print("THE CURRENT PATH — " + str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT)))
-    print(strip_md(home["path"]) or "  none is written — the Owner names it; until then nothing can be ranked")
+    print(strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", home["path"])) or "  none is written — the Owner names it; until then nothing can be ranked")
     if not ranked:
         owed = [t for t in trackers if board(t) == "triage"]
         print(f"\nNothing is ranked. {len(owed)} tracker(s) wait for a triage pass — `{CMD} --triage`." if owed else "\nNothing is ranked, and nothing waits for a pass.")
