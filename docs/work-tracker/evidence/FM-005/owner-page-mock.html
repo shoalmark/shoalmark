@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Owner page — mock</title>
+<style>
+/* A MOCK, not the tool. Epicentre: "the Owner comes here to unblock, and to stop." Two accents only:
+   coral = needs you and is risky · teal = on course. Everything else is grey. */
+:root{--bg:#f7f7f5;--ink:#161616;--dim:#565656;--mute:#8a8a8a;--line:rgba(0,0,0,.12);--coral:#b3402f;--teal:#1a7f5a}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e0e;--ink:#efefef;--dim:#ababab;--mute:#7d7d7d;--line:rgba(255,255,255,.14);--coral:#ff7b66;--teal:#4fd1a1}}
+*{box-sizing:border-box}html{background:var(--bg);color-scheme:light dark}
+body{margin:0 auto;max-width:860px;padding:28px 16px 60px;color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+.m{font-family:ui-monospace,Menlo,monospace}
+h1{font-size:15px;font-weight:600;margin:0 0 22px;display:flex;gap:10px;align-items:baseline}h1 span{color:var(--mute);font-weight:400;font-size:13px}
+h1 button{margin-left:auto}
+button{font:12px ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--line);color:var(--dim);padding:6px 10px;cursor:pointer}
+button.go{border-color:var(--ink);color:var(--ink)}
+/* the answer, first */
+#answer{font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-.01em;margin:0}
+#answer b{color:var(--coral);font-weight:600}
+#sub{color:var(--dim);margin:6px 0 26px}
+h2{font:11px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:400;margin:30px 0 8px}
+.ask{border-top:1px solid var(--line);padding:14px 0}
+.ask .q{font-size:17px;font-weight:500}
+.ask .meta{color:var(--dim);font-size:13px;margin:4px 0 10px}
+.ask .meta i{font-style:normal;color:var(--coral)}
+.ask .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ask .def{color:var(--dim);font-size:13px;flex:1 1 260px}
+.man{border-top:1px solid var(--line);padding:10px 0;display:grid;grid-template-columns:1fr auto;gap:2px 16px}
+.man .v{font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.man .v.ok{color:var(--teal)}
+.man small,.ran small{color:var(--dim);font-size:13px}
+.ran{border-top:1px solid var(--line);padding:9px 0;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.ran .m{color:var(--mute);font-size:12px;min-width:64px}
+.ran a,.ask a{color:inherit}
+/* a phone shows the answer and what needs you — nothing else */
+@media(max-width:520px){#answer{font-size:24px}.rest{display:none}.phone{display:block}}
+.phone{display:none;margin-top:26px;color:var(--dim);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+details{margin-top:34px;border-top:1px solid var(--line);padding-top:10px;color:var(--dim)}summary{cursor:pointer;font:11px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+</style>
+<h1>Werkstattverwaltung <span>for the Owner</span><button title="revokes every live mandate; everything under them pauses">stop all</button></h1>
+
+<p id="answer"><b>2 need you</b> · oldest 3 days · blocking 3 packages</p>
+<p id="sub">Everything else is running inside what you signed. You spent 11 minutes here this week; your budget is 30.</p>
+
+<div class="ask">
+  <div class="q">Export for the accountant: DATEV format, or a plain CSV?</div>
+  <div class="meta"><i>irreversible once the accountant has imported a file</i> · asked 3 days ago by AP-022 · blocks AP-022, AP-037, AP-041</div>
+  <div class="row"><span class="def">The agents propose <b>CSV now, DATEV as its own package</b> — it keeps AP-037 moving. <b>What cannot be undone:</b> files the accountant has already imported stay in the format you pick.</span></div>
+  <div class="row" style="margin-top:8px"><button>CSV now</button><button>DATEV</button><button>answer in words</button><span class="def" style="min-width:0">no one-click default: this one is yours</span></div>
+</div>
+<div class="ask">
+  <div class="q">May an invoice's service period run across the end of a month?</div>
+  <div class="meta">reversible · asked 2 days ago by AP-021 · <span>the agents proceed with <b>yes</b> tomorrow 09:00 unless you say otherwise</span></div>
+  <div class="row"><span class="def">Proposed <b>yes</b> — two of your existing customers are billed that way.</span>
+  <button class="go">yes</button><button>no</button><button>answer in words</button></div>
+</div>
+
+<div class="rest">
+<h2>Mandates</h2>
+<div class="man"><div>Finish the invoicing block <small>· AP-021 … AP-025 · no secrets, no production data, nothing outward</small></div><div class="v ok">on course</div>
+  <small>3 of 5 shipped · 6 of 10 days used · expires 2 Oct · signed by you 18 Sep, in 4 min for one page</small><div></div></div>
+<div class="man"><div>Keep the docs and the tracker true <small>· docs/ only</small></div><div class="v ok">on course</div>
+  <small>renewal due in 5 days — 14 defaults taken, 1 reverted, 0 escaped</small><div></div></div>
+
+<h2>Ran without you</h2>
+<div class="ran"><span class="m">default</span><span>AP-023 · credit notes cancel partial invoices line by line, not in one sum</span><small>allowed by your line “when in doubt, keep every booking traceable” · revertible until Fri · <a href="#">revert</a></small></div>
+<div class="ran"><span class="m">shipped</span><span>AP-020 · stock-take totals are right for partial quantities</span><small>4 checks green · reviewed by a second seat · left nothing behind</small></div>
+<div class="ran"><span class="m">refused</span><span>an agent reached for <span class="m" style="min-width:0">.env</span> while working on AP-021 — outside what the mandate may touch; nothing was read</span><small>1 this week · <a href="#">see all</a></small></div>
+<div class="ran"><span class="m">sample</span><span>AP-019 is this week's read — the riskiest change: it touched the import of customer data</span><small>about 9 minutes · <a href="#">open</a></small></div>
+
+<details><summary>all work — the agents' page</summary><p>The full board lives here, collapsed: 60 packages, 22 shipped, 3 in progress, 1 blocked.</p></details>
+</div>
+<p class="phone">2 mandates on course · 1 default taken, revertible until Fri · 1 refusal · <a href="#" style="color:inherit">everything else</a></p>
+</html>
