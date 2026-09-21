@@ -281,7 +281,7 @@ check("the page owns its whole ground and declares its colour scheme (V6.4: one 
       '<meta name="color-scheme" content="light dark">' in _html and "html{min-height:100%;background:var(--bg);color-scheme:light dark}" in _html)
 import hashlib
 check("the vendored renderer is the pinned file — marked 18.0.13, sha256 b147274a…3556 — and nothing else is vendored",
-      hashlib.sha256(gti.MARKED.read_bytes()).hexdigest() == "b147274a9ce27d17276587167e49483d719f6893eeca3a3667a59797661d3556"
+      gti.digest(gti.MARKED) == "b147274a9ce27d17276587167e49483d719f6893eeca3a3667a59797661d3556"
       and sorted(f.name for f in gti.MARKED.parent.iterdir()) == ["marked-18.0.13.umd.js"])
 check("the viewer is read-only and stays in the page: a row id and a bare id open `#=ID`, embedded HTML is escaped, data comes by script tag",
       '<a href="#=${t[0]}">${t[0]}</a>' in _html and 'renderer:{html:k=>esc(' in _html and 's.src="view/"+id+".js"' in _html
