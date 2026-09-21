@@ -2,6 +2,13 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.10.0 — 2026-09-21
+
+- **The board has a light / dark button**, in the header: `◐ auto` → `light` → `dark`. It switches every theme's
+  `@media (prefers-color-scheme: …)` rule on or off by hand, so **a brand needs no change** — provided its dark colours
+  sit under that rule, as the starter's do. The choice is kept in the viewer's browser (the board still works where
+  storage is refused); printing is always light. Three new labels: `scheme.auto`, `scheme.light`, `scheme.dark`.
+
 ## 0.9.0 — 2026-09-21
 
 - **A repository's brand has a folder of its own: `<tracker dir>/brand/`** — the same name the organisation's place

@@ -6,6 +6,9 @@ view.board: Tafel
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
+scheme.auto: automatisch
+scheme.light: hell
+scheme.dark: dunkel
 col.id: Id
 col.tier: Stufe
 col.status: Status

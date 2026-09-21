@@ -202,6 +202,10 @@ The name is `name` in `shoalmark.toml`; `tagline` and `footer` are labels. `--br
 board its theme, logo and labels; `--brand DIR` writes a commented starter there. A theme that is hard to read gets
 a warning, never a failure. The four status colours keep their meaning whatever their shade.
 
+**Light and dark:** write the dark colours under `@media (prefers-color-scheme:dark)`, as the starter does. The board's
+`◐` button (auto → light → dark) switches that rule by hand for any theme and remembers the choice in the viewer's
+browser — nothing in the repository changes, and paper stays light.
+
 ## 8. Working on shoalmark
 
 ```bash

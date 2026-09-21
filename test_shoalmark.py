@@ -483,6 +483,9 @@ view.board: Tafel
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
+scheme.auto: automatisch
+scheme.light: hell
+scheme.dark: dunkel
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -608,6 +611,15 @@ with tempfile.TemporaryDirectory() as d:
             _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
             ldom = dom("")
             check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
+            # the scheme button: clicked for real, three times round — whatever the machine's own setting is
+            (wt / "brand/theme.css").write_text(":root{--bg:#010203}\n@media screen and (prefers-color-scheme:dark){:root{--bg:#040506}}\n", encoding="utf-8"); run(root)
+            probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
+            (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{wt}/probe.html"], capture_output=True, text=True, timeout=60).stdout
+            seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
+            check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
+                  "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
+            (wt / "probe.html").unlink(); (wt / "brand/theme.css").unlink()
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
