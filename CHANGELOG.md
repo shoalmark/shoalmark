@@ -2,6 +2,21 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.12.0 — 2026-09-21
+
+- **Runs on Windows, and with Subversion — proven in CI** on Windows, Linux and macOS (Python 3.9 and 3.12), both
+  suites, Subversion installed on each, the board rendered in a browser on each.
+- **Subversion:** the root is found by `.svn` too; a pass's *last worked on* comes from one `svn log`; `--init` sets
+  `svn:ignore` for the board (no `.gitignore`) and writes a contract that says the true thing — **run the tool before
+  `svn commit`**: Subversion's command line has no client-side hook. `--install-hook` sets `tsvn:startcommithook`
+  and `tsvn:precommithook`, so **TortoiseSVN** writes `INDEX.md` before its commit dialog lists the files and
+  refuses a violation (it asks the user once). For a gate nobody can skip: `--check` from the server's pre-commit hook.
+- **Windows:** messages, hooks and the contract say `python`, not `python3`; a cp1252 console no longer crashes a
+  run; every written file is UTF-8 with `\n` on every system; `--print-written` prints `\n` and forward slashes (a
+  git hook on Windows fed `git add` a name ending in a carriage return); a deriver is run by this interpreter.
+- **A PIN survives line-end conversion** (git's `autocrlf`, `svn:eol-style`): hashes are taken over `\n` text.
+  Vendor again to get a PIN made this way.
+
 ## 0.11.0 — 2026-09-21
 
 - **A repository that is not in English: `[headings]` in `shoalmark.toml`** names the seven sections the tool reads

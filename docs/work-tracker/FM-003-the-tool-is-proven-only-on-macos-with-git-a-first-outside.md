@@ -1,9 +1,8 @@
 ---
 id: FM-003
-status: In Progress
+status: Shipped
 considered: FM-001, FM-002
 tags: process
-next: build
 hook: "Every proof so far is macOS, git, one Owner. The first outside user works on Windows, with Subversion and TortoiseSVN, in German — and his agents will be asked whether the tool is worth adopting. Nothing of that has been run."
 ---
 
@@ -11,7 +10,14 @@ hook: "Every proof so far is macOS, git, one Owner. The first outside user works
 
 ## What is true now
 
-**Opened 2026-09-21; pre-registered below, nothing built.** Held against FM-001 (the port: git only) and FM-002
+**Shipped 2026-09-21 as 0.12.0 — all six claims held, in CI, on the seventh run.** Windows (3.9, 3.12), Linux
+(3.9, 3.12) and macOS are green on both suites with Subversion installed and the board rendered in a browser on each.
+**Not proven, and only a person on Windows can:** that TortoiseSVN runs the two properties, shows its approval dialog
+and keeps the commit dialog open on a refusal; the four-line property value is from memory of its source. What the
+runs found that nobody named: a git hook on Windows fed `git add` a name ending in `\r`; an absolute tool path lost
+its backslashes inside `sh`; a PIN refused a copy whose line ends a checkout had converted; written files would have
+been `\r\n` on Windows. My own error on the way: a commit chained with `;` went out over a local syntax error — the
+chain is `&&` now. Forecast was 0.3 for all six; W1 took six runs, as feared. Originally: Held against FM-001 (the port: git only) and FM-002
 (branding: macOS only). What git is used for, measured: the root marker (after `shoalmark.toml`), `git log` for a
 pass's *last worked on*, submodule facts, `--install-hook`, `.gitignore` lines in `--init`. What is Unix-only,
 measured: messages and hooks name `python3`; output carries `—` `→` `◐`, which a cp1252 console cannot encode; a
@@ -40,3 +46,4 @@ dialog and keeps the commit dialog open on a refusal needs a person on Windows. 
 | Date | Event |
 |---|---|
 | 2026-09-21 | Filed; claims and forecast written before any code. |
+| 2026-09-21 | Shipped as 0.12.0 — CI green on three systems, run 7. |

@@ -136,6 +136,7 @@ What lives where, by convention — no setting names any of it:
 | Path | What |
 |---|---|
 | `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[headings]` the seven section names the tool reads and writes (`state` `why` `done` `log` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
+| git · Subversion · Windows | `--install-hook` wires what the system has: git hooks, or on Subversion the TortoiseSVN hook properties and `svn:ignore`. **`svn commit` on the command line runs no hook — run the tool first.** On Windows the command is `python`. CI proves all three systems |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
