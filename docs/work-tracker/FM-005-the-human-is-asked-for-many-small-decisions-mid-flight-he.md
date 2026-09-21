@@ -24,6 +24,16 @@ looked at, desktop and a true 390 px — is [`owner-page-mock.html`](evidence/FM
 it found two defects before anyone else did: a one-click default on an *irreversible* ask, and a phone view that showed
 everything.
 
+**P0a is prepared in the origin (2026-09-21, the Owner's go-ahead):** its `FEAT-190` on branch
+`feat/190-the-owners-queue-shadow-week` — the ask ledger of the six real items, classed, and a one-page shadow mandate
+whose three intent lines are empty and whose pre-mortem is owed by an independent seat. Reading the real queue changed
+the design (§3.7): four kinds of waiting, of which a default helps one and a half of six.
+
+**What "complete and verify" can mean, said plainly:** complete today — the exploration, the mock, the claims, the
+first mandate and ledger, each through its gates. **Not completable in a session:** claims M1–M8 need the Owner's
+shadow week and then two weeks of trial; they are verified by his calendar, not by my effort. Nothing here is marked
+done before that.
+
 **Next is the Owner's:** rule whether phase P0a — the shadow week, in the origin, on one narrow arc, no code — starts;
 and whether the origin's rule *the Owner opens the pull requests* may be lifted for a mandate once trust is earned.
 Until he rules, that rule stands.
@@ -38,3 +48,4 @@ from that record whether mandates go live.
 | Date | Event |
 |---|---|
 | 2026-09-21 | Filed; the exploration, the mock and the claims written before any code. |
+| 2026-09-21 | P0a prepared in the origin (its FEAT-190); the real queue read — four kinds of waiting (§3.7). |

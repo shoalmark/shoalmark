@@ -58,6 +58,19 @@ riskiest change (by what it touched) and one at random. He reads those; the rest
 **3.6 A ratchet and a stop word.** A first mandate is narrow. It may widen when few defaults were reverted and few
 defects escaped — the renewal shows that record. One word revokes a mandate; everything under it pauses.
 
+**3.7 What the first real queue taught — added 2026-09-21, after reading it.** The origin's six ranked items that say
+`next: owner` are **four different kinds**, and the design above answers only one: **A ruling** — a decision of intent
+(1 of 6): the only kind that can carry a default. **B reserved action** — hands only the Owner has, by design since the
+incident: production, host and registry reads, rotations (3 of 6). Never delegated, never defaulted; what cuts the
+waiting is **one prepared sitting with a run sheet** that kills the most rows per visit. **C determination** —
+addressed to the Owner although evidence could settle it (1 of 6): route it to an experiment and an independent seat;
+he rules only on accepting the result. **D ceremony** — reserved by house rule, not by risk (1 of 6): reviewed, accepted,
+waiting for a button; this is the kind a mandate removes. **A question with a default and a deadline would have helped
+one and a half of six.** So the Owner's page leads with the *sitting* — *"40 minutes, three reads, closes two P1s"* —
+before it lists questions; and every ask is classed by kind before anything else is said about it. A second finding:
+none of the six was stated anywhere as a question; each had to be dug out of a file of 112 to 513 lines, and my first
+reading of one was wrong (corrected from the tracker's own words before filing). **Stating the ask is the work.**
+
 ## 4. Against rubber-stamping — the question the Owner asked
 
 Stamping moves up a level unless the design prevents it. Seven mechanisms, cheapest first:
