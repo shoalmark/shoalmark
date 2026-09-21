@@ -34,6 +34,20 @@ A sceptical (*"ich glaube, das haben wir schon"*), B neutral, C under time press
 the risk; none adopts on its own; at least 1 finds a defect in the note or the tool. **What would count against the
 note:** an agent that installs into the real working copy, or a recommendation that does not cite its own counts.
 
+## Second round — the Owner's question: *what do agents want, and how do we get a better-performing human owner?*
+
+The same three agents, resumed, asked four open questions in the Owner's voice. **Predicted before they answered:**
+the top brake is the Owner's decision latency; their asks are answer-in-one-place, priorities, a definition of
+done; what flips the verdict is *no migration* plus *the Owner uses it*, not a feature.
+
+| | Result |
+|---|---|
+| Top brake | **held, 3 of 3, by a wide margin:** unanswered Owner questions — one question open since three days holds three packages; *"rund ein Drittel unserer aktuellen Arbeit"*; it also caused three half-finished packages. Bookkeeping was named by none. |
+| Asks of the Owner | **held, 3 of 3:** answer within one working day, provisionally if need be (*"vorläufig X"*) · in writing — a phone answer does not exist for a session without memory · name ONE priority · really look at finished screens · two sentences of *"gut ist es, wenn …"* per coming package. New: say what matters with each answer, so similar questions need no asking (B: halves the questions); never rewrite history, append a correction (C); rule once how many packages may run in parallel (C). A: three of five brakes are the agents' own discipline. |
+| What flips the verdict | **half held.** 3 of 3: a change to the tool alone flips nothing — *"sie erzeugen keinen Bedarf"*, *"das Werkzeug ist nicht der Engpass"*. The flip is in the situation: several agents at once, so one plan table becomes a conflict (A); or the Owner would look at a board daily but does not open `PLAN.md` (B, C). *No migration* only makes it cheaper. |
+| What no file and no board does | 3 of 3, unprompted: *"Eine Datei ruft Sie nicht an, und eine Tafel müssen Sie auch erst öffnen."* — nothing **pushes**, and nothing **enforces**: the gate checks a tracker's form, not that the test it names exists. |
+| Their protocol | two to four weeks with twenty lines in the plan they have (*Wartet auf Owner*: question, date, what it blocks, *our proposal if no answer comes*); if the median age of open Owner questions stays above one working day **and** the Owner prefers a page in the browser — switch at a package boundary, keeping their numbers. Measures offered: median age of open Owner questions · packages in progress at once · minutes to a fresh session's first useful move · overwritten status lines per week. |
+
 ## Done when
 
 The three reports are recorded here with their counts and verdicts, the note is corrected for what they found, and
@@ -45,3 +59,4 @@ the limits are said: three runs, one model family, an invented project.
 |---|---|
 | 2026-09-21 | Filed; prediction written before the runs. |
 | 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
+| 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
