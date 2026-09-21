@@ -1,9 +1,0 @@
-# In shoalmark.toml einfügen — VOR dem ersten `--new`. Die Abschnittsnamen, die das Werkzeug liest und schreibt.
-[headings]
-state = "Was jetzt gilt"
-why = "Warum"
-done = "Fertig, wenn"
-log = "Verlauf"
-intent = "Die Absicht"
-path = "Der aktuelle Weg"
-passes = "Durchgänge"

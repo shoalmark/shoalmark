@@ -1,0 +1,23 @@
+# shoalmark auf Deutsch — diese Datei VOR `--init` ins Projektverzeichnis legen und Name und Schlüssel anpassen.
+# Die Schlüssel selbst bleiben englisch: sie liest das Werkzeug.
+name = "Mein Projekt"
+tracker_dir = "docs/work-tracker"
+triage_days = 7
+
+[kinds]              # Id-Präfix = Abschnitt in INDEX.md. Ein Id-Raum je Projekt: AP-037 bleibt AP-037
+AP = "Arbeitspakete"
+
+[headings]           # die Abschnittsnamen, die das Werkzeug liest und schreibt
+state = "Was jetzt gilt"
+why = "Warum"
+done = "Fertig, wenn"
+log = "Verlauf"
+intent = "Die Absicht"
+path = "Der aktuelle Weg"
+passes = "Durchgänge"
+
+[tags]               # ein geschlossenes Vokabular; die Namen tippt ein Agent
+bug = "etwas, das funktioniert hat oder funktionieren sollte, und es nicht tut"
+research = "klärt eine Frage; verpflichtet zu keinem Bau"
+security = "Zugangsdaten, Offenlegung, Zugriff — eine Behebung oder ein Befund"
+process = "wie gearbeitet wird: Regeln, Gates, Werkzeug, der Tracker selbst"

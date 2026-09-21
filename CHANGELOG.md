@@ -2,6 +2,18 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.12.1 — 2026-09-21
+
+What three outside agents hit in their first twenty minutes (FM-004):
+
+- **`--next` answers before any pass has run:** open work, work in progress first, whose move each is, and what
+  waits for the Owner. A pass adds the order; it is no longer the price of being told anything.
+- **`--new KEY-037 "title"` takes a free id of your choosing** — a project that already numbers its work keeps its numbers.
+- **`<tracker dir>/TEMPLATE.md`, if there is one, is the template** — a repository's language and sections.
+- The contract names the repository's own `[headings] state`; `--init` writes no `.gitignore` outside git;
+  `--new` files one tracker and its help says so.
+- `examples/de/`: a complete German start — `shoalmark.toml`, `TEMPLATE.md`, `TRIAGE.md`, `labels.yaml`, and a picture of the board.
+
 ## 0.12.0 — 2026-09-21
 
 - **Runs on Windows, and with Subversion — proven in CI** on Windows, Linux and macOS (Python 3.9 and 3.12), both

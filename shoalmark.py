@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.12.0"
+__version__ = "0.12.1"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -1548,8 +1548,9 @@ def parse_args(argv):
     add("--print-written", action="store_true",
         help="write mode: print every file written, one repo-relative path per line on stdout, so a hook stages exactly that")
     add("--related", metavar="ID_OR_WORDS", help="before filing: the existing trackers closest to a tracker id or a quoted phrase. Read-only")
-    add("--new", nargs="+", metavar="[KEY] TITLE",
-        help="file a tracker: prints what is related, writes the next free id with a front matter whose `considered:` is yours to fill; "
+    add("--new", nargs="+", metavar="WORD",
+        help="file ONE tracker — `--new \"the title\"`, `--new KEY \"the title\"`, or `--new KEY-037 \"the title\"` to take a free id of your choosing: "
+             "prints what is related, writes the id with a front matter whose `considered:` is yours to fill; `<tracker dir>/TEMPLATE.md`, if there is one, is the template; "
              "the id prefix is needed only where the configuration names several")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
@@ -1742,7 +1743,7 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
 **Start here:** `{cmd} --next` says what to work on and what is true now.
 
 1. **The tracker is canonical.** The spec, the state and the record of a piece of work live in its tracker —
-   never in a side plan, a chat or a TODO comment. Its *What is true now* section is rewritten in place when
+   never in a side plan, a chat or a TODO comment. Its *{state}* section is rewritten in place when
    the truth changes; only the ship log is append-only.
 2. **Look before you file.** `{cmd} --new "what is wrong, in a sentence"` prints the closest trackers first.
    The default is a slice of one that exists. A new tracker names what it was held against in `considered:` —
@@ -1751,7 +1752,7 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
    a story is a field (`epic: {key}-003`). Branches carry the id: `feat/{lkey}-012-slug`, `fix/{lkey}-013-slug`.
 4. **The seat judges, the command applies.** `triaged:` `tier:` `rank:` and a park are written by
    `{cmd} --triage` from the worksheet you fill — never by hand. `{cmd} --schema` lists every key and who writes it.
-5. **When you stop, leave the fix for the next session:** what is left, in *What is true now*; the next move, in
+5. **When you stop, leave the fix for the next session:** what is left, in *{state}*; the next move, in
    `next:` — review · run · wait · owner · script · build. The next session starts cold.
 6. **Close out by asking what this made obsolete — and delete it in the same change.** Done means finished
    *and simpler afterwards*, not wider. A defect found on the way gets one line in the tracker, or its own
@@ -1910,7 +1911,7 @@ def init(key=None):
             wrote.append(path)
     if fresh_config:
         configure(ROOT)
-    section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
+    section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), state=HEAD["state"], cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
     agents = ROOT / "AGENTS.md"
     have = agents.read_text(encoding="utf-8") if agents.exists() else ""
     if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
@@ -1931,7 +1932,7 @@ def init(key=None):
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
     if vcs() == "svn":                                      # Subversion ignores by property, not by file
         svn_ignore_board()
-    elif lines:
+    elif lines and (vcs() == "git" or ignore.exists()):     # no version control here (yet): nothing to ignore for
         put(ignore, have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n")
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
@@ -1958,8 +1959,21 @@ def next_up(trackers):
     print("THE CURRENT PATH — " + str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix()))
     print(strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", home["path"])) or "  none is written — the Owner names it; until then nothing can be ranked")
     if not ranked:
+        # no pass has run yet — a cold session still gets an answer: what is open, whose move each is, and what is
+        # true now. A pass ADDS the order; it is not the price of being told anything.
         owed = [t for t in trackers if board(t) == "triage"]
         print(f"\nNothing is ranked. {len(owed)} tracker(s) wait for a triage pass — `{CMD} --triage`." if owed else "\nNothing is ranked, and nothing waits for a pass.")
+        live = sorted((t for t in trackers if t["status"] in OPEN_STATUSES and t["status"] != "Parked"), key=lambda t: (t["status"] != "In Progress", t["id"]))
+        if live:
+            print("\nOPEN, UNRANKED — work in progress first:")
+        for t in live[:15]:
+            needs = ", ".join(needs_of(t, by_id))
+            print(f"\n{t['id']} · {t['status']} · next: {t.get('next') or '—'}" + (f" · blocked by {', '.join(t['blocked_now'])}" if t.get("blocked_now") else "")
+                  + (f" · needs {needs}" if needs else "") + f"\n   {t['title']} — {t['file']}\n   {t.get('state') or '(no *' + HEAD['state'] + '* — open the tracker, and leave one when you stop)'}")
+        if len(live) > 15:
+            print(f"\n… and {len(live) - 15} more — {OUT.relative_to(ROOT).as_posix()} lists them all.")
+        waits = [t["id"] for t in live if t.get("next") == "owner"]
+        print("\nWAITING FOR THE OWNER: " + (", ".join(waits) if waits else "nothing"))
         return EXIT_OK
     mine = [t for t in ranked if t.get("next") not in ("owner", "wait")]
     for t in ranked:
@@ -1970,7 +1984,13 @@ def next_up(trackers):
     return EXIT_OK
 
 
+WANTED_NUM = None
+
+
 def new_tracker(words, trackers):
+    global WANTED_NUM
+    m = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)-(\d+)", words[0]) if len(words) > 1 else None
+    WANTED_NUM, words = (int(m.group(2)), [m.group(1), *words[1:]]) if m and m.group(1).upper() in KINDS else (None, words)
     kind, title = (words[0].upper(), " ".join(words[1:])) if len(words) > 1 and words[0].upper() in KINDS else (KINDS[0] if len(KINDS) == 1 else "", " ".join(words))
     if not kind and len(words) > 1:
         kind, title = words[0].upper(), " ".join(words[1:])
@@ -1982,12 +2002,20 @@ def new_tracker(words, trackers):
           else "Nothing related is filed yet.")
     for score, t in near:
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
+    # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
+    if WANTED_NUM is not None:
+        if any(t["kind"] == kind and t["num"] == WANTED_NUM for t in trackers):
+            print(f"--new: {kind}-{WANTED_NUM:03d} exists — an id is never reused", file=sys.stderr)
+            return EXIT_LINT
+        num = WANTED_NUM
     tid = f"{kind}-{num:03d}"
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    put(path, TRACKER_TEMPLATE.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
+    house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
+    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
+    put(path, template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
     print(f"wrote {path.relative_to(ROOT).as_posix()} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
 

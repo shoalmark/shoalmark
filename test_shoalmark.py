@@ -711,6 +711,26 @@ with tempfile.TemporaryDirectory() as tmp:
     check("`[headings]` — a mistyped key is refused, naming the seven", refused)
 fm.configure(HERE)
 
+# --- FM-004: what three outside agents found on their first twenty minutes --------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Arbeit"\n[headings]\nstate = "Was jetzt gilt"\n', encoding="utf-8")
+    code, out, _ = run(root, "--init")
+    check("outside version control --init writes no .gitignore — and the contract names the repository's own heading, not the English one",
+          not (root / ".gitignore").exists() and "*Was jetzt gilt*" in (root / "AGENTS.md").read_text() and "What is true now" not in (root / "AGENTS.md").read_text())
+    code, _, _ = run(root, "--new", "AP-037", "Rechnung Teil 2"); taken = run(root, "--new", "ap-037", "noch einmal")
+    run(root, "--new", "der nächste")
+    names = sorted(p_.name[:6] for p_ in (root / "docs/work-tracker").glob("AP-*.md"))
+    check("`--new KEY-037 title` takes a free id of the repository's choosing, refuses one that exists, and counting goes on after it", code == 0 and names == ["AP-037", "AP-038"] and taken[0] == fm.EXIT_LINT and "never reused" in taken[2])
+    (root / "docs/work-tracker/TEMPLATE.md").write_text('---\nid: {id}\nstatus: Proposed\nconsidered:\nhook: "{title}"\n---\n\n# {id} — {title}\n\n## {state}\n\n**Angelegt am {today}; nichts ist gebaut.**\n\n## {done}\n', encoding="utf-8")
+    run(root, "--new", "mit Hausvorlage"); made = next((root / "docs/work-tracker").glob("AP-039-*.md")).read_text()
+    check("`<tracker dir>/TEMPLATE.md` is the template when there is one — a repository's language and sections, by convention", "Angelegt am" in made and "nothing is built" not in made and "## Was jetzt gilt" in made)
+    for f_ in (root / "docs/work-tracker").glob("AP-03*.md"):
+        f_.write_text(f_.read_text().replace("considered:\n", "considered: none\n" + ("next: owner\n" if "AP-037" in f_.name else "")).replace("status: Proposed", "status: In Progress" if "AP-038" in f_.name else "status: Proposed"))
+    code, out, _ = run(root, "--next")
+    check("--next answers before any pass has run: open work, work in progress first, whose move each is — and what waits for the Owner",
+          code == 0 and "Nothing is ranked" in out and out.index("AP-038") < out.index("AP-037 ·") and "next: owner" in out and "WAITING FOR THE OWNER: AP-037" in out)
+fm.configure(HERE)
+
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------
 _TOOL = [sys.executable, str(HERE / "shoalmark.py")]
 with tempfile.TemporaryDirectory() as tmp:
