@@ -1,6 +1,28 @@
 # shoalmark
 
-*A shoal mark is a mark set to show shallow water — a stake or a buoy. It tells you where not to run aground.*
+## How to get a better-performing human owner
+
+Agents do not wait for tools. They wait for their human. Asked what slows them most, three independent agents gave
+the same answer, by a wide margin: **the Owner's unanswered questions** — one question, open three days, held three
+packages. And where the human does keep up, he keeps up by not reading: in the repository this tool came from,
+**200 pull requests were merged in 22 days, 85 % of them less than a minute after opening, none with a review.**
+Blocking and stamping have one root — a person asked for many small decisions in the middle of the work.
+
+So the human is asked **once, earlier, and in writing**: what the work is for, what it must never do, what *done* has
+to prove. He sees what waits for him, how long, and what it blocks — first, above everything else. The agents get what
+they need to run start to finish: state that outlives a session, one source of truth, a gate that refuses a false
+*done*. **Less work and distraction for the human; more throughput and less friction for the agents.**
+
+**What exists today:** the tracker, the gate, the board with *waiting for you* on top, `next: owner`, a cold-start
+answer in one command (`--next`) — on git and Subversion, on Windows, macOS and Linux, in any language.
+**What is the direction, not yet built:** the signed mandate, questions that carry a default and a deadline,
+evidence-checked *done*, the digest — explored, with what would kill each claim, in shoalmark's own tracker
+(`FM-005`, `docs/work-tracker/evidence/FM-005/design.md` in its repository). Trust is earned there from the Owner's
+own answers before anything runs unattended.
+
+*A shoal mark is a mark set to show shallow water — a stake or a buoy. It tells a shoal where not to run aground.*
+
+---
 
 A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads
 them all, a gate on every commit. No server, no database, no dependency beyond Python 3.9.
