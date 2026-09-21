@@ -2,6 +2,22 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.8.0 — 2026-09-21
+
+- **A board anyone can brand — three optional files, no setting** (README §9). `theme.css` (colours, fonts),
+  `logo.svg` or `logo.png` (the header and the browser tab), `labels.yaml` (every word of the board, flat
+  `key: value` — a German board is this file). The same names in three places, the later one winning:
+  `tools/shoalmark/brand/` (the organisation — `--vendor` copies and pins it), beside the trackers (the repository),
+  `~/.config/shoalmark/` (the person). **Only the git-ignored board reads them** — `INDEX.md` and the gate are the same
+  whoever runs them.
+- `--brand` says which place gave the board its theme, logo and labels; `--brand DIR` writes a commented starter.
+- The board shows the repository's `name`, a `tagline` and a `footer` (both labels, both empty by default), and
+  prints in the light palette.
+- **If you already have a `theme.css`:** it is now its own stylesheet instead of being appended to the tool's, so
+  `@import` and `@font-face` work in it — and a theme whose `@import` is missing is left out whole, with a warning,
+  because a colour mapped onto a missing variable is invalid, not the default.
+- A theme that is hard to read, an oversized logo and a mistyped label are warnings, never failures.
+
 ## 0.7.1 — 2026-09-21
 
 Found by an independent review of the first port onto this tool. **If you have a deriver, read the first item.**
