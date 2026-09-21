@@ -317,6 +317,59 @@ if _CHROME:
 else:
     print("  skip  no browser found — the board was not rendered")
 
+# --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
+DERIVER = """#!/usr/bin/env python3
+import json, subprocess, sys, os
+ask = json.load(sys.stdin)
+if os.path.exists(os.path.join(ask["root"], "REFUSE")):
+    print("refusing: the precondition is not met", file=sys.stderr); sys.exit(5)
+if os.path.exists(os.path.join(ask["root"], "GARBLE")):
+    print("not json"); sys.exit(0)
+tags = set(subprocess.run(["git", "-C", ask["root"], "tag", "--list"], capture_output=True, text=True).stdout.split())
+out = {"_keys": {"version": {"shape": r"\\d+\\.\\d+\\.\\d+", "says": "the release it shipped in"}}, "_problems": []}
+if os.path.exists(os.path.join(ask["root"], "REDEFINE")):
+    out["_keys"]["status"] = {"says": "mine now"}
+for t in ask["trackers"]:
+    v = t["fm"].get("version", "")
+    out[t["id"]] = {"Ver": v or "—", "Live": "live" if v and "v" + v in tags else "—"}
+    if v and t["status"] != "Shipped":
+        out["_problems"].append(t["id"] + ": version on work that has not shipped")
+json.dump(out, sys.stdout)
+"""
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    tracker(root, "MSR-001", status="Shipped", extra="version: 1.2.0\n"); tracker(root, "MSR-002", status="Proposed")
+    before_code, _, before_err = run(root)
+    check("without a deriver an extension key is refused — the schema is closed", before_code == fm.EXIT_LINT and "`version:` is not a front-matter key" in before_err)
+    exe = root / "docs/work-tracker/derive"; exe.write_text(DERIVER); exe.chmod(0o755)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "x"); git(root, "tag", "v1.2.0")
+    code, _, err = run(root)
+    index = (root / "docs/work-tracker/INDEX.md").read_text(); page = (root / "docs/work-tracker/index.html").read_text()
+    check("a deriver at the one conventional path adds its keys to the schema and its values as columns — in INDEX.md and on the board, where each is also a view",
+          code == 0 and "| Triaged | Ver | Live |" in index and "| 1.2.0 | live |" in index and 'COLS=["Ver", "Live"]' in page
+          and '<th class="x">ver<th class="x">live' in page and "`version:`" in fm.render_schema())
+    git(root, "tag", "-d", "v1.2.0")
+    run(root)
+    check("nothing derived is stored, so nothing derived is stale: the tag goes, and the very next run says so",
+          "| 1.2.0 | — |" in (root / "docs/work-tracker/INDEX.md").read_text() and not list((root / "docs/work-tracker").glob(".derived*")))
+    t2 = root / "docs/work-tracker/MSR-002-x.md"; t2.write_text(t2.read_text().replace("considered: none\n", "considered: none\nversion: 9.9\n"))
+    code, _, err = run(root)
+    check("the deriver's keys are gated like the core's, and its problems are counted with the core's",
+          code == fm.EXIT_LINT and "`version:` is the release it shipped in" in err and "version on work that has not shipped" in err)
+    t2.write_text(t2.read_text().replace("version: 9.9\n", ""))
+    (root / "REFUSE").write_text(""); stamp = (root / "docs/work-tracker/INDEX.md").read_text()
+    (root / "docs/work-tracker/MSR-001-x.md").write_text((root / "docs/work-tracker/MSR-001-x.md").read_text().replace("h of MSR-001", "changed"))
+    code, _, err = run(root)
+    check("a deriver that exits non-zero refuses the run with its own code, and nothing is written",
+          code == 5 and "the precondition is not met" in err and (root / "docs/work-tracker/INDEX.md").read_text() == stamp)
+    (root / "REFUSE").unlink(); (root / "GARBLE").write_text("")
+    check("a deriver that does not answer in JSON is a refusal, not a traceback", run(root)[0] == fm.EXIT_LINT)
+    (root / "GARBLE").unlink(); (root / "REDEFINE").write_text("")
+    code, _, err = run(root)
+    check("a deriver may add a key, never redefine one of the core's", code == fm.EXIT_LINT and "never redefine" in err)
+fm.configure(HERE)
+
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       hashlib.sha256((HERE / "vendor/marked-18.0.13.umd.js").read_bytes()).hexdigest().startswith("b147274a9ce27d17"))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
