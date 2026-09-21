@@ -447,7 +447,7 @@ with tempfile.TemporaryDirectory() as d:
     code, _, err = run(root)
     index, page = (root / "docs/work-tracker/INDEX.md").read_text(), (root / "docs/work-tracker/index.html").read_text()
     check("one model, two renderings: the deriver says which values INDEX.md prints and which the board shows — every one stays a view",
-          code == 0 and "| Triaged | Ver |" in index and "Release |" not in index and 'COLS=["Ver", "Release"],BCOLS=["Release"]' in page and '<th class="x">release<th>title' in page)
+          code == 0 and "| Triaged | Ver |" in index and "Release |" not in index and 'COLS=["Ver", "Release"],BCOLS=["Release"]' in page and '<th class="x">release<th data-l="col.title">' in page)
     check("a derived value may carry a display form — the value groups, sorts and is what INDEX.md prints; the form is for the board's cells",
           '{"Ver": "—", "Release": "1.3.x"}, {"Release": "→ 1.3.x"}' in page and '{"Release": "1.2.0 ✓"}' in page and "→" not in index.split("## Work")[1])
     check("a deriver may say what open work still needs, and explain its columns in INDEX.md's header",
