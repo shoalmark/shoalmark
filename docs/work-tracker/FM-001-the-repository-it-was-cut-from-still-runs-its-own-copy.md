@@ -24,6 +24,7 @@ ported. This tracker is that cost, written down.
 
 ## What it needs
 
+- **The seam has a design to rule on — [two candidates, a recommendation](evidence/FM-001/seam-design.md), no code.**
 - An **extension seam** in the core, which has none today: extra front-matter keys with their shapes, extra
   lints, extra INDEX columns and page fields, contributed by a module the configuration names. The origin's
   release axis (`target:` / `version:` / `Live` / product areas) becomes that module, living in the origin.

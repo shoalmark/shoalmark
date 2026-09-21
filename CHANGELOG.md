@@ -1,0 +1,31 @@
+# Changelog
+
+What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
+
+## 0.3.0 — 2026-09-21
+
+- **Runs on Python 3.9** — the Python that ships with macOS. The configuration is read without `tomllib`; the
+  subset is what `--init` writes (`[table]`, `key = "text"`, numbers, `true`/`false`, comments).
+- **`--init` writes the agent contract** into `AGENTS.md`, between markers it owns (your text outside them is
+  kept), and a three-line `CLAUDE.md` router if there is none. Run `--init` again after vendoring to refresh it.
+- **`--next`** — the cold-start question: the ranked work in order, each with its next move and what is true now.
+- **`--install-hook`** — plain git hooks; no hook runner needed. A hook that is not fathom-mark's is left alone.
+- **`--vendor` refuses to overwrite a copy that was edited in place**, and prints what changed since the
+  version it replaces.
+- `--related` skips German stop words. The triage rules say *harm to people who use it today* where they said
+  *harm in production*. The board's palette is neutral.
+
+## 0.2.1 — 2026-09-21
+
+- An unfilled `TRIAGE.md` is no longer printed as if it were a path. An INDEX row shows the hook without its
+  quotation marks. A filename's slug ends on a word, is capped at 60 characters and transliterates umlauts.
+  `--related` reads words in any alphabet. A tracker's own id in its own heading no longer links to itself.
+
+## 0.2.0 — 2026-09-21
+
+- **One id space per repository, keyed by the project** (`--init --key MSR` → `MSR-001`). `--new "title"` needs
+  no prefix where there is one. `bug` joins the tag vocabulary. Branch names may carry ids of any length.
+
+## 0.1.0 — 2026-09-21
+
+- The core: a front-matter schema and its gate, a filing looks first, the triage pass, the read-only board.

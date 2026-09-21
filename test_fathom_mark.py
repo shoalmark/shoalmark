@@ -29,6 +29,14 @@ def check(name, ok):
         FAILS.append(name)
 
 
+def _try(f):
+    try:
+        f()
+        return True
+    except SystemExit:
+        return False
+
+
 def run(root, *argv):
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
@@ -235,6 +243,79 @@ with tempfile.TemporaryDirectory() as d:
     bad = subprocess.run(tool, capture_output=True, text=True, env=_ENV)
     check("a vendored copy runs from where it sits — and one edited in place is refused by its own gate",
           ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "differs from its PIN" in bad.stderr)
+
+# --- 0.3.0: what a second repository taught ---------------------------------------------------------------
+check("the configuration is read without a library — the subset --init writes, a refusal by line for anything else",
+      fm.read_config('name = "a # b"  # c\nn = 7\nflag = true\n[kinds]\nMSR = "Work" # x\n') == {"name": "a # b", "n": 7, "flag": True, "kinds": {"MSR": "Work"}}
+      and (lambda: [True for _ in [0] if not _try(lambda: fm.read_config('x = [1, 2]\n'))])())
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q")
+    (root / "AGENTS.md").write_text("# mine\n\nkeep this.\n")
+    run(root, "--init", "--key", "msr")
+    a1 = (root / "AGENTS.md").read_text()
+    (root / "AGENTS.md").write_text(a1.replace("Look before you file", "LOOK"))
+    run(root, "--init")
+    a2 = (root / "AGENTS.md").read_text()
+    check("--init writes the agent contract between its own markers — the repository's text is kept, the section is refreshed, a CLAUDE.md router appears once",
+          a1.startswith("# mine\n\nkeep this.\n") and "Look before you file" in a2 and "LOOK" not in a2 and a2.count(fm.CONTRACT_BEGIN) == 1
+          and "MSR-012" in a2 and "feat/msr-012-slug" in a2 and "AGENTS.md" in (root / "CLAUDE.md").read_text())
+    home = root / "docs/work-tracker/TRIAGE.md"
+    code, out, _ = run(root, "--next")
+    check("--next says so when no path is written and nothing is ranked", code == 0 and "none is written" in out and "Nothing is ranked" in out)
+    home.write_text(home.read_text().replace("1.\n", "1. MSR-002 first.\n"))
+    fm.configure(root)
+    tracker(root, "MSR-001", extra="rank: 1\ntier: P1\nnext: owner\n"); tracker(root, "MSR-002", extra="rank: 2\ntier: P1\nnext: build\n")
+    code, out, _ = run(root, "--next")
+    check("--next lists the ranked work in order with each move and what is true now, and starts a seat on the first move that is its own",
+          code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out)
+    code, out, _ = run(root, "--install-hook")
+    hook = root / ".git/hooks/pre-commit"
+    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",
+          code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text() and (root / ".git/hooks/post-merge").exists())
+    git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, env=_ENV)
+    check("the installed hook runs on a real commit and stages the regenerated INDEX", git2.returncode == 0
+          and "INDEX.md" in subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, env=_ENV).stdout)
+    hook.write_text("#!/bin/sh\n# somebody else's hook\n")
+    code, _, err = run(root, "--install-hook")
+    check("a hook that is not fathom-mark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
+fm.configure(HERE)
+with tempfile.TemporaryDirectory() as d:
+    dest = Path(d).resolve() / "tools" / "fathom-mark"
+    with redirect_stdout(io.StringIO()):
+        fm.vendor(dest)
+    (dest / "VERSION").write_text("0.2.0\n")
+    (dest / "PIN").write_text("\n".join(f"{hashlib.sha256((dest / l.partition('  ')[2]).read_bytes()).hexdigest()}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines()) + "\n")
+    out = io.StringIO()
+    with redirect_stdout(out):
+        fm.vendor(dest)
+    check("vendoring again says which version it replaces and what changed since", "(was 0.2.0)" in out.getvalue() and "## 0.3.0" in out.getvalue() and "## 0.2.0" not in out.getvalue())
+    (dest / "fathom_mark.py").write_text("# edited\n")
+    err = io.StringIO()
+    with redirect_stderr(err):
+        code = fm.vendor(dest)
+    check("vendoring never overwrites a copy that was edited in place", code == fm.EXIT_LINT and "edited in place" in err.getvalue() and (dest / "fathom_mark.py").read_text() == "# edited\n")
+check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
+
+# --- the board, seen: rendered in a real browser where one is installed -------------------------------------
+_CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome") if os.path.exists(c)), None)
+if _CHROME:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve()
+        run(root, "--init", "--key", "msr")
+        tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Shipped", title="A shipped one")
+        run(root)
+        dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom",
+                                           f"file://{root}/docs/work-tracker/index.html{frag}"], capture_output=True, text=True, timeout=60).stdout
+        board_dom, view_dom = dom(""), dom("#=MSR-001")
+        shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
+        check("the board renders in a browser: five sections in order, the open tracker under `triage`, the done one folded away",
+              re.search(r"progress.*?triage.*?triaged.*?backlog.*?done", shown, re.S) is not None
+              and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
+        check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
+              "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
+else:
+    print("  skip  no browser found — the board was not rendered")
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       hashlib.sha256((HERE / "vendor/marked-18.0.13.umd.js").read_bytes()).hexdigest().startswith("b147274a9ce27d17"))

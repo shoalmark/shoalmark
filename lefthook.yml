@@ -2,7 +2,7 @@ pre-commit:
   commands:
     tests:
       glob: "*.py"
-      run: python3 test_fathom_mark.py >/dev/null || python3 test_fathom_mark.py | grep -v "^  ok"
+      run: for py in python3 /usr/bin/python3; do [ -x "$(command -v $py)" ] && { $py test_fathom_mark.py >/dev/null || { $py --version; $py test_fathom_mark.py | grep -v "^  ok"; exit 1; }; }; done
     tracker-index:
       glob: "docs/work-tracker/*.md"
       run: written=$(python3 fathom_mark.py --print-written) && printf '%s\n' "$written" | git add --pathspec-from-file=-

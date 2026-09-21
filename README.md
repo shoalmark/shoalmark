@@ -1,7 +1,7 @@
 # fathom-mark
 
 A work tracker that lives in the repository it tracks. Markdown files with a small front matter, one Python
-file that reads them all, no server, no database, no dependency beyond Python 3.11.
+file that reads them all, no server, no database, no dependency beyond Python 3.9 — the one that ships with macOS.
 
 Built for repositories worked by agents under one Owner: **the seat judges, the command applies.**
 
@@ -13,6 +13,8 @@ Built for repositories worked by agents under one Owner: **the seat judges, the 
 | **A filing looks first** | `--new KIND "title"` prints the trackers closest to the words before it writes the file, and the gate refuses the file until `considered:` names what it was held against — or `none` |
 | **Triage is one command** | `--triage` writes a worksheet of the work in progress and the new filings, prints the Owner's intent and current path above the rules, and on every re-run *applies* the verdicts the seat filled in: `keep` · `park` · `epic` · `merge` · `close` · `fix`, a tier, at most ten ranks, a next move |
 | **One model, two renderings** | `INDEX.md` (what an agent reads, committed) and `index.html` (what the Owner reads, git-ignored) say the same thing from the same functions: the path, the ranked work, the board — progress · triage · triaged · backlog · done |
+| **A contract for agents** | `--init` writes the rules that make the tool bite into `AGENTS.md`, between markers it owns: the tracker is canonical · look before you file · the seat judges, the command applies · leave the fix for the next session · close out by deleting what you made obsolete |
+| **A cold start** | `--next` answers what a session asks first: what do I work on, in what order, and what is true now of each |
 | **Read-only board** | search, a story view, each tracker rendered in the page. A viewer, not a Jira: no editing, no state, no server |
 
 ## Start
@@ -26,19 +28,15 @@ python3 tools/fathom-mark/fathom_mark.py --new "what is wrong, in a sentence"   
 python3 tools/fathom-mark/fathom_mark.py                     # regenerate; exit 4 on a violation
 ```
 
-Pre-commit (lefthook shown; any hook runner works — the command prints exactly what it wrote):
+Hooks — plain git hooks, no runner needed; a hook that is not fathom-mark's is never overwritten:
 
-```yaml
-pre-commit:
-  commands:
-    tracker-index:
-      glob: "docs/work-tracker/*.md"
-      run: written=$(python3 tools/fathom-mark/fathom_mark.py --print-written) && printf '%s\n' "$written" | git add --pathspec-from-file=-
-post-merge:
-  commands:
-    tracker-board:
-      run: python3 tools/fathom-mark/fathom_mark.py --html-only || true
+```bash
+python3 tools/fathom-mark/fathom_mark.py --install-hook      # pre-commit stages the regenerated INDEX.md; a violation refuses the commit
 ```
+
+Upgrade: `python3 <fathom-mark>/fathom_mark.py --vendor <repo>/tools/fathom-mark` prints what changed since the
+version it replaces ([CHANGELOG](CHANGELOG.md)) and refuses a copy that was edited in place; then run `--init`
+again to refresh the contract in `AGENTS.md`.
 
 ## Ids, files and branches
 
@@ -65,4 +63,5 @@ core. No sprint, no estimate, no assignee, no comment thread.
 
 ## Develop
 
-`python3 test_fathom_mark.py` — every check builds its own throwaway repository.
+`python3 test_fathom_mark.py` — every check builds its own throwaway repository; where Chrome or Chromium is
+installed the board is rendered and read back. Run it under the oldest Python you promise: `/usr/bin/python3 test_fathom_mark.py`.

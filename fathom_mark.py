@@ -33,9 +33,8 @@ import re
 import shutil
 import subprocess
 import sys
-import tomllib
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "fathom-mark.toml"
@@ -59,6 +58,28 @@ DEFAULTS = {
 }
 
 
+def read_config(text):
+    """The configuration's TOML, read without a library: `tomllib` needs Python 3.11 and the Python that ships with
+    macOS is 3.9 — a gate that cannot start on the client's machine is no gate. The subset is what `--init` writes:
+    `[table]` headers, `key = "string"`, `key = 123`, `key = true`, `# comments`. Anything else is refused by line."""
+    out, table = {}, None
+    for n, raw in enumerate(text.splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        head = re.fullmatch(r"\[([A-Za-z0-9_-]+)\]\s*(?:#.*)?", line)
+        if head:
+            table = out.setdefault(head.group(1), {})
+            continue
+        m = re.fullmatch(r'([A-Za-z0-9_-]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+)|(true|false))\s*(?:#.*)?', line)
+        if not m:
+            raise SystemExit(f"{CONFIG_NAME}:{n}: not understood — {raw.strip()!r}. A line is `key = \"text\"`, `key = 123`, `key = true` or `[table]`")
+        key, text_value, number, flag = m.groups()
+        value = (re.sub(r'\\(.)', r"\1", text_value) if text_value is not None else int(number) if number is not None else flag == "true")
+        (out if table is None else table)[key] = value
+    return out
+
+
 def find_root(start=None):
     """The repository this run tracks: the nearest ancestor of the working directory that holds a
     fathom-mark.toml, else the git toplevel, else the working directory."""
@@ -79,7 +100,7 @@ def configure(root=None):
     global KINDS, KIND_LABELS, KIND_RE, TITLE_RE, TRACKER_LINK_RE, H1_ID_RE, ROW_ID_RE, _IDS, FRONT_MATTER, CMD
     ROOT = find_root(root)
     path = ROOT / CONFIG_NAME
-    CONFIG = {**DEFAULTS, **(tomllib.loads(path.read_text(encoding="utf-8")) if path.exists() else {})}
+    CONFIG = {**DEFAULTS, **(read_config(path.read_text(encoding="utf-8")) if path.exists() else {})}
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
@@ -548,8 +569,8 @@ HTML_PAGE = r"""<!doctype html>
 <meta name="color-scheme" content="light dark">
 <title>__NAME__ — work tracker</title>
 <style>
-:root{--bg:#f5f3ef;--ink:#1c1b18;--dim:#5c5852;--mute:#6b675f;--line:rgba(16,33,29,.16);--teal:#077a66;--coral:#bc4337;--blue:#3d72ff;--yellow:#a07518}
-@media(prefers-color-scheme:dark){:root{--bg:#07110f;--ink:#f0f2ee;--dim:#a8b3af;--mute:#929c98;--line:rgba(226,235,230,.16);--teal:#2ed7b0;--coral:#ff735f;--blue:#3d72ff;--yellow:#f9e95e}}
+:root{--bg:#f7f7f5;--ink:#161616;--dim:#565656;--mute:#6e6e6e;--line:rgba(0,0,0,.14);--teal:#1a7f5a;--coral:#b3402f;--blue:#2f62d6;--yellow:#946c0f}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e0e;--ink:#efefef;--dim:#ababab;--mute:#8f8f8f;--line:rgba(255,255,255,.15);--teal:#4fd1a1;--coral:#ff7b66;--blue:#6f9bff;--yellow:#e8cf5a}}
 *{box-sizing:border-box}
 /* the page paints its WHOLE ground itself and says it is dark-aware: a clean browser showed one colour, the
    Owner's showed two — something (a dark-mode extension) painted the short `html` box under the content */
@@ -814,7 +835,10 @@ def identity_problems(trackers):
 
 _STOP = set("the a an and or of to in on for with is are was be by it its this that as at from not no into "
             "than then so if but which who what when while can could would should has have had do does did "
-            "will may must more most less one two three new old own up out over under after before".split())
+            "will may must more most less one two three new old own up out over under after before "
+            # German — trackers are written in the language of the people who read them
+            "der die das den dem des ein eine einer eines einem einen und oder aber nicht kein keine ist sind war wird werden "
+            "hat haben mit von für auf aus bei nach über unter vor zum zur als auch noch nur wie wenn dass sich wir sie ihr".split())
 
 
 def related_trackers(trackers, query, limit=8):
@@ -855,9 +879,9 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
        keep Pn      it passes the keep test — worked on in the last {days} days (the row says) — or THE CURRENT
                     PATH names it or its story, or it is P0 or P1 BY TODAY'S JUDGEMENT: harm is never parked.
                     What the path lists as NEXT, NOT NOW is not named by it: park it, unless it was worked on this week.
-                    EVERY KEEP CARRIES A TIER JUDGED TODAY: P0 harm in production, or the current path is
+                    EVERY KEEP CARRIES A TIER JUDGED TODAY: P0 harm to people who use it today, or the current path is
                     blocked now · P1 on the current path · P2 next · P3 someday. What the path does not name
-                    is P0 or P1 only if production is being harmed today. An inherited tier is no
+                    is P0 or P1 only if people who use it are being harmed today. An inherited tier is no
                     judgement. THE CURRENT PATH is the Owner's, printed below — judge against it
        epic ID Pn   a keep that is one story with ID and does not say so yet — it becomes a chapter of ID;
                     nothing closes. A row whose Story cell already names its story is a plain keep
@@ -870,7 +894,7 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
        fix          its status is simply wrong (merged code says Shipped). BY HAND: correct it, cite the commit
      RANK: add `#1` … `#10` to at most ten keep / epic verdicts — `keep P1 #2`. The highest rank is THE FIRST
              ITEM TO WORK ON NEXT to reach what the current path names — working order, not the path's own
-             numbering. Harm in production today is ranked even where the path does not name it — after the
+             numbering. Harm today is ranked even where the path does not name it — after the
              path's own work, unless it blocks it. What cannot be worked on now — it waits for a date, or for another tracker's run — is
              not ranked ahead of what can. Whose move it is, the next move says: an `owner` move is work too.
      NEXT: every RANKED tracker names its NEXT MOVE — who or what moves it next. Where the Facts cell already
@@ -1265,8 +1289,10 @@ def parse_args(argv):
              "the id prefix is needed only where the configuration names several")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
+    add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
+    add("--install-hook", action="store_true", help="write plain git hooks (pre-commit, post-merge, post-checkout) — no hook runner needed; never overwrites a hook that is not its own")
     add("--init", action="store_true", help="scaffold fathom-mark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy")
@@ -1278,7 +1304,7 @@ def load_trackers():
     return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
 
 
-TOOL_FILES = ("fathom_mark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE")
+TOOL_FILES = ("fathom_mark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "CHANGELOG.md")
 
 
 def pin_problems():
@@ -1295,8 +1321,24 @@ def pin_problems():
     return out
 
 
+def changes_since(version):
+    """The CHANGELOG sections newer than `version` — what a consumer takes on by vendoring again."""
+    log = HERE / "CHANGELOG.md"
+    text = log.read_text(encoding="utf-8") if log.exists() else ""
+    parts = re.split(r"^## ", text, flags=re.M)[1:]
+    key = lambda v: tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+    return "".join("## " + p for p in parts if re.match(r"\d", p) and key(p.split()[0]) > key(version)).strip()
+
+
 def vendor(dest):
     dest = pathlib.Path(dest).resolve()
+    had = (dest / "VERSION").read_text(encoding="utf-8").strip() if (dest / "VERSION").exists() else ""
+    edited = [l.partition("  ")[2] for l in ((dest / "PIN").read_text(encoding="utf-8").splitlines() if (dest / "PIN").exists() else [])
+              if l.partition("  ")[2] and (dest / l.partition("  ")[2]).exists()
+              and hashlib.sha256((dest / l.partition("  ")[2]).read_bytes()).hexdigest() != l.partition("  ")[0]]
+    if edited:
+        print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
+        return EXIT_LINT
     lines = []
     for rel in TOOL_FILES:
         src = HERE / rel
@@ -1306,7 +1348,9 @@ def vendor(dest):
         shutil.copyfile(src, dest / rel)
         lines.append(f"{hashlib.sha256(src.read_bytes()).hexdigest()}  {rel}")
     (dest / "PIN").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"vendored fathom-mark {__version__} into {dest} — {len(lines)} files, pinned in PIN")
+    print(f"vendored fathom-mark {__version__} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
+    if had and had != __version__ and changes_since(had):
+        print("\nWhat changes for this repository:\n\n" + changes_since(had))
     return EXIT_OK
 
 
@@ -1335,6 +1379,33 @@ below; its worksheets are the record, in `evidence/triage/`.
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
 *None yet.*
+"""
+
+CONTRACT_BEGIN = "<!-- BEGIN fathom-mark: the work-tracker contract — regenerated by --init, edit outside these markers -->"
+CONTRACT_END = "<!-- END fathom-mark -->"
+CONTRACT = """\
+## The work tracker — read this before you change anything
+
+Work in this repository is tracked in `{dir}/` — one Markdown file per work item, checked by a gate on every
+commit. **Start here:** `{cmd} --next` says what to work on and what is true now.
+
+1. **The tracker is canonical.** The spec, the state and the record of a piece of work live in its tracker —
+   never in a side plan, a chat or a TODO comment. Its *What is true now* section is rewritten in place when
+   the truth changes; only the ship log is append-only.
+2. **Look before you file.** `{cmd} --new "what is wrong, in a sentence"` prints the closest trackers first.
+   The default is a slice of one that exists. A new tracker names what it was held against in `considered:` —
+   the gate refuses it otherwise.
+3. **An id never changes and says nothing that can.** `{key}-012` — the kind of work is a tag (`tags: bug`),
+   a story is a field (`epic: {key}-003`). Branches carry the id: `feat/{lkey}-012-slug`, `fix/{lkey}-013-slug`.
+4. **The seat judges, the command applies.** `triaged:` `tier:` `rank:` and a park are written by
+   `{cmd} --triage` from the worksheet you fill — never by hand. `{cmd} --schema` lists every key and who writes it.
+5. **When you stop, leave the fix for the next session:** what is left, in *What is true now*; the next move, in
+   `next:` — review · run · wait · owner · script · build. The next session starts cold.
+6. **Close out by asking what this made obsolete — and delete it in the same change.** Done means finished
+   *and simpler afterwards*, not wider. A defect found on the way gets one line in the tracker, or its own
+   tracker if it is real work — not a bundled side-fix.
+7. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
+   `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
 """
 
 CONFIG_TEMPLATE = """\
@@ -1380,6 +1451,44 @@ hook: "{title}"
 """
 
 
+HOOK_MARK = "# fathom-mark"
+HOOKS = {
+    "pre-commit": """#!/bin/sh
+{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
+if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)'; then
+  written=$({cmd} --print-written) || exit $?
+  printf '%s\\n' "$written" | git add --pathspec-from-file=-
+fi
+""",
+    "post-merge": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
+    "post-checkout": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
+}
+
+
+def install_hook():
+    """Plain git hooks — a repository that vendors fathom-mark needs Python and nothing else. A hook that is not
+    ours is never overwritten: it is named, with the line to add to it."""
+    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks"], capture_output=True, text=True, env=nested_git_env())
+    if out.returncode:
+        print(f"--install-hook: {ROOT} is not a git repository", file=sys.stderr)
+        return EXIT_LINT
+    hooks = (ROOT / out.stdout.strip()).resolve()
+    hooks.mkdir(parents=True, exist_ok=True)
+    fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT), config=CONFIG_NAME,
+                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT) if ROOT in pathlib.Path(__file__).resolve().parents else "tools/fathom-mark")
+    code = EXIT_OK
+    for name, text in HOOKS.items():
+        path = hooks / name
+        if path.exists() and HOOK_MARK not in path.read_text(encoding="utf-8", errors="replace"):
+            print(f"{path} exists and is not fathom-mark's — left alone. Add to it: `{CMD} {'--print-written' if name == 'pre-commit' else '--html-only'}`", file=sys.stderr)
+            code = EXIT_LINT
+            continue
+        path.write_text(text.format(**fill), encoding="utf-8")
+        path.chmod(0o755)
+        print(f"wrote {path}")
+    return code
+
+
 def init(key=None):
     wrote = []
     key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
@@ -1393,6 +1502,22 @@ def init(key=None):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
             wrote.append(path)
+    if fresh_config:
+        configure(ROOT)
+    section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT), cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
+    agents = ROOT / "AGENTS.md"
+    have = agents.read_text(encoding="utf-8") if agents.exists() else ""
+    if CONTRACT_BEGIN in have and CONTRACT_END in have:
+        new = have[:have.index(CONTRACT_BEGIN)] + section + have[have.index(CONTRACT_END) + len(CONTRACT_END):].lstrip("\n")
+    else:
+        new = (have.rstrip("\n") + "\n\n" if have.strip() else f"# {CONFIG['name'] or ROOT.name} — for agents\n\n") + section
+    if new != have:
+        agents.write_text(new, encoding="utf-8")
+        wrote.append(agents)
+    claude = ROOT / "CLAUDE.md"
+    if not claude.exists():                                 # Claude Code reads CLAUDE.md, not AGENTS.md — a router, never a second copy
+        claude.write_text("# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n", encoding="utf-8")
+        wrote.append(claude)
     ignore, rel = ROOT / ".gitignore", str(TRACKER_DIR.relative_to(ROOT))
     have = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
@@ -1400,10 +1525,8 @@ def init(key=None):
         ignore.write_text(have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n", encoding="utf-8")
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT)}" for p in wrote] or ["nothing to write — already initialised"]))
-    if fresh_config:
-        configure(ROOT)
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT)}; "
-          f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; wire `{CMD} --print-written` into pre-commit")
+          f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate")
     return EXIT_OK
 
 
@@ -1415,6 +1538,26 @@ def slug_of(title, limit=60):
     """The filename's slug: lower case, ASCII, cut at a word — never mid-word, never ending in a dash."""
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower().translate(_TRANSLIT)).strip("-")
     return slug if len(slug) <= limit else slug[:limit + 1].rsplit("-", 1)[0].strip("-")
+
+
+def next_up(trackers):
+    """What a cold session asks first: what do I work on, and what is true now. The ranked work in order, each
+    with its next move and the opening of its *What is true now*; what waits on the Owner is said, not hidden."""
+    home, by_id = triage_home(), {t["id"]: t for t in trackers}
+    ranked = sorted((t for t in trackers if t.get("rank") and t["status"] in OPEN_STATUSES), key=lambda t: t["rank"])
+    print("THE CURRENT PATH — " + str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT)))
+    print(strip_md(home["path"]) or "  none is written — the Owner names it; until then nothing can be ranked")
+    if not ranked:
+        owed = [t for t in trackers if board(t) == "triage"]
+        print(f"\nNothing is ranked. {len(owed)} tracker(s) wait for a triage pass — `{CMD} --triage`." if owed else "\nNothing is ranked, and nothing waits for a pass.")
+        return EXIT_OK
+    mine = [t for t in ranked if t.get("next") not in ("owner", "wait")]
+    for t in ranked:
+        needs = ", ".join(needs_of(t, by_id))
+        print(f"\n#{t['rank']} {t['id']} · {t['tier']} · next: {t.get('next') or '—'}" + (f" · blocked by {', '.join(t['blocked_now'])}" if t.get("blocked_now") else "")
+              + (f" · needs {needs}" if needs else "") + f"\n   {t['title']} — {t['file']}\n   {t.get('state') or '(no *What is true now* — open the tracker, and leave one when you stop)'}")
+    print(f"\nSTART WITH: {mine[0]['id']}" if mine else "\nEvery ranked move is the Owner's or waits — nothing here is yours to start.")
+    return EXIT_OK
 
 
 def new_tracker(words, trackers):
@@ -1452,9 +1595,13 @@ def main(argv=None):
         return vendor(args.vendor)
     if args.init:
         return init(args.key)
+    if args.install_hook:
+        return install_hook()
     trackers = load_trackers()
     if args.new:
         return new_tracker(args.new, trackers)
+    if args.next:
+        return next_up(trackers)
     if args.html_only:
         if TRACKER_DIR.is_dir():
             HTML_OUT.write_text(render_html(trackers), encoding="utf-8")
