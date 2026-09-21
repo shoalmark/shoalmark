@@ -1,0 +1,8 @@
+/* PortDive — the colours ARE the brand tokens (portdive-com), imported, not copied; this file only maps them. */
+@import url("../../portdive-com/public/brand/portdive-brand-tokens.css");
+@font-face{font-family:"Geist";font-weight:400;src:url("../../portdive-com/public/fonts/Geist-Regular.woff2") format("woff2")}
+@font-face{font-family:"Geist";font-weight:600;src:url("../../portdive-com/public/fonts/Geist-SemiBold.woff2") format("woff2")}
+@font-face{font-family:"Geist Mono";src:url("../../portdive-com/public/fonts/GeistMono-Regular.woff2") format("woff2")}
+:root{--bg:var(--pd-chalk-page);--ink:var(--pd-chalk-ink);--dim:var(--pd-chalk-secondary);--mute:var(--pd-chalk-muted);--line:var(--pd-chalk-line);--teal:var(--pd-teal-light);--coral:var(--pd-coral-light);--blue:#3d72ff;--yellow:#a07518}
+@media(prefers-color-scheme:dark){:root{--bg:var(--pd-deep-ground);--ink:var(--pd-deep-ink);--dim:var(--pd-deep-secondary);--mute:var(--pd-deep-muted);--line:var(--pd-deep-line);--teal:var(--pd-teal-dark);--coral:var(--pd-coral-dark);--yellow:#f9e95e}}
+body{font-family:"Geist",system-ui,sans-serif}.m,input,th,button,#v code{font-family:"Geist Mono",ui-monospace,monospace}

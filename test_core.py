@@ -333,9 +333,9 @@ _tri = gti.render_html([dict(_live[0], triaged="2026-09-20"), _live[1]])
 check("the triage date, the rank and the board section travel in the row — then the ready marks that fail, and last the kind of problem",
       re.search(r'"2026-09-20", 0, "\w+", \[[^\]]*\], "", "[^"]*", "[^"]*", \[\], \d+, \["", false\], \{\}, \{\}\]', _tri) is not None)
 check("untriaged is derived — exactly what the next pass lists: the generator's word, and work in progress judged too long ago — counted, and searchable by its word",
-      'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in _tri and '(untriaged(t)?" untriaged":"")' in _tri and "untriaged`" in _tri)
+      'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in _tri and '(untriaged(t)?" untriaged "+' in _tri and 'L["count.untriaged"]' in _tri)
 check("a story's header says how much of it a pass has judged, and closed chapters are not called shipped",
-      "triaged ${open.filter(t=>t[17]).length}/${open.length}" in _tri and "} done ·" in _tri and "} shipped ·" not in _tri)
+      '${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}' in _tri and '${l("story.done")} ·' in _tri and "} shipped ·" not in _tri)
 check("the board is the first view: progress · triage · triaged · backlog · done, one section per tracker plus the newest pass",
       'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*done:", _tri, re.S) is not None
       and 'untriaged(t)?"triage":t[19]]' in _tri and "OPEN.has(t[2])&&!fresh(t)" not in _tri
@@ -454,8 +454,9 @@ _rk = gti.render_triage([dict(_live[0], rank=1, tier="P1", lines=900, provable=F
 _pg = gti.render_html([dict(_live[0], status="In Progress", rank=1, lines=900, provable=False, blocked_by=[], next="run", state="x", intent="", epic="—"), dict(_live[1], rank=0, lines=900, provable=False)])
 check("one model, two renderings: the ranked table and the page row say a ranked tracker's next move and what it needs",
       "| 1 | P1 | run | *complex* | sized, provable, intended | [" in _rk and '["sized", "provable", "intended"], "run", "", "", [], ' in _pg
-      and all(k in _pg for k in ("<b>waiting for you: ${w.length}</b>", "<b>chapters</b> — ", '"reads "+(t[25]/1000).toFixed(1)+"k"', "stale — older than 7 days"))
-      and "<b>hand-over</b> — next: " in _pg and "<b>verdict</b> — " in _pg and "<i>missing" in _pg and '${t[21]?" → "+esc(t[21]):""}' in _pg and "dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}}" in _pg and _pg.count("decodeURIComponent(") == 1)
+      and all(k in _pg for k in ('<b>${l("waiting.title")}: ${w.length}</b>', '<b>${l("story.chapters")}</b> — ', 'L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k"', 'l("viewer.stale","7")',
+                                 '"waiting.title": "waiting for you"', '"viewer.stale": "stale — older than {0} days'))
+      and '<b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ' in _pg and '<b>${l("viewer.verdict")}</b> — ' in _pg and '"<i>"+l("word.missing")' in _pg and '${t[21]?" → "+esc(t[21]):""}' in _pg and "dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}}" in _pg and _pg.count("decodeURIComponent(") == 1)
 # `kind-of-problem:`, the second try: left by a seat with the tracker open, never judged by a pass; derived
 # from the move wherever the move already says it (rehearsal 13), so it is owed — a named gap — only on a `build`
 _bk = lambda **kw: [p for p in gti.lint([dict(_live[0], fm={"kind-of-problem": kw["problem"]} if kw else {})]) if "`kind-of-problem:`" in p]
@@ -472,7 +473,7 @@ check("a ranked `build` with no kind NEEDS one; the table prints a judged kind p
       and "| owner | *complicated* | — |" in _kd(next="owner") and "| — | — | — |" in _kd()
       and "· next build · kind obvious · NOT" in gti.triage_worksheet([dict(_w1, next="build", problem="obvious"), _w3], "2026-09-20", lambda path: "2026-07-01")[0]
       and "kind" not in _fs.split("| repos fleet-launcher")[1].split("\n")[0]
-      and ', ["complex", false], {}, {}]' in _pg and '" · kind: "+(t[26][0]?' in _pg)
+      and ', ["complex", false], {}, {}]' in _pg and '" · "+l("viewer.kind")+": "+(t[26][0]?' in _pg)
 # the schema: FRONT_MATTER is the one list of keys; the gate refuses a key outside it, a value off its shape,
 # and open work without a required key — and the live corpus is green against it (the positive control)
 _sp = lambda _st="Shipped", **fm: gti.schema_problems({"id": "FEAT-91001", "status": _st, "fm": {"id": "FEAT-91001", "status": _st, **fm}})
@@ -527,7 +528,7 @@ check("a chapter inherits its story's intent; the worksheet prints each intent o
       and _is.count("- **FEAT-91010** — for — X · so that — Y · never — Z") == 1 and _is.index("- **FEAT-91010**") < _is.index("| Tracker |")
       and "intended" not in gti.render_triage([dict(_st, rank=1, lines=10, provable=True, state="x", blocked_by=[])])
       and '"for — X · so that — Y · never — Z", "", [], ' in gti.render_html([_st, _ch]) and '"for — X · so that — Y · never — Z", "FEAT-91010", [], ' in gti.render_html([_st, _ch])
-      and "(from ${esc(t[23])})" in gti.render_html([_st]))
+      and '(${l("viewer.from",t[23])})' in gti.render_html([_st]))
 _real = {t["id"]: t for t in _live}
 check("a story carries the Owner's intent in its front matter",
       all(gti.extract(next(gti.TRACKER_DIR.glob(f"{i}-*.md")))["intent"].startswith("for — ") for i in ("FEAT-002",)))
@@ -624,7 +625,7 @@ check("the status word is no longer coloured — the square carries the colour",
 _blk = gti.render_html([dict(_live[0], blocked_by=[_live[1]["id"], "Owner"]), _live[1]])
 check("blockers travel as the row's last field", json.dumps([_live[1]["id"], "Owner"]) in _blk)
 check("blocked is derived in the page from open blockers, and is searchable by its word",
-      'blocked=t=>OPEN.has(t[2])&&t[16].some(' in _blk and '(blocked(t)?" blocked":"")' in _blk)
+      'blocked=t=>OPEN.has(t[2])&&t[16].some(' in _blk and '(blocked(t)?" blocked "+sl("Blocked"):"")' in _blk)
 check("an epic's chapters are inset, and only in the epic view",
       'gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""' in _blk and "tr.c td:first-child{padding-left" in _blk)
 check("a blocker that is no tracker is refused — a typo would silently never block",

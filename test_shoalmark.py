@@ -447,7 +447,7 @@ with tempfile.TemporaryDirectory() as d:
     code, _, err = run(root)
     index, page = (root / "docs/work-tracker/INDEX.md").read_text(), (root / "docs/work-tracker/index.html").read_text()
     check("one model, two renderings: the deriver says which values INDEX.md prints and which the board shows — every one stays a view",
-          code == 0 and "| Triaged | Ver |" in index and "Release |" not in index and 'COLS=["Ver", "Release"],BCOLS=["Release"]' in page and '<th class="x">release<th>title' in page)
+          code == 0 and "| Triaged | Ver |" in index and "Release |" not in index and 'COLS=["Ver", "Release"],BCOLS=["Release"]' in page and '<th class="x">release<th data-l="col.title">' in page)
     check("a derived value may carry a display form — the value groups, sorts and is what INDEX.md prints; the form is for the board's cells",
           '{"Ver": "—", "Release": "1.3.x"}, {"Release": "→ 1.3.x"}' in page and '{"Release": "1.2.0 ✓"}' in page and "→" not in index.split("## Work")[1])
     check("a deriver may say what open work still needs, and explain its columns in INDEX.md's header",
@@ -471,6 +471,176 @@ with tempfile.TemporaryDirectory() as d:
         body = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{root}/docs/work-tracker/index.html"], capture_output=True, text=True, timeout=60).stdout
         shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
         check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
+fm.configure(HERE)
+
+# --- FM-002: a board anyone can brand — three files, four places, the nearest to the viewer wins -------------
+GERMAN = """# ein deutsches Board
+tagline: Lagerverwaltung
+search: Suche — Id, Stufe, Status, Wörter
+view.by: nach {0}
+view.board: Tafel
+view.epic: Vorhaben
+view.open: offen
+view.all: alle
+col.id: Id
+col.tier: Stufe
+col.status: Status
+col.title: Titel
+status.Proposed: Vorgeschlagen
+status.In Progress: In Arbeit
+status.Parked: Geparkt
+status.Reserved: Reserviert
+status.Shipped: Ausgeliefert
+status.Closed: Geschlossen
+status.Blocked: Blockiert
+section.progress: in Arbeit
+section.triage: zu sichten
+section.triaged: gesichtet
+section.backlog: Vorrat
+section.done: erledigt
+desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
+desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
+desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
+desc.triaged.none: noch keine Sichtung gelaufen
+desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
+desc.done: ausgeliefert oder geschlossen
+group.none: ohne {0}
+count.trackers: Einträge
+count.open: offen
+count.around: rund um {0}
+count.in_progress: in Arbeit
+count.blocked: blockiert
+count.untriaged: ungesichtet
+path.title: der aktuelle Kurs
+waiting.title: wartet auf Sie
+waiting.detail: offene Arbeit, deren nächster Schritt beim Auftraggeber liegt
+story.chapter: Kapitel
+story.chapters: Kapitel
+story.done: erledigt
+story.open: offen
+story.parked: geparkt
+word.triaged: gesichtet
+word.needs: braucht
+word.blocked_by: blockiert durch
+word.reads: Umfang
+word.story: Vorhaben
+word.missing: fehlt
+word.stated: benannt
+viewer.board: ← Tafel
+viewer.neighbours: Nachbarn
+viewer.file: Datei
+viewer.forge: Ablage
+viewer.no_copy: keine gerenderte Fassung von {0} — bitte {1} ausführen
+viewer.intent: Absicht
+viewer.from: aus {0}
+viewer.intent.missing: fehlt — der Auftraggeber nennt sie am Eintrag oder am Vorhaben
+viewer.verdict: Urteil
+viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
+viewer.stale: veraltet — älter als {0} Tage, gilt wieder als ungesichtet
+viewer.handover: Übergabe
+viewer.next: nächster Schritt
+viewer.kind: Art
+viewer.from_move: aus dem Schritt
+viewer.true_now: was jetzt gilt
+viewer.no_move: ohne benannten Schritt
+viewer.none_in_progress: nichts in Arbeit
+"""
+_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
+with tempfile.TemporaryDirectory() as d:
+    base = Path(d).resolve(); root = base / "repo"; home = base / "home" / "shoalmark"; org = HERE / "brand"
+    root.mkdir(); home.mkdir(parents=True)
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
+    tracker(root, "MSR-001", title="Bestand je Lager"); tracker(root, "MSR-002", status="Shipped", title="Erledigtes")
+    wt = root / "docs/work-tracker"
+    _xdg = os.environ.get("XDG_CONFIG_HOME")
+    def board_with(**files):
+        """files: place_file=text — place is org | repo | me. Returns (INDEX.md bytes, page, --brand report)."""
+        for place in (org, home):
+            shutil.rmtree(place, ignore_errors=True)
+        for f in fm.BRAND_FILES:
+            (wt / f).unlink(missing_ok=True)
+        for key, text in files.items():
+            place, _, name = key.partition("_")
+            d_ = {"org": org, "repo": wt, "me": home}[place]; d_.mkdir(parents=True, exist_ok=True)
+            (d_ / name.replace("_", ".")).write_text(text, encoding="utf-8")
+        os.environ["XDG_CONFIG_HOME"] = str(base / "home")
+        code, _, err = run(root)
+        _, report, _ = run(root, "--brand")
+        return (wt / "INDEX.md").read_bytes(), (wt / "index.html").read_text(encoding="utf-8"), report, err, code
+    import shutil
+    try:
+        plain_index, plain_page, _, _, _ = board_with()
+        hostile = dict(me_theme_css=":root{--bg:#ff0000}", me_labels_yaml="status.Shipped: LIVE\nstatus.Parked: GONE\n", me_logo_svg=_SVG,
+                       org_theme_css=":root{--ink:#00ff00}", org_labels_yaml="status.Proposed: MAYBE\n")
+        h_index, h_page, h_report, _, h_code = board_with(**hostile)
+        check("C1 · committed output ignores every brand layer: with a hostile person and a hostile organisation present, INDEX.md is byte-identical and the gate's verdict unchanged",
+              h_index == plain_index and h_code == 0 and run(root, "--check")[0] == 0 and run(root, "--print-written")[1].strip() == "docs/work-tracker/INDEX.md")
+        i_org, i_repo, i_me = (h_page.find(f'<style data-from="{w}">') for w in ("organisation", "repository", "person"))
+        check("C2 · one rule — every place's theme is its own stylesheet, in order, the person's last; labels merge key by key; the last logo found wins; --brand says the same",
+              0 < i_org < i_me and i_repo == -1 and '"status.Shipped": "LIVE"' in h_page and '"status.Proposed": "MAYBE"' in h_page and '"status.Closed": "Closed"' in h_page
+              and "theme.css     organisation → person" in h_report and "logo          person" in h_report and "labels changed: 3 of" in h_report)
+        _, p2, r2, _, _ = board_with(org_theme_css="a{}", repo_theme_css="b{}", repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
+        check("C2 · the repository beats the organisation, key by key — and what only the organisation says survives",
+              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "theme.css     organisation → repository" in r2)
+        board_with()                                          # every place emptied
+        del os.environ["XDG_CONFIG_HOME"]; _h = os.environ.pop("HOME", None)
+        try:
+            shutil.rmtree(org, ignore_errors=True); nohome = run(root)[0]; no_page = (wt / "index.html").read_text(encoding="utf-8")
+        finally:
+            if _h is not None:
+                os.environ["HOME"] = _h
+        check("C3 · nothing present, no HOME at all — a hook, CI, an agent — and the board still renders, with no theme, no logo and the English words",
+              nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and '"status.Shipped": "Shipped"' in no_page)
+        _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
+        check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
+              set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
+        if _CHROME:
+            dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", f"file://{wt}/index.html{frag}"], capture_output=True, text=True, timeout=60).stdout
+            text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
+            chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
+            shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
+            english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "trackers", "proposed", "shipped",
+                                          "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
+                              if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
+            check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
+            _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
+            ldom = dom("")
+            check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
+        (wt / "logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "logo.svg").unlink(missing_ok=True)
+        code, _, err = run(root)
+        check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
+        _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
+        check("C6 · an unreadable theme is a warning that names the two colours and whose file it is — never a failure", c_code == 0 and "person's theme.css: text #888888 on ground #777777" in c_err and "below 4.5:1" in c_err)
+        check("C6 · contrast is the WCAG ratio", round(fm.contrast("#000000", "#ffffff")) == 21 and fm.contrast("#777777", "#888888") < 1.5)
+        _, i_page, _, i_err, i_code = board_with(repo_theme_css='@import url("../../gone/tokens.css");\n:root{--bg:var(--x)}', repo_labels_yaml="tagline: still here\n", me_theme_css=":root{--mute:#123123}")
+        check("C10 · a theme whose import is missing is left out whole — the board keeps its colours, says so once, and the other places still apply",
+              i_code == 0 and "imports ../../gone/tokens.css, which is not there" in i_err and "var(--x)" not in i_page and "--mute:#123123" in i_page and '"tagline": "still here"' in i_page)
+        _, t_page, _, t_err, t_code = board_with(repo_labels_yaml="tagine: a typo\nstatus.Shipped: Live\n")
+        check("a mistyped label is named in a warning and never reaches the page — the rest of the file still applies",
+              t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
+        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n")
+        dest = base / "client" / "tools" / "shoalmark"
+        with redirect_stdout(io.StringIO()):
+            fm.vendor(dest)
+        check("C7 · the organisation's brand travels with --vendor and is pinned like the rest of the copy",
+              (dest / "brand/theme.css").read_text() == ":root{--blue:#123456}" and "brand/theme.css" in (dest / "PIN").read_text() and "brand/labels.yaml" in (dest / "PIN").read_text())
+        (base / "client/docs/work-tracker").mkdir(parents=True)
+        (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
+        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/labels.yaml").write_text("footer: ours\n")
+        r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
+        cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
+        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" in cpage)
+        with redirect_stdout(io.StringIO()):
+            fm.brand_report(str(base / "starter"))
+        starter = fm.read_flat((base / "starter/labels.yaml").read_text(encoding="utf-8"))
+        check("--brand DIR writes a starter a person can edit: every label in English, and a theme that names the nine variables",
+              starter == {k: v for k, v in fm.LABELS.items()} and all(v in (base / "starter/theme.css").read_text() for v in ("--bg", "--ink", "--dim", "--mute", "--line", "--teal", "--coral", "--blue", "--yellow")))
+    finally:
+        shutil.rmtree(org, ignore_errors=True)
+        if _xdg is None:
+            os.environ.pop("XDG_CONFIG_HOME", None)
+        else:
+            os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------

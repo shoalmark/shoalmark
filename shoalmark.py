@@ -25,6 +25,7 @@ Configuration is `shoalmark.toml` at the repository root; every key has a defaul
 """
 
 import argparse
+import base64
 import datetime
 import difflib
 import hashlib
@@ -571,7 +572,7 @@ def render_triage(trackers):
 
 HTML_PAGE = r"""<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light dark">__FAVICON__
 <title>__NAME__ — work tracker</title>
 <style>
 :root{--bg:#f7f7f5;--ink:#161616;--dim:#565656;--mute:#6e6e6e;--line:rgba(0,0,0,.14);--teal:#1a7f5a;--coral:#b3402f;--blue:#2f62d6;--yellow:#946c0f}
@@ -622,22 +623,32 @@ tr.c td:first-child{padding-left:20px}
 #v [data-s]{cursor:pointer;text-decoration:underline}#v .toc{white-space:normal;line-height:1.9;margin:10px 0}
 #v blockquote{margin:12px 0;padding-left:12px;border-left:2px solid var(--line);color:var(--dim)}
 @media(max-width:640px){.x{display:none}}
-</style>
-<div id="B"><header><input id="q" placeholder="search — id, tier, status, words · blocked · untriaged · ~ID = its neighbours" autofocus>
-<button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true">open</button><button id="a" aria-pressed="false">all</button><span id="n" class="m"></span></header>
-<p id="l" class="m"><i class="q"></i>proposed<i class="q b"></i>in progress<i class="q y"></i>parked<i class="q r"></i>blocked<i class="q t"></i>shipped<i class="q z"></i>closed</p>
+/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
+#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H span,#f{color:var(--mute);font-size:13px}
+#l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
+/* on paper the board is always the light one */
+@media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
+</style>__THEMES__
+<div id="B"><div id="H">__LOGO__<b>__NAME__</b><span data-l="tagline"></span></div>
+<header><input id="q" autofocus>
+<button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
+<p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
 <p id="p"></p>
-<table><thead><tr><th>id<th>tier<th>status__COLHEADS__<th>title</thead><tbody id="b"></tbody></table></div>
+<table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table>
+<p id="f" class="m" data-l="footer"></p></div>
 <article id="v" hidden></article>
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
-const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
 esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])),
 dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}},          // `#100%` must not blank the page
+// every word of the chrome comes from L (labels.yaml, merged over the built-in English). What the page's LOGIC compares —
+// a status, a section, a move — stays the word an agent types; only what is SHOWN goes through here.
+l=(k,...a)=>esc((L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??"")),sl=s=>L["status."+s]||s,vn=g=>L["view."+g]||g,
 byId=new Map(T.map(t=>[t[0],t])),inb=new Map();
 for(const t of T)for(const l of t[12])inb.set(l,[...(inb.get(l)||[]),t[0]]);
 EPICS=new Set(T.map(t=>t[13])),
@@ -654,10 +665,7 @@ LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
 fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
-BOARD={progress:"kept by triage — by rank, then tier",
-triage:"what the next --triage lists — in progress and unjudged or judged over __DAYS__ days ago, and new filings",
-triaged:LAST?"judged "+LAST+" — each also sits in its own section":"no triage pass has run yet",
-backlog:"waiting — P0 to P3, then untiered, then parked",done:"shipped or closed"},
+BOARD={progress:l("desc.progress"),triage:l("desc.triage","__DAYS__"),triaged:LAST?l("desc.triaged",LAST):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
 board=t=>[...(recent(t)?["triaged"]:[]),untriaged(t)?"triage":t[19]],   // t[19] is the generator's; staleness is the one clock rule, and only work in progress goes stale
 MARK={"In Progress":"b","Shipped":"t","Parked":"y","Closed":"z"},mark=t=>blocked(t)?"r":t[2].startsWith("Shipped")?"t":MARK[t[2]]||"",
 ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">${i}</a>`:i),   // TRIAGE.md — an id opens its tracker rendered, as in a row
@@ -666,7 +674,7 @@ let all=false,gi=0,shut=new Set(),touched=new Set();
 function draw(){
   const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),words=q.toLowerCase().split(/\s+/).filter(Boolean);
   const near=hood&&new Set([hood[0],...hood[12],...(inb.get(hood[0])||[])]),[gname,gkey]=GROUPS[gi],every=all||gname=="board";
-  const rows=T.filter(t=>hood?near.has(t[0]):(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+(blocked(t)?" blocked":"")+(untriaged(t)?" untriaged":"")).toLowerCase().includes(w)))
+  const rows=T.filter(t=>hood?near.has(t[0]):(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+" "+sl(t[2])+(blocked(t)?" blocked "+sl("Blocked"):"")+(untriaged(t)?" untriaged "+(L["count.untriaged"]||""):"")).toLowerCase().includes(w)))
     .sort((x,y)=>(x[2]=="Parked")-(y[2]=="Parked")||((x[18]||99)-(y[18]||99))||(x[1]<y[1]?-1:x[1]>y[1]?1:0)||y[8]-x[8]);
   const groups=new Map(),order=Object.keys(BOARD);
   for(const t of rows)for(const k of[].concat(gkey(t)))groups.set(k,[...(groups.get(k)||[]),t]);
@@ -678,15 +686,15 @@ function draw(){
   $("b").innerHTML=keys.map(k=>{
     const g=groups.get(k);
     const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),folded=shut.has(gname+k)&&!q;
-    const story=kids.length?` · ${kids.length} chapter${kids.length==1?"":"s"}: ${kids.length-open.length} done · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} open</span>${open.some(t=>t[17])?` · triaged ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
+    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${kids.length-open.length} ${l("story.done")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
-    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${esc(k=="—"?"no "+gname:k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
-    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${blocked(t)?"Blocked":t[2]}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(t[2])} · blocked by ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">triaged ${esc(t[17])}${t[20].length?" · needs "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
+    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
-  $("n").textContent=`${rows.length} ${hood?"around "+hood[0]:every?"trackers":"open"} · ${hot} P0/P1 · ${go} in progress${stuck?` · ${stuck} blocked`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} untriaged`:""}`;
+  $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent="by "+gname;$("p").innerHTML=gname=="board"&&!q&&HOME.path?"<b>the current path</b> — __HOME_PATH__\n"+ids(HOME.path)+"\n\n"+(w=>`<b>waiting for you: ${w.length}</b>${w.length?" — open work whose next move is the Owner's: "+w.slice(0,14).map(t=>`<a href="#=${t[0]}">${t[0]}</a>`).join(" · ")+(w.length>14?" …":""):""}`)(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner")):"";
+  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q&&HOME.path?"<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path)+"\n\n"+(w=>`<b>${l("waiting.title")}: ${w.length}</b>${w.length?" — "+l("waiting.detail")+": "+w.slice(0,14).map(t=>`<a href="#=${t[0]}">${t[0]}</a>`).join(" · ")+(w.length>14?" …":""):""}`)(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner")):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -707,15 +715,15 @@ V=(id,md)=>{MD.set(id,md);if(dec(location.hash)=="#="+id)view(id)};
 function view(id){
   const v=$("v"),t=byId.get(id);$("B").hidden=true;v.hidden=false;scrollTo(0,0);
   if(!MD.has(id)){const s=document.createElement("script");s.src="view/"+id+".js";
-    s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">← board</a> · no rendered copy of ${id} — run __CMD__ --html-only</p>`;
+    s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · ${l("viewer.no_copy",id,"__CMD__ --html-only")}</p>`;
     v.innerHTML=`<p class="m">${id} …</p>`;return document.head.append(s)}
-  const facts=[blocked(t)?"Blocked":t[2],t[1]!="—"&&t[1],t[18]&&"#"+t[18],board(t).at(-1),t[25]&&"reads "+(t[25]/1000).toFixed(1)+"k",t[17]&&"triaged "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
-  v.innerHTML=`<p class="m"><a href="#">← board</a> · <a href="#~${id}">neighbours</a> · <a href="${esc(t[5])}">file</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">forge</a>`:""}</p>
-<p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · epic <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
-${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>intent</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(from ${esc(t[23])})</a>`:""):"<i>missing — the Owner states it on the tracker or its story</i>"}<br>
-<b>verdict</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>stale — older than __DAYS__ days, it counts as untriaged again</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>none yet — no triage pass has judged it</i>"}<br>
-<b>hand-over</b> — next: ${t[21]?esc(t[21]):"<i>missing</i>"}${t[21]?" · kind: "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>(from the move)</i>"):"<i>missing</i>"):""} · what is true now: ${t[20].includes("stated")?"<i>missing</i>":"stated"}${(c=>c.length?`<br>
-<b>chapters</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} with no move named`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||"none in progress"} · ${c.filter(x=>x[2]=="Parked").length} parked · ${c.filter(x=>!OPEN.has(x[2])).length} done`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · needs "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),"blocked by","=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+  const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
+  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
+<p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
+${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
+<b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
+<b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
+<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>!OPEN.has(x[2])).length} ${l("story.done")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
     if(m&&byId.has(m[1]))a.href="#="+m[1];else if(h[0]=="#"&&h[1]!="="){a.removeAttribute("href");a.dataset.s=dec(h.slice(1))}else if(!/^[a-z]+:/i.test(h)&&h[0]!="#")a.href=BLOB+h}
   // headings get GitHub's slug, so a tracker's own `#section` links work; a long tracker gets its sections listed.
@@ -726,9 +734,158 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>intent</b> — ${t[22]
   if(h2.length>5)v.querySelector(".md").insertAdjacentHTML("beforebegin",`<p class="m toc">${h2.map(h=>`<a data-s="${esc(h.id.slice(2))}">${esc(h.textContent)}</a>`).join(" · ")}</p>`);
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
+for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];
 (onhashchange=()=>{const h=dec(location.hash.slice(1));if(h[0]=="="&&byId.has(h.slice(1)))return view(h.slice(1));
   $("v").hidden=true;$("B").hidden=false;$("q").value=h;draw();scrollTo(0,0)})();
 </script></html>
+"""
+
+
+# Every word of the board's chrome, in English. A `labels.yaml` — flat `key: value` lines — overrides any of them;
+# the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
+LABELS = {
+    "tagline": "", "footer": "",
+    "search": "search — id, tier, status, words · blocked · untriaged · ~ID = its neighbours",
+    "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
+    "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
+    "status.Proposed": "Proposed", "status.In Progress": "In Progress", "status.Parked": "Parked", "status.Reserved": "Reserved",
+    "status.Shipped": "Shipped", "status.Closed": "Closed", "status.Blocked": "Blocked",
+    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.done": "done",
+    "desc.progress": "kept by triage — by rank, then tier",
+    "desc.triage": "what the next --triage lists — in progress and unjudged or judged over {0} days ago, and new filings",
+    "desc.triaged": "judged {0} — each also sits in its own section", "desc.triaged.none": "no triage pass has run yet",
+    "desc.backlog": "waiting — P0 to P3, then untiered, then parked", "desc.done": "shipped or closed",
+    "group.none": "no {0}",
+    "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.in_progress": "in progress",
+    "count.blocked": "blocked", "count.untriaged": "untriaged",
+    "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
+    "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
+    "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
+    "word.missing": "missing", "word.stated": "stated",
+    "viewer.board": "← board", "viewer.neighbours": "neighbours", "viewer.file": "file", "viewer.forge": "forge",
+    "viewer.no_copy": "no rendered copy of {0} — run {1}",
+    "viewer.intent": "intent", "viewer.from": "from {0}", "viewer.intent.missing": "missing — the Owner states it on the tracker or its story",
+    "viewer.verdict": "verdict", "viewer.verdict.none": "none yet — no triage pass has judged it",
+    "viewer.stale": "stale — older than {0} days, it counts as untriaged again",
+    "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
+    "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
+}
+BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "labels.yaml")
+LOGO_MAX = 200_000            # bytes — a logo is inlined into the page; past this it is skipped, with a warning
+
+
+def brand_places():
+    """Where a brand may live, farthest from the viewer first — the LATER place wins. Only the git-ignored board reads
+    these: INDEX.md, the gate and the deriver are functions of the repository alone, or two people's commits would
+    fight over a generated file."""
+    try:
+        home = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or pathlib.Path.home() / ".config") / "shoalmark"
+    except (RuntimeError, KeyError):                        # no HOME — a hook, CI, an agent: the person simply has no place
+        home = None
+    return [(who, d) for who, d in (("organisation", HERE / "brand"), ("repository", TRACKER_DIR), ("person", home)) if d and d.is_dir()]
+
+
+def read_flat(text):
+    """`key: value` lines, `#` comments, optional quotes — the form a tracker's front matter already has. No nesting."""
+    out = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and ":" in line:
+            k, _, v = line.partition(":")
+            v = v.strip()
+            out[k.strip()] = v[1:-1] if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'" else v
+    return out
+
+
+def contrast(a, b):
+    """WCAG contrast of two `#rrggbb` colours, 1–21."""
+    def lum(h):
+        c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        r, g, bl = (x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+    hi, lo = sorted((lum(a), lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def brand():
+    """The board's brand, assembled: (themes [(who, css)], logo (who, data-uri) or None, labels, sources, warnings)."""
+    themes, logo, labels, src, warn = [], None, dict(LABELS), {"theme.css": [], "logo": [], "labels.yaml": []}, []
+    for who, d in brand_places():
+        f = d / "theme.css"
+        if f.is_file():
+            css = f.read_text(encoding="utf-8")
+            # a theme that maps colours onto an imported file's variables is ALL-OR-NOTHING: with the import missing —
+            # a submodule not checked out — every mapped colour is invalid, not the previous place's; so it is left out
+            gone = [u for u in re.findall(r"""@import\s+(?:url\()?["']?([^"')\s;]+)""", css) if not re.match(r"[a-z]+:|/", u) and not (d / u).exists()]
+            if gone:
+                warn.append(f"{who}'s theme.css imports {gone[0]}, which is not there — that theme is left out, the board keeps the colours it had")
+                css = ""                                      # only the theme: this place's logo and labels still apply
+            else:
+                themes.append((who, css)); src["theme.css"].append(who)
+            bg, ink = re.findall(r"--bg\s*:\s*(#[0-9a-fA-F]{6})\b", css), re.findall(r"--ink\s*:\s*(#[0-9a-fA-F]{6})\b", css)
+            for b, i in zip(bg, ink):                       # the light pair, then the dark one, as a theme writes them
+                if contrast(b, i) < 4.5:
+                    warn.append(f"{who}'s theme.css: text {i} on ground {b} has a contrast of {contrast(b, i):.1f}:1 — below 4.5:1, hard to read")
+        for name, mime in (("logo.svg", "image/svg+xml"), ("logo.png", "image/png")):
+            f = d / name
+            if f.is_file():
+                if f.stat().st_size > LOGO_MAX:
+                    warn.append(f"{who}'s {name} is {f.stat().st_size // 1000} kB — over {LOGO_MAX // 1000} kB, not shown")
+                else:
+                    logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(f.read_bytes()).decode("ascii"))); src["logo"].append(who)
+                break
+        f = d / "labels.yaml"
+        if f.is_file():
+            given = read_flat(f.read_text(encoding="utf-8"))
+            unknown = sorted(k for k in given if k not in LABELS)
+            if unknown:
+                warn.append(f"{who}'s labels.yaml: {', '.join(unknown[:6])} {'are' if len(unknown) > 1 else 'is'} not a label — `--brand` lists them")
+            labels.update({k: v for k, v in given.items() if k in LABELS}); src["labels.yaml"].append(who)
+    return themes, logo, labels, src, warn
+
+
+def brand_report(dest=None):
+    """`--brand`: why does my board look like this? `--brand DIR`: a commented starter to edit."""
+    if dest:
+        dest = pathlib.Path(dest); dest.mkdir(parents=True, exist_ok=True)
+        for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
+                                                           + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
+            if not (dest / name).exists():
+                (dest / name).write_text(text, encoding="utf-8"); print(f"wrote {dest / name}")
+        print("a logo is logo.svg or logo.png beside them; the name is `name` in " + CONFIG_NAME)
+        return EXIT_OK
+    themes, logo, labels, src, warn = brand()
+    print("the board is built from these places, the later one winning:")
+    for who, d in brand_places():
+        print(f"  {who:<13} {d}")
+    print(f"  name          {CONFIG['name'] or ROOT.name}  ({CONFIG_NAME})")
+    for kind in ("theme.css", "logo", "labels.yaml"):
+        print(f"  {kind:<13} {' → '.join(src[kind]) or 'built in'}")
+    changed = sorted(k for k in LABELS if labels[k] != LABELS[k])
+    print(f"  labels changed: {len(changed)} of {len(LABELS)}")
+    for w in warn:
+        print(f"  warning: {w}", file=sys.stderr)
+    return EXIT_OK
+
+
+THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is its own stylesheet, applied in order — the tool's, the
+   organisation's, the repository's, the person's — so a file with ONE variable changes one colour.
+   The four status colours keep their MEANING whatever their shade: blue in progress · teal shipped · yellow parked ·
+   coral blocked, and P0/P1. */
+:root{
+  --bg:#f7f7f5;      /* the ground */
+  --ink:#161616;     /* text */
+  --dim:#565656;     /* secondary text */
+  --mute:#6e6e6e;    /* labels, legends */
+  --line:rgba(0,0,0,.14);
+  --teal:#1a7f5a; --coral:#b3402f; --blue:#2f62d6; --yellow:#946c0f;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0e0e0e; --ink:#efefef; --dim:#ababab; --mute:#8f8f8f; --line:rgba(255,255,255,.15);
+  --teal:#4fd1a1; --coral:#ff7b66; --blue:#6f9bff; --yellow:#e8cf5a;
+}}
+/* fonts: name one that is installed, or put a font file beside the trackers and load it:
+   @font-face{font-family:"Mine";src:url("mine.woff2")}  body{font-family:"Mine",system-ui,sans-serif} */
 """
 
 
@@ -771,6 +928,10 @@ def latest_verdicts():
     return out
 
 
+def html_escape(text):
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
 def render_html(trackers):
     """one static page: data rows + ~25 lines of vanilla JS. No dates and no
     counts are baked in (both are computed in the browser), so equal trackers give
@@ -794,10 +955,15 @@ def render_html(trackers):
     unwrap = lambda md: re.sub(r" {2,}", " ", re.sub(r"(?<!\n)\n(?!\s*\n|\s*\d+\. |\s*- )", " ", md))   # source line breaks are not the reader's
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
-    page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", CONFIG["name"] or ROOT.name)
+    page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT))).replace("__CMD__", CMD))
-    theme = TRACKER_DIR / "theme.css"            # by convention: a repository's own palette and fonts, no setting
-    page = page.replace("</style>", (theme.read_text(encoding="utf-8").replace("</", "<\\/") if theme.exists() else "") + "</style>", 1)
+    themes, logo, labels, _src, warnings = brand()
+    for w in warnings:
+        print(f"  brand: {w}", file=sys.stderr)
+    # each place's theme is its OWN stylesheet, in order — `@import` and `@font-face` only work at the top of one
+    page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
+    page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
+    page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
         "__ROWS__", ",\n".join(rows)
     )
@@ -1306,6 +1472,8 @@ def parse_args(argv):
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
              "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
+    add("--brand", nargs="?", const="", metavar="DIR",
+        help="why does my board look like this: which places gave it its theme, logo and labels. With DIR: write a commented starter there")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy")
@@ -1430,7 +1598,7 @@ def vendor(dest):
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
         return EXIT_LINT
     lines = []
-    for rel in TOOL_FILES:
+    for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES):
         src = HERE / rel
         if not src.exists():
             continue
@@ -1684,6 +1852,8 @@ def main(argv=None):
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
         return vendor(args.vendor)
+    if args.brand is not None:
+        return brand_report(args.brand or None)
     if args.init:
         return init(args.key)
     if args.install_hook:
