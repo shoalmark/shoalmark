@@ -27,6 +27,13 @@ ported. This tracker is that cost, written down.
 - An **extension seam** in the core, which has none today: extra front-matter keys with their shapes, extra
   lints, extra INDEX columns and page fields, contributed by a module the configuration names. The origin's
   release axis (`target:` / `version:` / `Live` / product areas) becomes that module, living in the origin.
+- **The project-key ids go back with it — ruled by the Owner on 2026-09-21, parked the same hour (*"mark this
+  for later"*), nothing built:** the origin's existing trackers keep their ids forever (the rule that motivates
+  the change forbids renaming them); new filings carry the key **`PD`**, the counter starts at **400** — above
+  every existing number, so a bare spoken number stays unambiguous; its gate refuses a new id under the old
+  prefixes from the first unfiled number on. Touches its generator's kinds and page patterns, one docs-lint
+  pattern, and four pages of its agent contract that spell the old convention — under a line ceiling with
+  eight lines of headroom.
 - The origin vendors a pinned copy and deletes its generator's core. **Proof, as for every sweep there:** its
   `INDEX.md` and board are byte-identical before and after.
 - Its ~840-line test file splits the same way: core checks live here already; the release-axis checks stay there.
