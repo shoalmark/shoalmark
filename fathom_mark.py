@@ -518,13 +518,13 @@ def render(rows, kind_label):
     rows = sorted(rows, key=lambda r: (STATUS_ORDER.get(r["status"], 9), -r["num"]))
     out = [
         f"## {kind_label}\n",
-        "| ID | Tier | Hook | Status | Board | Triaged |",
-        "|----|------|------|--------|-------|---------|",
+        "| ID | Tier | Hook | Status | Board | Triaged |" + "".join(f" {c} |" for c in DERIVED_COLUMNS),
+        "|----|------|------|--------|-------|---------|" + "".join("-" * (len(c) + 2) + "|" for c in DERIVED_COLUMNS),
     ]
     for r in rows:
         out.append(
             f"| [{r['id']}]({r['file']}) | {r['tier']} | {r['hook']} | {status_cell(r)} "
-            f"| {board(r)} | {r.get('triaged') or '—'} |"
+            f"| {board(r)} | {r.get('triaged') or '—'} |" + "".join(f" {(r.get('x') or {}).get(c, '—').replace('|', chr(92) + '|')} |" for c in DERIVED_COLUMNS)
         )
     out.append("")
     return "\n".join(out)
@@ -622,12 +622,12 @@ tr.c td:first-child{padding-left:20px}
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true">open</button><button id="a" aria-pressed="false">all</button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i>proposed<i class="q b"></i>in progress<i class="q y"></i>parked<i class="q r"></i>blocked<i class="q t"></i>shipped<i class="q z"></i>closed</p>
 <p id="p"></p>
-<table><thead><tr><th>id<th>tier<th>status<th>title</thead><tbody id="b"></tbody></table></div>
+<table><thead><tr><th>id<th>tier<th>status__COLHEADS__<th>title</thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
-const BLOB=__BLOB__,HOME=__HOME__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -636,7 +636,10 @@ dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}},          // `#100%
 byId=new Map(T.map(t=>[t[0],t])),inb=new Map();
 for(const t of T)for(const l of t[12])inb.set(l,[...(inb.get(l)||[]),t[0]]);
 EPICS=new Set(T.map(t=>t[13])),
-GROUPS=[["board",t=>board(t)],["epic",t=>t[13]!="—"?t[13]:EPICS.has(t[0])?t[0]:"—"]],   // two views — search covers the tags
+xv=(t,c)=>(t[27]||{})[c]||"—",                          // a derived value — a column, a fact, a search word and a view
+ver=k=>(k.match(/\d+(?:\.(?:\d+|x))+/)||[""])[0].split(".").map(p=>p=="x"?999:+p),
+vcmp=(a,b)=>{if(a=="—"||b=="—")return(a=="—")-(b=="—");const x=ver(a),y=ver(b);for(let i=0;i<4;i++){const d=(y[i]||0)-(x[i]||0);if(d)return d}return a<b?-1:a>b},
+GROUPS=[["board",t=>board(t)],["epic",t=>t[13]!="—"?t[13]:EPICS.has(t[0])?t[0]:"—"],...COLS.map(c=>[c.toLowerCase(),t=>xv(t,c)])],   // board · story · then every derived column is a view
 // blocked is derived, never typed: open work whose named blocker is still open (or is the Owner)
 blocked=t=>OPEN.has(t[2])&&t[16].some(b=>b.startsWith("Owner")||byId.has(b)&&OPEN.has(byId.get(b)[2])),
 // the board — the generator puts every tracker in exactly one of progress · triage · backlog · done (the same
@@ -658,12 +661,12 @@ let all=false,gi=0,shut=new Set(),touched=new Set();
 function draw(){
   const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),words=q.toLowerCase().split(/\s+/).filter(Boolean);
   const near=hood&&new Set([hood[0],...hood[12],...(inb.get(hood[0])||[])]),[gname,gkey]=GROUPS[gi],every=all||gname=="board";
-  const rows=T.filter(t=>hood?near.has(t[0]):(every||OPEN.has(t[2]))&&words.every(w=>(t.join(" ")+(blocked(t)?" blocked":"")+(untriaged(t)?" untriaged":"")).toLowerCase().includes(w)))
+  const rows=T.filter(t=>hood?near.has(t[0]):(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+(blocked(t)?" blocked":"")+(untriaged(t)?" untriaged":"")).toLowerCase().includes(w)))
     .sort((x,y)=>(x[2]=="Parked")-(y[2]=="Parked")||((x[18]||99)-(y[18]||99))||(x[1]<y[1]?-1:x[1]>y[1]?1:0)||y[8]-x[8]);
   const groups=new Map(),order=Object.keys(BOARD);
   for(const t of rows)for(const k of[].concat(gkey(t)))groups.set(k,[...(groups.get(k)||[]),t]);
   if(gname=="board"&&!q&&!hood)for(const k of order)groups.set(k,groups.get(k)||[]);   // the board always shows its five — an empty section is an answer
-  const keys=[...groups.keys()].sort(gname=="board"?(a,b)=>order.indexOf(a)-order.indexOf(b):(a,b)=>(a=="—")-(b=="—")||(a<b?-1:a>b));
+  const keys=[...groups.keys()].sort(gname=="board"?(a,b)=>order.indexOf(a)-order.indexOf(b):gname=="epic"?(a,b)=>(a=="—")-(b=="—")||(a<b?-1:a>b):vcmp);
   // epics start folded — the list of stories is the answer; a search or a neighbourhood opens them
   // …so does "no tag", and so does the board below `triage` — what is kept and what is owed stay open; `triaged` keeps its pass paragraph
   for(const k of keys)if((gname=="epic"||gname=="board"&&order.indexOf(k)>1)&&!q&&!touched.has(gname+k))shut.add(gname+k);
@@ -671,10 +674,10 @@ function draw(){
     const g=groups.get(k);
     const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),folded=shut.has(gname+k)&&!q;
     const story=kids.length?` · ${kids.length} chapter${kids.length==1?"":"s"}: ${kids.length-open.length} done · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} open</span>${open.some(t=>t[17])?` · triaged ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
-    const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="4">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="4">${ids(HOME.last)}</tr>`:"";
+    const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
-    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="4" class="m">${folded?"▸":"▾"} <b>${esc(k=="—"?"no "+gname:k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:""}</tr>${state}`;
-    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${blocked(t)?"Blocked":t[2]}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="4">${esc(t[7])}${blocked(t)?`<div class="m">${esc(t[2])} · blocked by ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">triaged ${esc(t[17])}${t[20].length?" · needs "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${esc(k=="—"?"no "+gname:k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:""}</tr>${state}`;
+    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${blocked(t)?"Blocked":t[2]}${COLS.map(c=>`<td class="m x">${esc(xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(t[2])} · blocked by ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">triaged ${esc(t[17])}${t[20].length?" · needs "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?"around "+hood[0]:every?"trackers":"open"} · ${hot} P0/P1 · ${go} in progress${stuck?` · ${stuck} blocked`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} untriaged`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
@@ -701,7 +704,7 @@ function view(id){
   if(!MD.has(id)){const s=document.createElement("script");s.src="view/"+id+".js";
     s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">← board</a> · no rendered copy of ${id} — run __CMD__ --html-only</p>`;
     v.innerHTML=`<p class="m">${id} …</p>`;return document.head.append(s)}
-  const facts=[blocked(t)?"Blocked":t[2],t[1]!="—"&&t[1],t[18]&&"#"+t[18],board(t).at(-1),t[25]&&"reads "+(t[25]/1000).toFixed(1)+"k",t[17]&&"triaged "+t[17],...t[15]];
+  const facts=[blocked(t)?"Blocked":t[2],t[1]!="—"&&t[1],t[18]&&"#"+t[18],board(t).at(-1),t[25]&&"reads "+(t[25]/1000).toFixed(1)+"k",t[17]&&"triaged "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+xv(t,c)),...t[15]];
   v.innerHTML=`<p class="m"><a href="#">← board</a> · <a href="#~${id}">neighbours</a> · <a href="${esc(t[5])}">file</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">forge</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · epic <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>intent</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(from ${esc(t[23])})</a>`:""):"<i>missing — the Owner states it on the tracker or its story</i>"}<br>
@@ -778,7 +781,7 @@ def render_html(trackers):
              t.get("epic", "—"), t.get("state", "") if t["id"] in epics else "",
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
-             intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t))],
+             intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -787,7 +790,7 @@ def render_html(trackers):
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", CONFIG["name"] or ROOT.name)
-            .replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT))).replace("__CMD__", CMD))
+            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in DERIVED_COLUMNS)).replace("__COLSPAN__", str(4 + len(DERIVED_COLUMNS))).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT))).replace("__CMD__", CMD))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
         "__ROWS__", ",\n".join(rows)
     )
@@ -1300,6 +1303,52 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+DERIVED_COLUMNS = []          # the columns a deriver contributed on this run, in the order it named them
+DERIVED_FILES = {}            # other files it wants generated: {repo-relative path: text} — the core writes, checks and stages them
+
+
+def run_deriver(trackers):
+    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run: nothing
+    derived is stored, so nothing derived can be stale. stdin: every tracker's id, status, file and front matter.
+    stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
+    value key becomes a column in INDEX.md and on the board, and a view on the board. `_files: {path: text}` are other
+    generated files: the deriver stays free of side effects — the core writes them, reports them under --print-written
+    and counts them as drift under --check. A non-zero exit REFUSES the run before anything is written.
+    Returns (exit code or None, problems)."""
+    global DERIVED_COLUMNS, DERIVED_FILES, FRONT_MATTER
+    DERIVED_COLUMNS, DERIVED_FILES, FRONT_MATTER = [], {}, front_matter_schema()
+    for t in trackers:
+        t["x"] = {}
+    exe = TRACKER_DIR / "derive"
+    if not (exe.is_file() and os.access(exe, os.X_OK)):
+        return None, []
+    ask = json.dumps({"root": str(ROOT), "trackers": [{"id": t["id"], "status": t["status"], "file": t["file"], "fm": t.get("fm", {})} for t in trackers]})
+    run = subprocess.run([str(exe)], input=ask, capture_output=True, text=True, cwd=ROOT, env=nested_git_env())
+    if run.returncode:
+        print(run.stderr.rstrip() or f"{exe.relative_to(ROOT)} exited {run.returncode}", file=sys.stderr)
+        return run.returncode, []
+    try:
+        said = json.loads(run.stdout or "{}")
+    except ValueError as e:
+        return EXIT_LINT, [f"{exe.relative_to(ROOT)}: its output is not JSON — {e}"]
+    for key, spec in (said.get("_keys") or {}).items():
+        if key in FRONT_MATTER:
+            return EXIT_LINT, [f"{exe.relative_to(ROOT)}: `_keys` may add a key, never redefine one — `{key}:` is the core's"]
+        FRONT_MATTER[key] = (spec.get("shape") or None, spec.get("required") or False, spec.get("who", "the deriver's owner"), spec.get("says", ""))
+    by_id = {t["id"]: t for t in trackers}
+    for tid, values in said.items():
+        if tid.startswith("_") or tid not in by_id or not isinstance(values, dict):
+            continue
+        by_id[tid]["x"] = {str(k): str(v) for k, v in values.items()}
+        DERIVED_COLUMNS += [k for k in by_id[tid]["x"] if k not in DERIVED_COLUMNS]
+    for rel, text in (said.get("_files") or {}).items():
+        path = (ROOT / rel).resolve()
+        if ROOT not in path.parents:
+            return EXIT_LINT, [f"{exe.relative_to(ROOT)}: `_files` names {rel} — outside the repository"]
+        DERIVED_FILES[path] = str(text)
+    return None, [str(p) for p in said.get("_problems") or []]
+
+
 def load_trackers():
     return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
 
@@ -1588,9 +1637,6 @@ def main(argv=None):
         configure(args.root)
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
-    if args.schema:
-        print(render_schema())
-        return EXIT_OK
     if args.vendor:
         return vendor(args.vendor)
     if args.init:
@@ -1598,6 +1644,15 @@ def main(argv=None):
     if args.install_hook:
         return install_hook()
     trackers = load_trackers()
+    refused, derived_problems = run_deriver(trackers)
+    if args.schema:
+        print(render_schema())
+        return EXIT_OK
+    if refused is not None and not args.html_only:            # the deriver said no: nothing is judged, nothing is written
+        for p in derived_problems:
+            print(f"  {p}", file=sys.stderr)
+        print("REFUSED by the deriver — nothing was written.", file=sys.stderr)
+        return refused
     if args.new:
         return new_tracker(args.new, trackers)
     if args.next:
@@ -1621,6 +1676,7 @@ def main(argv=None):
         sheets = sorted(out.parent.glob("triage-*.md"))
         applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today) if sheets else ([], [])
         trackers = load_trackers()
+        run_deriver(trackers)
         earlier = out.read_text(encoding="utf-8") if out.exists() else ""
         text, left = triage_worksheet(trackers, today, last_worked_on, earlier, repos_naming())
         out.write_text(text, encoding="utf-8")
@@ -1646,7 +1702,7 @@ def main(argv=None):
         return EXIT_LINT
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
-    problems = pin_problems() + lint(trackers)
+    problems = pin_problems() + lint(trackers) + derived_problems
     today = datetime.date.today().isoformat()
     counts = ", ".join(f"{sum(t['kind'] == k for t in trackers)} {KIND_LABELS[k].lower()}" for k in KINDS)
     header = (
@@ -1674,15 +1730,23 @@ def main(argv=None):
         drifted = drift_normalize(on_disk) != drift_normalize(body)
         if drifted:
             print(f"{OUT.relative_to(ROOT)} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
-        else:
+        for path, text in sorted(DERIVED_FILES.items()):
+            if not path.exists() or path.read_text(encoding="utf-8") != text:
+                drifted = True
+                print(f"{path.relative_to(ROOT)} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
+        if not drifted:
             print(f"{OUT.relative_to(ROOT)} is up to date — {len(trackers)} trackers.", file=log)
     else:
         OUT.write_text(body, encoding="utf-8")
         HTML_OUT.write_text(render_html(trackers), encoding="utf-8")   # git-ignored; never staged
         write_views(trackers)
         print(f"wrote {OUT.relative_to(ROOT)} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
-        if args.print_written:
-            print(OUT.relative_to(ROOT))       # the caller stages what we OWN, never a guessed glob
+        for path, text in sorted(DERIVED_FILES.items()):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        if args.print_written:                 # the caller stages what we OWN, never a guessed glob
+            for path in [OUT, *sorted(DERIVED_FILES)]:
+                print(path.relative_to(ROOT))
 
     for p in problems:
         print(f"  lint: {p}", file=sys.stderr)
