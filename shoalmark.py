@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.15.1"
+__version__ = "0.16.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -234,6 +234,8 @@ def front_matter_schema():
         "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence he can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
         "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk"),
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
+        "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
+        "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
         "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
@@ -511,6 +513,9 @@ def extract(path):
         "next": (fm.get("next") or "").strip().lower(),
         "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
+        "ask_proposal": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-proposal") or "").strip()),
+        # the choices as ONE line — `a | b | c`. Split here so the board and the gate read the same list
+        "ask_options": [o.strip() for o in (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
         "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
         "answered": (fm.get("answered") or "").strip(),
         "answered_by": (lambda v: git_user() if v in ("", "<you>") else v)((fm.get("answered-by") or "").strip()),
@@ -641,6 +646,85 @@ def standup(trackers, invite=None):
         for n, (t, a, hs) in enumerate(rows, 1):
             print(f"  {n}. {t['id']} — " + (t["ask"] or f"not yet stated as a question: {t['title']}") + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
     return EXIT_OK
+
+
+def answer_cmd(words, trackers):
+    """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
+    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes.
+    It refuses before touching anything when it cannot end in a verified answer."""
+    if len(words) < 2 or words[1] not in ("accept", "reject"):
+        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change", file=sys.stderr)
+        return EXIT_LINT
+    # the answer is ONE front-matter line: every run of whitespace — a newline above all — collapses to one space.
+    # A newline would close the line and the next fragment would be read as another key (`status: Shipped` flipped one),
+    # and the tracker's body is where a long answer belongs.
+    tid, verdict, text = words[0].upper(), words[1], " ".join(" ".join(words[2:]).split())
+    t = next((x for x in trackers if x["id"] == tid), None)
+    if not t or not t.get("ask") or t.get("next") != "owner":
+        print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
+        return EXIT_LINT
+    if t.get("answer"):
+        print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten; a new question is a new ask", file=sys.stderr)
+        return EXIT_LINT
+    if verdict == "reject" and not text:
+        print("--answer: a rejection carries its reason, and how the ask should be reworded", file=sys.stderr)
+        return EXIT_LINT
+    if vcs() != "git":
+        print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
+        return EXIT_LINT
+    me = git_user()
+    if me not in ANSWERERS:
+        print(f"--answer: `{me}` is not in `answerers` ({', '.join(ANSWERERS) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
+        return EXIT_LINT
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
+        print("--answer: the working tree has changes — an answer is one commit with nothing else in it; commit or stash first", file=sys.stderr)
+        return EXIT_LINT
+    if ANSWERERS.get(me) == "signed" and not git("config", "user.signingkey").stdout.strip():
+        print(f"--answer: `answerers` asks for a signed answer and no `user.signingkey` is set — see the signing page", file=sys.stderr)
+        return EXIT_LINT
+    # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
+    # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
+    # from an account that did not give it. Asked before anything is touched.
+    author = git("var", "GIT_AUTHOR_IDENT").stdout.partition(" <")[0].strip()
+    if author != me:
+        print(f"--answer: git would author this commit as `{author}`, not `{me}` — the environment (GIT_AUTHOR_NAME) overrides `user.name`; "
+              f"unset it, or the answer is filed from an account that did not give it", file=sys.stderr)
+        return EXIT_LINT
+    branch, here = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip()
+    if here != branch:
+        if git("rev-parse", "--verify", "-q", branch).returncode == 0:
+            r = git("switch", branch)
+        else:
+            r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
+        if r.returncode:
+            print(f"--answer: could not switch to `{branch}` — {r.stderr.strip()}", file=sys.stderr)
+            return EXIT_LINT
+    path = TRACKER_DIR / t["file"]
+    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
+    lines = path.read_text(encoding="utf-8").split("\n")
+    at = next(i for i, l in enumerate(lines) if l.startswith("ask:"))
+    while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
+        at += 1
+    lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
+    put(path, "\n".join(lines))
+    git("add", "--", str(path.relative_to(ROOT)))
+    r = git("commit", *(["-S"] if ANSWERERS.get(me) == "signed" else []), "-m", f"{tid}: {answer[:60]}")
+    if r.returncode:
+        print(f"--answer: the commit failed — {r.stderr.strip()[-300:]}", file=sys.stderr)
+        return EXIT_LINT
+    if ANSWERERS.get(me) == "signed":
+        # the gate's own rule, asked here so the answer is never pushed under one the gate will refuse: a good signature
+        # (`%G?`) AND the principal the key is trusted for (`%GS`) being the author's email — a trusted key still says
+        # nothing about whose name is on the commit
+        good, signer, email = (git("log", "-1", "--format=%G?%n%GS%n%ae").stdout.split("\n") + ["", "", ""])[:3]
+        if good.strip() != "G" or email.strip() not in signer:
+            print(f"--answer: committed, but the signature does not verify as `{me}` — `git commit --amend -S`, or check the signers file; "
+                  f"NOT pushed, and the gate would refuse this answer", file=sys.stderr)
+            return EXIT_LINT
+    r = git("push", "-u", "origin", branch)
+    print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
+    return EXIT_OK if r.returncode == 0 else EXIT_LINT
 
 
 def ready_needs(t, by_id):
@@ -777,7 +861,11 @@ tr.c td:first-child{padding-left:20px}
 /* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
 #H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
-pre.ans{margin:4px 0 6px;padding:6px 8px;border-left:2px solid var(--line);font-size:12px;color:var(--dim);white-space:pre-wrap}
+#dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
+#dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
+#dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
+#dlg menu{display:flex;gap:8px;margin:14px 0 0;padding:0}#dlg button{border:1px solid var(--line);padding:6px 12px;font-size:12px}#dlg button.go{border-color:var(--ink);color:var(--ink)}#dlg button:disabled{opacity:.4}
+#dlg .out{white-space:pre-wrap;border-left:2px solid var(--teal);padding:6px 8px;margin:10px 0 0;color:var(--dim);font-size:12px}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
@@ -791,6 +879,7 @@ pre.ans{margin:4px 0 6px;padding:6px 8px;border-left:2px solid var(--line);font-
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table>
 <p id="f" class="m" data-l="footer"></p></div>
 <article id="v" hidden></article>
+<dialog id="dlg"></dialog>
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
@@ -854,14 +943,34 @@ function draw(){
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
     // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under his login —
     // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
-    const act=(t,kind)=>{const today=new Date().toISOString().slice(0,10),ans=kind=="accept"?"accepted":kind=="change"?"accepted - <your change, one line; more in the body under a heading>":"rejected - <why, and how to reword the ask>";
-      const lines=`answer: "${ans}"\nanswered: ${today}\nanswered-by: <you>`;navigator.clipboard?.writeText(lines);
-      const box=document.getElementById("ans-"+t[0]);if(box){box.textContent=(L["answer.paste"]||"")+"\n"+lines;box.hidden=false}
-      // GitHub: /blob/ → /edit/ · GitLab: /-/blob/ → /-/edit/ · no forge (Subversion, plain git): the file name and the commit, shown
-      if(BLOB)open(BLOB.replace(/\/-\/blob\//,"/-/edit/").replace(/\/blob\//,"/edit/")+t[5],"_blank");else if(box)box.textContent+="\n\n"+L["answer.nofile"].replace("{0}",t[5])};
+    // Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
+    // abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
+    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.
+    const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
+      const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
+      // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
+      // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
+      // there is nothing to choose from, Other is the only row and the box is the answer.
+      const all=opts&&opts.length?opts:(prop?[prop]:[]),ordered=prop&&all.includes(prop)?[prop,...all.filter(o=>o!=prop)]:all;
+      const rows=ordered.map((o,i)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`
+          +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+`</span></label>`).join("")
+        +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
+      d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
+        <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
+        ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
+        :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
+        <p class="m out" hidden></p><menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+      const f=d.querySelector("form"),ta=f.text,out=f.querySelector(".out");
+      f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});
+      f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
+        // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
+        const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
+        const line=`${cmd} --answer ${id} ${kind}${chosen?` "${chosen}"`:""}`;
+        navigator.clipboard?.writeText(line);out.textContent=l("answer.run")+"\n"+line;out.hidden=false;f.querySelector(".go").disabled=true};
+      d.showModal()};
     window.ACT=act;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+"\n"+w.slice(0,14).map(t=>
-      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'change')">${l("answer.change")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button><pre id="ans-${t[0]}" class="ans">${l("answer.how",t[5])}</pre>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
@@ -941,10 +1050,9 @@ LABELS = {
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
-    "answer.accept": "accept", "answer.change": "accept with change", "answer.reject": "reject",
-    "answer.how": "to answer: click a button (the three lines are copied), paste them under `ask-since:` in {0} on a branch answer/<id> cut from this one, then `git commit -S` — the commit is your signature",
-    "answer.nofile": "No forge is configured: open {0} in your editor, paste, then commit it yourself — `svn commit` or `git commit` under your own name.",
-    "answer.paste": "Copied. Paste these lines under the front matter's `ask:` lines in the file that just opened, edit the <…>, commit under your own name:",
+    "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
+    "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
+    "answer.ok": "OK — give me the command", "answer.abort": "abort", "answer.run": "Copied. Run this in the repository; it cuts the answer branch, writes the three lines, commits signed and pushes:",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
@@ -1147,7 +1255,7 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", "")]],
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or []]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -1655,6 +1763,11 @@ def lint(trackers, committing=False):
                         problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{who}` — `answerers` asks for a signed answer, and a git author is only a string: sign it (`git commit -S`), or it does not count')
                 elif how == "git":
                     print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to that entry in `answerers` to require a signature', file=sys.stderr)
+        # `ask-proposal:` is the RECOMMENDED option, and the board offers it first: with options named, it must be one
+        # of them, or the Owner is shown a recommendation he cannot pick
+        if t.get("ask_proposal") and t.get("ask_options") and t["ask_proposal"] not in t["ask_options"]:
+            problems.append(f'{t["id"]}: `ask-proposal:` recommends {t["ask_proposal"]!r}, which is not one of `ask-options:` '
+                            f'({" | ".join(t["ask_options"])}) — the recommendation is one of the choices, written the same way')
         epic = t.get("epic", "—")
         if epic != "—" and (epic not in ids or epic == t["id"]):
             problems.append(f'{t["id"]}: `epic: {epic}` must name another existing tracker')
@@ -1759,6 +1872,7 @@ def parse_args(argv):
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
+    add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
@@ -2268,6 +2382,8 @@ def main(argv=None):
         return owner_digest(trackers)
     if args.answered:
         return answered(trackers)
+    if args.answer:
+        return answer_cmd(args.answer, trackers)
     if args.standup is not None:
         return standup(trackers, args.standup)
     if args.next:

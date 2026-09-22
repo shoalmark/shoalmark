@@ -53,10 +53,20 @@ def rm_git(root):
     shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
 
 
-def run(root, *argv):
+def run(root, *argv, git_env=None):
+    """The tool, in process. The ambient `GIT_*` variables are stripped for the call — git exports them into every hook,
+    so the suite run by the pre-commit hook would otherwise answer for the repository being committed to, not for the
+    scratch one it just built (`_ENV` strips them for the same reason). `git_env` puts chosen ones back, on purpose."""
     out, err = io.StringIO(), io.StringIO()
-    with redirect_stdout(out), redirect_stderr(err):
-        code = fm.main(["--root", str(root), *argv])
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+    os.environ.update(git_env or {})
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            code = fm.main(["--root", str(root), *argv])
+    finally:
+        for k in git_env or {}:
+            os.environ.pop(k, None)
+        os.environ.update(saved)
     return code, out.getvalue(), err.getvalue()
 
 
@@ -515,11 +525,15 @@ ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
 answer.accept: annehmen
-answer.change: annehmen mit Änderung
 answer.reject: ablehnen
-answer.how: "zum Antworten: einen Knopf drücken, unter `ask-since:` in {0} einfügen, dann `git commit -S`"
-answer.nofile: "Keine Forge eingetragen: {0} im Editor öffnen, einfügen, dann selbst committen — `svn commit` oder `git commit` unter eigenem Namen."
-answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"
+answer.proposal: "der Vorschlag der Sitzung:"
+answer.other: "Andere:"
+answer.recommended: empfohlen
+answer.change.hint: "Ihre Änderung, in einer Zeile — mehr gehört in den Text des Eintrags"
+answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
+answer.ok: "OK — den Befehl geben"
+answer.abort: abbrechen
+answer.run: "Kopiert. Im Repository ausführen; es legt den Antwort-Zweig an, schreibt die drei Zeilen, committet signiert und pusht:"
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -828,8 +842,110 @@ with tempfile.TemporaryDirectory() as tmp:
         check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
               "waiting for you: 3 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("Read the scraper log") and "not yet stated as a question" in shown
               and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
-        check("each stated ask carries the Owner's three actions — accept · accept with change · reject — and an unstated one carries none",
-              dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and 'answer: "${ans}"' in page and "/edit/" in page)
+        check("each stated ask carries two actions — accept · reject — and a dialog that shows the ask, its proposal and its context before anything is decided; an unstated one carries none",
+              dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and '<dialog id="dlg">' in dom and 'name="how" value="${i}" required' in page and 'value="other" required' in page and '--answer ${id} ${kind}' in page)
+        # the dialog's head is one line of ` · `-separated parts: the id ran straight into its first mark ("AP-022 a ruling"),
+        # and an ask with no kind, no age and holding nothing left a dangling separator behind the id
+        check("the dialog's head separates the id from its marks the way the rest of the line is separated, and carries none when there are no marks",
+              '<a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
+fm.configure(HERE)
+
+# --- FM-007: an ask offers CHOICES — one radio each, the recommended one first, Other last -------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    tracker(root, "AP-080", extra=f'next: owner\nask: "Welches Format?"\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
+    tracker(root, "AP-081", extra=f'next: owner\nask: "Move the merge?"\nask-since: {old}\nask-proposal: "count one week first"\n', title="one recommendation")
+    tracker(root, "AP-082", extra=f'next: owner\nask: "What should it say?"\nask-since: {old}\n', title="no choices at all")
+    code, _, err = run(root)
+    check("an ask may name its choices: `ask-options:` is one line, and a proposal that is one of them passes the gate", code == 0)
+    if _CHROME:
+        page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        def _rows(tid, then=""):
+            """the dialog's radio rows, in order, as the Owner reads them — opened in the browser, not inferred."""
+            p_ = root / "docs/work-tracker" / f"dlg-{tid}.html"
+            p_.write_text(page + f'<script>setTimeout(()=>{{ACT(T.find(x=>x[0]=="{tid}"),"accept");{then}}},50)</script>', encoding="utf-8")
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", p_.as_uri()],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            p_.unlink()
+            body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]      # the rendered dialog only — the script below it carries the same template
+            return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m)).strip() for m in re.findall(r'<label class="dl">(.*?)</label>', body, re.S)], body
+        r80, _b80 = _rows("AP-080")
+        check("the choices are radios in the order given, except the recommended one — it is offered FIRST and marked — and Other comes last",
+              r80 == ["b — recommended", "a", "c", "Other:"])
+        r81, _b81 = _rows("AP-081")
+        check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "Other:"])
+        r82, b82 = _rows("AP-082")
+        other_, box_ = re.search(r'<input [^>]*value="other"[^>]*>', b82).group(0), re.search(r"<textarea[^>]*>", b82).group(0)
+        check("an ask that offers nothing shows only Other, checked, and its box is the answer — required, not disabled",
+              r82 == ["Other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
+        # OK yields ONE command, and what the Owner picked is what the tracker will record — the option's own words
+        _pick = 'const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[2];R.checked=true;R.dispatchEvent(new Event("change"));D.querySelector("button.go").click();'
+        _, b83 = _rows("AP-080", _pick)
+        check("OK gives one command carrying the chosen option VERBATIM — not an index, not the recommendation",
+              '--answer AP-080 accept "c"' in re.sub(r"<[^>]+>", "", b83))
+    (root / "docs/work-tracker/AP-080-x.md").write_text((root / "docs/work-tracker/AP-080-x.md").read_text(encoding="utf-8").replace('ask-proposal: "b"', 'ask-proposal: "z"'), encoding="utf-8")
+    code, _, err = run(root)
+    check("a recommendation that is not one of the options is refused — the Owner is never shown a recommendation he cannot pick",
+          code == fm.EXIT_LINT and "AP-080: `ask-proposal:` recommends 'z'" in err + _ and "a | b | c" in err + _)
+fm.configure(HERE)
+
+# --- FM-007: the Owner's one command — --answer cuts the branch, writes, signs, pushes ------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True); subprocess.run(["git", "init", "-q", str(root)], check=True)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(root / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    tracker(root, "AP-070", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="the ask")
+    tracker(root, "AP-071", extra="next: build\n", title="asks nothing")
+    for id_ in ("AP-072", "AP-073"):
+        tracker(root, id_, extra=f'next: owner\nask: "Move the merge?"\nask-kind: ruling\nask-since: {old}\n', title="another ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=seat <s@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/070")
+    code, _, err = run(root, "--answer", "AP-071", "accept")
+    check("--answer refuses a tracker that asks the Owner nothing", code == fm.EXIT_LINT and "asks the Owner nothing" in err)
+    code, _, err = run(root, "--answer", "AP-070", "reject")
+    check("--answer refuses a rejection without its reason", code == fm.EXIT_LINT and "carries its reason" in err)
+    (root / "dirty.txt").write_text("x"); git(root, "add", "dirty.txt"); code, _, err = run(root, "--answer", "AP-070", "accept"); git(root, "rm", "-q", "-f", "dirty.txt")
+    check("--answer refuses a dirty tree — an answer is one commit with nothing else in it", code == fm.EXIT_LINT and "working tree has changes" in err)
+    code, out, err = run(root, "--answer", "AP-070", "accept", "count one week first")
+    sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %an %s"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    on = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    remote = subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
+    fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-070")
+    check("--answer accept with a change: cuts answer/<id> from the ask's branch, writes the three lines, commits SIGNED under the answerer, pushes — the ask has left the queue",
+          code == 0 and on == "answer/ap-070" and sig.startswith("G h@x holgo AP-070: accepted - count one week first") and "answer/ap-070" in remote
+          and t_["answer"] == "accepted - count one week first" and t_["answered_by"] == "holgo" and "AP-070" not in run(root, "--owner")[1] and run(root, "--check")[0] == 0)
+    code, _, err = run(root, "--answer", "AP-070", "reject", "no")
+    check("an answer is never overwritten — a second --answer on the same ask is refused", code == fm.EXIT_LINT and "answered already" in err)
+    # the answer is ONE front-matter line: a newline in the text closes it, and the fragment after it is read as another
+    # key — `status: Shipped` in a rejection silently shipped the tracker, and the answer itself parsed off
+    git(root, "switch", "-q", "pd/070"); code, _, err = run(root, "--answer", "AP-072", "reject", "no\nstatus: Shipped\n\nand why")
+    fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-072")
+    check("an answer is ONE line: a newline in the text would be read as the next front-matter key — every run of whitespace collapses to one space",
+          code == 0 and t_["answer"] == "rejected - no status: Shipped and why" and t_["status"] == "In Progress" and run(root, "--check")[0] == 0)
+    # `answered-by:` is `user.name`; the commit's author is what git will actually write, and the environment overrides
+    # the configuration. The gate reads the author, so the two disagreeing is an answer filed from an account that did not give it
+    git(root, "switch", "-q", "pd/070")
+    code, _, err = run(root, "--answer", "AP-073", "accept", git_env={"GIT_AUTHOR_NAME": "mallory"})
+    check("the environment's author disagreeing with `answered-by:` is refused before anything is touched — no branch cut",
+          code == fm.EXIT_LINT and "would author this commit as `mallory`" in err
+          and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() == "pd/070")
+    # a good signature under a trusted key still says nothing about whose name is on the commit: the gate asks that the
+    # principal the key is trusted FOR is the author's email, and so must the command — or it pushes what the gate refuses
+    (base / "other").write_text("other@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(base / "other")); code, _, err = run(root, "--answer", "AP-073", "accept")
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(root / "signers"))
+    check("a signature trusted for someone else does not verify as the answerer — the gate's own rule, and the answer is NOT pushed",
+          code == fm.EXIT_LINT and "does not verify as `holgo`" in err
+          and "answer/ap-073" not in subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout)
+    git(root, "switch", "-q", "pd/070"); git(root, "config", "--unset", "user.signingkey"); code, _, err = run(root, "--answer", "AP-070", "accept")
+    check("--answer refuses before touching anything when it cannot end in a verified answer — no signing key, no branch cut", code == fm.EXIT_LINT and "no `user.signingkey`" in err
+          and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() == "pd/070")
+    rm_git(root)
 fm.configure(HERE)
 
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------

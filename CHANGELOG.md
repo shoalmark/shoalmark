@@ -2,6 +2,25 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.16.0 — 2026-09-22
+
+**The answer, redesigned by the Owner** — *"human users reject any friction"*:
+
+- **Two buttons, accept · reject, and a dialog.** It shows the whole ask with its context — the question, the seat's
+  proposal, what it holds up, how long — so the Owner can look and abort. *Accept* offers **the ask's options**, one
+  radio each, and last **Other:** with a box; *reject* requires the reason and how to reword. OK yields **one command**.
+- **`--answer <id> accept|reject ["text"]`** — the Owner's one command: it cuts `answer/<id>` from the branch that
+  carries the ask, writes the three lines with his git name, commits **signed**, pushes, and reports. It refuses before
+  touching anything when it cannot end in a verified answer: no signing key, a dirty tree, a rejection without a reason,
+  an ask that is answered already, an author the environment would impose over `user.name` — and after the commit, a
+  signature the gate would refuse is never pushed. A browser cannot sign; the dialog decides, the terminal signs.
+- **The answer is ONE front-matter line.** Every run of whitespace in the text collapses to one space: a newline would
+  close the line and the fragment after it would be read as the next key. A long answer goes in the body, as before.
+- **`ask-options:` · `ask-proposal:`** — an ask offers its choices as one line, `a | b | c`, and the proposal is the one
+  the seat **recommends**: it is offered first and marked, and where options are named the gate refuses a recommendation
+  that is not one of them. A proposal alone is a list of one. Whatever is picked goes into the command verbatim.
+- The board no longer opens a forge editor, needs no forge, and has no `accept with change` button.
+
 ## 0.15.1 — 2026-09-22
 
 What the Owner's first real answer found, in order:

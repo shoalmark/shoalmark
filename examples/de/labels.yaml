@@ -81,8 +81,12 @@ ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
 answer.accept: annehmen
-answer.change: annehmen mit Änderung
 answer.reject: ablehnen
-answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"
-answer.nofile: "Keine Forge eingetragen: {0} im Editor öffnen, einfügen, dann selbst committen — `svn commit` oder `git commit` unter eigenem Namen."
-answer.how: "zum Antworten: einen Knopf drücken (die drei Zeilen werden kopiert), unter `ask-since:` in {0} einfügen — auf einem Zweig answer/<id>, der von diesem abzweigt —, dann `git commit -S`: der Commit ist Ihre Unterschrift"
+answer.proposal: "der Vorschlag der Sitzung:"
+answer.other: "Andere:"
+answer.recommended: empfohlen
+answer.change.hint: "Ihre Änderung, in einer Zeile — mehr gehört in den Text des Eintrags"
+answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
+answer.ok: "OK — den Befehl geben"
+answer.abort: abbrechen
+answer.run: "Kopiert. Im Repository ausführen; es legt den Antwort-Zweig an, schreibt die drei Zeilen, committet signiert und pusht:"
