@@ -24,3 +24,14 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
 7. **`work-tracker/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
 <!-- END shoalmark -->
+
+## How this repository ships — the Owner, 2026-09-22
+
+- **Never push to `main`.** One branch per tracker (`fm/007-slug`, or `process/…` for the repository's own rules), commits
+  stacked on it; the Owner opens and merges the pull request. Open it as a **draft** while working; mark it *ready for
+  review* when done — that is what runs CI.
+- **A version is a tag.** `VERSION`, `__version__` and the CHANGELOG section change on the branch; the Owner tags `vX.Y.Z`
+  on `main` after the merge. The tag runs CI and builds the documentation site. Consumers vendor from a tag.
+- **CI minutes are paid for:** the suites run locally through the pre-commit hook on every commit; CI runs on a ready pull
+  request and on a tag, nowhere else. Say when a tag is due; never create one.
+

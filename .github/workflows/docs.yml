@@ -1,8 +1,9 @@
 # The documentation site: built from docs/ by Zensical on every push to main, served by GitHub Pages.
 # The agents' document is README.md, rendered into the site by inclusion — never copied.
 name: docs
+# Runs on a release tag only — CI minutes are paid for. A pull request does not build the site; `zensical build` locally does.
 on:
-  push: {branches: [main], paths: ["docs/**", "README.md", "zensical.toml", ".github/workflows/docs.yml"]}
+  push: {tags: ["v*"]}
   workflow_dispatch:
 permissions: {contents: read, pages: write, id-token: write}
 concurrency: {group: pages, cancel-in-progress: true}
