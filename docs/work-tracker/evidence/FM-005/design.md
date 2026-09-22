@@ -80,6 +80,14 @@ the default after two standups"* is fair to a person in a way *"after 24 hours"*
 side of the bargain: asks are written *before* the standup, and between standups nobody interrupts him except for what
 cannot be undone.
 
+**3.9 One person, several repositories — the Owner, 2026-09-22:** *"how can I, as a person, do two standups at the same
+time?"* Each repository sets its own `standup`; the tool knows nothing of the others. The rule that follows: **one
+Owner, one slot per repository, and the slots do not overlap** — the person's calendar is the only place that sees
+all of them, which is why the invite is a calendar file and not a reminder inside the tool. A lower-priority
+repository takes a later slot and need not be daily (the Owner: this one at 10:00, not every day). Not built:
+a tool-side check across repositories — it would need the tool to know where the others are, and the calendar
+already refuses a double booking for free.
+
 ## 4. Against rubber-stamping — the question the Owner asked
 
 Stamping moves up a level unless the design prevents it. Seven mechanisms, cheapest first:
