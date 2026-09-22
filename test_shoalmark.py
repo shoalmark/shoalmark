@@ -507,6 +507,10 @@ ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
+answer.accept: annehmen
+answer.change: annehmen mit Änderung
+answer.reject: ablehnen
+answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -769,6 +773,16 @@ with tempfile.TemporaryDirectory() as tmp:
           code == fm.EXIT_LINT and "standup = " in err and code2 == 0 and b"RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\n" in ics and b"T090000\r\n" in ics and b"T092000\r\n" in ics and ics.count(b"\n") == ics.count(b"\r\n"))
     (root / "AP-030-x.md").unlink() if (root / "AP-030-x.md").exists() else [p_.unlink() for p_ in (root / "docs/work-tracker").glob("AP-030-*.md")]
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    # the Owner answers: three lines in the ask's tracker, his own commit — the ask leaves his queue, the seat sees it under --answered
+    ans = tracker(root, "AP-060", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nanswer: "accepted — count one week first"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
+    code, out4, _ = run(root); q_ = run(root, "--owner")[1]; a_ = run(root, "--answered")[1]
+    check("an answered ask leaves the Owner's queue and appears under --answered, with the question, the answer and who answered",
+          code == 0 and "AP-060" not in q_ and "1 ANSWERED, NOT YET ACTED ON" in a_ and "answer: accepted — count one week first" in a_ and "by holgo" in a_)
+    ans.write_text(ans.read_text().replace("answered-by: holgo\n", ""), encoding="utf-8"); code, _, err = run(root)
+    check("an answer is three lines — one missing and the gate says so", code == fm.EXIT_LINT and "an answer is three lines" in err + _)
+    ans.write_text(ans.read_text().replace("answered-by: holgo\n", "").replace('ask: "Move the merge to the Principal?"\n', "") + "", encoding="utf-8")
+    ans.write_text(ans.read_text() + "", encoding="utf-8"); code, _, err = run(root)
+    check("an answer with no question is refused", code == fm.EXIT_LINT and "`answer:` with no `ask:`" in err + _); ans.unlink()
     run(root); page = (root / "docs/work-tracker/index.html").read_text()
     if _CHROME:
         dom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
@@ -776,6 +790,8 @@ with tempfile.TemporaryDirectory() as tmp:
         check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
               "waiting for you: 3 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("Read the scraper log") and "not yet stated as a question" in shown
               and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
+        check("each stated ask carries the Owner's three actions — accept · accept with change · reject — and an unstated one carries none",
+              dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and 'answer: "${ans}"' in page and "/edit/" in page)
 fm.configure(HERE)
 
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------

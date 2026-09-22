@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -218,6 +218,9 @@ def front_matter_schema():
         "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence he can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
         "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk"),
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
+        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue"),
+        "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
+        "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -492,6 +495,8 @@ def extract(path):
         "next": (fm.get("next") or "").strip().lower(),
         "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
+        "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
+        "answered": (fm.get("answered") or "").strip(), "answered_by": (fm.get("answered-by") or "").strip(),
         # `kind-of-problem: complicated`: the kind of problem that is LEFT, which picks the dispatch.
         "problem": (fm.get("kind-of-problem") or "").strip().lower(),
         "fm_tier": (fm.get("tier") or "").strip(),
@@ -554,8 +559,17 @@ def owner_queue(trackers):
     """What waits for the Owner, oldest ask first: (tracker, age in days or None, what it holds up)."""
     today = datetime.date.today()
     age = lambda t: (today - datetime.date.fromisoformat(t["ask_since"])).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.get("ask_since") or "") else None
-    q = [(t, age(t), held_up_by(t, trackers)) for t in trackers if t["status"] in OPEN_STATUSES and t.get("next") == "owner"]
+    q = [(t, age(t), held_up_by(t, trackers)) for t in trackers if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer")]
     return sorted(q, key=lambda r: (-(r[1] if r[1] is not None else -1), r[0]["id"]))
+
+
+def answered(trackers):
+    """`--answered`: what the Owner answered and nobody has acted on yet — the seat's side of the exchange."""
+    rows = sorted((t for t in trackers if t.get("answer") and t["status"] in OPEN_STATUSES), key=lambda t: t.get("answered", ""))
+    print(f"{len(rows)} ANSWERED, NOT YET ACTED ON" if rows else "NOTHING ANSWERED IS WAITING FOR A SEAT.")
+    for t in rows:
+        print(f"\n{t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   → act on it, then set `next:` to what comes after and clear the ask; the answer stays in the file as the record")
+    return EXIT_OK
 
 
 def owner_digest(trackers):
@@ -745,6 +759,8 @@ tr.c td:first-child{padding-left:20px}
 @media(max-width:640px){.x{display:none}}
 /* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
 #H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
+button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
+pre.ans{margin:4px 0 6px;padding:6px 8px;border-left:2px solid var(--line);font-size:12px;color:var(--dim);white-space:pre-wrap}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
@@ -819,8 +835,15 @@ function draw(){
     // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
     const days=t=>t[29][2]?Math.floor((Date.now()-Date.parse(t[29][2]))/864e5):null,old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
+    // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under his login —
+    // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
+    const act=(t,kind)=>{const today=new Date().toISOString().slice(0,10),ans=kind=="accept"?"accepted":kind=="change"?"accepted — <your change>":"rejected — <why, and how to reword the ask>";
+      const lines=`answer: "${ans}"\nanswered: ${today}\nanswered-by: <you>`;navigator.clipboard?.writeText(lines);
+      const box=document.getElementById("ans-"+t[0]);if(box){box.textContent=(L["answer.paste"]||"")+"\n"+lines;box.hidden=false}
+      if(BLOB)open(BLOB.replace(/\/blob\//,"/edit/")+t[5],"_blank")};
+    window.ACT=act;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+"\n"+w.slice(0,14).map(t=>
-      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"))
+      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'change')">${l("answer.change")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button><pre id="ans-${t[0]}" class="ans" hidden></pre>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
@@ -900,6 +923,8 @@ LABELS = {
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
+    "answer.accept": "accept", "answer.change": "accept with change", "answer.reject": "reject",
+    "answer.paste": "Copied. Paste these lines under the front matter's `ask:` lines in the file that just opened, edit the <…>, commit under your own name:",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
@@ -1102,7 +1127,7 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else []]],
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", "")]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -1518,6 +1543,10 @@ def schema_problems(t):
             out.append(f'{t["id"]}: `{key}:` is not a front-matter key' + (f' — did you mean `{near[0]}:`?' if near else '.')
                        + ' `--schema` prints the keys; anything else belongs in the body')
             continue
+        if key in ("answer", "answered", "answered-by") and not all(t["fm"].get(k, "").strip() for k in ("answer", "answered", "answered-by")):
+            out.append(f'{t["id"]}: an answer is three lines — `answer:` `answered:` `answered-by:` — and this one is missing some')
+        if key == "answer" and not t["fm"].get("ask", "").strip():
+            out.append(f'{t["id"]}: `answer:` with no `ask:` — an answer answers a question; write the question it answers, or drop the answer')
         shape, _required, _who, says = FRONT_MATTER[key]
         if shape and value and not re.fullmatch(shape, value, re.I):
             out.append(f'{t["id"]}: `{key}:` is {says} — {shape_words(shape)} — got {value!r}')
@@ -1650,6 +1679,7 @@ def parse_args(argv):
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
+    add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
@@ -2156,6 +2186,8 @@ def main(argv=None):
         return new_tracker(args.new, trackers)
     if args.owner:
         return owner_digest(trackers)
+    if args.answered:
+        return answered(trackers)
     if args.standup is not None:
         return standup(trackers, args.standup)
     if args.next:

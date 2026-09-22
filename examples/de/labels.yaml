@@ -80,3 +80,7 @@ ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
+answer.accept: annehmen
+answer.change: annehmen mit Änderung
+answer.reject: ablehnen
+answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"

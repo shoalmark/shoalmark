@@ -2,6 +2,19 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.14.0 — 2026-09-22
+
+**The Owner answers an ask in his own commit** — chat is a conversation, git is the record:
+
+- **`answer:` · `answered:` · `answered-by:`** in the ask's tracker, written by the Owner: `accepted`, `accepted — <his
+  change>`, or `rejected — <why, and how to reword the ask>`. The commit's author is the proof; the field is the label.
+  The gate wants all three lines, and a question to answer. An answered ask leaves his queue.
+- **On the board, each stated ask carries three actions — accept · accept with change · reject.** A click copies the
+  three lines to the clipboard and opens the file in the forge's editor under the viewer's own login (`blob` names the
+  forge; nothing else is needed — no server, no token, and the seat that asked is nowhere in the path).
+- **`--answered`** — the seat's side: what the Owner answered and nobody has acted on yet.
+- Four labels (`answer.*`); `examples/de/labels.yaml` has them.
+
 ## 0.13.0 — 2026-09-21
 
 **What needs the Owner comes first** (FM-005; three outside agents and one real queue agreed on this and on little else):
