@@ -273,7 +273,8 @@ with tempfile.TemporaryDirectory() as d:
 # --- 0.3.0: what a second repository taught ---------------------------------------------------------------
 check("the configuration is read without a library — the subset --init writes, a refusal by line for anything else",
       fm.read_config('name = "a # b"  # c\nn = 7\nflag = true\n[kinds]\nMSR = "Work" # x\n') == {"name": "a # b", "n": 7, "flag": True, "kinds": {"MSR": "Work"}}
-      and (lambda: [True for _ in [0] if not _try(lambda: fm.read_config('x = [1, 2]\n'))])())
+      and (lambda: [True for _ in [0] if not _try(lambda: fm.read_config('x = [1, 2]\n'))])()
+      and fm.read_config('who = ["holgo", "a b"]\nnone = []\n') == {"who": ["holgo", "a b"], "none": []})
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q")
@@ -510,6 +511,7 @@ ask.ceremony: ein Knopfdruck
 answer.accept: annehmen
 answer.change: annehmen mit Änderung
 answer.reject: ablehnen
+answer.nofile: "Keine Forge eingetragen: {0} im Editor öffnen, einfügen, dann selbst committen — `svn commit` oder `git commit` unter eigenem Namen."
 answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"
 col.id: Id
 col.tier: Stufe
@@ -773,16 +775,39 @@ with tempfile.TemporaryDirectory() as tmp:
           code == fm.EXIT_LINT and "standup = " in err and code2 == 0 and b"RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\n" in ics and b"T090000\r\n" in ics and b"T092000\r\n" in ics and ics.count(b"\n") == ics.count(b"\r\n"))
     (root / "AP-030-x.md").unlink() if (root / "AP-030-x.md").exists() else [p_.unlink() for p_ in (root / "docs/work-tracker").glob("AP-030-*.md")]
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    # the Owner answers: three lines in the ask's tracker, his own commit — the ask leaves his queue, the seat sees it under --answered
+    # the Owner answers: three lines in the ask's tracker, HIS OWN COMMIT — the ask leaves his queue, the seat sees it under --answered
+    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True); git(root, "add", "-A"); git(root, "commit", "-qm", "before", "--author=seat <s@x>")
     ans = tracker(root, "AP-060", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nanswer: "accepted — count one week first"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
-    code, out4, _ = run(root); q_ = run(root, "--owner")[1]; a_ = run(root, "--answered")[1]
-    check("an answered ask leaves the Owner's queue and appears under --answered, with the question, the answer and who answered",
+    code, _, err = run(root)
+    check("an answer that is not committed is refused — the commit is the record, the file is the label", code == fm.EXIT_LINT and "not committed yet" in err + _)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "seat forges an answer", "--author=seat <s@x>"); code, _, err = run(root)
+    check("an answer committed by someone other than `answered-by:` is refused — the pre-mortem's rule, checked against the version control system", code == fm.EXIT_LINT and "author of the answer is `seat`" in err + _)
+    git(root, "commit", "-q", "--amend", "--no-edit", "--author=holgo <h@x>"); code, out4, _ = run(root); q_ = run(root, "--owner")[1]; a_ = run(root, "--answered")[1]
+    check("an answer committed by the answerer passes: the ask leaves the Owner's queue and appears under --answered, with the question, the answer and who answered",
           code == 0 and "AP-060" not in q_ and "1 ANSWERED, NOT YET ACTED ON" in a_ and "answer: accepted — count one week first" in a_ and "by holgo" in a_)
-    ans.write_text(ans.read_text().replace("answered-by: holgo\n", ""), encoding="utf-8"); code, _, err = run(root)
+    # `signed`: a git author is a string; the commit must VERIFY. A throwaway SSH key, trusted by the repository alone.
+    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("`answerers = [\"holgo signed\"]`: an unsigned answer is refused even though its author string is right — a git author is only a string", code == fm.EXIT_LINT and "does not verify" in err + _)
+    key = root / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    git(root, "config", "gpg.format", "ssh"); git(root, "config", "user.signingkey", str(key)); git(root, "config", "gpg.ssh.allowedSignersFile", str(root / "signers"))
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>"); code, _, err = run(root)
+    check("a signed answer under a key the repository trusts verifies and passes", code == 0 and "does not verify" not in err)
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <other@x>"); code, _, err = run(root)
+    check("signed by the key, but as an identity the signers file does not tie to it — refused: the key and the name must agree", code == fm.EXIT_LINT and "does not verify" in err + _)
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>")
+    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    ans.write_text(ans.read_text().replace("answered-by: holgo\n", "answered-by: intruder\n"), encoding="utf-8"); code, _, err = run(root)
+    check("an answerer not on the `answerers` list is refused, whoever committed", code == fm.EXIT_LINT and "not in `answerers`" in err + _)
+    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8"); code, _, err = run(root)
+    check("with no `answerers` named, every answer is refused with that message — nobody answers by default", code == fm.EXIT_LINT and "names nobody" in err + _)
+    ans.write_text(ans.read_text().replace("answered-by: intruder\n", ""), encoding="utf-8"); (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8"); code, _, err = run(root)
     check("an answer is three lines — one missing and the gate says so", code == fm.EXIT_LINT and "an answer is three lines" in err + _)
-    ans.write_text(ans.read_text().replace("answered-by: holgo\n", "").replace('ask: "Move the merge to the Principal?"\n', "") + "", encoding="utf-8")
-    ans.write_text(ans.read_text() + "", encoding="utf-8"); code, _, err = run(root)
-    check("an answer with no question is refused", code == fm.EXIT_LINT and "`answer:` with no `ask:`" in err + _); ans.unlink()
+    ans.write_text(ans.read_text().replace('ask: "Move the merge to the Principal?"\n', "") + "answered-by: holgo\n", encoding="utf-8"); code, _, err = run(root)
+    check("an answer with no question is refused", code == fm.EXIT_LINT and "`answer:` with no `ask:`" in err + _); ans.unlink(); shutil.rmtree(root / ".git")
+    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     run(root); page = (root / "docs/work-tracker/index.html").read_text()
     if _CHROME:
         dom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout

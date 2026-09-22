@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -54,6 +54,13 @@ DEFAULTS = {
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
     "triage_days": 7,
+    # who may answer an ask. An answer is three lines in the tracker, committed by the answerer, and the commit is the
+    # proof — but git's author is a string anyone can type. So an entry is `"name"` (Subversion, whose server
+    # authenticates the committer; or git with NO enforcement, and the gate says so) or `"name signed"` (git: the
+    # commit that carries the answer must VERIFY — `git verify-commit` — under a key the repository trusts; that is
+    # `gpg.format`/`user.signingkey` and, for SSH keys, `gpg.ssh.allowedSignersFile`). Empty = nobody may answer.
+    # A seat cannot add itself here unseen: the change is in the same diff as anything it would allow.
+    "answerers": [],
     # humans have office hours, agents have budgets: ONE fixed sitting a day in which the Owner goes through what
     # needs him. Agents write their asks before it; a deadline is counted in standups, not in hours.
     "standup": "",                               # "09:00" — local time; empty = no standup
@@ -75,7 +82,8 @@ DEFAULTS = {
 def read_config(text):
     """The configuration's TOML, read without a library: `tomllib` needs Python 3.11 and the Python that ships with
     macOS is 3.9 — a gate that cannot start on the client's machine is no gate. The subset is what `--init` writes:
-    `[table]` headers, `key = "string"`, `key = 123`, `key = true`, `# comments`. Anything else is refused by line."""
+    `[table]` headers, `key = "string"`, `key = 123`, `key = true`, `key = ["a", "b"]` (strings only), `# comments`.
+    Anything else is refused by line."""
     out, table = {}, None
     for n, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
@@ -85,11 +93,14 @@ def read_config(text):
         if head:
             table = out.setdefault(head.group(1), {})
             continue
-        m = re.fullmatch(r'([A-Za-z0-9_-]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+)|(true|false))\s*(?:#.*)?', line)
+        m = re.fullmatch(r'([A-Za-z0-9_-]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+)|(true|false)|(\[[^\]]*\]))\s*(?:#.*)?', line)
         if not m:
-            raise SystemExit(f"{CONFIG_NAME}:{n}: not understood — {raw.strip()!r}. A line is `key = \"text\"`, `key = 123`, `key = true` or `[table]`")
-        key, text_value, number, flag = m.groups()
-        value = (re.sub(r'\\(.)', r"\1", text_value) if text_value is not None else int(number) if number is not None else flag == "true")
+            raise SystemExit(f"{CONFIG_NAME}:{n}: not understood — {raw.strip()!r}. A line is `key = \"text\"`, `key = 123`, `key = true`, `key = [\"a\", \"b\"]` or `[table]`")
+        key, text_value, number, flag, items = m.groups()
+        if items is not None and not re.fullmatch(r'\[\s*(?:"(?:[^"\\]|\\.)*"\s*(?:,\s*"(?:[^"\\]|\\.)*"\s*)*)?,?\s*\]', items):
+            raise SystemExit(f"{CONFIG_NAME}:{n}: a list holds quoted strings only — {raw.strip()!r}")
+        value = (re.sub(r'\\(.)', r"\1", text_value) if text_value is not None else int(number) if number is not None
+                 else re.findall(r'"((?:[^"\\]|\\.)*)"', items) if items is not None else flag == "true")
         (out if table is None else table)[key] = value
     return out
 
@@ -145,6 +156,11 @@ def configure(root=None):
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
+    global ANSWERERS
+    ANSWERERS = {}                                      # name -> "signed" | "" (name only)
+    for a in (CONFIG.get("answerers") or []):
+        name, _, mode = str(a).strip().rpartition(" ")
+        ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -840,7 +856,8 @@ function draw(){
     const act=(t,kind)=>{const today=new Date().toISOString().slice(0,10),ans=kind=="accept"?"accepted":kind=="change"?"accepted — <your change>":"rejected — <why, and how to reword the ask>";
       const lines=`answer: "${ans}"\nanswered: ${today}\nanswered-by: <you>`;navigator.clipboard?.writeText(lines);
       const box=document.getElementById("ans-"+t[0]);if(box){box.textContent=(L["answer.paste"]||"")+"\n"+lines;box.hidden=false}
-      if(BLOB)open(BLOB.replace(/\/blob\//,"/edit/")+t[5],"_blank")};
+      // GitHub: /blob/ → /edit/ · GitLab: /-/blob/ → /-/edit/ · no forge (Subversion, plain git): the file name and the commit, shown
+      if(BLOB)open(BLOB.replace(/\/-\/blob\//,"/-/edit/").replace(/\/blob\//,"/edit/")+t[5],"_blank");else if(box)box.textContent+="\n\n"+L["answer.nofile"].replace("{0}",t[5])};
     window.ACT=act;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'change')">${l("answer.change")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button><pre id="ans-${t[0]}" class="ans" hidden></pre>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
@@ -924,6 +941,7 @@ LABELS = {
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
     "answer.accept": "accept", "answer.change": "accept with change", "answer.reject": "reject",
+    "answer.nofile": "No forge is configured: open {0} in your editor, paste, then commit it yourself — `svn commit` or `git commit` under your own name.",
     "answer.paste": "Copied. Paste these lines under the front matter's `ask:` lines in the file that just opened, edit the <…>, commit under your own name:",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
@@ -1568,6 +1586,35 @@ def render_schema():
     return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows)
 
 
+def answer_author(path):
+    """Who committed the `answer:` line of this tracker — from the version control system, never from the file:
+    (author, system, commit) or (None, "uncommitted", ""). Git's author can be typed — `signed` in `answerers` makes the
+    gate verify the commit; Subversion's author is the server's authenticated one."""
+    rel = pathlib.Path(path).resolve().relative_to(ROOT).as_posix()
+    if vcs() == "svn":
+        out = subprocess.run(["svn", "blame", "--xml", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if out.returncode == 0:
+            import xml.etree.ElementTree as ET
+            try:
+                lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
+                n = next((i for i, l in enumerate(lines) if l.startswith("answer:")), None)
+                for e in ET.fromstring(out.stdout).iter("entry"):
+                    if n is not None and int(e.get("line-number")) == n + 1:
+                        who = e.find("commit/author"); c = e.find("commit")
+                        return (who.text if who is not None else None, "svn", c.get("revision") if c is not None else "")
+            except (ET.ParseError, ValueError):
+                pass
+        return (None, "uncommitted", "")
+    out = subprocess.run(["git", "log", "-1", "--format=%H %an", "-S", "answer:", "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if out.returncode == 0 and out.stdout.strip():
+        commit, _, who = out.stdout.strip().partition(" ")
+        dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT).returncode != 0
+        if dirty and "answer:" not in subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout:
+            return (None, "uncommitted", "")
+        return (who, "git", commit)
+    return (None, "uncommitted", "")
+
+
 def lint(trackers):
     """Ledger-integrity checks. Returns a list of human-readable violations.
 
@@ -1575,6 +1622,28 @@ def lint(trackers):
     problems = []
     ids = {t["id"] for t in trackers}
     for t in trackers:
+        if t.get("answer"):
+            # the pre-mortem's rule: an answer counts only from the account it is filed from
+            if not ANSWERERS:
+                problems.append(f'{t["id"]}: an answer, but `answerers` in {CONFIG_NAME} names nobody — say who may answer, then the commit\'s author is checked against it')
+            elif t.get("answered_by") not in ANSWERERS:
+                problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(ANSWERERS)}) — an answer counts only from an account that may give one')
+            else:
+                who, how, commit = answer_author(TRACKER_DIR / t["file"])
+                if how == "uncommitted":
+                    problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
+                elif who != t.get("answered_by"):
+                    problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
+                elif how == "git" and ANSWERERS[who] == "signed":
+                    # `%G?` is G for a good signature under a trusted key, GPG or SSH alike; anything else is not an answer
+                    # …and the principal the key is trusted FOR (`%GS`: the signers-file identity, or the GPG uid) must be the author's
+                    # email — a good signature under a trusted key still says nothing about whose name is on the commit
+                    v = subprocess.run(["git", "log", "-1", "--format=%G?%n%GS%n%ae", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                    good, signer, email = (v.stdout.split("\n") + ["", "", ""])[:3]
+                    if good.strip() != "G" or email.strip() not in signer:
+                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{who}` — `answerers` asks for a signed answer, and a git author is only a string: sign it (`git commit -S`), or it does not count')
+                elif how == "git":
+                    print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to that entry in `answerers` to require a signature', file=sys.stderr)
         epic = t.get("epic", "—")
         if epic != "—" and (epic not in ids or epic == t["id"]):
             problems.append(f'{t["id"]}: `epic: {epic}` must name another existing tracker')

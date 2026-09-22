@@ -2,6 +2,22 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.15.0 — 2026-09-22
+
+**An answer counts only from the account that gave it** — the pre-mortem's rule, enforced:
+
+- **`answerers = ["name"]` in `shoalmark.toml`** names who may answer. Empty, nobody may: every answer is refused with
+  that message. A seat cannot add itself unseen — the change is in the same diff as anything it would allow.
+- **The gate reads who committed the `answer:` line from the version control system**, never from the file: git's
+  author, or Subversion's server-authenticated one (`svn blame`). Uncommitted, or committed by someone else: refused.
+- **A git author is only a string — `"name signed"` makes the commit prove it.** The commit that carries the answer
+  must verify (`%G?` = G, GPG or SSH) *and* the identity the key is trusted for must be the author's email: a good
+  signature under a trusted key still says nothing about whose name is on the commit. Name-only entries under git get
+  a note that the identity is unverified. Subversion needs no signature: its server already authenticated the commit.
+- The configuration reader learned one shape: `key = ["a", "b"]`, strings only.
+- The board's answer buttons: GitLab's editor too (`/-/edit/`); with no forge configured, the file name and the commit
+  command are shown instead.
+
 ## 0.14.0 — 2026-09-22
 
 **The Owner answers an ask in his own commit** — chat is a conversation, git is the record:
