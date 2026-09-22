@@ -1907,11 +1907,32 @@ def svn_blame(rel):
     return out
 
 
+ERE_META = frozenset(".[]()*+?{}|^$\\")                  # what a POSIX extended regular expression reserves, and nothing else
+
+
+def line_regex(needle):
+    """The pattern git's `-G` is handed for a front-matter key: the needle, anchored to the line start — `next: owner`
+    becomes `^next: owner`, exactly that, with nothing escaped that does not have to be.
+
+    Not `re.escape`: it escapes every character outside `[A-Za-z0-9_]` that Python reserves, which includes the SPACE
+    in `next: owner` and the hyphens in `kind-of-problem:` — and `\\ ` and `\\-` are UNDEFINED in POSIX extended regular
+    expressions, which is the flavour `-G` compiles. Git carries a different regex engine on each platform (glibc,
+    BSD, its own bundled one on Windows), so an undefined escape is a per-platform answer to a question the gate must
+    answer the same way everywhere. Only the characters ERE actually reserves are escaped here. Which of them re.escape
+    reaches for has also changed between Python releases; this table does not."""
+    return "^" + "".join("\\" + c if c in ERE_META else c for c in needle)
+
+
 def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit), or (None, None, "uncommitted", ""). Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
-    has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one."""
+    has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one.
+
+    The needle names a LINE, not a substring. A tracker's body discusses its own keys — "an `answer:` counts only from
+    the account it is filed from" is a sentence FM-007 carries — and a substring test cannot tell that prose from the
+    front-matter line, so it answered with the commit that wrote the prose, and read a line nobody had committed as
+    committed. Both tests are anchored to the line start now: git's `-G` (below) and `startswith` here."""
     rel = pathlib.Path(path).resolve().relative_to(ROOT).as_posix()
     hit = _LINE_AUTHOR.get((rel, needle))
     if hit is not None:
@@ -1931,11 +1952,16 @@ def line_author(path, needle):
         # pickaxe answers with the commit BEFORE it: the seat that last touched the line is not the seat git names.
         # Not `-m`: it splits a merge against each parent, and a line that arrived only through a branch then matches on
         # the merge itself, which would name the merger as the setter. Without it a merge carries no diff and cannot win.
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-S", needle, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        # `-G`, not `-S`: `-S` counts a substring anywhere in the patch, and the body's own prose about the key counts
+        # too. `-G` runs the regex over each changed line with its `+`/`-` stripped, so `^` is the line start and only a
+        # commit that changed the FRONT-MATTER line matches. A commit that rewrote the line's text matches as well,
+        # which is right: the setter is whoever wrote the line the file carries now.
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode == 0 and log.stdout.strip():
             commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
             dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
-            if not (dirty and needle not in subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout):
+            head = lambda: subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
+            if not (dirty and not any(l.startswith(needle) for l in head().splitlines())):
                 out = (name, email, "git", commit)
     _LINE_AUTHOR[(rel, needle)] = out
     return out
@@ -2195,7 +2221,12 @@ def clear_ask(words, trackers):
 
 def acted_on(trackers):
     """What a seat has acted on since the Owner's last sitting: a tracker whose exchange has moved into the body and
-    whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what his answer became."""
+    whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what his answer became.
+
+    `-G '^ask:'`, anchored like `line_author`: trackers discuss `ask:` in their prose all the time, and a substring
+    pickaxe named whichever commit last wrote a sentence about the key instead of the one that cleared the line.
+    `--full-history` for the same reason it is there: an ask cleared, re-asked and cleared again on a branch merges to
+    a file byte-identical to one the trunk already had, and git's default simplification walks past the whole branch."""
     if vcs() != "git":
         return []
     since = last_standup()
@@ -2204,7 +2235,7 @@ def acted_on(trackers):
         if t.get("ask") or not t.get("asks_block"):
             continue
         rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        log = subprocess.run(["git", "log", "-1", "--format=%h %ct", "-S", "ask:", "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         short, _, when = log.stdout.strip().partition(" ")
         if short and when.isdigit() and int(when) >= since:
             out.append((t, short))

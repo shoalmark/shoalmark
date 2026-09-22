@@ -2,6 +2,35 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.2 — 2026-09-22
+
+- **The gate refused an answer as somebody else's unsigned commit — the answerer's own.** Who set a front-matter line
+  is read from the version control system, and under git the reader asked `git log -S <key>:`, a **substring** search
+  over the whole patch. A tracker's body discusses its own keys: the sentence *"an `answer:` counts only from the
+  account it is filed from"* is written into the very tracker that rule governs. The pickaxe found the commit that
+  wrote that **sentence** and named its author as the one who filed the answer.
+- The second test had the same shape. *"Is this line committed yet?"* was `key not in <the file at HEAD>` — and with
+  the sentence in the body at HEAD, a line that was staged and had never been committed read as committed. Together:
+  the answer was attributed to the prose commit, and then judged as if that commit were the answer's.
+- **The reader anchors to the line.** Git's `-G` runs its regex over each changed line with the `+`/`-` stripped, so
+  `^<key>:` matches only a commit that changed the front-matter line itself; `--full-history` stays (0.17.1), and `-m`
+  stays out. The committed test is now *"no line at HEAD starts with the key"*. A commit that rewrote the line's text
+  still counts — the setter is whoever wrote the line the file carries now.
+- **`--answered` had it too.** The commit that cleared an ask was found with `-S "ask:"`, so any later edit of a body
+  that mentions `ask:` became *"acted on"* and put a tracker cleared long ago back on today's agenda. Same anchor.
+- **The pattern is the same one on every platform.** `-G` compiles a POSIX *extended* regular expression, and git
+  carries a different engine depending on where it was built. Escaping the key with Python's `re.escape` would send
+  the space in `next: owner` as `\ ` and the hyphens in `kind-of-problem:` as `\-` — and a backslash before an
+  ordinary character is *undefined* in ERE: every engine happens to read it as the literal today, none of them
+  promises to. `line_regex()` builds the pattern for both readers and escapes only what ERE actually reserves, so git
+  is handed exactly `^next: owner`. Two checks pin the command line the tool sends, not the answer it gave on the
+  machine the suite ran on.
+- `--answered` gets **`--full-history`** as well, for the reason the one reader has it: an ask cleared, re-asked and
+  cleared again on a branch merges to a file byte-identical to one the trunk already had, and git's default
+  simplification walks past the whole branch.
+- Under Subversion nothing changes: `svn blame` was always line-wise. Four checks pin the anchoring, each shown to
+  fail when the substring search is put back.
+
 ## 0.17.1 — 2026-09-22
 
 - **Two asks the Principal had re-asked were shown to the Owner as *"sent back — not for you"*.** The seat that sets
