@@ -917,7 +917,10 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "config", k_, v_)
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    tracker(root, "AP-070", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="the ask")
+    # the tracker discusses its own keys, as FM-007 itself does: "an `answer:` counts only from the account it is filed
+    # from" is the sentence the pre-mortem's rule is written in, and it sits in the body of the very tracker it governs
+    ap70_ = tracker(root, "AP-070", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="the ask",
+                    body="## What is true now\n\n**One thing is left.**\n\nAn `answer:` counts only from the account it is filed from.\n\n## Done when\n\nit is.\n")
     tracker(root, "AP-071", extra="next: build\n", title="asks nothing")
     for id_, q_ in (("AP-072", "Move the merge?"), ("AP-073", "Move the release?")):
         tracker(root, id_, extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "wait a week"\n', title="another ask")
@@ -936,6 +939,13 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--answer accept with a change: cuts answer/<id> from the ask's branch, writes the three lines, commits SIGNED under the answerer, pushes — the ask has left the queue",
           code == 0 and on == "answer/ap-070" and sig.startswith("G h@x holgo AP-070: accepted - count one week first") and "answer/ap-070" in remote
           and t_["answer"] == "accepted - count one week first" and t_["answered_by"] == "holgo" and "AP-070" not in run(root, "--owner")[1] and run(root, "--check")[0] == 0)
+    # and the body keeps being written after the answer lands, by a seat that is not the answerer and does not sign:
+    # by substring that commit becomes the author of the answer, and the gate refuses the Owner's own signed answer
+    ap70_.write_text(ap70_.read_text() + "\nAnd an `answer:` is one line — `answered-by:` is the label, the commit is the record.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the body, edited by a seat", "--author=seat <s@x>")
+    code2_, _o2, err2_ = run(root, "--check")
+    check("the answer still verifies after another seat commits a sentence about `answer:` into the same tracker — a signed answer is not unsigned by prose written around it",
+          code2_ == 0 and "does not verify" not in err2_ and "the git author of the answer" not in err2_)
     code, _, err = run(root, "--answer", "AP-070", "reject", "no")
     check("an answer is never overwritten — a second --answer on the same ask is refused", code == fm.EXIT_LINT and "answered already" in err)
     # the answer is ONE front-matter line: a newline in the text closes it, and the fragment after it is read as another
@@ -1183,6 +1193,67 @@ with tempfile.TemporaryDirectory() as tmp:
     fm.configure(root); who_, _e2, how2_, rev2_ = fm.line_author(t_, "answer:")
     check("an `answer:` that reached the trunk through a merge is the answerer's commit, never the merge's — the one reader answers for both lines",
           how2_ == "git" and rev2_ == c_ and rev2_ not in (merge_, merge2_) and who_ == "c")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- line_author: a tracker's own prose about its keys is not its front matter ---------------------------------------
+# What the Owner's first real answer hit. FM-007's body carries the sentence "an `answer:` counts only from the account
+# it is filed from"; the reader looked for the SUBSTRING `answer:` and found the commit that wrote that sentence, and
+# the "is it committed yet" test was a substring of the same kind, so a line staged and never committed read as
+# committed — by somebody else, unsigned. The gate then refused the Owner's own answer. Both tests anchor to the line.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "a"), ("user.email", "a@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "m"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    prose_ = ("## What is true now\n\n**One thing is left.**\n\nAn `answer:` counts only from the account it is filed from, and\n"
+              "`next: owner` puts a question in front of the Owner.\n\n## Done when\n\nit is.\n")
+    t_ = tracker(root, "AP-310", extra="next: build\n", body=prose_, title="a tracker that discusses its own keys")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "A: the prose", "--author=a <a@seat>", day="2026-01-01")
+    t_.write_text(t_.read_text().replace("hook:", 'answer: "accepted — ship it"\nanswered-by: holgo\nhook:'), encoding="utf-8")
+    git(root, "add", "-A")                               # staged, not committed — the Owner's tree at the moment the gate ran
+    fm.configure(root); who_, _e1, how_, rev_ = fm.line_author(t_, "answer:")
+    git(root, "commit", "-qm", "B: the answer", "--author=b <b@seat>", day="2026-01-02")
+    b_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root); who2_, e2_, how2b_, rev2b_ = fm.line_author(t_, "answer:")
+    check("an `answer:` staged and not committed reads as uncommitted, though the body's sentence about `answer:` was committed long ago — and once committed the line belongs to the commit that SET it, not to the one that wrote the sentence",
+          how_ == "uncommitted" and rev_ == "" and who_ is None and how2b_ == "git" and rev2b_ == b_ and who2_ == "b" and e2_ == "b@seat")
+    # the other line the same reader serves: prose naming the key was committed before it was set, and again after
+    t_.write_text(t_.read_text().replace("next: build", "next: owner"), encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "C: the ask", "--author=c <c@seat>", day="2026-01-03")
+    c2_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    t_.write_text(t_.read_text() + "\nAnd `next: owner` is what the board reads, so the ask reaches him.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "D: the body, edited", "--author=d <d@seat>", day="2026-01-04")
+    d_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root); who3_, e3_, how3_, rev3_ = fm.line_author(t_, "next: owner")
+    check("`next: owner` belongs to the seat whose commit set the line, not to the seat that later edited a sentence naming it — by substring the newest mention of the key wins, and the board names the wrong asker",
+          how3_ == "git" and rev3_ == c2_ and rev3_ != d_ and who3_ == "c" and e3_ == "c@seat")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- acted_on: prose about `ask:` is not the commit that cleared the ask ----------------------------------------------
+# `--answered` names the commit that removed the `ask:` line. Trackers discuss `ask:` in their prose all the time, so by
+# substring any later edit of the body became "acted on" — a tracker cleared months ago reappears at today's standup.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    t_ = tracker(root, "AP-320", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\n'
+                 f'ask-proposal: "the launcher"\nanswer: "accepted — the launcher"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the ask and its answer", day="2026-01-01")
+    body_ = t_.read_text().split("---\n", 2)[2]
+    t_.write_text(f'---\nid: AP-320\nstatus: In Progress\nconsidered: none\nnext: build\nhook: "h of AP-320"\n---\n{body_}'
+                  f'\n## Asks\n\n{new_} · Shall the launcher ship first? · accepted — the launcher · holgo\n', encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "AP-320 acted on", day="2026-01-02")   # long before any standup
+    cleared_ = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%h"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    t_.write_text(t_.read_text() + "\nAn `ask:` reaches the Owner only through the gate, and carries its `ask-kind:`.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the body, edited today")              # today, after the last standup
+    fm.configure(root); acted_ = fm.acted_on(fm.load_trackers()); code, out, _ = run(root, "--answered")
+    check("a sentence about `ask:` committed today is not the commit that cleared the ask — the ask left months ago, and nothing a later body edit says puts the tracker back on today's agenda",
+          acted_ == [] and code == 0 and "AP-320" not in out and cleared_ not in out)
     rm_git(root)
 fm.configure(HERE)
 
