@@ -39,8 +39,11 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.17.0"
 HERE = pathlib.Path(__file__).resolve().parent
+# The version is the `VERSION` file and nothing else. It ships in TOOL_FILES, so a vendored copy carries it, and
+# `--vendor` then compares the consumer's VERSION against ours — the artifact actually being copied. Declaring it
+# a second time here is what let 0.17.1 and 0.17.2 ship with a stale constant, silencing the changelog (FM-009).
+__version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else "unknown"
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
@@ -2268,9 +2271,15 @@ def lint(trackers, committing=False):
     if vcs() == "svn" and any(mode == "signed" for _who, mode in SEATS.values()):
         problems.append(f'{CONFIG_NAME}: `[seats]` — {", ".join(sorted(s for s in SEATS if SEATS[s][1] == "signed"))} asks for a signature, and '
                         f'Subversion has none to give: its server authenticates the commit. Name the SVN account alone')
-    if ANSWERERS and SEATS:
-        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`; '
-              f'it goes in the release after this one', file=sys.stderr)
+    # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
+    # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
+    # the old key, which is the entire population the deprecation is for (FM-010).
+    if ANSWERERS:
+        # The schedule is ANCHORED to 0.17.3, never phrased against "this release": this note prints unchanged in every
+        # later release, and a floating "the clock starts here" would restart the countdown each time it was read.
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`. '
+              f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
+              f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += rights_problems(trackers)
     by_ask = asks_by_key(trackers)
     for t in trackers:

@@ -342,6 +342,11 @@ with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
     with redirect_stdout(io.StringIO()):
         fm.vendor(dest)
+    # FM-009: `--vendor` compares the consumer's VERSION file against our version. While the version was ALSO declared
+    # as a constant beside that file the two could drift — and did, for two releases — so a consumer pinned at the
+    # stale constant read as up to date and the changelog it was owed was suppressed.
+    check("what `--vendor` copies is what it reports — the version that lands in the copy is the version named",
+          (dest / "VERSION").read_text().strip() == fm.__version__)
     (dest / "VERSION").write_text("0.2.0\n")
     (dest / "PIN").write_text("\n".join(f"{fm.digest(dest / l.partition('  ')[2])}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines()) + "\n")
     out = io.StringIO()
@@ -1109,6 +1114,23 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root)
     check("5 · `answerers` still works beside `[seats]` — a deprecation line, never a refusal: one release to move it",
           code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    # FM-010: the note was guarded on `answerers` AND `[seats]`, so the only repositories told were the ones already
+    # migrating. A repository wholly on the old key — the entire population the deprecation is for — heard nothing,
+    # while the note promised removal in the next release. `answerers` must go ABOVE any table header: a bare key is
+    # read into whichever `[table]` is open, so appending it makes it `[tags].answerers` and the case reads as a pass.
+    (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo99"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("5 · a repository wholly on `answerers`, with no `[seats]` at all, is told the key is going — the deprecation reaches the population it is for",
+          code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    # it stays a NOTE for them too. FM-010 widened who sees this line, so a regression turning it into a refusal would
+    # now stop every repository still on `answerers` — the exact population the fix was written to reach.
+    check("5 · and it stays a note for them — never a refusal: widening who is warned must not widen what is refused", code == 0)
+    check("5 · the note carries the version it starts from, not `this release` — it prints unchanged in every release after",
+          code == 0 and "the release after 0.17.3" in err and "the clock starts at 0.17.3" in err)
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("5 · a repository on `[seats]` with no `answerers` is never warned about a key it does not use",
+          code == 0 and "is the old name for the `answer` right" not in err)
     rm_git(root)
 fm.configure(HERE)
 
@@ -1419,6 +1441,8 @@ fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
+check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",
+      fm.__version__ == (HERE / "VERSION").read_text().strip() and re.fullmatch(r"\d+\.\d+\.\d+", fm.__version__) is not None)
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 print()

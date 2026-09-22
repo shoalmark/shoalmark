@@ -2,6 +2,39 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.3 — 2026-09-22
+
+- **A consumer one release behind was told nothing had changed.** The version was declared twice — `VERSION`, which
+  ships to the copy, and `__version__`, a constant beside it — and 0.17.1 and 0.17.2 moved the file and left the
+  constant at `0.17.0`. Both tags shipped that way, so `--version` under-reported on each of them.
+- Where that stopped being cosmetic is `--vendor`. It reads `had` from the **consumer's** `VERSION` file and compares
+  it against **our constant**: `if had and had != __version__ and changes_since(had)`. A copy pinned at exactly
+  0.17.0 satisfied `had == __version__`, so the guard was false and the line that exists to say *what a repository
+  takes on by vendoring again* never ran. The copy received 0.17.2's files, was told they were 0.17.0's, and was
+  shown neither the `(was …)` clause nor a single changelog section — while the two it was owed were the answer
+  gate's correctness fixes. A repository further behind was saved by accident: `had != __version__` held for it, and
+  the changelog printed. Being one release behind is what hid it.
+- **The version is now the `VERSION` file and nothing else**, read at import. `VERSION` already ships in
+  `TOOL_FILES`, so a vendored copy carries it, and the comparison is then between the consumer's file and ours — the
+  artifact actually being copied — rather than between a file and a constant that happened to agree with it. Two
+  checks pin it: that the version named is the version that lands in the copy, and that the file and `__version__`
+  cannot disagree. v0.17.2 is not re-cut; the fix goes forward.
+- **The `answerers` deprecation never reached the repositories it was for.** The note was guarded on
+  `ANSWERERS and SEATS`, so it spoke only where *both* keys were present — a repository already part-way through the
+  migration. One still wholly on `answerers`, which is the entire population the deprecation addresses, heard
+  nothing, and the note it never saw was the only thing scheduling the key's removal. Dropping `answerers` on that
+  promise would have broken exactly the repositories that were never warned: with no `[seats]`, `may_answer()` falls
+  back to `answerers`, so the key's removal refuses every answer and takes `--answer` with it.
+- The guard is now `ANSWERERS` alone — any repository carrying the key is told, whether or not it has `[seats]`; one
+  on `[seats]` with no `answerers` is still never warned about a key it does not use. **The removal clock restarts:
+  `answerers` is removed no sooner than the release after 0.17.3.** That is the first release whose note reaches the
+  affected repositories, so the clock starts there — and the note carries the version rather than *"the release after
+  this one"*, which prints unchanged in 0.18 and every release after it and would restart the countdown each time it
+  was read. Three checks, one per configuration.
+- Both were reported by an outside repository vendoring the tool — the first found by reading `--vendor`'s guard, the
+  second on the day that repository moved onto `answerers` and noticed the silence. Neither is visible from inside
+  this one: it has `[seats]` and no `answerers`, and it is never its own consumer.
+
 ## 0.17.2 — 2026-09-22
 
 - **The gate refused an answer as somebody else's unsigned commit — the answerer's own.** Who set a front-matter line
