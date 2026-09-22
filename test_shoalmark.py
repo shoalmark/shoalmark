@@ -47,6 +47,12 @@ def _try(f):
         return False
 
 
+def rm_git(root):
+    """Remove a scratch .git — Windows refuses to delete git's read-only objects unless they are made writable first."""
+    import stat
+    shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
+
+
 def run(root, *argv):
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
@@ -806,7 +812,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ans.write_text(ans.read_text().replace("answered-by: intruder\n", ""), encoding="utf-8"); (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8"); code, _, err = run(root)
     check("an answer is three lines — one missing and the gate says so", code == fm.EXIT_LINT and "an answer is three lines" in err + _)
     ans.write_text(ans.read_text().replace('ask: "Move the merge to the Principal?"\n', "") + "answered-by: holgo\n", encoding="utf-8"); code, _, err = run(root)
-    check("an answer with no question is refused", code == fm.EXIT_LINT and "`answer:` with no `ask:`" in err + _); ans.unlink(); shutil.rmtree(root / ".git")
+    check("an answer with no question is refused", code == fm.EXIT_LINT and "`answer:` with no `ask:`" in err + _); ans.unlink(); rm_git(root)
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     run(root); page = (root / "docs/work-tracker/index.html").read_text()
     if _CHROME:
