@@ -18,8 +18,18 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   still counts — the setter is whoever wrote the line the file carries now.
 - **`--answered` had it too.** The commit that cleared an ask was found with `-S "ask:"`, so any later edit of a body
   that mentions `ask:` became *"acted on"* and put a tracker cleared long ago back on today's agenda. Same anchor.
-- Under Subversion nothing changes: `svn blame` was always line-wise. Four checks pin this, each shown to fail when
-  the substring search is put back.
+- **The pattern is the same one on every platform.** `-G` compiles a POSIX *extended* regular expression, and git
+  carries a different engine depending on where it was built. Escaping the key with Python's `re.escape` would send
+  the space in `next: owner` as `\ ` and the hyphens in `kind-of-problem:` as `\-` — and a backslash before an
+  ordinary character is *undefined* in ERE: every engine happens to read it as the literal today, none of them
+  promises to. `line_regex()` builds the pattern for both readers and escapes only what ERE actually reserves, so git
+  is handed exactly `^next: owner`. Two checks pin the command line the tool sends, not the answer it gave on the
+  machine the suite ran on.
+- `--answered` gets **`--full-history`** as well, for the reason the one reader has it: an ask cleared, re-asked and
+  cleared again on a branch merges to a file byte-identical to one the trunk already had, and git's default
+  simplification walks past the whole branch.
+- Under Subversion nothing changes: `svn blame` was always line-wise. Four checks pin the anchoring, each shown to
+  fail when the substring search is put back.
 
 ## 0.17.1 — 2026-09-22
 

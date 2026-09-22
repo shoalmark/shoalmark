@@ -70,6 +70,19 @@ def run(root, *argv, git_env=None):
     return code, out.getvalue(), err.getvalue()
 
 
+def argv_of(f):
+    """Every command line `f` hands a subprocess — what the tool actually SENDS, not what its source suggests it sends.
+    A regex the tool builds is a string git's own engine reads, and which engine that is differs by platform, so the
+    pattern itself is pinned here rather than the answer it happened to give on the machine the suite ran on."""
+    seen, real = [], subprocess.run
+    subprocess.run = lambda *a, **k: (seen.append(list(a[0]) if a else []), real(*a, **k))[1]
+    try:
+        f()
+    finally:
+        subprocess.run = real
+    return seen
+
+
 _ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
 _ENV.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
 
@@ -1229,6 +1242,15 @@ with tempfile.TemporaryDirectory() as tmp:
     fm.configure(root); who3_, e3_, how3_, rev3_ = fm.line_author(t_, "next: owner")
     check("`next: owner` belongs to the seat whose commit set the line, not to the seat that later edited a sentence naming it — by substring the newest mention of the key wins, and the board names the wrong asker",
           how3_ == "git" and rev3_ == c2_ and rev3_ != d_ and who3_ == "c" and e3_ == "c@seat")
+    # the pattern itself, not the answer it gave here: `-G` compiles a POSIX EXTENDED regular expression, and git
+    # carries a different engine on each platform. `re.escape` would write the space as `\ ` and a hyphen as `\-`,
+    # and a backslash before an ordinary character is undefined in ERE — one platform reads a literal, another need not
+    fm.configure(root)
+    sent_ = [c for c in argv_of(lambda: fm.line_author(t_, "next: owner")) if "-G" in c]
+    check("the pattern handed to git is the plain anchored key — `^next: owner`, the space unescaped — and the keys that carry a hyphen are plain too: an ERE escape of an ordinary character is undefined, and the gate must answer the same on every platform's regex engine",
+          len(sent_) == 1 and sent_[0][sent_[0].index("-G") + 1] == "^next: owner" and "--full-history" in sent_[0]
+          and fm.line_regex("answer:") == "^answer:" and fm.line_regex("kind-of-problem:") == "^kind-of-problem:"
+          and fm.line_regex("a.b[c]:") == "^a\\.b\\[c\\]:")
     rm_git(root)
 fm.configure(HERE)
 
@@ -1251,9 +1273,13 @@ with tempfile.TemporaryDirectory() as tmp:
     cleared_ = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%h"], capture_output=True, text=True, env=_ENV).stdout.strip()
     t_.write_text(t_.read_text() + "\nAn `ask:` reaches the Owner only through the gate, and carries its `ask-kind:`.\n", encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "the body, edited today")              # today, after the last standup
-    fm.configure(root); acted_ = fm.acted_on(fm.load_trackers()); code, out, _ = run(root, "--answered")
+    fm.configure(root); trackers_ = fm.load_trackers()
+    sent_ = [c for c in argv_of(lambda: fm.acted_on(trackers_)) if "-G" in c]
+    acted_ = fm.acted_on(trackers_); code, out, _ = run(root, "--answered")
     check("a sentence about `ask:` committed today is not the commit that cleared the ask — the ask left months ago, and nothing a later body edit says puts the tracker back on today's agenda",
           acted_ == [] and code == 0 and "AP-320" not in out and cleared_ not in out)
+    check("`--answered` asks git the same way the one reader does — `-G ^ask:` and `--full-history`, so an ask cleared on a branch that merged back to identical content is not walked past",
+          len(sent_) == 1 and sent_[0][sent_[0].index("-G") + 1] == "^ask:" and "--full-history" in sent_[0])
     rm_git(root)
 fm.configure(HERE)
 

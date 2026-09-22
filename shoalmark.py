@@ -1907,6 +1907,22 @@ def svn_blame(rel):
     return out
 
 
+ERE_META = frozenset(".[]()*+?{}|^$\\")                  # what a POSIX extended regular expression reserves, and nothing else
+
+
+def line_regex(needle):
+    """The pattern git's `-G` is handed for a front-matter key: the needle, anchored to the line start — `next: owner`
+    becomes `^next: owner`, exactly that, with nothing escaped that does not have to be.
+
+    Not `re.escape`: it escapes every character outside `[A-Za-z0-9_]` that Python reserves, which includes the SPACE
+    in `next: owner` and the hyphens in `kind-of-problem:` — and `\\ ` and `\\-` are UNDEFINED in POSIX extended regular
+    expressions, which is the flavour `-G` compiles. Git carries a different regex engine on each platform (glibc,
+    BSD, its own bundled one on Windows), so an undefined escape is a per-platform answer to a question the gate must
+    answer the same way everywhere. Only the characters ERE actually reserves are escaped here. Which of them re.escape
+    reaches for has also changed between Python releases; this table does not."""
+    return "^" + "".join("\\" + c if c in ERE_META else c for c in needle)
+
+
 def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit), or (None, None, "uncommitted", ""). Git's author is a string anyone can type,
@@ -1940,7 +1956,7 @@ def line_author(path, needle):
         # too. `-G` runs the regex over each changed line with its `+`/`-` stripped, so `^` is the line start and only a
         # commit that changed the FRONT-MATTER line matches. A commit that rewrote the line's text matches as well,
         # which is right: the setter is whoever wrote the line the file carries now.
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", "^" + re.escape(needle), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode == 0 and log.stdout.strip():
             commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
             dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
@@ -2208,7 +2224,9 @@ def acted_on(trackers):
     whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what his answer became.
 
     `-G '^ask:'`, anchored like `line_author`: trackers discuss `ask:` in their prose all the time, and a substring
-    pickaxe named whichever commit last wrote a sentence about the key instead of the one that cleared the line."""
+    pickaxe named whichever commit last wrote a sentence about the key instead of the one that cleared the line.
+    `--full-history` for the same reason it is there: an ask cleared, re-asked and cleared again on a branch merges to
+    a file byte-identical to one the trunk already had, and git's default simplification walks past the whole branch."""
     if vcs() != "git":
         return []
     since = last_standup()
@@ -2217,7 +2235,7 @@ def acted_on(trackers):
         if t.get("ask") or not t.get("asks_block"):
             continue
         rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        log = subprocess.run(["git", "log", "-1", "--format=%h %ct", "-G", "^" + re.escape("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         short, _, when = log.stdout.strip().partition(" ")
         if short and when.isdigit() and int(when) >= since:
             out.append((t, short))
