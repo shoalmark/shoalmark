@@ -2,5 +2,10 @@ name = "shoalmark"
 tracker_dir = "work-tracker"       # the tracker; docs/ is the documentation site
 triage_days = 7
 
+[seats]            # who sits where — the Owner answers with his key; seats commit unsigned as <seat>@seat
+owner = "holgoijo@gmail.com signed"
+principal = "principal@seat"
+implementer = "implementer@seat"
+
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
