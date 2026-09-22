@@ -342,6 +342,11 @@ with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
     with redirect_stdout(io.StringIO()):
         fm.vendor(dest)
+    # FM-009: `--vendor` compares the consumer's VERSION file against our version. While the version was ALSO declared
+    # as a constant beside that file the two could drift — and did, for two releases — so a consumer pinned at the
+    # stale constant read as up to date and the changelog it was owed was suppressed.
+    check("what `--vendor` copies is what it reports — the version that lands in the copy is the version named",
+          (dest / "VERSION").read_text().strip() == fm.__version__)
     (dest / "VERSION").write_text("0.2.0\n")
     (dest / "PIN").write_text("\n".join(f"{fm.digest(dest / l.partition('  ')[2])}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines()) + "\n")
     out = io.StringIO()
@@ -1419,6 +1424,8 @@ fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
+check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",
+      fm.__version__ == (HERE / "VERSION").read_text().strip() and re.fullmatch(r"\d+\.\d+\.\d+", fm.__version__) is not None)
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 print()

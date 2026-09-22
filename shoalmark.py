@@ -39,8 +39,11 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.17.0"
 HERE = pathlib.Path(__file__).resolve().parent
+# The version is the `VERSION` file and nothing else. It ships in TOOL_FILES, so a vendored copy carries it, and
+# `--vendor` then compares the consumer's VERSION against ours — the artifact actually being copied. Declaring it
+# a second time here is what let 0.17.1 and 0.17.2 ship with a stale constant, silencing the changelog (FM-009).
+__version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else "unknown"
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
