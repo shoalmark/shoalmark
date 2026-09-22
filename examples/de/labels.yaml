@@ -85,3 +85,4 @@ answer.change: annehmen mit Änderung
 answer.reject: ablehnen
 answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"
 answer.nofile: "Keine Forge eingetragen: {0} im Editor öffnen, einfügen, dann selbst committen — `svn commit` oder `git commit` unter eigenem Namen."
+answer.how: "zum Antworten: einen Knopf drücken (die drei Zeilen werden kopiert), unter `ask-since:` in {0} einfügen — auf einem Zweig answer/<id>, der von diesem abzweigt —, dann `git commit -S`: der Commit ist Ihre Unterschrift"
