@@ -1121,12 +1121,16 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo99"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     code, _, err = run(root)
     check("5 · a repository wholly on `answerers`, with no `[seats]` at all, is told the key is going — the deprecation reaches the population it is for",
-          "`answerers` is the old name for the `answer` right" in err)
-    check("5 · the note that reaches them does not repeat a removal date they were never served", "the clock starts here" in err)
+          code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    # it stays a NOTE for them too. FM-010 widened who sees this line, so a regression turning it into a refusal would
+    # now stop every repository still on `answerers` — the exact population the fix was written to reach.
+    check("5 · and it stays a note for them — never a refusal: widening who is warned must not widen what is refused", code == 0)
+    check("5 · the note carries the version it starts from, not `this release` — it prints unchanged in every release after",
+          code == 0 and "the release after 0.17.3" in err and "the clock starts at 0.17.3" in err)
     (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\n', encoding="utf-8")
     code, _, err = run(root)
     check("5 · a repository on `[seats]` with no `answerers` is never warned about a key it does not use",
-          "is the old name for the `answer` right" not in err)
+          code == 0 and "is the old name for the `answer` right" not in err)
     rm_git(root)
 fm.configure(HERE)
 

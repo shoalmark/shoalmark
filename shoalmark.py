@@ -2275,9 +2275,11 @@ def lint(trackers, committing=False):
     # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
     # the old key, which is the entire population the deprecation is for (FM-010).
     if ANSWERERS:
+        # The schedule is ANCHORED to 0.17.3, never phrased against "this release": this note prints unchanged in every
+        # later release, and a floating "the clock starts here" would restart the countdown each time it was read.
         print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`. '
-              f'Removal comes no sooner than the release after this one: before 0.17.3 this note never reached a repository without '
-              f'`[seats]`, so the clock starts here', file=sys.stderr)
+              f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
+              f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += rights_problems(trackers)
     by_ask = asks_by_key(trackers)
     for t in trackers:

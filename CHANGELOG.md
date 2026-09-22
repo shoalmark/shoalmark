@@ -26,10 +26,11 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   promise would have broken exactly the repositories that were never warned: with no `[seats]`, `may_answer()` falls
   back to `answerers`, so the key's removal refuses every answer and takes `--answer` with it.
 - The guard is now `ANSWERERS` alone — any repository carrying the key is told, whether or not it has `[seats]`; one
-  on `[seats]` with no `answerers` is still never warned about a key it does not use. **The removal clock restarts:**
-  `answerers` is not removed in the release after this one. 0.17.3 is the first release whose note reaches the
-  affected repositories, so the countdown begins here, and the note says so instead of repeating a date nobody was
-  served. Three checks, one per configuration.
+  on `[seats]` with no `answerers` is still never warned about a key it does not use. **The removal clock restarts:
+  `answerers` is removed no sooner than the release after 0.17.3.** That is the first release whose note reaches the
+  affected repositories, so the clock starts there — and the note carries the version rather than *"the release after
+  this one"*, which prints unchanged in 0.18 and every release after it and would restart the countdown each time it
+  was read. Three checks, one per configuration.
 - Both were reported by an outside repository vendoring the tool — the first found by reading `--vendor`'s guard, the
   second on the day that repository moved onto `answerers` and noticed the silence. Neither is visible from inside
   this one: it has `[seats]` and no `answerers`, and it is never its own consumer.

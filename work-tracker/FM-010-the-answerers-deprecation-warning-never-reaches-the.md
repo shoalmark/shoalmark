@@ -14,8 +14,8 @@ hook: "The note that tells a repository `answerers` is going away is guarded by 
 
 **Built 2026-09-22 on `fix/0.17.3-version-drift-and-the-silent-deprecation`; open for review, not merged.**
 Found by an outside consumer the day their repository became the affected population, and reproduced here. The
-guard is now `ANSWERERS` alone, and the note no longer repeats a removal date that was never served — the clock
-restarts at 0.17.3, the first release whose warning reaches these repositories. Three checks, one per
+guard is now `ANSWERERS` alone, and the note no longer repeats a removal date that was never served: `answerers` is
+removed no sooner than the release after 0.17.3, said in those words in the note, the CHANGELOG and here. Three checks, one per
 configuration; the two that matter fail against the restored guard. **What is left:** the Owner merges and tags
 `v0.17.3`. The removal of `answerers` is then no sooner than the release after it.
 
@@ -64,9 +64,12 @@ found it did so only by moving onto `answerers` and noticing the silence.
 - A repository on `[seats]` with no `answerers` stays silent; the fix adds no new false warning.
 - Tests cover all three configurations — `answerers` alone, both keys, `[seats]` alone — with `answerers` placed above
   any table header so the case is real.
-- **The removal clock restarts.** `answerers` is not removed in the release after this one; the countdown begins from
-  the first release whose warning actually reaches the affected repositories. The note's wording is corrected to say
-  so rather than repeating a promise that was never delivered.
+- **The removal clock restarts: `answerers` is removed no sooner than the release after 0.17.3** — the first release
+  whose warning reaches the affected repositories. The schedule is stated in exactly those words in all three places
+  that carry it — the note, the CHANGELOG and this tracker — and is anchored to the version, never to *"this
+  release"*: the note prints unchanged in every later release, so a floating anchor restarts the countdown forever.
+  **The length of that grace is the Owner's to rule on; one release is what the original promise offered, and this
+  restores it to repositories that were never served it.**
 - Ships as **0.17.3**, alongside FM-009.
 
 ## Ship log
