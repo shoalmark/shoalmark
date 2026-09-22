@@ -308,7 +308,8 @@ with tempfile.TemporaryDirectory() as d:
     check("--next says so when no path is written and nothing is ranked", code == 0 and "none is written" in out and "Nothing is ranked" in out)
     home.write_text(home.read_text().replace("1.\n", "1. [MSR-002](MSR-002-x.md) first.\n"))
     fm.configure(root)
-    tracker(root, "MSR-001", extra="rank: 1\ntier: P1\nnext: owner\n"); tracker(root, "MSR-002", extra="rank: 2\ntier: P1\nnext: build\n")
+    tracker(root, "MSR-001", extra='rank: 1\ntier: P1\nnext: owner\nask: "Shall the launcher ship before the importer?"\n'
+            'ask-kind: ruling\nask-since: 2026-09-20\nask-proposal: "the launcher first"\n'); tracker(root, "MSR-002", extra="rank: 2\ntier: P1\nnext: build\n")
     code, out, _ = run(root, "--next")
     check("--next lists the ranked work in order with each move and what is true now, and starts a seat on the first move that is its own",
           code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out and "](" not in out)
@@ -520,6 +521,8 @@ waiting.holds: hält {0} weitere auf
 waiting.days: seit {0} Tagen
 waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
+waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
+waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
@@ -718,7 +721,7 @@ fm.configure(HERE)
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
 with tempfile.TemporaryDirectory() as tmp:
-    root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True)
+    root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
     (root / "shoalmark.toml").write_text('name = "lager"\n[kinds]\nMSR = "Arbeit"\n[headings]\nstate = "Was jetzt gilt"\nwhy = "Warum"\ndone = "Fertig, wenn"\nlog = "Verlauf"\n'
                                          'intent = "Die Absicht"\npath = "Der aktuelle Weg"\npasses = "Durchgänge"\n', encoding="utf-8")
     run(root, "--init"); wt = root / "docs/work-tracker"
@@ -733,7 +736,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (wt / "TRIAGE.md").write_text(home.replace("1.\n", "1. MSR-001 zuerst, dann der Rest.\n").replace("*None yet.*", "**2026-09-21 — der erste Durchgang.** Alles gesichtet."), encoding="utf-8")
     for f_ in (made, wt / "TRIAGE.md"):                     # German whatever the templates wrote — this check is about READING
         x = f_.read_text(encoding="utf-8")
-        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge"}[en] + "\n")
+        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge", "asks": "Fragen"}[en] + "\n")
         f_.write_text(x, encoding="utf-8")
     home = (wt / "TRIAGE.md").read_text(encoding="utf-8").replace("1. MSR-001 zuerst, dann der Rest.\n", "1.\n")
     fm.configure(root); now = made.read_text(encoding="utf-8"); th = fm.triage_home()
@@ -744,7 +747,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('[headings]\nstaet = "x"\n', encoding="utf-8")
     try: fm.configure(root); refused = False
     except SystemExit as e: refused = "headings" in str(e)
-    check("`[headings]` — a mistyped key is refused, naming the seven", refused)
+    check("`[headings]` — a mistyped key is refused, naming them all", refused)
 fm.configure(HERE)
 
 # --- FM-004: what three outside agents found on their first twenty minutes --------------------------------------
@@ -764,41 +767,48 @@ with tempfile.TemporaryDirectory() as tmp:
         f_.write_text(f_.read_text().replace("considered:\n", "considered: none\n" + ("next: owner\n" if "AP-037" in f_.name else "")).replace("status: Proposed", "status: In Progress" if "AP-038" in f_.name else "status: Proposed"))
     code, out, _ = run(root, "--next")
     check("--next answers before any pass has run: open work, work in progress first, whose move each is — and what waits for the Owner",
-          code == 0 and "Nothing is ranked" in out and out.index("AP-038") < out.index("AP-037 ·") and "next: owner" in out and "1 NEED THE OWNER" in out and "NOT YET STATED AS A QUESTION" in out)
+          code == 0 and "Nothing is ranked" in out and out.index("AP-038") < out.index("AP-037 ·") and "next: owner" in out
+          and "NOTHING NEEDS THE OWNER" in out and "1 ASK(S) SENT BACK" in out and "not yet stated as a question" in out)
 fm.configure(HERE)
 
 # --- FM-005: the Owner's queue — every ask stated as the question it is, oldest first, with what it holds up --------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve(); (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     old = (datetime.date.today() - datetime.timedelta(days=3)).isoformat(); new_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-    tracker(root, "AP-022", extra=f'next: owner\nask: "DATEV format, or a plain CSV?"\nask-kind: ruling\nask-since: {old}\n', title="export")
-    tracker(root, "AP-021", extra=f'next: owner\nask: "Read the scraper log for instrument 27."\nask-kind: action\nask-since: {new_}\n', title="model")
+    tracker(root, "AP-022", extra=f'next: owner\nask: "DATEV format, or a plain CSV?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "DATEV"\n', title="export")
+    tracker(root, "AP-021", extra=f'next: owner\nask: "Will you read the scraper log for instrument 27?"\nask-kind: action\nask-since: {new_}\nask-proposal: "read it before Friday"\n', title="model")
     tracker(root, "AP-020", extra="next: owner\n", title="buried in the body")
     tracker(root, "AP-037", status="Proposed", extra="blocked-by: AP-022\n", title="roles"); tracker(root, "AP-041", status="Proposed", extra="blocked-by: AP-037\n", title="audit")
     tracker(root, "AP-019", status="Shipped", extra='next: owner\nask: "done long ago"\n', title="shipped")
     code, out, _ = run(root, "--owner")
     check("--owner is the digest: how many need the Owner, the oldest ask's age, what is held up — transitively — and each ask as its question, oldest first; finished work never asks",
-          code == 0 and out.startswith("3 NEED THE OWNER · oldest 3 day(s) · holding up 2: AP-037, AP-041") and out.index("AP-022 · ruling · asked 3 day(s) ago · holds up AP-037, AP-041") < out.index("AP-021 · action · asked 1 day(s) ago")
+          code == 0 and out.startswith("2 NEED THE OWNER · oldest 3 day(s) · holding up 2: AP-037, AP-041") and out.index("AP-022 · ruling · asked 3 day(s) ago · holds up AP-037, AP-041") < out.index("AP-021 · action · asked 1 day(s) ago")
           and "DATEV format, or a plain CSV?" in out and "done long ago" not in out)
-    check("an ask that was never stated is said to be so, with the file to write it in — it is not hidden behind an id", "AP-020" in out and "NOT YET STATED AS A QUESTION" in out and "write `ask:` in AP-020-x.md" in out)
+    # FM-008: an ask that is not a question he can answer is not shown to him AS one — it is sent back, with the reason,
+    # for the seat that wrote it. `next: owner` and no `ask:` at all is the first of those.
+    check("an ask that was never stated is sent back, not listed as a question — with the reason and the file to write it in",
+          "AP-020" in out and "SENT BACK" in out and "not yet stated as a question" in out and "write `ask:` in AP-020-x.md" in out
+          and out.index("2 NEED THE OWNER") < out.index("SENT BACK"))
     bad = tracker(root, "AP-050", extra="next: owner\nask-kind: favour\n", title="bad kind"); code, _, err = run(root)
     check("`ask-kind:` is one of four words — the gate refuses a fifth", code == fm.EXIT_LINT and "ask-kind" in err + _); bad.unlink()
     code, out2, _ = run(root, "--next")
-    check("--next ends with the same digest — a cold session is told what its Owner owes before it starts", code == 0 and "3 NEED THE OWNER" in out2)
-    tracker(root, "AP-030", extra=f'next: owner\nask: "Open the pull request."\nask-kind: ceremony\nask-since: {new_}\n', title="button")
+    check("--next ends with the same digest — a cold session is told what its Owner owes before it starts", code == 0 and "2 NEED THE OWNER" in out2)
+    tracker(root, "AP-030", extra=f'next: owner\nask: "Shall I open the pull request?"\nask-kind: ceremony\nask-since: {new_}\nask-proposal: "open it"\n', title="button")
     code, out3, _ = run(root, "--standup")
-    check("--standup is the agenda of one sitting: rulings first, then the Owner's hands, then buttons — inside a kind what frees the most comes first — and what was never stated is named",
-          code == 0 and out3.startswith("STANDUP") and out3.index("RULINGS") < out3.index("YOUR HANDS") < out3.index("BUTTONS") and "[frees AP-037, AP-041]" in out3 and "not yet stated as a question" in out3)
+    check("--standup is the agenda of one sitting: rulings first, then the Owner's hands, then buttons — inside a kind what frees the most comes first — and what was sent back is named after, never as an item",
+          code == 0 and out3.startswith("STANDUP") and out3.index("RULINGS") < out3.index("YOUR HANDS") < out3.index("BUTTONS") and "[frees AP-037, AP-041]" in out3
+          and out3.index("BUTTONS") < out3.index("SENT BACK") and "AP-020" in out3.split("SENT BACK")[1])
     code, _, err = run(root, "--standup", str(root / "s.ics"))
     (root / "shoalmark.toml").write_text('name = "q"\nstandup = "09:00"\nstandup_minutes = 20\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     code2, _, _ = run(root, "--standup", str(root / "s.ics")); ics = (root / "s.ics").read_bytes() if (root / "s.ics").exists() else b""
     check("--standup FILE.ics writes the recurring invite — weekdays, the configured time and length, CRLF as a calendar file must — and refuses until a time is configured",
           code == fm.EXIT_LINT and "standup = " in err and code2 == 0 and b"RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\n" in ics and b"T090000\r\n" in ics and b"T092000\r\n" in ics and ics.count(b"\n") == ics.count(b"\r\n"))
-    (root / "AP-030-x.md").unlink() if (root / "AP-030-x.md").exists() else [p_.unlink() for p_ in (root / "docs/work-tracker").glob("AP-030-*.md")]
+    for p_ in (root / "docs/work-tracker").glob("AP-0[23]0-*.md"):
+        p_.unlink()                                      # AP-030 has been shown; AP-020 is malformed, and the gate refuses it — the answer checks below want a green ledger
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     # the Owner answers: three lines in the ask's tracker, HIS OWN COMMIT — the ask leaves his queue, the seat sees it under --answered
     (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    subprocess.run(["git", "init", "-q", str(root)], check=True); git(root, "add", "-A"); git(root, "commit", "-qm", "before", "--author=seat <s@x>")
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "add", "-A"); git(root, "commit", "-qm", "before", "--author=seat <s@x>")
     ans = tracker(root, "AP-060", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nanswer: "accepted — count one week first"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
     code, _, err = run(root)
     check("an answer that is not committed is refused — the commit is the record, the file is the label", code == fm.EXIT_LINT and "not committed yet" in err + _)
@@ -835,13 +845,17 @@ with tempfile.TemporaryDirectory() as tmp:
     ans.write_text(ans.read_text().replace('ask: "Move the merge to the Principal?"\n', "") + "answered-by: holgo\n", encoding="utf-8"); code, _, err = run(root)
     check("an answer with no question is refused", code == fm.EXIT_LINT and "`answer:` with no `ask:`" in err + _); ans.unlink(); rm_git(root)
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    tracker(root, "AP-020", extra="next: owner\n", title="buried in the body")      # back for the board: what a malformed ask looks like to the Owner
     run(root); page = (root / "docs/work-tracker/index.html").read_text()
     if _CHROME:
         dom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
         shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
         check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
-              "waiting for you: 3 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("Read the scraper log") and "not yet stated as a question" in shown
+              "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
               and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
+        check("what is not a question he can answer is shown apart — `N asks sent back — not for you`, with the reason, after the queue and never as a question",
+              "1 asks sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("asks sent back") < shown.index("AP-020")
+              and "write `ask:` in AP-020-x.md" in shown)
         check("each stated ask carries two actions — accept · reject — and a dialog that shows the ask, its proposal and its context before anything is decided; an unstated one carries none",
               dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and '<dialog id="dlg">' in dom and 'name="how" value="${i}" required' in page and 'value="other" required' in page and '--answer ${id} ${kind}' in page)
         # the dialog's head is one line of ` · `-separated parts: the id ran straight into its first mark ("AP-022 a ruling"),
@@ -854,11 +868,14 @@ fm.configure(HERE)
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    tracker(root, "AP-080", extra=f'next: owner\nask: "Welches Format?"\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
-    tracker(root, "AP-081", extra=f'next: owner\nask: "Move the merge?"\nask-since: {old}\nask-proposal: "count one week first"\n', title="one recommendation")
-    tracker(root, "AP-082", extra=f'next: owner\nask: "What should it say?"\nask-since: {old}\n', title="no choices at all")
+    tracker(root, "AP-080", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
+    tracker(root, "AP-081", extra=f'next: owner\nask: "Move the merge?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="one recommendation")
+    # a DRAFT: an `ask:` with `next: review` — any seat may write one, it needs no recommendation, and the Owner never sees it
+    tracker(root, "AP-082", extra=f'next: review\nask: "What should it say?"\nask-since: {old}\n', title="no choices at all")
     code, _, err = run(root)
     check("an ask may name its choices: `ask-options:` is one line, and a proposal that is one of them passes the gate", code == 0)
+    check("a DRAFT — an `ask:` with `next: review` — needs no recommendation and never enters the Owner's queue: the Principal turns it into an ask",
+          "AP-082" not in run(root, "--owner")[1] and "AP-082" not in run(root, "--standup")[1] and [t_["id"] for t_, _a, _h in fm.owner_queue(fm.load_trackers())] == ["AP-080", "AP-081"])
     if _CHROME:
         page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
         def _rows(tid, then=""):
@@ -893,7 +910,7 @@ fm.configure(HERE)
 # --- FM-007: the Owner's one command — --answer cuts the branch, writes, signs, pushes ------------------------------
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
-    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True); subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
     key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
     (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
     for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(root / "signers")), ("commit.gpgsign", "false")):
@@ -902,8 +919,8 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     tracker(root, "AP-070", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="the ask")
     tracker(root, "AP-071", extra="next: build\n", title="asks nothing")
-    for id_ in ("AP-072", "AP-073"):
-        tracker(root, id_, extra=f'next: owner\nask: "Move the merge?"\nask-kind: ruling\nask-since: {old}\n', title="another ask")
+    for id_, q_ in (("AP-072", "Move the merge?"), ("AP-073", "Move the release?")):
+        tracker(root, id_, extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "wait a week"\n', title="another ask")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=seat <s@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/070")
     code, _, err = run(root, "--answer", "AP-071", "accept")
     check("--answer refuses a tracker that asks the Owner nothing", code == fm.EXIT_LINT and "asks the Owner nothing" in err)
@@ -945,6 +962,174 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "pd/070"); git(root, "config", "--unset", "user.signingkey"); code, _, err = run(root, "--answer", "AP-070", "accept")
     check("--answer refuses before touching anything when it cannot end in a verified answer — no signing key, no branch cut", code == fm.EXIT_LINT and "no `user.signingkey`" in err
           and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() == "pd/070")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-008: an ask reaches the Owner only through the gate — form, no duplicate, the bottleneck ---------------------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    (root / "shoalmark.toml").write_text('name = "g"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    ask_ = lambda tid, q, extra="", move="owner": tracker(root, tid, extra=f'next: {move}\nask: "{q}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "wait a week"\n{extra}', title="an ask")
+    gone = lambda *ids: [p_.unlink() for id_ in ids for p_ in (root / "docs/work-tracker").glob(f"{id_}-*.md")]
+    bad = tracker(root, "AP-101", extra=f'next: owner\nask: "Shall we ship on Friday?"\nask-kind: ruling\nask-since: {old}\n', title="no recommendation")
+    code, _, err = run(root)
+    check("1 · an ask with no recommendation is refused, naming the id and the key that is missing — the seat that asks has already done the thinking",
+          code == fm.EXIT_LINT and "AP-101: `next: owner` without `ask-proposal:`" in err and "moves the decision and none of the work" in err)
+    bad.write_text(bad.read_text().replace(f"ask-since: {old}\n", ""), encoding="utf-8"); code, _, err = run(root)
+    check("1 · all three lines are named at once — an agent told one key at a time comes back three times",
+          code == fm.EXIT_LINT and "`ask-since:`" in err and "`ask-proposal:`" in err and err.count("AP-101: `next: owner` without") == 1)
+    gone("AP-101")
+    two = ask_("AP-102", "Do we ship on Friday, or do we wait? Say which.")
+    code, _, err = run(root)
+    check("2 · one question: an ask with two of them, or with prose after the question mark, is refused — a paragraph gets one answer",
+          code == fm.EXIT_LINT and "AP-102: `ask:` is ONE question" in err and "exactly one `?`, at the end" in err)
+    two.write_text(two.read_text().replace("Do we ship on Friday, or do we wait? Say which.", "A" * fm.ASK_MAX + "?"), encoding="utf-8")
+    code, _, err = run(root)
+    check(f"2 · an ask longer than {fm.ASK_MAX} characters is refused — what he answers in a sitting is a sentence, not a briefing",
+          code == fm.EXIT_LINT and f"`ask:` is {fm.ASK_MAX + 1} characters" in err)
+    gone("AP-102")
+    opts = ask_("AP-103", "Which one?", extra='ask-options: "a | b | c | d | e | f"\n')
+    code, _, err = run(root)
+    check("2 · more than five choices is refused — past a radio list the Owner reads once, it is a design review, not a question",
+          code == fm.EXIT_LINT and "AP-103: `ask-options:` offers 6 choices" in err)
+    opts.write_text(opts.read_text().replace("a | b | c | d | e | f", "wait a week | " + "z" * (fm.ASK_OPTION_MAX + 1)), encoding="utf-8")
+    code, _, err = run(root)
+    check(f"2 · a choice longer than {fm.ASK_OPTION_MAX} characters is refused — a choice is a phrase; its rationale is the proposal's",
+          code == fm.EXIT_LINT and f"is {fm.ASK_OPTION_MAX + 1} characters" in err)
+    opts.write_text(opts.read_text().replace("wait a week | " + "z" * (fm.ASK_OPTION_MAX + 1), "wait a week | ship | wait a week"), encoding="utf-8")
+    code, _, err = run(root)
+    check("2 · the same choice offered twice is refused — a radio list with one option written twice cannot be picked from",
+          code == fm.EXIT_LINT and "AP-103: `ask-options:` names 'wait a week' twice" in err)
+    gone("AP-103")
+    ask_("AP-104", "Shall the launcher ship first?")
+    dup = ask_("AP-105", "shall the launcher   ship first")
+    code, _, err = run(root)
+    check("3 · the same question filed twice is refused, naming the other tracker — normalised by case, spacing and trailing punctuation, and nothing else",
+          code == fm.EXIT_LINT and "AP-105: `ask:` is the same question as AP-104" in err and "say why this is different in `considered:`" in err)
+    dup.write_text(dup.read_text().replace("shall the launcher   ship first", "Shall the importer ship first?"), encoding="utf-8")
+    code, _, err = run(root)
+    check("3 · a question that differs by a word is not a duplicate — the match is exact, never fuzzy: a gate that guesses is a gate people route around",
+          code == 0 and "same question" not in err)
+    dup.write_text(dup.read_text().replace("status: In Progress", "status: Shipped").replace("Shall the importer ship first?", "Shall the launcher ship first?"), encoding="utf-8")
+    code, _, err = run(root)
+    check("3 · a question closed work once asked is not a duplicate — only an OPEN, unanswered ask holds the question", code == 0 and "same question" not in err)
+    gone("AP-104", "AP-105")
+    for n_ in range(110, 115):
+        ask_(f"AP-{n_}", f"Shall we do the {n_} thing?")
+    code, out, _ = run(root, "--owner")
+    check("7 · five asks is a queue; six is a finding — under the Owner's count, no line", code == 0 and "bottleneck" not in out and "5 NEED THE OWNER" in out)
+    ask_("AP-116", "Shall we do the 116 thing?", extra="\n")
+    tracker(root, "AP-117", status="Proposed", extra="blocked-by: AP-116\n", title="held up")
+    code, out, _ = run(root, "--owner"); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    check("7 · past five asks the first line says whose problem the queue is — `you are the bottleneck`, with the asks and the trackers held up, in --owner and on the board",
+          code == 0 and out.startswith("6 NEED THE OWNER") and "you are the bottleneck — 6 asks, 1 trackers held up" in out
+          and 'w.length>5?" · "+l("waiting.bottleneck",w.length,held.length)' in page and '"waiting.bottleneck": "you are the bottleneck' in page)
+fm.configure(HERE)
+
+# --- FM-008: seats — who may make which change, read from the version control system --------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "impl"), ("user.email", "implementer@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    plain = 'name = "s"\n[kinds]\nAP = "Work"\n'
+    seats = plain + '[seats]\nowner = "holgo99"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n'
+    (root / "shoalmark.toml").write_text(plain, encoding="utf-8")
+    t_ = tracker(root, "AP-200", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=impl <implementer@seat>")
+    code, _, err = run(root)
+    check("5 · with no `[seats]` table, nothing is enforced — a repository that never asked for this is not refused by it", code == 0 and "not a seat" not in err)
+    (root / "shoalmark.toml").write_text(seats, encoding="utf-8")
+    code, out, err = run(root)
+    check("5 · the implementer holds no `ask` right: the ask it committed is refused, naming the seat, the right and the id — and it never reaches the Owner's queue",
+          code == fm.EXIT_LINT and "AP-200: `next: owner` puts a question in front of the Owner" in err and "`implementer@seat` is the seat `implementer`, which does not hold `ask`" in err
+          and run(root, "--owner")[1].startswith("NOTHING NEEDS THE OWNER") and "AP-200" in run(root, "--owner")[1].split("SENT BACK")[1])
+    (root / "shoalmark.toml").write_text(seats + '[rights]\nimplementer = ["ask"]\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("5 · `[rights] implementer = [\"ask\"]` gives a name of your own its rights, in the same diff as anything it would allow", code == 0 and "does not hold" not in err)
+    (root / "shoalmark.toml").write_text(seats + '[rights]\nimplementer = ["ask", "merge"]\n', encoding="utf-8")
+    try:
+        fm.configure(root); said = ""
+    except SystemExit as e_:
+        said = str(e_)
+    (root / "shoalmark.toml").write_text(seats, encoding="utf-8"); fm.configure(root)
+    check("5 · there are four rights and no others — a fifth word in `[rights]` is refused, naming it",
+          "'merge' is not a right" in said and "answer · ask · close · triage" in said)
+    git(root, "commit", "-q", "--amend", "--no-edit", "--author=mallory <mallory@nowhere>"); code, _, err = run(root)
+    check("5 · an author the table does not name at all is refused with the seats there are — the badge is `git config --worktree user.email`",
+          code == fm.EXIT_LINT and "`mallory@nowhere` is not a seat" in err and "principal (principal@seat)" in err and "--worktree user.email" in err)
+    git(root, "commit", "-q", "--amend", "--no-edit", "--author=p <principal@seat>"); code, _, err = run(root)
+    check("5 · the principal holds `ask` — the same commit from the seat that may ask passes", code == 0 and "does not hold" not in err)
+    # a `close` is a right of its own, judged on the change the commit makes, not on the line
+    t_.write_text(t_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8"); git(root, "add", "-A")
+    code, _, err = run(root, "--print-written")
+    check("5 · closing work is a right of its own: the implementer at the keyboard is refused before the commit exists, naming `close`",
+          code == fm.EXIT_LINT and "AP-200: this change is a `close`" in err and "does not hold `close`" in err)
+    (root / "shoalmark.toml").write_text(seats + '[rights]\nimplementer = ["close"]\n', encoding="utf-8")
+    code, _, err = run(root, "--print-written")
+    check("5 · given `close`, the same change passes — no hierarchy, no wildcard: a name either holds a right or it does not", code == 0 and "does not hold" not in err)
+    t_.write_text(t_.read_text().replace("status: Shipped", "status: In Progress"), encoding="utf-8")
+    # `signed`: a git author is a string. The commit must verify AND the key must be the one the repository trusts for that seat
+    key = root / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    other = root / "o"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)], check=True, capture_output=True)
+    (root / "signers").write_text("principal@seat " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    git(root, "config", "gpg.format", "ssh"); git(root, "config", "gpg.ssh.allowedSignersFile", str(root / "signers"))
+    (root / "shoalmark.toml").write_text(plain + '[seats]\nprincipal = "principal@seat signed"\n', encoding="utf-8")
+    git(root, "config", "user.signingkey", str(other))
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=p <principal@seat>"); code, _, err = run(root)
+    check("5 · a `signed` seat, and the ask signed by a throwaway key the signers file does not tie to it — refused, naming the seat: a signature proves the key, not the hand",
+          code == fm.EXIT_LINT and "does not verify as the seat `principal`" in err)
+    git(root, "config", "user.signingkey", str(key))
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=p <principal@seat>"); code, _, err = run(root)
+    check("5 · signed by the key the repository trusts for that seat, the same ask passes — one verifier, the answer's", code == 0 and "does not verify" not in err)
+    (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo99"]\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("5 · `answerers` still works beside `[seats]` — a deprecation line, never a refusal: one release to move it",
+          code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-008: clearing an ask keeps the record, and what --answer could not say ---------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    t_ = tracker(root, "AP-300", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n'
+                 f'answer: "accepted — the launcher, and count a week"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the answer")
+    was = t_.read_text()
+    t_.write_text("".join(l + "\n" for l in was.split("\n") if not l.startswith(("ask", "answer"))).replace("next: owner", "next: build"), encoding="utf-8")
+    git(root, "add", "-A"); code, _, err = run(root, "--print-written")
+    check("6 · an answer removed from the front matter and written nowhere else is refused — the ruling would be gone, and the next seat would ask it again",
+          code == fm.EXIT_LINT and "AP-300: the answer is being removed and the exchange is nowhere in the body" in err and "--clear-ask AP-300" in err)
+    t_.write_text(was, encoding="utf-8"); git(root, "add", "-A")
+    code, out, _ = run(root, "--clear-ask", "AP-300", "build")
+    kept = t_.read_text()
+    check("6 · `--clear-ask <id> <next move>` does it correctly: the exchange goes into the body under `## Asks` — date · question · answer · answered-by — the lines leave the front matter, and the move is the one given",
+          code == 0 and "## Asks" in kept and "Shall the launcher ship first?" in kept.split("## Asks")[1] and "accepted — the launcher, and count a week" in kept.split("## Asks")[1]
+          and "holgo" in kept.split("## Asks")[1] and new_ in kept.split("## Asks")[1] and "next: build" in kept and "ask:" not in kept.split("---")[1] and "answer:" not in kept.split("---")[1])
+    git(root, "add", "-A"); code, _, err = run(root, "--print-written")
+    check("6 · with the record in the body, the same removal passes the gate", code == 0 and "nowhere in the body" not in err)
+    git(root, "commit", "-qm", "AP-300 acted on"); short = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%h"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    code, out, _ = run(root, "--answered")
+    check("6 · --answered says what a seat has acted on since the last standup, by the commit that cleared the ask — the Owner reads what his answer became",
+          code == 0 and "ACTED ON SINCE THE LAST STANDUP" in out and f"AP-300 — acted on in `{short}`" in out)
+    # what the 0.16.0 implementer reported: --answer switched to an `answer/<id>` that does not carry the ask, and raised on an ask that is not its own line
+    t2 = tracker(root, "AP-301", extra=f'next: owner\nask: "Shall the importer ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the importer"\n', title="second ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "a second ask")
+    git(root, "switch", "-q", "-c", "answer/ap-301"); git(root, "switch", "-q", "-")
+    code, _, err = run(root, "--answer", "AP-301", "accept", "the importer")
+    check("8 · `--answer` refuses an `answer/<id>` that exists and does not carry the ask — it would write the answer where the question is not",
+          code == fm.EXIT_LINT and "its tip does not carry this ask" in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
+    git(root, "branch", "-q", "-D", "answer/ap-301")
+    t2.write_text(t2.read_text().replace('\nask: "Shall', '\n ask: "Shall'), encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the ask, indented")      # --answer wants a clean tree; the ask still parses
+    code, _, err = run(root, "--answer", "AP-301", "accept", "the importer")
+    check("9 · an ask that parsed but is not its own line gets a refusal, not a traceback out of `next(...)`",
+          code == fm.EXIT_LINT and "has no `ask:` line" in err and "Traceback" not in err)
     rm_git(root)
 fm.configure(HERE)
 
@@ -1000,6 +1185,28 @@ else:
               ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "status" in bad.stdout + bad.stderr and start.returncode == 0 and "INDEX.md" in svn("status", cwd=root).stdout)
         svn("propdel", "tsvn:precommithook", ".", cwd=root); svn("commit", "-m", "in Arbeit", cwd=root); svn("update", cwd=root); fm._SVN_LOG = None
         check("S1 · a pass's *last worked on* comes from `svn log` — one call for the whole directory", fm.last_worked_on(made) == datetime.date.today().isoformat() or re.fullmatch(r"\d{4}-\d\d-\d\d", fm.last_worked_on(made)))
+        # FM-008 · S4 · seats under Subversion: no signature to give and no client hook to run — the identity is the
+        # SERVER'S, read from `svn blame`, and the layer that refuses is the server's own pre-commit hook
+        wt_ = root / "docs/work-tracker"
+        for id_, who_, q_ in (("C2-002", "stranger", "Soll der Starter zuerst?"), ("C2-003", "principal", "Soll der Import zuerst?")):
+            (wt_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nnext: owner\nask: "{q_}"\n'
+                                             f'ask-kind: ruling\nask-since: 2026-09-20\nask-proposal: "ja"\nhook: "h von {id_}"\n---\n\n'
+                                             f'# {id_} — eine Frage\n\n## Was jetzt gilt\n\n**Offen.**\n\n## Fertig, wenn\n\nbeantwortet.\n', encoding="utf-8")
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", id_, "--username", who_, cwd=root); svn("update", cwd=root)
+        cfg = (root / "shoalmark.toml").read_text(encoding="utf-8")
+        (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
+        code, _, err = run(root)
+        check("S4 · under Subversion the seat is the server's account: the ask committed by an account that is no seat is refused, naming it — and the one from the seat that holds `ask` passes",
+              code == fm.EXIT_LINT and "C2-002: `next: owner` puts a question in front of the Owner" in err and "`stranger` is not a seat" in err
+              and "--worktree user.email" not in err and "C2-003" not in err)
+        (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal signed"\n', encoding="utf-8")
+        code, _, err = run(root)
+        check("S4 · `signed` under Subversion is refused as meaningless — the server authenticated the commit; name the account alone",
+              code == fm.EXIT_LINT and "asks for a signature, and Subversion has none to give" in err and "Name the SVN account alone" in err)
+        (root / "shoalmark.toml").write_text(cfg, encoding="utf-8")
+        for id_ in ("C2-002", "C2-003"):
+            (wt_ / f"{id_}-x.md").unlink()
+        svn("delete", "--force", str(wt_ / "C2-002-x.md"), str(wt_ / "C2-003-x.md"), cwd=root); run(root)
     fm.configure(HERE)
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------

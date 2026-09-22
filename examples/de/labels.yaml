@@ -76,6 +76,8 @@ waiting.holds: hält {0} weitere auf
 waiting.days: seit {0} Tagen
 waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
+waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
+waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären

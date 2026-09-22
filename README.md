@@ -135,6 +135,11 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `dangling link -> FILE (did you mean …?)` | the id is right and the slug moved: use the file it names |
 | `duplicate tracker id` · `identity drift` · `H1 drift` | filename, `id:` and the first heading must carry one id; renumber the later filing — nothing is ever deduplicated for you |
 | `` `rank:` … remove it when the tracker ships, parks or closes `` | do that |
+| `` `next: owner` without `ask-proposal:` `` | an ask carries the move the seat would make: write it, with `ask-kind:` and `ask-since:` |
+| `` `ask:` is ONE question `` | one `?`, at the end, 300 characters; the context goes in the body |
+| `` `ask:` is the same question as <id> `` | ask on that tracker, or say in `considered:` why this one differs |
+| `the answer is being removed and the exchange is nowhere in the body` | `--clear-ask <id> <next move>` — it keeps the record |
+| `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
 | `… differs from its PIN` | someone edited the vendored tool in place. Never do that: change it upstream, vendor again |
 
@@ -157,11 +162,14 @@ What lives where, by convention — no setting names any of it:
 
 | Path | What |
 |---|---|
-| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[headings]` the seven section names the tool reads and writes (`state` `why` `done` `log` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
+| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the eight section names the tool reads and writes (`state` `why` `done` `log` `asks` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
 | git · Subversion · Windows | `--install-hook` wires what the system has: git hooks, or on Subversion the TortoiseSVN hook properties and `svn:ignore`. **`svn commit` on the command line runs no hook — run the tool first.** On Windows the command is `python`. CI proves all three systems |
+| what an ask must be | ONE question — one `?`, at the end, at most 300 characters — with `ask-kind:`, `ask-since:` and `ask-proposal:`, and never the same question as another open tracker's. At most five `ask-options:`, 120 characters each. The gate refuses the rest, and the board shows what got in anyway as *N asks sent back — not for you* |
+| drafting an ask | an `ask:` with `next: review` is a **draft**: any seat writes one (the question and its `ask-options:`), it needs no proposal and the Owner never sees it. The Principal rewrites it, orders the options, sets `ask-proposal:`, `ask-since:` and `next: owner` — that is what puts it in front of him |
 | what needs the Owner | `ask:` (one sentence he can answer) · `ask-kind:` ruling · action · determination · ceremony · `ask-since:` — with `next: owner`. The board leads with them; `--owner` is the digest a session ends its last message with; `--standup` is the agenda of his one sitting and `--standup FILE.ics` its calendar invite (`standup = "09:00"` in `shoalmark.toml`) |
 | what the ask offers | `ask-options:` — the choices as ONE line, `a \| b \| c`; `ask-proposal:` is the one the seat **recommends** — offered first and marked, and where options are named it must be one of them. A proposal alone is a list of one |
 | the Owner's answer | on the board: **accept** or **reject** opens a dialog with the question, the choices and what it holds up — one radio per option, the recommended one first, and *Other:* with a box; OK gives one command. **`--answer <id> accept\|reject ["text"]`** cuts `answer/<id>` from the ask's branch, writes the three lines, commits signed, pushes. `--answered` is what he answered and no seat has acted on |
+| acting on an answer | `--clear-ask <id> <next move>` — moves the exchange into the body under `## Asks` (date · question · answer · answered-by, newest last), clears the ask and answer lines, sets the move. The gate refuses a commit that drops an answer without that record, and `--answered` reports what was acted on since the last standup, by commit |
 | who may answer | `answerers = ["name"]` or `["name signed"]` in `shoalmark.toml`. The gate reads the answer's committer from git or Subversion; under `signed` the commit must verify and the key's identity must be the author's email. Empty = nobody may answer. Setup for a human: `docs/human/signing.md` |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
@@ -170,6 +178,33 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
 | `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `labels.yaml`, fonts (§9) |
+
+### Seats
+
+Who is at the keyboard, and what that seat may change. **Four rights**, each a front-matter transition the gate sees in
+a diff: `answer` (the three answer lines) · `ask` (`next: owner`) · `close` (a terminal status) · `triage`
+(`considered:`, `kind-of-problem:`, tier, rank); anything else is open to every seat. Four names carry theirs built in —
+**owner** all four · **principal** ask, close, triage · **reviewer** triage · **implementer** none — any other name says
+so in `[rights]`, in the same diff as anything it would allow. Absent `[seats]`, nothing of this is enforced.
+
+```toml
+[seats]                                 # a name you choose -> the identity version control reports
+principal   = "principal@seat signed"   # `signed`: the commit must verify under a key trusted for that identity
+implementer = "implementer@seat"
+[rights]
+chef = ["answer", "close"]              # only for a name that is not one of the four
+```
+
+**The badge:** `git config extensions.worktreeConfig true` once, then `git config --worktree user.email principal@seat`
+in each seat's worktree. A signed seat's key belongs where only that seat runs — a container, later; the Owner's key is
+never in a seat's environment. This catches an agent that does not know the rule, **not one that lies**: that is
+FM-007's class, and nothing moves work except the Owner's signed answer. **On Subversion** the identity is the server
+account and `signed` is refused — the server authenticated the commit, and the gate reads the author it recorded
+(`svn blame --xml`, as the answer gate does). One seat = one SVN account whose credentials exist only in that seat's
+environment (a container, or its own Windows user), never the Owner's cached ones (`~/.subversion/auth`, the Windows
+credential store); the svn command line runs no hook, so the server's own `pre-commit` hook running `<cmd> --check` is
+the layer that refuses and the board's *sent back* group is the backstop. A seat's **charter** — how it thinks, a bold
+Principal against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
 
 ## 7. The one seam: a deriver
 

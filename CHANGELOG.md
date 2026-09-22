@@ -2,6 +2,51 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.0 — 2026-09-22
+
+**An ask reaches the Owner only through the gate** — the Owner, on the shadow week's first day: *"without enforcing
+this kind of rules my gut feeling tells me that this process will break as soon as we let other CLI agents into the
+system."* Everything the ask flow assumed an agent had read in `AGENTS.md` is now held by `lint`, which the pre-commit
+hook, `--check` and every board build already run — and by the Owner's queue itself, which lists only what passes:
+
+- **No ask without a recommendation.** `next: owner` wants `ask:`, `ask-kind:`, `ask-since:` and `ask-proposal:`; the
+  refusal names the id and every key that is missing. A question with no recommendation moves the decision and none of
+  the work.
+- **One question.** One `?`, at the end, at most 300 characters. At most five `ask-options:`, 120 characters each, none
+  of them twice. **No duplicate question:** an ask whose text matches another open one — lower case, whitespace
+  collapsed, trailing punctuation dropped, and *exactly*, never fuzzily — is refused, naming the other id.
+- **Draft → review → owner.** An `ask:` with `next: review` is a draft: any seat writes it, it needs no proposal, and
+  the Owner never sees it. The Principal rewrites it, orders the options and sets the proposal, the date and
+  `next: owner`.
+- **The third layer: `owner_queue` lists only asks that pass.** One that got in another way — a merge, `--no-verify`,
+  an agent that never ran the gate — is shown apart on the board and in `--owner`/`--standup` as *"N asks sent back —
+  not for you"*, with the reason. The Owner never reads a malformed question as a question.
+- **`[seats]` and `[rights]`: who is at the keyboard, and what that seat may change.** Four rights, each a front-matter
+  transition the gate sees in a diff — `answer` · `ask` · `close` · `triage`; four built-in names — owner, principal,
+  reviewer, implementer; any other name says so in `[rights]`, and a fifth right word is refused by name. The identity
+  is the version control system's, never the file's: git's author email (with `signed`, the commit must verify under a
+  key trusted for it — the answerers' own verifier, not a second one), or on Subversion the account its server
+  authenticated, where `signed` is refused as meaningless. Absent `[seats]`, nothing changes. `answerers` keeps working
+  as the old name for the owner's `answer` right — a deprecation line in the gate's output, never a refusal; it goes in
+  the release after this one.
+- **Clearing an ask keeps the record.** A commit that drops an answer without the exchange in the body is refused;
+  **`--clear-ask <id> <next move>`** moves it under `## Asks` (date · question · answer · answered-by, newest last),
+  clears the lines and sets the move. `--answered` now also reports what a seat acted on since the last standup, by the
+  commit that cleared the ask.
+- **The bottleneck line.** Past five asks, the board's first line and `--owner` say *"you are the bottleneck — N asks,
+  M trackers held up"*. Not a tracker's problem: his.
+- **Two things `--answer` could not say:** an `answer/<id>` branch that exists and does not carry the ask is refused
+  instead of switched to, and an ask that is not its own front-matter line gets a refusal instead of a traceback.
+- The standup's *not said which kind* group is gone — `ask-kind:` is now one of the four lines an ask carries, so such
+  an ask never reaches a sitting. `[headings]` gains `asks`, the body section an exchange is moved into.
+- **Cost:** the rules that need a version-control call are asked only of what a commit stages (`--check` asks them of
+  everything), and with `[seats]` absent they make no call at all.
+- **Every git call the tool makes about its own root is now immune to the hook's environment.** Git exports `GIT_DIR`,
+  `GIT_WORK_TREE`, `GIT_INDEX_FILE` and `GIT_PREFIX` into a hook and they override `cwd`, so a pre-commit run answered
+  for the repository being committed to: *last worked on* read the wrong log, and the suite built its scratch
+  repositories inside the wrong repository. `nested_git_env()` existed for this and was used on two calls; it is on all
+  of them now.
+
 ## 0.16.0 — 2026-09-22
 
 **The answer, redesigned by the Owner** — *"human users reject any friction"*:
