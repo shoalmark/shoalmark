@@ -2271,9 +2271,13 @@ def lint(trackers, committing=False):
     if vcs() == "svn" and any(mode == "signed" for _who, mode in SEATS.values()):
         problems.append(f'{CONFIG_NAME}: `[seats]` — {", ".join(sorted(s for s in SEATS if SEATS[s][1] == "signed"))} asks for a signature, and '
                         f'Subversion has none to give: its server authenticates the commit. Name the SVN account alone')
-    if ANSWERERS and SEATS:
-        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`; '
-              f'it goes in the release after this one', file=sys.stderr)
+    # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
+    # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
+    # the old key, which is the entire population the deprecation is for (FM-010).
+    if ANSWERERS:
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`. '
+              f'Removal comes no sooner than the release after this one: before 0.17.3 this note never reached a repository without '
+              f'`[seats]`, so the clock starts here', file=sys.stderr)
     problems += rights_problems(trackers)
     by_ask = asks_by_key(trackers)
     for t in trackers:

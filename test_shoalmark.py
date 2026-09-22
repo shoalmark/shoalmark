@@ -1114,6 +1114,19 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root)
     check("5 · `answerers` still works beside `[seats]` — a deprecation line, never a refusal: one release to move it",
           code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    # FM-010: the note was guarded on `answerers` AND `[seats]`, so the only repositories told were the ones already
+    # migrating. A repository wholly on the old key — the entire population the deprecation is for — heard nothing,
+    # while the note promised removal in the next release. `answerers` must go ABOVE any table header: a bare key is
+    # read into whichever `[table]` is open, so appending it makes it `[tags].answerers` and the case reads as a pass.
+    (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo99"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("5 · a repository wholly on `answerers`, with no `[seats]` at all, is told the key is going — the deprecation reaches the population it is for",
+          "`answerers` is the old name for the `answer` right" in err)
+    check("5 · the note that reaches them does not repeat a removal date they were never served", "the clock starts here" in err)
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("5 · a repository on `[seats]` with no `answerers` is never warned about a key it does not use",
+          "is the old name for the `answer` right" not in err)
     rm_git(root)
 fm.configure(HERE)
 
