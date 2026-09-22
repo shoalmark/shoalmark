@@ -24,13 +24,20 @@ board build already run:
 2. one question — one `?`, at the end, 300 characters; at most 5 options, 120 characters each, no duplicates;
 3. no duplicate question — an exact normalised match against another open ask, naming the other id;
 4. draft → review → owner: an `ask:` with `next: review` is a draft any seat may write and the Owner never sees;
-5. seat provenance, optional, config-driven — `seats` in `shoalmark.toml`, checked against the author of the commit
-   that set `next: owner`, signed where the entry says `signed`;
+5. seats, optional, config-driven — `[seats]` and `[rights]` in `shoalmark.toml`: four rights (`answer` · `ask` ·
+   `close` · `triage`), four built-in names, the identity read from git or from Subversion's server, signed where the
+   entry says `signed`;
 6. clearing an ask keeps the record — the exchange moves into the body under `## Asks`, or the commit is refused;
 7. the bottleneck line — past 5 asks, the board and `--owner` say so in the first line.
 
 And the third layer: `owner_queue` lists only what passes, so a malformed ask that got in anyway is shown as *sent
 back*, with its reason, and never as a question.
+
+**Shipped in 0.17.0.** Nineteen mutations, every one caught; both suites green on 3.13 and 3.9; `--check` 0.36 s
+against 0.37 s before. Rule 5 was redesigned by the Owner mid-build, from a flat list of who may ask into the four
+rights — the tracker's `evidence/FM-008/gate.md` records the redesign, what follows from its shape and what is not
+measured. **Open:** no repository runs `[seats]` yet, this one included; the badge and the container a signed seat's
+key belongs in are FM-007's ruling to make first.
 
 ## Why
 
@@ -48,3 +55,4 @@ fail once by mutation, recorded in `evidence/FM-008/gate.md`; `--check` on this 
 | Date | Event |
 |---|---|
 | 2026-09-22 | Filed from the Owner's word on the shadow week's first day; pre-registered in `evidence/FM-008/gate.md` before any code. |
+| 2026-09-22 | Built and shipped as 0.17.0: the seven rules, `[seats]`/`[rights]`, `--clear-ask`, the bottleneck line, two `--answer` refusals. FM-005's and FM-007's asks rewritten to pass. |
