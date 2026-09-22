@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -61,6 +61,14 @@ DEFAULTS = {
     # `gpg.format`/`user.signingkey` and, for SSH keys, `gpg.ssh.allowedSignersFile`). Empty = nobody may answer.
     # A seat cannot add itself here unseen: the change is in the same diff as anything it would allow.
     "answerers": [],
+    # WHO IS AT THE KEYBOARD, and what that seat may change. `[seats]` is a name of the repository's choosing → the
+    # identity the version control system reports — `"principal@seat"`, or `"principal@seat signed"` where the commit
+    # must also VERIFY under a key trusted for it. `[rights]` gives a name of your own its rights; the four built-in
+    # names have theirs (BUILTIN_RIGHTS). ABSENT, nothing is enforced — this is for a repository that lets in agents
+    # which never read its contract. It catches an agent that does not know the rule, not one that lies (README,
+    # *Seats*). Under Subversion an identity is the server account and `signed` is refused: the server authenticated it.
+    "seats": {},
+    "rights": {},
     # humans have office hours, agents have budgets: ONE fixed sitting a day in which the Owner goes through what
     # needs him. Agents write their asks before it; a deadline is counted in standups, not in hours.
     "standup": "",                               # "09:00" — local time; empty = no standup
@@ -75,7 +83,7 @@ DEFAULTS = {
     # repository's language. They are here and not in a brand's labels.yaml because the gate depends on them: what
     # the gate says is a function of the repository alone. The English ones are always understood as well.
     "headings": {"state": "What is true now", "why": "Why", "done": "Done when", "log": "Ship log",
-                 "intent": "The intent", "path": "The current path", "passes": "Passes"},
+                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks"},
 }
 
 
@@ -143,6 +151,17 @@ def digest(path):
 
 PY = "python" if os.name == "nt" else "python3"         # the name a message, a hook and the contract can be pasted under
 
+# WHAT A SEAT MAY CHANGE — four rights, each one a front-matter transition the gate can see in a diff. Anything else a
+# tracker carries is open to every seat and needs no right: rights are for the four changes that move authority, not
+# for the work. There is no hierarchy, no deny rule and no wildcard — a name either holds a right or it does not.
+RIGHTS = ("answer",      # writing `answer:` `answered:` `answered-by:` — the Owner's ruling
+          "ask",         # setting `next: owner` — putting a question in front of him
+          "close",       # setting a terminal status — saying work is over
+          "triage")      # writing `considered:`, `kind-of-problem:`, `tier:`, `rank:`, `triaged:` — the judgement
+# the four names that need no `[rights]` line, because the seats mean the same thing in every repository that runs this
+BUILTIN_RIGHTS = {"owner": set(RIGHTS), "principal": {"ask", "close", "triage"}, "reviewer": {"triage"}, "implementer": set()}
+TRIAGE_KEYS = ("kind-of-problem", "tier", "rank", "triaged")     # `considered:` too — except on a filing, which is the rule, not a verdict
+
 
 def configure(root=None):
     """Bind every path, id pattern and schema shape to one repository. Called once at import for the working
@@ -156,17 +175,31 @@ def configure(root=None):
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
-    global ANSWERERS
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
+    SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> (identity, "signed" | ""), and seat name -> rights
+    for name, value in (CONFIG.get("seats") or {}).items():
+        who, _, mode = str(value).strip().rpartition(" ")
+        SEATS[name] = (who if mode == "signed" else str(value).strip(), "signed" if mode == "signed" else "")
+        SEAT_RIGHTS[name] = set(BUILTIN_RIGHTS.get(name, ()))
+    for name, words in (CONFIG.get("rights") or {}).items():
+        if isinstance(words, str) or any(w not in RIGHTS for w in words):
+            bad = [words] if isinstance(words, str) else [w for w in words if w not in RIGHTS]
+            raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
+                             f'anything else a tracker can carry is open to every seat and needs none')
+        SEAT_RIGHTS[name] = set(words)
+    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
         raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
     STATE_HEAD_RE = re.compile(_STATE_HEADS[:-3] + "|" + re.escape(HEAD["state"]) + r")\b", re.I)
     DONE_RE = re.compile(_DONE_WORDS + "|" + re.escape(HEAD["done"]), re.I)
+    # the body section an exchange is moved into when its ask is cleared — the repository's own word, English always
+    ASKS_HEAD_RE = re.compile(r"^#{2,3}\s+(asks|" + re.escape(HEAD["asks"]) + r")\s*$", re.I | re.M)
     KINDS = tuple(KIND_LABELS)
     if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
         raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
@@ -220,6 +253,17 @@ KIND_OF_MOVE = {"script": "obvious", "review": "complicated", "owner": "complica
 # 84 trackers had no front matter at all, and a triage pass could not apply a verdict to the 6 open ones.
 OPEN_STATUSES = ("In Progress", "Parked", "Proposed", "Reserved", "?")
 _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling awaited`, in a few words and without a comma
+# WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
+# these are the same sentences, held by the gate instead (FM-008). They are deliberately generous: an ask that trips
+# one of them is not borderline, it is a paragraph, a second question, or a question already asked.
+ASK_MAX = 300              # characters — past this it is not a sentence he can answer in a sitting; the detail is the body's
+ASK_OPTIONS_MAX = 5        # choices — a radio list he reads once, not a menu
+ASK_OPTION_MAX = 120       # characters per choice — a choice is a phrase, not its rationale
+BOTTLENECK = 5             # more asks than this in his queue and the queue itself is the finding, said in the first line
+# the three lines an ask carries besides the question itself, each with what it is FOR — a refusal that only names a
+# key sends the agent to the schema; one that says what the key is for is answerable where it is read.
+ASK_NEEDS = {"ask-kind": "which of his four kinds it is", "ask-since": "the day it was first made — its age is what he sees",
+             "ask-proposal": "the one the seat RECOMMENDS, and would act on"}
 def front_matter_schema():
     return {
         "id":              (_IDS, "all", "the filing seat", "the tracker's id — the filename's, checked against it"),
@@ -530,6 +574,9 @@ def extract(path):
         "provable": bool(DONE_RE.search(body)),
         "orphan_rows": orphans,
         "state": current_truth(body),
+        # the body's `## Asks` section: where an exchange goes when its ask is cleared. Read here because `extract` is
+        # the only place the file text is read, and both the gate and `--answered` ask whether the record is there.
+        "asks_block": bool(ASKS_HEAD_RE.search(body)),
     }
 
 
@@ -577,20 +624,122 @@ def held_up_by(t, trackers):
     return held
 
 
+def ask_key(text):
+    """An ask's normalised text, for the duplicate test only: lower case, every run of whitespace one space, trailing
+    punctuation dropped. EXACT equality after that, and nothing fuzzy: two questions that differ by a word usually
+    differ, and a gate that guesses is a gate people route around."""
+    return re.sub(r"\s+", " ", (text or "").strip().lower()).rstrip("?!.…:;, ").strip()
+
+
+def stated_ask(t):
+    """Does this tracker carry an ask anyone must read — one that is open and not yet answered."""
+    return t.get("status") in OPEN_STATUSES and not t.get("answer") and (t.get("ask") or t.get("next") == "owner")
+
+
+def ask_problems(t, by_ask=None, provenance=True):
+    """WHAT AN ASK MUST BE, in one place — the reasons this tracker's ask is not one, without its id.
+
+    `lint` refuses on them, and `owner_queue` keeps them out of the Owner's sight: the seat that asks is the seat that
+    wants an answer, so no seat polices its own asks. `by_ask` maps a normalised ask to the ids carrying it (the
+    duplicate test); `provenance` runs the `seats` check, which costs a version-control call and is skipped where the
+    line cannot have changed. A DRAFT — an `ask:` with `next: review` — is held to the form rules and to nothing else:
+    any seat may write one, the Principal turns it into an ask the Owner sees."""
+    if not stated_ask(t):
+        return []
+    out, ask, draft = [], (t.get("ask") or "").strip(), t.get("next") == "review"
+    if t.get("next") == "owner":
+        # 1. NO ASK WITHOUT A RECOMMENDATION. An ask that only asks moves the decision and none of the work.
+        if not ask:
+            out.append(f'not yet stated as a question — `next: owner` without `ask:`; write `ask:` in {t.get("file", "the tracker")}')
+        missing = [k for k in ASK_NEEDS if not (t.get("fm", {}).get(k) or "").strip()]
+        if missing:
+            out.append("`next: owner` without " + ", ".join(f"`{k}:` ({ASK_NEEDS[k]})" for k in missing)
+                       + " — a question with no recommendation moves the decision and none of the work")
+    # 2. ONE QUESTION. One sentence, one `?`, at the end — a paragraph with three questions in it gets one answer.
+    if ask and (ask.count("?") != 1 or not ask.endswith("?")):
+        out.append(f'`ask:` is ONE question — exactly one `?`, at the end; the context goes in the body. Got: {ask[:80]!r}')
+    if len(ask) > ASK_MAX:
+        out.append(f'`ask:` is {len(ask)} characters — an ask he answers in a sitting is at most {ASK_MAX}; the detail belongs in the body')
+    options = t.get("ask_options") or []
+    if len(options) > ASK_OPTIONS_MAX:
+        out.append(f'`ask-options:` offers {len(options)} choices — at most {ASK_OPTIONS_MAX}; more is a design review, not a question')
+    long_ = [o for o in options if len(o) > ASK_OPTION_MAX]
+    if long_:
+        out.append(f'`ask-options:` — {long_[0][:60]!r} is {len(long_[0])} characters; a choice is at most {ASK_OPTION_MAX}, its rationale goes in `ask-proposal:` or the body')
+    twice = [o for o in options if options.count(o) > 1]
+    if twice:
+        out.append(f'`ask-options:` names {twice[0]!r} twice — each choice appears once')
+    # 3. NO DUPLICATE QUESTION. Asked twice, it is answered twice — or, more often, neither time.
+    same = [o for o in (by_ask or {}).get(ask_key(ask), []) if o != t["id"]] if ask else []
+    if same:
+        out.append(f'`ask:` is the same question as {same[0]} — ask on it, or say why this is different in `considered:`')
+    if provenance and not draft and t.get("next") == "owner":
+        out += seat_problems(t)
+    return out
+
+
+def asks_by_key(trackers):
+    """Every open, unanswered ask by its normalised text — what the duplicate test is run against."""
+    out = {}
+    for t in trackers:
+        if stated_ask(t) and t.get("ask"):
+            out.setdefault(ask_key(t["ask"]), []).append(t["id"])
+    return {k: sorted(v) for k, v in out.items()}
+
+
 def owner_queue(trackers):
-    """What waits for the Owner, oldest ask first: (tracker, age in days or None, what it holds up)."""
+    """What waits for the Owner, oldest ask first: (tracker, age in days or None, what it holds up) — and ONLY what
+    passes the ask rules. A malformed one is `malformed_asks` below: the Owner never sees a broken question as a
+    question, and a draft (`next: review`) never reaches him at all."""
     today = datetime.date.today()
+    by_ask = asks_by_key(trackers)
     age = lambda t: (today - datetime.date.fromisoformat(t["ask_since"])).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.get("ask_since") or "") else None
-    q = [(t, age(t), held_up_by(t, trackers)) for t in trackers if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer")]
+    q = [(t, age(t), held_up_by(t, trackers)) for t in trackers
+         if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer") and not ask_problems(t, by_ask)]
     return sorted(q, key=lambda r: (-(r[1] if r[1] is not None else -1), r[0]["id"]))
 
 
+def malformed_asks(trackers):
+    """The third layer: what was sent to the Owner and is not a question he can answer — (tracker, reasons), by id.
+    The gate already refuses each of these; this is what the board, `--owner` and `--standup` show when one got in
+    anyway — on a merge, under `--no-verify`, or from an agent that never ran the gate."""
+    by_ask, out = asks_by_key(trackers), []
+    for t in sorted(trackers, key=lambda t: t["id"]):
+        why = ask_problems(t, by_ask) if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer") else []
+        if why:
+            out.append((t, why))
+    return out
+
+
+def bottleneck(q):
+    """The one line the Owner is owed when his queue is the finding — not a tracker's problem, his."""
+    held = {h for _, _, hs in q for h in hs}
+    return f"you are the bottleneck — {len(q)} asks, {len(held)} trackers held up" if len(q) > BOTTLENECK else ""
+
+
+def sent_back(trackers, log=None):
+    """The malformed asks, printed where the Owner would have read them as questions — with the reason each was sent
+    back, so the seat that wrote it knows what to fix without opening the gate's output."""
+    bad = malformed_asks(trackers)
+    if bad:
+        print(f"\n{len(bad)} ASK(S) SENT BACK — NOT FOR YOU (the seat fixes these; they reach you when they pass the gate)", file=log or sys.stdout)
+        for t, why in bad:
+            print(f"  {t['id']} — {why[0]}", file=log or sys.stdout)
+    return bad
+
+
 def answered(trackers):
-    """`--answered`: what the Owner answered and nobody has acted on yet — the seat's side of the exchange."""
+    """`--answered`: what the Owner answered and nobody has acted on yet — the seat's side of the exchange; and,
+    since his last sitting, what WAS acted on, named by the commit that cleared the ask."""
     rows = sorted((t for t in trackers if t.get("answer") and t["status"] in OPEN_STATUSES), key=lambda t: t.get("answered", ""))
     print(f"{len(rows)} ANSWERED, NOT YET ACTED ON" if rows else "NOTHING ANSWERED IS WAITING FOR A SEAT.")
     for t in rows:
-        print(f"\n{t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   → act on it, then set `next:` to what comes after and clear the ask; the answer stays in the file as the record")
+        print(f"\n{t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   → act on it, then `{CMD} --clear-ask {t['id']} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes")
+    acted = acted_on(trackers)
+    if acted:
+        print(f"\nACTED ON SINCE THE LAST STANDUP — {len(acted)}")
+        for t, commit in acted:
+            print(f"  {t['id']} — acted on in `{commit}`")
     return EXIT_OK
 
 
@@ -599,16 +748,21 @@ def owner_digest(trackers):
     q = owner_queue(trackers)
     if not q:
         print("NOTHING NEEDS THE OWNER.")
+        sent_back(trackers)
         return EXIT_OK
-    ages, held = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs})
-    print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else ""))
+    ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
+    print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
+          + (f" · {line}" if line else ""))
     for t, a, hs in q:
         print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
-        print("   " + (t["ask"] or f"NOT YET STATED AS A QUESTION — {t['title']}: write `ask:` in {t['file']}"))
+        print("   " + t["ask"])
+    sent_back(trackers)
     return EXIT_OK
 
 
-STANDUP_ORDER = (("ruling", "RULINGS — answer; a provisional answer is an answer"), ("", "NOT SAID WHICH KIND — the seat owes `ask-kind:`"),
+STANDUP_ORDER = (("ruling", "RULINGS — answer; a provisional answer is an answer"),
+                 # there was a group here for an ask that did not say which kind it was. `ask-kind:` is now one of the
+                 # four lines `next: owner` requires (FM-008), so such an ask is sent back and never reaches a sitting.
                  ("action", "YOUR HANDS — one sitting, in this order: what frees the most comes first"),
                  ("determination", "EVIDENCE COULD SETTLE THESE — agree to the experiment, rule on its result later"),
                  ("ceremony", "BUTTONS — reviewed and accepted, waiting for a click"))
@@ -638,13 +792,16 @@ def standup(trackers, invite=None):
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
     q = owner_queue(trackers)
-    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + ("" if q else " — nothing needs the Owner today."))
+    line = bottleneck(q)
+    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + ("" if q else " — nothing needs the Owner today.")
+          + (f"\n{line}" if line else ""))
     for kind, title in STANDUP_ORDER:
         rows = sorted((r for r in q if (r[0].get("ask_kind") or "") == kind), key=lambda r: (-len(r[2]), -(r[1] if r[1] is not None else -1), r[0]["id"]))
         if rows:
             print(f"\n{title}")
         for n, (t, a, hs) in enumerate(rows, 1):
-            print(f"  {n}. {t['id']} — " + (t["ask"] or f"not yet stated as a question: {t['title']}") + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+            print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+    sent_back(trackers)
     return EXIT_OK
 
 
@@ -676,7 +833,7 @@ def answer_cmd(words, trackers):
     if me not in ANSWERERS:
         print(f"--answer: `{me}` is not in `answerers` ({', '.join(ANSWERERS) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
         return EXIT_LINT
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
         print("--answer: the working tree has changes — an answer is one commit with nothing else in it; commit or stash first", file=sys.stderr)
         return EXIT_LINT
@@ -691,24 +848,38 @@ def answer_cmd(words, trackers):
         print(f"--answer: git would author this commit as `{author}`, not `{me}` — the environment (GIT_AUTHOR_NAME) overrides `user.name`; "
               f"unset it, or the answer is filed from an account that did not give it", file=sys.stderr)
         return EXIT_LINT
+    path = TRACKER_DIR / t["file"]
+    rel = path.relative_to(ROOT).as_posix()
     branch, here = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip()
     if here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
+            # an `answer/<id>` left over from another branch does not carry this ask: switching to it would write the
+            # answer where the question is not, and push a branch the ask's own branch never sees
+            tip = git("show", f"{branch}:{rel}")
+            if tip.returncode or ask_key(parse_frontmatter(tip.stdout)[0].get("ask", "")) != ask_key(t["ask"]):
+                print(f"--answer: `{branch}` exists and its tip does not carry this ask — it was cut from another branch or the ask has changed since. "
+                      f"Delete it (`git branch -D {branch}`) or answer from the branch that carries the ask", file=sys.stderr)
+                return EXIT_LINT
             r = git("switch", branch)
         else:
             r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
         if r.returncode:
             print(f"--answer: could not switch to `{branch}` — {r.stderr.strip()}", file=sys.stderr)
             return EXIT_LINT
-    path = TRACKER_DIR / t["file"]
     answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
     lines = path.read_text(encoding="utf-8").split("\n")
-    at = next(i for i, l in enumerate(lines) if l.startswith("ask:"))
+    # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
+    # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal
+    at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
+    if at is None:
+        print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
+              f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
+        return EXIT_LINT
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
     put(path, "\n".join(lines))
-    git("add", "--", str(path.relative_to(ROOT)))
+    git("add", "--", rel)
     r = git("commit", *(["-S"] if ANSWERERS.get(me) == "signed" else []), "-m", f"{tid}: {answer[:60]}")
     if r.returncode:
         print(f"--answer: the commit failed — {r.stderr.strip()[-300:]}", file=sys.stderr)
@@ -937,7 +1108,10 @@ function draw(){
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q?(w=>{
+  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q?(all_=>{
+    // ONLY what passes the ask rules is a question here — t[29][7] is why it is not. The Owner never reads a malformed
+    // ask as one; what was sent back is listed after the queue, with its reason, for the seat that wrote it.
+    const w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);
     // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
     const days=t=>t[29][2]?Math.floor((Date.now()-Date.parse(t[29][2]))/864e5):null,old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
@@ -969,8 +1143,10 @@ function draw(){
         navigator.clipboard?.writeText(line);out.textContent=l("answer.run")+"\n"+line;out.hidden=false;f.querySelector(".go").disabled=true};
       d.showModal()};
     window.ACT=act;
-    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+"\n"+w.slice(0,14).map(t=>
-      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
+      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
+      +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
+        `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
@@ -1050,6 +1226,8 @@ LABELS = {
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
+    "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
+    "waiting.malformed": "{0} asks sent back — not for you",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "OK — give me the command", "answer.abort": "abort", "answer.run": "Copied. Run this in the repository; it cuts the answer branch, writes the three lines, commits signed and pushes:",
@@ -1245,7 +1423,7 @@ def render_html(trackers):
     equal bytes. The row layout is documented once, in the page's script."""
 
     epics = {t.get("epic", "—") for t in trackers}
-    by_id, verdicts = {t["id"]: t for t in trackers}, latest_verdicts()
+    by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
     rows = [
         json.dumps(
             [t["id"], t["tier"], t["status"], "—", "—",
@@ -1255,7 +1433,7 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or []]],
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask)]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -1272,7 +1450,7 @@ def render_html(trackers):
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
     page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
@@ -1430,13 +1608,13 @@ def last_worked_on(path):
     if vcs() == "svn":
         return svn_last_worked_on(path)
     log = subprocess.run(["git", "log", "--format=%H %cs %s", "--", str(path)], cwd=ROOT,
-                         capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.splitlines()
+                         capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.splitlines()
     for line in log:
         commit, day, subject = (line.split(" ", 2) + [""])[:3]
         if "[sweep]" in subject:
             continue
         names = subprocess.run(["git", "show", "--name-only", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT).as_posix())],
-                               cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout.split()
+                               cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.split()
         if len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
             return day
     return log[-1].split()[1] if log else "—"
@@ -1698,47 +1876,356 @@ def render_schema():
 
 def git_user():
     """The committer's own name, as git will write it — so `answered-by:` need not be typed."""
-    out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
-def answer_author(path):
-    """Who committed the `answer:` line of this tracker — from the version control system, never from the file:
-    (author, system, commit) or (None, "uncommitted", ""). Git's author can be typed — `signed` in `answerers` makes the
-    gate verify the commit; Subversion's author is the server's authenticated one."""
+def svn_blame(rel):
+    """{line number: (author, revision)} for one file, from the server's own record — read once per file and kept:
+    the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository."""
+    if rel in _SVN_BLAME:
+        return _SVN_BLAME[rel]
+    out = {}
+    blame = subprocess.run(["svn", "blame", "--xml", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if blame.returncode == 0:
+        import xml.etree.ElementTree as ET
+        try:
+            for e in ET.fromstring(blame.stdout).iter("entry"):
+                who, c = e.find("commit/author"), e.find("commit")
+                out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
+        except (ET.ParseError, ValueError, TypeError):
+            out = {}
+    _SVN_BLAME[rel] = out
+    return out
+
+
+def line_author(path, needle):
+    """Who committed the line this tracker carries under `needle` — from the version control system, never from the
+    file: (name, email, system, commit), or (None, None, "uncommitted", ""). Git's author is a string anyone can type,
+    so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
+    has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one."""
     rel = pathlib.Path(path).resolve().relative_to(ROOT).as_posix()
+    hit = _LINE_AUTHOR.get((rel, needle))
+    if hit is not None:
+        return hit
+    out = (None, None, "uncommitted", "")
     if vcs() == "svn":
-        out = subprocess.run(["svn", "blame", "--xml", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        if out.returncode == 0:
-            import xml.etree.ElementTree as ET
-            try:
-                lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
-                n = next((i for i, l in enumerate(lines) if l.startswith("answer:")), None)
-                for e in ET.fromstring(out.stdout).iter("entry"):
-                    if n is not None and int(e.get("line-number")) == n + 1:
-                        who = e.find("commit/author"); c = e.find("commit")
-                        return (who.text if who is not None else None, "svn", c.get("revision") if c is not None else "")
-            except (ET.ParseError, ValueError):
-                pass
-        return (None, "uncommitted", "")
-    out = subprocess.run(["git", "log", "-1", "--format=%H %an", "-S", "answer:", "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if out.returncode == 0 and out.stdout.strip():
-        commit, _, who = out.stdout.strip().partition(" ")
-        dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT).returncode != 0
-        if dirty and "answer:" not in subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace").stdout:
-            return (None, "uncommitted", "")
-        return (who, "git", commit)
-    return (None, "uncommitted", "")
+        by_line = svn_blame(rel)                          # ONE blame per file, however many of its lines are asked about
+        lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
+        n = next((i for i, l in enumerate(lines) if l.startswith(needle)), None)
+        if n is not None and (n + 1) in by_line:
+            who, rev = by_line[n + 1]
+            out = (who, None, "svn", rev)
+    else:
+        log = subprocess.run(["git", "log", "-1", "--format=%H%n%an%n%ae", "-S", needle, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        if log.returncode == 0 and log.stdout.strip():
+            commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
+            dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
+            if not (dirty and needle not in subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout):
+                out = (name, email, "git", commit)
+    _LINE_AUTHOR[(rel, needle)] = out
+    return out
+
+
+def answer_author(path):
+    """Who committed the `answer:` line: (author, system, commit) — the answerers check reads names, not emails."""
+    name, _email, how, commit = line_author(path, "answer:")
+    return (name, how, commit)
+
+
+def pending_author():
+    """The author git WOULD write for the commit being made right now — `user.email`, unless the environment imposes
+    another (`GIT_AUTHOR_EMAIL`). In the pre-commit run the line is not committed yet, and this is who is committing it."""
+    out = subprocess.run(["git", "var", "GIT_AUTHOR_IDENT"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    name, _, rest = out.stdout.partition(" <")
+    return (name.strip(), rest.partition(">")[0].strip()) if out.returncode == 0 else ("", "")
+
+
+def verified_as(commit, email=None):
+    """The gate's ONE signature test, shared by every rule that asks for a signed line: `%G?` is G for a good
+    signature under a trusted key, GPG or SSH alike — and the principal the key is trusted FOR (`%GS`) must be the
+    identity claimed. A good signature under a trusted key still says nothing about whose name is on the commit."""
+    v = subprocess.run(["git", "log", "-1", "--format=%G?%n%GS%n%ae", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    good, signer, author_email = (v.stdout.split("\n") + ["", "", ""])[:3]
+    claimed = (email or author_email).strip()
+    return good.strip() == "G" and bool(claimed) and claimed in signer
+
+
+def staged_now():
+    """What the commit being made is about to carry — read once. The gate's version-control calls cost real seconds in
+    a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
+    global _STAGED
+    if _STAGED is None:
+        out = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        _STAGED = set(out.stdout.split("\n")) if out.returncode == 0 else set()
+    return _STAGED
+
+
+def in_this_commit(t):
+    """Is this tracker's file part of what is being committed — always true outside a pre-commit run, where every
+    tracker is read anyway (`--check` is the one that must miss nothing)."""
+    if not COMMITTING:
+        return True
+    try:
+        return (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() in staged_now()
+    except ValueError:
+        return True
+
+
+def seat_of(name, email):
+    """Which seat this author is sitting in — matched on the identity `[seats]` gives it, email or name."""
+    return next((s for s, (who, _m) in SEATS.items() if who and who in (email, name)), None)
+
+
+def holds(seat, right):
+    """Does that seat hold that right — the four built-in names carry theirs, `[rights]` defines any other name."""
+    return right in SEAT_RIGHTS.get(seat, BUILTIN_RIGHTS.get(seat, set()))
+
+
+def no_seat(name, email, right, what):
+    """The one refusal, worded once: who the version control system says made the change, the right it needed, and
+    what the repository's seats are. It names the seat and the right — an agent told only *refused* tries again."""
+    who = email or name or "nobody the version control system can name"
+    seat = seat_of(name, email)
+    known = ", ".join(f"{s} ({SEATS[s][0]})" for s in sorted(SEATS)) or "none"
+    if seat is None:
+        return (f'{what} — `{who}` is not a seat. The seats are: {known}'
+                + ("" if vcs() == "svn" else ". A seat wears its badge: `git config --worktree user.email <identity>`"))
+    return (f'{what} — `{who}` is the seat `{seat}`, which does not hold `{right}` '
+            f'({", ".join(sorted(SEAT_RIGHTS.get(seat) or BUILTIN_RIGHTS.get(seat, set()))) or "no right"}). '
+            f'A seat that needs it says so in `[rights]`, in the same diff as anything it would allow')
+
+
+def seat_problems(t):
+    """The `ask` right: who put this question in front of the Owner, read from the version control system.
+
+    Absent `[seats]`, nothing is enforced. Present, the gate finds the commit that introduced this tracker's current
+    `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
+    also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
+    about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
+    the line, so the Owner's QUEUE can drop an ask that reached him another way. It catches an agent that does not
+    know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
+    if not SEATS or not in_this_commit(t):
+        return []
+    name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
+    if how == "uncommitted":
+        if vcs() == "svn":
+            return []                                    # Subversion has no client hook; the server's gate reads it next
+        name, email, commit = (*pending_author(), "")    # not committed yet: the author git is about to write is who is asking
+    seat = seat_of(name, email)
+    if seat is None or not holds(seat, "ask"):
+        return [no_seat(name, email, "ask", "`next: owner` puts a question in front of the Owner")]
+    if SEATS[seat][1] == "signed" and how != "svn":
+        if not commit:
+            print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
+        elif not verified_as(commit, email or None):
+            return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — `[seats]` asks this seat to '
+                    f'sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach him']
+    return []
+
+
+def transitions(before, after, new_file=False):
+    """Which of the four rights a change exercises, read from the front matter on both sides. A NEW tracker is not a
+    triage verdict for carrying `considered:` — that line is the filing rule; a `tier:` or a `rank:` on it is."""
+    b, _ = parse_frontmatter(before)
+    a, _ = parse_frontmatter(after)
+    got, changed = set(), lambda k: (a.get(k) or "").strip() != (b.get(k) or "").strip()
+    if any(changed(k) for k in ("answer", "answered", "answered-by")):
+        got.add("answer")
+    if (a.get("next") or "").strip().lower() == "owner" and (b.get("next") or "").strip().lower() != "owner":
+        got.add("ask")
+    if a.get("status") and classify_status(a["status"]) not in OPEN_STATUSES and (not b.get("status") or classify_status(b["status"]) in OPEN_STATUSES):
+        got.add("close")
+    if any(changed(k) for k in TRIAGE_KEYS) or (changed("considered") and not new_file):
+        got.add("triage")
+    return got
+
+
+def change_under_review():
+    """WHAT THIS RUN IS JUDGING, once: (base revision, the tracker files it touches, author name, author email,
+    commit). The commit being made — staged, or simply not committed yet — read against HEAD; on a clean tree, the
+    commit at HEAD read against its parent. Nothing else needs a version-control call."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if COMMITTING:
+        return ("HEAD", staged_now(), *pending_author(), "")
+    dirty = git("diff", "--name-only", "--relative", "HEAD")
+    if dirty.returncode == 0 and dirty.stdout.strip():
+        return ("HEAD", set(dirty.stdout.split("\n")), *pending_author(), "")
+    changed = git("diff", "--name-only", "--relative", "HEAD~1", "HEAD")
+    if changed.returncode != 0:
+        return (None, set(), "", "", "")                 # a root commit has no parent to compare with
+    who = git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n")
+    return ("HEAD~1", set(changed.stdout.split("\n")), *(who + ["", "", ""])[:3])
+
+
+def rights_problems(trackers):
+    """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
+    transition the change makes. (`ask` is judged on the line, by `seat_problems`.) Under Subversion there is no
+    pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
+    the author of each line is the one the server authenticated, so the transitions are read from the lines."""
+    if not SEATS or vcs() not in ("git", "svn"):
+        return []
+    out = []
+    if vcs() == "svn":
+        for t in trackers:
+            for right, needle in (("answer", "answer:"), ("close", "status:"), ("triage", "considered:")):
+                if right == "close" and t["status"] in OPEN_STATUSES:
+                    continue
+                if right == "answer" and not t.get("answer"):
+                    continue
+                if right == "triage" and not any((t.get("fm", {}).get(k) or "").strip() for k in TRIAGE_KEYS):
+                    continue
+                if right == "triage":
+                    needle = next(k + ":" for k in TRIAGE_KEYS if (t.get("fm", {}).get(k) or "").strip())
+                name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                if how == "svn" and not holds(seat_of(name, None), right):
+                    out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
+        return out
+    base, files, name, email, commit = change_under_review()
+    if base is None:
+        return []
+    seat = seat_of(name, email)
+    show = lambda rev, rel: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    for t in trackers:
+        rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
+        if rel not in files:
+            continue
+        was = show(base, rel)
+        now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if base == "HEAD" or COMMITTING else show("HEAD", rel).stdout
+        for right in sorted(transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0) - {"ask"}):
+            if not holds(seat, right):
+                out.append(f'{t["id"]}: ' + no_seat(name, email, right, f'this change is a `{right}`'))
+            elif SEATS[seat][1] == "signed":
+                if not commit:
+                    print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
+                elif not verified_as(commit, email or None):
+                    out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
+                               f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
+    return out
+
+
+ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
+
+
+def record_problems(t):
+    """CLEARING AN ASK KEEPS THE RECORD. A tracker that had an answer and is losing it must carry the exchange in its
+    body: an answer deleted from the front matter and written nowhere else is the Owner's ruling gone, and the next
+    seat asks it again. Only in the pre-commit run, and only against what this commit stages — the comparison is with
+    `git show HEAD:<file>`, which is the version this commit is about to replace."""
+    if vcs() != "git" or not in_this_commit(t):
+        return []
+    rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
+    was = subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if was.returncode != 0:
+        return []                                        # new file: there is no answer to lose
+    before, _body = parse_frontmatter(was.stdout)
+    had = (before.get("answer") or "").strip()
+    if not had or t.get("answer"):
+        return []
+    quiet = lambda s: re.sub(r"\s+", " ", s.strip().strip('"').lower())
+    text = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
+    if not t.get("asks_block"):
+        return [f'{t["id"]}: the answer is being removed and the exchange is nowhere in the body — an answer deleted and written nowhere '
+                f'else is the ruling gone, and the next seat asks it again. `{CMD} --clear-ask {t["id"]} <next move>` moves it under `## {HEAD["asks"]}`']
+    if quiet(had) not in quiet(text):
+        return [f'{t["id"]}: there is a `## {HEAD["asks"]}` heading, but the answer that is being removed is not under it — the record is '
+                f'the Owner\'s words, kept verbatim: date · question · answer · answered-by. `{CMD} --clear-ask {t["id"]} <next move>` writes it']
+    return []
+
+
+def clear_ask(words, trackers):
+    """`--clear-ask <id> <next move>` — the seat has acted on the answer: the exchange moves into the body under
+    `## Asks` (date · question · answer · answered-by, newest last), the ask and answer lines leave the front matter,
+    and `next:` becomes the move that follows. Done by hand, the answer is usually just deleted; the gate refuses that."""
+    if len(words) != 2 or words[1].lower() not in MOVES:
+        print(f"--clear-ask <id> <next move> — the move that follows: {' · '.join(MOVES)}", file=sys.stderr)
+        return EXIT_LINT
+    tid, move = words[0].upper(), words[1].lower()
+    t = next((x for x in trackers if x["id"] == tid), None)
+    if not t:
+        print(f"--clear-ask: no tracker {tid}", file=sys.stderr)
+        return EXIT_LINT
+    if not t.get("ask"):
+        print(f"--clear-ask: {tid} carries no `ask:` — there is nothing to clear", file=sys.stderr)
+        return EXIT_LINT
+    path = TRACKER_DIR / t["file"]
+    text = path.read_text(encoding="utf-8")
+    fm, body = parse_frontmatter(text)
+    head = text[: len(text) - len(body)]
+    kept = [l for l in head.split("\n") if not any(l.startswith(k) for k in ASK_LINES)]
+    kept = [f"next: {move}" if l.startswith("next:") else l for l in kept]
+    if not any(l.startswith("next:") for l in kept):
+        kept.insert(len(kept) - 1, f"next: {move}")       # `head` ends on the closing `---`; the move goes above it
+    block = (f'**{t.get("answered") or datetime.date.today().isoformat()}** · {t["ask"]}\n'
+             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n' if t.get("answer") else "**withdrawn** — no answer was given\n"))
+    at = ASKS_HEAD_RE.search(body)
+    if at:                                                # newest last: at the end of the section that is there
+        rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
+        cut = at.end() + (rest.start() if rest else len(body) - at.end())
+        body = body[:cut].rstrip("\n") + "\n\n" + block + "\n" + body[cut:]
+    else:
+        log = re.search(r"^#{2,3}\s+(%s)\s*$" % re.escape(HEAD["log"]), body, re.I | re.M)
+        section = f'## {HEAD["asks"]}\n\n{block}\n'
+        body = (body[: log.start()] + section + body[log.start():]) if log else body.rstrip("\n") + f"\n\n{section}"
+    put(path, "\n".join(kept) + body)
+    print(f'{tid}: the exchange is in the body under `## {HEAD["asks"]}`, the ask is cleared, `next: {move}`.\n'
+          f'  commit {path.relative_to(ROOT).as_posix()} — the gate refuses an answer removed without its record')
+    return EXIT_OK
+
+
+def acted_on(trackers):
+    """What a seat has acted on since the Owner's last sitting: a tracker whose exchange has moved into the body and
+    whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what his answer became."""
+    if vcs() != "git":
+        return []
+    since = last_standup()
+    out = []
+    for t in trackers:
+        if t.get("ask") or not t.get("asks_block"):
+            continue
+        rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
+        log = subprocess.run(["git", "log", "-1", "--format=%h %ct", "-S", "ask:", "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        short, _, when = log.stdout.strip().partition(" ")
+        if short and when.isdigit() and int(when) >= since:
+            out.append((t, short))
+    return out
+
+
+def last_standup():
+    """The clock the seat's side of the exchange is measured on: the Owner's last sitting — `standup` in the
+    configuration, the most recent one that has passed; with no standup configured, the last day."""
+    now = datetime.datetime.now()
+    at = str(CONFIG.get("standup") or "").strip()
+    if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", at):
+        return int((now - datetime.timedelta(days=1)).timestamp())
+    today = datetime.datetime.combine(now.date(), datetime.time(int(at[:2]), int(at[3:])))
+    return int((today if today <= now else today - datetime.timedelta(days=1)).timestamp())
 
 
 def lint(trackers, committing=False):
     """Ledger-integrity checks. Returns a list of human-readable violations.
 
     `committing`: the pre-commit run — the commit does not exist yet, so an answer being committed right now is
-    *pending*, not refused; who committed it, and whether it verifies, is judged on the commit, by the next run."""
+    *pending*, not refused; who committed it, and whether it verifies, is judged on the commit, by the next run. It is
+    also the ONE run that may look at less: a version-control call per tracker cost the repository this tool was cut
+    from 7.5 seconds in its hook, so the rules that need one are asked only of what this commit stages. `--check`
+    asks them of everything."""
+    global COMMITTING
+    COMMITTING = committing
     problems = []
     ids = {t["id"] for t in trackers}
+    if vcs() == "svn" and any(mode == "signed" for _who, mode in SEATS.values()):
+        problems.append(f'{CONFIG_NAME}: `[seats]` — {", ".join(sorted(s for s in SEATS if SEATS[s][1] == "signed"))} asks for a signature, and '
+                        f'Subversion has none to give: its server authenticates the commit. Name the SVN account alone')
+    if ANSWERERS and SEATS:
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`; '
+              f'it goes in the release after this one', file=sys.stderr)
+    problems += rights_problems(trackers)
+    by_ask = asks_by_key(trackers)
     for t in trackers:
+        # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
+        problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask)]
+        problems += record_problems(t) if committing else []
         if t.get("answer"):
             # the pre-mortem's rule: an answer counts only from the account it is filed from
             if not ANSWERERS:
@@ -1754,12 +2241,9 @@ def lint(trackers, committing=False):
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
                 elif how == "git" and ANSWERERS[who] == "signed":
-                    # `%G?` is G for a good signature under a trusted key, GPG or SSH alike; anything else is not an answer
-                    # …and the principal the key is trusted FOR (`%GS`: the signers-file identity, or the GPG uid) must be the author's
-                    # email — a good signature under a trusted key still says nothing about whose name is on the commit
-                    v = subprocess.run(["git", "log", "-1", "--format=%G?%n%GS%n%ae", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-                    good, signer, email = (v.stdout.split("\n") + ["", "", ""])[:3]
-                    if good.strip() != "G" or email.strip() not in signer:
+                    # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
+                    # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
+                    if not verified_as(commit):
                         problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{who}` — `answerers` asks for a signed answer, and a git author is only a string: sign it (`git commit -S`), or it does not count')
                 elif how == "git":
                     print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to that entry in `answerers` to require a signature', file=sys.stderr)
@@ -1873,7 +2357,9 @@ def parse_args(argv):
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes")
-    add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange")
+    add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
+    add("--clear-ask", nargs="+", metavar="WORD",
+        help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
@@ -2366,6 +2852,8 @@ def main(argv=None):
     if args.install_hook:
         return install_hook()
     trackers = load_trackers()
+    global COMMITTING
+    COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
     mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related) else "read"
     refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
@@ -2384,6 +2872,8 @@ def main(argv=None):
         return answered(trackers)
     if args.answer:
         return answer_cmd(args.answer, trackers)
+    if args.clear_ask:
+        return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:
         return standup(trackers, args.standup)
     if args.next:
