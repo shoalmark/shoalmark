@@ -2,6 +2,19 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.15.1 — 2026-09-22
+
+What the Owner's first real answer found, in order:
+
+- **The pre-commit run refused every first answer** — it checked "is the answer committed?" before the commit
+  existed. Now the pre-commit run reports the answer as *pending*; author and signature are verified on the commit,
+  by the next run and by `--check`.
+- **`answered-by:` need not be typed:** left empty or as `<you>`, it is the committer's `git config user.name`.
+- **The board shows how to answer with each row, before any click** — which file, which branch, which commit.
+  Any dash after `accepted` / `rejected` is fine; a long answer goes in the body under a heading, one line in front.
+- Named, not yet built: `--answer <id> accept|reject [text]` — one command that cuts the answer branch, writes the
+  lines, commits signed and pushes. The Owner: *"human users reject any friction."*
+
 ## 0.15.0 — 2026-09-22
 
 **An answer counts only from the account that gave it** — the pre-mortem's rule, enforced:

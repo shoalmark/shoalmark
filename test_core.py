@@ -171,7 +171,7 @@ check("the violation names the tracker", "FEAT-999" in problems[0])
 
 _real_lint = gti.lint
 try:
-    gti.lint = lambda trackers: ["FEAT-999: synthetic violation"]
+    gti.lint = lambda trackers, **kw: ["FEAT-999: synthetic violation"]
     code, _, err = run(["--check"])
     check(f"violation in --check -> exit {gti.EXIT_LINT}", code == gti.EXIT_LINT)
     code, _, err = run([])

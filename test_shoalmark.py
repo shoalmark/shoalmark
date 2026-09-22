@@ -517,6 +517,7 @@ ask.ceremony: ein Knopfdruck
 answer.accept: annehmen
 answer.change: annehmen mit Änderung
 answer.reject: ablehnen
+answer.how: "zum Antworten: einen Knopf drücken, unter `ask-since:` in {0} einfügen, dann `git commit -S`"
 answer.nofile: "Keine Forge eingetragen: {0} im Editor öffnen, einfügen, dann selbst committen — `svn commit` oder `git commit` unter eigenem Namen."
 answer.paste: "Kopiert. Diese Zeilen unter die `ask:`-Zeilen im Kopf der Datei einfügen, die sich gerade geöffnet hat, die <…> ausfüllen, unter eigenem Namen committen:"
 col.id: Id
@@ -787,6 +788,12 @@ with tempfile.TemporaryDirectory() as tmp:
     ans = tracker(root, "AP-060", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nanswer: "accepted — count one week first"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
     code, _, err = run(root)
     check("an answer that is not committed is refused — the commit is the record, the file is the label", code == fm.EXIT_LINT and "not committed yet" in err + _)
+    code, out_, err = run(root, "--print-written")
+    check("…but in the pre-commit run — --print-written — it is PENDING, not refused: the commit does not exist yet, and the Owner's first answer must be committable", code == 0 and "being committed now" in err and "not committed yet" not in err)
+    ans.write_text(ans.read_text().replace("answered-by: holgo\n", "answered-by: <you>\n"), encoding="utf-8")
+    git(root, "config", "user.name", "holgo"); fm.configure(root)
+    check("`answered-by: <you>` — or left empty — is filled from git config user.name; the Owner types no name", next(t_ for t_ in fm.load_trackers() if t_["id"] == "AP-060")["answered_by"] == "holgo")
+    ans.write_text(ans.read_text().replace("answered-by: <you>\n", "answered-by: holgo\n"), encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "seat forges an answer", "--author=seat <s@x>"); code, _, err = run(root)
     check("an answer committed by someone other than `answered-by:` is refused — the pre-mortem's rule, checked against the version control system", code == fm.EXIT_LINT and "author of the answer is `seat`" in err + _)
     git(root, "commit", "-q", "--amend", "--no-edit", "--author=holgo <h@x>"); code, out4, _ = run(root); q_ = run(root, "--owner")[1]; a_ = run(root, "--answered")[1]

@@ -39,7 +39,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.15.0"
+__version__ = "0.15.1"
 HERE = pathlib.Path(__file__).resolve().parent
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 CONFIG_NAME = "shoalmark.toml"
@@ -512,7 +512,8 @@ def extract(path):
         "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
         "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
-        "answered": (fm.get("answered") or "").strip(), "answered_by": (fm.get("answered-by") or "").strip(),
+        "answered": (fm.get("answered") or "").strip(),
+        "answered_by": (lambda v: git_user() if v in ("", "<you>") else v)((fm.get("answered-by") or "").strip()),
         # `kind-of-problem: complicated`: the kind of problem that is LEFT, which picks the dispatch.
         "problem": (fm.get("kind-of-problem") or "").strip().lower(),
         "fm_tier": (fm.get("tier") or "").strip(),
@@ -853,14 +854,14 @@ function draw(){
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
     // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under his login —
     // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
-    const act=(t,kind)=>{const today=new Date().toISOString().slice(0,10),ans=kind=="accept"?"accepted":kind=="change"?"accepted — <your change>":"rejected — <why, and how to reword the ask>";
+    const act=(t,kind)=>{const today=new Date().toISOString().slice(0,10),ans=kind=="accept"?"accepted":kind=="change"?"accepted - <your change, one line; more in the body under a heading>":"rejected - <why, and how to reword the ask>";
       const lines=`answer: "${ans}"\nanswered: ${today}\nanswered-by: <you>`;navigator.clipboard?.writeText(lines);
       const box=document.getElementById("ans-"+t[0]);if(box){box.textContent=(L["answer.paste"]||"")+"\n"+lines;box.hidden=false}
       // GitHub: /blob/ → /edit/ · GitLab: /-/blob/ → /-/edit/ · no forge (Subversion, plain git): the file name and the commit, shown
       if(BLOB)open(BLOB.replace(/\/-\/blob\//,"/-/edit/").replace(/\/blob\//,"/edit/")+t[5],"_blank");else if(box)box.textContent+="\n\n"+L["answer.nofile"].replace("{0}",t[5])};
     window.ACT=act;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+"\n"+w.slice(0,14).map(t=>
-      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'change')">${l("answer.change")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button><pre id="ans-${t[0]}" class="ans" hidden></pre>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'change')">${l("answer.change")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button><pre id="ans-${t[0]}" class="ans">${l("answer.how",t[5])}</pre>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
@@ -941,6 +942,7 @@ LABELS = {
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
     "answer.accept": "accept", "answer.change": "accept with change", "answer.reject": "reject",
+    "answer.how": "to answer: click a button (the three lines are copied), paste them under `ask-since:` in {0} on a branch answer/<id> cut from this one, then `git commit -S` — the commit is your signature",
     "answer.nofile": "No forge is configured: open {0} in your editor, paste, then commit it yourself — `svn commit` or `git commit` under your own name.",
     "answer.paste": "Copied. Paste these lines under the front matter's `ask:` lines in the file that just opened, edit the <…>, commit under your own name:",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
@@ -1586,6 +1588,12 @@ def render_schema():
     return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows)
 
 
+def git_user():
+    """The committer's own name, as git will write it — so `answered-by:` need not be typed."""
+    out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
 def answer_author(path):
     """Who committed the `answer:` line of this tracker — from the version control system, never from the file:
     (author, system, commit) or (None, "uncommitted", ""). Git's author can be typed — `signed` in `answerers` makes the
@@ -1615,10 +1623,11 @@ def answer_author(path):
     return (None, "uncommitted", "")
 
 
-def lint(trackers):
+def lint(trackers, committing=False):
     """Ledger-integrity checks. Returns a list of human-readable violations.
 
-    """
+    `committing`: the pre-commit run — the commit does not exist yet, so an answer being committed right now is
+    *pending*, not refused; who committed it, and whether it verifies, is judged on the commit, by the next run."""
     problems = []
     ids = {t["id"] for t in trackers}
     for t in trackers:
@@ -1630,7 +1639,9 @@ def lint(trackers):
                 problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(ANSWERERS)}) — an answer counts only from an account that may give one')
             else:
                 who, how, commit = answer_author(TRACKER_DIR / t["file"])
-                if how == "uncommitted":
+                if how == "uncommitted" and committing:
+                    print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
+                elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
@@ -2306,7 +2317,7 @@ def main(argv=None):
         return EXIT_LINT
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
-    problems = pin_problems() + lint(trackers) + derived_problems
+    problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     today = datetime.date.today().isoformat()
     counts = ", ".join(f"{sum(t['kind'] == k for t in trackers)} {KIND_LABELS[k].lower()}" for k in KINDS)
     header = (
