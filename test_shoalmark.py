@@ -1089,6 +1089,103 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- who may answer is ONE list: the seats that hold `answer`, and `answerers` only where there are no seats ---------
+# `answerers` is documented as the old name for the owner seat's `answer` right, but the answer gate read `ANSWERERS`
+# alone: a repository that had moved to `[seats]` got "an answer, but `answerers` names nobody" for every answer.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (root / "signers").write_text("holgoijo@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "holgoijo@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                   ("gpg.ssh.allowedSignersFile", str(root / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    tracker(root, "AP-400", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n'
+                                  f'answer: "accepted - the launcher"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the answer", "-S", "--author=holgo <holgoijo@x>")
+    code, _, err = run(root)
+    check("with `[seats]` and no `answerers`, the seats holding `answer` ARE the answerers — the owner's signed answer passes, where the gate used to say `answerers` names nobody",
+          code == 0 and "names nobody" not in err and "not in `answerers`" not in err)
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=impl <implementer@seat>"); code, _, err = run(root)
+    check("the same answer from a seat that does not hold `answer` is refused, naming the seat and the right — one reader for who may answer, and it is the seats table",
+          code == fm.EXIT_LINT and "an answer counts only from a seat that may give one" in err and "`implementer@seat` is the seat `implementer`, which does not hold `answer`" in err)
+    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=mallory <mallory@nowhere>"); code, _, err = run(root)
+    check("an answer from an author the seats table does not name at all is refused with the seats there are",
+          code == fm.EXIT_LINT and "`mallory@nowhere` is not a seat" in err)
+    # `signed` on the seat is the gate's own verifier: a good signature under the key the repository trusts FOR it
+    git(root, "commit", "-q", "--amend", "--no-edit", "--no-gpg-sign", "--author=holgo <holgoijo@x>"); code, _, err = run(root)
+    check("`[seats] owner = \"… signed\"` asks the answer's commit to verify as that seat — unsigned, the answer does not count",
+          code == fm.EXIT_LINT and "does not verify as `holgoijo@x`" in err and "`[seats]` asks this seat for a signed answer" in err)
+    # and with `[rights]`, a name of your own may answer — the same one reader
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "nobody@x"\nimplementer = "implementer@seat"\n[rights]\nimplementer = ["answer"]\n', encoding="utf-8")
+    git(root, "commit", "-q", "--amend", "--no-edit", "--author=holgo <implementer@seat>"); code, _, err = run(root)
+    check("a seat given `answer` in `[rights]` may answer, unsigned — the list is the rights table, not a second one",
+          code == 0 and "does not hold `answer`" not in err and "names nobody" not in err)
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    code, _, err = run(root)
+    check("`[seats]` with no seat holding `answer` says exactly that — never `answerers` names nobody, which there is no longer a way to fix",
+          code == fm.EXIT_LINT and "no seat in `[seats]` holds the `answer` right" in err and "`answerers`" not in err.split("no seat in")[1])
+    # the Owner's one command reads the same list: on a repository with `[seats]` and no `answerers` it used to refuse
+    # every answer before it cut the branch — `--answer` is the only way in, so the queue could not be emptied at all
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for p_ in (root / "docs/work-tracker").glob("AP-400-*.md"):
+        p_.unlink()
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    tracker(root, "AP-401", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
+    code, out, err = run(root, "--answer", "AP-401", "accept")
+    sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %ae"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    check("`--answer` reads the same list: the owner seat answers on a repository that has no `answerers` at all — signed, and the gate it just wrote for accepts it",
+          code == 0 and "not in `answerers`" not in err and sig.startswith("G holgoijo@x holgoijo@x") and run(root, "--check")[0] == 0)
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "someone@else"\nimplementer = "holgoijo@x"\n', encoding="utf-8")
+    tracker(root, "AP-402", extra=f'next: owner\nask: "And the second thing?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "another ask", "--author=p <someone@else>")
+    code, _, err = run(root, "--answer", "AP-402", "accept")
+    check("`--answer` from a seat that does not hold `answer` is refused before the branch is cut, naming the seat and the right",
+          code == fm.EXIT_LINT and "an answer is an `answer` change" in err and "does not hold `answer`" in err
+          and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-402")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- line_author: the seat that set the line, across a merge that restores what was already there --------------------
+# Git's default history simplification follows ONE parent of a merge it is TREESAME to. A branch that moves a line away
+# and back (owner -> review -> owner) merges to a file byte-identical to main's, so the whole branch is pruned and the
+# pickaxe answers with the commit BEFORE it — the board then reads a re-asked tracker as sent back by the wrong seat.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "a"), ("user.email", "a@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "m"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    t_ = tracker(root, "AP-300", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "A: the ask", "--author=a <a@seat>", day="2026-01-01")
+    trunk = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", "-c", "br")
+    t_.write_text(t_.read_text().replace("next: owner", "next: review"), encoding="utf-8")
+    git(root, "commit", "-qam", "B: sent back", "--author=b <b@seat>", day="2026-01-02")
+    t_.write_text(t_.read_text().replace("next: review", "next: owner"), encoding="utf-8")
+    git(root, "commit", "-qam", "B: re-asked", "--author=b <b@seat>", day="2026-01-03")
+    b_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", trunk); git(root, "merge", "-q", "--no-ff", "br", "-m", "the merge", day="2026-01-04")
+    merge_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root); name_, email_, how_, rev_ = fm.line_author(t_, "next: owner")
+    check("the line belongs to the seat whose commit set it, even when the merge restored a file byte-identical to the one before the branch — `--full-history`, or git prunes the branch and answers with the commit before it",
+          how_ == "git" and rev_ == b_ and email_ == "b@seat" and name_ == "b")
+    # ...and never the merge itself: a merge carries no diff of its own, so the seat that merged a line is not the seat
+    # that wrote it. `-m` would split the merge against each parent and name the merger — which is why it is not there.
+    t_.write_text(t_.read_text().replace("hook:", "answer: accepted - ship it\nanswered-by: holgo\nhook:"), encoding="utf-8")
+    git(root, "switch", "-q", "-c", "br2"); git(root, "commit", "-qam", "C: the answer", "--author=c <c@seat>", day="2026-01-05")
+    c_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", trunk); git(root, "merge", "-q", "--no-ff", "br2", "-m", "the answer merged", day="2026-01-06")
+    merge2_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root); who_, _e2, how2_, rev2_ = fm.line_author(t_, "answer:")
+    check("an `answer:` that reached the trunk through a merge is the answerer's commit, never the merge's — the one reader answers for both lines",
+          how2_ == "git" and rev2_ == c_ and rev2_ not in (merge_, merge2_) and who_ == "c")
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-008: clearing an ask keeps the record, and what --answer could not say ---------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()

@@ -2,6 +2,28 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.1 — 2026-09-22
+
+- **Two asks the Principal had re-asked were shown to the Owner as *"sent back — not for you"*.** The seat that sets
+  a line is read from the version control system, and `line_author` asked git for it with `git log -1 -S` — which runs
+  under git's **default history simplification**: a merge TREESAME to its first parent is followed down that parent
+  alone, and the branch it merged is never walked.
+- Why it bit here: a branch that moves a line away and back — `next: owner` → `review` → `owner` — merges to a file
+  byte-identical to the one the trunk already had. Git skipped the branch and answered with the commit *before* it, so
+  the gate read the re-asked trackers as authored by a seat that holds no `ask` right, and the queue hid them.
+- The one reader now passes **`--full-history`**, which follows every parent of a merge. Not `-m`: that splits a merge
+  against each parent, and a line that arrived only through a branch would then match on the merge itself and name the
+  merger as the seat that wrote it. Both are pinned by a check. Under Subversion nothing changes — `svn blame` names
+  the revision that last touched the line and never simplified anything.
+- **A repository that had moved to `[seats]` could not answer at all.** 0.17.0 says `answerers` is the old name for
+  the owner seat's `answer` right, but the answer gate and `--answer` still read `answerers` alone: with `[seats]` and
+  no `answerers`, every answer was refused as *"an answer, but `answerers` names nobody"* — and `--answer`, the only
+  way in, refused before it cut the branch. **Who may answer is now read in one place, `may_answer()`:** with
+  `[seats]` it is every seat that holds `answer` (the built-in `owner`, or any name `[rights]` gives it), matched on
+  the identity the version control system reports and asked to sign where the seat says `signed`; `answerers` is
+  consulted only where there is no `[seats]`, and its deprecation note is unchanged. A `[seats]` table with no
+  `answer` right now says *that*, instead of naming a key the repository no longer has.
+
 ## 0.17.0 — 2026-09-22
 
 **An ask reaches the Owner only through the gate** — the Owner, on the shadow week's first day: *"without enforcing

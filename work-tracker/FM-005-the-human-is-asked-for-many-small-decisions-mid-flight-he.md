@@ -3,12 +3,7 @@ id: FM-005
 status: In Progress
 considered: FM-004, FM-001
 tags: research
-next: owner
-ask: "Will you write the three intent lines of the shadow mandate in the origin (its FEAT-190) and sign it, or does the shadow week not start?"
-ask-kind: ruling
-ask-since: 2026-09-21
-ask-options: "write the three lines and sign the mandate | say the shadow week does not start"
-ask-proposal: "write the three lines and sign the mandate"
+next: run
 hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal three agents named the Owner's unanswered questions as their top brake. Blocking and stamping have one root: a human asked for many small decisions mid-flight. The direction: sign once, then the road is clear."
 ---
 
@@ -47,6 +42,11 @@ Until he rules, that rule stands.
 
 The eight claims in the design are each held or killed with their numbers, in the origin, and the Owner has ruled
 from that record whether mandates go live.
+
+## Asks
+
+**2026-09-22** · Will you write the three intent lines of the shadow mandate in the origin (its FEAT-190) and sign it, or does the shadow week not start?
+**withdrawn** — no answer was given
 
 ## Ship log
 
