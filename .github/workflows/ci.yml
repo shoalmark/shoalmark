@@ -1,8 +1,10 @@
 # The proof that is not the author's machine: both suites on three systems, with Subversion installed on each.
 name: ci
+# Runs on a release tag and on a pull request that is READY for review — not on every push. CI minutes are paid for;
+# the suites run locally on every commit through the hook, and a draft pull request is work in progress.
 on:
-  push: {branches: [main]}
-  pull_request:
+  push: {tags: ["v*"]}
+  pull_request: {types: [ready_for_review]}
   workflow_dispatch:
 jobs:
   suites:
