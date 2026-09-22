@@ -829,16 +829,24 @@ def answer_cmd(words, trackers):
     if vcs() != "git":
         print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
-    me = git_user()
-    if me not in ANSWERERS:
-        print(f"--answer: `{me}` is not in `answerers` ({', '.join(ANSWERERS) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
+    # who may answer is asked in ONE place, `may_answer()`: with `[seats]`, the seats that hold `answer`, matched on
+    # the identity git will actually write; with none, `answerers`, which always meant the author's name
+    me, allowed = git_user(), may_answer()
+    pend_name, pend_email = pending_author()                 # who git will actually author as — the seat is matched on that
+    seat = seat_of(pend_name or me, pend_email) if SEATS else None
+    if SEATS and not holds(seat, "answer"):
+        print("--answer: " + no_seat(pend_name or me, pend_email, "answer", "an answer is an `answer` change"), file=sys.stderr)
         return EXIT_LINT
+    if not SEATS and me not in allowed:
+        print(f"--answer: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
+        return EXIT_LINT
+    signed = (SEATS[seat][1] if SEATS else allowed.get(me)) == "signed"
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
         print("--answer: the working tree has changes — an answer is one commit with nothing else in it; commit or stash first", file=sys.stderr)
         return EXIT_LINT
-    if ANSWERERS.get(me) == "signed" and not git("config", "user.signingkey").stdout.strip():
-        print(f"--answer: `answerers` asks for a signed answer and no `user.signingkey` is set — see the signing page", file=sys.stderr)
+    if signed and not git("config", "user.signingkey").stdout.strip():
+        print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page', file=sys.stderr)
         return EXIT_LINT
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
@@ -880,11 +888,11 @@ def answer_cmd(words, trackers):
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
     put(path, "\n".join(lines))
     git("add", "--", rel)
-    r = git("commit", *(["-S"] if ANSWERERS.get(me) == "signed" else []), "-m", f"{tid}: {answer[:60]}")
+    r = git("commit", *(["-S"] if signed else []), "-m", f"{tid}: {answer[:60]}")
     if r.returncode:
         print(f"--answer: the commit failed — {r.stderr.strip()[-300:]}", file=sys.stderr)
         return EXIT_LINT
-    if ANSWERERS.get(me) == "signed":
+    if signed:
         # the gate's own rule, asked here so the answer is never pushed under one the gate will refuse: a good signature
         # (`%G?`) AND the principal the key is trusted for (`%GS`) being the author's email — a trusted key still says
         # nothing about whose name is on the commit
@@ -1917,7 +1925,13 @@ def line_author(path, needle):
             who, rev = by_line[n + 1]
             out = (who, None, "svn", rev)
     else:
-        log = subprocess.run(["git", "log", "-1", "--format=%H%n%an%n%ae", "-S", needle, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        # `--full-history` or the answer is the wrong seat's. Git's default history simplification follows ONE parent of
+        # a merge when the merge is TREESAME to it — and a branch that moves a line away and back (owner -> review ->
+        # owner) merges to a file byte-identical to the one main already had. The whole branch is then skipped and the
+        # pickaxe answers with the commit BEFORE it: the seat that last touched the line is not the seat git names.
+        # Not `-m`: it splits a merge against each parent, and a line that arrived only through a branch then matches on
+        # the merge itself, which would name the merger as the setter. Without it a merge carries no diff and cannot win.
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-S", needle, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode == 0 and log.stdout.strip():
             commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
             dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
@@ -1925,12 +1939,6 @@ def line_author(path, needle):
                 out = (name, email, "git", commit)
     _LINE_AUTHOR[(rel, needle)] = out
     return out
-
-
-def answer_author(path):
-    """Who committed the `answer:` line: (author, system, commit) — the answerers check reads names, not emails."""
-    name, _email, how, commit = line_author(path, "answer:")
-    return (name, how, commit)
 
 
 def pending_author():
@@ -1980,6 +1988,18 @@ def seat_of(name, email):
 def holds(seat, right):
     """Does that seat hold that right — the four built-in names carry theirs, `[rights]` defines any other name."""
     return right in SEAT_RIGHTS.get(seat, BUILTIN_RIGHTS.get(seat, set()))
+
+
+def may_answer():
+    """WHO MAY ANSWER, asked in ONE place — `{identity: "signed" | ""}`. With `[seats]` it is every seat that holds
+    the `answer` right: the built-in `owner`, or any name `[rights]` gives it. `answerers` is the old spelling of
+    exactly that list, so it is read only where there is no `[seats]` — a repository that has moved on would otherwise
+    have to keep writing its Owner twice, and an answer from the seat that may give one was refused as *`answerers`
+    names nobody*. The identity is the version control system's, as `[seats]` spells it: git's author email, or the
+    account Subversion authenticated; `answerers` always meant the git author NAME, and still does."""
+    if SEATS:
+        return {who: mode for seat, (who, mode) in SEATS.items() if who and holds(seat, "answer")}
+    return dict(ANSWERERS)
 
 
 def no_seat(name, email, right, what):
@@ -2227,26 +2247,36 @@ def lint(trackers, committing=False):
         problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask)]
         problems += record_problems(t) if committing else []
         if t.get("answer"):
-            # the pre-mortem's rule: an answer counts only from the account it is filed from
-            if not ANSWERERS:
-                problems.append(f'{t["id"]}: an answer, but `answerers` in {CONFIG_NAME} names nobody — say who may answer, then the commit\'s author is checked against it')
-            elif t.get("answered_by") not in ANSWERERS:
-                problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(ANSWERERS)}) — an answer counts only from an account that may give one')
+            # the pre-mortem's rule: an answer counts only from the account it is filed from. Who that may be comes
+            # from `may_answer()` — the seats that hold `answer`, or `answerers` where there are no seats
+            allowed = may_answer()
+            if not allowed:
+                problems.append(f'{t["id"]}: an answer, but ' + (f'no seat in `[seats]` holds the `answer` right — give one `answer` in `[rights]`'
+                                                                 if SEATS else f'`answerers` in {CONFIG_NAME} names nobody — say who may answer')
+                                + ", then the commit's author is checked against it")
+            elif not SEATS and t.get("answered_by") not in allowed:
+                problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one')
             else:
-                who, how, commit = answer_author(TRACKER_DIR / t["file"])
+                who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
+                seat = seat_of(who, email) if SEATS else None
                 if how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
+                elif SEATS and not holds(seat, "answer"):
+                    problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
-                elif how == "git" and ANSWERERS[who] == "signed":
+                elif how == "git" and (SEATS[seat][1] if SEATS else allowed[who]) == "signed":
                     # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
-                    if not verified_as(commit):
-                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{who}` — `answerers` asks for a signed answer, and a git author is only a string: sign it (`git commit -S`), or it does not count')
+                    if not verified_as(commit, email if SEATS else None):
+                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{email if SEATS else who}` — '
+                                        f'{"`[seats]` asks this seat" if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
+                                        f'sign it (`git commit -S`), or it does not count')
                 elif how == "git":
-                    print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to that entry in `answerers` to require a signature', file=sys.stderr)
+                    print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
+                          f'{"that seat in `[seats]`" if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)
         # `ask-proposal:` is the RECOMMENDED option, and the board offers it first: with options named, it must be one
         # of them, or the Owner is shown a recommendation he cannot pick
         if t.get("ask_proposal") and t.get("ask_options") and t["ask_proposal"] not in t["ask_options"]:
