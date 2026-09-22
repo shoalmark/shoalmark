@@ -3,7 +3,7 @@ id: FM-005
 status: In Progress
 considered: FM-004, FM-001
 tags: research
-next: review
+next: owner
 ask: "Will you write the three intent lines of the shadow mandate in the origin (its FEAT-190) and sign it, or does the shadow week not start?"
 ask-kind: ruling
 ask-since: 2026-09-21
