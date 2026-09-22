@@ -20,6 +20,9 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with: {path: site}
   deploy:
+    # Pages needs a public repository (or a paid plan). Until the release, the site only BUILDS here — green on every
+    # push — and deploys on the day the repository goes public: flip Settings → Pages → Source to "GitHub Actions" then.
+    if: github.event.repository.private == false
     needs: build
     runs-on: ubuntu-latest
     environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
