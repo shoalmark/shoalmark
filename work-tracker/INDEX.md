@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-22 · 6 trackers (6 work).
+> Generated 2026-09-22 · 7 trackers (7 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -31,5 +31,6 @@
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | — | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | triage | — |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | — | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | triage | — |
 | [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | — | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | In Progress | triage | — |
+| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | P1 | The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not… | Proposed | triage | — |
 | [FM-003](FM-003-the-tool-is-proven-only-on-macos-with-git-a-first-outside.md) | — | Every proof so far is macOS, git, one Owner. The first outside user works on Windows, with Subversion and TortoiseSVN,… | Shipped | done | — |
 | [FM-002](FM-002-a-board-anyone-can-brand-the-person-the-repository-the.md) | — | The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English onl… | Shipped | done | — |
