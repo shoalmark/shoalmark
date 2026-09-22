@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-22 · 7 trackers (7 work).
+> Generated 2026-09-22 · 8 trackers (8 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -27,6 +27,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-008](FM-008-an-ask-reaches-the-owner-only-through-the-gate.md) | — | The ask/answer flow holds only while every agent has read AGENTS.md and chooses to obey it. Nothing in the tool refuses… | In Progress | triage | — |
 | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | — | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress | triage | — |
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | — | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | triage | — |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | — | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | triage | — |
