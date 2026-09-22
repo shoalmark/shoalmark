@@ -10,6 +10,22 @@ asks you to **sign** your commits, and it refuses an answer whose commit does no
 Under **Subversion** you need none of this: the server authenticates every commit, and the tool reads that author.
 Skip to *Telling the tool who answers*.
 
+## First, the risk — read this before you set anything
+
+**A signature proves which key was used, not which hand.** If you set `commit.gpgsign true` on a machine where agents
+run as you, *every* commit they make is signed with your key and verifies as you — the exact forgery this page exists to
+refuse. The tool cannot tell the difference, and neither can git or the forge.
+
+So, on a machine agents use:
+
+- **Never sign by default.** Leave `commit.gpgsign` unset (or `false`) and sign your answers **on demand**:
+  `git commit -S`. An agent never passes `-S`.
+- Or keep the signing key where no agent can reach it: a hardware key that needs a touch, or a machine agents do not
+  run on.
+
+The steps below set the key up; they do **not** turn signing on by default. If you already did, `git config --unset
+commit.gpgsign` undoes it.
+
 ## Route A — sign with your SSH key (git)
 
 You already have one if you push to a forge over SSH. The same key may sign; it proves the same thing either way,
@@ -18,7 +34,6 @@ and one private key to protect is simpler than two.
 ```
 git config gpg.format ssh
 git config user.signingkey ~/.ssh/<your-key>.pub
-git config commit.gpgsign true
 ```
 
 The tool verifies against a **signers file** — the public keys the repository trusts, one line each: the email the
@@ -39,7 +54,6 @@ A public key is public; committing it is fine. A seat that edits this file shows
 ```
 gpg --list-secret-keys --keyid-format long      # find your key id
 git config user.signingkey <KEYID>
-git config commit.gpgsign true
 ```
 
 Leave `gpg.format` unset. The key's user id must carry the email you commit with. Export the public key
@@ -58,14 +72,14 @@ signature — drop it only under Subversion. Empty, nobody may answer: that is t
 
 ## Check it
 
-Make any commit and run:
+Make a signed commit — `git commit -S -m "test"` — and run:
 
 ```
 git log -1 --format='%G? %GS %ae'
 ```
 
 `G`, then the email the key is trusted for, then your author email — the last two must agree. Then answer an ask on
-the board: click, paste the three lines, commit. `python3 tools/shoalmark/shoalmark.py --check` is green, and the ask
+the board: click, paste the three lines, `git commit -S`. `python3 tools/shoalmark/shoalmark.py --check` is green, and the ask
 has left your queue.
 
 ## What the tool refuses, and what it says

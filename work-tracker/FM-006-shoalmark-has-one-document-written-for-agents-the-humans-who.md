@@ -1,0 +1,40 @@
+---
+id: FM-006
+status: In Progress
+considered: FM-005, FM-003
+tags: process
+next: build
+hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
+---
+
+# FM-006 — shoalmark has one document, written for agents — the humans who own the repositories have no page of their own
+
+## What is true now
+
+**Filed 2026-09-22 on the Owner's direction:** *"shoalmark has a human- and agent-user facing documentation designed to
+the needs of each party."* Ruled the same day, after a trial build: **Zensical** (the successors of Material for MkDocs;
+Python, MIT, TOML configuration like the tool's own, no Node, search and dark mode built in; young — 0.0.x) *"because our
+product profits from valuing another vendor we seem to align with, early"*; Material for MkDocs is the fallback, and reads
+the same configuration.
+
+**The rule that keeps two audiences from drifting apart:** the agents' document is `README.md` — vendored into every
+repository, pinned, routed by situation — and it is **never duplicated**: the site renders it as one page and links to it.
+Human pages are those with no agent reader: setting up, signing an answer, the standup, the board, the first week. The
+site is `docs/`, built by CI to GitHub Pages; `llms.txt` at its root is the agents' index of the same source. German is a
+full second language from the first page, because the first two outside owners are German.
+
+**The first human page is the one the day demanded — signing an answer — and it names the risk the Owner found:** a
+signature proves which key, not which hand. On a machine agents use, `commit.gpgsign true` makes every agent commit
+verify as the Owner. The page says: sign on demand (`-S`), never by default, on such a machine.
+
+## Done when
+
+The site builds in CI from `docs/` and is served; the README is rendered there and not copied; `llms.txt` and the
+`.md` twins exist; the human pages exist in English and German — set up · sign · standup · board · the first week; and
+one outside Owner has followed the setup page without asking anything.
+
+## Ship log
+
+| Date | Event |
+|---|---|
+| 2026-09-22 | Filed; Zensical tried on a scratch build first (0.3 s, search and dark mode in, four anchor warnings from the README); the signing page written. |

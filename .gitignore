@@ -1,3 +1,4 @@
-docs/work-tracker/index.html
-docs/work-tracker/view/
+work-tracker/index.html
+work-tracker/view/
 __pycache__/
+site/

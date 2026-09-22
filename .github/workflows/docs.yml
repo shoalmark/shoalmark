@@ -1,0 +1,28 @@
+# The documentation site: built from docs/ by Zensical on every push to main, served by GitHub Pages.
+# The agents' document is README.md, rendered into the site by inclusion — never copied.
+name: docs
+on:
+  push: {branches: [main], paths: ["docs/**", "README.md", "zensical.toml", ".github/workflows/docs.yml"]}
+  workflow_dispatch:
+permissions: {contents: read, pages: write, id-token: write}
+concurrency: {group: pages, cancel-in-progress: true}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -q zensical
+      - run: zensical build
+      - name: llms.txt — the agents' index of the same source, and a Markdown twin of every page
+        run: python3 scripts/llms_txt.py site
+      - uses: actions/upload-pages-artifact@v3
+        with: {path: site}
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
