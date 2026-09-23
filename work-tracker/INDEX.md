@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-23 · 22 trackers (22 work).
+> Generated 2026-09-23 · 23 trackers (23 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -32,6 +32,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | — | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress | triage | — |
 | [FM-022](FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md) | — | A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something… | In Progress | triage | — |
 | [FM-021](FM-021-the-progress-section-is-empty-beside-work-in-progress-and.md) | — | The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that… | In Progress | triage | — |
 | [FM-020](FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md) | — | The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He… | In Progress | triage | — |
