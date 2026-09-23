@@ -1,9 +1,9 @@
 ---
 id: FM-012
-status: Proposed
+status: In Progress
 considered: FM-007, FM-008, FM-010
 tags: bug
-next: build
+next: review
 hook: "Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of them. On a 505-tracker corpus that is 504 subprocesses and 15.2 s of a 16.8 s load. `--answer` loads the corpus about four times and prints nothing until the end, so an Owner stopped it believing it had hung."
 ---
 
@@ -11,8 +11,22 @@ hook: "Reading the trackers spawns `git config user.name` once for every tracker
 
 ## What is true now
 
-**Filed 2026-09-23; nothing is built.** Profiled by the Principal with cProfile on a consumer's 505-tracker corpus and
-re-measured here, read-only, before anything changed.
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** The
+claim held, measured the same way before and after on the same 505-tracker corpus, read-only (an import, `configure()`,
+`load_trackers()` — nothing run that writes there):
+
+| on a 505-tracker corpus | before (0.17.3) | after |
+|---|---|---|
+| `load_trackers()`, wall clock, median | **16.4 s** (3 runs) | **0.80 s** (5 runs) |
+| `git config user.name` calls per load | **504** | **0** — the corpus carries no answer |
+
+`answered-by:` is now defaulted only where the tracker carries an `answer:`, and the name is read once per run and kept
+until the tool is pointed at another repository. `--answer` names each step on stderr, flushed, as it starts — `1/4
+reading the trackers` · `2/4 cutting answer/<id> from <branch>` (the checkout hook, where one is installed, rebuilds
+the board) · `3/4 committing, signed` (the key may ask for a touch; the pre-commit gate runs) · `4/4 pushing to
+origin` — and its last lines are what they were. Three checks. **What is left:** review, merge, the tag.
+
+Profiled by the Principal with cProfile on a consumer's 505-tracker corpus and re-measured here before anything changed.
 
 **The cost is one line in `extract()`** (`shoalmark.py:568` at 0.17.3):
 
@@ -59,4 +73,5 @@ trackers is a gate a larger repository learns to skip.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Built: the default only where there is an answer, the name read once; `--answer` names its steps. 16.4 s → 0.80 s, 504 → 0 calls on the same corpus. |
 | 2026-09-23 | Filed. Profiled on a 505-tracker corpus: 504 `git config user.name` calls, 15.2 s of a 16.8 s load. |

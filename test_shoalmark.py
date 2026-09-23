@@ -949,7 +949,14 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--answer refuses a rejection without its reason", code == fm.EXIT_LINT and "carries its reason" in err)
     (root / "dirty.txt").write_text("x"); git(root, "add", "dirty.txt"); code, _, err = run(root, "--answer", "AP-070", "accept"); git(root, "rm", "-q", "-f", "dirty.txt")
     check("--answer refuses a dirty tree — an answer is one commit with nothing else in it", code == fm.EXIT_LINT and "working tree has changes" in err)
+    start_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     code, out, err = run(root, "--answer", "AP-070", "accept", "count one week first")
+    # FM-012: silent until its last line, the command was stopped by an Owner who took it for hung. Each step is said as
+    # it STARTS — the waits are the checkout hook and the pre-commit gate, and both come after the line that names them
+    steps_ = [err.find(s) for s in ("answering AP-070 — 1/4 reading the trackers …", f"answering AP-070 — 2/4 cutting `answer/ap-070` from `{start_}`",
+                                    "answering AP-070 — 3/4 committing, signed", "answering AP-070 — 4/4 pushing to `origin` …")]
+    check("FM-012 · --answer names each step as it starts, in order — reading the trackers · cutting answer/<id> from the branch it is on · committing, signed · pushing — and its last lines are unchanged",
+          -1 not in steps_ and steps_ == sorted(steps_) and out.startswith("AP-070 answered: accepted - count one week first\n  signed, on `answer/ap-070`, pushed\n"))
     sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %an %s"], capture_output=True, text=True, env=_ENV).stdout.strip()
     on = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     remote = subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
@@ -990,6 +997,29 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "pd/070"); git(root, "config", "--unset", "user.signingkey"); code, _, err = run(root, "--answer", "AP-070", "accept")
     check("--answer refuses before touching anything when it cannot end in a verified answer — no signing key, no branch cut", code == fm.EXIT_LINT and "no `user.signingkey`" in err
           and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() == "pd/070")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-012: reading the trackers asks git who is typing only where an answer needs the name, and at most once -------
+# `answered-by:` empty or `<you>` is filled from `git config user.name` — and the test was *the key is empty*, true of
+# every tracker with no answer at all. One git process per tracker: 504 of them, 15.2 s of a 16.8 s load, on a
+# 505-tracker corpus, and `--answer` reads the corpus about four times.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "config", "user.name", "holgo")
+    (root / "shoalmark.toml").write_text('name = "l"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    for n_ in range(500, 520):
+        tracker(root, f"AP-{n_}", title="asks nothing")
+    asked_ = lambda: sum(1 for c in argv_of(fm.load_trackers) if c[:3] == ["git", "config", "user.name"])
+    fm.configure(root); none_ = asked_(); ts0_ = {t_["id"]: t_ for t_ in fm.load_trackers()}
+    for n_ in (520, 521, 522):
+        tracker(root, f"AP-{n_}", extra=f'next: owner\nask: "Shall {n_} ship?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "ship it"\n'
+                                          f'answer: "accepted"\nanswered: {new_}\nanswered-by: <you>\n', title="answered by hand")
+    fm.configure(root); several_ = asked_(); ts_ = {t_["id"]: t_ for t_ in fm.load_trackers()}
+    check("FM-012 · a load where no tracker carries an answer asks git for no name — it asked once per tracker",
+          none_ == 0 and ts0_["AP-500"]["answered_by"] == "")
+    check("FM-012 · a load with three `answered-by: <you>` asks git once, and fills all three",
+          several_ == 1 and all(ts_[f"AP-{n_}"]["answered_by"] == "holgo" for n_ in (520, 521, 522)) and ts_["AP-500"]["answered_by"] == "")
     rm_git(root)
 fm.configure(HERE)
 

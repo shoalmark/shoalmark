@@ -178,7 +178,8 @@ def configure(root=None):
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -565,7 +566,9 @@ def extract(path):
         "ask_options": [o.strip() for o in (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
         "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
         "answered": (fm.get("answered") or "").strip(),
-        "answered_by": (lambda v: git_user() if v in ("", "<you>") else v)((fm.get("answered-by") or "").strip()),
+        # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
+        # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
+        "answered_by": (lambda v: git_user() if v in ("", "<you>") and (fm.get("answer") or "").strip() else v)((fm.get("answered-by") or "").strip()),
         # `kind-of-problem: complicated`: the kind of problem that is LEFT, which picks the dispatch.
         "problem": (fm.get("kind-of-problem") or "").strip().lower(),
         "fm_tier": (fm.get("tier") or "").strip(),
@@ -808,6 +811,13 @@ def standup(trackers, invite=None):
     return EXIT_OK
 
 
+def answer_step(tid, n, text):
+    """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
+    reads the trackers, and a checkout hook and the pre-commit gate read them again; silent for that long, it was
+    stopped by an Owner who took it for hung (FM-012). What it prints at the end is unchanged."""
+    print(f"answering {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
+
+
 def answer_cmd(words, trackers):
     """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
     `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes.
@@ -871,12 +881,16 @@ def answer_cmd(words, trackers):
                 print(f"--answer: `{branch}` exists and its tip does not carry this ask — it was cut from another branch or the ask has changed since. "
                       f"Delete it (`git branch -D {branch}`) or answer from the branch that carries the ask", file=sys.stderr)
                 return EXIT_LINT
+            answer_step(tid, 2, f"switching to `{branch}` — the checkout hook, where one is installed, rebuilds the board")
             r = git("switch", branch)
         else:
+            answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
             r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
         if r.returncode:
             print(f"--answer: could not switch to `{branch}` — {r.stderr.strip()}", file=sys.stderr)
             return EXIT_LINT
+    else:
+        answer_step(tid, 2, f"on `{branch}` already")
     answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
     lines = path.read_text(encoding="utf-8").split("\n")
     # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
@@ -891,6 +905,8 @@ def answer_cmd(words, trackers):
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
     put(path, "\n".join(lines))
     git("add", "--", rel)
+    answer_step(tid, 3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
+                else "committing — the pre-commit gate runs")
     r = git("commit", *(["-S"] if signed else []), "-m", f"{tid}: {answer[:60]}")
     if r.returncode:
         print(f"--answer: the commit failed — {r.stderr.strip()[-300:]}", file=sys.stderr)
@@ -904,6 +920,7 @@ def answer_cmd(words, trackers):
             print(f"--answer: committed, but the signature does not verify as `{me}` — `git commit --amend -S`, or check the signers file; "
                   f"NOT pushed, and the gate would refuse this answer", file=sys.stderr)
             return EXIT_LINT
+    answer_step(tid, 4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
     print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
     return EXIT_OK if r.returncode == 0 else EXIT_LINT
@@ -1886,9 +1903,13 @@ def render_schema():
 
 
 def git_user():
-    """The committer's own name, as git will write it — so `answered-by:` need not be typed."""
-    out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    return out.stdout.strip() if out.returncode == 0 else ""
+    """The committer's own name, as git will write it — so `answered-by:` need not be typed. Read ONCE per run and
+    kept (`configure` forgets it): the answer is the only place it is needed, and a run does not change who is typing."""
+    global _GIT_USER
+    if _GIT_USER is None:
+        out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        _GIT_USER = out.stdout.strip() if out.returncode == 0 else ""
+    return _GIT_USER
 
 
 def svn_blame(rel):
@@ -2921,6 +2942,8 @@ def main(argv=None):
         return init(args.key)
     if args.install_hook:
         return install_hook()
+    if args.answer:
+        answer_step(args.answer[0].upper(), 1, "reading the trackers")
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
