@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-23 · 16 trackers (16 work).
+> Generated 2026-09-23 · 17 trackers (17 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -27,6 +27,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-017](FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md) | — | When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with… | In Progress | triage | — |
 | [FM-013](FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md) | — | In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the… | In Progress | triage | — |
 | [FM-012](FM-012-a-load-spawns-git-once-per-tracker-and-answer-is-silent-for.md) | — | Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of th… | In Progress | triage | — |
 | [FM-010](FM-010-the-answerers-deprecation-warning-never-reaches-the.md) | — | The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only wher… | In Progress | triage | — |

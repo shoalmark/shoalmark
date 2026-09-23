@@ -858,8 +858,9 @@ def answer_cmd(words, trackers):
         return EXIT_LINT
     signed = (SEATS[seat][1] if SEATS else allowed.get(me)) == "signed"
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
-        print("--answer: the working tree has changes — an answer is one commit with nothing else in it; commit or stash first", file=sys.stderr)
+    dirty = changed_paths(git)
+    if dirty:
+        print(dirty_refusal(git, dirty), file=sys.stderr)
         return EXIT_LINT
     if signed and not git("config", "user.signingkey").stdout.strip():
         print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
@@ -874,7 +875,39 @@ def answer_cmd(words, trackers):
         return EXIT_LINT
     path = TRACKER_DIR / t["file"]
     rel = path.relative_to(ROOT).as_posix()
-    branch, here = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip()
+    # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
+    # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal.
+    # Asked before the branch is cut — nothing is touched for an answer that cannot be written
+    if not any(l.startswith("ask:") for l in path.read_text(encoding="utf-8").split("\n")):
+        print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
+              f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
+        return EXIT_LINT
+    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
+    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "")
+    branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
+    created = switched = False
+
+    def undo(what, said=""):
+        """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
+        change (refused above otherwise), so every tracked path that differs now is its own — the tracker it wrote, the
+        INDEX.md a hook regenerated — and is restored. Then it goes back to the branch it started on, and an
+        `answer/<id>` it cut and never committed to is deleted. Left behind, those made the Owner's next `--answer`, on
+        another ask, refuse as a dirty tree without saying why. His answer is printed with the command that gives it
+        again: a refusal never costs him the words."""
+        restored = changed_paths(git)
+        if restored:
+            git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in restored])
+        back = gone = ""
+        if switched:
+            s_ = git("switch", here) if here else git("switch", "--detach", start)
+            back = f"back on `{here or start[:10]}`" if s_.returncode == 0 else f"could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}"
+            if created and s_.returncode == 0 and git("rev-parse", "--verify", "-q", branch).stdout.strip() == start and git("branch", "-D", branch).returncode == 0:
+                gone = f"`{branch}` deleted — it carried no commit"
+        print(f"--answer: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
+        print("  undone: " + " · ".join(x for x in (f"restored {', '.join(restored)}" if restored else "", back, gone) if x) if restored or back else "  nothing was changed", file=sys.stderr)
+        print(f"  your answer, not lost: {answer}\n  to give it again: {again}", file=sys.stderr)
+        return EXIT_LINT
+
     if here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
             # an `answer/<id>` left over from another branch does not carry this ask: switching to it would write the
@@ -889,31 +922,32 @@ def answer_cmd(words, trackers):
         else:
             answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
             r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
+            created = r.returncode == 0
         if r.returncode:
-            print(f"--answer: could not switch to `{branch}` — {r.stderr.strip()}", file=sys.stderr)
-            return EXIT_LINT
+            return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
+        switched = True
     else:
         answer_step(tid, 2, f"on `{branch}` already")
-    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
     lines = path.read_text(encoding="utf-8").split("\n")
-    # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
-    # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal
     at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
     if at is None:
-        print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
-              f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
-        return EXIT_LINT
+        return undo(f"{tid} has no `ask:` line in {t['file']} on `{branch}` — the front matter's question is what the answer is written under")
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
-    put(path, "\n".join(lines))
-    git("add", "--", rel)
+    try:
+        put(path, "\n".join(lines))
+    except OSError as e:
+        return undo(f"could not write {rel} — {e}")
+    if git("add", "--", rel).returncode:
+        return undo(f"could not stage {rel}")
     answer_step(tid, 3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
                 else "committing — the pre-commit gate runs")
     r = git("commit", *(["-S"] if signed else []), "-m", f"{tid}: {answer[:60]}")
     if r.returncode:
-        print(f"--answer: the commit failed — {r.stderr.strip()[-300:]}", file=sys.stderr)
-        return EXIT_LINT
+        # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
+        said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
+        return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
     if signed:
         # the gate's own rule, asked here so the answer is never pushed under one the gate will refuse: a good signature
         # (`%G?`) AND the principal the key is trusted for (`%GS`) being the author's email — a trusted key still says
@@ -927,6 +961,48 @@ def answer_cmd(words, trackers):
     r = git("push", "-u", "origin", branch)
     print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
     return EXIT_OK if r.returncode == 0 else EXIT_LINT
+
+
+def changed_paths(git):
+    """Every tracked path that differs from HEAD, staged or not — repository-relative, as git names them. `-z`, so a
+    path git would quote comes back as it is; a rename's second name, which `-z` sends after it, is skipped."""
+    out, paths, skip = git("status", "--porcelain", "-z", "--untracked-files=no").stdout.split("\0"), [], False
+    for entry in out:
+        if skip or len(entry) < 4:
+            skip = False
+            continue
+        paths.append(entry[3:])
+        skip = entry[0] in "RC"
+    return paths
+
+
+def dirty_refusal(git, dirty):
+    """`--answer` on a tree with changes: WHICH paths, and — where one is a tracker carrying an answer that is not
+    committed — that it looks like an earlier `--answer` that failed half-way (0.17.3 left its writes behind, FM-017), the
+    one command that undoes it, and the answer it would have filed, so the Owner never types it from memory."""
+    top = pathlib.Path(git("rev-parse", "--show-toplevel").stdout.strip() or ROOT)
+    said = f"--answer: the working tree has changes — an answer is one commit with nothing else in it. Changed: {', '.join(dirty)}"
+    left = []
+    for p_ in dirty:
+        name = p_.rsplit("/", 1)[-1]
+        if not KIND_RE.match(name) or not (top / p_).is_file():
+            continue
+        now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
+        was_ = (parse_frontmatter(git("show", f"HEAD:{p_}").stdout)[0].get("answer") or "").strip()
+        if now_ and now_ != was_:
+            left.append((p_, "-".join(name.split("-")[:2]), now_.strip('"')))
+    if not left:
+        return said + " — commit or stash them first"
+    generated = {pathlib.Path(os.path.relpath(f, top)).as_posix() for f in [OUT, *DERIVED_FILES]}
+    mine = [p_ for p_ in dirty if p_ in {l_[0] for l_ in left} | generated]
+    theirs = [p_ for p_ in dirty if p_ not in mine]
+    for p_, tid, ans in left:
+        m = re.fullmatch(r"(accepted|rejected)(?:\s+-\s+(.*))?", ans)
+        said += (f"\n  {tid} carries an answer that was never committed — {ans!r}. It looks like an earlier `--answer` that failed half-way"
+                 + (f"; to give it again: {CMD} --answer {tid} {m.group(1)[:-2]}" + (f' "{m.group(2)}"' if m.group(2) else "") if m else ""))
+    said += (f"\n  undo what it left with ONE command:\n    git{'' if top == ROOT else ' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}"
+             + (f"\n  the rest is not the tool's — commit or stash it: {', '.join(theirs)}" if theirs else ""))
+    return said
 
 
 def ready_needs(t, by_id):
