@@ -14,4 +14,4 @@ which says so.
 | 8e509911 | principal | the Owner, 2026-09-23 12:21 | the day's findings into the tool; releases 0.17.5-0.17.7, the first triage pass, FM-023/FM-024 | shoalmark-principal | 2026-09-23 19:14 | — |
 | 8e509911/implementer-3 | implementer | session 8e509911 | build 0.17.8 | shoalmark-impl | 2026-09-23 20:11 | 2026-09-23 21:40 |
 | 8e509911/implementer-4 | implementer | session 8e509911 | the human pages open from a file | shoalmark-impl | 2026-09-23 21:40 | — |
-| ee61f1fe | gtm | the Owner, 2026-09-23 22:02 | screen the owner-facing claim | shoalmark-gtm | 2026-09-23 22:02 | — |
+| ee61f1fe | gtm | the Owner, 2026-09-23 22:02 | screen the owner-facing claim | shoalmark-gtm | 2026-09-23 22:02 | 2026-09-23 22:12 |
