@@ -466,3 +466,104 @@ Two commit messages on this branch still name consumer ids. They are history and
   is the Principal's choice.
 - **Verdict mapping:** this pass reads the rubric as *a P2 open means NOT READY*. The first pass gave READY WITH
   FINDINGS with two P2s open, which was the looser reading.
+
+## Verification addendum 2
+
+- **Date:** 2026-09-23, 15:32 CEST (`date`) · **Seat:** Reviewer (`reviewer@seat`) · **Model:** Claude Opus 5.5
+- **Tip verified:** `b10456b` — `e83af2d` (R11) and `b10456b` (R12), two commits after `3bf6591`.
+
+### R11 · closed
+
+`owners_intent()` (`shoalmark.py:1545`) compares each paragraph and each line with `INTENT_SCAFFOLD` (`:2883`),
+ignoring whitespace. Everything else under the heading is read. I measured it with the tip's `triage_home()` in
+scratch repositories.
+
+**Every row of my R11 table is read now:**
+
+| the Owner's line | at the tip |
+|---|---|
+| his words inside the example's asterisks | read |
+| a line in bold alone | read |
+| `- **never** *lie*` | read |
+| `- **so that** ok` | read |
+
+**Controls:**
+- An untouched scaffold gives an intent of `""`, and so do the same file with CRLF line endings and with trailing
+  spaces.
+- Three real lines are read exactly.
+- shoalmark's own `TRIAGE.md` gives exactly the Owner's three intent lines (10–12).
+- The consumer's intent is byte-identical to what 0.17.4 read (617 characters), so nothing of an existing consumer is
+  lost.
+- The new check fails on `1e6c333`.
+
+**The case the Implementer names: an Owner who edits the note or the lead-in.** That text becomes his and is read. In
+my runs, fixing one word of the lead-in, or deleting the blank line after it, puts the 353-character lead-in into the
+intent. Editing the note puts the 114-character note in. I find that acceptable:
+- The failure now runs toward reading the Owner's file too fully, never toward losing a word of his.
+- The lead-in says so for itself and the examples: *leaves out only this lead-in and the examples as they stand*.
+- It says nothing about the note, which is worded as his to edit.
+
+### R12 · closed
+
+- The placeholder is `search · ~ID` in English (109 px) and `Suche · ~Id` in German (100 px), against the box's CSS
+  minimum of 200 px. The check measures exactly that, and it fails on `1e6c333`.
+- On the consumer's board at 860 and 900 px windows, where the box was 224 and 264 px, the placeholder fits.
+- The title carries the whole help.
+
+### R13 · P3 · Scaffold text that was never written by the Owner can still be read as his intent — formatted, re-wrapped or re-punctuated, and the path's note always
+
+- **What:** The comparison is exact apart from whitespace. So an untouched example, note or lead-in that a tool or an
+  editor has changed without changing a word is read as the Owner's intent. I measured these cases with the tip's
+  `triage_home()`, starting from an untouched scaffold:
+
+  | change to the untouched scaffold | read as the Owner's intent |
+  |---|---|
+  | Emphasis written `_…_`, as Prettier's Markdown formatter writes it: the three examples | 365 characters |
+  | The same for the note and the lead-in | 461 characters |
+  | One example hard-wrapped onto a continuation line | 118 characters, both halves |
+  | A typographic apostrophe in *library's* | 131 characters, the whole example |
+  | One period added to an example | 117 characters |
+  | `*` list markers in place of `-` | 365 characters |
+
+  In each case the village library is printed under *THE INTENT — the Owner's own words … this decides it*. That is
+  R5's outcome, reached here without any edit by the Owner. It contradicts *an untouched scaffold is no intent*
+  (`CHANGELOG.md:26`), although *recognised by their exact text* (`:25`, `README.md:171`) says how it happens.
+- **Also, older than this release:** `path` is still `said()` of the whole section. On shoalmark's own `TRIAGE.md` it
+  is the scaffold's note *The Owner's. A pass judges every tier against it; only the Owner changes it.* followed by his
+  four path lines (19–22), not the four lines alone. `--triage` prints it that way, and the board shows it that way.
+- **Where:** `shoalmark.py:1545` (`owners_intent`), `:2883` (`INTENT_SCAFFOLD`), `:1547` (`path`), `CHANGELOG.md:26`.
+- **Cost:** Noise, not loss. The *e.g.* stays visible. It needs a Markdown formatter, a re-wrapping editor or smart
+  quotes. Nothing of the Owner's is dropped.
+- **Confidence:** High on the mechanism (six cases). How often it happens in practice is unknown.
+- **Falsifier:** A formatted but untouched scaffold for which `triage_home()["intent"]` returns `""`.
+- **What closes it:**
+  - Compare after folding markup and punctuation. For example, compare `re.sub(r"[\W_]+", "", s.casefold())`, and
+    compare list items with their continuation lines, not raw lines. A changed word still differs.
+  - Give `path` the same treatment, with its note in the scaffold tuple.
+  - Or leave it, and say in the CHANGELOG that a formatter's rewrite counts as his.
+
+### Gates on b10456b
+
+| Gate | Result |
+|---|---|
+| `python3 test_shoalmark.py` (3.14.3) | exit=0 · 244 ok |
+| `python3 test_core.py` (3.14.3) | exit=0 · 147 ok |
+| `/usr/bin/python3 test_shoalmark.py` (3.9.6) | exit=0 · 244 ok |
+| `/usr/bin/python3 test_core.py` (3.9.6) | exit=0 · 147 ok |
+| Chrome | ran; no skip line |
+| `python3 shoalmark.py --check` | exit=0 — 22 trackers |
+| `python3 shoalmark.py --html-only` | exit=0 |
+| `python3 -m py_compile` (the three `.py` files) | exit=0 each |
+| the tip's `test_shoalmark.py` against the `1e6c333` tool | exit=1 · R11, R12 and R10 fail; R10 because the German lead-in is pinned to the new constant |
+| `--vendor` into a fresh scratch copy of the consumer's 0.17.4 pin | exit=0 · printed `(was 0.17.4)` and only `## 0.17.5 — 2026-09-23` · PIN `OK` × 8 · the vendored `shoalmark.py` is byte-identical to the tip |
+
+- The consumer's tree was left untouched: 0 changes.
+- CI has not run on Linux or Windows.
+
+### Verdict on b10456b
+
+**READY WITH FINDINGS: R13 (P3).**
+
+- R1–R12 are closed.
+- R13 is noise in what a pass reads, never a loss. The tag can carry it if the Principal accepts it, or it can close
+  first with the fold-before-compare change.
