@@ -292,7 +292,7 @@ browser — nothing in the repository changes, and paper stays light.
 ## 8. Working on shoalmark
 
 ```bash
-python3 test_shoalmark.py && python3 test_core.py          # 210 checks; every one builds its own throwaway repository
+python3 test_shoalmark.py && python3 test_core.py          # every check builds its own throwaway repository
 /usr/bin/python3 test_shoalmark.py                         # the oldest Python promised: 3.9, the one macOS ships
 ```
 
