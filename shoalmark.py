@@ -2568,10 +2568,25 @@ def session_trailer(message_file):
     return r.returncode
 
 
-def trailers_of(commit, key):
+# A commit's trailers as git prints them — one `Name: value` per trailer, the trailer block only, each separated by \x03 —
+# and the key picked here in Python, case aside, as git itself matches a key. Asking git to filter would put a
+# `name=<value>` shape into this source, which a consumer's secret-shape gate reads as a credential (0.17.7).
+TRAILERS = "%(trailers:only,separator=%x03)"
+
+
+def trailer_values(block, name):
+    """Every value of the trailer `name` in one TRAILERS field, in order, stripped."""
+    out = []
+    for item in (block or "").split("\x03"):
+        k, sep, v = item.partition(":")
+        if sep and k.strip().lower() == name.lower() and v.strip():
+            out.append(v.strip())
+    return out
+
+
+def trailers_of(commit, name):
     """Every value of one trailer on one commit."""
-    out = git_out("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x01)", commit)
-    return [v.strip() for v in (out or "").strip("\n").split("\x01") if v.strip()]
+    return trailer_values((git_out("log", "-1", f"--format={TRAILERS}", commit) or "").strip("\n"), name)
 
 
 def session_problems():
@@ -2659,13 +2674,12 @@ def abandoned_sessions(rows, now=None):
     now = now or datetime.datetime.now().timestamp()
     since = min((session_stamp(r["started"]) or now) for r in live)
     last = {}
-    log = git_out("log", f"--since={int(since)}", "--format=%ct%x01%(trailers:key=Session,valueonly,separator=%x01)%x02", "HEAD") or ""
+    log = git_out("log", f"--since={int(since)}", f"--format=%ct%x01{TRAILERS}%x02", "HEAD") or ""
     for rec in log.split("\x02"):
-        parts = [p.strip() for p in rec.strip("\n").split("\x01")]
-        if parts and parts[0].isdigit():
-            for sid in parts[1:]:
-                if sid:
-                    last[sid] = max(last.get(sid, 0), int(parts[0]))
+        stamp, _, block = rec.strip("\n").partition("\x01")
+        if stamp.strip().isdigit():
+            for sid in trailer_values(block, "Session"):
+                last[sid] = max(last.get(sid, 0), int(stamp.strip()))
     out = []
     for r in live:
         seen = max(last.get(r["id"], 0), session_stamp(r["started"]) or 0)
@@ -2704,12 +2718,13 @@ def verdict_reports(days=None):
     is on the trunk's first-parent line (not a branch verdict). The range is the branch's own commits, less other
     verdicts (`reviewed_range`). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
-    log = git_out("log", f"--since={days}.days", "--format=%H%x01%(trailers:key=Reviewed,valueonly,separator=%x03)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", "HEAD") or ""
+    log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
     found = []
     for rec in log.split("\x02"):
-        parts = rec.strip("\n").split("\x01")
-        if len(parts) == 3 and parts[1].strip():
-            found.append((parts[0], parts[1].split("\x03")[0].strip(), parts[2].split("\x03")[0].strip()))
+        sha, _, block = rec.strip("\n").partition("\x01")
+        reviewed = trailer_values(block, "Reviewed")
+        if sha and reviewed:
+            found.append((sha, reviewed[0], (trailer_values(block, "Session") or [""])[0]))
     if not found:
         return []
     trunk = trunk_ref()
@@ -2721,11 +2736,10 @@ def verdict_reports(days=None):
         own = reviewed_range(tip, trunk, first_parents, on_line) if tip else []
         ranged = set()
         if own:
-            rng = git_out("log", "--format=%(trailers:key=Reviewed,valueonly)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", *own) or ""
-            for rec in rng.split("\x02"):
-                rv, _, ss = rec.strip("\n").partition("\x01")
-                if not rv.strip():
-                    ranged |= {s.strip() for s in ss.split("\x03") if s.strip()}
+            rng = git_out("log", f"--format={TRAILERS}%x02", *own) or ""
+            for block in rng.split("\x02"):
+                if not trailer_values(block, "Reviewed"):
+                    ranged |= set(trailer_values(block, "Session"))
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")

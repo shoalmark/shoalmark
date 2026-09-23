@@ -400,6 +400,18 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 S2 · --install-hook writes a prepare-commit-msg hook: a commit where seat.session is set carries `Session: <id>`, one where it is not carries none, one that has one keeps it (saw {stamped!r})",
           code == 0 and pcm.exists() and os.access(pcm, os.X_OK) and '--session-trailer "$1"' in pcm.read_text()
           and all(c.returncode == 0 for c in (c0, c1, c2)) and "Session:" not in plain and stamped.rstrip().endswith("Session: a9") and typed.count("Session:") == 1 and "Session: k3" in typed)
+    # 0.17.7: the trailers are read in Python from git's plain trailer block — the same values, and no filter shape in the source
+    subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-q", "--allow-empty", "-m",
+                    "a planted commit\n\nits body, line one\nNote: this line sits in the body, not in the trailer block\nline three\n\n"
+                    "Session: a9\nReviewed: 0123abcd\nsession: b7\nCo-Authored-By: someone <someone@example.org>"], env=_ENV, check=True)
+    planted = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root)
+    got_ = {k: fm.trailers_of(planted, k) for k in ("Session", "Reviewed", "Note", "Co-Authored-By")}
+    check(f"0.17.7 · trailers_of() reads a planted commit with two keys and a body of several lines as before: every value of the key, in order, the key's case aside, nothing from the body (saw {got_})",
+          got_ == {"Session": ["a9", "b7"], "Reviewed": ["0123abcd"], "Note": [], "Co-Authored-By": ["someone <someone@example.org>"]})
+    _forms = set(re.findall(r"%\(trailers:([^)]*)\)", (HERE / "shoalmark.py").read_text(encoding="utf-8")))
+    check(f"0.17.7 · the tool asks git for the plain trailer block alone and picks the key in Python — no filter in the format, the shape a consumer's secret gate reads as a credential (saw {sorted(_forms)})",
+          _forms == {"only,separator=%x03"})
     (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
                                                          "| a9a9a9a9 | principal | the Owner | the day | wt | 2026-09-23 12:21 | — |\n")
     import secrets
