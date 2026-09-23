@@ -554,7 +554,28 @@ answer.change.hint: "Ihre Änderung, in einer Zeile — mehr gehört in den Text
 answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
 answer.ok: "OK — den Befehl geben"
 answer.abort: abbrechen
-answer.run: "Kopiert. Im Repository ausführen; es legt den Antwort-Zweig an, schreibt die drei Zeilen, committet signiert und pusht:"
+answer.sign.title: Ihre Antwort signieren
+answer.sign.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht signieren — Ihr Terminal tut es, mit Ihrem Schlüssel. Diesen Befehl ausführen:"
+answer.sign.copy: nochmals kopieren
+answer.sign.copied: Kopiert.
+answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Befehl markieren und kopieren."
+answer.sign.where: Wo
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem diese Tafel gebaut wurde."
+answer.sign.does: Was er tut
+answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
+answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.push: pusht den Zweig
+answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
+answer.sign.success: Wenn es geklappt hat
+answer.sign.check: Zur Kontrolle
+answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."
+answer.sign.fail: Wenn es scheitert
+answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
+answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
+answer.sign.url: "https://holgo99.github.io/shoalmark/de/signing/"
+answer.done: Fertig
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -668,6 +689,9 @@ with tempfile.TemporaryDirectory() as d:
         _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
               set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
+        _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+        check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
+              set(fm.LABELS) - set(_shipped_de) <= {"footer", "tagline"} and not set(_shipped_de) - set(fm.LABELS))
         if _CHROME:
             dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
             text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
@@ -923,6 +947,54 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root)
     check("a recommendation that is not one of the options is refused — the Owner is never shown a recommendation he cannot pick",
           code == fm.EXIT_LINT and "AP-080: `ask-proposal:` recommends 'z'" in err + _ and "a | b | c" in err + _)
+fm.configure(HERE)
+
+# --- FM-013: after OK, a second screen — how to sign it, where, what it does, the end, the check, and one way out ------
+# OK used to disable itself and leave one enabled button, abort, which read as taking the decision back; and it said
+# *Copied* whether or not anything was. The Owner: "Only a "Done" button to close the dialog."
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "checkout", "-q", "-b", "pd/090")
+    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    tracker(root, "AP-090", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
+    run(root); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    two_ = page.split("const sign=")[1].split('d.querySelector(".copy")')[0]
+    menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
+    check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
+          '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="pd/090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
+          and 'value="done"' in menus_[0] and 'l("answer.done")' in menus_[0] and all(f'"{k}"' in page for k in fm.LABELS if k.startswith("answer.sign.")))
+    check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
+          '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
+    if _CHROME:
+        def _sign(clip):
+            """OK pressed in the browser, the second screen read as rendered — with the clipboard there, or with none."""
+            stub = {"yes": 'Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});',
+                    "none": 'Object.defineProperty(navigator,"clipboard",{value:undefined});'}[clip]
+            go = ('const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[0];R.checked=true;R.dispatchEvent(new Event("change"));'
+                  'D.querySelector("button.go").click();setTimeout(()=>{const B=document.body.dataset;B.menu=[...D.querySelectorAll("menu button")].map(b=>b.textContent).join("|");'
+                  'B.said=D.querySelector(".said").textContent;B.buttons=D.querySelectorAll("button").length;D.querySelector("menu button").click();B.open=String(D.open)},300);')
+            p_ = root / "docs/work-tracker" / f"s2-{clip}.html"
+            p_.write_text(page + f'<script>{stub}setTimeout(()=>{{ACT(T.find(x=>x[0]=="AP-090"),"accept");{go}}},50)</script>', encoding="utf-8")
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", p_.as_uri()],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            p_.unlink()
+            body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]
+            said = {k: (re.search(rf'data-{k}="([^"]*)"', d_) or [None, None])[1] for k in ("menu", "said", "buttons", "open")}
+            return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
+        s2_, b2_, yes_ = _sign("yes")
+        check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
+              "Sign your answer" in s2_ and re.search(r'<pre class="cmd">[^<]*--answer AP-090 accept "b"</pre>', b2_) is not None and "Copy again" in s2_
+              and "In a terminal, in this repository, on the branch that carries the ask — pd/090, the branch this board was built from." in s2_
+              and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
+              and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
+              and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
+              and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
+        check(f"FM-013 · …with ONE way out — Done, the only button in its menu, closes the dialog; the only other control is Copy again (saw: {yes_})",
+              yes_["menu"] == "Done" and yes_["buttons"] == "2" and yes_["open"] == "false")
+        _n0, _n1, none_ = _sign("none")
+        check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
+              yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
+    rm_git(root)
 fm.configure(HERE)
 
 # --- FM-007: the Owner's one command — --answer cuts the branch, writes, signs, pushes ------------------------------

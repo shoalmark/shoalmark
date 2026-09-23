@@ -1,9 +1,9 @@
 ---
 id: FM-013
-status: Proposed
+status: In Progress
 considered: FM-007, FM-008
 tags: bug
-next: build
+next: review
 hook: "In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the one button left is abort, which reads as undoing what was just decided. Nothing says where to run the command, what it does, what success looks like or what to do when signing fails. The Owner: a second screen that explains how to sign, and only a Done button."
 ---
 
@@ -11,9 +11,22 @@ hook: "In the board's answer dialog, OK copies the command, prints one line of i
 
 ## What is true now
 
-**Filed 2026-09-23; nothing is built.** Reported by the Owner after answering from the board.
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** OK now
+replaces the dialog's content with a second screen: *Sign your answer* · the command in a monospace block with *Copy
+again* · where (a terminal, this repository, the branch that carries the ask — named: the board now knows the branch it
+was built from) · what it does, four steps, and that it prints each and may take a while · what success looks like —
+the two lines the command ends with, with this answer's words in them · how to check (`git log -1 --format=%G?
+answer/<id>` prints `G`) · if it fails, the signing page. **Done** is the only button in its menu; Esc closes the dialog
+as before. *Copied* appears only when `navigator.clipboard.writeText` resolved; otherwise it says to select and copy.
+Every string is a label, in English and in the shipped German table; the old `answer.run` label is gone with the line it
+drove. **Proven in a headless browser by the suite**: OK pressed, screen two read as rendered, Done clicked and the
+dialog closed, the clipboard stubbed present and absent. **Not proven:** a real clipboard in the Owner's browser, a
+phone-width layout, and the signing page itself, which is served only once the documentation site is public. **What is
+left:** his eye on it, review, merge, the tag.
 
-**What the dialog does today.** `accept` or `reject` opens a `<dialog>` with the question, the choices and the box.
+Reported by the Owner after answering from the board.
+
+**What the dialog did at 0.17.3.** `accept` or `reject` opens a `<dialog>` with the question, the choices and the box.
 OK (*"OK — give me the command"*) runs `f.onsubmit`: it writes the command to the clipboard, sets one paragraph to
 *"Copied. Run this in the repository; …"* plus the command, and **disables OK**. What is left is one enabled button —
 **abort**. After a decision, *abort* reads as *take it back*; the dialog has no way to say *I am done here*.
@@ -56,4 +69,5 @@ only button left looks like a way to undo the decision.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Built: the second screen, Done alone in its menu, *Copied* only when it was; labels in English and German. Driven in a headless browser by the suite. |
 | 2026-09-23 | Filed from the Owner's report and his design for the second screen. |

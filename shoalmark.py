@@ -45,6 +45,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 # a second time here is what let 0.17.1 and 0.17.2 ship with a stale constant, silencing the changelog (FM-009).
 __version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else "unknown"
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
+# how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
+# second screen (a repository with its own page overrides the label `answer.sign.url`)
+SIGNING_PAGE = "https://holgo99.github.io/shoalmark/signing/"
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty
@@ -859,7 +862,7 @@ def answer_cmd(words, trackers):
         print("--answer: the working tree has changes — an answer is one commit with nothing else in it; commit or stash first", file=sys.stderr)
         return EXIT_LINT
     if signed and not git("config", "user.signingkey").stdout.strip():
-        print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page', file=sys.stderr)
+        print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
         return EXIT_LINT
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
@@ -1064,7 +1067,10 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
 #dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
 #dlg menu{display:flex;gap:8px;margin:14px 0 0;padding:0}#dlg button{border:1px solid var(--line);padding:6px 12px;font-size:12px}#dlg button.go{border-color:var(--ink);color:var(--ink)}#dlg button:disabled{opacity:.4}
-#dlg .out{white-space:pre-wrap;border-left:2px solid var(--teal);padding:6px 8px;margin:10px 0 0;color:var(--dim);font-size:12px}
+/* the second screen: the decision is made, the terminal signs it — the command, then where, what, the end, the check, the way out */
+#dlg h4{margin:14px 0 4px;font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}#dlg ol{margin:4px 0;padding-left:20px}#dlg li{margin:2px 0}#dlg p{margin:4px 0}
+#dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
+#dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
@@ -1082,7 +1088,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
-const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -1091,6 +1097,8 @@ dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}},          // `#100%
 // every word of the chrome comes from L (labels.yaml, merged over the built-in English). What the page's LOGIC compares —
 // a status, a section, a move — stays the word an agent types; only what is SHOWN goes through here.
 l=(k,...a)=>esc((L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??"")),sl=s=>L["status."+s]||s,vn=g=>L["view."+g]||g,
+// …and `lh` for a label whose {0} is MARKUP the page built itself (a `<code>`, a link): the label is escaped, the parts are not
+lh=(k,...a)=>esc(L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??""),
 byId=new Map(T.map(t=>[t[0],t])),inb=new Map();
 for(const t of T)for(const l of t[12])inb.set(l,[...(inb.get(l)||[]),t[0]]);
 EPICS=new Set(T.map(t=>t[13])),
@@ -1161,15 +1169,33 @@ function draw(){
         <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
         ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
         :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
-        <p class="m out" hidden></p><menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
-      const f=d.querySelector("form"),ta=f.text,out=f.querySelector(".out");
+        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+      const f=d.querySelector("form"),ta=f.text;
       f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
         // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
         const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
         const line=`${cmd} --answer ${id} ${kind}${chosen?` "${chosen}"`:""}`;
-        navigator.clipboard?.writeText(line);out.textContent=l("answer.run")+"\n"+line;out.hidden=false;f.querySelector(".go").disabled=true};
+        sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
       d.showModal()};
+    // THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
+    // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step
+    // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done
+    // (Esc too: it is the dialog's own). It says *Copied* only when the clipboard said so: from a file there may be none.
+    const sign=(d,id,line,said)=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
+      d.innerHTML=`<form method="dialog" class="sign"><h3>${l("answer.sign.title")} · <a href="#=${id}">${id}</a></h3>
+        <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
+        <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
+        <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
+        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"))}</li>
+        <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
+        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} answered: ${said}\n  signed, on \`${br}\`, pushed`)}</pre>
+        <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
+        <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}</a>`)}</p>
+        <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
+      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())
+        .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);
+      d.querySelector(".copy").onclick=copy;copy();d.querySelector(".go").focus()};
     window.ACT=act;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
@@ -1258,7 +1284,23 @@ LABELS = {
     "waiting.malformed": "{0} asks sent back — not for you",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
-    "answer.ok": "OK — give me the command", "answer.abort": "abort", "answer.run": "Copied. Run this in the repository; it cuts the answer branch, writes the three lines, commits signed and pushes:",
+    "answer.ok": "OK — give me the command", "answer.abort": "abort",
+    # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
+    "answer.sign.title": "Sign your answer",
+    "answer.sign.intro": "Your decision is made. A browser cannot sign it — your terminal does, with your key. Run this command:",
+    "answer.sign.copy": "Copy again", "answer.sign.copied": "Copied.",
+    "answer.sign.nocopy": "Not copied — this page has no clipboard here (a board opened from a file often has none). Select the command and copy it.",
+    "answer.sign.where": "Where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
+    "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
+    "answer.sign.does": "What it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
+    "answer.sign.step.push": "pushes the branch",
+    "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
+    "answer.sign.success": "When it worked", "answer.sign.check": "To check",
+    "answer.sign.check.text": "{0} prints {1} — a good signature, under a key this repository trusts.",
+    "answer.sign.fail": "If it fails", "answer.sign.fail.text": "No signing key is set, or the signature does not verify: set up your key once — {0}.",
+    "answer.sign.page": "the signing page", "answer.sign.url": SIGNING_PAGE,
+    "answer.done": "Done",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
@@ -1441,6 +1483,16 @@ def latest_verdicts():
     return out
 
 
+def built_on():
+    """The branch this board is built from — the answer dialog's second screen names it as the place to run `--answer`:
+    the board shows the asks of the trackers on this branch, so this is the branch that carries them. git only; empty on
+    a detached HEAD, under Subversion, or with no version control, and the screen then says it without a name."""
+    if vcs() != "git":
+        return ""
+    out = subprocess.run(["git", "branch", "--show-current"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
 def html_escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
@@ -1478,7 +1530,7 @@ def render_html(trackers):
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
     page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
