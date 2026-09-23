@@ -406,3 +406,69 @@ No capitalised *Owner* remains.
 - **R11 · P3:** *unter der Regel* is a calque of *under the rule*. *Nach der Regel* would read as *according to the
   rule*. The natural German is *in den ersten 28 Stunden, seit die Regel gilt*.
 - `zensical build` exits 0 with *No issues found*; `--check` and `--session-check` exit 0.
+
+## Delta on b80f488, and the GtM seat's third-pass message
+
+2026-09-23, 23:10 CEST.
+- **The message:** relayed by the Owner, read as data. It is graded against the ledger on `fm/006-gtm-claim-screen`
+  (`f1e525a`/`a7a788a`), `work-tracker/evidence/FM-006/gtm-claim-screen-2026-09-23.md`.
+- **The tip:** R11 is closed: *in den ersten 28 Stunden, seit die Regel gilt*. The FM-006 row now says G3 was run as
+  the seat's judgment, and that a slogan search and any real reader are unrun.
+- **Gates:** `zensical build` exits 0 with *No issues found*; `--check` and `--session-check` exit 0.
+
+**1 · Is the filter honest about what it executed? Yes, with one overreach.**
+- Its classes hold in the ledger. Word counts, the mirror and adjective counts, and reads of the record are marked
+  **E**/**F** with paths. *Read aloud* is marked as the runtime's judgment of register (**K**), with *no voice read
+  any line* (`:683`). G1 is **K**, *no native reader* (`:155`). *No search for prior use* is stated (`:772`, `:841`).
+  The three survivors carry **I**, not **E** (`:714–716`).
+- **The overreach** is in the message, not the ledger. *Survived every pass* reads as robustness, but the gates were
+  re-cut between passes on the Owner's direction:
+  - pass 1: the English bar died at G0 on the addressee clause (`:137`);
+  - pass 2: that clause turned (`:248`);
+  - pass 3: G0 gained *du* / one adjective / *Eigner* / read aloud (`:676`), and only then does the bar pass as K1.
+- Each change is recorded, which is honest. But a line surviving gates redrawn around it is survival by construction,
+  and should be said so.
+
+**2 · *Hol mehr aus deinem Eigner raus.* against its own aloud test.** What I hear is my own judgment (**K**), not a
+native voice.
+- **First,** the flyer formula (*Hol mehr aus deinem Handy raus*). That is the consumer-ad register, and the test
+  kills *job ad or LinkedIn*, not ads. K1 counts the product-ad register as the English bar's intended provocation.
+  On that reading it survives.
+- **Second,** the nearer native association is *mehr aus den Leuten rausholen*: managerial squeezing, one step from
+  *das Letzte rausholen*. That is the HR register the test exists to kill, and it is what an Eigner reading over the
+  fleet's shoulder would hear.
+- **So it survives as the test is worded,** narrowly and on the ad reading. The squeeze reading is a G0/G3 death only
+  a native reader can confirm.
+
+**3 · *Bring deinem Eigner das Entscheiden bei.* fails truth for both readers.**
+- The ledger's own rule applies G2 to what a line says shoalmark does for the owner (`:54`), whoever hears it.
+- The four anchors G2 admits contain nothing about teaching. The tool batches the questions and puts each as one
+  sentence with its options and a proposal. It makes deciding cheaper; it teaches no one.
+- Splitting it by reader (*rhetoric* to the owner, a claim to the investor, `:889`) makes G2 depend on the listener,
+  which the gate as written does not do. It also carries the counterfact the seat named itself: *beibringen* is said
+  to children, so G3 is at risk.
+
+**4 · The reader test as a protocol: sound in form, underpowered as specified.**
+- **Right:** the kill rules are fixed before anyone reads; there is rotation; there is a five-second exposure and a
+  next-day recall; the size is stated in advance.
+- **Gaps:**
+  - **(a) Exposures.** With three to five readers and one claim each over three to five candidates, most lines get
+    one exposure. *A line no reader recalls dies* then fires on n = 1, which is noise, not a kill.
+  - **(b) Readers per line.** A line claimed for *both* readers needs at least one reader of each kind, and the
+    design cannot cover lines × reader kinds.
+  - **(c) Language.** Which language each reader sees is not fixed, so *heard as a translation* cannot be scored.
+  - **(d) Gist.** *Gist* has no pre-written answer per line and no blind scorer.
+  - **(e) Confounders.** The tagline shown with the claim can carry the recall. Readers who know the Owner answer
+    politely.
+- **Keep:** the single-reader vetoes for an insult (G3) and for a translation heard (G1). They are legitimate kill
+  rules at n = 1.
+- **Minimum fix:**
+  - fix each reader's language;
+  - at least two exposures per line per reader kind, for any line claimed for both;
+  - a written gist per line, scored blind;
+  - tagline off, or held constant.
+
+  The Data Scientist seat sets the numbers.
+
+**Verdict on b80f488: READY TO TAG** for the page. The GtM's candidates are the Owner's to choose; nothing above
+blocks the tag.
