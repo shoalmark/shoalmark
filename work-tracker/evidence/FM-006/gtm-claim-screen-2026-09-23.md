@@ -844,3 +844,75 @@ This is flagged here, not edited; the pitch is not this seat's to edit.
 
 **Provenance:** Seat: GtM · Session `d578f49e` · Model: Claude Opus 5.5 · 2026-09-23 · an addendum, on the Owner's
 statement of the reader.
+
+---
+
+## Both readers, per line, and what would be data — 2026-09-23 23:06 CEST, session `63f5b126`
+
+**The Owner's ruling** (`a3eb298`, FM-006): the pitch has **two readers**.
+
+- An outside Owner of a fleet: the first two are German, one on Windows and Subversion.
+- A German tech investor fluent in English, *"indeed one of my audiences I am in contact with"*.
+
+Every gate is read for both, and where they pull apart, the page says which reader a line is for.
+
+**The Owner, to this seat, the same hour** (spelling normalised): *"Must impress, must resonate with the audience. The
+claim from the agent perspective I personally liked, but OK, you're the GtM: you must know better than me and have
+data to prove it."*
+
+**What this seat answers, in writing:**
+
+- **It has no data that proves resonance, and it does not know the audience better than the Owner,** who is in
+  contact with it.
+- **Every verdict in this ledger is a filter.** It kills lines for stated reasons, most of them this runtime's
+  knowledge or inference. The only executed evidence is word counts, the mirror check and reads of the record. Jev
+  came back as noise by its own rule.
+- **No reader of either kind has read a line.** A survivor is *not dead*; that is not the same as *resonates*.
+- **Nothing here overruled the agent perspective:**
+  - the English bar, in the fleet's voice, survives every pass;
+  - every German survivor speaks to the fleet (*dein Eigner*);
+  - what died was a translation.
+- **A correction to the Principal's ship-log row in `a3eb298`, for the Reviewer:** it says the two survivors stand
+  *"with G3 unrun"*.
+  - G3 was run on both, as this runtime's inference (I), and both passed.
+  - What is unrun is any reader.
+  - Whether *bremst* is a provocation he can take is the Owner's to say, because he is the one it provokes.
+
+### Per line, per reader
+
+| Line | Outside Owner | German tech investor | The line is for |
+|---|---|---|---|
+| *Get a better-performing human Owner.* (the bar) | survives | survives | both |
+| The bar, in English, on the German page too | **pulls apart:** it breaks FM-006's German-first rule, written for these readers | survives: a fluent reader hears no translation | the investor |
+| N10 · *Hol mehr aus deinem Eigner raus.* | survives | survives. Counterfact: the consumer-flyer register | both |
+| N11 · *Dein Eigner bremst. Tunen statt tauschen.* | survives. Counterfacts: *tauschen* heard as a threat; *tunen* heard as the car scene | survives: *tunen* reads as performance tuning, and it answers *why not replace the human?* | both |
+| N12 · *Bring deinem Eigner das Entscheiden bei.* | survives: he hears it as rhetoric. Counterfact: condescension | **dies at G2:** he hears it as a product claim, and the tool teaches no one | the owner |
+
+**The split is honest, but arguable.** G2 asks what a line *says*, and the same words say rhetoric to one reader and
+a mechanism to the other. A Reviewer may hold that truth is reader-independent. If so, N12 dies for both.
+
+### What would be data
+
+The only evidence that a line *sticks* is a reader of the kind named remembering it. **This seat can write the
+protocol; it cannot run it.** A proposal:
+
+- **Who:**
+  - the investor or investors the Owner is in contact with;
+  - two or three German native readers, at least one an outside Owner.
+- **What:** the top of the page (the name, the tagline, one claim), shown for five seconds, with no explanation. One
+  claim per reader, rotated.
+- **What is measured, next day:**
+  - *"What did it say?"*: gist recall is *sticks*.
+  - *"Would you repeat it to someone?"*: yes is *resonates*.
+  - *"Did anything grate?"*: an insult or a translation heard.
+- **The rule, fixed before anyone is shown anything:**
+  - a line no reader recalls in gist dies;
+  - a line one reader hears as an insult dies at G3;
+  - a line a native reader hears as a translation dies at G1.
+- **Its size:** three to five readers kill lines; they do not prove one. That limit is said in advance. The Data
+  Scientist seat can set the numbers if the Owner wants more than a kill test.
+
+**The Owner chooses.**
+
+**Provenance:** Seat: GtM · Session `63f5b126` · Model: Claude Opus 5.5 · 2026-09-23 · on the Owner's two-readers
+ruling and his question to the seat.
