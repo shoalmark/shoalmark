@@ -434,9 +434,9 @@ if _CHROME:
             pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--window-size=500,900", "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
             fits[lang] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "{}"])[1]) or "{}")
-        want = {"en": fm.LABELS["search.help"], "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))["search.help"]}
+        want = {"en": fm.LABELS.get("search.help"), "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("search.help")}
         check(f"R6 · in a 500 px window the search hint fits its box, in English and in German, and the whole help is the box's title (saw need/width: { {k: (v.get('need'), v.get('w')) for k, v in fits.items()} })",
-              len(fits) == 2 and all(v.get("w") and v["w"] <= 400 and v["need"] <= v["w"] and v.get("title") == want[k] for k, v in fits.items()))
+              len(fits) == 2 and all(v.get("w") and v["w"] <= 400 and v["need"] <= v["w"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _CHROME:
