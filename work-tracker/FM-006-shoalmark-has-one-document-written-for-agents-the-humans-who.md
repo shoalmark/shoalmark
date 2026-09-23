@@ -14,6 +14,8 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**Ruled 2026-09-23 22:5x, the Owner, in chat: the pitch has two readers — an outside Owner of a fleet (the first two are German, one on Windows and Subversion) and a German tech investor fluent in English, *"indeed one of my audiences I am in contact with"*. Every gate of the claim screen is read for both; where they pull apart, the page says which reader a line is for.** The measured sentence now states its size — *one project, our own, its first day* — until the week's count exists (the GtM's flag, the Principal's edit).
+
 **Filed 2026-09-22 on the Owner's direction:** *"shoalmark has a human- and agent-user facing documentation designed to
 the needs of each party."* Ruled the same day, after a trial build: **Zensical** (the successors of Material for MkDocs;
 Python, MIT, TOML configuration like the tool's own, no Node, search and dark mode built in; young — 0.0.x) *"because our
@@ -50,6 +52,7 @@ one outside Owner has followed the setup page without asking anything.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Two readers ruled by the Owner** (an outside Owner; a German tech investor fluent in English) after the GtM's second pass screened for the investor without a ruling; the measured sentence cut to its real size in both languages — *one project, our own, its first day*. The GtM's ledger on `fm/006-gtm-claim-screen` (0d22563, ba43112): the current German claim fails its own G0 (two adjectives, HR German, mirrored order); two candidates survive G0–G2 with G3 unrun; the reader question and *bremst* as provocation or insult are the Owner's to rule. |
 | 2026-09-23 | **Eigner for the person in German, on the Owner's word:** the seven German uses of *Owner* for the person — the claim (*Hol dir einen leistungsstärkeren menschlichen Eigner.*), the owner's block, the measured line, *start here*, two in `setup`, one in `signing` — now say *Eigner*; the seat name `owner`, the `[seats]` key, commands and quoted refusals stay English. |
 | 2026-09-23 | **The claim sharpened on the Owner's word, his wording:** *Get a better-performing human Owner.* / *Hol dir einen leistungsstärkeren menschlichen Owner.* — in both pitches and the site's description; the line under it keeps *owner*; the README's title stays the agents'. |
 | 2026-09-23 | R7: the span of the count is *just over a day* / *gut einem Tag* (27 h 50 min, the ruling to the count's tip), not a day and a half. R8: the English signing page says shoalmark lower-cases the branch it creates and git keeps the case it is given. |
