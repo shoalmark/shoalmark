@@ -1,0 +1,14 @@
+/* The wordmark: IBM Plex Mono 500 (the Owner's ruling, 2026-09-24). The theme loads its code font at 400 and 700
+   only, so 500 is fetched here; the rest of the page keeps the theme's text font, IBM Plex Sans. */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&display=fallback");
+
+.md-header__ellipsis > .md-header__topic:first-child .md-ellipsis {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+}
+
+/* The mark is pixel art on a 16-unit grid: shown at a whole multiple of it, never at the theme's 1.2rem (1.5x). */
+.md-header__button.md-logo svg {
+  width: 16px;
+  height: 16px;
+}

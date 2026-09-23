@@ -4,6 +4,8 @@
     python3 pricke.py header SITE_DIR    # the built site's German start page, each variant in the logo slot, 1x and 2x,
                                          # light and dark, with the wordmark in IBM Plex Sans 600; then lockups.png
     python3 pricke.py pair SITE_DIR ID   # variant ID beside B1 (the GtM's isolated-danger beacon), same slot, same page
+    python3 pricke.py site SITE_DIR      # the BUILT site as it is (logo, favicon, fonts, palette): site-header-*, the tab,
+                                         # the fonts the browser used, and site-header-a-vs-d-2x.png for the Owner
     python3 pricke.py measure            # the facts the note states, read off the renders
     python3 pricke.py fonts              # proves IBM Plex Sans 600 loads in headless Chrome (header and pair check it first)
 
@@ -111,9 +113,13 @@ def svg(i, size=None, color="currentColor"):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {grid} {grid}"{wh} fill="{color}">{inner}</svg>'
 
 
-def chrome(html_path, png, w, h, dpr=1, dump=False):
+def chrome(html_path, png, w, h, dpr=1, dump=False, dark=None):
+    """dark=True/False makes the browser prefer that scheme (Blink: 0 dark, 1 light), so a site with a palette picks it
+    itself, as it does for a reader whose system is set so; None leaves the browser's default."""
     args = [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--force-device-scale-factor={dpr}",
             f"--window-size={w},{h}", "--virtual-time-budget=8000"]
+    if dark is not None:
+        args.append(f"--blink-settings=preferredColorScheme={0 if dark else 1}")
     if dump:
         return subprocess.run(args + ["--dump-dom", f"file://{html_path}"], check=True, capture_output=True, text=True).stdout
     subprocess.run(args + [f"--screenshot={png}", f"file://{html_path}"], check=True, capture_output=True)
@@ -281,6 +287,28 @@ def runs(row, dark=False, cut=128):
     return sum(1 for k, on in enumerate(ink) if on and (k == 0 or not ink[k - 1]))
 
 
+def measure_site():
+    """The built site's header: the mark's pixels and the wordmark's stems, read off site-header-*.png."""
+    for tag in ("light", "dark"):
+        for dpr in (1, 2):
+            g = grey(OUT / f"site-header-{tag}-{dpr}x.png", 120 * dpr, 4 * dpr, 30 * dpr, 40 * dpr)   # the logo slot
+            ink = (lambda v: v < 128) if tag == "light" else (lambda v: v > 128)
+            rows = [r for r in range(len(g)) if any(ink(v) for v in g[r])]
+            cols = [c for c in range(len(g[0])) if any(ink(g[r][c]) for r in rows)]
+            box = [g[r][c] for r in range(rows[0], rows[-1] + 1) for c in range(cols[0], cols[-1] + 1)]
+            levels = sorted(set(box))
+            stake = [v for v in g[rows[-1]] if ink(v)]
+            w = grey(OUT / f"site-header-{tag}-{dpr}x.png", 160 * dpr, 12 * dpr, 120 * dpr, 24 * dpr)   # the wordmark
+            wr = [r for r in range(len(w)) if any(ink(v) for v in w[r])]
+            full = [c for c in range(len(w[0])) if sum(ink(w[r][c]) for r in wr) >= 0.85 * len(wr)]
+            runs = []
+            for c in full:
+                runs.append([c]) if not runs or c != runs[-1][-1] + 1 else runs[-1].append(c)
+            print(f"  site {tag} {dpr}x: the mark {cols[-1] - cols[0] + 1}×{rows[-1] - rows[0] + 1} device px, "
+                  f"{len(levels)} grey levels in its box {levels}; stake {len(stake)} px; the wordmark's full-height "
+                  f"stems {[len(r) for r in runs]} px at 50 % ink")
+
+
 def measure():
     """The facts the note states, read off the committed renders — nothing here is judged by eye."""
     print("16 px, light ground (0 = ink, 255 = paper):")
@@ -316,12 +344,91 @@ def measure():
               f"{max(v for r in w for v in r)} (255 = white)")
 
 
+def site(site_dir):
+    """The built site itself — `zensical build` from the branch, its own logo, favicon, fonts and palette — rendered
+    unmodified: the browser prefers light or dark, and the theme picks its scheme from that, as for a reader."""
+    page = pathlib.Path(site_dir).resolve() / "de/index.html"
+    for tag in ("light", "dark"):
+        for dpr in (1, 2):
+            chrome(page, OUT / f"site-header-{tag}-{dpr}x.png", 1440, 330, dpr, dark=tag == "dark")
+    print("site-header-{light,dark}-{1x,2x}.png")
+    # what the browser says it used — read on a scratch copy with one script added, never on the rendered page
+    probe = page.with_name("_probe.html")
+    probe.write_text(page.read_text(encoding="utf-8").replace("</body>", """<script>document.fonts.ready.then(()=>{
+      const w=document.querySelector('.md-header__ellipsis>.md-header__topic:first-child .md-ellipsis'),b=document.querySelector('.md-typeset p'),
+      c=getComputedStyle(w),i=document.querySelector('link[rel=icon]');
+      document.body.insertAdjacentHTML('beforeend','<pre id=probe>wordmark: '+c.fontFamily+' '+c.fontWeight+' '+c.fontSize+
+      ' | loaded: '+document.fonts.check('500 18px "IBM Plex Mono"')+' | body: '+getComputedStyle(b).fontFamily+' loaded: '+
+      document.fonts.check('400 16px "IBM Plex Sans"')+' | icon: '+i.getAttribute('href')+'</pre>')})</script></body>""", 1),
+                     encoding="utf-8")
+    dom = chrome(probe, None, 1440, 330, dump=True)
+    probe.unlink()
+    print(dom.split('<pre id="probe">')[1].split("</pre>")[0].replace("&quot;", '"'))
+    # the tab: the icon the built page links, read back from its <link rel="icon">, drawn at 16 px as a tab draws it
+    href = page.read_text(encoding="utf-8").split('<link rel="icon" href="')[1].split('"')[0]
+    icon = (page.parent / href).resolve()
+    cells = []
+    for tag, bg in (("light", "#ffffff"), ("dark", "#35363a")):
+        tab = OUT / "_tab.html"
+        tab.write_text(f'<!doctype html><body style="margin:0;background:{bg}"><img src="{icon.as_uri()}" width=16 height=16 '
+                       'style="position:absolute;left:8px;top:8px">', encoding="utf-8")
+        png = OUT / f"_tab-{tag}.png"
+        chrome(tab, png, 64, 64, 1, dark=tag == "dark")
+        magick(png, "-crop", "16x16+8+8", "+repage", "-filter", "point", "-resize", "800%", png)
+        cells.append((png, f"the tab icon ({href}) · {tag} tab · 16 px ×8"))
+        tab.unlink()
+    board(cells, 2, "site-tab-16px-x8")
+    for p_ in OUT.glob("_tab-*.png"):
+        p_.unlink()
+
+
+def swapped(site_dir, what):
+    """A scratch copy of the built German start page with one thing changed for the comparison, beside the original:
+    `a` puts the drawn Pricke in the logo slot at its 28 px; `d32` shows the site's own mark at twice its size."""
+    page = pathlib.Path(site_dir).resolve() / "de/index.html"
+    s = page.read_text(encoding="utf-8")
+    start = s.index('class="md-header__button md-logo"')
+    a0, a1 = s.index(">", start) + 1, s.index("</a>", start)
+    px = 28 if what == "a" else 32
+    if what == "a":
+        s = s[:a0] + svg("a") + s[a1:]
+    s = s.replace("</head>", f"<style>.md-header__button.md-logo svg{{width:{px}px;height:{px}px}}</style></head>", 1)
+    out = page.with_name(f"_compare-{what}.html")
+    out.write_text(s, encoding="utf-8")
+    return out
+
+
+def compare(site_dir):
+    """The Owner's comparison at 2x: `a` as drawn for the header, the site's `d` at 16 px (the stems' weight), and `d` at
+    32 px (twice that) — light and dark, each cut from the site's own header, nothing else changed."""
+    x, y, w, h = 110, 0, 240, 48
+    cells, tmp = [], []
+    for tag in ("light", "dark"):
+        for what, label in (("a", "a · 28 px, as drawn for the header"), ("d", "d · 16 px — the site"),
+                            ("d32", "d · 32 px, twice its grid")):
+            page = pathlib.Path(site_dir).resolve() / "de/index.html" if what == "d" else swapped(site_dir, what)
+            png = OUT / f"_cmp-{what}-{tag}.png"
+            chrome(page, png, 1440, 330, 2, dark=tag == "dark")
+            magick(png, "-crop", f"{w * 2}x{h * 2}+{x * 2}+{y * 2}", "+repage", png)
+            cells.append((png, f"{label} · {tag} · 2x"))
+            tmp.append(png)
+            if what != "d":
+                page.unlink()
+    board(cells, 3, "site-header-a-vs-d-2x")
+    for p in tmp:
+        p.unlink()
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "sheet":
         sheet()
+    elif cmd == "site":
+        site(sys.argv[2])
+        compare(sys.argv[2])
     elif cmd == "measure":
         measure()
+        measure_site()
     elif cmd == "fonts":
         sys.exit(0 if fonts() else 1)
     elif cmd in ("header", "pair"):
