@@ -407,6 +407,42 @@ with tempfile.TemporaryDirectory() as d:
     fresh = run_safe(root, "--session", "new")[1].strip()
     check(f"FM-024 S1 · `--session new` prints an id no row carries — eight hex characters, for a harness with none of its own; `--init` names `seat.session` beside `user.email` (saw {out.strip()!r}, {fresh!r})",
           code == 0 and out.strip() == "0b0b0b0b" and re.fullmatch(r"[0-9a-f]{8}", fresh) is not None and "seat.session" in init_out and "user.email" in init_out)
+
+# --- FM-024 S3: the registry — one row per session: who convened it, for what, in which worktree -------------------
+PLANTED_SESSIONS = """# Sessions
+
+Some words above the table.
+
+| Session | Seat | Convened by | Scope | Worktree | Started | Ended |
+|---|---|---|---|---|---|---|
+| d8 | principal | the Owner, 07:28 | the product items \\| the run sheet | worktrees/principal | 2026-09-23 07:28 | — |
+| a9/reviewer-1 | reviewer | session a9 | attack 363dbb7e | worktrees/reviewer-2 | 2026-09-23 12:36 | 2026-09-23 13:31 |
+| broken | row | with | six | cells | only |
+"""
+_parse = getattr(fm, "parse_sessions", None)
+_rows = _parse(PLANTED_SESSIONS) if _parse else []
+check(f"FM-024 S3 · the registry's parser: the header, its rule and a malformed row are not rows; an escaped `|` stays in its cell; an end written is closed (saw {[(r.get('id'), r.get('open')) for r in _rows]})",
+      [(r["id"], r["seat"], r["open"]) for r in _rows] == [("d8", "principal", True), ("a9/reviewer-1", "reviewer", False)]
+      and _rows[0]["scope"] == "the product items | the run sheet" and _rows[1]["convened"] == "session a9" and _rows[1]["worktree"] == "worktrees/reviewer-2")
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    reg = root / "docs/work-tracker/sessions.md"
+    o1 = run_safe(root, "--session", "open", "a9", "principal", "the Owner, 12:21", "the day's findings | the tool", "wt-a")[0]
+    staged = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--name-only"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    o2 = run_safe(root, "--session", "open", "a9/reviewer-1", "reviewer", "session a9", "attack the build", "wt-r")[0]
+    bad_hand = run_safe(root, "--session", "open", "a9/reviewer-2", "principal", "session a9", "x", "wt-x")
+    again = run_safe(root, "--session", "open", "a9", "principal", "the Owner", "x", "wt-y")
+    clash = run_safe(root, "--session", "open", "d8", "principal", "the Owner, 07:28", "the product items", "wt-a")
+    c1 = run_safe(root, "--session", "close", "a9")[0]
+    o3 = run_safe(root, "--session", "open", "d8", "principal", "the Owner, 07:28", "the product items", "wt-a")[0]
+    rows = {r["id"]: r for r in fm.parse_sessions(reg.read_text())} if reg.exists() and hasattr(fm, "parse_sessions") else {}
+    check(f"FM-024 S3 · --session open writes a row and stages it; a sub-agent's id is parent and hand; a wrong hand, a used id and an open worktree are refused; close dates the end (saw {sorted(rows)})",
+          (o1, o2, c1, o3) == (0, 0, 0, 0) and "docs/work-tracker/sessions.md" in staged
+          and bad_hand[0] == fm.EXIT_LINT and "`<parent>/principal-<n>`" in bad_hand[2] and again[0] == fm.EXIT_LINT and "used once" in again[2]
+          and clash[0] == fm.EXIT_LINT and "wt-a is open under session a9 — one worktree per session" in clash[2]
+          and sorted(rows) == ["a9", "a9/reviewer-1", "d8"] and not rows["a9"]["open"] and re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", rows["a9"]["ended"]) is not None
+          and rows["a9/reviewer-1"]["open"] and rows["a9/reviewer-1"]["convened"] == "session a9" and rows["a9"]["scope"] == "the day's findings | the tool" and rows["d8"]["open"])
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"

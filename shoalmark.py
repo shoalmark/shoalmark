@@ -2436,13 +2436,13 @@ SESSION_IDLE = 86400          # seconds: an open session with no commit for long
 SESSIONS_HOME = """\
 # Sessions
 
-One row per session of a seat: who convened it, for what, in which worktree. `{cmd} --session open` writes a row and
-`{cmd} --session close` dates its end; the gate refuses a seat's commit whose `Session:` trailer names no open row
-here, or whose worktree is open under another session. An open row with no commit for a day is closed by the next
-triage pass, which says so.
+One row per session of a seat: who convened it, for what, in which worktree. `--session open` writes a row and
+`--session close` dates its end; the gate refuses a seat's commit whose `Session:` trailer names no open row here, or
+whose worktree is open under another session. An open row with no commit for a day is closed by the next triage pass,
+which says so.
 
 | {head} |
-|{sep}|
+|{sep}
 """
 
 
@@ -2472,16 +2472,68 @@ def parse_sessions(text):
     return rows
 
 
+def render_session_row(r):
+    cell = lambda v: (v or "—").replace("|", "\\|").replace("\n", " ")
+    return "| " + " | ".join(cell(r[k]) for k in ("id", "seat", "convened", "scope", "worktree", "started", "ended")) + " |"
+
+
+def write_sessions(rows):
+    """Rewrite the registry with these rows, keeping whatever stands above the table, and stage it."""
+    path = sessions_file()
+    have = path.read_text(encoding="utf-8") if path.exists() else SESSIONS_HOME.format(head=" | ".join(SESSION_COLUMNS), sep="---|" * len(SESSION_COLUMNS))
+    lines = have.rstrip("\n").split("\n")
+    table = [i for i, l in enumerate(lines) if l.lstrip().startswith("|")]
+    head = lines[:table[0] + 2] if table else lines + ["", "| " + " | ".join(SESSION_COLUMNS) + " |", "|" + "---|" * len(SESSION_COLUMNS)]
+    tail = lines[table[-1] + 1:] if table else []
+    path.parent.mkdir(parents=True, exist_ok=True)
+    put(path, "\n".join(head + [render_session_row(r) for r in rows] + tail) + "\n")
+    if vcs() == "git":
+        git_out("add", "--", path.relative_to(ROOT).as_posix())
+
+
+def session_now():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
 def session_cmd(words):
-    """`--session new`: an id no row of the registry carries — for a harness that has no session id of its own."""
+    """`--session new` · `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]` · `--session close <id>`."""
     rows = parse_sessions(sessions_file().read_text(encoding="utf-8")) if sessions_file().exists() else []
     ids = {r["id"] for r in rows}
-    if words == ["new"]:
+    verb, rest = words[0], words[1:]
+    if verb == "new":
         import secrets
         sid = next(s for s in iter(lambda: secrets.token_hex(4), None) if s not in ids)
         print(sid)
         return EXIT_OK
-    print("--session: new", file=sys.stderr)
+    if verb == "open" and 4 <= len(rest) <= 5:
+        sid, seat, convened, scope = rest[:4]
+        top = git_out("rev-parse", "--show-toplevel")
+        worktree = rest[4] if len(rest) == 5 else (pathlib.Path(top.strip()).name if top else ROOT.name)
+        hand = sid.rsplit("/", 1)[-1] if "/" in sid else None
+        why = ("is not a session id — letters, digits, `.`, `_`, `-`; a sub-agent's is `<parent>/<seat>-<n>`" if not SESSION_ID_RE.fullmatch(sid)
+               else f"is already in {SESSIONS_NAME} — an id is used once" if sid in ids
+               else f"names the hand `{hand}`, not the seat `{seat}` — a sub-agent's id is `<parent>/{seat}-<n>`" if hand and not re.fullmatch(rf"{re.escape(seat)}-\d+", hand)
+               else f"is for the seat `{seat}`, which `[seats]` does not name" if SEATS and seat not in SEATS else "")
+        clash = next((r for r in rows if r["open"] and r["worktree"] == worktree), None)
+        if why or clash:
+            print(f"--session open: {sid} {why}" if why else f"--session open: {worktree} is open under session {clash['id']} — one worktree per session", file=sys.stderr)
+            return EXIT_LINT
+        rows.append(dict(id=sid, seat=seat, convened=convened, scope=scope, worktree=worktree, started=session_now(), ended="—", open=True))
+        write_sessions(rows)
+        mine = (git_out("config", "--get", "seat.session") or "").strip()
+        print(f"opened session {sid} ({seat}, {scope}) in {worktree} — {sessions_file().relative_to(ROOT).as_posix()} is staged; the session's first commit carries it"
+              + ("" if mine == sid else f"\nthis worktree's commits carry it once: git config --worktree seat.session {sid}"))
+        return EXIT_OK
+    if verb == "close" and len(rest) == 1:
+        row = next((r for r in rows if r["id"] == rest[0]), None)
+        if row is None or not row["open"]:
+            print(f"--session close: {rest[0]} is {'not in ' + SESSIONS_NAME if row is None else 'closed already'}", file=sys.stderr)
+            return EXIT_LINT
+        row["ended"] = session_now()
+        write_sessions(rows)
+        print(f"closed session {row['id']} — {sessions_file().relative_to(ROOT).as_posix()} is staged")
+        return EXIT_OK
+    print('--session: new · open <id> <seat> "<convened by>" "<scope>" [<worktree>] · close <id>', file=sys.stderr)
     return EXIT_LINT
 
 
@@ -2789,7 +2841,9 @@ def parse_args(argv):
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--session", nargs="+", metavar="WORD",
         help="a seat's session (FM-024): `--session new` prints an id no row carries — for a harness with no session id of its own; "
-             "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`")
+             "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`. "
+             "`--session open <id> <seat> \"<convened by>\" \"<scope>\" [<worktree>]` writes its row in <tracker dir>/sessions.md and stages it — "
+             "a sub-agent's id is `<parent>/<seat>-<n>`; `--session close <id>` dates its end")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "to a seat's commit — nothing without `seat.session`, nothing when the message carries one already")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments

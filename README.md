@@ -188,6 +188,7 @@ What lives where, by convention — no setting names any of it:
 | who may answer | the seats that hold `answer` in `[seats]` (§*Seats*) — `owner = "you@example.org signed"`. Without `[seats]`, the old key: `answerers = ["name"]` or `["name signed"]`, git author names. The gate reads the answer's committer from git or Subversion; under `signed` the commit must verify and the key's identity must be the author's email. Empty = nobody may answer. With `[seats]`, `answerers` is not read for answers — and a `signed` entry beside an unsigned seat that answers for it is refused, not dropped. Setup for a human: the signing page, `docs/signing.md` |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
+| `<tracker dir>/sessions.md` | the registry of seat sessions — one row each: who convened it, for what, in which worktree (§*Sessions*) |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
@@ -247,6 +248,18 @@ prepare-commit-msg:
     session:
       run: python3 tools/shoalmark/shoalmark.py --session-trailer {1}
 ```
+
+**The registry:** `<tracker dir>/sessions.md`, one row per session — `Session · Seat · Convened by · Scope · Worktree ·
+Started · Ended`. A session's first commit carries its row:
+
+```bash
+<cmd> --session open a9f3c2d1 principal "the Owner, 2026-09-23 12:21" "the day's findings; 0.17.5" worktrees/principal-2
+<cmd> --session open a9f3c2d1/reviewer-1 reviewer "session a9f3c2d1" "attack the build" worktrees/reviewer-2   # a sub-agent: parent and hand
+<cmd> --session close a9f3c2d1                                     # dates its end; the row stays
+```
+
+Each writes the row and stages the file. An id is used once; a worktree that an open row holds is refused to a second
+session — *one worktree per session*. The worktree defaults to the checkout's directory name.
 
 ## 7. The one seam: a deriver
 
