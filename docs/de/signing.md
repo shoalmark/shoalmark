@@ -64,11 +64,14 @@ git config user.signingkey <KEYID>
 In `shoalmark.toml`:
 
 ```
-answerers = ["ihrname signed"]
+[seats]
+owner = "sie@example.org signed"
 ```
 
-`ihrname` ist der git-Autorname (`git config user.name`) oder das Subversion-Konto. `signed` verlangt eine verifizierte
-Signatur — nur unter Subversion weglassen. Leer darf niemand antworten: das ist die Voreinstellung, absichtlich.
+`sie@example.org` ist die E-Mail, unter der Sie committen (oder Ihr git-Autorname, oder das Subversion-Konto). `signed`
+verlangt eine verifizierte Signatur — nur unter Subversion weglassen. Solange Sie keinen Sitz benennen, darf niemand
+antworten: Das ist die Voreinstellung, absichtlich. Das ältere `answerers = ["ihrname signed"]` gilt weiter, wo es kein
+`[seats]` gibt.
 
 ## Prüfen
 
@@ -79,14 +82,24 @@ git log -1 --format='%G? %GS %ae'
 ```
 
 `G`, dann die E-Mail, für die der Schlüssel spricht, dann Ihre Autor-E-Mail — die letzten beiden müssen übereinstimmen.
-Dann eine Frage auf der Tafel beantworten: klicken, die drei Zeilen einfügen, `git commit -S`.
-`python3 tools/shoalmark/shoalmark.py --check` ist grün, und die Frage hat Ihre Liste verlassen.
+
+**Dann eine Frage beantworten.** Auf der Tafel öffnet *annehmen* oder *ablehnen* einen Dialog mit der Frage, ihren
+Möglichkeiten und dem, was sie aufhält; OK gibt Ihnen einen Befehl. Führen Sie ihn in einem Terminal im Repository aus:
+
+```
+python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
+```
+
+Er legt den Branch `answer/AP-007` an, schreibt die drei Zeilen, committet sie mit Ihrem Schlüssel signiert (ein
+Hardware-Schlüssel wartet auf Ihre Berührung) und pusht; jeden Schritt nennt er, bevor er ihn tut. Scheitert etwas,
+macht er alles rückgängig, was er geschrieben hat, und druckt den Befehl, mit dem Sie die Antwort erneut geben.
+`git log -1 --format=%G? answer/AP-007` druckt `G`, und die Frage hat Ihre Liste verlassen.
 
 ## Was das Werkzeug ablehnt, und was es sagt
 
 | Sie sehen | Es bedeutet |
 |---|---|
-| *an answer, but `answerers` names nobody* | die Zeile oben schreiben |
+| *an answer, but no seat in `[seats]` holds the `answer` right* (oder *`answerers` … names nobody*) | die `[seats]`-Zeile oben schreiben |
 | *the answer is not committed yet* | committen — der Commit ist der Beleg |
 | *`answered-by: x` but the git author of the answer is `y`* | jemand anderes hat Ihre Antwort committet; sie zählt nicht |
 | *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei nicht an Ihre E-Mail bindet |

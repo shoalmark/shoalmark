@@ -21,6 +21,7 @@ nav = [
     { "Start" = "de/index.md" },
     { "In zehn Minuten eingerichtet" = "de/setup.md" },
     { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
+    { "Der Standup" = "de/standup.md" },
   ] },
 ]
 

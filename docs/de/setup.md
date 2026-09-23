@@ -5,14 +5,16 @@
 ## 1. Das Werkzeug ins Repository legen
 
 ```
-git clone https://github.com/holgo99/shoalmark ~/shoalmark      # einmal, irgendwo
+git clone --branch v0.17.8 https://github.com/holgo99/shoalmark ~/shoalmark   # ein Release: der neueste Tag, sauber geklont
 cd <Ihr Repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
 
-`tools/shoalmark/` ist jetzt eine festgehaltene Kopie: acht Dateien und ein `PIN` mit ihren Prüfsummen. Sie aktualisiert
-sich nie selbst; `--vendor` erneut ausführen holt eine neuere und druckt, was sich geändert hat. Unter Windows heißt der
-Befehl `python`, nicht `python3`.
+`tools/shoalmark/` ist jetzt eine festgehaltene Kopie: acht Dateien und ein `PIN` mit ihren Prüfsummen. Seine erste
+Zeile sagt, aus welchem Release die Kopie stammt. `--vendor` übernimmt nur ein Release, das ganze Werkzeug an seinem Tag
+und ohne lokale Änderungen, und lehnt alles andere ab, ohne eine Datei zu schreiben. Die Kopie aktualisiert sich nie
+selbst: Sie holen einen neueren Tag und rufen `--vendor` erneut auf, dann steht da, was sich geändert hat. Unter Windows
+heißt der Befehl `python`, nicht `python3`.
 
 ## 2. Deutsch, dann einrichten
 
@@ -38,14 +40,29 @@ python3 tools/shoalmark/shoalmark.py --install-hook
   kennt keinen Client-Hook — der Vertrag sagt den Agenten, das Werkzeug vor jedem `svn commit` laufen zu lassen. Für ein
   Gate, das niemand umgehen kann: `--check` aus dem `pre-commit`-Hook Ihres Servers.
 
-## 4. Sagen, wer antwortet
+## 4. Sagen, wer antwortet — und wer die Agenten sind
 
 In `shoalmark.toml`:
 
 ```
-answerers = ["ihrname signed"]     # git — siehe „Ihre Antwort ist Ihr Commit“
-answerers = ["ihrname"]            # Subversion — der Server kennt Sie schon
+[seats]
+owner       = "sie@example.org signed"    # Sie: Ihre Antworten sind signierte Commits — siehe „Ihre Antwort ist Ihr Commit“
+principal   = "principal@seat"            # die Sitze der Agenten, jeder mit eigener Identität
+implementer = "implementer@seat"
+reviewer    = "reviewer@seat"
 ```
+
+Unter Subversion ist der Owner Ihr Server-Konto, ohne `signed`: Der Server kennt Sie schon. Jeder Sitz committet unter
+seiner eigenen Identität, einmal in seinem eigenen Worktree eingestellt
+(`git config --worktree user.email implementer@seat`), und hat nur seine eigenen Rechte: Der Owner antwortet, der
+Principal fragt, schließt und sichtet, der Reviewer sichtet, der Implementer baut. Das ältere
+`answerers = ["ihrname signed"]` gilt weiter, wo es kein `[seats]` gibt.
+
+**Sitzungen.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
+und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`. Eine Sitzung trägt sich in
+`docs/work-tracker/sessions.md` ein (wer sie einberufen hat, wofür, in welchem Worktree). Das Gate lehnt den Commit eines
+Sitzes ohne offene Sitzung ab, und die Tafel zeigt, wer woran arbeitet. Das erledigen Ihre Agenten. Ihre eigenen
+Commits tragen keine Sitzung: Ihre Signatur ist Ihr Ausweis.
 
 ## 5. Zwei Dinge schreiben, die nur Sie können
 
@@ -59,4 +76,4 @@ Zeile ist, was Sie braucht. `standup = "09:00"` in `shoalmark.toml`, und `--stan
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 
-*Diese Seiten, gebaut mit `zensical build`:* die Website öffnet sich aus `site/index.html`, oder liefern Sie sie aus: `python3 -m http.server -d site 8000`.
+*Diese Seiten, gebaut mit `zensical build`, lassen sich direkt aus `site/index.html` öffnen — oder lokal bereitstellen, die Suche braucht das:* `python3 -m http.server -d site 8000`.

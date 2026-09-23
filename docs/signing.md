@@ -64,11 +64,13 @@ Leave `gpg.format` unset. The key's user id must carry the email you commit with
 In `shoalmark.toml`:
 
 ```
-answerers = ["yourname signed"]
+[seats]
+owner = "you@example.org signed"
 ```
 
-`yourname` is the git author name (`git config user.name`) or the Subversion account. `signed` asks for a verified
-signature — drop it only under Subversion. Empty, nobody may answer: that is the default, on purpose.
+`you@example.org` is the email you commit with (or your git author name, or the Subversion account). `signed` asks
+for a verified signature — drop it only under Subversion. No seat holds the answer right unless you name it: nobody
+may answer by default, on purpose. The older `answerers = ["yourname signed"]` still works where there is no `[seats]`.
 
 ## Check it
 
@@ -78,15 +80,24 @@ Make a signed commit — `git commit -S -m "test"` — and run:
 git log -1 --format='%G? %GS %ae'
 ```
 
-`G`, then the email the key is trusted for, then your author email — the last two must agree. Then answer an ask on
-the board: click, paste the three lines, `git commit -S`. `python3 tools/shoalmark/shoalmark.py --check` is green, and the ask
-has left your queue.
+`G`, then the email the key is trusted for, then your author email — the last two must agree.
+
+**Then answer an ask.** On the board, *accept* or *reject* opens a dialog with the question, its choices and what it
+holds up; OK gives you one command. Run it in a terminal, in the repository:
+
+```
+python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
+```
+
+It cuts the branch `answer/AP-007`, writes the three lines, commits them signed with your key (a hardware key waits for
+your touch), and pushes, naming each step as it starts. If anything fails it undoes everything it wrote and prints the
+command to give the answer again. `git log -1 --format=%G? answer/AP-007` prints `G`, and the ask leaves your queue.
 
 ## What the tool refuses, and what it says
 
 | You see | It means |
 |---|---|
-| *an answer, but `answerers` names nobody* | write the line above |
+| *an answer, but no seat in `[seats]` holds the `answer` right* (or *`answerers` … names nobody*) | write the `[seats]` line above |
 | *the answer is not committed yet* | commit it — the commit is the record |
 | *`answered-by: x` but the git author of the answer is `y`* | someone else committed your answer; it does not count |
 | *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file does not tie to your email |

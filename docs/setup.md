@@ -5,13 +5,15 @@
 ## 1. Put the tool in the repository
 
 ```
-git clone https://github.com/holgo99/shoalmark ~/shoalmark      # once, anywhere
+git clone --branch v0.17.8 https://github.com/holgo99/shoalmark ~/shoalmark   # a release: the newest tag, a clean clone
 cd <your repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
 
-`tools/shoalmark/` is now a pinned copy: eight files and a `PIN` of their hashes. It never updates itself; you run
-`--vendor` again when you want a newer one, and it prints what changed. On Windows the command is `python`, not `python3`.
+`tools/shoalmark/` is now a pinned copy: eight files and a `PIN` of their hashes, whose first line says which release
+it came from. `--vendor` copies only a release, the whole tool at its tag with a clean tree, and refuses anything else
+without writing a file. It never updates itself; you vendor again from a newer tag, and it prints what changed. On
+Windows the command is `python`, not `python3`.
 
 ## 2. Initialise
 
@@ -37,14 +39,28 @@ python3 tools/shoalmark/shoalmark.py --install-hook
   client-side hook, so the contract tells agents to run the tool before `svn commit`. For a gate nobody can skip, call
   `--check` from your server's `pre-commit` hook.
 
-## 4. Say who answers
+## 4. Say who answers — and who the agents are
 
 In `shoalmark.toml`:
 
 ```
-answerers = ["yourname signed"]     # git — see "Your answer is your commit"
-answerers = ["yourname"]            # Subversion — the server authenticates you already
+[seats]
+owner       = "you@example.org signed"    # you: your answers are signed commits — see "Your answer is your commit"
+principal   = "principal@seat"            # the agents' seats, one identity each
+implementer = "implementer@seat"
+reviewer    = "reviewer@seat"
 ```
+
+Under Subversion the owner is your server account, without `signed`: the server authenticates you already. Each seat
+commits under its own identity, set once in its own worktree (`git config --worktree user.email implementer@seat`),
+and holds only its own rights: the owner answers; the principal asks, closes and triages; the reviewer triages; the
+implementer builds. The older `answerers = ["yourname signed"]` still works where there is no `[seats]`.
+
+**Sessions.** Beside its seat, every agent's worktree carries `seat.session`, the run it belongs to, and the hook that
+`--install-hook` wrote adds it to every commit as `Session: <id>`. A session opens its row in
+`docs/work-tracker/sessions.md` (who convened it, for what, in which worktree); the gate refuses a seat's commit without
+an open session, and the board lists who is at work on what. Your agents do this. Your own commits carry no session:
+your signature is your id.
 
 ## 5. Write two things only you can
 
@@ -59,4 +75,4 @@ needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calend
 
 That is all. The agents file the work; you answer what only you can.
 
-*These pages, built with `zensical build`:* the built site opens from `site/index.html`, or serve it: `python3 -m http.server -d site 8000`.
+*These pages, built with `zensical build`:* open `site/index.html` directly for reading and links; search needs the served site: `python3 -m http.server -d site 8000`.
