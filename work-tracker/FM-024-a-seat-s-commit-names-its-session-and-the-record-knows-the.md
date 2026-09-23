@@ -75,6 +75,95 @@ branch's head is not a verdict on the branch.
 3. **The session in the e-mail** (`principal+a9@seat`): the same objection, plus a `[seats]` entry per session.
 4. **Drop it:** the worktree is the badge; the collision rule (*one worktree per session*) stands as doctrine only.
 
+## Examples — how candidate 1 would look, on the Owner's ask (illustrative, nothing is built)
+
+### a. A session starts — the worktree is the badge, the session is its second line
+
+```bash
+git worktree add ../principal-a9 -b feat/…            # one worktree per SESSION, never shared
+git -C ../principal-a9 config --worktree user.email principal@seat      # the seat: who may
+git -C ../principal-a9 config --worktree seat.session a9                # the session: which run (first 8 of the harness's id)
+python3 shoalmark.py --session open a9 principal "the Owner, 2026-09-23 12:21" "the day's findings into the tool; 0.17.5" ../principal-a9
+```
+
+The last line writes the session's row (below) and is the session's first commit; the hook refuses any seat commit
+before it. The Owner's own commits need none of this — his signature is his id.
+
+### b. The commit, as git shows it — the trailer the hook appends
+
+```text
+commit 049a9ab…
+Author: Principal seat <principal@seat>          ← the seat, read by the gate for rights
+Date:   2026-09-23 15:21:07 +0200
+
+    FM-023: the plan lives in the front matter — …
+
+    Session: a9                                  ← appended by the commit-msg hook from seat.session; never typed
+```
+
+```bash
+git log --format='%h %ae %(trailers:key=Session,valueonly)'      # 049a9ab principal@seat a9
+```
+
+### c. The registry — `work-tracker/sessions.md`, one row per session
+
+```markdown
+| Session | Seat | Convened by | Scope (one line) | Worktree | Started | Ended |
+|---|---|---|---|---|---|---|
+| d8 | principal | the Owner, 2026-09-23 07:28 | the product items: the negative control, the hands run sheet | worktrees/principal | 2026-09-23 07:28 | — |
+| a9 | principal | the Owner, 2026-09-23 12:21 | the day's findings into the tool; 0.17.5 | worktrees/principal-2 | 2026-09-23 12:21 | — |
+| a9/reviewer-1 | reviewer | session a9 | attack 363dbb7e | worktrees/reviewer-2 | 2026-09-23 12:36 | 2026-09-23 13:31 |
+| a9/implementer-1 | implementer | session a9 | build 0.17.5 | shoalmark-impl | 2026-09-23 13:10 | — |
+| b0 | principal | the Owner, 2026-09-22 16:06 | (no scope given) | msr-lager | 2026-09-22 16:06 | closed by the pass of 2026-09-24 — no commit since 09-22 19:36 |
+```
+
+- **A collision, as the registry shows it:** two open rows naming one worktree —
+
+```markdown
+| d8 | principal | the Owner, 07:28 | … | worktrees/principal | 07:28 | — |
+| a9 | principal | the Owner, 09:16 | … | worktrees/principal | 09:16 | — |      ← the gate: "worktrees/principal is open under d8 — one worktree per session"
+```
+
+- **A sub-agent** carries its parent's id and its own hand (`a9/reviewer-1`); *convened by* is the session, not a person —
+  the person is one row up.
+
+### d. A verdict commit under the independence rule
+
+```text
+commit 59d58b9e
+Author: Reviewer seat <reviewer@seat>
+    PD-400, FEAT-190: the Reviewer pass on 363dbb7e — NOT READY (RV-366 … RV-381)
+    Reviewed: 363dbb7e                           ← the tip judged; the branch's head at that moment
+    Session: a9/reviewer-1                       ← a sub-agent of a9 — the author's session
+```
+
+```text
+gate: verdict 59d58b9e on 363dbb7e — the reviewed range was authored under session a9; the verdict's session is a9/reviewer-1.
+      Recorded as: NOT INDEPENDENT (same session). The count on the board says so; the verdict itself stands.
+```
+
+An independent verdict differs in its session root (`k3/…` on a range authored under `a9`), and the strongest form —
+a seat key in its own container — is FM-007's line, a second field later, not this one's replacement.
+
+### e. What the board prints, and what the gate refuses
+
+```text
+sessions · 3 open — d8 principal (the product items) · a9 principal (the tool, 0.17.5) · a9/implementer-1 (build 0.17.5)
+reviews this week · 6 verdicts · independent 1 · same session 5
+```
+
+```text
+refused: commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row (--session open)
+refused: Session: q7 has no open row in work-tracker/sessions.md
+refused: worktrees/principal is open under session d8 — one worktree per session
+```
+
+### f. The plan's mark (FM-023) is this id
+
+```markdown
+plan: "A1 · implementer+reviewer@a9 · ≈15:40 · 15:52 | W1 · owner · 15:40–16:00 · — | B2 · principal@d8 · ≈12:30 · 12:12"
+```
+
 ## What would decide it
 
 - Over one week: how many seat commits could not be traced to a convening word without the registry (today: all).
@@ -91,4 +180,5 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Worked examples added on the Owner's ask** — the worktree setup, the commit with its trailer, the registry with a collision and a sub-agent row, a verdict under the independence rule, the board's and the gate's lines, the plan's mark. Illustrative; nothing built. |
 | 2026-09-23 | Filed on the Owner's question, written to be attacked; held against FM-005 (the person asked mid-flight), FM-007 (a signature proves the key, not the hand), FM-008 (an ask reaches the Owner only through the gate); FM-023 (the plan's `@session`, on its own branch) is the consumer of this id. Not built this week — the path's line 2. |
