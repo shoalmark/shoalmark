@@ -12,10 +12,10 @@ questions, puts them to you once a day, and every answer is your own signed comm
 
 ## Measured, not promised
 
-In one project that runs shoalmark:
+In one project — our own — that runs shoalmark:
 
 - **Before:** the last 200 pull requests were merged unread; none was reviewed.
-- **After, in just over a day:** 9 of 13 pull requests carried a Reviewer's file before they were opened.
+- **After, in the first 28 hours under the rule:** 9 of 13 pull requests carried a Reviewer's file before they were opened.
 
 What shoalmark prints for it, every day:
 
