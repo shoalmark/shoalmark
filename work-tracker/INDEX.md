@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-23 · 24 trackers (24 work).
+> Generated 2026-09-23 · 25 trackers (25 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -44,6 +44,7 @@
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | P1 | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | progress | 2026-09-23 |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | P3 | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | progress | 2026-09-23 |
 | [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | P3 | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | In Progress | progress | 2026-09-23 |
+| [FM-027](FM-027-the-next-free-id-is-claimed-on-the-server-not-guessed-on-a-branch.md) | — | `--new` takes the next id it can see on the branch it runs on; two branches that have not merged both get it — it happe… | Proposed | triage | — |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | — | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Proposed | triage | — |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
 | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | P2 | The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not… | Proposed | backlog | 2026-09-23 |
