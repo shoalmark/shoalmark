@@ -25,4 +25,4 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
-*None yet.*
+**2026-09-23 — the first pass** (Principal seat, on the Owner's intent and path of #13, the day 0.17.5 was tagged): 12 open trackers judged, all new filings. Kept 7 — P1 ranked #1 FM-011 (a vendor must refuse an incomplete or untagged source: the path's line 1), #3 FM-018 (the flow: E0 at the 09-24 sitting decides), #4 FM-005 (the shadow week, until 09-29); P2 #2 FM-007 (the Owner's touch key — his move), #5 FM-006 (the humans' page); P3 FM-001, FM-004. Fixed 4 whose status lagged their release: FM-008 (0.17.0/0.17.1) and FM-020, FM-021, FM-022 (0.17.5) are Shipped. Merged FM-016 into FM-018. Nothing parked, nothing closed on age. Worksheet: [`evidence/triage/triage-2026-09-23.md`](evidence/triage/triage-2026-09-23.md). Not in this pass: FM-023 and FM-024, on their own branches (#14, #15) — the next pass reads them.

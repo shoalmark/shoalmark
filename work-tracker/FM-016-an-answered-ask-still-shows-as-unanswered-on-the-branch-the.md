@@ -1,13 +1,16 @@
 ---
 id: FM-016
-status: Proposed
+status: Closed
 considered: FM-008, FM-012, FM-014, FM-005
 tags: bug
 next: wait
+triaged: 2026-09-23
 hook: "After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept and reject: the answer lives on `answer/<id>` and on the ask's branch until a merge brings it to main. Clicking again sends him to a second `--answer`, which is refused with advice to delete the branch that carries his answer."
 ---
 
 # FM-016 — An answered ask still shows as unanswered on the branch the Owner returns to
+
+Closed — merged into [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md), 2026-09-23
 
 ## What is true now
 
@@ -56,4 +59,5 @@ advises deleting the branch that carries the first.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Closed — merged into FM-018 by the first triage pass:** its whole open scope (the answered ask offered again on the branch the Owner returns to) is FM-018's part (b); the scope moved there. |
 | 2026-09-23 | Filed from the Owner's report; the second click reproduced on 0.17.3 in a scratch repository. Not built — the Owner rules. |

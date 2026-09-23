@@ -1,10 +1,11 @@
 ---
 id: FM-022
 kind-of-problem: complicated
-status: In Progress
+status: Shipped
 considered: FM-005, FM-006, FM-009, FM-010, FM-018
 tags: bug
 next: review
+triaged: 2026-09-23
 hook: "A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something came before it."
 ---
 
@@ -12,8 +13,7 @@ hook: "A person finds the three intent lines hard to start: there is no beginnin
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; open for review, not
-merged.** The Owner named it the same day, while writing his own lines. At 0.17.4, `--init` (`TRIAGE_HOME` in
+**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; **Shipped 2026-09-23: merged as #16 and tagged `v0.17.5` (`59eebeb`), reviewed on the branch (R1–R12 closed, the review file under `evidence/reviews/`).**** The Owner named it the same day, while writing his own lines. At 0.17.4, `--init` (`TRIAGE_HOME` in
 `shoalmark.py`) scaffolded the intent as three bare lines, `- **for** —`, `- **so that** —`, `- **never** —`, under
 one italic note about who owns them. Nothing said what each line is for, and there was no example.
 
@@ -55,10 +55,15 @@ no way in gets left empty, and while it is empty `--triage` has nothing to judge
 - `README.md` says the same where the intent is described.
 - A scaffold check pins the lead-in (it names the whole repository) and the three example lines, and shows that the examples alone are not an intent.
 
+## Open items
+
+- **R13 (P3, the 0.17.5 review):** the intent reader compares the scaffold's text with whitespace ignored, so a scaffold reformatted by a tool (`*…*` → `_…_`, hard wraps, a smart apostrophe, `*` for `-`) is read as the Owner's intent — 117–461 characters of the library example; nothing of his is lost. Fold markup and punctuation before comparing, and give the path the same treatment. Not a defect of what he wrote today; 0.17.7 or later.
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Shipped in 0.17.5** — #16 merged and tagged `v0.17.5` (`59eebeb`); status set by the first triage pass (`fix`). |
 | 2026-09-23 | R11: the reader leaves out only the scaffold's exact text (`INTENT_SCAFFOLD`, English and German, shared with the scaffold), never a line for its italics, bold or length; the R5 reader dropped an Owner line with no plain word of three letters. One check, five cases. |
 | 2026-09-23 | R10: `examples/de/TRIAGE.md` gets the lead-in and the whole-product example in German, in the form a pass drops; one check reads it through `triage_home()`. |
 | 2026-09-23 | R5: the intent is what the Owner wrote — the lead-in, the examples left in italics and empty lines are not read; the scaffold check now asserts a fresh scaffold has no intent and no path, and one written line is exactly that line. |

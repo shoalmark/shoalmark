@@ -3,6 +3,8 @@ id: FM-001
 status: In Progress
 considered: none
 next: build
+triaged: 2026-09-23
+tier: P3
 hook: "fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs its own 1,900-line copy. Two tools under one idea diverge with every fix. Port it onto this core, with its release axis kept as an extension around the core, and delete the copy."
 ---
 

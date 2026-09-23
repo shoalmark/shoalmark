@@ -1,16 +1,19 @@
 ---
 id: FM-008
-status: In Progress
+status: Shipped
 considered: FM-005, FM-007
 tags: process
 next: build
 kind-of-problem: complicated
+triaged: 2026-09-23
 hook: "The ask/answer flow holds only while every agent has read AGENTS.md and chooses to obey it. Nothing in the tool refuses an ask with no recommendation, a paragraph with three questions in it, the same question filed twice, or an ask sent to the Owner by a seat that has no business sending one. The Owner, on the shadow week's first day: *without enforcing this kind of rules my gut feeling tells me that this process will break as soon as we let other CLI agents into the system.*"
 ---
 
 # FM-008 — An ask reaches the Owner only through the gate
 
 ## What is true now
+
+**Shipped — 0.17.0 (#5) built the gate this tracker asks for and 0.17.1 (#7) reads the seat from the commit's author; the first triage pass of 2026-09-23 corrected the status (`fix`).**
 
 **The rules exist; only the prose holds them.** FM-005 built the queue and FM-007 built the answer — the dialog, the
 options, the one command. Both assume the ask itself is well formed: one question, with a recommendation, asked once,
@@ -54,5 +57,6 @@ fail once by mutation, recorded in `evidence/FM-008/gate.md`; `--check` on this 
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Status corrected to Shipped by the first triage pass** — the gate shipped in 0.17.0 (#5, `a522e0f`) and the author-read seat in 0.17.1 (#7); the tracker still said the prose held the rules. |
 | 2026-09-22 | Filed from the Owner's word on the shadow week's first day; pre-registered in `evidence/FM-008/gate.md` before any code. |
 | 2026-09-22 | Built and shipped as 0.17.0: the seven rules, `[seats]`/`[rights]`, `--clear-ask`, the bottleneck line, two `--answer` refusals. FM-005's and FM-007's asks rewritten to pass. |

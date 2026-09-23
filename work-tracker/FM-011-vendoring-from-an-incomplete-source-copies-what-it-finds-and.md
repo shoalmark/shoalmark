@@ -5,6 +5,9 @@ considered: FM-009
 tags: bug
 next: build
 kind-of-problem: obvious
+triaged: 2026-09-23
+rank: 1
+tier: P1
 hook: "`vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete source copies what it finds, pins only that, and reports success. From a lone `shoalmark.py` it writes one file and a one-entry PIN, leaves the consumer's old `VERSION` on disk, and the integrity check then covers a single file while appearing to cover the copy."
 ---
 

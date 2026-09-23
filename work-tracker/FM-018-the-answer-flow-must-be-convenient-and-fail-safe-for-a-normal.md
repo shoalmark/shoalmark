@@ -4,6 +4,9 @@ status: Proposed
 considered: FM-012, FM-013, FM-016, FM-017, FM-007, FM-005
 tags: bug
 next: wait
+triaged: 2026-09-23
+rank: 3
+tier: P1
 hook: "Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on the wrong branch, leftovers from a failed run, a silent minute, a board that offers an answered ask again and a dialog ending in abort. The Owner: *\"Normal\" users won't like this — we have to make this convenient and fail-safe.* The requirement: he answers from wherever he stands, and his checkout is never switched, dirtied or left behind."
 ---
 
@@ -55,9 +58,43 @@ routed around the gate is the one thing the gate exists to prevent.
   behind, whether the answer succeeds or fails.
 - The seven points above are each either gone or named here with why they remain.
 
+## Merged in from FM-016 — the answered ask offered again (2026-09-23, the first triage pass)
+
+*FM-016's state when merged:*
+
+**Filed 2026-09-23; nothing is built, and no way forward is chosen — the Owner rules later.**
+
+**What he sees.** `--answer <id>` cuts `answer/<id>` from the branch that carries the ask, commits the answer there and
+pushes it. The Owner then goes back to his main branch. The board there is built from main's trackers, where the ask
+has no answer yet — so `<id>` is still in *waiting for you*, with accept and reject, until a merge brings the answer
+in. The Owner, in his words: *"A user would now be confused because <id> shows as unanswered while they just have
+answered in the last step — this is something we have to figure out later."*
+
+**What a second click does, reproduced here on 0.17.3** in a scratch repository — answer from the ask's branch, switch
+to `main`, answer again:
+
+```
+--answer: `answer/ap-001` exists and its tip does not carry this ask — it was cut from another branch or the ask has
+changed since. Delete it (`git branch -D answer/ap-001`) or answer from the branch that carries the ask
+```
+
+The refusal is right to stop, and wrong in what it says: the branch **does** carry the ask, and the advice is to delete
+the branch holding the answer he just gave. One line on the way: the tip test compares the tip's raw `ask:` value,
+quotes included, with the tracker's unquoted one, so a quoted ask never reads as carried — every existing
+`answer/<id>` is refused this way, whichever branch it was cut from.
+
+**Candidates, none chosen:**
+
+- **(a)** the board reads the `answer/*` branches, local and remote-tracking, and in place of the buttons shows
+  *answered on `answer/<id>`, not merged yet*;
+- **(b)** `--answer` refuses when `answer/<id>` already exists and says what it is — an answer given and not yet
+  merged — instead of advising its deletion;
+- **(c)** the answer lands where the board is read.
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **FM-016 merged in by the first triage pass** — its open scope (part b: the answered ask still offered on the branch the Owner returns to) lives here now; E0 at the 09-24 sitting decides whether any of the flow is built. |
 | 2026-09-23 | FM-013's three unproven points joined the open items (R9). |
 | 2026-09-23 | Filed from the Owner's morning and his words; FM-012, FM-013, FM-016 and FM-017 named as its parts. The design is his to rule. |

@@ -1,10 +1,11 @@
 ---
 id: FM-021
 kind-of-problem: obvious
-status: In Progress
+status: Shipped
 considered: FM-002, FM-005, FM-006, FM-009
 tags: bug
 next: review
+triaged: 2026-09-23
 hook: "The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that the section stays empty until a first triage pass has run. The Owner read it as a defect."
 ---
 
@@ -12,8 +13,7 @@ hook: "The board says 13 trackers are in progress, and its progress section besi
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; open for review, not
-merged.** The Principal chose the fix: a line that says why the section is empty. The rule itself stays. While no
+**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; **Shipped 2026-09-23: merged as #16 and tagged `v0.17.5` (`59eebeb`), reviewed on the branch (R1–R12 closed, the review file under `evidence/reviews/`).**** The Principal chose the fix: a line that says why the section is empty. The rule itself stays. While no
 tracker carries `triaged:` and `TRIAGE.md` records no pass (`PASSED` empty: the newest `triaged:`, else the date of
 the newest pass in `TRIAGE.md`), the board's
 `progress` line reads *empty until a first triage pass has run — --triage* (German: *leer, bis eine erste Sichtung
@@ -57,6 +57,7 @@ A section that is empty by design has to say so. Otherwise it reads as a defect 
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Shipped in 0.17.5** — #16 merged and tagged `v0.17.5` (`59eebeb`); status set by the first triage pass (`fix`). |
 | 2026-09-23 | R4: one predicate, `PASSED`, for both lines that ask whether a pass has run — `progress` and `triaged`; the narrow state (a pass in `TRIAGE.md`, no `triaged:` left) now reads *judged <date>* on the triaged line, not *no triage pass has run yet*. One Chrome check; 3 lines, so not filed as FM-023. |
 | 2026-09-23 | Correction (R3) to the *Built* row below, which says all four checks were shown to fail on 0.17.4: two fail on 0.17.4 — the *no pass* Chrome check and the `test_core.py` string check; *one tracker carries `triaged:`* and *`TRIAGE.md` records a pass* are controls and pass on both. |
 | 2026-09-23 | Built: the empty `progress` line says why while no pass has run, in English and German; three Chrome checks and a string check, shown to fail on 0.17.4. |
