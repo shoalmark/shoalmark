@@ -23,7 +23,7 @@
 1. The daily sitting runs on a tagged release with a signed answer and no failed run.
 2. What a sitting finds is filed that day and fixed when it is small and ready; the rest is tracked.
 3. A pull request without an independent review's evidence file cannot merge - checked, not asked.
-4. The owner shall be involved less when trust in the process has been build, but the trust must come from evidence and be has to be earned first.
+4. The owner shall be involved less when trust in the process has been built, but the trust must come from evidence and has to be earned first.
 
 *Nothing is ranked yet — no triage pass has run.*
 
