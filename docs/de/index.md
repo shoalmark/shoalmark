@@ -2,12 +2,12 @@
 
 *Eine Markierung auf der Seekarte, die die Flotte vor dem Auflaufen bewahrt.*
 
-## Hol dir einen leistungsstärkeren menschlichen Owner.
+## Hol dir einen leistungsstärkeren menschlichen Eigner.
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt ihm vor, was nur er entscheiden
 kann – ein Satz pro Frage, einmal am Tag –, und macht aus seiner Antwort einen einzigen Befehl.
 
-**An den Owner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
+**An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen, legt sie Ihnen einmal am Tag vor, und jede Antwort ist Ihr eigener, signierter Commit.
 
 ## Gemessen, nicht versprochen
@@ -19,7 +19,7 @@ In einem Projekt, das shoalmark nutzt:
 
 Was shoalmark dazu ausgibt, jeden Tag:
 
-- **Ein Befehl, ein signierter Commit** pro Frage an den Owner.
+- **Ein Befehl, ein signierter Commit** pro Frage an den Eigner.
 - **Die Tafel meldet zu jedem Review**, ob es aus einer anderen Session kam als der Code, den es prüfte. Das ist eine
   Meldung, kein Beweis: git kann es noch nicht belegen.
 
@@ -55,6 +55,6 @@ Apache-2.0 oder MIT.
 
 | | |
 |---|---|
-| **Sie, der Owner** | [In zehn Minuten eingerichtet](setup.md) · [Ihre Antwort ist Ihr Commit](signing.md) · [Der Standup](standup.md) |
+| **Sie, der Eigner** | [In zehn Minuten eingerichtet](setup.md) · [Ihre Antwort ist Ihr Commit](signing.md) · [Der Standup](standup.md) |
 | **Die Agenten Ihres Projekts** | die [Notiz zum Ausprobieren](https://github.com/holgo99/shoalmark/blob/main/ADOPT.de.md): eine Messung, keine Anweisung. Am Ende berichten sie Ihnen, und Sie entscheiden |
 | **Ein Agent bei der Arbeit** | der Vertrag ist `tools/shoalmark/README.md` in Ihrem Repository, [hier gerendert](../agents/README.md), auf Englisch – so lesen ihn die Agenten. `llms.txt` liegt im Stammverzeichnis dieser Website |

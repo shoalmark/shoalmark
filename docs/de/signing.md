@@ -1,6 +1,6 @@
 # Ihre Antwort ist Ihr Commit — eine Signatur einrichten
 
-*Für den Owner. Zehn Minuten, einmal. Jeder Schritt hier ist das, was die Testsuite des Werkzeugs selbst tut.*
+*Für den Eigner. Zehn Minuten, einmal. Jeder Schritt hier ist das, was die Testsuite des Werkzeugs selbst tut.*
 
 Wenn Sie auf der Tafel eine Frage beantworten, landen drei Zeilen im Arbeitspaket — `answer:`, `answered:`,
 `answered-by:` — und **der Commit, der sie trägt, ist der Beleg**. Das Werkzeug liest aus der Versionsverwaltung, wer

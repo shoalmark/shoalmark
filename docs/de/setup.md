@@ -52,9 +52,9 @@ implementer = "implementer@seat"
 reviewer    = "reviewer@seat"
 ```
 
-Unter Subversion ist der Owner Ihr Server-Konto, ohne `signed`: Der Server kennt Sie schon. Jeder Sitz committet unter
+Unter Subversion steht für den Eigner (`owner`) Ihr Server-Konto, ohne `signed`: Der Server kennt Sie schon. Jeder Sitz committet unter
 seiner eigenen Identität, einmal in seinem eigenen Worktree eingestellt
-(`git config --worktree user.email implementer@seat`), und hat nur seine eigenen Rechte: Der Owner antwortet, der
+(`git config --worktree user.email implementer@seat`), und hat nur seine eigenen Rechte: Der Eigner (`owner`) antwortet, der
 Principal fragt, schließt und sichtet, der Reviewer sichtet, der Implementer baut. Das ältere
 `answerers = ["ihrname signed"]` gilt weiter, wo es kein `[seats]` gibt.
 
