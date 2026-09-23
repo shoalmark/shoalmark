@@ -1257,8 +1257,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check("5 · signed by the key the repository trusts for that seat, the same ask passes — one verifier, the answer's", code == 0 and "does not verify" not in err)
     (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo99"]\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\n', encoding="utf-8")
     code, _, err = run(root)
-    check("5 · `answerers` still works beside `[seats]` — a deprecation line, never a refusal: one release to move it",
-          code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    check("5 · `answerers` beside `[seats]` is a note, never a refusal — and since `[seats]` alone decides there, the note says it is not read for answers (FM-015), never that it still works",
+          code == 0 and "`answerers` is the old name for the `answer` right" in err and "here it is not read for answers" in err and "still works" not in err)
     # FM-010: the note was guarded on `answerers` AND `[seats]`, so the only repositories told were the ones already
     # migrating. A repository wholly on the old key — the entire population the deprecation is for — heard nothing,
     # while the note promised removal in the next release. `answerers` must go ABOVE any table header: a bare key is
@@ -1276,6 +1276,42 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root)
     check("5 · a repository on `[seats]` with no `answerers` is never warned about a key it does not use",
           code == 0 and "is the old name for the `answer` right" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-015: `[seats]` must not silently drop a signature `answerers` asked for ---------------------------------------
+# From 0.17.1 `[seats]` alone says who may answer, so `answerers = ["alice signed"]` beside `[seats] owner = "alice"`
+# accepted Alice's unsigned answer, `--answer` stopped signing, and the note said `answerers` "still works". `answerers`
+# goes ABOVE every table header, or it is read as `[tags].answerers` and the case passes for the wrong reason.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "alice"), ("user.email", "alice@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    cfg_ = lambda answerers, seats: (root / "shoalmark.toml").write_text('name = "a"\n' + (f"answerers = {answerers}\n" if answerers else "")
+                                                                      + '[kinds]\nAP = "Work"\n' + (f'[seats]\n{seats}\nprincipal = "p@seat"\n' if seats else ""), encoding="utf-8")
+    cfg_("", "")
+    tracker(root, "AP-700", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=p <p@seat>")     # asked by the principal, which signs nothing
+    cfg_('["alice signed"]', 'owner = "alice signed"'); code_a, _, err_a = run(root, "--check")
+    check("FM-015 · `answerers` signed and the seat that answers for it signed — clean, and told `answerers` is not read here and can go",
+          code_a == 0 and "answerers" in err_a and "here it is not read for answers" in err_a and "is not signed" not in err_a)
+    cfg_('["alice signed"]', 'owner = "alice"'); code_b, _, err_b = run(root, "--check")
+    check("FM-015 · `answerers` signed and the seat that answers for it NOT signed — REFUSED, naming both lines and the two ways out",
+          code_b == fm.EXIT_LINT and '`answerers = ["alice signed"]` asks for a signed answer' in err_b and '`[seats] owner = "alice"`' in err_b
+          and 'Add `signed` to the seat (`owner = "alice signed"`), or remove `answerers`' in err_b)
+    code_c, _, err_c = run(root, "--answer", "AP-700", "accept")
+    check("FM-015 · …and `--answer` refuses the same way before it touches anything — it would have committed unsigned",
+          code_c == fm.EXIT_LINT and '`[seats] owner = "alice"`' in err_c and "answering AP-700 — 2/4" not in err_c
+          and subprocess.run(["git", "-C", str(root), "branch", "--list", "answer/ap-700"], capture_output=True, text=True, env=_ENV).stdout.strip() == "")
+    cfg_('["alice signed"]', 'owner = "alice@x"'); code_d, _, err_d = run(root, "--check")
+    check("FM-015 · where no seat is spelled like the `answerers` entry — a name there, an email here — the seats holding `answer` stand in for it, and an unsigned one is refused",
+          code_d == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_d and "no seat is spelled `alice`" in err_d)
+    cfg_('["alice signed"]', ""); code_e, _, err_e = run(root, "--check")
+    check("FM-015 · no `[seats]` — `answerers` is read, and the note is today's, with its removal anchored to 0.17.3",
+          code_e == 0 and "and still works" in err_e and "the release after 0.17.3" in err_e and "is not signed" not in err_e)
+    cfg_("", 'owner = "alice"'); code_f, _, err_f = run(root, "--check")
+    check("FM-015 · `[seats]` and no `answerers` — silent: no note, no refusal", code_f == 0 and "answerers" not in err_f)
     rm_git(root)
 fm.configure(HERE)
 

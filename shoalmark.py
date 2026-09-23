@@ -845,6 +845,9 @@ def answer_cmd(words, trackers):
     if vcs() != "git":
         print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
+    for p_ in answerers_problems():                           # a signature the configuration asks for and `[seats]` drops (FM-015)
+        print(f"--answer: {p_}", file=sys.stderr)
+        return EXIT_LINT
     # who may answer is asked in ONE place, `may_answer()`: with `[seats]`, the seats that hold `answer`, matched on
     # the identity git will actually write; with none, `answerers`, which always meant the author's name
     me, allowed = git_user(), may_answer()
@@ -2180,6 +2183,29 @@ def may_answer():
     return dict(ANSWERERS)
 
 
+def answerers_problems():
+    """A SIGNATURE `answerers` ASKS FOR AND `[seats]` DROPS (FM-015). With `[seats]`, `may_answer()` reads the seats
+    alone, so `answerers = ["alice signed"]` beside `[seats] owner = "alice"` stopped being enforced at 0.17.1: Alice's
+    unsigned answer counted, and `--answer` stopped signing. The seat that answers for an `answerers` identity is the one
+    `[seats]` spells the same way — a name or an email; where none does, the tool cannot tell which of the seats holding
+    `answer` is that person, so each of them stands in for it. One of those not `signed` is refused, naming both lines
+    and the two ways out."""
+    if not SEATS:
+        return []
+    out = []
+    answering = [s for s, (who, _m) in SEATS.items() if who and holds(s, "answer")]
+    for name, mode in ANSWERERS.items():
+        if mode != "signed":
+            continue
+        same = [s for s in answering if SEATS[s][0] == name]
+        for s in [s for s in (same or answering) if SEATS[s][1] != "signed"]:
+            out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and `[seats] {s} = "{SEATS[s][0]}"` — '
+                       + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
+                       + f' — is not signed. `[seats]` alone decides who may answer (from 0.17.1), so that answer would count unsigned. '
+                       f'Add `signed` to the seat (`{s} = "{SEATS[s][0]} signed"`), or remove `answerers`')
+    return out
+
+
 def no_seat(name, email, right, what):
     """The one refusal, worded once: who the version control system says made the change, the right it needed, and
     what the repository's seats are. It names the seat and the right — an agent told only *refused* tries again."""
@@ -2451,12 +2477,18 @@ def lint(trackers, committing=False):
     # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
     # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
     # the old key, which is the entire population the deprecation is for (FM-010).
-    if ANSWERERS:
+    if ANSWERERS and SEATS:
+        # with `[seats]` the key is NOT READ for answers (`may_answer`, from 0.17.1): telling such a repository it "still
+        # works" is what let a signature it asked for go unenforced without a word (FM-015)
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right, and here it is not read for answers — `[seats]` decides '
+              f'who may answer and whether the answer is signed. It can be removed', file=sys.stderr)
+    elif ANSWERERS:
         # The schedule is ANCHORED to 0.17.3, never phrased against "this release": this note prints unchanged in every
         # later release, and a floating "the clock starts here" would restart the countdown each time it was read.
         print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`. '
               f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
+    problems += answerers_problems()
     problems += rights_problems(trackers)
     by_ask = asks_by_key(trackers)
     for t in trackers:

@@ -1,9 +1,9 @@
 ---
 id: FM-015
-status: Proposed
+status: In Progress
 considered: FM-010, FM-007, FM-008
 tags: bug, security
-next: build
+next: review
 hook: "From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['alice signed']` and `[seats] owner = 'alice'` now accepts Alice's unsigned answer, `--answer` stops signing, and the deprecation note tells that repository `answerers` still works — it is not read there at all."
 ---
 
@@ -11,7 +11,20 @@ hook: "From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]
 
 ## What is true now
 
-**Filed 2026-09-23; nothing is built.** Found by a consumer's seat reading the tool before vendoring 0.17.3.
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** Where
+`[seats]` exists and an `answerers` entry is `signed`, the gate finds the seat that answers for that identity — the one
+`[seats]` spells the same way, a name or an email — and **refuses** when it is not `signed`, naming both lines and the
+two ways out (add `signed` to the seat, or remove `answerers`). Where no seat is spelled like the entry — `answerers`
+held git author *names*, `[seats]` usually holds emails — the tool cannot tell which seat holding `answer` is that
+person, so each of them stands in for it; the refusal says so. `--answer` refuses the same way before it touches
+anything. The note now depends on the repository: with `[seats]`, *`answerers` … here it is not read for answers —
+`[seats]` decides … It can be removed*; without, today's words and the removal anchored to 0.17.3. Six checks: seats
+signed + answerers signed → clean; seats unsigned → refused, and `--answer` refused with no branch cut; a seat spelled by
+email beside an entry spelled by name → refused; no seats → today's note; seats and no answerers → silent. One existing
+check changed its premise: *`answerers` still works beside `[seats]`* is now *is not read for answers there*. **What is
+left:** review, merge, the tag.
+
+Found by a consumer's seat reading the tool before vendoring 0.17.3.
 
 **0.17.1 made `[seats]` the one list.** `may_answer()` returns the seats that hold `answer` wherever `[seats]` exists,
 and `answerers` only where it does not — the fix for a repository on `[seats]` that could not answer at all. What it
@@ -48,4 +61,5 @@ migration FM-010's note asks for — exactly the ones reading that note.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Built: the refusal where a signed `answerers` entry meets an unsigned answering seat, in the gate and in `--answer`; the note says what is read. Six checks. |
 | 2026-09-23 | Filed from a consumer seat's reading of 0.17.3 before vendoring it. |
