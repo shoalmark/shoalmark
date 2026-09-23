@@ -187,7 +187,10 @@ Who is at the keyboard, and what that seat may change. **Four rights**, each a f
 a diff: `answer` (the three answer lines) · `ask` (`next: owner`, and clearing an answered ask with its record) · `close` (a terminal status) · `triage`
 (`considered:`, `kind-of-problem:`, tier, rank); anything else is open to every seat. Four names carry theirs built in —
 **owner** all four · **principal** ask, close, triage · **reviewer** triage · **implementer** none — any other name says
-so in `[rights]`, in the same diff as anything it would allow. Absent `[seats]`, nothing of this is enforced.
+so in `[rights]`, in the same diff as anything it would allow. Absent `[seats]`, nothing of this is enforced. A **merge**
+is judged by what it changes itself — the files where it differs from every parent — under the merger, and every commit
+it brings against its own parent, under that commit's own author and signature: a clean merge adds nothing, and never
+launders a commit that was made without the hook.
 
 ```toml
 [seats]                                 # a name you choose -> the identity version control reports

@@ -1568,6 +1568,104 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-019: a merge is judged by its own change — never by everything its branch carried ------------------------------
+# On a clean tree the gate read HEAD against HEAD~1. For a merge that is the whole pull request, every answer and close
+# in it attributed to whoever merged — the forge's merge identity, no seat — so `--check` on a trunk went red on the first
+# merge that carried one. A merge's own change is what differs from EVERY parent: a conflict resolved, an edit in the merge.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "m"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    ask19_ = lambda n_, q_: tracker(root, f"AP-{n_}", extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
+    ask19_(800, "Shall the launcher ship first?"); ask19_(811, "Shall the importer ship first?")
+    tracker(root, "AP-801", title="to close"); tracker(root, "AP-802", title="to judge")
+    tracker(root, "AP-810", body="## What is true now\n\n**One thing is left.**\n\nleft: the first thing\n\n## Done when\n\nit is.\n", title="both sides edit")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    edit19_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
+    answer19_ = lambda n_: edit19_(n_, 'ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: {new_}\nanswered-by: holgo\n')
+    merged19_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
+                                          env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+    # (a) a branch carrying an answer (the owner's), a close and a triage verdict (the principal's) — each by the seat that may
+    git(root, "switch", "-q", "-c", "pr/a")
+    answer19_(800); git(root, "commit", "-qam", "AP-800: accepted", "--author=holgo <h@x>")
+    edit19_(801, "status: In Progress", "status: Shipped"); git(root, "commit", "-qam", "AP-801 shipped", "--author=p <principal@seat>")
+    edit19_(802, "considered: none\n", "considered: none\ntier: P1\n"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-802 judged", "--author=p <principal@seat>")
+    git(root, "switch", "-q", trunk_); (root / "notes.txt").write_text("trunk moved on\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+    mg_ = merged19_("merge", "--no-ff", "-q", "pr/a", "-m", "Merge pull request from pr/a")
+    code, _, err = run(root, "--check")
+    check("FM-019 · (a) a clean merge by the forge's identity, no seat, of a branch carrying an answer, a close and a triage verdict — no rights problem: it made none of them",
+          mg_.returncode == 0 and code == 0 and "not a seat" not in err and "this change is a" not in err)
+    # (b) a conflict the merger resolves, and in resolving it closes the tracker: THAT is the merge's own, and its seat's
+    git(root, "switch", "-q", "-c", "pr/b"); answer19_(811); git(root, "commit", "-qam", "AP-811: accepted", "--author=holgo <h@x>")
+    edit19_(810, "left: the first thing", "left: the branch's thing"); git(root, "commit", "-qam", "AP-810 on the branch", "--author=p <principal@seat>")
+    git(root, "switch", "-q", trunk_); edit19_(810, "left: the first thing", "left: the trunk's thing"); git(root, "commit", "-qam", "AP-810 on the trunk", "--author=p <principal@seat>")
+    conflict_ = merged19_("merge", "--no-ff", "-q", "pr/b", "-m", "Merge pull request from pr/b")
+    p810_ = next((root / "docs/work-tracker").glob("AP-810-*.md"))
+    p810_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "left: both things\n", p810_.read_text(), flags=re.S).replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+    git(root, "config", "user.email", "implementer@seat"); git(root, "add", "-A"); run(root); git(root, "add", "-A")
+    code_pre, _, err_pre = run(root, "--print-written")
+    check("FM-019 · (b) the merge being committed: a conflict resolution that closes a tracker is the merger's `close`, judged under the seat at the keyboard — and the answer the branch brought in is not",
+          conflict_.returncode != 0 and code_pre == fm.EXIT_LINT and "AP-810: this change is a `close`" in err_pre and "which does not hold `close`" in err_pre and "AP-811: this change" not in err_pre)
+    git(root, "config", "user.email", "principal@seat"); run(root); git(root, "add", "-A")        # the INDEX.md the hook would stage, without the refusal's banner
+    git(root, "commit", "-q", "--no-edit", "--author=impl <implementer@seat>"); code, _, err = run(root, "--check")
+    check("FM-019 · (b) …and committed, `--check` reads the merge the same way: its own close, the implementer's, refused — nothing the branch carried",
+          code == fm.EXIT_LINT and "AP-810: this change is a `close`" in err and "`implementer@seat` is the seat `implementer`" in err and "AP-811: this change" not in err and "AP-811: in `" not in err)
+    git(root, "commit", "-q", "--amend", "--no-edit", "--author=p <principal@seat>"); code, _, err = run(root, "--check")
+    check("FM-019 · (b) the same resolution merged by the principal, which holds `close`, passes", code == 0 and "this change is a" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-019: …and a merge does not launder what it brings: every commit it brings is read, under its own author --------
+# A commit made without the hook — `--no-verify`, a clone with none installed, the forge's editor — was never judged. The
+# merge's own change is the merger's; each commit it brings is judged against its own parent, under its own signature.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "l"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x signed"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in range(920, 940):
+        tracker(root, f"AP-{n_}", title="worked on")
+    tracker(root, "AP-900", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
+    tracker(root, "AP-901", title="to close")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    sha_ = lambda rev="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev], capture_output=True, text=True, env=_ENV).stdout.strip()
+    move_ = lambda text: ((root / "notes.txt").write_text(text, encoding="utf-8"), git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>"))
+    # the cost: a merge that brings twenty commits, each working on a tracker — read only because HEAD is a merge
+    git(root, "switch", "-q", "-c", "pr/twenty")
+    for n_ in range(920, 940):
+        p_ = next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")); p_.write_text(p_.read_text() + f"\nWorked on in commit {n_}.\n", encoding="utf-8")
+        git(root, "commit", "-qam", f"AP-{n_}: worked on", "--author=i <implementer@seat>")
+    git(root, "switch", "-q", trunk_); move_("trunk moved\n"); git(root, "merge", "-q", "--no-ff", "pr/twenty", "-m", "Merge twenty")
+    import time as _time
+    t0_ = _time.perf_counter(); code, _, err = run(root, "--check"); took_ = _time.perf_counter() - t0_
+    check(f"FM-019 · a merge that brings twenty commits is read commit by commit — `--check` passed in {took_:.2f} s", code == 0 and "this change is a" not in err)
+    # (f) a close made by a seat that holds no `close`, without the hook, brought in by the principal's merge — which holds it
+    git(root, "switch", "-q", "-c", "pr/f")
+    p_ = next((root / "docs/work-tracker").glob("AP-901-*.md")); p_.write_text(p_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-901 shipped, no hook", "--author=i <implementer@seat>"); f_ = sha_()
+    git(root, "switch", "-q", trunk_); move_("trunk moved again\n"); git(root, "merge", "-q", "--no-ff", "pr/f", "-m", "Merge pr/f")
+    code, _, err = run(root, "--check")
+    check("FM-019 · (f) a merge brings a close made by a seat without `close` — refused, naming THAT commit and its seat, not the merge that brought it",
+          code == fm.EXIT_LINT and f"AP-901: in `{f_[:10]}` (implementer@seat), which the merge brings" in err and "which does not hold `close`" in err and sha_()[:10] not in err)
+    # (e) an unsigned answer whose author is the signed owner's identity — a string anyone can type — brought in by a merge
+    git(root, "switch", "-q", "-c", "pr/e")
+    p_ = next((root / "docs/work-tracker").glob("AP-900-*.md"))
+    p_.write_text(p_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: {new_}\nanswered-by: holgo\n'), encoding="utf-8")
+    git(root, "commit", "-qam", "AP-900: accepted, unsigned", "--author=holgo <h@x>"); e_ = sha_()
+    git(root, "switch", "-q", trunk_); move_("and again\n"); git(root, "merge", "-q", "--no-ff", "pr/e", "-m", "Merge pr/e")
+    code, _, err = run(root, "--check")
+    check("FM-019 · (e) a merge brings an UNSIGNED answer under the signed owner's identity — refused, and the refusal names that commit, not the merge",
+          code == fm.EXIT_LINT and f"the commit `{e_[:10]}` making a `answer` change does not verify as the seat `owner`" in err and sha_()[:10] not in err)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------
 _TOOL = [sys.executable, str(HERE / "shoalmark.py")]
 with tempfile.TemporaryDirectory() as tmp:

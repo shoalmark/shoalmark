@@ -47,6 +47,15 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **The deprecation note says what is read.** With `[seats]`: `answerers` *is not read for answers here — `[seats]`
   decides … It can be removed.* Without `[seats]`: unchanged, and `answerers` is still removed no sooner than the release
   after 0.17.3.
+- **A merge commit is no longer the merger's.** On a clean tree the gate judged HEAD against HEAD~1 — for a merge,
+  everything the pull request carried, every answer and close in it attributed to whoever merged. The forge's merge
+  identity is no seat and signs with its own key, so `--check` on a trunk went red on every merge that carried a status
+  change; shoalmark's own `main` was red this way at 0.17.3. Now a merge is judged by its **own** change — the tracker
+  files where it differs from every parent, under the merger — and **each commit it brings** against its own parent,
+  under its own author and signature, so a commit made with `--no-verify` or in the forge's editor is still read, and a
+  refusal names that commit. The same rule in the pre-commit run of a merge, and when asking whether an answer a merge
+  brings in is committed. The brought commits are read only when HEAD is a merge — one `git log`; a merge bringing 20
+  commits checks in about 1.6 s. *Merging with a merge commit is what keeps the Owner's signed answers: keep doing it.*
 - **Known, not in this release:** an ask the Owner has answered is still offered on the branch he returns to, until the
   merge brings the answer there — and answering it again is refused with advice to delete the branch that carries the
   first answer. Don't. Filed; the way forward is the Owner's to rule, with the rest of the answer flow's shape.

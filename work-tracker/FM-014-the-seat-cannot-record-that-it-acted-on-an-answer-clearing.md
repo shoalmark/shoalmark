@@ -41,9 +41,10 @@ the Owner could clear his own answers, which is the one thing the exchange was d
 *answered, not yet acted on*, whatever was done about it, and the Owner's view of what his answers became is wrong in
 the direction that costs him a sitting.
 
-**Found on the way, not in this tracker's scope:** on a clean tree `--check` judges HEAD against its first parent, so a
-merge commit is read as the merger's own change — `--check` on `main` at 0.17.3 is red, refusing FM-007's answer as an
-`answer` made by the forge's merge identity, which is no seat.
+**Found on the way, not in this tracker's scope:** on a clean tree `--check` judged HEAD against its first parent, so a
+merge commit was read as the merger's own change — `--check` on `main` at 0.17.3 is red, refusing FM-007's answer as an
+`answer` made by the forge's merge identity. Filed and built as
+[FM-019](FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md).
 
 ## Why
 

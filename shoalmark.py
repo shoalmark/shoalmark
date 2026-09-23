@@ -2111,12 +2111,15 @@ def line_author(path, needle):
         # too. `-G` runs the regex over each changed line with its `+`/`-` stripped, so `^` is the line start and only a
         # commit that changed the FRONT-MATTER line matches. A commit that rewrote the line's text matches as well,
         # which is right: the setter is whoever wrote the line the file carries now.
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        # during a merge the line may be committed on the side coming in: its history is read too, and "is it committed"
+        # asks every parent, not HEAD alone — or an answer a merge brings reads as never committed (FM-019)
+        tips = ["HEAD", *merge_heads()]
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), *tips, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode == 0 and log.stdout.strip():
             commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
             dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
-            head = lambda: subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
-            if not (dirty and not any(l.startswith(needle) for l in head().splitlines())):
+            at = lambda rev: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
+            if not (dirty and not any(l.startswith(needle) for rev in tips for l in at(rev).splitlines())):
                 out = (name, email, "git", commit)
     _LINE_AUTHOR[(rel, needle)] = out
     return out
@@ -2290,21 +2293,61 @@ def transitions(before, after, new_file=False):
     return got
 
 
-def change_under_review():
-    """WHAT THIS RUN IS JUDGING, once: (base revision, the tracker files it touches, author name, author email,
-    commit). The commit being made — staged, or simply not committed yet — read against HEAD; on a clean tree, the
-    commit at HEAD read against its parent. Nothing else needs a version-control call."""
+def merge_heads():
+    """The other parents of a merge being committed right now — `MERGE_HEAD`, one line per head — or none."""
+    out = subprocess.run(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    f = pathlib.Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else None
+    f = f if f is None or f.is_absolute() else ROOT / f
+    return f.read_text(encoding="utf-8").split() if f is not None and f.is_file() else []
+
+
+def changes_under_review():
+    """WHAT THIS RUN IS JUDGING, once — a list of changes, each (the revisions it is read against, the tracker files it
+    touches, author name, author email, the commit or "" when it is not made yet, the revision that holds its result or
+    None for the working tree, a label that names it). The commit being made — staged, or simply not committed yet —
+    read against HEAD; on a clean tree, the commit at HEAD read against its parent.
+
+    A MERGE (FM-019) is two kinds of change, and neither is the merger's alone:
+    1. EACH COMMIT IT BRINGS — every non-merge commit reachable from it and not from its first parent — against its own
+       parent, under its own author and its own signature. A commit made without the hook (`--no-verify`, a clone with no
+       hook installed, the forge's editor) was never judged; a merge must not launder it.
+    2. ITS OWN CHANGE — the tracker files where the result differs from EVERY parent (a conflict resolved, an edit made in
+       the merge), judged under the merger. A clean merge adds nothing of its own.
+    Read against its first parent alone, a merge was everything its branch carried and all of it the merger's: `--check`
+    on a trunk went red on the first pull request carrying an answer or a close, the forge's merge identity being no
+    seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
+    merge brings are read only when there is a merge: one `git log` for all of them."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if COMMITTING:
-        return ("HEAD", staged_now(), *pending_author(), "")
-    dirty = git("diff", "--name-only", "--relative", "HEAD")
-    if dirty.returncode == 0 and dirty.stdout.strip():
-        return ("HEAD", set(dirty.stdout.split("\n")), *pending_author(), "")
-    changed = git("diff", "--name-only", "--relative", "HEAD~1", "HEAD")
-    if changed.returncode != 0:
-        return (None, set(), "", "", "")                 # a root commit has no parent to compare with
-    who = git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n")
-    return ("HEAD~1", set(changed.stdout.split("\n")), *(who + ["", "", ""])[:3])
+    names = lambda r: set(r.stdout.split("\n")) - {""} if r.returncode == 0 else set()
+
+    def brought(tips, first):
+        """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
+        if not tips:
+            return []
+        out = []
+        log = git("log", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x00%H%x00%an%x00%ae", *tips, "--not", first)
+        records = log.stdout.split("\x00")[1:]          # hash · name · email, then the files --name-only lists under it
+        for i in range(0, len(records) - 2, 3):
+            c, an, rest = records[i], records[i + 1], records[i + 2]
+            ae, _, files = rest.partition("\n")
+            out.append(([f"{c}^1"], set(files.split("\n")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+        return out
+
+    heads = merge_heads()
+    if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
+        files = set(staged_now()) if COMMITTING else names(git("diff", "--name-only", "--relative", "HEAD"))
+        for h in heads:
+            files &= names(git("diff", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
+        return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
+    parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
+    if not parents:
+        return []                                        # a root commit has no parent to compare with
+    files = None
+    for parent in parents:
+        got = names(git("diff", "--name-only", "--relative", parent, "HEAD"))
+        files = got if files is None else files & got
+    name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
+    return (brought(parents[1:], parents[0]) if len(parents) > 1 else []) + [(parents, files, name, email, commit, "HEAD", "")]
 
 
 def rights_problems(trackers):
@@ -2331,28 +2374,29 @@ def rights_problems(trackers):
                 if how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
-    base, files, name, email, commit = change_under_review()
-    if base is None:
-        return []
-    seat = seat_of(name, email)
     show = lambda rev, rel: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    for t in trackers:
-        rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        if rel not in files:
-            continue
-        was = show(base, rel)
-        now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if base == "HEAD" or COMMITTING else show("HEAD", rel).stdout
-        for move in sorted(transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0) - {"ask"}):
-            right = "ask" if move == "clear" else move
-            if not holds(seat, right):
-                out.append(f'{t["id"]}: ' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
-                                                     if move == "clear" else f'this change is a `{right}`'))
-            elif SEATS[seat][1] == "signed":
-                if not commit:
-                    print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
-                elif not verified_as(commit, email or None):
-                    out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
-                               f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
+    rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
+    for bases, files, name, email, commit, result, label in changes_under_review():
+        seat, where = seat_of(name, email), (label + " — " if label else "")
+        for rel in sorted(files & set(rels)):
+            t = rels[rel]
+            now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if result is None else show(result, rel).stdout
+            moves = None                                # a merge's own move is one it makes against EVERY parent (FM-019)
+            for base in bases:
+                was = show(base, rel)
+                made = transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0)
+                moves = made if moves is None else moves & made
+            for move in sorted(moves - {"ask"}):
+                right = "ask" if move == "clear" else move
+                if not holds(seat, right):
+                    out.append(f'{t["id"]}: {where}' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
+                                                                if move == "clear" else f'this change is a `{right}`'))
+                elif SEATS[seat][1] == "signed":
+                    if not commit:
+                        print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
+                    elif not verified_as(commit, email or None):
+                        out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
+                                   f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
     return out
 
 
@@ -2374,6 +2418,10 @@ def record_problems(t):
     had = (before.get("answer") or "").strip()
     if not had or t.get("answer"):
         return []
+    for h in merge_heads():                              # a merge loses an answer only if EVERY parent had it (FM-019)
+        other = subprocess.run(["git", "show", f"{h}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        if not (parse_frontmatter(other.stdout)[0].get("answer") or "").strip():
+            return []
     quiet = lambda s: re.sub(r"\s+", " ", s.strip().strip('"').lower())
     text = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
     if not t.get("asks_block"):
