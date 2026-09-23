@@ -340,3 +340,40 @@ the case it is given*, and FM-006 gains one ship-log row.
 
 `zensical build` exits 0 with *No issues found*; `llms_txt.py site` exits 0 (9 pages); `--check` and `--session-check`
 exit 0.
+
+## Delta on 53d4277
+
+2026-09-23, 22:22 CEST. **READY TO TAG.** Two observations follow, for the Owner, not as findings.
+
+**The claim.**
+- It is byte-exact: `## Get a better-performing human Owner.` (`docs/index.md:5`) and `## Hol dir einen
+  leistungsstärkeren menschlichen Eigner.` (`docs/de/index.md:5`).
+- `site_description` and the built `<meta name="description">` carry *Get a better-performing human Owner — …*.
+- The old claim is gone from `docs/` and `zensical.toml`, and `README.md` is untouched, as ruled.
+
+**What is left of *owner* in `docs/de/`** — five occurrences, all code or the seat name:
+- `--owner` (`standup.md:32`);
+- `owner = …` (`setup.md:49`, `signing.md:68`);
+- `(owner)` beside *Eigner* (`setup.md:55`, `:57`).
+
+No capitalised *Owner* remains.
+
+**The seven *Eigner* lines, graded as German.**
+- Six read natively: `index` 5, 10, 22 and 58; `setup` 57; `signing` 3. *Eigner* also carries the nautical sense,
+  the Schiffseigner, which fits the fleet and the shoal.
+- `setup:55`, *Unter Subversion steht für den Eigner (`owner`) Ihr Server-Konto*, is correct but stiff. *Unter
+  Subversion ist der Eigner (`owner`) Ihr Server-Konto* is smoother.
+
+**Observations for the Owner.**
+- The claim addresses its reader as *du* (*Hol dir*), while the page says *ihr* to the fleet and *Sie* to the Eigner.
+  That is a slogan's register and his words.
+- The German page's meta description is the site-wide English one: Zensical has one `site_description`.
+
+**Gates:**
+
+| check | result |
+|---|---|
+| `zensical build` | exit 0, *No issues found* |
+| `llms_txt.py site` | exit 0, 9 pages |
+| `--check` | exit 0 |
+| `--session-check` | exit 0 |
