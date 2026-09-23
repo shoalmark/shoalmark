@@ -758,6 +758,8 @@ def owner_digest(trackers):
     if not q:
         print("NOTHING NEEDS THE OWNER.")
         sent_back(trackers)
+        if sessions_digest():
+            print("\n" + sessions_digest())
         return EXIT_OK
     ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
     print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
@@ -766,6 +768,8 @@ def owner_digest(trackers):
         print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
         print("   " + t["ask"])
     sent_back(trackers)
+    if sessions_digest():
+        print("\n" + sessions_digest())
     return EXIT_OK
 
 
@@ -1167,7 +1171,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
-const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -1285,7 +1289,10 @@ function draw(){
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
-    +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):""):"";
+    +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
+    // the registry (FM-024): which sessions are open, for what — and how independent this week's verdicts were
+    +(REG?"\n\n<b>"+l("sessions.open",REG.open.length)+"</b>"+(REG.open.length?" — "+REG.open.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})${r[4]?" · "+l("sessions.abandoned"):""}`).join(" · "):"")
+      +(REG.reviews?"\n"+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):""):""):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -1368,6 +1375,8 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
+    "sessions.open": "sessions · {0} open", "sessions.abandoned": "abandoned",
+    "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "OK — give me the command", "answer.abort": "abort",
@@ -1632,7 +1641,7 @@ def render_html(trackers):
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
     page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__REG__", json.dumps(board_sessions(), ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
@@ -2679,6 +2688,29 @@ def sessions_report():
                      + (f" · untraced {count['untraced']}" if count["untraced"] else ""))
         lines += [f"  verdict {v[:10]} on {r[:10]}: {w} — its session {s or '(none)'}; the range's {', '.join(rs) or '(none)'}" for v, r, s, rs, w in reps]
     return lines
+
+
+def board_sessions():
+    """The registry as the board shows it — the open rows (id, seat, scope, worktree, abandoned) and this week's verdicts
+    as [independent, same session, untraced] — or None where there is no registry."""
+    if not sessions_file().exists() or vcs() != "git":
+        return None
+    rows = parse_sessions(sessions_file().read_text(encoding="utf-8"))
+    gone, reps = {r["id"] for r, _ in abandoned_sessions(rows)}, verdict_reports()
+    count = collections.Counter(w for *_x, w in reps)
+    return {"open": [[r["id"], r["seat"], r["scope"], r["worktree"], r["id"] in gone] for r in rows if r["open"]],
+            "reviews": [count["independent"], count["same session"], count["untraced"]] if reps else None}
+
+
+def sessions_digest():
+    """The digest's one line: the open sessions, by seat — or nothing where there is no registry."""
+    reg = board_sessions()
+    if reg is None:
+        return ""
+    by = collections.defaultdict(list)
+    for sid, seat, *_x in reg["open"]:
+        by[seat].append(sid)
+    return "SESSIONS OPEN · " + (" · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items()) or "none")
 
 
 def close_abandoned(today):

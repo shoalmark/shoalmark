@@ -372,6 +372,11 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 
+# the browser that renders the board, where one is installed — read here, before the first check that renders one
+_CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []     # a CI container has no user namespace for the sandbox
+_CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome") if os.path.exists(c)), None)
+
+
 def run_safe(root, *argv, git_env=None):
     """`run`, but a flag this copy of the tool does not know is a failed check, not a stopped suite — what a check that
     must fail on an older tool needs."""
@@ -518,6 +523,23 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 S6 · each verdict is reported: a sub-agent of the author's session is *same session*, another root *independent*, no session *untraced* — and a verdict inside a range is not its author (saw {[word(v) for v in (v_same, v_ind, v_none, v_late)]})",
           [word(v) for v in (v_same, v_ind, v_none, v_late)] == ["same session", "independent", "untraced", "independent"]
           and "reviews this week · 4 verdict(s) · independent 2 · same session 1 · untraced 1" in said and run_safe(root, "--check")[0] == 0)
+
+    # --- FM-024 S7: the board's strip and the digest's line — which sessions are open, for what; how independent the week was
+    now_ = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
+                                                         f"| a9 | principal | the Owner | the tool | wt-a | {now_} | — |\n| old1 | principal | the Owner | gone quiet | wt-o | 2026-01-01 00:00 | — |\n"
+                                                         "| q7 | reviewer | session a9 | done | wt-q | 2026-09-22 09:00 | 2026-09-22 18:00 |\n")
+    digest_ = run_safe(root, "--owner")[1]
+    strip_ = ""
+    if _CHROME:
+        run_safe(root, "--html-only")
+        pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+        strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<p id="p"[^>]*>([\s\S]*?)</p>', pdom) or [None, ""])[1]))
+    check(f"FM-024 S7 · the board's strip names the open sessions with seat and scope, marks the abandoned, and counts the week's verdicts; the digest's line groups the open sessions by seat (saw {strip_[-200:]!r} · {digest_.strip()[-80:]!r})",
+          "SESSIONS OPEN · principal 2 (a9, old1)" in digest_ and (not _CHROME or (
+              "sessions · 2 open — a9 principal (the tool) · old1 principal (gone quiet) · abandoned" in strip_
+              and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_ and "q7" not in strip_)))
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
@@ -545,8 +567,6 @@ with tempfile.TemporaryDirectory() as d:
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
-_CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []     # a CI container has no user namespace for the sandbox
-_CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome") if os.path.exists(c)), None)
 if _CHROME:
     with tempfile.TemporaryDirectory() as d:
         root = Path(d).resolve()
@@ -803,6 +823,10 @@ waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
+sessions.open: Sitzungen · {0} offen
+sessions.abandoned: verwaist
+reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
+reviews.untraced: ohne Spur {0}
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären

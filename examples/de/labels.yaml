@@ -81,6 +81,10 @@ waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
+sessions.open: Sitzungen · {0} offen
+sessions.abandoned: verwaist
+reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
+reviews.untraced: ohne Spur {0}
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären

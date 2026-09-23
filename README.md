@@ -288,6 +288,11 @@ session's root (`a9` of `a9/reviewer-1`) is none of the range's sessions' roots,
 them — a Reviewer run as a sub-agent of the author's session is not independent — and **untraced** when either side
 names no session. A count, not a refusal: the refusal is a later slice, after a week of counts.
 
+**Seen:** the board's first lines carry the strip — *sessions · 3 open — d8 principal (the product items) · a9
+principal (the tool) · a9/implementer-1 implementer (build)*, an abandoned row marked — and *reviews this week ·
+independent n · same session m*; `--owner`, the digest, ends with one line, the open sessions by seat. Four new labels,
+`sessions.*` and `reviews.*` (§9).
+
 ## 7. The one seam: a deriver
 
 The core knows nothing about releases, deploys or product areas. A repository that needs them puts one executable
