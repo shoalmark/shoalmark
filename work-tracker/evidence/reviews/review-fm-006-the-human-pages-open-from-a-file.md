@@ -377,3 +377,25 @@ No capitalised *Owner* remains.
 | `llms_txt.py site` | exit 0, 9 pages |
 | `--check` | exit 0 |
 | `--session-check` | exit 0 |
+
+## Pass on a3eb298 (`fm/006-two-readers-and-the-number-at-its-real-size`)
+
+2026-09-23, 23:05 CEST. **READY WITH FINDINGS: R9 and R10 (P3).**
+- Only the two lines in `docs/` moved. *9 of 13* stands.
+- FM-006's new paragraph quotes the Owner as marked. It names no client.
+- `zensical build` exits 0 with *No issues found*; `--check` and `--session-check` exit 0.
+- The week's report now reads 11 verdicts: 1 independent (0.17.6's first, known false) and 10 same session. This
+  seat's reviews are counted as what they are.
+
+**R9 · P3 · *On its first day* is neither the right size nor the right subject.**
+- **The span:** the ruling (2026-09-22 10:34:36Z) to the second count (2026-09-23 14:24:13Z) is **27 h 50 min**.
+  *Its first day* is about four hours short, and *its first day and a half* would be eight hours long.
+- **The subject:** *its* reads as the project's first day, and the project had 200 pull requests before.
+- **What closes it:** *in the first 28 hours after the rule* / *in den ersten 28 Stunden nach der Regel*.
+
+**R10 · P3 · *In one project* is said twice in three lines.**
+- **What:** The intro reads *In one project that runs shoalmark:* / *In einem Projekt, das shoalmark nutzt:*, and the
+  bullet repeats *in one project — our own —*.
+- **What closes it:** Move *our own* into the intro: *In one project — our own — that runs shoalmark:* / *In einem
+  Projekt — unserem eigenen —, das shoalmark nutzt:*. Then the bullet is only *After, in the first 28 hours after the
+  rule:* / *Danach, in den ersten 28 Stunden nach der Regel:*. Both lines read natively in German then.
