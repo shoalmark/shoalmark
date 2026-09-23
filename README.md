@@ -167,7 +167,8 @@ writes an example in italics, a whole product, for him to overwrite:
 - **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*
 ```
 
-Until he writes words of his own, the examples are not read as an intent.
+The lead-in and any example still in italics are the template's, never his intent: once he writes one line of his own,
+a pass reads that line alone. A line wholly in italics is read as a note, as the template's own notes always were.
 
 Upgrade: `--vendor` again (it prints what changed since the version it replaces and refuses a copy that
 was edited in place), then `--init` again to refresh the contract between its markers — your text outside them is kept.

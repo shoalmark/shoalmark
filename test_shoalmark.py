@@ -110,13 +110,13 @@ with tempfile.TemporaryDirectory() as d:
           code == 0 and 'MSR = "Work"' in (root / "shoalmark.toml").read_text() and "MSR-001" in out and (root / "docs/work-tracker/TRIAGE.md").exists()
           and "docs/work-tracker/index.html" in (root / ".gitignore").read_text() and "next:" in out)
     home_md = root / "docs/work-tracker/TRIAGE.md"; home_text = home_md.read_text(); fm.configure(root)
-    unsaid = fm.triage_home()["intent"]
+    unsaid, unpathed = fm.triage_home()["intent"], fm.triage_home()["path"]
     home_md.write_text(re.sub(r"- \*\*for\*\* — \*e\.g\. [^*]*\*", "- **for** — the stock we sell", home_text))
     said = fm.triage_home()["intent"]; home_md.write_text(home_text)
     lead = re.sub(r"\s+", " ", home_text)
-    check("FM-022 · the scaffolded intent starts with a lead-in that names the repository as a whole, and one example per line, in italics; the examples alone are not an intent, one line in the Owner's words is",
+    check("FM-022 · the scaffolded intent starts with a lead-in that names the repository as a whole, and one example per line, in italics; a fresh scaffold has no intent and no path; one line in the Owner's words is the intent, exactly that line — never the lead-in or the examples left around it",
           "*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of it, is for · what is true when it works · what no pass or seat may do to get there." in lead
-          and all(f"- **{w}** — *e.g. " in home_text for w in ("for", "so that", "never")) and unsaid == "" and "the stock we sell" in said)
+          and all(f"- **{w}** — *e.g. " in home_text for w in ("for", "so that", "never")) and unsaid == "" and unpathed == "" and said == "- **for** — the stock we sell")
     before = (root / "shoalmark.toml").read_text()
     (root / "shoalmark.toml").write_text(before + "\n# mine\n")
     run(root, "--init")

@@ -1538,7 +1538,12 @@ def triage_home():
     # an unfilled home is not a path and not an intent: what is left once the italic notes and the bare list
     # markers are gone has to say something, or INDEX.md and the board would print the template as if it were one
     said = lambda text: text if re.search(r"\w{3,}", re.sub(r"\*\*[^*]*\*\*|\*[^*]*\*", "", text)) else ""
-    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": said(part("intent"))}
+    # the intent is what the Owner WROTE. What the template leaves in italics is the template's: a paragraph wholly in
+    # italics (a note, the lead-in) and an example standing alone after a line's dash; a line with nothing of his left
+    # is not his. So one line of his own is read as exactly that line, not with the scaffold around it (FM-022, R5)
+    written = lambda text: "\n".join(l for l in re.sub(r"(?m)^([ \t]*[-*+][ \t]+\*\*[^*]+\*\*[ \t]*—)[ \t]*\*(?!\*)[^*]+\*[ \t]*$", r"\1",
+                                                    re.sub(r"(?m)^\*(?!\*)[^*]+\*[ \t]*$", "", text)).splitlines() if said(l)).strip()
+    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": written(part("intent"))}
 
 
 def write_views(trackers):

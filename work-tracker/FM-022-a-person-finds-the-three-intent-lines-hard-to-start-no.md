@@ -22,14 +22,16 @@ about the repository as a whole, never one feature of it: what this repository, 
 it works · what no pass or seat may do to get there. The example is a whole product; overwrite it.*) and one generic
 example per line, in italics: a village library's whole lending system, not one feature of it. The Owner corrected the
 first build, whose example was feature-sized, because his own first draft came out feature-sized after a seat's
-feature-sized example. `README.md` §6 says the same where it tells the Owner to write the intent. The examples do not count as an intent: `triage_home()` already strips italics before
-it asks whether anything was said, so an untouched scaffold still reads as *none is written*.
+feature-sized example. `README.md` §6 says the same where it tells the Owner to write the intent. **The intent is what he wrote**
+(`triage_home()`, R5): a paragraph wholly in italics and an example standing alone after a line's dash are the
+template's and are dropped, and so is a line with nothing of his left. An untouched scaffold reads as *none is
+written*; one line of his reads as exactly that line.
 
 | check | result |
 |---|---|
 | `--init`: the lead-in naming the whole repository and the three example lines are in `TRIAGE.md` | yes. On 0.17.4: no (fails, as it should) |
 | the untouched scaffold, read by `triage_home()` | intent `""` |
-| one line overwritten in the Owner's words | read as the intent |
+| one line overwritten in the Owner's words | read as the intent, exactly that line — not the lead-in or the two examples left (R5; at `8402732` all of them were printed) |
 
 **Not changed, on purpose:** the intent and current-path sections of shoalmark's own `work-tracker/TRIAGE.md`, which
 the Owner is writing; `examples/de/TRIAGE.md`, the German example, which `--init` does not write; and
@@ -54,4 +56,5 @@ no way in gets left empty, and while it is empty `--triage` has nothing to judge
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R5: the intent is what the Owner wrote — the lead-in, the examples left in italics and empty lines are not read; the scaffold check now asserts a fresh scaffold has no intent and no path, and one written line is exactly that line. |
 | 2026-09-23 | Filed and built: a lead-in that names the repository as a whole and a whole-product example (the Owner's correction of a feature-sized first build) in the scaffold and the README; one check, shown to fail on 0.17.4. |
