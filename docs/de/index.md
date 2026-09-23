@@ -12,12 +12,16 @@ shoalmark sammelt diese Fragen, legt sie Ihnen einmal am Tag vor, und jede Antwo
 
 ## Gemessen, nicht versprochen
 
-In einem Projekt, das shoalmark nutzt, in zwei Tagen:
+In einem Projekt, das shoalmark nutzt:
 
-- **0 → 17 von 21** Pull Requests hatten vor dem Öffnen eine unabhängige Review-Datei.
-- **1 Befehl, 1 signierter Commit** pro Frage an den Owner.
-- **Die Tafel sagt, welches Review unabhängig war** — und welches aus derselben Sitzung kam wie der Code, den es
-  prüfte.
+- **Vorher:** Die letzten 200 Pull Requests wurden ungelesen gemergt, keiner wurde geprüft.
+- **Danach, in anderthalb Tagen:** 9 von 13 Pull Requests hatten eine Reviewer-Datei, bevor sie geöffnet wurden.
+
+Was shoalmark dazu ausgibt, jeden Tag:
+
+- **Ein Befehl, ein signierter Commit** pro Frage an den Owner.
+- **Die Tafel meldet zu jedem Review**, ob es aus einer anderen Session kam als der Code, den es prüfte. Das ist eine
+  Meldung, kein Beweis: git kann es noch nicht belegen.
 
 ## Ihre Agenten richten es ein
 

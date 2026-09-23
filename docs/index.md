@@ -12,11 +12,16 @@ questions, puts them to you once a day, and every answer is your own signed comm
 
 ## Measured, not promised
 
-In one project that runs shoalmark, in two days:
+In one project that runs shoalmark:
 
-- **0 → 17 of 21** pull requests carried an independent review file before they were opened.
-- **1 command, 1 signed commit** per question to the owner.
-- **The board says which review was independent**, and which came from the same session as the code it judged.
+- **Before:** the last 200 pull requests were merged unread; none was reviewed.
+- **After, in a day and a half:** 9 of 13 pull requests carried a Reviewer's file before they were opened.
+
+What shoalmark prints for it, every day:
+
+- **One command, one signed commit** per question to the owner.
+- **The board reports, for every review,** whether it came from another session than the code it judged. A report,
+  not a proof: git cannot yet show it.
 
 ## Your agents set it up
 
