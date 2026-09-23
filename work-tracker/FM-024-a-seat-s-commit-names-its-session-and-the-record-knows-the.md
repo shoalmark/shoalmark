@@ -1,10 +1,10 @@
 ---
 id: FM-024
-status: Proposed
+status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: review
+next: build
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -164,6 +164,24 @@ refused: worktrees/principal is open under session d8 — one worktree per sessi
 plan: "A1 · implementer+reviewer@a9 · ≈15:40 · 15:52 | W1 · owner · 15:40–16:00 · — | B2 · principal@d8 · ≈12:30 · 12:12"
 ```
 
+## Slice 1 — 0.17.6, the Owner's word 2026-09-23 15:40: *"FM-024 has to land as a prerequisite … land this in a v0.17.6 before tomorrow"*
+
+The design choices below are the Principal's, recorded so the Owner can strike any of them; none is an ask.
+
+| # | Built in 0.17.6 | Decided |
+|---|---|---|
+| S1 | `seat.session` — a per-worktree git configuration value; `--init` and the README say so beside `user.email`. The id: the harness's session id, first eight hex characters, else `python3 shoalmark.py --session new` prints one. Uniqueness is checked against the registry only. | the id's source |
+| S2 | The trailer `Session: <id>` appended by a `prepare-commit-msg` hook the tool installs (`--install-hook` writes it beside the pre-commit hook); a consumer with its own hook runner gets one line to call `python3 shoalmark.py --session-trailer "$1"`. Never typed by hand; a commit that carries one already is left alone. | |
+| S3 | The registry `work-tracker/sessions.md`: `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]` writes a row and stages it; `--session close <id>` dates *ended*. A sub-agent's id is `<parent>/<seat>-<n>` (`a9/reviewer-1`): parent and hand, *convened by* = the parent session. | sub-agents carry parent and hand |
+| S4 | The gate (`--check`, the pre-commit): a commit by a seat named in `[seats]` must carry a `Session:` whose row is open and whose seat is the author's; the Owner's commits are exempt; a worktree already open under another session is refused (*one worktree per session*). Exit 4 with the three messages of example e. | |
+| S5 | Abandoned rows: `--triage` and `--check` list open rows with no commit for more than a day; the next pass closes them and says so in its paragraph. Nothing closes silently. | who closes an abandoned row |
+| S6 | Verdicts: a review commit names the tip it judged with a `Reviewed: <sha>` trailer (the Reviewer types this one); `--check` computes the reviewed range's sessions (merge-base with `main` → tip) and **reports** each verdict as *independent* or *same session*; the board's line *reviews · independent n · same session m*. **A report, not a refusal** in 0.17.6 — the refusal is slice 2, after one week of counts. | count first, refuse later |
+| S7 | The board's strip: *sessions · n open — id seat (scope)*; the digest one line: open sessions by seat. | |
+| S8 | Tests: the trailer appended and left alone; a seat commit without a row refused; a collision refused; the Owner exempt; the registry's parser on a planted file; a sub-agent id; the independence report on a planted range; the abandoned-row listing. Each fails against 0.17.5. | |
+
+Not in slice 1: the seat key in a container (FM-007's line, a second identity later); the refusal of same-session
+verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
+
 ## What would decide it
 
 - Over one week: how many seat commits could not be traced to a convening word without the registry (today: all).
@@ -180,5 +198,6 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Slice 1 fixed for 0.17.6 on the Owner's word** (*a prerequisite; before tomorrow*): S1–S8 above — the trailer, the registry, the gate's three refusals, the independence *report* (a count, not yet a refusal), the board's strip, eight checks. Design choices recorded, none asked; the Owner may strike. FM-023 waits until it is ripe — agreed. The Reviewer's attack on the filing is folded into its attack on the build, a departure from the research chain, said here. |
 | 2026-09-23 | **Worked examples added on the Owner's ask** — the worktree setup, the commit with its trailer, the registry with a collision and a sub-agent row, a verdict under the independence rule, the board's and the gate's lines, the plan's mark. Illustrative; nothing built. |
 | 2026-09-23 | Filed on the Owner's question, written to be attacked; held against FM-005 (the person asked mid-flight), FM-007 (a signature proves the key, not the hand), FM-008 (an ask reaches the Owner only through the gate); FM-023 (the plan's `@session`, on its own branch) is the consumer of this id. Not built this week — the path's line 2. |

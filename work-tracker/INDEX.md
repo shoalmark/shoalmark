@@ -32,6 +32,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | — | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress | triage | — |
 | [FM-019](FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md) | — | On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carr… | In Progress | triage | — |
 | [FM-017](FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md) | — | When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with… | In Progress | triage | — |
 | [FM-015](FM-015-seats-silently-drops-a-signature-that-answerers-asked-for.md) | — | From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['ali… | In Progress | triage | — |
@@ -45,7 +46,6 @@
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | — | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | triage | — |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | — | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | triage | — |
 | [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | — | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | In Progress | triage | — |
-| [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | — | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | Proposed | triage | — |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | — | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | triage | — |
 | [FM-016](FM-016-an-answered-ask-still-shows-as-unanswered-on-the-branch-the.md) | — | After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept an… | Proposed | triage | — |
 | [FM-011](FM-011-vendoring-from-an-incomplete-source-copies-what-it-finds-and.md) | — | `vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete so… | Proposed | triage | — |
