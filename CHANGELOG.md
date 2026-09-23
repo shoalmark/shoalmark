@@ -2,6 +2,49 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.7 — 2026-09-23
+
+- **A consumer's secret-shape gate read the trailer query as a credential** and refused the vendored `shoalmark.py`:
+  the tool asked git to filter trailers by key, a `<name>=<value>` shape in the source. It now reads git's plain
+  trailer block and picks `Session:` and `Reviewed:` in Python — the same values, in the same order.
+- Nothing to do: no setting, label or command changed.
+
+## 0.17.6 — 2026-09-23
+
+**A seat's commit names its session, and the record knows the session** (FM-024, slice 1). The seat says who may; it
+could not say which run — two sessions of one seat are one author in git, and a Reviewer run as a sub-agent of the
+author's session looked as independent as any other.
+
+- **`seat.session`, a second per-worktree setting beside the badge.** `git config --worktree seat.session <id>` — the
+  harness's session id, its first eight hex characters; `--session new` prints one no row carries. `--init` names
+  both settings.
+- **The trailer.** `--install-hook` now also writes a `prepare-commit-msg` hook that appends `Session: <id>` to every
+  commit made in a worktree with `seat.session` — nothing where it is unset (the Owner's checkout), nothing when the
+  message carries one. *A repository with its own hook runner calls `--session-trailer "$1"` from its
+  prepare-commit-msg hook; README §6 gives the lefthook line. Run `--install-hook` again to get the hook.*
+- **The registry, `<tracker dir>/sessions.md`.** `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]`
+  writes a row and stages it; `--session close <id>` dates its end. A sub-agent's id is `<parent>/<seat>-<n>`:
+  when *convened by* carries a session id (eight hex characters, or `<id>/<seat>-<n>`), `--session open` refuses an id
+  that does not derive from it — a plain word never names a parent. An id
+  is used once; a worktree an open row holds is refused to a second session.
+- **The gate, where the registry exists.** A seat's commit — never the Owner's — must carry a `Session:` whose row is
+  open and names the author's seat, in a worktree no earlier open row holds; exit 4 otherwise, with one of three
+  lines. Judged on the commit being made, the commit at HEAD and every commit a merge brings, each against the
+  registry in its own tree. A seat's commit that removes the registry, drops a row or re-opens an ended one is refused
+  and judged against its parent's registry: only the Owner removes it. *Nothing changes for your repository until it opens its first session: a tree without
+  `sessions.md` is not judged, and neither is any commit made before the file existed.* The pre-commit hook runs the
+  session rule on every commit, a tracker staged or not (`--session-check`, cheap: no tracker is read). *With your own
+  hook runner, add that line to its pre-commit as well; README §6 has both lines.*
+- **Abandoned rows.** An open row with no commit for a day: `--check` lists it, the next `--triage` closes it —
+  *closed by the pass of <date>* — and prints it for the pass's paragraph.
+- **Verdicts reported, not refused.** A review commit names the tip it judged with `Reviewed: <sha>`. `--check`
+  reports each verdict of the last `triage_days` days as *independent*, *same session* (its session root is one of the
+  reviewed branch's own commits' — never what the branch merged in from the trunk), *untraced*, or *on trunk* for a
+  tip on the trunk's first-parent line. The refusal of a same-session verdict is a later slice, after a week of counts.
+- **Seen.** The board's first lines name the open sessions (seat, scope, an abandoned one marked) and count the week's
+  verdicts; `--owner` ends with the open sessions by seat. **Labels:** five new — `sessions.open`,
+  `sessions.abandoned`, `reviews.week`, `reviews.untraced`, `reviews.trunk` — in English and in `examples/de/labels.yaml`.
+
 ## 0.17.5 — 2026-09-23
 
 **One id finds one row, and an empty section says why.** Two things an Owner read as defects on his board, and the
