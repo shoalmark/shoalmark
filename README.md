@@ -281,6 +281,13 @@ for more than a day is *abandoned*. `--check` lists it (a report, not a refusal)
 *closed by the pass of <date> — no commit since <time>* — and prints it for the pass's paragraph. Nothing closes
 silently.
 
+**Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
+reports each verdict of the last `triage_days` days: the reviewed range is the tip's own branch (from where its
+first-parent line meets the trunk's to the tip, less other verdicts), and the verdict is **independent** when its
+session's root (`a9` of `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of
+them — a Reviewer run as a sub-agent of the author's session is not independent — and **untraced** when either side
+names no session. A count, not a refusal: the refusal is a later slice, after a week of counts.
+
 ## 7. The one seam: a deriver
 
 The core knows nothing about releases, deploys or product areas. A repository that needs them puts one executable

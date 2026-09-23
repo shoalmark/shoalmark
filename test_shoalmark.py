@@ -499,6 +499,25 @@ with tempfile.TemporaryDirectory() as d:
           and "closed abandoned session old1" in passed and "Say so in this pass's paragraph" in passed
           and rows.get("old1", {}).get("ended", "").startswith(f"closed by the pass of {datetime.date.today().isoformat()} — no commit since 2026-01-01 00:00")
           and rows.get("live1", {}).get("open") and rows.get("new1", {}).get("open"))
+
+# --- FM-024 S6: each verdict reported as independent or same session — the reviewed range's sessions against its own --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
+    git(root, "checkout", "-q", "-b", "feat")
+    head = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1"); built = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: a9/reviewer-1"); v_same = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: k3"); v_ind = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}"); v_none = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", f"review of the reviews\n\nReviewed: {v_none}\nSession: k3"); v_late = head()
+    said = run_safe(root, "--check")[1]
+    word = lambda v: (re.search(rf"verdict {v[:10]} on \w+: ([a-z ]+) —", said) or [None, "?"])[1]
+    check(f"FM-024 S6 · each verdict is reported: a sub-agent of the author's session is *same session*, another root *independent*, no session *untraced* — and a verdict inside a range is not its author (saw {[word(v) for v in (v_same, v_ind, v_none, v_late)]})",
+          [word(v) for v in (v_same, v_ind, v_none, v_late)] == ["same session", "independent", "untraced", "independent"]
+          and "reviews this week · 4 verdict(s) · independent 2 · same session 1 · untraced 1" in said and run_safe(root, "--check")[0] == 0)
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"

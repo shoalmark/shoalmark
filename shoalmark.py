@@ -2553,8 +2553,8 @@ def session_trailer(message_file):
 
 def trailers_of(commit, key):
     """Every value of one trailer on one commit."""
-    out = git_out("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x1f)", commit)
-    return [v.strip() for v in (out or "").strip().split("\x1f") if v.strip()]
+    out = git_out("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x01)", commit)
+    return [v.strip() for v in (out or "").strip("\n").split("\x01") if v.strip()]
 
 
 def session_problems():
@@ -2608,9 +2608,9 @@ def abandoned_sessions(rows, now=None):
     now = now or datetime.datetime.now().timestamp()
     since = min((session_stamp(r["started"]) or now) for r in live)
     last = {}
-    log = git_out("log", f"--since={int(since)}", "--format=%ct%x1f%(trailers:key=Session,valueonly,separator=%x1f)%x1e", "HEAD") or ""
-    for rec in log.split("\x1e"):
-        parts = [p.strip() for p in rec.strip().split("\x1f")]
+    log = git_out("log", f"--since={int(since)}", "--format=%ct%x01%(trailers:key=Session,valueonly,separator=%x01)%x02", "HEAD") or ""
+    for rec in log.split("\x02"):
+        parts = [p.strip() for p in rec.strip("\n").split("\x01")]
         if parts and parts[0].isdigit():
             for sid in parts[1:]:
                 if sid:
@@ -2623,12 +2623,62 @@ def abandoned_sessions(rows, now=None):
     return out
 
 
+def mainline():
+    """The trunk's first-parent history — a reviewed branch's range starts where its own first-parent line meets it."""
+    for ref in ("origin/main", "main", "master"):
+        out = git_out("rev-list", "--first-parent", ref)
+        if out:
+            return set(out.split())
+    return set()
+
+
+def verdict_reports(days=None):
+    """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
+    its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
+    range's, *same session* when it is one of them, *untraced* when either side names no session. The range is the
+    reviewed tip's own branch: from where its first-parent line meets the trunk to the tip, less other verdicts. A
+    report, never a refusal (slice 2 refuses, after a week of counts)."""
+    days = TRIAGE_DAYS if days is None else days
+    log = git_out("log", f"--since={days}.days", "--format=%H%x01%(trailers:key=Reviewed,valueonly,separator=%x03)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", "HEAD") or ""
+    found = []
+    for rec in log.split("\x02"):
+        parts = rec.strip("\n").split("\x01")
+        if len(parts) == 3 and parts[1].strip():
+            found.append((parts[0], parts[1].split("\x03")[0].strip(), parts[2].split("\x03")[0].strip()))
+    if not found:
+        return []
+    trunk, out = mainline(), []
+    for verdict, reviewed, sid in found:
+        tip = (git_out("rev-parse", "--verify", "--quiet", f"{reviewed}^{{commit}}") or "").strip()
+        chain = (git_out("rev-list", "--first-parent", tip) or "").split() if tip else []
+        base = next((c for c in chain if c in trunk), None)
+        ranged = set()
+        if tip and base and base != tip:
+            rng = git_out("log", "--format=%(trailers:key=Reviewed,valueonly)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", f"{base}..{tip}") or ""
+            for rec in rng.split("\x02"):
+                rv, _, ss = rec.strip("\n").partition("\x01")
+                if not rv.strip():
+                    ranged |= {s.strip() for s in ss.split("\x03") if s.strip()}
+        roots = {s.split("/")[0] for s in ranged}
+        word = "untraced" if not sid or not ranged else "same session" if sid.split("/")[0] in roots else "independent"
+        out.append((verdict, reviewed, sid, sorted(ranged), word))
+    return out
+
+
 def sessions_report():
-    """What `--check` says of the registry, never a refusal: the abandoned rows a pass will close."""
+    """What `--check` says of the registry, never a refusal: the abandoned rows a pass will close, and this week's
+    verdicts by independence."""
     if not sessions_file().exists() or vcs() != "git":
         return []
-    return [f"session {r['id']} ({r['seat']}, {r['scope']}) has no commit since {seen} — abandoned; the next triage pass closes it"
-            for r, seen in abandoned_sessions(parse_sessions(sessions_file().read_text(encoding="utf-8")))]
+    lines = [f"session {r['id']} ({r['seat']}, {r['scope']}) has no commit since {seen} — abandoned; the next triage pass closes it"
+             for r, seen in abandoned_sessions(parse_sessions(sessions_file().read_text(encoding="utf-8")))]
+    reps = verdict_reports()
+    if reps:
+        count = collections.Counter(w for *_x, w in reps)
+        lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
+                     + (f" · untraced {count['untraced']}" if count["untraced"] else ""))
+        lines += [f"  verdict {v[:10]} on {r[:10]}: {w} — its session {s or '(none)'}; the range's {', '.join(rs) or '(none)'}" for v, r, s, rs, w in reps]
+    return lines
 
 
 def close_abandoned(today):
