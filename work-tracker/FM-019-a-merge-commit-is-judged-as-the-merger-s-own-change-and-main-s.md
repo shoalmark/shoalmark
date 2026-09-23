@@ -1,9 +1,8 @@
 ---
 id: FM-019
-status: In Progress
+status: Shipped
 considered: FM-014, FM-008, FM-007, FM-017
 tags: bug
-next: review
 hook: "On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carried — every answer, close and verdict in it — attributed to whoever merged. The forge's merge identity is no seat, and GitHub signs merges with its own key, so `--check` on a trunk goes red on every merge that carries a status change; shoalmark's own `main` is red this way at 0.17.3."
 ---
 

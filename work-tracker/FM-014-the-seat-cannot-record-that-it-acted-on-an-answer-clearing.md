@@ -1,9 +1,8 @@
 ---
 id: FM-014
-status: In Progress
+status: Shipped
 considered: FM-008, FM-005
 tags: bug
-next: review
 hook: "`--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front matter. The rights gate reads any change to those three lines as the `answer` transition, which only the owner seat holds — so the seat that holds `ask`, the one whose job clearing is, is refused. Acted-on answers stay in the front matter, and `--answered` lists them as not acted on, for ever."
 ---
 

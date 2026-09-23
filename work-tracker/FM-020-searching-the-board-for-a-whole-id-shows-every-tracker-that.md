@@ -1,5 +1,6 @@
 ---
 id: FM-020
+kind-of-problem: obvious
 status: In Progress
 considered: FM-002, FM-006, FM-016
 tags: bug

@@ -1,9 +1,8 @@
 ---
 id: FM-010
-status: In Progress
+status: Shipped
 considered: FM-008, FM-005
 tags: bug
-next: review
 kind-of-problem: obvious
 hook: "The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only where both keys are present. A repository still wholly on `answerers`, which is the entire population the deprecation is aimed at, is never told. The key is advertised for removal in the next release, so removing it on that promise breaks exactly the repositories that were never warned."
 ---

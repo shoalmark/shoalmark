@@ -1,9 +1,8 @@
 ---
 id: FM-009
-status: In Progress
+status: Shipped
 considered: FM-006
 tags: bug
-next: review
 kind-of-problem: obvious
 hook: "`__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG say 0.17.2. Two tags shipped that way. `--vendor` compares the consumer's `VERSION` file against our source constant, so a consumer sitting on exactly 0.17.0 is told nothing changed and never sees the 0.17.1 and 0.17.2 sections — the repositories that most need those two fixes are the ones the comparison silences."
 ---

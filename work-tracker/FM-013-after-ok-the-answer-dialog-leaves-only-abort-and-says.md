@@ -1,9 +1,8 @@
 ---
 id: FM-013
-status: In Progress
+status: Shipped
 considered: FM-007, FM-008
 tags: bug
-next: review
 hook: "In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the one button left is abort, which reads as undoing what was just decided. Nothing says where to run the command, what it does, what success looks like or what to do when signing fails. The Owner: a second screen that explains how to sign, and only a Done button."
 ---
 

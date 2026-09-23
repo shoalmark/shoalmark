@@ -1,9 +1,8 @@
 ---
 id: FM-015
-status: In Progress
+status: Shipped
 considered: FM-010, FM-007, FM-008
 tags: bug, security
-next: review
 hook: "From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['alice signed']` and `[seats] owner = 'alice'` now accepts Alice's unsigned answer, `--answer` stops signing, and the deprecation note tells that repository `answerers` still works — it is not read there at all."
 ---
 

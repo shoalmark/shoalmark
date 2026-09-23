@@ -1,9 +1,8 @@
 ---
 id: FM-012
-status: In Progress
+status: Shipped
 considered: FM-007, FM-008, FM-010
 tags: bug
-next: review
 hook: "Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of them. On a 505-tracker corpus that is 504 subprocesses and 15.2 s of a 16.8 s load. `--answer` loads the corpus about four times and prints nothing until the end, so an Owner stopped it believing it had hung."
 ---
 

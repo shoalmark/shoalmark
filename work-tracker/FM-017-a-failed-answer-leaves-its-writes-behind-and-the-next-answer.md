@@ -1,9 +1,8 @@
 ---
 id: FM-017
-status: In Progress
+status: Shipped
 considered: FM-012, FM-016, FM-013
 tags: bug
-next: review
 hook: "When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with the Owner's answer, the INDEX.md the hook rewrote, and a new `answer/<id>` with no commit of its own, checked out. His next `--answer`, on another ask, is refused with *the working tree has changes* — no paths, no word that the changes are the tool's own, and his answer text nowhere on screen."
 ---
 
