@@ -1194,8 +1194,10 @@ LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
 fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
-// `progress` holds only what a pass kept — until a first pass has run it is empty by rule, and its line says so (FM-021)
-BOARD={progress:LAST||HOME.last?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:LAST?l("desc.triaged",LAST):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
+// has a pass run? ONE answer for every line that asks: the newest date a pass left on a tracker, or else the date of the
+// newest pass TRIAGE.md records. `progress` holds only what a pass kept — until a first pass it is empty by rule and says so (FM-021)
+PASSED=LAST||(HOME.last.match(/\d{4}-\d\d-\d\d/)||[""])[0],
+BOARD={progress:PASSED?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
 board=t=>[...(recent(t)?["triaged"]:[]),untriaged(t)?"triage":t[19]],   // t[19] is the generator's; staleness is the one clock rule, and only work in progress goes stale
 MARK={"In Progress":"b","Shipped":"t","Parked":"y","Closed":"z"},mark=t=>blocked(t)?"r":t[2].startsWith("Shipped")?"t":MARK[t[2]]||"",
 ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">${i}</a>`:i),   // TRIAGE.md — an id opens its tracker rendered, as in a row

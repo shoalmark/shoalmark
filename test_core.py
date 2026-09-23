@@ -349,7 +349,8 @@ check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourh
 check("FM-020 · the counter names an id searched alone — it is that tracker, open or not, never counted as `open`",
       '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
-      'progress:LAST||HOME.last?l("desc.progress"):l("desc.progress.none")' in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
+      'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
+      and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
 check("a story's header says how much of it a pass has judged, and closed chapters are not called shipped",
       '${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}' in _tri and '${l("story.done")} ·' in _tri and "} shipped ·" not in _tri)
 check("the board is the first view: progress · triage · triaged · backlog · done, one section per tracker plus the newest pass",

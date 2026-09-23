@@ -436,6 +436,7 @@ if _CHROME:
             d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
                                  (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
             shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
+            progress_line.triaged = (re.search(r"[▾▸] triaged · \d+ · (.*?) [▾▸] backlog", shown) or [None, ""])[1].strip()
             return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
         before = progress_line()
         tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
@@ -450,6 +451,8 @@ if _CHROME:
         passed = progress_line()
         check(f"FM-021 · …and so it is when TRIAGE.md records a pass, though no tracker carries its date any more (saw: {passed!r})",
               passed == "kept by triage — by rank, then tier")
+        check(f"R4 · in that state the triaged line agrees — it names the pass TRIAGE.md records, never 'no triage pass has run yet' (saw: {progress_line.triaged!r})",
+              progress_line.triaged.startswith("judged 2026-09-20 — each also sits in its own section") and "no triage pass" not in progress_line.triaged)
 
 # --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
 DERIVER = """#!/usr/bin/env python3
