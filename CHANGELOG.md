@@ -25,7 +25,7 @@ intent he found hard to start.
   notes, the lead-in) and an example left alone after a line's dash are not read, and neither is a line with nothing
   of his on it. So an untouched scaffold is no intent, and one line of his own is that line alone. *`--triage` no
   longer prints the template's italic note above your intent. A `TRIAGE.md` you already have is never rewritten;
-  README §6 carries the lead-in and the example.*
+  README §6 carries the lead-in and the example, and `examples/de/TRIAGE.md` carries them in German.*
 - **Labels:** three new labels, `desc.progress.none`, `count.id` (the counter over an id searched alone:
   *1 tracker · <id>*) and `search.help` (the search box's title: the whole help), and `search` shortened so it fits
   the box at about 390 px. All in English and in `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets

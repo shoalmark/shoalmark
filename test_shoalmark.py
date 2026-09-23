@@ -851,6 +851,21 @@ with tempfile.TemporaryDirectory() as d:
             os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
 
+# --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    (root / "shoalmark.toml").write_text((HERE / "examples/de/shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+    (root / "docs/work-tracker").mkdir(parents=True)
+    de_home = (HERE / "examples/de/TRIAGE.md").read_text(encoding="utf-8")
+    (root / "docs/work-tracker/TRIAGE.md").write_text(de_home, encoding="utf-8")
+    fm.configure(root); untouched = fm.triage_home()
+    (root / "docs/work-tracker/TRIAGE.md").write_text(re.sub(r"- \*\*für\*\* — \*z\. B\. [^*]*\*", "- **für** — die Ausleihe unserer Bücherei", de_home), encoding="utf-8")
+    one = fm.triage_home()["intent"]
+fm.configure(HERE)
+check("R10 · the German triage home carries the lead-in (the repository as a whole) and one example per line, in italics — a pass reads none of it, and one line of the Owner's as exactly that line",
+      "über das Repository als Ganzes" in de_home and all(f"- **{w}** — *z. B. " in de_home for w in ("für", "damit", "niemals"))
+      and untouched["intent"] == "" and untouched["path"] == "" and one == "- **für** — die Ausleihe unserer Bücherei")
+
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)

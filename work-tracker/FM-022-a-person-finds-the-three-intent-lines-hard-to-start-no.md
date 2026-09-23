@@ -33,9 +33,11 @@ written*; one line of his reads as exactly that line.
 | the untouched scaffold, read by `triage_home()` | intent `""` |
 | one line overwritten in the Owner's words | read as the intent, exactly that line — not the lead-in or the two examples left (R5; at `8402732` all of them were printed) |
 
+**The German example home** (`examples/de/TRIAGE.md`, which a German adopter copies before `--init`) carries the same
+lead-in and a whole-product example in German, in the form a pass drops (R10).
+
 **Not changed, on purpose:** the intent and current-path sections of shoalmark's own `work-tracker/TRIAGE.md`, which
-the Owner is writing; `examples/de/TRIAGE.md`, the German example, which `--init` does not write; and
-`docs/setup.md` §5 (EN and DE), the documentation site. A repository that ran `--init` before 0.17.5 keeps its file.
+the Owner is writing; and `docs/setup.md` §5 (EN and DE), the documentation site. A repository that ran `--init` before 0.17.5 keeps its file.
 `--init` never overwrites it.
 
 **What is left:** review, merge, the tag.
@@ -56,5 +58,6 @@ no way in gets left empty, and while it is empty `--triage` has nothing to judge
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R10: `examples/de/TRIAGE.md` gets the lead-in and the whole-product example in German, in the form a pass drops; one check reads it through `triage_home()`. |
 | 2026-09-23 | R5: the intent is what the Owner wrote — the lead-in, the examples left in italics and empty lines are not read; the scaffold check now asserts a fresh scaffold has no intent and no path, and one written line is exactly that line. |
 | 2026-09-23 | Filed and built: a lead-in that names the repository as a whole and a whole-product example (the Owner's correction of a feature-sized first build) in the scaffold and the README; one check, shown to fail on 0.17.4. |
