@@ -3,6 +3,8 @@ pre-commit:
     tests:
       glob: "*.py"
       run: for py in python3 /usr/bin/python3; do [ -x "$(command -v $py)" ] && { for t in test_shoalmark.py test_core.py; do $py $t >/dev/null || { $py --version; $py $t | grep -v "^  ok"; exit 1; }; done; }; done
+    session:
+      run: python3 shoalmark.py --session-check
     tracker-index:
       glob: "work-tracker/*.md"
       run: written=$(python3 shoalmark.py --print-written) && printf '%s\n' "$written" | git add --pathspec-from-file=-

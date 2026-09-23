@@ -44,8 +44,9 @@ opened in the S3 commit, and every commit of this seat from S1+S2 on carries `Se
   the week would read *on trunk* the moment its branch lands, and the week's count would empty. A tip on the trunk's own
   first-parent line reads *on trunk — not a branch verdict*. **A third word, *untraced*,** for a verdict or a range that
   names no session.
-- **Where the gate runs:** the plain pre-commit hook runs it when a tracker, the configuration or the tool is staged. A
-  seat's code-only commit is judged by `--check` at HEAD, or when a merge brings it.
+- **Where the gate runs** (the Reviewer's R4): the pre-commit hook — `--install-hook`'s and shoalmark's own lefthook —
+  runs `--session-check`, the session rule alone, on every commit, a tracker staged or not; the full gate still runs
+  when a tracker, the configuration or the tool is staged.
 - **This worktree's hooks:** `core.hooksPath` (worktree setting) points at a private copy of lefthook's scripts, now
   with `prepare-commit-msg`, so the repository's shared `.git/hooks` were not changed. lefthook's own sync rewrote
   `.git/info/lefthook.checksum`. Another checkout gets the trailer after `lefthook install`.
@@ -232,6 +233,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |
 | 2026-09-23 | R2: the reviewed range is the branch's own commits (`<tip> ^<trunk> --no-merges`, less verdicts; a landed tip against the trunk before its merge); a tip on the trunk reads *on trunk — not a branch verdict*; label `reviews.trunk`. The Reviewer's planted sibling reads *independent*, before and after the branch lands. One check. |
 | 2026-09-23 | R3: a sub-agent's id derives from its parent's — `--session open` refuses otherwise; row `8d6537be` closed, this build re-opened as `8e509911/implementer-1`. R1: a seat's commit that removes the registry, drops a row or re-opens an ended one is refused, against its parent's registry; a session's own closing commit passes. Two checks. |
 | 2026-09-23 | **Slice 1 built** for 0.17.6: S1+S2, S3, S4, S5, S6, S7 each in its own commit, with its checks (eleven: ten fail on 0.17.5, one is a control); the release's own registry holds its first row, and its commits carry `Session: 8d6537be`. |

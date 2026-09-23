@@ -24,8 +24,8 @@ author's session looked as independent as any other.
   registry in its own tree. A seat's commit that removes the registry, drops a row or re-opens an ended one is refused
   and judged against its parent's registry: only the Owner removes it. *Nothing changes for your repository until it opens its first session: a tree without
   `sessions.md` is not judged, and neither is any commit made before the file existed.* The pre-commit hook runs the
-  gate when a tracker, the configuration or the tool is staged; a commit touching none of them is judged by `--check`
-  at HEAD, or when a merge brings it.
+  session rule on every commit, a tracker staged or not (`--session-check`, cheap: no tracker is read). *With your own
+  hook runner, add that line to its pre-commit as well; README §6 has both lines.*
 - **Abandoned rows.** An open row with no commit for a day: `--check` lists it, the next `--triage` closes it —
   *closed by the pass of <date>* — and prints it for the pass's paragraph.
 - **Verdicts reported, not refused.** A review commit names the tip it judged with `Reviewed: <sha>`. `--check`

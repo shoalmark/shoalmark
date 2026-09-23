@@ -246,6 +246,10 @@ commit made in that worktree — never typed, and a message that carries one alr
 with lefthook:
 
 ```yaml
+pre-commit:
+  commands:
+    session:                     # the session rule on EVERY commit, a tracker staged or not
+      run: python3 tools/shoalmark/shoalmark.py --session-check
 prepare-commit-msg:
   commands:
     session:
@@ -276,7 +280,8 @@ refused: Session: q7 has no open row in work-tracker/sessions.md
 refused: worktrees/principal is open under session d8 — one worktree per session
 ```
 
-It judges what the rights are judged on: the commit being made (by its worktree's `seat.session`, the trailer its hook
+The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
+tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's `seat.session`, the trailer its hook
 will write), the commit at HEAD by its trailer, and every commit a merge brings, each against the registry in its own
 tree. **The registry is not the judged seat's to change:** a seat's commit that removes it, drops a row or re-opens an
 ended one is refused, and judged against its parent's registry — only the Owner removes it. A session's own last commit

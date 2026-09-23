@@ -2625,6 +2625,18 @@ def session_problems():
     return out
 
 
+def session_check():
+    """`--session-check`: the session rule on the commit being made, and nothing else — cheap enough for every commit.
+    The full gate runs only when a tracker, the configuration or the tool is staged; without this, a seat's code-only
+    commit would be judged by no automatic run at all (R4)."""
+    global COMMITTING
+    COMMITTING = True
+    problems = session_problems()
+    for p_ in problems:
+        print(f"  {p_}", file=sys.stderr)
+    return EXIT_LINT if problems else EXIT_OK
+
+
 def session_stamp(text):
     """A registry time (`YYYY-MM-DD HH:MM`, or a bare date) as seconds, or None."""
     for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
@@ -3066,6 +3078,8 @@ def parse_args(argv):
              "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`. "
              "`--session open <id> <seat> \"<convened by>\" \"<scope>\" [<worktree>]` writes its row in <tracker dir>/sessions.md and stages it — "
              "a sub-agent's id is `<parent>/<seat>-<n>`; `--session close <id>` dates its end")
+    add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
+                                                     "a tracker staged or not; reads git and the registry, never the trackers")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "to a seat's commit — nothing without `seat.session`, nothing when the message carries one already")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
@@ -3343,6 +3357,7 @@ LEGACY_HOOK_MARK = "# fathom-mark"          # the name until 0.6.0 — a hook it
 HOOKS = {
     "pre-commit": """#!/bin/sh
 {mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
+{cmd} --session-check || exit $?
 if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)'; then
   written=$({cmd} --print-written) || exit $?
   printf '%s\\n' "$written" | git add --pathspec-from-file=-
@@ -3584,6 +3599,8 @@ def main(argv=None):
         return install_hook()
     if args.session_trailer:                                # every commit runs this: it reads one git setting, never the trackers
         return session_trailer(args.session_trailer[0])
+    if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
+        return session_check()
     if args.session:
         return session_cmd(args.session)
     if args.answer:

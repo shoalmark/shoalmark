@@ -521,12 +521,31 @@ with tempfile.TemporaryDirectory() as d:
     subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "gone\n\nSession: a9"], env=dict(_ENV, **AS("principal@seat")), check=True)
     forced = run_safe(root, "--check"); session("")
     removes = "removes docs/work-tracker/sessions.md — the registry is the Owner's to remove"
-    check(f"R1 · a seat's commit that removes the registry is refused — with a session or without — the Owner's is not; the next seat commit is still judged; a forced removal is refused at HEAD (saw exits {rm_valid[0]}, {rm_none[0]}, {rm_owner[0]}, {nxt[0]}, {forced[0]})",
+    check(f"FM-024 R1 · a seat's commit that removes the registry is refused — with a session or without — the Owner's is not; the next seat commit is still judged; a forced removal is refused at HEAD (saw exits {rm_valid[0]}, {rm_none[0]}, {rm_owner[0]}, {nxt[0]}, {forced[0]})",
           rm_valid[0] == fm.EXIT_LINT and removes in rm_valid[2] and rm_none[0] == fm.EXIT_LINT and removes in rm_none[2] and "carries no Session: trailer" in rm_none[2]
           and rm_owner[0] == 0 and nxt[0] == fm.EXIT_LINT and "carries no Session: trailer" in nxt[2] and forced[0] == fm.EXIT_LINT and removes in forced[2])
-    check(f"R1 · a closed row re-opened by hand, or a row dropped, is refused and judged against the parent's registry; a session's own last commit closing its row passes (saw exits {reopen[0]}, {dropped[0]}, {closing[0]})",
+    check(f"FM-024 R1 · a closed row re-opened by hand, or a row dropped, is refused and judged against the parent's registry; a session's own last commit closing its row passes (saw exits {reopen[0]}, {dropped[0]}, {closing[0]})",
           reopen[0] == fm.EXIT_LINT and "re-opens q7, which had ended" in reopen[2] and "Session: q7 has no open row" in reopen[2]
           and dropped[0] == fm.EXIT_LINT and "drops the row q7" in dropped[2] and closing[0] == 0)
+
+# --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + '\n[seats]\nowner = "owner@example.org"\nimplementer = "implementer@seat"\n')
+    tracker(root, "MSR-001")
+    (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
+                                                         "| i1 | implementer | the Owner | build | wt-i | 2026-09-23 12:21 | — |\n")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the registry adopted"); run(root, "--install-hook")
+    AS = lambda who: {"GIT_AUTHOR_NAME": who, "GIT_AUTHOR_EMAIL": who, "GIT_COMMITTER_NAME": who, "GIT_COMMITTER_EMAIL": who}
+    code_only = lambda msg: (subprocess.run(["git", "-C", str(root), "add", "app.py"], env=_ENV),
+                             subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", msg], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, **AS("implementer@seat"))))[1]
+    (root / "app.py").write_text("print('one')\n"); refused_ = code_only("code only, no session")
+    subprocess.run(["git", "-C", str(root), "config", "seat.session", "i1"], env=_ENV, check=True)
+    passed_ = code_only("code only, with its session")
+    trailer_ = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%(trailers:key=Session,valueonly)"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    check(f"FM-024 R4 · the installed pre-commit hook refuses a seat's code-only commit with no session — no tracker staged — and lets it through with its open row (saw {refused_.returncode}, {passed_.returncode}, {trailer_!r})",
+          refused_.returncode != 0 and "carries no Session: trailer" in refused_.stderr + refused_.stdout and passed_.returncode == 0 and trailer_ == "i1")
 
 # --- FM-024 S5: a row nobody closed — listed by --check, closed by the next pass, which says so ---------------------
 with tempfile.TemporaryDirectory() as d:
@@ -588,7 +607,7 @@ with tempfile.TemporaryDirectory() as d:
         git(r2, "commit", "-q", "--allow-empty", "-m", "work on the trunk itself\n\nSession: K"); w = sha()
         git(r2, "commit", "-q", "--allow-empty", "-m", f"review\n\nReviewed: {w}\nSession: J"); v_trunk = sha()
         on_trunk = run_safe(r2, "--check")[1]
-        check(f"R2 · a sibling whose session authored only a commit the branch merged in from the trunk is independent of the branch — before and after the branch lands; the branch's own session is not; a tip on the trunk is no branch verdict (saw {on_branch}, {landed})",
+        check(f"FM-024 R2 · a sibling whose session authored only a commit the branch merged in from the trunk is independent of the branch — before and after the branch lands; the branch's own session is not; a tip on the trunk is no branch verdict (saw {on_branch}, {landed})",
               on_branch == ["independent", "same session"] and landed == ["independent", "same session"]
               and f"verdict {v_trunk[:10]} on {w[:10]}: on trunk — not a branch verdict" in on_trunk and "on trunk 1" in on_trunk)
 
