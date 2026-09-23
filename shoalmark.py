@@ -2222,14 +2222,39 @@ def seat_problems(t):
     return []
 
 
+def asks_records(body):
+    """The records under the body's `## Asks` heading — one paragraph each, as `--clear-ask` writes them — normalised
+    for comparison: lower case, every run of whitespace one space, quotes gone."""
+    at = ASKS_HEAD_RE.search(body)
+    if not at:
+        return []
+    rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
+    section = body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())]
+    return [re.sub(r"\s+", " ", p.replace('"', "")).strip().lower() for p in re.split(r"\n\s*\n", section) if p.strip()]
+
+
+def cleared(b, b_body, a, a_body):
+    """THE CLEARING MOVE (FM-014): the three answer lines leave the front matter AND the body gains the record of that
+    exchange under `## Asks` — the same question, the same answer, the same answered-by. That is the seat's receipt for
+    acting on the answer, not an answer, and it is judged under `ask`. Anything else that touches the three lines —
+    removing them with no record, editing the answer — stays the Owner's `answer`."""
+    if not (b.get("answer") or "").strip() or any((a.get(k) or "").strip() for k in ("answer", "answered", "answered-by")):
+        return False
+    quiet = lambda s: re.sub(r"\s+", " ", (s or "").replace('"', "")).strip().lower()
+    want = [quiet(b.get("ask")), quiet(b.get("answer"))] + ([quiet(b.get("answered-by"))] if quiet(b.get("answered-by")) not in ("", "<you>") else [])
+    count = lambda records: sum(all(w in r for w in want) for r in records)
+    return all(want[:2]) and count(asks_records(a_body)) > count(asks_records(b_body))
+
+
 def transitions(before, after, new_file=False):
     """Which of the four rights a change exercises, read from the front matter on both sides. A NEW tracker is not a
-    triage verdict for carrying `considered:` — that line is the filing rule; a `tier:` or a `rank:` on it is."""
-    b, _ = parse_frontmatter(before)
-    a, _ = parse_frontmatter(after)
+    triage verdict for carrying `considered:` — that line is the filing rule; a `tier:` or a `rank:` on it is. Clearing
+    an answered ask with its record is `clear` — the `ask` right's, judged on the change (`rights_problems`)."""
+    b, b_body = parse_frontmatter(before)
+    a, a_body = parse_frontmatter(after)
     got, changed = set(), lambda k: (a.get(k) or "").strip() != (b.get(k) or "").strip()
     if any(changed(k) for k in ("answer", "answered", "answered-by")):
-        got.add("answer")
+        got.add("clear" if cleared(b, b_body, a, a_body) else "answer")
     if (a.get("next") or "").strip().lower() == "owner" and (b.get("next") or "").strip().lower() != "owner":
         got.add("ask")
     if a.get("status") and classify_status(a["status"]) not in OPEN_STATUSES and (not b.get("status") or classify_status(b["status"]) in OPEN_STATUSES):
@@ -2258,7 +2283,8 @@ def change_under_review():
 
 def rights_problems(trackers):
     """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
-    transition the change makes. (`ask` is judged on the line, by `seat_problems`.) Under Subversion there is no
+    transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
+    no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
     pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
     the author of each line is the one the server authenticated, so the transitions are read from the lines."""
     if not SEATS or vcs() not in ("git", "svn"):
@@ -2290,9 +2316,11 @@ def rights_problems(trackers):
             continue
         was = show(base, rel)
         now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if base == "HEAD" or COMMITTING else show("HEAD", rel).stdout
-        for right in sorted(transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0) - {"ask"}):
+        for move in sorted(transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0) - {"ask"}):
+            right = "ask" if move == "clear" else move
             if not holds(seat, right):
-                out.append(f'{t["id"]}: ' + no_seat(name, email, right, f'this change is a `{right}`'))
+                out.append(f'{t["id"]}: ' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
+                                                     if move == "clear" else f'this change is a `{right}`'))
             elif SEATS[seat][1] == "signed":
                 if not commit:
                     print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)

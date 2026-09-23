@@ -1,9 +1,9 @@
 ---
 id: FM-014
-status: Proposed
+status: In Progress
 considered: FM-008, FM-005
 tags: bug
-next: build
+next: review
 hook: "`--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front matter. The rights gate reads any change to those three lines as the `answer` transition, which only the owner seat holds — so the seat that holds `ask`, the one whose job clearing is, is refused. Acted-on answers stay in the front matter, and `--answered` lists them as not acted on, for ever."
 ---
 
@@ -11,7 +11,18 @@ hook: "`--clear-ask` moves an answered exchange into the body and removes `answe
 
 ## What is true now
 
-**Filed 2026-09-23; nothing is built.** Met by a consumer's principal seat clearing answers the Owner had given.
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.**
+`transitions()` now tells the clearing move from an answer: the three answer lines leave the front matter **and** the
+body gains a record under `## Asks` holding the same question, the same answer and the same answered-by (one more such
+record than the file had before) — that is `clear`, and `rights_problems` judges it under the **`ask`** right, with its
+own words: *this change clears an answered ask*. Removing the lines without the record, or editing the answer's text,
+is still `answer`. Five checks in a scratch repository with `[seats]`: the principal's `--clear-ask` passes in the
+pre-commit run and in `--check` on the commit; the implementer's is refused naming `ask`; the answer removed with no
+record is refused as `answer` and as a ruling gone from the record; the answer's text edited by the principal is
+refused as `answer`. Under Subversion nothing changes: the gate reads lines there, and a cleared answer has none.
+**What is left:** review, merge, the tag.
+
+Met by a consumer's principal seat clearing answers the Owner had given.
 
 **Two of FM-008's rules meet head on.** Rule 6 says clearing an ask keeps the record: `--clear-ask <id> <move>` writes
 the exchange under `## Asks` (date · question · answer · answered-by) and drops the ask and answer lines. Rule 5's
@@ -53,4 +64,5 @@ the ruling verbatim into the body.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Built: the clearing move — lines gone, record added — is judged under `ask`; anything else touching the answer stays `answer`. Five checks. |
 | 2026-09-23 | Filed. Reproduced from the rules as shipped in 0.17.0: `--clear-ask` by the principal seat is refused as an `answer` change. |

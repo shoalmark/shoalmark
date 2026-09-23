@@ -1494,6 +1494,44 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-014: clearing an answered ask WITH its record is the `ask` right's move, not an `answer` --------------------------
+# `--clear-ask` drops the three answer lines and writes the exchange under `## Asks`. The rights gate read ANY change to
+# those lines as `answer` — the owner's alone — so the seat that acts on answers could never record that it had.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "c"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in (600, 601, 602, 603):
+        tracker(root, f"AP-{n_}", extra=f'next: owner\nask: "Shall {n_} ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "ship it"\n'
+                                         f'answer: "accepted - ship it, and count a week"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the answers", "--author=holgo <h@x>")
+    wt_ = root / "docs/work-tracker"
+    def _as(seat_email, change):
+        """the seat at the keyboard makes `change`, stages it, and the pre-commit run judges it; then it is put back"""
+        git(root, "config", "user.email", seat_email); change(); git(root, "add", "-A")
+        r_ = run(root, "--print-written"); git(root, "reset", "-q", "--hard"); return r_
+    code, _, err = _as("principal@seat", lambda: run(root, "--clear-ask", "AP-600", "build"))
+    check("FM-014 · the principal clears an answered ask with `--clear-ask` — the record written, the lines gone — and the gate passes it: a clear is the `ask` right's",
+          code == 0 and "does not hold" not in err and "nowhere in the body" not in err)
+    git(root, "config", "user.email", "principal@seat"); run(root, "--clear-ask", "AP-600", "build"); run(root); git(root, "add", "-A")
+    git(root, "commit", "-qm", "AP-600 acted on", "--author=p <principal@seat>"); code, _, err = run(root, "--check")
+    check("FM-014 · …and committed, `--check` reads the same commit the same way", code == 0 and "does not hold" not in err)
+    code, _, err = _as("implementer@seat", lambda: run(root, "--clear-ask", "AP-601", "build"))
+    check("FM-014 · the implementer, which holds no `ask`, is refused the same clear — naming the move and the right",
+          code == fm.EXIT_LINT and "AP-601: this change clears an answered ask" in err and "which does not hold `ask`" in err)
+    strip_ = lambda n_: (lambda p_: p_.write_text("".join(l + "\n" for l in p_.read_text().split("\n")[:-1] if not l.startswith("answer")), encoding="utf-8"))(next(wt_.glob(f"AP-{n_}-*.md")))
+    code, _, err = _as("principal@seat", lambda: strip_(602))
+    check("FM-014 · the answer removed WITHOUT its record is refused — as an `answer`, the Owner's, and as a ruling gone from the record",
+          code == fm.EXIT_LINT and "AP-602: this change is a `answer`" in err and "does not hold `answer`" in err and "AP-602: the answer is being removed and the exchange is nowhere in the body" in err)
+    edit_ = lambda: (lambda p_: p_.write_text(p_.read_text().replace("ship it, and count a week", "ship it"), encoding="utf-8"))(next(wt_.glob("AP-603-*.md")))
+    code, _, err = _as("principal@seat", edit_)
+    check("FM-014 · the answer's text edited by the principal is refused as an `answer` — only the Owner writes his words",
+          code == fm.EXIT_LINT and "AP-603: this change is a `answer`" in err and "clears an answered ask" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------
 _TOOL = [sys.executable, str(HERE / "shoalmark.py")]
 with tempfile.TemporaryDirectory() as tmp:
