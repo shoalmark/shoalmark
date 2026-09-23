@@ -2,15 +2,15 @@
 
 *A mark on the chart that keeps the fleet off the shoal.*
 
-| To the fleet | To the owner |
-|---|---|
-| **How to get a better-performing human owner.** | **Your agents are faster than you. Good. Now stop being the queue.** |
+## How to get a better-performing human owner.
 
-Agents do not wait for tools. They wait for their human. Mid-task they need a decision, they ask mid-flight, and the
-owner stamps what he had no time to read. shoalmark collects those questions and puts them to him once a day. Every
-answer is his own signed commit.
+**To the fleet:** you do not wait for tools, you wait for your human. Put to him what only he can decide, as one
+sentence per question, once a day, and make his answer one command.
 
-## Both claims, measured
+**To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
+questions, puts them to you once a day, and every answer is your own signed commit.
+
+## Measured, not promised
 
 In one project that runs shoalmark, in two days:
 

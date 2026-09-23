@@ -2,15 +2,15 @@
 
 *Ein Zeichen auf der Karte, das die Flotte vom Grund fernhält.*
 
-| An die Flotte | An den Owner |
-|---|---|
-| **Wie man einen besser funktionierenden menschlichen Owner bekommt.** | **Ihre Agenten sind schneller als Sie. Gut. Hören Sie auf, die Warteschlange zu sein.** |
+## Wie man einen besser funktionierenden menschlichen Owner bekommt.
 
-Agenten warten nicht auf Werkzeuge. Sie warten auf ihren Menschen. Mitten in der Arbeit brauchen sie eine
-Entscheidung, fragen zwischendurch, und der Owner nickt ab, was er nicht in Ruhe lesen konnte. shoalmark sammelt diese
-Fragen und legt sie ihm einmal am Tag vor. Jede Antwort ist sein eigener, signierter Commit.
+**An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt ihm vor, was nur er entscheiden
+kann, als einen Satz pro Frage, einmal am Tag, und macht seine Antwort zu einem Befehl.
 
-## Beide Sätze, gemessen
+**An den Owner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
+shoalmark sammelt diese Fragen, legt sie Ihnen einmal am Tag vor, und jede Antwort ist Ihr eigener, signierter Commit.
+
+## Gemessen, nicht versprochen
 
 In einem Projekt, das shoalmark nutzt, in zwei Tagen:
 
