@@ -21,7 +21,8 @@ Every string is a label, in English and in the shipped German table; the old `an
 drove. **Proven in a headless browser by the suite**: OK pressed, screen two read as rendered, Done clicked and the
 dialog closed, the clipboard stubbed present and absent. **Not proven:** a real clipboard in the Owner's browser, a
 phone-width layout, and the signing page itself, which is served only once the documentation site is public. **What is
-left:** his eye on the three points not proven.
+left:** nothing here. The three points not proven moved to
+[FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md), the answer flow's tracker.
 
 Reported by the Owner after answering from the board.
 
@@ -68,6 +69,7 @@ only button left looks like a way to undo the decision.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Its remainder — a real clipboard in the Owner's browser, a phone-width layout, the live signing page — moved as one line into FM-018's open items (R9). |
 | 2026-09-23 | Merged (#12), released as 0.17.4. |
 | 2026-09-23 | Built: the second screen, Done alone in its menu, *Copied* only when it was; labels in English and German. Driven in a headless browser by the suite. |
 | 2026-09-23 | Filed from the Owner's report and his design for the second screen. |
