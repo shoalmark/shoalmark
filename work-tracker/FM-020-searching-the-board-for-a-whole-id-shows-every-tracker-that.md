@@ -55,5 +55,5 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
-| 2026-09-23 | Filed. |
 | 2026-09-23 | Built: a whole id alone is its row; `~ID`, a partial id and words unchanged; two Chrome checks and a string check, shown to fail on 0.17.4. |
+| 2026-09-23 | Filed. |

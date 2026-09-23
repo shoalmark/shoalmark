@@ -55,5 +55,5 @@ A section that is empty by design has to say so. Otherwise it reads as a defect 
 
 | Date | Event |
 |---|---|
-| 2026-09-23 | Filed. |
 | 2026-09-23 | Built: the empty `progress` line says why while no pass has run, in English and German; three Chrome checks and a string check, shown to fail on 0.17.4. |
+| 2026-09-23 | Filed. |

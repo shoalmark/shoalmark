@@ -12,12 +12,12 @@ hook: "`__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG 
 
 ## What is true now
 
-**Built 2026-09-22 on `fix/0.17.3-version-drift-and-the-silent-deprecation`; open for review, not merged.**
+**Built 2026-09-22 on `fix/0.17.3-version-drift-and-the-silent-deprecation`; merged 2026-09-22 (#10), released as 0.17.3.**
 Reported by an outside consumer upgrading from 0.11.0, and verified here. `__version__` is now read from the
 `VERSION` file at import and declared nowhere else, so the two cannot drift; `--vendor`'s comparison is between
 the consumer's `VERSION` and ours. A consumer pinned at 0.17.0 re-vendoring now gets `(was 0.17.0)` and the
 0.17.1, 0.17.2 and 0.17.3 sections — reproduced end to end. Two checks pin it, both shown to fail when the
-declared constant is put back. **What is left:** the Owner merges and tags `v0.17.3`; the section below records
+declared constant is put back. **What is left:** nothing; the section below records
 the state that made it necessary.
 
 **Two sources of truth, and they disagree.** `shoalmark.py:42` carries `__version__ = "0.17.0"`; `VERSION` and the
@@ -84,5 +84,6 @@ correctness fixes in the answer gate.
 
 | Date | Event |
 |---|---|
+| 2026-09-22 | Merged (#10), released as 0.17.3. |
 | 2026-09-22 | Built: version derived from `VERSION`, two checks, CHANGELOG 0.17.3, `VERSION` bumped. Both suites green (200 checks); the two new checks fail against the restored defect. Open for review. |
 | 2026-09-22 | Filed. Reported by an outside consumer; drift confirmed present in tags v0.17.1 and v0.17.2, and the `--vendor` suppression reproduced against a copy pinned at 0.17.0. |

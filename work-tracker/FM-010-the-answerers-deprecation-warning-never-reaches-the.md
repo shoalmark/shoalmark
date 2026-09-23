@@ -12,12 +12,12 @@ hook: "The note that tells a repository `answerers` is going away is guarded by 
 
 ## What is true now
 
-**Built 2026-09-22 on `fix/0.17.3-version-drift-and-the-silent-deprecation`; open for review, not merged.**
+**Built 2026-09-22 on `fix/0.17.3-version-drift-and-the-silent-deprecation`; merged 2026-09-22 (#10), released as 0.17.3.**
 Found by an outside consumer the day their repository became the affected population, and reproduced here. The
 guard is now `ANSWERERS` alone, and the note no longer repeats a removal date that was never served: `answerers` is
 removed no sooner than the release after 0.17.3, said in those words in the note, the CHANGELOG and here. Three checks, one per
-configuration; the two that matter fail against the restored guard. **What is left:** the Owner merges and tags
-`v0.17.3`. The removal of `answerers` is then no sooner than the release after it.
+configuration; the two that matter fail against the restored guard. **What is left:** nothing here;
+`answerers` is removed no sooner than the release after 0.17.3.
 
 **The guard is inverted.** `shoalmark.py:2271`:
 
@@ -76,5 +76,6 @@ found it did so only by moving onto `answerers` and noticing the silence.
 
 | Date | Event |
 |---|---|
+| 2026-09-22 | Merged (#10), released as 0.17.3. |
 | 2026-09-22 | Built: the guard drops to `ANSWERERS`, the note's removal wording corrected, three checks. Both suites green (200 checks). Open for review. |
 | 2026-09-22 | Filed. Reported by an outside consumer against their own `answerers`-only repository; both configurations reproduced here. |

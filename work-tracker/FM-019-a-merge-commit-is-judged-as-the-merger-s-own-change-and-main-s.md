@@ -11,7 +11,7 @@ hook: "On a clean tree the rights gate judges HEAD against HEAD~1. For a merge c
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** It blocked
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`; merged 2026-09-23 (#12), released as 0.17.4.** It blocked
 the 0.17.4 tag. Found while building FM-014 (a line there) and reproduced by the Principal on a local no-ff merge of a
 branch carrying three signed answers and a close: 0.17.3 and the first 0.17.4 build both exit 4, naming the forge's
 merge identity as the author of every answer and the close.
@@ -40,7 +40,7 @@ loses an answer only if every parent had it). The commits a merge brings are rea
 | (d) shoalmark's own `origin/main` at `f0fa261`, the forge's merge of `answer/fm-007` (signers file configured as in the Owner's checkout) | 0.17.3: exit 4 · now: exit 0, 0.92 s — the two answer commits it brings are the owner's, signed, and verify |
 
 Two mutation witnesses: reading the first parent alone fails (a), (b), (e), (f); not reading the brought commits fails
-(e) and (f). The FM-014 and FM-017 checks pass unchanged. **What is left:** review, merge, the tag.
+(e) and (f). The FM-014 and FM-017 checks pass unchanged. **What is left:** nothing.
 
 ## Why
 
@@ -60,4 +60,5 @@ fix that simply stopped reading the merge would let an unjudged commit ride in u
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Merged (#12), released as 0.17.4. |
 | 2026-09-23 | Filed and built: a merge judged by its own change, each commit it brings by its own author; six checks; `origin/main` passes `--check`. |

@@ -11,7 +11,7 @@ hook: "In the board's answer dialog, OK copies the command, prints one line of i
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** OK now
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`; merged 2026-09-23 (#12), released as 0.17.4.** OK now
 replaces the dialog's content with a second screen: *Sign your answer* · the command in a monospace block with *Copy
 again* · where (a terminal, this repository, the branch that carries the ask — named: the board now knows the branch it
 was built from) · what it does, four steps, and that it prints each and may take a while · what success looks like —
@@ -22,7 +22,7 @@ Every string is a label, in English and in the shipped German table; the old `an
 drove. **Proven in a headless browser by the suite**: OK pressed, screen two read as rendered, Done clicked and the
 dialog closed, the clipboard stubbed present and absent. **Not proven:** a real clipboard in the Owner's browser, a
 phone-width layout, and the signing page itself, which is served only once the documentation site is public. **What is
-left:** his eye on it, review, merge, the tag.
+left:** his eye on the three points not proven.
 
 Reported by the Owner after answering from the board.
 
@@ -69,5 +69,6 @@ only button left looks like a way to undo the decision.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Merged (#12), released as 0.17.4. |
 | 2026-09-23 | Built: the second screen, Done alone in its menu, *Copied* only when it was; labels in English and German. Driven in a headless browser by the suite. |
 | 2026-09-23 | Filed from the Owner's report and his design for the second screen. |
