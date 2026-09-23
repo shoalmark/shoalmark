@@ -414,3 +414,18 @@ The only hit, the id prefix `msr`/`MSR-00n` in the new tests, is the suite's and
 - R6 can refuse a top-level session by its wording.
 - R7 is two stale texts.
 - Neither changes what the gate refuses of a seat commit, or what the report counts.
+
+**Delta on 8b5588e, 2026-09-23 18:25 CEST — READY WITH FINDINGS: the date edge, P3, to carry into FM-024's open
+items.** R6 and R7 are closed.
+- **R6:** the three prose cases now open as top-level sessions (exit 0). `session 8e509911` still refuses `X9`
+  (exit 4), and `8e509911/reviewer-2` is accepted. Both registry rows that said *a9* now say *session 8e509911*, with
+  a note, and the CHANGELOG and README name the refusal.
+- **The edge:** an exactly-8-character token in *convened by* is read as a parent. Two cases refuse a top-level
+  session, loudly and naming the token (exit 4): an all-digit date (`20260923`) and a commit hash at 8 characters
+  (`34ff6cea`). Two cases slip through silently: a 7-character hash, and an upper-case id (`8E509911`) that is not
+  derived. None of this touches the gate or the counts, and the fix is to reword.
+- **R7:** FM-024's *What is true now* matches what shipped — 15 checks (14 + 1), *on trunk*, the session per commit
+  range, row `8d6537be` closed and re-opened. README says *two entries*.
+- **Gates:** both suites exit 0, 258/148 ok on Python 3.14.3 and 3.9.6. `--check` exits 0 (its verdicts read *same
+  session* on `acec312` and *independent* on `0743a45`). `--html-only` exits 0. `py_compile` exits 0 on the three
+  files. `--vendor` onto a 0.17.5 copy prints only `## 0.17.6` (PIN `OK` × 8).
