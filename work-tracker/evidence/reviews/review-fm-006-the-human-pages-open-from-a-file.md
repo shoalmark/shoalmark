@@ -399,3 +399,10 @@ No capitalised *Owner* remains.
 - **What closes it:** Move *our own* into the intro: *In one project — our own — that runs shoalmark:* / *In einem
   Projekt — unserem eigenen —, das shoalmark nutzt:*. Then the bullet is only *After, in the first 28 hours after the
   rule:* / *Danach, in den ersten 28 Stunden nach der Regel:*. Both lines read natively in German then.
+
+**Delta on f55b2d3, 2026-09-23 23:07 CEST — READY WITH FINDINGS: R11 (P3).** R9 and R10 are closed.
+- *28 hours* is true (27 h 50 min), and *one project* / *einem Projekt* now stands once each. The English lines and the
+  German intro read natively.
+- **R11 · P3:** *unter der Regel* is a calque of *under the rule*. *Nach der Regel* would read as *according to the
+  rule*. The natural German is *in den ersten 28 Stunden, seit die Regel gilt*.
+- `zensical build` exits 0 with *No issues found*; `--check` and `--session-check` exit 0.
