@@ -954,14 +954,14 @@ fm.configure(HERE)
 # *Copied* whether or not anything was. The Owner: "Only a "Done" button to close the dialog."
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()
-    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "checkout", "-q", "-b", "pd/090")
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "checkout", "-q", "-b", "fix/ap-090")
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     tracker(root, "AP-090", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
     run(root); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     two_ = page.split("const sign=")[1].split('d.querySelector(".copy")')[0]
     menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
     check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
-          '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="pd/090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
+          '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
           and 'value="done"' in menus_[0] and 'l("answer.done")' in menus_[0] and all(f'"{k}"' in page for k in fm.LABELS if k.startswith("answer.sign.")))
     check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
           '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
@@ -984,7 +984,7 @@ with tempfile.TemporaryDirectory() as tmp:
         s2_, b2_, yes_ = _sign("yes")
         check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
               "Sign your answer" in s2_ and re.search(r'<pre class="cmd">[^<]*--answer AP-090 accept "b"</pre>', b2_) is not None and "Copy again" in s2_
-              and "In a terminal, in this repository, on the branch that carries the ask — pd/090, the branch this board was built from." in s2_
+              and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
               and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
               and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
               and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
