@@ -1,0 +1,419 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "q01": {
+      "type": "score",
+      "score": 3.27,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.36,
+      "probabilities": {
+        "0": 0.04,
+        "1": 0.14,
+        "2": 0.01,
+        "3": 0.49,
+        "4": 0.1,
+        "5": 0.08,
+        "6": 0.14
+      },
+      "stats": {}
+    },
+    "q02": {
+      "type": "score",
+      "score": 1.41,
+      "legend": {
+        "0": "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "5": "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.32,
+      "probabilities": {
+        "0": 0.38,
+        "1": 0.39,
+        "2": 0.01,
+        "3": 0.04,
+        "4": 0.08,
+        "5": 0.03,
+        "6": 0.07
+      },
+      "stats": {}
+    },
+    "q03": {
+      "type": "score",
+      "score": 1.82,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.36,
+        "1": 0.09,
+        "2": 0.19,
+        "3": 0.22,
+        "4": 0.04,
+        "5": 0.06,
+        "6": 0.04
+      },
+      "stats": {}
+    },
+    "q04": {
+      "type": "score",
+      "score": 1.68,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.28,
+      "probabilities": {
+        "0": 0.27,
+        "1": 0.37,
+        "2": 0.04,
+        "3": 0.18,
+        "4": 0.05,
+        "5": 0.05,
+        "6": 0.04
+      },
+      "stats": {}
+    },
+    "q05": {
+      "type": "score",
+      "score": 2.7,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.12,
+        "1": 0.35,
+        "2": 0.05,
+        "3": 0.08,
+        "4": 0.03,
+        "5": 0.33999999999999997,
+        "6": 0.03
+      },
+      "stats": {}
+    },
+    "q06": {
+      "type": "score",
+      "score": 2.76,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.16,
+      "probabilities": {
+        "0": 0.1,
+        "1": 0.22,
+        "2": 0.1,
+        "3": 0.27,
+        "4": 0.11,
+        "5": 0.12,
+        "6": 0.08
+      },
+      "stats": {}
+    },
+    "q07": {
+      "type": "score",
+      "score": 1.09,
+      "legend": {
+        "0": "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "5": "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.36,
+      "probabilities": {
+        "0": 0.59,
+        "1": 0.21,
+        "2": 0.01,
+        "3": 0.02,
+        "4": 0.09,
+        "5": 0.02,
+        "6": 0.06
+      },
+      "stats": {}
+    },
+    "q08": {
+      "type": "score",
+      "score": 2.96,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.28,
+      "probabilities": {
+        "0": 0.14,
+        "1": 0.09,
+        "2": 0.04,
+        "3": 0.42,
+        "4": 0.13,
+        "5": 0.08,
+        "6": 0.1
+      },
+      "stats": {}
+    },
+    "q09": {
+      "type": "score",
+      "score": 2.47,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.38,
+        "1": 0.07,
+        "2": 0.1,
+        "3": 0.02,
+        "4": 0.1,
+        "5": 0.23,
+        "6": 0.1
+      },
+      "stats": {}
+    },
+    "q10": {
+      "type": "score",
+      "score": 2.9,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.17,
+        "1": 0.22,
+        "2": 0.04,
+        "3": 0.13,
+        "4": 0.17,
+        "5": 0.11,
+        "6": 0.16
+      },
+      "stats": {}
+    },
+    "q11": {
+      "type": "score",
+      "score": 1.56,
+      "legend": {
+        "0": "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "5": "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.09,
+      "probabilities": {
+        "0": 0.44,
+        "1": 0.27,
+        "2": 0.01,
+        "3": 0.03,
+        "4": 0.12,
+        "5": 0.02,
+        "6": 0.11
+      },
+      "stats": {}
+    },
+    "q12": {
+      "type": "score",
+      "score": 1.51,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.12,
+      "probabilities": {
+        "0": 0.35,
+        "1": 0.16,
+        "2": 0.35,
+        "3": 0.04,
+        "4": 0.04,
+        "5": 0.02,
+        "6": 0.04
+      },
+      "stats": {}
+    },
+    "q13": {
+      "type": "score",
+      "score": 2.65,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.22,
+        "1": 0.15,
+        "2": 0.15,
+        "3": 0.03,
+        "4": 0.22,
+        "5": 0.11,
+        "6": 0.12
+      },
+      "stats": {}
+    },
+    "q14": {
+      "type": "score",
+      "score": 3.23,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.18,
+        "1": 0.18,
+        "2": 0.05,
+        "3": 0.04,
+        "4": 0.14,
+        "5": 0.17,
+        "6": 0.24000000000000002
+      },
+      "stats": {}
+    },
+    "q15": {
+      "type": "score",
+      "score": 1.41,
+      "legend": {
+        "0": "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "5": "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.18,
+      "probabilities": {
+        "0": 0.45,
+        "1": 0.3,
+        "2": 0.01,
+        "3": 0.04,
+        "4": 0.1,
+        "5": 0.02,
+        "6": 0.08
+      },
+      "stats": {}
+    },
+    "q16": {
+      "type": "score",
+      "score": 2.76,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0,
+      "probabilities": {
+        "0": 0.24,
+        "1": 0.15,
+        "2": 0.11,
+        "3": 0.03,
+        "4": 0.13,
+        "5": 0.22,
+        "6": 0.12
+      },
+      "stats": {}
+    },
+    "q17": {
+      "type": "score",
+      "score": 2.94,
+      "legend": {
+        "0": "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "1": "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "2": "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "3": "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "4": "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "5": "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "6": "Passes all six gates, G0 to G5."
+      },
+      "confidence": 0.12,
+      "probabilities": {
+        "0": 0.08,
+        "1": 0.26,
+        "2": 0.02,
+        "3": 0.3,
+        "4": 0.07,
+        "5": 0.14,
+        "6": 0.13
+      },
+      "stats": {}
+    }
+  },
+  "usage": {
+    "input_tokens": 7361,
+    "output_tokens": 259
+  },
+  "request_id": "playground_1dc13a5396120604295ac49453f6fbbe7fe",
+  "evaluation_time_ms": 173.81076200399548
+}

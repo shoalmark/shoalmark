@@ -14,3 +14,9 @@ which says so.
 | 8e509911 | principal | the Owner, 2026-09-23 12:21 | the day's findings into the tool; releases 0.17.5-0.17.7, the first triage pass, FM-023/FM-024 | shoalmark-principal | 2026-09-23 19:14 | — |
 | 8e509911/implementer-3 | implementer | session 8e509911 | build 0.17.8 | shoalmark-impl | 2026-09-23 20:11 | 2026-09-23 21:40 |
 | 8e509911/implementer-4 | implementer | session 8e509911 | the human pages open from a file | shoalmark-impl | 2026-09-23 21:40 | — |
+| ee61f1fe | gtm | the Owner, 2026-09-23 22:02 | screen the owner-facing claim | shoalmark-gtm | 2026-09-23 22:02 | 2026-09-23 22:12 |
+| 2ab3afad | gtm | the Owner, 2026-09-23 22:24 | second pass: Owner vs Eigner, leistungsstärkeren vs besseren, the second claim beside the new bar (the harness session of ee61f1fe; an id is used once) | shoalmark-gtm | 2026-09-23 22:24 | 2026-09-23 22:33 |
+| c1652143 | gtm | the Owner, 2026-09-23 22:40 | the Jev gate test: 17 lines x 6 gates, run twice | shoalmark-gtm | 2026-09-23 22:40 | 2026-09-23 22:52 |
+| ad81b142 | gtm | the Owner, 2026-09-23 22:57 | the German claim re-provoked: twelve new German lines, no translations | shoalmark-gtm | 2026-09-23 22:57 | 2026-09-23 22:58 |
+| d578f49e | gtm | the Owner, 2026-09-23 22:59 | the survivors re-read for the stated reader: a German tech investor, English-fluent | shoalmark-gtm | 2026-09-23 22:59 | 2026-09-23 22:59 |
+| 63f5b126 | gtm | the Owner, 2026-09-23 23:06 | both readers per line, and what would be data | shoalmark-gtm | 2026-09-23 23:06 | 2026-09-23 23:06 |
