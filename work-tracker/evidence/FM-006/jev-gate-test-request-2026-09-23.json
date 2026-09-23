@@ -1,0 +1,840 @@
+{
+  "model": "jev-latest",
+  "state": {
+    "tool": "A tool for a code repository whose work is done by a fleet of AI agents. The repository's human owner answers the agents' questions.",
+    "facts_the_record_proves": [
+      "One command per question to the owner produces one signed answer: a signed commit in his name.",
+      "The owner's sitting is fifteen minutes a day, at a time he chooses, sent as a calendar invite.",
+      "In one project, before: the last 200 pull requests were merged unread, and none was reviewed. After, in just over a day: 9 of 13 pull requests carried a reviewer's file before they were opened.",
+      "The board reports, for every review, whether it came from a different agent session than the code it judged. It is a report, not a proof."
+    ],
+    "the_bar": "Get a better-performing human Owner.",
+    "the_fleets_line": "To the fleet: you do not wait for tools, you wait for your human. Put to him what only he can decide, as one sentence per question, once a day, and make his answer one command.",
+    "the_owners_never": [
+      "Never degrade the owner to a push-a-button.",
+      "Never promote rubber-stamping."
+    ],
+    "slots": {
+      "owner_claim": "A second claim beside the bar, addressed to the owner himself. German register: Sie.",
+      "headline": "The bar's English line and its German twins. The fleet reads the headline: an imperative in it addresses the fleet, and in German it says du. It talks about the owner."
+    }
+  },
+  "questions": {
+    "q001": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q002": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q003": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `headline`. The line: «Hol dir einen besseren menschlichen Owner.» Does the line promise more than `the_bar` promises?",
+      "criteria": {
+        "true": "It promises something the bar does not promise.",
+        "false": "It promises nothing beyond what the bar promises."
+      }
+    },
+    "q004": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q005": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q006": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q007": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q008": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q009": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q010": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q011": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q012": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q013": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q014": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q015": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q016": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Does the line both command the fleet and provoke the owner?",
+      "criteria": [
+        "Fails: it does not command the fleet, or it does not provoke the owner.",
+        "Passes: it commands the fleet and provokes the owner."
+      ]
+    },
+    "q017": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q018": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q019": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `headline`. The line: «Get a better-performing human Owner.» Does the line read as written natively in its own language?",
+      "criteria": [
+        "Fails: a native reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes: it reads as written natively, with no idiom slip."
+      ]
+    },
+    "q020": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q021": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q022": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q023": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `headline`. The line: «Hol dir einen besseren menschlichen Eigner.» Does the line read as written natively in its own language?",
+      "criteria": [
+        "Fails: a native reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes: it reads as written natively, with no idiom slip."
+      ]
+    },
+    "q024": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q025": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q026": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q027": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q028": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `headline`. The line: «Get a better-performing human Owner.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q029": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q030": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q031": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q032": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q033": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `headline`. The line: «Hol dir einen besseren menschlichen Eigner.» Does the line carry everything `the_bar` says, and say it no more weakly?",
+      "criteria": [
+        "Fails: it leaves out something the bar says, or it says it more weakly.",
+        "Passes: it carries everything the bar says, and says it no more weakly."
+      ]
+    },
+    "q034": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Does the line read as written natively in its own language?",
+      "criteria": [
+        "Fails: a native reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes: it reads as written natively, with no idiom slip."
+      ]
+    },
+    "q035": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q036": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Owner.» Does the line carry everything `the_bar` says, and say it no more weakly?",
+      "criteria": [
+        "Fails: it leaves out something the bar says, or it says it more weakly.",
+        "Passes: it carries everything the bar says, and says it no more weakly."
+      ]
+    },
+    "q037": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q038": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q039": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q040": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `headline`. The line: «Hol dir einen besseren menschlichen Eigner.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q041": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q042": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q043": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q044": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Does the line carry everything `the_bar` says, and say it no more weakly?",
+      "criteria": [
+        "Fails: it leaves out something the bar says, or it says it more weakly.",
+        "Passes: it carries everything the bar says, and says it no more weakly."
+      ]
+    },
+    "q045": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `headline`. The line: «Hol dir einen besseren menschlichen Owner.» Does the line read as written natively in its own language?",
+      "criteria": [
+        "Fails: a native reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes: it reads as written natively, with no idiom slip."
+      ]
+    },
+    "q046": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q047": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q048": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q049": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q050": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Owner.» Does the line promise more than `the_bar` promises?",
+      "criteria": {
+        "true": "It promises something the bar does not promise.",
+        "false": "It promises nothing beyond what the bar promises."
+      }
+    },
+    "q051": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q052": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q053": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `headline`. The line: «Hol dir einen besseren menschlichen Owner.» Does the line carry everything `the_bar` says, and say it no more weakly?",
+      "criteria": [
+        "Fails: it leaves out something the bar says, or it says it more weakly.",
+        "Passes: it carries everything the bar says, and says it no more weakly."
+      ]
+    },
+    "q054": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q055": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q056": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q057": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q058": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Owner.» Does the line read as written natively in its own language?",
+      "criteria": [
+        "Fails: a native reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes: it reads as written natively, with no idiom slip."
+      ]
+    },
+    "q059": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `headline`. The line: «Get a better-performing human Owner.» Does the line carry everything `the_bar` says, and say it no more weakly?",
+      "criteria": [
+        "Fails: it leaves out something the bar says, or it says it more weakly.",
+        "Passes: it carries everything the bar says, and says it no more weakly."
+      ]
+    },
+    "q060": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q061": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `headline`. The line: «Get a better-performing human Owner.» Is the line a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it does not address the fleet while talking about the owner, or it is not a provocation the owner can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon and no internal id."
+      ]
+    },
+    "q062": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q063": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q064": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `headline`. The line: «Get a better-performing human Owner.» Does the line both command the fleet and provoke the owner?",
+      "criteria": [
+        "Fails: it does not command the fleet, or it does not provoke the owner.",
+        "Passes: it commands the fleet and provokes the owner."
+      ]
+    },
+    "q065": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q066": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q067": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q068": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q069": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q070": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `headline`. The line: «Hol dir einen besseren menschlichen Eigner.» Is the line a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it does not address the fleet while talking about the owner, or it is not a provocation the owner can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon and no internal id."
+      ]
+    },
+    "q071": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Owner.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q072": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q073": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q074": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Owner.» Is the line a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it does not address the fleet while talking about the owner, or it is not a provocation the owner can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon and no internal id."
+      ]
+    },
+    "q075": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q076": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q077": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q078": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `headline`. The line: «Hol dir einen besseren menschlichen Eigner.» Does the line promise more than `the_bar` promises?",
+      "criteria": {
+        "true": "It promises something the bar does not promise.",
+        "false": "It promises nothing beyond what the bar promises."
+      }
+    },
+    "q079": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q080": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `headline`. The line: «Hol dir einen besseren menschlichen Owner.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q081": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q082": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q083": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Does the line promise more than `the_bar` promises?",
+      "criteria": {
+        "true": "It promises something the bar does not promise.",
+        "false": "It promises nothing beyond what the bar promises."
+      }
+    },
+    "q084": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q085": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Is the line a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it does not address the fleet while talking about the owner, or it is not a provocation the owner can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon and no internal id."
+      ]
+    },
+    "q086": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q087": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q088": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `headline`. The line: «Get a better-performing human Owner.» Does the line promise more than `the_bar` promises?",
+      "criteria": {
+        "true": "It promises something the bar does not promise.",
+        "false": "It promises nothing beyond what the bar promises."
+      }
+    },
+    "q089": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `headline`. The line: «Hol dir einen besseren menschlichen Owner.» Is the line a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it does not address the fleet while talking about the owner, or it is not a provocation the owner can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the fleet while talking about the owner, a provocation the owner can take, with no jargon and no internal id."
+      ]
+    },
+    "q090": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `headline`. The line: «Hol dir einen besseren menschlichen Owner.» Does the line both command the fleet and provoke the owner?",
+      "criteria": [
+        "Fails: it does not command the fleet, or it does not provoke the owner.",
+        "Passes: it commands the fleet and provokes the owner."
+      ]
+    },
+    "q091": {
+      "type": "score",
+      "instructions": "Gate G0, form. Slot `owner_claim`. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Is the line a single line, addressed to the owner himself, a provocation he can take, with no jargon (a term of art from software or management practice that a general reader would not use) and no internal id? Its word count is checked in code and is not part of this question.",
+      "criteria": [
+        "Fails: it is not a single line, or it is not addressed to the owner himself (it speaks about him, or to someone else), or it is not a provocation he can take, or it uses jargon (a term of art from software or management practice that a general reader would not use) or an internal id.",
+        "Passes: a single line, addressed to the owner himself, a provocation he can take, with no jargon and no internal id."
+      ]
+    },
+    "q092": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `owner_claim`. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Read beside `the_fleets_line`: does the line both provoke the owner and tell the fleet what changes?",
+      "criteria": [
+        "Fails: it does not provoke the owner, or it tells the fleet nothing that changes.",
+        "Passes: it provokes the owner and tells the fleet what changes."
+      ]
+    },
+    "q093": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `headline`. The line: «Hol dir einen leistungsstärkeren menschlichen Owner.» Does the line both command the fleet and provoke the owner?",
+      "criteria": [
+        "Fails: it does not command the fleet, or it does not provoke the owner.",
+        "Passes: it commands the fleet and provokes the owner."
+      ]
+    },
+    "q094": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q095": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    },
+    "q096": {
+      "type": "score",
+      "instructions": "Gate G3, `the_owners_never`. Slot `owner_claim`. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Does the line degrade the owner to someone who presses a button, promote rubber-stamping, flatter him into pressing, or insult him?",
+      "criteria": [
+        "Fails: it does at least one of these four things.",
+        "Passes: it does none of these four things; a provocation he can take is not an insult."
+      ]
+    },
+    "q097": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q098": {
+      "type": "score",
+      "instructions": "Gate G4, both ways. Slot `headline`. The line: «Hol dir einen besseren menschlichen Eigner.» Does the line both command the fleet and provoke the owner?",
+      "criteria": [
+        "Fails: it does not command the fleet, or it does not provoke the owner.",
+        "Passes: it commands the fleet and provokes the owner."
+      ]
+    },
+    "q099": {
+      "type": "score",
+      "instructions": "Gate G5, the bar. Slot `owner_claim`. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Read beside `the_bar`: does the line add something the bar does not say, and is it no weaker than the bar?",
+      "criteria": [
+        "Fails: it is weaker than the bar, or it adds nothing the bar does not already say.",
+        "Passes: it adds something the bar does not say, and it is no weaker."
+      ]
+    },
+    "q100": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q101": {
+      "type": "score",
+      "instructions": "Gate G1, language. Slot `owner_claim`. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Do both the German and the English read as written natively in their own language?",
+      "criteria": [
+        "Fails: in at least one of the two languages a native reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes: both read as written natively, unambiguous, with no idiom slip."
+      ]
+    },
+    "q102": {
+      "type": "noul",
+      "instructions": "Gate G2, truth. Slot `owner_claim`. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Does the line say or promise something about the tool that the facts in `facts_the_record_proves` do not prove?",
+      "criteria": {
+        "true": "It says or promises something those facts do not prove, such as delegation, speed, or an end to merging.",
+        "false": "Everything it says or promises about the tool is proven by those facts, or it makes no claim about the tool."
+      }
+    }
+  }
+}

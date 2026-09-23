@@ -497,3 +497,78 @@ and four facts as numbers. It carries no tracker's text and no name.
 
 **The session closes.** The screen is filed: the Jev column is recorded and read as noise by its own rule, the
 verdicts stand as the seat ledgered them, and the Owner rules.
+
+---
+
+## The gate test — recorded 2026-09-23 22:42 CEST, before either call; session `c1652143`
+
+**The Owner's direction.**
+
+- One yes-or-no question per gate per line: 17 lines × 6 gates = 102.
+- Each gate is its own Score with a one-sentence rubric. G2 (truth) is a Noul.
+- The first failed gate is computed in code.
+- Three controls come first.
+- The identical call runs twice.
+- The column counts only if all three controls hold and the repeat agrees within 0.1. Otherwise it is noise, and the
+  record says whether it blames the question or the model.
+- Both runs are ledgered raw.
+
+**The seventeen lines.**
+
+- **C1–C12** in the owner-facing slot.
+- **E0**, the Owner's English line *Get a better-performing human Owner.*, in its own slot, the headline. It is the
+  positive control and must pass every gate.
+- **H1–H4**, the German twins, in the headline slot.
+- **C0 is out:** it was the Owner's line in the owner-facing slot. *Must pass every gate* only makes sense in the
+  line's own slot, because in the owner-facing slot the ledger kills it at G0 by the slot's own definition.
+
+**The questions:** 85 two-level Scores (level 0 fails, level 1 passes) and 17 Nouls. The G2 Noul asks the failing
+condition directly: *does the line say or promise something the facts do not prove?*
+
+**Jev's known issues for `jev-1.13`**, read before the call (`docs.typesafe.ai/model-jaggedness/jev-1.13`, **E**),
+and what the request does about each:
+
+- **#2, it cannot count:** the ≤ 12-word check is done in code, from the keys file. The first request asked Jev to
+  count, which may be one more reason that call was noise.
+- **#1, literal reading:** each instruction states the exact condition, and the criteria hold the boundaries.
+- **#7, irrelevant state:** each question names the state field it reads.
+- **#4, Scores serve thresholds only:** every gate passes at p ≥ 0.5.
+- **What stays against the page:** G0 and G3 each still bundle several conditions in one question. The page says
+  *avoid hiding multiple judgments in one question*, but the Owner's design is one question per gate. **If the record
+  blames the question, look there first.**
+
+**Two design choices, said:**
+
+- **Jargon is defined in general terms** (*a term of art … a general reader would not use*), never for a particular
+  line. Writing *Owner* into the boundary would make the H1 control circular.
+- **E0's G2 and G5 are identities, because E0 is the bar.** They test whether Jev recognises one; G0, G1, G3 and G4
+  are E0's real test.
+
+**The decision rule is code:** `jev-gate-test-score.py`, committed with this section and before either call.
+
+- **p_pass:** a Score's probability of level 1, or 1 − noul for G2. A gate passes when p_pass ≥ 0.5.
+- **Controls:** E0 survives, H1 dies at G0, and H2 survives, in both runs.
+- **Repeat:** all 102 p_pass values agree within 0.10.
+- **The blame:**
+  - *the model*, when the repeat fails. This wins when both fail, because an unstable answer cannot indict the
+    question.
+  - *the question*, when the repeat holds and a control fails.
+
+**The scorer was tested on three synthetic answer sets before any real one existed (E).**
+
+| synthetic set | verdict it returned |
+|---|---|
+| the ledger's own verdicts, with a +0.05 shift between runs | *the column counts* |
+| a +0.25 shift between runs | *blames the MODEL* |
+| E0 broken in both runs | *blames the QUESTION* |
+
+**The rule's limit:** a stable answer that misses a control cannot tell a badly posed question from a model that
+judges otherwise. The Owner's rule calls it the question, and the ledger will say so.
+
+**Files, beside this ledger:**
+
+- `jev-gate-test-build.py` builds the request and the keys.
+- `jev-gate-test-request-2026-09-23.json` is the request, identical for both runs.
+- `jev-gate-test-keys-2026-09-23.json` holds the key → (line, gate) map, shuffled with seed 20260923, and the word
+  counts. It is never sent.
+- The answers will land as `jev-gate-test-response-run1-2026-09-23.json` and `…-run2-…`.
