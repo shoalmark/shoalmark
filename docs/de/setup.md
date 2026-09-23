@@ -10,13 +10,13 @@ cd <Ihr Repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
 
-`tools/shoalmark/` ist jetzt eine festgehaltene Kopie: acht Dateien und ein `PIN` mit ihren Prüfsummen. Seine erste
-Zeile sagt, aus welchem Release die Kopie stammt. `--vendor` übernimmt nur ein Release, das ganze Werkzeug an seinem Tag
-und ohne lokale Änderungen, und lehnt alles andere ab, ohne eine Datei zu schreiben. Die Kopie aktualisiert sich nie
-selbst: Sie holen einen neueren Tag und rufen `--vendor` erneut auf, dann steht da, was sich geändert hat. Unter Windows
-heißt der Befehl `python`, nicht `python3`.
+`tools/shoalmark/` ist jetzt eine festgeschriebene Kopie: acht Dateien und ein `PIN` mit ihren Prüfsummen. Seine
+erste Zeile sagt, aus welchem Release die Kopie stammt. `--vendor` übernimmt nur ein Release, das ganze Werkzeug genau
+auf seinem Git-Tag und ohne lokale Änderungen, und lehnt alles andere ab, ohne eine Datei zu schreiben. Die Kopie
+aktualisiert sich nie selbst: Sie holen einen neueren Git-Tag und rufen `--vendor` erneut auf, und es zeigt Ihnen, was
+sich geändert hat. Unter Windows heißt der Befehl `python`, nicht `python3`.
 
-## 2. Deutsch, dann einrichten
+## 2. Auf Deutsch umstellen, dann einrichten
 
 Zuerst die vier Dateien aus `examples/de/` kopieren — `shoalmark.toml` (die Abschnittsnamen auf Deutsch), `TEMPLATE.md`,
 `TRIAGE.md`, `brand/labels.yaml` —, den Namen und den Schlüssel in `shoalmark.toml` anpassen, dann:
@@ -58,11 +58,11 @@ seiner eigenen Identität, einmal in seinem eigenen Worktree eingestellt
 Principal fragt, schließt und sichtet, der Reviewer sichtet, der Implementer baut. Das ältere
 `answerers = ["ihrname signed"]` gilt weiter, wo es kein `[seats]` gibt.
 
-**Sitzungen.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
-und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`. Eine Sitzung trägt sich in
+**Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
+und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`. Eine Session trägt sich in
 `docs/work-tracker/sessions.md` ein (wer sie einberufen hat, wofür, in welchem Worktree). Das Gate lehnt den Commit eines
-Sitzes ohne offene Sitzung ab, und die Tafel zeigt, wer woran arbeitet. Das erledigen Ihre Agenten. Ihre eigenen
-Commits tragen keine Sitzung: Ihre Signatur ist Ihr Ausweis.
+Sitzes ohne offene Session ab, und die Tafel zeigt, wer woran arbeitet. Das erledigen Ihre Agenten. Ihre eigenen
+Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
 
 ## 5. Zwei Dinge schreiben, die nur Sie können
 
@@ -72,7 +72,7 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 ## 6. Die Tafel öffnen
 
 `docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit und Checkout neu gebaut. Ihre erste
-Zeile ist, was Sie braucht. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
+Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

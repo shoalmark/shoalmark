@@ -1,11 +1,11 @@
 # shoalmark
 
-*Ein Zeichen auf der Karte, das die Flotte vom Grund fernhält.*
+*Eine Markierung auf der Seekarte, die die Flotte vor dem Auflaufen bewahrt.*
 
 ## Wie man einen besser funktionierenden menschlichen Owner bekommt.
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt ihm vor, was nur er entscheiden
-kann, als einen Satz pro Frage, einmal am Tag, und macht seine Antwort zu einem Befehl.
+kann – ein Satz pro Frage, einmal am Tag –, und macht aus seiner Antwort einen einzigen Befehl.
 
 **An den Owner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen, legt sie Ihnen einmal am Tag vor, und jede Antwort ist Ihr eigener, signierter Commit.
@@ -25,8 +25,8 @@ Was shoalmark dazu ausgibt, jeden Tag:
 
 ## Ihre Agenten richten es ein
 
-1. Sie holen shoalmark an einem Release-Tag und legen eine festgehaltene Kopie ins Repository, jede Datei mit
-   Prüfsumme (`--vendor`).
+1. Sie holen shoalmark beim Git-Tag eines Releases und legen eine festgeschriebene Kopie ins Repository, jede Datei
+   mit Prüfsumme (`--vendor`).
 2. `--init` schreibt die Konfiguration, die Triage-Datei und den Vertrag für Agenten.
 3. Die Agenten lesen den Vertrag, das [README](../agents/README.md), und legen die Arbeit an: eine Markdown-Datei je
    Arbeitspaket.
@@ -35,11 +35,11 @@ Was shoalmark dazu ausgibt, jeden Tag:
    ([zehn Minuten](signing.md)).
 
 **Sie verlieren nichts.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark ändert nur, was es selbst
-geschrieben hat. Der Weg für eine Agenten-Flotte, die schon ein eigenes System hat, ist erfasst (FM-026) und kommt.
+geschrieben hat. Der Weg für eine Agenten-Flotte, die schon ein eigenes System hat, ist als FM-026 erfasst und folgt.
 
 ## Was ein Tag Sie kostet
 
-- **Eine Sitzung, fünfzehn Minuten**, zu der Uhrzeit, die Sie wählen. Die Einladung kommt als Kalenderdatei.
+- **Ein Standup, fünfzehn Minuten**, zu der Uhrzeit, die Sie wählen. Die Einladung kommt als Kalenderdatei.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt die Antwort, signiert sie mit Ihrem Schlüssel und
   pusht sie.
 - **Der Rest kommt zu Ihnen:** Die letzte Nachricht jeder Session endet mit dem, was auf Sie wartet. Sie müssen nichts
@@ -57,4 +57,4 @@ Apache-2.0 oder MIT.
 |---|---|
 | **Sie, der Owner** | [In zehn Minuten eingerichtet](setup.md) · [Ihre Antwort ist Ihr Commit](signing.md) · [Der Standup](standup.md) |
 | **Die Agenten Ihres Projekts** | die [Notiz zum Ausprobieren](https://github.com/holgo99/shoalmark/blob/main/ADOPT.de.md): eine Messung, keine Anweisung. Am Ende berichten sie Ihnen, und Sie entscheiden |
-| **Ein Agent bei der Arbeit** | der Vertrag ist `tools/shoalmark/README.md` in Ihrem Repository, [hier gerendert](../agents/README.md), auf Englisch, denn Agenten lesen ihn so. `llms.txt` liegt an der Wurzel dieser Seite |
+| **Ein Agent bei der Arbeit** | der Vertrag ist `tools/shoalmark/README.md` in Ihrem Repository, [hier gerendert](../agents/README.md), auf Englisch – so lesen ihn die Agenten. `llms.txt` liegt im Stammverzeichnis dieser Website |

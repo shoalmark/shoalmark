@@ -48,6 +48,7 @@ one outside Owner has followed the setup page without asking anything.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R6: the German pages read natively — the Reviewer's sixteen rewordings, and one word each: *Standup* for the Owner's daily sitting, *Session* for an agent's run, never *Sitzung* for both. The board's German labels (`sessions.open`, `reviews.week`) still say *Sitzung*: aligning them is a tool change for the next release. |
 | 2026-09-23 | R5: the signing pages name the answer branch as the tool cuts it, `answer/ap-007`. Proved on a scratch answer (`--answer AP-007 accept`, SSH-signed, pushed to a bare remote): `git log -1 --format=%G? answer/ap-007` prints `G` loose and after `git pack-refs --all`; `answer/AP-007` then fails, *unknown revision*. |
 | 2026-09-23 | **Withdrawn on the Owner's word:** the seat's claim candidates are out; his line stands alone — *How to get a better-performing human owner.* (`589d328`); a second claim is a GtM screen he convenes. The row *The pitch built* below is restored as `76d1872` wrote it (R4): the ship log is append-only. |
 | 2026-09-23 | R3: the pitch's measured paragraph cites what the consumer's record on its `main` holds — before, the last 200 pull requests merged unread, none reviewed; after, in a day and a half, 9 of 13 carried a Reviewer's file before they were opened — and no longer says *independent*: the board reports it, and git cannot yet prove it. |

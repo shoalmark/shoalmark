@@ -5,8 +5,8 @@
 Wenn Sie auf der Tafel eine Frage beantworten, landen drei Zeilen im Arbeitspaket — `answer:`, `answered:`,
 `answered-by:` — und **der Commit, der sie trägt, ist der Beleg**. Das Werkzeug liest aus der Versionsverwaltung, wer
 committet hat, nie aus der Datei. Unter git reicht das allein nicht: ein git-Autor ist eine Zeichenkette, die jeder
-eintippen kann. Deshalb verlangt das Werkzeug **signierte** Commits und lehnt eine Antwort ab, deren Commit nicht als
-Sie verifiziert.
+eintippen kann. Deshalb verlangt das Werkzeug **signierte** Commits und lehnt eine Antwort ab, deren Commit sich nicht als
+Ihrer verifizieren lässt.
 
 Unter **Subversion** brauchen Sie nichts davon: der Server authentifiziert jeden Commit, und das Werkzeug liest diesen
 Autor. Weiter bei *Dem Werkzeug sagen, wer antwortet*.
@@ -15,7 +15,7 @@ Autor. Weiter bei *Dem Werkzeug sagen, wer antwortet*.
 
 **Eine Signatur beweist, welcher Schlüssel benutzt wurde, nicht welche Hand.** Wenn Sie auf einem Rechner, auf dem
 Agenten unter Ihrem Namen laufen, `commit.gpgsign true` setzen, ist *jeder* Commit dieser Agenten mit Ihrem Schlüssel
-signiert und verifiziert als Sie — genau die Fälschung, die diese Seite verhindern soll. Weder das Werkzeug noch git
+signiert und gilt als von Ihnen signiert — genau die Fälschung, die diese Seite verhindern soll. Weder das Werkzeug noch git
 noch die Forge können das unterscheiden.
 
 Auf einem Rechner, den Agenten benutzen, deshalb:
@@ -90,10 +90,11 @@ Möglichkeiten und dem, was sie aufhält; OK gibt Ihnen einen Befehl. Führen Si
 python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
 ```
 
-Er legt den Branch `answer/ap-007` an (Branch-Namen klein: `AP-007` ist das Arbeitspaket, `ap-007` der Branch), schreibt die drei Zeilen, committet sie mit Ihrem Schlüssel signiert (ein
-Hardware-Schlüssel wartet auf Ihre Berührung) und pusht; jeden Schritt nennt er, bevor er ihn tut. Scheitert etwas,
-macht er alles rückgängig, was er geschrieben hat, und druckt den Befehl, mit dem Sie die Antwort erneut geben.
-`git log -1 --format=%G? answer/ap-007` druckt `G`, und die Frage hat Ihre Liste verlassen.
+Er legt den Branch `answer/ap-007` an (Branch-Namen klein: `AP-007` ist das Arbeitspaket, `ap-007` der Branch),
+schreibt die drei Zeilen, committet sie mit Ihrem Schlüssel signiert (ein Hardware-Schlüssel wartet auf Ihre
+Berührung) und pusht; jeden Schritt nennt er, bevor er ihn tut. Scheitert etwas, macht er alles rückgängig, was er
+geschrieben hat, und gibt den Befehl aus, mit dem Sie die Antwort erneut geben. `git log -1 --format=%G?
+answer/ap-007` gibt `G` aus, und die Frage ist von Ihrer Liste verschwunden.
 
 ## Was das Werkzeug ablehnt, und was es sagt
 
