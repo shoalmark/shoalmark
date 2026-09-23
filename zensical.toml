@@ -3,12 +3,13 @@
 [project]
 site_url = "https://holgo99.github.io/shoalmark/"
 site_name = "shoalmark"
-site_description = "How to get a better-performing human owner — a work tracker that puts what needs the Owner first."
+site_description = "Get a better-performing human Owner — a work tracker that puts what needs the Owner first."
 repo_url = "https://github.com/holgo99/shoalmark"
 repo_name = "holgo99/shoalmark"
 edit_uri = "edit/main/docs/"
 docs_dir = "docs"
 site_dir = "site"
+use_directory_urls = false   # links are `setup.html`, not `setup/` — the built site opens from the file system too
 
 nav = [
   { "Start" = "index.md" },
@@ -20,9 +21,10 @@ nav = [
     { "Start" = "de/index.md" },
     { "In zehn Minuten eingerichtet" = "de/setup.md" },
     { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
+    { "Der Standup" = "de/standup.md" },
   ] },
 ]
 
 [project.theme]
 language = "en"
-features = ["content.code.copy", "content.action.edit", "navigation.footer", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "toc.follow"]
+features = ["content.code.copy", "content.action.edit", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "toc.follow"]

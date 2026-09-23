@@ -31,5 +31,15 @@ Between standups nobody interrupts you except for what cannot be undone. A sessi
 
 ## Answering
 
-On the board each question carries **accept · accept with change · reject**. A click copies three lines and opens the
-file under your login; you paste, commit, push. The answer is your own commit: [Your answer is your commit](signing.md).
+On the board each question carries **accept** and **reject**. Either opens a dialog with the question, its choices, the
+one the agent recommends, and what it holds up; accept may carry your change, reject says why. OK gives you one
+command — `python3 tools/shoalmark/shoalmark.py --answer AP-007 accept` — which writes the answer, signs it with your
+key and pushes it. The answer is your own commit: [Your answer is your commit](signing.md).
+
+## Which review was independent
+
+Before work reaches you for a merge, a reviewer judges it, and the reviewer's verdict commit names the tip it judged
+(`Reviewed: <sha>`). Every agent commit also names its session. So the board counts this week's verdicts:
+**independent** — the reviewer ran in another session than the one that built the work — or **same session** — a
+sub-agent of the builder's own session, which is a second opinion from the same run. A READY is worth what its count
+says; you see it before you press merge.
