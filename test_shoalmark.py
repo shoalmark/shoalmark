@@ -479,6 +479,26 @@ with tempfile.TemporaryDirectory() as d:
     made = run_safe(root, "--check")
     check(f"FM-024 S4 · on a clean tree the commit at HEAD is judged by its own trailer against the registry in its own tree (saw {made[2].strip()[:160]!r})",
           made[0] == fm.EXIT_LINT and "Session: z1 has no open row in docs/work-tracker/sessions.md" in made[2])
+
+# --- FM-024 S5: a row nobody closed — listed by --check, closed by the next pass, which says so ---------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    home = root / "docs/work-tracker/TRIAGE.md"
+    home.write_text(re.sub(r"(?m)^1\.\s*$", "1. The first thing on the path.", home.read_text()))
+    now_ = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
+                                                         "| old1 | principal | the Owner | gone quiet | wt-o | 2026-01-01 00:00 | — |\n"
+                                                         f"| live1 | principal | the Owner | still at it | wt-l | 2026-01-01 00:00 | — |\n| new1 | reviewer | session live1 | just begun | wt-n | {now_} | — |\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the work\n\nSession: live1")
+    listed = run_safe(root, "--check")[1]
+    code, passed, _ = run_safe(root, "--triage")
+    rows = {r["id"]: r for r in fm.parse_sessions((root / "docs/work-tracker/sessions.md").read_text())} if hasattr(fm, "parse_sessions") else {}
+    check(f"FM-024 S5 · --check lists an open row with no commit for a day as abandoned — not one with a recent commit, not one just opened; the next --triage closes it, dated, and says so (saw {listed.strip()[-160:]!r})",
+          "session old1 (principal, gone quiet) has no commit since 2026-01-01 00:00 — abandoned" in listed and "live1" not in listed and "new1" not in listed
+          and "closed abandoned session old1" in passed and "Say so in this pass's paragraph" in passed
+          and rows.get("old1", {}).get("ended", "").startswith(f"closed by the pass of {datetime.date.today().isoformat()} — no commit since 2026-01-01 00:00")
+          and rows.get("live1", {}).get("open") and rows.get("new1", {}).get("open"))
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"

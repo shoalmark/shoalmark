@@ -276,6 +276,11 @@ It judges what the rights are judged on: the commit being made (by its worktree'
 will write), the commit at HEAD by its trailer, and every commit a merge brings, each against the registry in its own
 tree.
 
+**A row nobody closes** — a session that ended without `--session close`: an open row with no commit carrying its id
+for more than a day is *abandoned*. `--check` lists it (a report, not a refusal); the next `--triage` closes it —
+*closed by the pass of <date> — no commit since <time>* — and prints it for the pass's paragraph. Nothing closes
+silently.
+
 ## 7. The one seam: a deriver
 
 The core knows nothing about releases, deploys or product areas. A repository that needs them puts one executable

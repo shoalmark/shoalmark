@@ -2588,6 +2588,62 @@ def session_problems():
                 out.append(f"{where}refused: {row['worktree']} is open under session {first['id']} — one worktree per session")
     return out
 
+
+def session_stamp(text):
+    """A registry time (`YYYY-MM-DD HH:MM`, or a bare date) as seconds, or None."""
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.datetime.strptime((text or "")[:len("2026-01-01 00:00") if fmt.endswith("%M") else 10], fmt).timestamp()
+        except ValueError:
+            pass
+    return None
+
+
+def abandoned_sessions(rows, now=None):
+    """Open rows with no commit carrying their id for longer than SESSION_IDLE — each (row, the last sign of life as
+    `YYYY-MM-DD HH:MM`). One `git log` over the commits since the oldest open row started."""
+    live = [r for r in rows if r["open"]]
+    if not live:
+        return []
+    now = now or datetime.datetime.now().timestamp()
+    since = min((session_stamp(r["started"]) or now) for r in live)
+    last = {}
+    log = git_out("log", f"--since={int(since)}", "--format=%ct%x1f%(trailers:key=Session,valueonly,separator=%x1f)%x1e", "HEAD") or ""
+    for rec in log.split("\x1e"):
+        parts = [p.strip() for p in rec.strip().split("\x1f")]
+        if parts and parts[0].isdigit():
+            for sid in parts[1:]:
+                if sid:
+                    last[sid] = max(last.get(sid, 0), int(parts[0]))
+    out = []
+    for r in live:
+        seen = max(last.get(r["id"], 0), session_stamp(r["started"]) or 0)
+        if now - seen > SESSION_IDLE:
+            out.append((r, datetime.datetime.fromtimestamp(seen).strftime("%Y-%m-%d %H:%M") if seen else "never"))
+    return out
+
+
+def sessions_report():
+    """What `--check` says of the registry, never a refusal: the abandoned rows a pass will close."""
+    if not sessions_file().exists() or vcs() != "git":
+        return []
+    return [f"session {r['id']} ({r['seat']}, {r['scope']}) has no commit since {seen} — abandoned; the next triage pass closes it"
+            for r, seen in abandoned_sessions(parse_sessions(sessions_file().read_text(encoding="utf-8")))]
+
+
+def close_abandoned(today):
+    """A triage pass closes every abandoned row — dated, with why — and returns them for its paragraph. Nothing closes
+    silently: the pass prints them, and its paragraph in TRIAGE.md names them."""
+    if not sessions_file().exists() or vcs() != "git":
+        return []
+    rows = parse_sessions(sessions_file().read_text(encoding="utf-8"))
+    gone = abandoned_sessions(rows)
+    for r, seen in gone:
+        r["ended"] = f"closed by the pass of {today} — no commit since {seen}"
+    if gone:
+        write_sessions(rows)
+    return gone
+
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
 
@@ -3446,6 +3502,8 @@ def main(argv=None):
             print(f"--triage: {home.relative_to(ROOT).as_posix()} names no current path — tiers cannot be judged; the Owner writes it first", file=sys.stderr)
             return EXIT_LINT
         today = datetime.date.today().isoformat()
+        for r, seen in close_abandoned(today):              # FM-024: the pass closes what nobody closed — and says so
+            print(f"closed abandoned session {r['id']} ({r['seat']}, {r['scope']}) — no commit since {seen}. Say so in this pass's paragraph in {home.relative_to(ROOT).as_posix()}.")
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
@@ -3512,6 +3570,8 @@ def main(argv=None):
                 print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
         if not drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
+        for line in sessions_report():                      # a report, never a refusal (FM-024)
+            print(line, file=log)
     else:
         put(OUT, body)
         put(HTML_OUT, render_html(trackers))   # git-ignored; never staged
