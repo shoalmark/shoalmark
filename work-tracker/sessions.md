@@ -11,3 +11,4 @@ which says so.
 | 8e509911/reviewer-1 | reviewer | session 8e509911 (written *the Principal session a9* until 2026-09-23 18:20 — one name for a session) | attack 0.17.6 | shoalmark-research | 2026-09-23 17:16 | — |
 | 8e509911/implementer-1 | implementer | session 8e509911 | build 0.17.6 | shoalmark-impl | 2026-09-23 17:24 | 2026-09-23 18:47 |
 | 8e509911/implementer-2 | implementer | session 8e509911 | build 0.17.7 | shoalmark-impl | 2026-09-23 18:47 | — |
+| 8e509911 | principal | the Owner, 2026-09-23 12:21 | the day's findings into the tool; releases 0.17.5-0.17.7, the first triage pass, FM-023/FM-024 | shoalmark-principal | 2026-09-23 19:14 | — |
