@@ -1,6 +1,6 @@
 # ein deutsches Board
 tagline: Arbeitsstand
-search: Suche — Id, Stufe, Status, Wörter
+search: Suche — eine Id allein = nur dieser Eintrag · ~Id = seine Nachbarn · Stufe, Status, Wörter
 view.by: nach {0}
 view.board: Tafel
 view.epic: Vorhaben

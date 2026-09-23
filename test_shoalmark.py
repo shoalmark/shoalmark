@@ -381,6 +381,28 @@ if _CHROME:
 else:
     print("  skip  no browser found — the board was not rendered")
 
+# --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
+if _CHROME:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve()
+        run(root, "--init", "--key", "msr")
+        tracker(root, "MSR-001", title="Stock is booked per warehouse")
+        tracker(root, "MSR-002", title="Stock is counted per shelf", body="## What is true now\n\nIt needs [MSR-001](MSR-001-x.md) first.\n\n## Done when\n\nit is.\n")
+        tracker(root, "MSR-003", status="Shipped", title="A shipped one")
+        run(root)
+
+        def found(frag):
+            """The rows a query typed into the box leaves on the board (the URL hash is typed there), and the counter."""
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
+                                 (root / "docs/work-tracker/index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            rows = re.findall(r'<tr class="t[^"]*"><td class="m"><i class="q[^"]*"></i><a href="#=(MSR-\d+)">', d_[d_.find("<tbody"):d_.find("</tbody>")])
+            return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
+        whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
+        check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
+              whole[0] == ["MSR-001"] and whole[1].startswith("1 trackers") and low[0] == ["MSR-001"])
+        check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
+              sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
+
 # --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
 DERIVER = """#!/usr/bin/env python3
 import json, subprocess, sys, os
