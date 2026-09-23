@@ -17,14 +17,24 @@ it was? Let us reason about how to solve this right from the start."* Written to
 ## What is true now
 
 **Slice 1 built 2026-09-23 on `fix/0.17.6-a-seats-commit-names-its-session-and-the-record-knows-the-session`, for
-0.17.6; open for review, not merged.** S1–S8 as ruled below, one commit per row (S8's checks ride with each):
-`seat.session` and `--session new` (S1); the `prepare-commit-msg` hook and `--session-trailer` (S2); `sessions.md`,
-`--session open/close`, sub-agent ids (S3); the gate's three refusals, the Owner exempt (S4); abandoned rows listed by
-`--check`, closed by `--triage` (S5); `Reviewed:` verdicts reported *independent · same session · untraced* (S6); the
-board's strip and the digest's line (S7). Eleven new checks: ten fail on 0.17.5; the eleventh (S4: an open row of
-the author's seat, the Owner, a commit from before the registry all pass) is a control and passes on both. **The release's own registry is
-its first proof:** row `8d6537be` (implementer, convened by the Principal session a9, build 0.17.6, shoalmark-impl) was
-opened in the S3 commit, and every commit of this seat from S1+S2 on carries `Session: 8d6537be`, appended by the hook.
+0.17.6, verified with findings closed; open for the merge, not merged.** S1–S8 as ruled below, one commit per row, then
+one per review finding (R1–R7): `seat.session` and `--session new` (S1); the `prepare-commit-msg` hook and
+`--session-trailer`, and `--session-check` on every commit (S2, R4); `sessions.md`, `--session open/close`, a
+sub-agent's id derived from its parent's, a parent read only from a token in the session-id form (S3, R3, R6); the
+gate's three refusals, the Owner exempt, and a seat never removing, dropping or re-opening a row of the registry it is
+judged against (S4, R1); abandoned rows listed by `--check`, closed by `--triage` (S5); `Reviewed:` verdicts reported
+*independent · same session · untraced · on trunk* over the branch's own commits — `<tip> ^<trunk> --no-merges`,
+less verdicts; a branch the trunk has merged is read against the trunk before the merge that brought it (S6, R2); the
+board's strip and the digest's line (S7). **15 FM-024 checks** (14 in `test_shoalmark.py`, 1 in `test_core.py`); each
+fails on 0.17.5 except S4's control (an open row of the author's seat, the Owner, a commit from before the registry).
+
+**The sessions the release's commits carry.** Row `8d6537be` (implementer, opened in the S3 commit) is closed —
+*re-opened as 8e509911/implementer-1: the parent's id was known* (R3). The commits from S1+S2 to the release commit
+(`89e0586` … `0743a45`) carry `Session: 8d6537be`; the fix commits from `3392b0a` on carry `Session:
+8e509911/implementer-1`; the Reviewer's verdicts carry `8e509911/reviewer-1`. The Principal session is `8e509911` in
+every row. So `--check` reads the verdict on `0743a45` as *independent* — its range names only `8d6537be`, a
+measurement 0.17.6 cannot repair — and the verdict on `acec312` as *same session*, which is the truth: builder and
+Reviewer are sub-agents of one session.
 
 **Decided in the build, for the Reviewer to attack** — none widens the slice:
 - **Adoption is the registry's existence.** A tree without `sessions.md` is not judged, and neither is any commit made
@@ -233,6 +243,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |
 | 2026-09-23 | R2: the reviewed range is the branch's own commits (`<tip> ^<trunk> --no-merges`, less verdicts; a landed tip against the trunk before its merge); a tip on the trunk reads *on trunk — not a branch verdict*; label `reviews.trunk`. The Reviewer's planted sibling reads *independent*, before and after the branch lands. One check. |

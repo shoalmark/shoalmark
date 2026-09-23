@@ -242,8 +242,8 @@ git config --worktree seat.session a9f3c2d1          # the session — the harne
 **The trailer:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` to every
 commit made in that worktree — never typed, and a message that carries one already is left alone. A repository with no
 `seat.session` (the Owner's checkout) gets nothing appended: his signature is his id. Read it back with
-`git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository with its own hook runner adds one line —
-with lefthook:
+`git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository with its own hook runner adds two
+entries — with lefthook, the session rule on every commit and the trailer:
 
 ```yaml
 pre-commit:
