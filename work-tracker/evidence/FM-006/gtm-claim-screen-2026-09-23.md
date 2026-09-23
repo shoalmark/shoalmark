@@ -635,3 +635,156 @@ seat ledgered them, and the Owner rules.
 
 **Provenance:** Seat: GtM · Session `c1652143` · Model: Claude Opus 5.5 · 2026-09-23 · the Jev gate test, on the
 Owner's direction.
+
+---
+
+## Third pass — the German claim, re-provoked — 2026-09-23 22:57 CEST, session `ad81b142`
+
+**The Owner's direction, relayed with Jev dropped:**
+
+- **The critique.** The German claim reads weak because it is a translation: it mirrors the English word order,
+  stacks two adjectives before the noun, and *leistungsstark* is performance-review German.
+- **The ask:** re-provoke in German instead of translating. Use short words, one adjective at most, an imperative or
+  a stark noun phrase, and idiom a person would say aloud. The human-versus-agent contrast may come from the verb or
+  the setting, not from *menschlich*.
+- **What stays:** *Eigner* and the bar, the English line.
+- **The new test:** read every line aloud. If it sounds like a job ad or a LinkedIn post, it dies at G0.
+- **Twelve new German lines, no translations, controls first, ledgered as before. The Owner chooses.**
+
+**The page as built** (`site/index.html` and `site/de/index.html`, 22:49, read as text, **E**):
+
+- The claim is *Get a better-performing human Owner.* / *Hol dir einen leistungsstärkeren menschlichen Eigner.*
+- The German fleet block says *ihr*; the claim says *du*.
+- The German page carries the English meta description.
+
+### Correction to the second pass
+
+**The second pass passed *Hol dir einen leistungsstärkeren menschlichen Eigner.* at G1 on this runtime's knowledge,
+and it should not have.** The line mirrors the English slot for slot (**F**):
+
+| *Hol dir* | *einen* | *leistungsstärkeren* | *menschlichen* | *Eigner* |
+|---|---|---|---|---|
+| *Get* | *a* | *better-performing* | *human* | *Owner* |
+
+**Method lesson, carried with its corpse:** before a German twin is called native, lay it word for word against its
+source. A mirror is a translation, however idiomatic its parts.
+
+### The gates for this pass
+
+| Gate | Kills on |
+|---|---|
+| **G0** form | any of these: more than one line; more than 12 words (counted in code); does not command the fleet in *du* and is not a stark noun phrase the fleet reads; not a provocation the owner can take; does not name the owner *Eigner*; **more than one adjective**; jargon or ids; **read aloud, it sounds like a job ad or a LinkedIn post** |
+| **G1** language | a German reader hears a translation (the English word order mirrored) · an idiom slip · nothing a person would say aloud |
+| **G2** truth | it promises more than the bar |
+| **G3** the Owner's never | it degrades him to a push-a-button, promotes rubber-stamping, flatters him into pressing, or insults him |
+| **G4** both ways | it does not both put the fleet in the act and provoke the owner, or, read beside the fleet's line (`docs/index.md:7`), the act runs against it |
+| **G5** the bar | it does not carry what the English bar says (the fleet gets a better-performing human), or it says it more weakly. A re-provocation, not a translation |
+
+**"Read aloud" is this runtime's judgment of register (K),** and no voice read any line. Adverbs do not count as
+adjectives. The word counts are executed (**E**), and every line names the *Eigner*.
+
+### The controls
+
+| # | Line | First fatal gate | One-line reason | Class |
+|---|---|---|---|---|
+| **K1** · positive | *Get a better-performing human Owner.* (the bar, English) | survives G0, G1, G3 and G4 in its own language; G2 and G5 are identities | Read aloud, it is a product ad whose product is a human, and that is the provocation. It is not a job ad or a post | I |
+| **K2** · negative | *Hol dir einen leistungsstärkeren menschlichen Eigner.* (on the page) | **G0** | It has two adjectives before the noun (**F**), and read aloud *leistungsstärker* is performance-review German (**K**). The new clauses fire on the line the second pass passed | F |
+
+**What the controls show:**
+
+- The new G0 clauses kill the German line on the page.
+- They do not kill the English bar, which carries the same performance word. It carries it as an ad imperative about
+  a human; in German, the same word became the whole line.
+
+### The ledger — twelve new German lines
+
+The glosses are there for the reader. **They are not twins, and nothing here is translated.**
+
+| # | German | Gloss | First fatal gate | One-line reason | Class |
+|---|---|---|---|---|---|
+| N1 | Dein Eigner kann mehr. | Your owner can do more. | **G0** | Read aloud, it is the job-ad and coaching formula (*Du kannst mehr*, *Da geht mehr*) | K |
+| N2 | Hol das Beste aus deinem Eigner heraus. | Bring out the best in your owner. | **G0** | Read aloud, it is leadership-seminar German (*das Beste aus Ihren Mitarbeitern herausholen*) | K |
+| N3 | Mach deinen Eigner scharf. | Make your owner sharp. | **G1** | Idiom slip. *Jemanden scharf machen* means to arouse him, or to set a dog on attack | K |
+| N4 | Erzieh deinen Eigner. | Raise your owner. | **G3** | Insult. *Erziehen* is what one does to a child or a dog | I |
+| N5 | Schleif deinen Eigner. | Hone your owner. | **G3** | With a person as its object, *schleifen* means to drill him hard (*Rekruten schleifen*). The knife loses to the barracks | K |
+| N6 | Dein Eigner ist lahm. Mach ihm Beine. | Your owner is slow. Get him moving. | **G3** | *Beine machen* hurries him, and an owner hurried presses sooner: rubber-stamping. *Lahm* insults him besides | I |
+| N7 | Weck deinen Eigner. | Wake your owner. | **G4** | The act runs against the fleet's line. Waking him is interrupting him mid-flight, and the line says *once a day* (`docs/index.md:7`) | E |
+| N8 | Frag deinen Eigner seltener. Dafür richtig. | Ask your owner less often. But properly. | **G5** | It is the fleet's line in brief, the how. It does not carry the bar's claim | I |
+| N9 | Mach deinen Eigner besser. | Make your owner better. | **G5** | Plain *besser* drops the performance the bar's joke rests on. It is the same death as the second pass's *besseren* (H4) | I |
+| N10 | Hol mehr aus deinem Eigner raus. | Get more out of your owner. | survives | — | I |
+| N11 | Dein Eigner bremst. Tunen statt tauschen. | Your owner is the brake. Tune him, don't swap him. | survives | — | I |
+| N12 | Bring deinem Eigner das Entscheiden bei. | Teach your owner to decide. | survives | — | I |
+
+**What each gate killed:**
+
+| Gate | Lines killed |
+|---|---|
+| G0 | 2, and K2 |
+| G1 | 1 |
+| G2 | 0 |
+| G3 | 3 |
+| G4 | 1 |
+| G5 | 2 |
+
+**Three survive.**
+
+- **G2 killed nothing:** none of the twelve promises more than the bar.
+- **This seat's favourite, N5 *Schleif deinen Eigner*, the knife the critique asked for, died in writing at G3.**
+
+### The survivors — three, unranked, in the order they were written
+
+#### N10 · *Hol mehr aus deinem Eigner raus.*
+
+- **What it carries:** the bar's irony, in German a person says aloud. The fleet speaks of its human as one speaks of
+  an engine: *mehr rausholen*. The performance comes as *mehr*, not as an HR word, and the human-versus-agent
+  contrast comes from the setting.
+- **Strongest counterfacts:**
+  - *Hol mehr aus deinem … raus* is also the electronics-flyer formula, and some readers will hear a phone ad.
+  - *Das Letzte aus jemandem rausholen* sits one word away. That is squeezing, not tuning.
+  - *raus* is spoken register on a pitch page.
+
+#### N11 · *Dein Eigner bremst. Tunen statt tauschen.*
+
+- **What it carries:** the bar, plus what the bar leaves open. *Get a better … Owner* can be read as *replace him*;
+  this line says tune him, don't swap him.
+- **German:** *X statt Y* is the native slogan form (*Reparieren statt wegwerfen*). *Bremsen*, said of a person,
+  means holding things back.
+- **Strongest counterfacts:**
+  - *tauschen* puts replacing him on the table, in a line he reads over the fleet's shoulder. To some owners it is a
+    threat.
+  - *tunen* is the car-tuning scene, and a *Mittelstand* owner may hear the scene before the engineering.
+  - The second sentence has no verb. It is a slogan, which is what it is meant to be.
+
+#### N12 · *Bring deinem Eigner das Entscheiden bei.*
+
+- **What it carries:** the inversion. The fleet teaches the human, on the pattern of *jemandem das Schwimmen
+  beibringen*. It also names the performance the bar leaves open: deciding.
+- **Strongest counterfacts:**
+  - *beibringen* is what one does for children. G3 (insult) is where it can die with an owner reading it.
+  - It loses the machine irony of the bar.
+  - *das Entscheiden* as a noun is one step from office German.
+
+### What this pass did not run
+
+- **No native German reader, and no voice.** Both G0's read-aloud test and G1 are this runtime's knowledge. Its own
+  G1 was wrong one pass ago.
+- **No outside owner** has read a survivor.
+- **No search for prior use.** *Tunen statt tauschen*, above all, may already be a workshop's slogan.
+- **No stark noun phrase survived, and only three were written** (N1, and the openings of N6 and N11). That form is
+  under-sampled.
+- **No Jev,** on the Owner's word.
+
+### Handoff, third pass
+
+- **Conclusion:** the controls behaved as intended. The bar survives, and the German line on the page dies at G0.
+  Three new German lines survive, unranked: N10, N11 and N12.
+- **Strongest counterfact:** this runtime called the page's German native one pass ago, and the critique showed it
+  to be a mirror. Its read-aloud judgment on these twelve is the same kind of knowledge.
+- **Unresolved unknown:** which of the three a German owner says aloud without wincing.
+- **Closure and reversal:** a survivor falls when:
+  - a native reader hears it as a flyer (N10), a threat (N11) or a lesson for a child (N12);
+  - a search finds it in use.
+- **Authority:** this seat has not chosen, and has not edited the pitch. **The Owner chooses.**
+
+**Provenance:** Seat: GtM · Session `ad81b142` · Model: Claude Opus 5.5 · 2026-09-23 · the third pass, on the Owner's
+direction.
