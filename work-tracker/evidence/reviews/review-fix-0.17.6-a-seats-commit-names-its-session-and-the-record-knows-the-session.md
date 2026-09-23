@@ -276,3 +276,141 @@ timestamp in `.git/info/lefthook.checksum`.
 - **R3** puts a false *independent* into the release's own first data point.
 - **R1 and R2** each close with a few lines and a check. **R3** closes with a sentence in FM-024 and a rule for
   sub-agent ids.
+
+## Verification addendum
+
+- **Date:** 2026-09-23, 18:12 CEST (`date`)
+- **Seat:** Reviewer (`reviewer@seat`) · **Session:** `8e509911/reviewer-1`, the same row, still open · **Model:**
+  Claude Opus 5.5
+- **Tip verified:** `acec312` — five commits after `0dbdb3c`: `3392b0a` (R3), `af186f0` (R1), `e264d97` (R2),
+  `e25279b` (R4), `acec312` (R5). All carry `Session: 8e509911/implementer-1`.
+- **Accepted by the Principal:** all five findings, plus one extension. A landed tip is measured against the trunk
+  before its merge (`^M^1`), and a tip on the trunk's line reads *on trunk*.
+
+### Each closure on the tip
+
+**R1 · closed.** The parent-registry rule, in a fresh fixture (`fxr1`) with the plain hooks:
+
+| # | the case | outcome |
+|---|---|---|
+| 1 | a seat with no session removes `sessions.md` | refused, *removes docs/work-tracker/sessions.md — the registry is the Owner's to remove* (also *carries no Session:*) |
+| 2 | a seat with an open session removes it | refused, the same line |
+| 3 | a seat re-opens an ended row and commits as it | refused, *re-opens Z, which had ended … an ended session stays ended*, and *Z has no open row* |
+| 4 | the builder's case: a dropped row | refused, *drops the row I1* |
+| 5 | the builder's case: removal forced past the hook (`--no-verify`) | `--check` at that HEAD exits 4 with the removal line |
+| 6 | the builder's case: a session closing its own row in its last commit | accepted; its next commit is refused, *I1 has no open row* |
+| 7 | the Owner removes the registry | accepted, and seat commits are not judged after that, as ruled |
+
+- **Limit of case 5, not a finding:** one commit later `--check` exits 0 again. But a merge that brings the forced
+  removal is refused: *in `0147ad268b` … which the merge brings — refused: … removes docs/work-tracker/sessions.md*,
+  exit 4. `--no-verify` is outside the tool's bound, and the merge catches it.
+
+**R2 · closed, with the extension.**
+- My planted sibling (`fx2`) now reads *independent — its session P/reviewer-1; the branch's I* **before and after**
+  the branch lands. `I/reviewer-1` still reads *same session*, and `K` *independent*.
+- A tip on the trunk (`fx3`) reads *on trunk — not a branch verdict*. The board prints *on trunk 1*, and *auf dem Stamm
+  1* with the German labels.
+- `reviewed_range()` (`shoalmark.py:2679`) on this repository's real history:
+
+  | reviewed tip | range | commits | authors |
+  |---|---|---|---|
+  | the landed 0.17.5 tip `0ee3bfc` (#16) | `0ee3bfc ^73f8ca1` (= `59eebeb^1`) | 23 | 19 implementer, 3 reviewer, 1 principal |
+  | this branch's tip | `acec312 ^59eebeb` | 16 | its own commits |
+  | the #16 merge `59eebeb` | — | — | *on trunk* |
+
+  For `0ee3bfc`, the Owner's #13 commits that the 0.17.5 branch merged in are excluded. For this branch's tip, the 25
+  commits of 0.17.5 it merged in are excluded.
+- The real report on this branch reads *verdict 0dbdb3c396 on 0743a45: independent — its session 8e509911/reviewer-1;
+  the branch's 8d6537be*. FM-024 now says that is no measurement (see R3).
+
+**R3 · closed.**
+- Row `8d6537be` is ended with the note *re-opened as 8e509911/implementer-1: the parent's id was known*.
+- `8e509911/implementer-1` is open, *convened by session 8e509911*.
+- `--session open` refuses `X9` convened by *session 8e509911* (exit 4, *a sub-agent's id derives from its parent's:
+  `8e509911/reviewer-<n>`*) and accepts `8e509911/reviewer-2`.
+- FM-024's S3 row states the cost as measured. *What is true now* says *0.17.6's own first verdict is no measurement of
+  independence*, which is present and honest.
+- The five fix commits carry `8e509911/implementer-1`. So this verdict's range holds both roots (`8d6537be` and
+  `8e509911`), and this seat is its sibling. The report on this commit should therefore read *same session*, the
+  truth. The commit's report is given with the commit.
+
+**R4 · closed.**
+- The pre-commit hook `--install-hook` writes opens with `{cmd} --session-check || exit $?`, and `lefthook.yml` gains
+  `session: run: python3 shoalmark.py --session-check` with no glob, so it runs on every commit.
+- In `fxr1`, `implementer@seat` with no session, staging only `app.py`, is refused (*carries no Session: trailer*).
+  With row `I2` open it is accepted, and so is a second code-only commit.
+- **Timing, on the consumer's 505-tracker checkout, read-only:** `--session-check` takes 0.288–0.310 s per run over
+  five CLI runs as the checkout's own author, and 0.288–0.295 s with `GIT_AUTHOR_EMAIL=principal@seat`.
+- Instrumented in-process with an audit hook, one run takes 0.111 s to import and 0.114 s to run. It opens **0
+  tracker files** and makes **3 git calls** (`rev-parse`, `diff`, `var`). The consumer has no registry, so nothing is
+  judged, and its tree showed 0 changes afterwards.
+
+**R5 · closed.** `git diff origin/main` outside `evidence/` names no client repository and no consumer id or hash.
+The only hit, the id prefix `msr`/`MSR-00n` in the new tests, is the suite's and README's example key since before
+0.17.5 (README has 11 uses on `origin/main`, `test_shoalmark.py` 46), so it is not new consumer state.
+
+### R6 · P3 · The sub-agent rule reads the parent out of free prose
+
+- **What:** `--session open` takes the parent from `\bsession\s+(<id>)` anywhere in *convened by*
+  (`shoalmark.py:2525`), so any word after "session" becomes a parent. Measured in `fxr1`, each exit 4:
+
+  | `--session open` | *convened by* | refused, with the parent read as |
+  |---|---|---|
+  | `Q1 principal` | *the Owner, after the morning session today* | `today` — *derives from its parent's: `today/principal-<n>`* |
+  | `Q2 principal` | *the Owner — his session of 09-23* | `of` |
+  | `8e509911/reviewer-3 reviewer` | *the Principal session a9* | `a9` |
+
+  The last row is the very words this seat was told to use for its own row. The release's registry names the Principal
+  session two ways: *the Principal session a9* (rows `8d6537be` and `8e509911/reviewer-1`) and *session 8e509911*
+  (row `8e509911/implementer-1`). This seat's own row would now be refused.
+- **Also:** the CHANGELOG does not say that `--session open` refuses such an id.
+- **Cost:** A top-level session can be refused by its own description, with a message that invents its parent. The
+  registry cannot tell whether *a9* and *8e509911* are one session.
+- **What closes it:**
+  - Read a parent only where it is an id the registry, or the harness form, can name — for example a registry row's id,
+    or eight hex characters — or from an explicit marker such as `session:<id>`.
+  - One name for the Principal session in the registry's prose.
+  - One CHANGELOG clause on the refusal.
+
+### R7 · P3 · Two texts say what is no longer true
+
+- **FM-024 *What is true now*,** the opening paragraph, still says:
+  - *Eleven new checks* — this pass counts 15 FM-024 checks, the four R-checks included;
+  - *`Reviewed:` verdicts reported independent · same session · untraced*, without *on trunk*;
+  - *every commit of this seat from S1+S2 on carries `Session: 8d6537be`* — the five fix commits carry
+    `8e509911/implementer-1`.
+
+  Its *Decided* section below it is correct.
+- **README §6** (`:245`) says a lefthook repository *adds one line*, above a block of two entries: `pre-commit
+  --session-check` and `prepare-commit-msg --session-trailer {1}`. The CHANGELOG correctly says *both lines*.
+- **What closes it:** Rewrite both in place.
+
+### Gates on acec312
+
+| Gate | Result |
+|---|---|
+| `python3 test_shoalmark.py` (3.14.3) | exit=0 · 258 ok |
+| `python3 test_core.py` (3.14.3) | exit=0 · 148 ok |
+| `/usr/bin/python3 test_shoalmark.py` (3.9.6) | exit=0 · 258 ok |
+| `/usr/bin/python3 test_core.py` (3.9.6) | exit=0 · 148 ok |
+| Chrome | ran; no skip line |
+| `python3 shoalmark.py --check` | exit=0 |
+| `python3 shoalmark.py --html-only` | exit=0 |
+| `python3 -m py_compile` (the three `.py` files) | exit=0 each |
+| the tip's `test_shoalmark.py` against the `0743a45` tool | exit=1 — S3 (extended), R1 ×2, R4, R2, and C4 (the fifth German label) fail |
+| the tip's `test_core.py` against the `0743a45` tool | exit=0 — unchanged at 148 |
+| `--vendor` onto a scratch 0.17.5 consumer | exit=0 · `(was 0.17.5)` · only `## 0.17.6 — 2026-09-23` · PIN `OK` × 8 · `shoalmark.py` byte-identical |
+| `VERSION` = `__version__` | `0.17.6` |
+
+- The CHANGELOG section is first, and it names `--session-check`, the fifth label and the range rule. The landed-tip
+  measurement is stated in README §6, not the CHANGELOG.
+- **Not run:** CI on Linux and Windows.
+
+### Verdict on acec312
+
+**READY WITH FINDINGS: R6 and R7 (P3).**
+
+- R1–R5 are closed, and so is the Principal's extension.
+- R6 can refuse a top-level session by its wording.
+- R7 is two stale texts.
+- Neither changes what the gate refuses of a seat commit, or what the report counts.
