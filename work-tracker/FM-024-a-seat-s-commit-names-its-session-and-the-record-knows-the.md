@@ -4,7 +4,7 @@ status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: build
+next: review
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -16,7 +16,34 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
-**Filed 2026-09-23; nothing is built.** A seat commit carries one identity: the author (`principal@seat`), which is what
+**Slice 1 built 2026-09-23 on `fix/0.17.6-a-seats-commit-names-its-session-and-the-record-knows-the-session`, for
+0.17.6; open for review, not merged.** S1–S8 as ruled below, one commit per row (S8's checks ride with each):
+`seat.session` and `--session new` (S1); the `prepare-commit-msg` hook and `--session-trailer` (S2); `sessions.md`,
+`--session open/close`, sub-agent ids (S3); the gate's three refusals, the Owner exempt (S4); abandoned rows listed by
+`--check`, closed by `--triage` (S5); `Reviewed:` verdicts reported *independent · same session · untraced* (S6); the
+board's strip and the digest's line (S7). Eleven new checks: ten fail on 0.17.5; the eleventh (S4: an open row of
+the author's seat, the Owner, a commit from before the registry all pass) is a control and passes on both. **The release's own registry is
+its first proof:** row `8d6537be` (implementer, convened by the Principal session a9, build 0.17.6, shoalmark-impl) was
+opened in the S3 commit, and every commit of this seat from S1+S2 on carries `Session: 8d6537be`, appended by the hook.
+
+**Decided in the build, for the Reviewer to attack** — none widens the slice:
+- **Adoption is the registry's existence.** A tree without `sessions.md` is not judged, and neither is any commit made
+  before the file existed in its tree. Without this, every consumer with `[seats]` would be refused on vendoring, and
+  every merge bringing a seat commit from before 0.17.6 would turn `--check` red on its trunk.
+- **The implementer's id is `8d6537be` from `--session new`, not `a9/implementer-1`.** The coordinator's instruction:
+  the harness gave this sub-agent only its parent's id (`CLAUDE_CODE_SESSION_ID`, with `CLAUDE_CODE_CHILD_SESSION=1`).
+  S3's sub-agent form is supported and tested; it was not used here.
+- **The reviewed range** is the tip's own branch: from where its first-parent line meets the trunk's first-parent line
+  (`origin/main`, else `main`, else `master`) to the tip, less other verdicts, so an earlier review on the branch is not
+  counted as an author. **A third word, *untraced*,** for a verdict or a range that names no session: the report says
+  what it cannot know rather than guessing.
+- **Where the gate runs:** the plain pre-commit hook runs it when a tracker, the configuration or the tool is staged. A
+  seat's code-only commit is judged by `--check` at HEAD, or when a merge brings it.
+- **This worktree's hooks:** `core.hooksPath` (worktree setting) points at a private copy of lefthook's scripts, now
+  with `prepare-commit-msg`, so the repository's shared `.git/hooks` were not changed. lefthook's own sync rewrote
+  `.git/info/lefthook.checksum`. Another checkout gets the trailer after `lefthook install`.
+
+**Filed 2026-09-23.** A seat commit carries one identity: the author (`principal@seat`), which is what
 the gate reads for rights (`[seats]`). It says *who may*; it cannot say *which run*. On 2026-09-23 two Principal sessions
 ran by the Owner's design and collided in one worktree; in git their commits are one author. A Reviewer seat run as a
 sub-agent of a Principal session commits under `reviewer@seat` and is, in git, as independent as one run by anyone —
@@ -198,6 +225,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Slice 1 built** for 0.17.6: S1+S2, S3, S4, S5, S6, S7 each in its own commit, with its checks (eleven: ten fail on 0.17.5, one is a control); the release's own registry holds its first row, and its commits carry `Session: 8d6537be`. |
 | 2026-09-23 | **Slice 1 fixed for 0.17.6 on the Owner's word** (*a prerequisite; before tomorrow*): S1–S8 above — the trailer, the registry, the gate's three refusals, the independence *report* (a count, not yet a refusal), the board's strip, eight checks. Design choices recorded, none asked; the Owner may strike. FM-023 waits until it is ripe — agreed. The Reviewer's attack on the filing is folded into its attack on the build, a departure from the research chain, said here. |
 | 2026-09-23 | **Worked examples added on the Owner's ask** — the worktree setup, the commit with its trailer, the registry with a collision and a sub-agent row, a verdict under the independence rule, the board's and the gate's lines, the plan's mark. Illustrative; nothing built. |
 | 2026-09-23 | Filed on the Owner's question, written to be attacked; held against FM-005 (the person asked mid-flight), FM-007 (a signature proves the key, not the hand), FM-008 (an ask reaches the Owner only through the gate); FM-023 (the plan's `@session`, on its own branch) is the consumer of this id. Not built this week — the path's line 2. |

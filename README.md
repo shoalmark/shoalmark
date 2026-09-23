@@ -36,6 +36,7 @@ them all, a gate on every commit. No server, no database, no dependency beyond P
 | asked to run a triage pass | [§4 Triage](#4-triage--you-judge-the-command-applies) |
 | blocked by the gate | [§5 The gate refused me](#5-the-gate-refused-me) |
 | adding it to a repository | [§6 Install](#6-install-and-upgrade) |
+| a seat starting or ending a session | [§6 Sessions](#sessions) |
 | making it know about releases, deploys, anything of the repository's own | [§7 The deriver](#7-the-one-seam-a-deriver) |
 | changing shoalmark itself | [§8 Working on shoalmark](#8-working-on-shoalmark) |
 | giving the board a name, a logo, colours, another language | [§9 Branding](#9-branding-the-board) |
@@ -142,6 +143,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `--answer: the working tree has changes … Changed: …` | commit or stash what is yours; where it says *a failed earlier `--answer`*, run the one command it prints — it restores only the tool's leftovers — then the answer command it prints |
 | `` `answerers = ["x signed"]` asks for a signed answer, and `[seats] …` … is not signed `` | add `signed` to that seat, or remove `answerers` — with `[seats]` it is not read for answers |
 | `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
+| `carries no Session: trailer` · `has no open row` · `is open under session …` | set `seat.session` in your worktree and open your row — `--session open`; one worktree per session (§6 *Sessions*) |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
 | `… differs from its PIN` | someone edited the vendored tool in place. Never do that: change it upstream, vendor again |
 
