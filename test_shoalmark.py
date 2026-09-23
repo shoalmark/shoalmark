@@ -423,6 +423,20 @@ if _CHROME:
         seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
         check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
               seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
+        # the hint fits the box at its narrowest, in both shipped languages; the whole help is the box's title (R6)
+        import html as _html, json as _json
+        probe = '<script>{const i=$("q"),c=document.createElement("canvas").getContext("2d");c.font=getComputedStyle(i).font;document.body.dataset.probe=JSON.stringify({w:i.clientWidth,need:Math.ceil(c.measureText(i.placeholder).width),title:i.title})}</script>'
+        fits = {}
+        for lang, labels in (("en", None), ("de", HERE / "examples/de/labels.yaml")):
+            if labels:
+                (wt_ / "brand").mkdir(exist_ok=True); (wt_ / "brand/labels.yaml").write_text(labels.read_text(encoding="utf-8"), encoding="utf-8"); run(root)
+            (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--window-size=500,900", "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            fits[lang] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "{}"])[1]) or "{}")
+        want = {"en": fm.LABELS["search.help"], "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))["search.help"]}
+        check(f"R6 · in a 500 px window the search hint fits its box, in English and in German, and the whole help is the box's title (saw need/width: { {k: (v.get('need'), v.get('w')) for k, v in fits.items()} })",
+              len(fits) == 2 and all(v.get("w") and v["w"] <= 400 and v["need"] <= v["w"] and v.get("title") == want[k] for k, v in fits.items()))
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _CHROME:
@@ -599,6 +613,7 @@ fm.configure(HERE)
 GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
 search: Suche — Id, Stufe, Status, Wörter
+search.help: Eine ganze Id zeigt diesen Eintrag.
 view.by: nach {0}
 view.board: Tafel
 view.epic: Vorhaben

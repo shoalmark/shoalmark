@@ -16,9 +16,11 @@ hook: "The Owner typed one tracker's id into the board's search and got seventee
 merged.** The Principal chose the fix. In `draw()`, a query that is exactly one known id (trimmed, any case) is that
 tracker alone: `exact=!hood&&byId.get(q.toUpperCase())`, and the row filter reads `hood ? neighbourhood : exact ? that
 tracker : the substring match as before`. Like `~ID`, it shows the tracker whether or not it is open, and the counter
-names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The hint says
-*a whole id = that tracker · what links to it = ~ID · a story's chapters = the story view* (German: *eine ganze Id =
-dieser Eintrag · was darauf verweist = ~Id · Kapitel eines Vorhabens = Ansicht nach Vorhaben*).
+names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The hint is
+*search — an id · ~ID = its links · words* (German: *Suche — eine Id · ~Id = Verweise · Wörter*), short enough for the
+box at its narrowest (R6); the box's title says it in full: *a whole id shows that tracker; what links to it is `~ID`
+(Markdown links only); a story's chapters are the story view; anything else matches by substring* (label
+`search.help`, English and German).
 
 | check | result |
 |---|---|
@@ -61,6 +63,7 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R6: the hint is short enough for its box in a 500 px window (English and German, measured in Chrome), and the whole help is the box's title (`search.help`). One Chrome check. |
 | 2026-09-23 | Correction (R3) to the *Built* row below, which says all three checks were shown to fail on 0.17.4: two fail on 0.17.4 — the whole-id Chrome check and the `test_core.py` string check; the third, `~ID` · partial id · word, is a control and passes on both. Across the release before the review: 5 checks fail on 0.17.4 (FM-020 ×2, FM-021 ×2, FM-022 ×1) and 4 are controls (FM-020 ×1, FM-021 ×2, the CHANGELOG/version check). |
 | 2026-09-23 | R2: the hint and the CHANGELOG say what `~ID` holds — links only — and send a story's chapters to the story view; `~ID` is not widened (the Principal's ruling). |
 | 2026-09-23 | R1: the counter over an id searched alone says `1 tracker · <id>`; a Chrome check searches a Shipped id in the story view with *open* pressed (it read `1 open` at `8402732`). |

@@ -345,7 +345,8 @@ check("untriaged is derived — exactly what the next pass lists: the generator'
       'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in _tri and '(untriaged(t)?" untriaged "+' in _tri and 'L["count.untriaged"]' in _tri)
 check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourhood, and anything else still matches by substring",
       'exact=!hood&&byId.get(q.toUpperCase())' in _tri and "hood?near.has(t[0]):exact?t==exact:(every||OPEN.has(t[2]))&&words.every(" in _tri
-      and "a whole id = that tracker · what links to it = ~ID · a story's chapters = the story view" in _tri)
+      and '"search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story\'s chapters: the story view.' in _tri
+      and '$("q").title=L["search.help"]' in _tri)
 check("FM-020 · the counter names an id searched alone — it is that tracker, open or not, never counted as `open`",
       '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",

@@ -1325,7 +1325,7 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
   if(h2.length>5)v.querySelector(".md").insertAdjacentHTML("beforebegin",`<p class="m toc">${h2.map(h=>`<a data-s="${esc(h.id.slice(2))}">${esc(h.textContent)}</a>`).join(" · ")}</p>`);
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
-for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];
+for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
 // light or dark is the viewer's choice: auto follows the system; the other two switch every theme's
 // `prefers-color-scheme` rule on or off — so a brand needs to know nothing about the button. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
@@ -1347,7 +1347,8 @@ onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
     "tagline": "", "footer": "",
-    "search": "search — a whole id = that tracker · what links to it = ~ID · a story's chapters = the story view · tier, status, words · blocked · untriaged",
+    "search": "search — an id · ~ID = its links · words",       # the box is ~390 px at its narrowest: the rest is its title
+    "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
     "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark",
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
