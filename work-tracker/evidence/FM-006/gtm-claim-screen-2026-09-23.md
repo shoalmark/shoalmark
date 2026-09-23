@@ -916,3 +916,20 @@ protocol; it cannot run it.** A proposal:
 
 **Provenance:** Seat: GtM · Session `63f5b126` · Model: Claude Opus 5.5 · 2026-09-23 · on the Owner's two-readers
 ruling and his question to the seat.
+
+---
+
+## Corrections — 2026-09-23 23:50 CEST, session `e0be0fa0`
+
+These are appended on the Owner's words, 23:20, relayed: *"shoalmark is the 'reset' that sets the record straight."*
+The diagnosis rests on nine months of record in the author's own project: about 10,000 contributions in a year, 200
+merges unread in 22 days, and one incident. Only the remedy's measurement is 28 hours old.
+
+1. **"Anecdote" is withdrawn** (the reader addendum, 22:59).
+   - The project is not an anecdote; the remedy's count is young.
+   - The *Measured, not promised* paragraph should read: the record before, the reset, the record since.
+2. **The investor is never a test reader** (the reader-test protocol, 23:06). *"The investor or investors the Owner
+   is in contact with"* is struck. The protocol uses **proxies only**: readers like the investor who are not the
+   investor.
+
+Both corrections are repeated where they bear on new work: `gtm-mark-screen-2026-09-23.md`, Part 1.
