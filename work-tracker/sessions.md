@@ -17,4 +17,4 @@ which says so.
 | ee61f1fe | gtm | the Owner, 2026-09-23 22:02 | screen the owner-facing claim | shoalmark-gtm | 2026-09-23 22:02 | 2026-09-23 22:12 |
 | 2ab3afad | gtm | the Owner, 2026-09-23 22:24 | second pass: Owner vs Eigner, leistungsstärkeren vs besseren, the second claim beside the new bar (the harness session of ee61f1fe; an id is used once) | shoalmark-gtm | 2026-09-23 22:24 | 2026-09-23 22:33 |
 | c1652143 | gtm | the Owner, 2026-09-23 22:40 | the Jev gate test: 17 lines x 6 gates, run twice | shoalmark-gtm | 2026-09-23 22:40 | 2026-09-23 22:52 |
-| ad81b142 | gtm | the Owner, 2026-09-23 22:57 | the German claim re-provoked: twelve new German lines, no translations | shoalmark-gtm | 2026-09-23 22:57 | — |
+| ad81b142 | gtm | the Owner, 2026-09-23 22:57 | the German claim re-provoked: twelve new German lines, no translations | shoalmark-gtm | 2026-09-23 22:57 | 2026-09-23 22:58 |
