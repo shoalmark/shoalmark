@@ -34,9 +34,11 @@ verify as the Owner. The page says: sign on demand (`-S`), never by default, on 
 one has to be designed like a pitch and sell the idea. Easy, convenient and a one-shot integration mostly done through
 your agents."*
 
-**One claim, the Owner's ruling the same night:** the pitch carries *How to get a better-performing human owner.* — it
-faces the fleet and provokes the owner at once — and the page below it proves it for both readers. A second,
-owner-facing claim is open for a GtM screen the Owner convenes; no seat writes it.
+**One claim, the Owner's:** the pitch carries *Get a better-performing human Owner.* (DE: *Hol dir einen
+leistungsstärkeren menschlichen Owner.*), his wording, sharpened from *How to get a better-performing human owner*. It
+faces the fleet and provokes the owner at once, and the page below it proves it for both readers. The README keeps its
+own section title: it is the agents' contract, not the pitch. A second, owner-facing claim is open for a GtM screen the
+Owner convenes; no seat writes it.
 
 ## Done when
 
@@ -48,6 +50,7 @@ one outside Owner has followed the setup page without asking anything.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **The claim sharpened on the Owner's word, his wording:** *Get a better-performing human Owner.* / *Hol dir einen leistungsstärkeren menschlichen Owner.* — in both pitches and the site's description; the line under it keeps *owner*; the README's title stays the agents'. |
 | 2026-09-23 | R7: the span of the count is *just over a day* / *gut einem Tag* (27 h 50 min, the ruling to the count's tip), not a day and a half. R8: the English signing page says shoalmark lower-cases the branch it creates and git keeps the case it is given. |
 | 2026-09-23 | R6: the German pages read natively — the Reviewer's sixteen rewordings, and one word each: *Standup* for the Owner's daily sitting, *Session* for an agent's run, never *Sitzung* for both. The board's German labels (`sessions.open`, `reviews.week`) still say *Sitzung*: aligning them is a tool change for the next release. |
 | 2026-09-23 | R5: the signing pages name the answer branch as the tool cuts it, `answer/ap-007`. Proved on a scratch answer (`--answer AP-007 accept`, SSH-signed, pushed to a bare remote): `git log -1 --format=%G? answer/ap-007` prints `G` loose and after `git pack-refs --all`; `answer/AP-007` then fails, *unknown revision*. |

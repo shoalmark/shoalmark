@@ -3,7 +3,7 @@
 [project]
 site_url = "https://holgo99.github.io/shoalmark/"
 site_name = "shoalmark"
-site_description = "How to get a better-performing human owner — a work tracker that puts what needs the Owner first."
+site_description = "Get a better-performing human Owner — a work tracker that puts what needs the Owner first."
 repo_url = "https://github.com/holgo99/shoalmark"
 repo_name = "holgo99/shoalmark"
 edit_uri = "edit/main/docs/"

@@ -2,7 +2,7 @@
 
 *A mark on the chart that keeps the fleet off the shoal.*
 
-## How to get a better-performing human owner.
+## Get a better-performing human Owner.
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to him what only he can decide, as one
 sentence per question, once a day, and make his answer one command.

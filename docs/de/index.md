@@ -2,7 +2,7 @@
 
 *Eine Markierung auf der Seekarte, die die Flotte vor dem Auflaufen bewahrt.*
 
-## Wie man einen besser funktionierenden menschlichen Owner bekommt.
+## Hol dir einen leistungsstärkeren menschlichen Owner.
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt ihm vor, was nur er entscheiden
 kann – ein Satz pro Frage, einmal am Tag –, und macht aus seiner Antwort einen einzigen Befehl.
