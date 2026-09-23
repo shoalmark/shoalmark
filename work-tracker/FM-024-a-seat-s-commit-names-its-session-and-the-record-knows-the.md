@@ -29,7 +29,9 @@ opened in the S3 commit, and every commit of this seat from S1+S2 on carries `Se
 **Decided in the build, for the Reviewer to attack** — none widens the slice:
 - **Adoption is the registry's existence.** A tree without `sessions.md` is not judged, and neither is any commit made
   before the file existed in its tree. Without this, every consumer with `[seats]` would be refused on vendoring, and
-  every merge bringing a seat commit from before 0.17.6 would turn `--check` red on its trunk.
+  every merge bringing a seat commit from before 0.17.6 would turn `--check` red on its trunk. **Once adopted, the
+  registry is not the seat's to undo** (the Reviewer's R1): a seat's commit that removes it, drops a row or re-opens an
+  ended one is refused and judged against its parent's registry; the Owner is exempt. No configuration switch.
 - **The implementer's first id, `8d6537be` from `--session new`, was wrong** (the Reviewer's R3): the harness gave this
   sub-agent its parent's id (`CLAUDE_CODE_SESSION_ID` = `8e509911…`, with `CLAUDE_CODE_CHILD_SESSION=1`), which is
   exactly what S3's `<parent>/<seat>-<n>` needs. Row `8d6537be` is closed with that note, and the rest of the build
@@ -227,6 +229,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R3: a sub-agent's id derives from its parent's — `--session open` refuses otherwise; row `8d6537be` closed, this build re-opened as `8e509911/implementer-1`. R1: a seat's commit that removes the registry, drops a row or re-opens an ended one is refused, against its parent's registry; a session's own closing commit passes. Two checks. |
 | 2026-09-23 | **Slice 1 built** for 0.17.6: S1+S2, S3, S4, S5, S6, S7 each in its own commit, with its checks (eleven: ten fail on 0.17.5, one is a control); the release's own registry holds its first row, and its commits carry `Session: 8d6537be`. |
 | 2026-09-23 | **Slice 1 fixed for 0.17.6 on the Owner's word** (*a prerequisite; before tomorrow*): S1–S8 above — the trailer, the registry, the gate's three refusals, the independence *report* (a count, not yet a refusal), the board's strip, eight checks. Design choices recorded, none asked; the Owner may strike. FM-023 waits until it is ripe — agreed. The Reviewer's attack on the filing is folded into its attack on the build, a departure from the research chain, said here. |
 | 2026-09-23 | **Worked examples added on the Owner's ask** — the worktree setup, the commit with its trailer, the registry with a collision and a sub-agent row, a verdict under the independence rule, the board's and the gate's lines, the plan's mark. Illustrative; nothing built. |

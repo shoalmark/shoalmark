@@ -2574,28 +2574,50 @@ def session_problems():
     """The gate's three refusals (example e): a seat's commit — not the Owner's — must carry a `Session:` whose row is
     open and is the author's seat, and whose worktree no earlier open row holds. Judged on every change the rights are
     judged on (`changes_under_review`): the commit being made reads `seat.session`, the trailer its hook will write; a
-    made commit reads its trailer; each against the registry in its OWN tree — a tree with none is not judged."""
+    made commit reads its trailer; each against the registry in its own tree — a tree with none, whose parent had none,
+    is not judged. A change that REMOVES the registry, drops a row or re-opens an ended one is judged against its
+    parent's registry and refused (R1): the registry is the record the gate reads, so a seat never writes its way past
+    it — only the Owner removes it. The commit that closes its own session's row is that session's, still (its last)."""
     if not SEATS or vcs() != "git":
         return []
     rel, out = sessions_file().relative_to(ROOT).as_posix(), []
-    for _bases, _files, name, email, commit, result, label in changes_under_review():
+    for bases, _files, name, email, commit, result, label in changes_under_review():
         seat = seat_of(name, email)
         if seat in (None, "owner"):
             continue
-        text = (sessions_file().read_text(encoding="utf-8") if sessions_file().exists() else None) if result is None else git_out("show", f"{result}:{rel}")
-        if text is None:
+        if result is not None:
+            after = git_out("show", f"{result}:{rel}")
+        elif COMMITTING:
+            after = git_out("show", f":{rel}")              # the index: what this commit will carry
+        else:
+            after = sessions_file().read_text(encoding="utf-8") if sessions_file().exists() else None
+        before = git_out("show", f"{bases[0]}:{rel}") if bases else None
+        if after is None and before is None:
             continue
-        rows, where = parse_sessions(text), (label + " — " if label else "")
+        where = label + " — " if label else ""
         sid = (trailers_of(commit, "Session") or [""])[0] if commit else (git_out("config", "--get", "seat.session") or "").strip()
         who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
-        row = next((r for r in rows if r["id"] == sid), None)
+        was = parse_sessions(before) if before is not None else []
+        rows = parse_sessions(after) if after is not None else was
+        now_by_id = {r["id"]: r for r in rows}
+        if after is None:
+            out.append(f"{where}refused: {who} removes {rel} — the registry is the Owner's to remove; a session ends with `{CMD} --session close <id>`")
+        else:
+            dropped = [r["id"] for r in was if r["id"] not in now_by_id]
+            reopened = [r["id"] for r in was if not r["open"] and now_by_id.get(r["id"], {}).get("open")]
+            if dropped or reopened:
+                said_ = ([f"drops the row{'s' if len(dropped) > 1 else ''} {', '.join(dropped)}"] if dropped else []) + ([f"re-opens {', '.join(reopened)}, which had ended"] if reopened else [])
+                out.append(f"{where}refused: {who} {'; '.join(said_)} in {rel} — a row once written stays, and an ended session stays ended: open a new one")
+                rows, now_by_id = was, {r["id"]: r for r in was}
+        row = now_by_id.get(sid)
+        closing = row is not None and not row["open"] and any(r["id"] == sid and r["open"] for r in was)     # its last commit
         if not sid:
             out.append(f"{where}refused: {who} carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row ({CMD} --session open)")
-        elif row is None or not row["open"]:
+        elif row is None or not (row["open"] or closing):
             out.append(f"{where}refused: Session: {sid} has no open row in {rel}")
         elif row["seat"] != seat:
             out.append(f"{where}refused: Session: {sid} is open for the seat {row['seat']}, and {who} is the seat {seat}")
-        else:
+        elif row["open"]:
             first = next(r for r in rows if r["open"] and r["worktree"] == row["worktree"])
             if first is not row:
                 out.append(f"{where}refused: {row['worktree']} is open under session {first['id']} — one worktree per session")

@@ -21,7 +21,8 @@ author's session looked as independent as any other.
 - **The gate, where the registry exists.** A seat's commit — never the Owner's — must carry a `Session:` whose row is
   open and names the author's seat, in a worktree no earlier open row holds; exit 4 otherwise, with one of three
   lines. Judged on the commit being made, the commit at HEAD and every commit a merge brings, each against the
-  registry in its own tree. *Nothing changes for your repository until it opens its first session: a tree without
+  registry in its own tree. A seat's commit that removes the registry, drops a row or re-opens an ended one is refused
+  and judged against its parent's registry: only the Owner removes it. *Nothing changes for your repository until it opens its first session: a tree without
   `sessions.md` is not judged, and neither is any commit made before the file existed.* The pre-commit hook runs the
   gate when a tracker, the configuration or the tool is staged; a commit touching none of them is judged by `--check`
   at HEAD, or when a merge brings it.

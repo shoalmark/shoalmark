@@ -278,7 +278,9 @@ refused: worktrees/principal is open under session d8 — one worktree per sessi
 
 It judges what the rights are judged on: the commit being made (by its worktree's `seat.session`, the trailer its hook
 will write), the commit at HEAD by its trailer, and every commit a merge brings, each against the registry in its own
-tree.
+tree. **The registry is not the judged seat's to change:** a seat's commit that removes it, drops a row or re-opens an
+ended one is refused, and judged against its parent's registry — only the Owner removes it. A session's own last commit
+may close its row; that commit is still the session's.
 
 **A row nobody closes** — a session that ended without `--session close`: an open row with no commit carrying its id
 for more than a day is *abandoned*. `--check` lists it (a report, not a refusal); the next `--triage` closes it —

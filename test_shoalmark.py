@@ -487,6 +487,47 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 S4 · on a clean tree the commit at HEAD is judged by its own trailer against the registry in its own tree (saw {made[2].strip()[:160]!r})",
           made[0] == fm.EXIT_LINT and "Session: z1 has no open row in docs/work-tracker/sessions.md" in made[2])
 
+# --- R1: the registry a seat is judged against is never the seat's to remove or rewrite — its parent's registry judges it
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + '\n[seats]\nowner = "owner@example.org"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n')
+    tracker(root, "MSR-001"); reg = root / "docs/work-tracker/sessions.md"
+    reg.write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
+                   "| a9 | principal | the Owner | the tool | wt-a | 2026-09-23 12:21 | — |\n| q7 | principal | the Owner | done | wt-q | 2026-09-22 09:00 | 2026-09-22 18:00 |\n")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the registry adopted")
+    AS = lambda who: {"GIT_AUTHOR_NAME": who, "GIT_AUTHOR_EMAIL": who, "GIT_COMMITTER_NAME": who, "GIT_COMMITTER_EMAIL": who}
+    session = lambda sid: subprocess.run(["git", "-C", str(root), "config", *(["seat.session", sid] if sid else ["--unset", "seat.session"])], env=_ENV)
+    kept = reg.read_text()
+    # (1) a seat removes the registry with a tracker change — with a valid session, and with none
+    git(root, "rm", "-q", "docs/work-tracker/sessions.md"); tracker(root, "MSR-002"); run(root)
+    session("a9"); rm_valid = run_safe(root, "--check", git_env=AS("principal@seat"))
+    session(""); rm_none = run_safe(root, "--check", git_env=AS("principal@seat"))
+    rm_owner = run_safe(root, "--check", git_env=AS("owner@example.org"))
+    git(root, "reset", "-q", "--hard")
+    # (2) the removal refused, the next seat commit with no session is refused as before
+    tracker(root, "MSR-002"); run(root); nxt = run_safe(root, "--check", git_env=AS("implementer@seat"))
+    # (3) a closed row re-opened by hand, and a row dropped
+    git(root, "reset", "-q", "--hard"); git(root, "clean", "-qfd")
+    reg.write_text(kept.replace("| 2026-09-22 09:00 | 2026-09-22 18:00 |", "| 2026-09-22 09:00 | — |")); session("q7")
+    reopen = run_safe(root, "--check", git_env=AS("principal@seat"))
+    reg.write_text(kept.replace("| q7 | principal | the Owner | done | wt-q | 2026-09-22 09:00 | 2026-09-22 18:00 |\n", "")); session("a9")
+    dropped = run_safe(root, "--check", git_env=AS("principal@seat"))
+    # a session's own last commit closes its row — that is not a re-open, and it is still that session's commit
+    reg.write_text(kept.replace("| wt-a | 2026-09-23 12:21 | — |", "| wt-a | 2026-09-23 12:21 | 2026-09-23 18:00 |")); session("a9")
+    closing = run_safe(root, "--check", git_env=AS("principal@seat"))
+    # a removal committed past the hook is refused at HEAD by --check, against its parent's registry
+    reg.write_text(kept); git(root, "rm", "-q", "docs/work-tracker/sessions.md"); run(root); git(root, "add", "-A")
+    subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "gone\n\nSession: a9"], env=dict(_ENV, **AS("principal@seat")), check=True)
+    forced = run_safe(root, "--check"); session("")
+    removes = "removes docs/work-tracker/sessions.md — the registry is the Owner's to remove"
+    check(f"R1 · a seat's commit that removes the registry is refused — with a session or without — the Owner's is not; the next seat commit is still judged; a forced removal is refused at HEAD (saw exits {rm_valid[0]}, {rm_none[0]}, {rm_owner[0]}, {nxt[0]}, {forced[0]})",
+          rm_valid[0] == fm.EXIT_LINT and removes in rm_valid[2] and rm_none[0] == fm.EXIT_LINT and removes in rm_none[2] and "carries no Session: trailer" in rm_none[2]
+          and rm_owner[0] == 0 and nxt[0] == fm.EXIT_LINT and "carries no Session: trailer" in nxt[2] and forced[0] == fm.EXIT_LINT and removes in forced[2])
+    check(f"R1 · a closed row re-opened by hand, or a row dropped, is refused and judged against the parent's registry; a session's own last commit closing its row passes (saw exits {reopen[0]}, {dropped[0]}, {closing[0]})",
+          reopen[0] == fm.EXIT_LINT and "re-opens q7, which had ended" in reopen[2] and "Session: q7 has no open row" in reopen[2]
+          and dropped[0] == fm.EXIT_LINT and "drops the row q7" in dropped[2] and closing[0] == 0)
+
 # --- FM-024 S5: a row nobody closed — listed by --check, closed by the next pass, which says so ---------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
