@@ -147,9 +147,9 @@ git log --format='%h %ae %(trailers:key=Session,valueonly)'      # 049a9ab princ
 |---|---|---|---|---|---|---|
 | d8 | principal | the Owner, 2026-09-23 07:28 | the product items: the negative control, the hands run sheet | worktrees/principal | 2026-09-23 07:28 | — |
 | a9 | principal | the Owner, 2026-09-23 12:21 | the day's findings into the tool; 0.17.5 | worktrees/principal-2 | 2026-09-23 12:21 | — |
-| a9/reviewer-1 | reviewer | session a9 | attack 363dbb7e | worktrees/reviewer-2 | 2026-09-23 12:36 | 2026-09-23 13:31 |
+| a9/reviewer-1 | reviewer | session a9 | attack a tip | worktrees/reviewer-2 | 2026-09-23 12:36 | 2026-09-23 13:31 |
 | a9/implementer-1 | implementer | session a9 | build 0.17.5 | shoalmark-impl | 2026-09-23 13:10 | — |
-| b0 | principal | the Owner, 2026-09-22 16:06 | (no scope given) | msr-lager | 2026-09-22 16:06 | closed by the pass of 2026-09-24 — no commit since 09-22 19:36 |
+| b0 | principal | the Owner, 2026-09-22 16:06 | (no scope given) | a client repository | 2026-09-22 16:06 | closed by the pass of 2026-09-24 — no commit since 09-22 19:36 |
 ```
 
 - **A collision, as the registry shows it:** two open rows naming one worktree —
@@ -165,15 +165,15 @@ git log --format='%h %ae %(trailers:key=Session,valueonly)'      # 049a9ab princ
 ### d. A verdict commit under the independence rule
 
 ```text
-commit 59d58b9e
+commit 5e1f0a2c
 Author: Reviewer seat <reviewer@seat>
-    PD-400, FEAT-190: the Reviewer pass on 363dbb7e — NOT READY (RV-366 … RV-381)
-    Reviewed: 363dbb7e                           ← the tip judged; the branch's head at that moment
+    the consumer's count tracker: the Reviewer pass on 3a7d1e0b — NOT READY (16 findings)
+    Reviewed: 3a7d1e0b                           ← the tip judged; the branch's head at that moment
     Session: a9/reviewer-1                       ← a sub-agent of a9 — the author's session
 ```
 
 ```text
-gate: verdict 59d58b9e on 363dbb7e — the reviewed range was authored under session a9; the verdict's session is a9/reviewer-1.
+gate: verdict 5e1f0a2c on 3a7d1e0b — the reviewed range was authored under session a9; the verdict's session is a9/reviewer-1.
       Recorded as: NOT INDEPENDENT (same session). The count on the board says so; the verdict itself stands.
 ```
 
@@ -233,6 +233,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |
 | 2026-09-23 | R2: the reviewed range is the branch's own commits (`<tip> ^<trunk> --no-merges`, less verdicts; a landed tip against the trunk before its merge); a tip on the trunk reads *on trunk — not a branch verdict*; label `reviews.trunk`. The Reviewer's planted sibling reads *independent*, before and after the branch lands. One check. |
 | 2026-09-23 | R3: a sub-agent's id derives from its parent's — `--session open` refuses otherwise; row `8d6537be` closed, this build re-opened as `8e509911/implementer-1`. R1: a seat's commit that removes the registry, drops a row or re-opens an ended one is refused, against its parent's registry; a session's own closing commit passes. Two checks. |

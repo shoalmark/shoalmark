@@ -421,7 +421,7 @@ Some words above the table.
 | Session | Seat | Convened by | Scope | Worktree | Started | Ended |
 |---|---|---|---|---|---|---|
 | d8 | principal | the Owner, 07:28 | the product items \\| the run sheet | worktrees/principal | 2026-09-23 07:28 | — |
-| a9/reviewer-1 | reviewer | session a9 | attack 363dbb7e | worktrees/reviewer-2 | 2026-09-23 12:36 | 2026-09-23 13:31 |
+| a9/reviewer-1 | reviewer | session a9 | attack a tip | worktrees/reviewer-2 | 2026-09-23 12:36 | 2026-09-23 13:31 |
 | broken | row | with | six | cells | only |
 """
 _parse = getattr(fm, "parse_sessions", None)
