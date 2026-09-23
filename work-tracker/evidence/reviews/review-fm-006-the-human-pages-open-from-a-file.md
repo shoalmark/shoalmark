@@ -333,3 +333,10 @@ newest first as the log is kept, and names `589d328`.
 
 **The German pitch** is 493 words, code blocks left out: 2.0–2.5 minutes at 250–200 words a minute. That is an
 estimate from the count. A model's reading time is not a person's, so I report none of my own.
+
+**Delta on c5f1fcd, 2026-09-23 22:17 CEST — READY TO TAG.** R7 is closed: *just over a day* / *in gut einem Tag* in
+both pitches. R8 is closed: the English signing page now says *shoalmark lower-cases the branch it creates; git keeps
+the case it is given*, and FM-006 gains one ship-log row.
+
+`zensical build` exits 0 with *No issues found*; `llms_txt.py site` exits 0 (9 pages); `--check` and `--session-check`
+exit 0.
