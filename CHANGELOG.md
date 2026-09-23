@@ -2,6 +2,22 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.8 — 2026-09-23
+
+**A vendoring vouches for what it copies** (FM-011). `--vendor` used to skip a missing source file, pin what it found
+and report success — from a lone `shoalmark.py` it wrote a PIN of one line and left your old `VERSION` in place.
+
+- **An incomplete source is refused**, exit 4, naming the missing files — nothing is written. `--partial` copies it
+  anyway and names the missing files in the PIN.
+- **A source that is no release is refused**: it must be a git checkout whose HEAD is exactly at `v<VERSION>`, with a
+  clean tree; the refusal names the HEAD and the changed paths. `--allow-untagged` vendors a working copy anyway, and
+  the PIN says `untagged <sha>`. *Vendor from a clean clone at the release tag — `git clone --branch vX.Y.Z` — as
+  README §6 now shows.*
+- **The PIN's first line is a manifest**: `# shoalmark <version> · tag <vX.Y.Z> · commit <sha> · vendored <date> ·
+  complete|partial`. Your `--check` prints one line — *pinned 0.17.8 from tag v0.17.8* — and warns when the copy is
+  untagged or partial. A PIN without the line (from 0.17.7 or older) is read as before.
+- The message on success names the tag, and still prints the sections new to your copy.
+
 ## 0.17.7 — 2026-09-23
 
 - **A consumer's secret-shape gate read the trailer query as a credential** and refused the vendored `shoalmark.py`:
