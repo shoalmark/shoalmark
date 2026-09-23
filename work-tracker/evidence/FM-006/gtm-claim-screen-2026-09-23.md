@@ -572,3 +572,66 @@ judges otherwise. The Owner's rule calls it the question, and the ledger will sa
 - `jev-gate-test-keys-2026-09-23.json` holds the key → (line, gate) map, shuffled with seed 20260923, and the word
   counts. It is never sent.
 - The answers will land as `jev-gate-test-response-run1-2026-09-23.json` and `…-run2-…`.
+
+### The gate test — both runs, 2026-09-23 22:51 CEST
+
+**The runs.** The Owner ran both in TypeSafe's playground, identical input, one after the other.
+
+| run | request | model | tokens in / out | time |
+|---|---|---|---|---|
+| 1 | `playground_1dc9fe6fc4e608e44bc98e357345d244217` | `jev-1.13.0` | 15,032 / 1,687 | 813 ms |
+| 2 | `playground_1dc7760c638be244e659b0b89dae78cd99a` | `jev-1.13.0` | 15,032 / 1,687 | 440 ms |
+
+- **Kept raw:** `jev-gate-test-response-run1-2026-09-23.json` and `…-run2-…`, as returned.
+- **Checked here (E):** every answer's type and legend match the committed request, 102 of 102 in each run.
+- **The scorer's output** is `jev-gate-test-score-output-2026-09-23.txt`. The script and the rule are as committed in
+  `e6518e8`, before either call.
+
+**The controls failed, in both runs.**
+
+| control | wanted | run 1 | run 2 |
+|---|---|---|---|
+| E0 · *Get a better-performing human Owner.* | survives | **G1** (p_pass 0.24) | **G1** (0.21) |
+| H1 · *… leistungsstärkeren … Owner* | G0 | G1 (G0 at exactly 0.50 passes under the rule; G1 0.13) | G0 (0.42) |
+| H2 · *… leistungsstärkeren … Eigner* | survives | **G1** (0.12) | **G1** (0.14) |
+
+**The repeat failed, by one answer.**
+
+- 101 of 102 p_pass values agree within 0.10. The one outside is C2 G4: 0.47 → 0.58, a move of 0.11.
+- The mean move is 0.027, and the median 0.02.
+
+**VERDICT, by the rule committed before the call: noise. The record blames the MODEL.** The identical question gave
+different numbers, and under the rule an unstable answer cannot indict the question. **No verdict in this ledger
+moves.**
+
+**What else the record shows.** The verdict stands as the rule gives it; the rest is here so that it is not taken for
+the whole story.
+
+1. **The numbers mostly repeat. The verdicts do not.**
+   - 10 of the 102 answers sit on opposite sides of 0.5 in the two runs.
+   - The first fatal gate changes on 5 of 17 lines: C3, C4, C8, C10 and H1.
+   - Four of those five flip at **G0**, the gate that bundles four conditions and was named before the call as the
+     first place to look.
+   - The 0.10 tolerance is wider than the margin these answers have from 0.5.
+2. **The controls fail the same way in both runs, and in the same place.** Every headline line fails G1, the Owner's
+   English line included, at p_pass 0.12–0.24 in both runs. **On its own, that pattern would blame the question.**
+   - A likely cause, **inferred and not tested**: the state calls the German lines the English line's *twins*. That
+     tells a model the lines are translations, and then asks it whether a native reader hears a translation.
+3. **Jev agrees with the ledger on 1 of 17 lines in run 1, and 2 of 17 in run 2.**
+
+**What the record blames, then:**
+
+- **Under the rule, the model:** the repeat failed.
+- **The stable part of the answer also carries the question's fingerprint:** the controls fail at the headline's G1
+  in both runs, and the unstable part sits at the bundled G0.
+
+The record does not separate the two further. Separating them would take a third call with the headline's G1
+stripped of *twins* and G0 split into four. **That is not run, and it is the Owner's call.**
+
+**Not run:** a third call; the revised question above; any line or gate the ledger does not carry.
+
+**The session closes.** Both runs are ledgered raw, the rule's verdict is noise, the screen's verdicts stand as the
+seat ledgered them, and the Owner rules.
+
+**Provenance:** Seat: GtM · Session `c1652143` · Model: Claude Opus 5.5 · 2026-09-23 · the Jev gate test, on the
+Owner's direction.
