@@ -11,8 +11,8 @@ intent he found hard to start.
   about thirty fields of a row, the ids its body links to among them. So an id found its own row **and every row
   that links to it**: `FM-005` showed itself and every row that links to it, on a large board most of the list. A
   query that is exactly one known id (trimmed, any case) now shows that tracker alone, whether or not it is open. A
-  partial id (`FM-00`) and a query of several words still match by substring. The hint says so, and the box's title
-  says it in full. *What links to an id is `~ID`: what its body links to and what links to it, by Markdown link only.
+  partial id (`FM-00`) and a query of several words still match by substring. The full help is the search box's
+  tooltip; the placeholder, `search · ~ID`, fits the box at its 200 px minimum. *What links to an id is `~ID`: what its body links to and what links to it, by Markdown link only.
   A story's chapters are the story view. A chapter's `epic:`, a `blocked-by:` or an id in plain text is in neither.*
 - **The empty `progress` section says why.** `progress` holds only what a triage pass kept, so until a first pass
   has run it reads 0 beside work in progress. While no tracker carries `triaged:` and `TRIAGE.md` records no pass,
@@ -27,8 +27,8 @@ intent he found hard to start.
   longer prints the template's italic note above your intent. A `TRIAGE.md` you already have is never rewritten;
   README §6 carries the lead-in and the example, and `examples/de/TRIAGE.md` carries them in German.*
 - **Labels:** three new labels, `desc.progress.none`, `count.id` (the counter over an id searched alone:
-  *1 tracker · <id>*) and `search.help` (the search box's title: the whole help), and `search` shortened so it fits
-  the box at about 390 px. All in English and in `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets
+  *1 tracker · <id>*) and `search.help` (the search box's tooltip: the whole help), and `search` shortened to fit
+  the box at its 200 px minimum. All in English and in `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets
   `search` keeps its old hint. One without the new labels shows the English words.*
 
 ## 0.17.4 — 2026-09-23

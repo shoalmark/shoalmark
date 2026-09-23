@@ -16,17 +16,17 @@ hook: "The Owner typed one tracker's id into the board's search and got a long l
 merged.** The Principal chose the fix. In `draw()`, a query that is exactly one known id (trimmed, any case) is that
 tracker alone: `exact=!hood&&byId.get(q.toUpperCase())`, and the row filter reads `hood ? neighbourhood : exact ? that
 tracker : the substring match as before`. Like `~ID`, it shows the tracker whether or not it is open, and the counter
-names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The hint is
-*search — an id · ~ID = its links · words* (German: *Suche — eine Id · ~Id = Verweise · Wörter*), short enough for the
-box at its narrowest (R6); the box's title says it in full: *a whole id shows that tracker; what links to it is `~ID`
-(Markdown links only); a story's chapters are the story view; anything else matches by substring* (label
-`search.help`, English and German).
+names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The full help is
+the box's tooltip (its title, label `search.help`); the placeholder, *search · ~ID* (German: *Suche · ~Id*), fits the
+box at its 200 px minimum (R12; at R6 it fitted a 500 px window only). The tooltip says: *a whole id shows that tracker; what links to it is `~ID`
+(Markdown links only); a story's chapters are the story view; anything else matches by substring*, in English and
+German.
 
 | check | result |
 |---|---|
 | Chrome: MSR-002 links to MSR-001; `#MSR-001` and `#msr-001 ` | MSR-001 alone, counter `1 tracker · MSR-001`. On 0.17.4: MSR-001 and MSR-002, `2 trackers` (fails, as it should) |
 | Chrome: Shipped MSR-003 searched by id, story view, *open* pressed (R1) | shown, counter `1 tracker · MSR-003`. At `8402732`: `1 open` |
-| Chrome, 500 px window, English and German (R6) | the hint fits its box; the box's title is the whole help |
+| Chrome, English and German (R6, R12) | the placeholder fits the box at its 200 px CSS minimum, measured with the box's font; the box's title is the whole help |
 | Chrome controls: `#~MSR-001` · `#MSR-00` · `#stock` | both neighbours · all three by substring · both title matches. The same on 0.17.4 and now |
 | `test_core.py`, for a machine without a browser | the filter and the hint are in the page; fails on 0.17.4 |
 
@@ -65,6 +65,7 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R12: the placeholder is `search · ~ID` (German `Suche · ~Id`) and fits the box at its 200 px minimum; the R6 hint fitted a 500 px window only. The check measures the placeholder with the box's font against its CSS minimum, both languages, and reads the title. |
 | 2026-09-23 | R7: no consumer id or number in shoalmark's files — the CHANGELOG's example is `FM-005`, and this tracker's hook and *Reproduced* paragraph are generic. |
 | 2026-09-23 | R6: the hint is short enough for its box in a 500 px window (English and German, measured in Chrome), and the whole help is the box's title (`search.help`). One Chrome check. |
 | 2026-09-23 | Correction (R3) to the *Built* row below, which says all three checks were shown to fail on 0.17.4: two fail on 0.17.4 — the whole-id Chrome check and the `test_core.py` string check; the third, `~ID` · partial id · word, is a control and passes on both. Across the release before the review: 5 checks fail on 0.17.4 (FM-020 ×2, FM-021 ×2, FM-022 ×1) and 4 are controls (FM-020 ×1, FM-021 ×2, the CHANGELOG/version check). |

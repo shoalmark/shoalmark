@@ -1347,7 +1347,7 @@ onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
     "tagline": "", "footer": "",
-    "search": "search — an id · ~ID = its links · words",       # the box is ~390 px at its narrowest: the rest is its title
+    "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
     "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark",

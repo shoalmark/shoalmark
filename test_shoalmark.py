@@ -447,9 +447,10 @@ if _CHROME:
         seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
         check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
               seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
-        # the hint fits the box at its narrowest, in both shipped languages; the whole help is the box's title (R6)
+        # the placeholder fits the box at its CSS minimum (200 px) — measured with the box's own font, not by a window —
+        # in both shipped languages, and the whole help is the box's title (R6, R12)
         import html as _html, json as _json
-        probe = '<script>{const i=$("q"),c=document.createElement("canvas").getContext("2d");c.font=getComputedStyle(i).font;document.body.dataset.probe=JSON.stringify({w:i.clientWidth,need:Math.ceil(c.measureText(i.placeholder).width),title:i.title})}</script>'
+        probe = '<script>{const i=$("q"),c=document.createElement("canvas").getContext("2d");c.font=getComputedStyle(i).font;document.body.dataset.probe=JSON.stringify({min:parseFloat(getComputedStyle(i).minWidth),need:Math.ceil(c.measureText(i.placeholder).width),title:i.title})}</script>'
         fits = {}
         for lang, labels in (("en", None), ("de", HERE / "examples/de/labels.yaml")):
             if labels:
@@ -459,8 +460,8 @@ if _CHROME:
                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
             fits[lang] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "{}"])[1]) or "{}")
         want = {"en": fm.LABELS.get("search.help"), "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("search.help")}
-        check(f"R6 · in a 500 px window the search hint fits its box, in English and in German, and the whole help is the box's title (saw need/width: { {k: (v.get('need'), v.get('w')) for k, v in fits.items()} })",
-              len(fits) == 2 and all(v.get("w") and v["w"] <= 400 and v["need"] <= v["w"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
+        check(f"R12 · the search placeholder fits the box at its 200 px minimum, in English and in German, measured in Chrome with the box's font; the whole help is the box's title (saw need/min: { {k: (v.get('need'), v.get('min')) for k, v in fits.items()} })",
+              len(fits) == 2 and all(v.get("min") == 200 and v.get("need") and v["need"] <= v["min"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _CHROME:

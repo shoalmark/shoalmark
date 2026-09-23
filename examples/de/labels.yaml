@@ -1,6 +1,6 @@
 # ein deutsches Board
 tagline: Arbeitsstand
-search: Suche — eine Id · ~Id = Verweise · Wörter
+search: Suche · ~Id
 search.help: Eine ganze Id zeigt diesen Eintrag. Was darauf verweist: ~Id (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.
 view.by: nach {0}
 view.board: Tafel
