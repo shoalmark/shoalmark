@@ -10,10 +10,10 @@ intent he found hard to start.
 - **A whole id in the board's search shows that tracker alone.** The search matched each word as a substring of
   about thirty fields of a row, the ids its body links to among them. So an id found its own row **and every row
   that links to it**: `FEAT-161` showed 17 rows on a 505-tracker board, 16 of them only through a link. A query that
-  is exactly one known id (trimmed, any case) now shows that tracker alone, whether or not it is open. `~ID` still
-  shows the neighbourhood, what it links to and what links to it. A partial id (`FEAT-16`) and a query of several
-  words still match by substring. The hint says so. *If you used an id to find what references it, `~ID` is that
-  search.*
+  is exactly one known id (trimmed, any case) now shows that tracker alone, whether or not it is open. A partial id
+  (`FEAT-16`) and a query of several words still match by substring. The hint says so. *What links to an id is
+  `~ID`: what its body links to and what links to it, by Markdown link only. A story's chapters are the story view.
+  A chapter's `epic:`, a `blocked-by:` or an id in plain text is in neither.*
 - **The empty `progress` section says why.** `progress` holds only what a triage pass kept, so until a first pass
   has run it reads 0 beside work in progress. While no tracker carries `triaged:` and `TRIAGE.md` records no pass,
   its line now reads *empty until a first triage pass has run — --triage*. The rule is unchanged. `INDEX.md`,

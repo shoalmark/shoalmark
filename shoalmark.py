@@ -1202,7 +1202,8 @@ ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">
 chips=(ids,arrow,to="~")=>ids.length?`<div class="m">${arrow} `+ids.map(i=>`<a href="#${to}${i}" class="${byId.has(i)&&OPEN.has(byId.get(i)[2])?"":"off"}">${i}</a>`).join(" ")+"</div>":"";
 let all=false,gi=0,shut=new Set(),touched=new Set();
 function draw(){
-  // a whole id alone is that tracker — not every row whose body links to it (FM-020); `~ID` is how to ask for those
+  // a whole id alone is that tracker — not every row whose body links to it (FM-020). What links to it is `~ID` (Markdown
+  // links only: a chapter's `epic:` and `blocked-by:` are not in it); a story's chapters are the story view
   const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),exact=!hood&&byId.get(q.toUpperCase()),words=q.toLowerCase().split(/\s+/).filter(Boolean);
   const near=hood&&new Set([hood[0],...hood[12],...(inb.get(hood[0])||[])]),[gname,gkey]=GROUPS[gi],every=all||gname=="board";
   const rows=T.filter(t=>hood?near.has(t[0]):exact?t==exact:(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+" "+sl(t[2])+(blocked(t)?" blocked "+sl("Blocked"):"")+(untriaged(t)?" untriaged "+(L["count.untriaged"]||""):"")).toLowerCase().includes(w)))
@@ -1344,7 +1345,7 @@ onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
     "tagline": "", "footer": "",
-    "search": "search — an id alone = its row · ~ID = its neighbours · tier, status, words · blocked · untriaged",
+    "search": "search — a whole id = that tracker · what links to it = ~ID · a story's chapters = the story view · tier, status, words · blocked · untriaged",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
     "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark",
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",

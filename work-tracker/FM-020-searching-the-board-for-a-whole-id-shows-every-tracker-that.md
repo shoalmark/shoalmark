@@ -17,13 +17,17 @@ merged.** The Principal chose the fix. In `draw()`, a query that is exactly one 
 tracker alone: `exact=!hood&&byId.get(q.toUpperCase())`, and the row filter reads `hood ? neighbourhood : exact ? that
 tracker : the substring match as before`. Like `~ID`, it shows the tracker whether or not it is open, and the counter
 names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The hint says
-*an id alone = its row · ~ID = its neighbours* (German: *eine Id allein = nur dieser Eintrag · ~Id = seine Nachbarn*).
+*a whole id = that tracker · what links to it = ~ID · a story's chapters = the story view* (German: *eine ganze Id =
+dieser Eintrag · was darauf verweist = ~Id · Kapitel eines Vorhabens = Ansicht nach Vorhaben*).
 
 | check | result |
 |---|---|
 | Chrome: MSR-002 links to MSR-001; `#MSR-001` and `#msr-001 ` | MSR-001 alone, counter `1 trackers`. On 0.17.4: MSR-001 and MSR-002, `2 trackers` (fails, as it should) |
 | Chrome controls: `#~MSR-001` · `#MSR-00` · `#stock` | both neighbours · all three by substring · both title matches. The same on 0.17.4 and now |
 | `test_core.py`, for a machine without a browser | the filter and the hint are in the page; fails on 0.17.4 |
+
+**Open:** `~ID` shows links only — a story's chapters, its own story and `blocked-by:` are not in the neighbourhood;
+whether they should be is a design question, not this release's.
 
 **What is left:** review, merge, the tag.
 
@@ -57,6 +61,7 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R2: the hint and the CHANGELOG say what `~ID` holds — links only — and send a story's chapters to the story view; `~ID` is not widened (the Principal's ruling). |
 | 2026-09-23 | R1: the counter over an id searched alone says `1 tracker · <id>`; a Chrome check searches a Shipped id in the story view with *open* pressed (it read `1 open` at `8402732`). |
 | 2026-09-23 | Built: a whole id alone is its row; `~ID`, a partial id and words unchanged; two Chrome checks and a string check, shown to fail on 0.17.4. |
 | 2026-09-23 | Filed. |
