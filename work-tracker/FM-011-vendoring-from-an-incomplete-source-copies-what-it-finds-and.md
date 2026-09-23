@@ -1,9 +1,9 @@
 ---
 id: FM-011
-status: Proposed
+status: In Progress
 considered: FM-009
 tags: bug
-next: build
+next: review
 kind-of-problem: obvious
 triaged: 2026-09-23
 rank: 1
@@ -15,7 +15,26 @@ hook: "`vendor()` skips a source file that is not there — `if not src.exists()
 
 ## What is true now
 
-**Filed 2026-09-22; nothing is built.** Raised in review of FM-009 (PR #10) and reproduced here.
+**Built 2026-09-23 on `fix/0.17.8-a-vendor-refuses-what-it-cannot-vouch-for`, for 0.17.8; open for review, not
+merged.** On the Owner's *"proceed"*, the first triage pass's #1. `vendor()` now checks before it writes anything:
+
+| the source | at 0.17.7 | now |
+|---|---|---|
+| a file of `TOOL_FILES` missing | copied the rest, a short PIN, success | refused, exit 4, the missing files named, nothing written; `--partial` copies it and the PIN names what is missing |
+| not a git checkout at `v<VERSION>`, or a changed tree | vendored | refused, exit 4, naming the HEAD and the changed paths; `--allow-untagged` vendors and the PIN says `untagged <sha>` |
+| a clean clone at its release tag | vendored | vendored; the PIN's first line: `# shoalmark <version> · tag <vX.Y.Z> · commit <sha> · vendored <date> · complete` |
+
+The consumer's `--check` reads that line and prints *pinned <version> from tag …*, with a warning for an untagged or
+partial copy. The brand files stay optional. The required set is `TOOL_FILES` — the tool, the renderer, `VERSION`,
+`NOTICE`, both licences, `README.md`, `CHANGELOG.md`. **Settled here:** `__version__` keeps `"unknown"` when
+`VERSION` is absent. Importing must not raise, and `--vendor` can no longer produce a copy without `VERSION` unless
+`--partial` was asked for and the PIN says so.
+
+**What changed in the existing suite, and why:** the suite vendors from its own working copy, which is by definition no
+release. Its five vendor calls now say `allow_untagged=True` / `--allow-untagged`, and the one check that rewrites a
+PIN line by line skips the manifest line. No assertion changed.
+
+Raised in review of FM-009 (PR #10) and reproduced here.
 
 **`--vendor` treats a missing source file as nothing to do.** `shoalmark.py:2557-2564` walks `TOOL_FILES` plus the
 brand files and skips whatever is absent:
@@ -91,4 +110,5 @@ right call for import; it is the wrong call for `--vendor`, which can check befo
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Built for 0.17.8: an incomplete source and one that is no release are refused before anything is written; `--partial`, `--allow-untagged`; the PIN's manifest line; the consumer's `--check` reads it. Three checks, each failing on 0.17.7. |
 | 2026-09-22 | Filed. Raised by the reviewer of PR #10; reproduced from a lone-file source, and the reporting half traced to FM-009's version derivation rather than to the pre-existing skip. |

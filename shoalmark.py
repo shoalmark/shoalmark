@@ -3107,7 +3107,11 @@ def parse_args(argv):
         help="why does my board look like this: which places gave it its theme, logo and labels. With DIR: write a commented starter there")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
-    add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy")
+    add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy. Only from a release: "
+                                            "the whole tool, a git checkout whose HEAD is at the tag of its VERSION, a clean tree — otherwise refused, nothing written. "
+                                            "The PIN's first line says where the copy came from; `--check` in the consumer reads it")
+    add("--partial", action="store_true", help="with --vendor: copy what the source has although files are missing, and name them in the PIN")
+    add("--allow-untagged", action="store_true", help="with --vendor: vendor from a working copy that is not at its release tag, or not clean — the PIN says `untagged <sha>`")
     add("--version", action="version", version=__version__)
     return parser.parse_args(argv)
 
@@ -3206,6 +3210,8 @@ def pin_problems():
         return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in HERE.parents else []
     out = []
     for line in pin.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
+            continue
         want, _, rel = line.partition("  ")
         if rel and (not (HERE / rel).exists() or digest(HERE / rel) != want):
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
@@ -3221,25 +3227,90 @@ def changes_since(version):
     return "".join("## " + p for p in parts if re.match(r"\d", p) and key(p.split()[0]) > key(version)).strip()
 
 
-def vendor(dest):
+def source_provenance():
+    """Where this copy of the tool comes from, as a vendoring vouches for it (FM-011): (the tag, the commit, the dirty
+    paths, why it is no release — "" when it is one). A release is a git checkout whose HEAD is exactly at `v<VERSION>`,
+    with a clean tree: a consumer runs a release, never a working copy."""
+    top = git_out("rev-parse", "--show-toplevel", cwd=HERE)
+    if top is None:
+        return "", "", [], f"{HERE} is not a git checkout — a release is vendored from a clone at its tag"
+    sha = (git_out("rev-parse", "HEAD", cwd=HERE) or "").strip()
+    tags = (git_out("tag", "--points-at", "HEAD", cwd=HERE) or "").split()
+    dirty = [l[3:] for l in (git_out("status", "--porcelain", "--untracked-files=all", cwd=HERE) or "").splitlines() if l.strip()]
+    want = f"v{__version__}"
+    why = "; ".join(([f"HEAD {sha[:10]} is not at the tag {want}" + (f" (it carries {', '.join(tags)})" if tags else "")] if want not in tags else [])
+                    + ([f"the tree has changes: {', '.join(dirty[:8])}" + (" …" if len(dirty) > 8 else "")] if dirty else []))
+    return (want if want in tags else ""), sha, dirty, why
+
+
+def pin_manifest(pin_text):
+    """The PIN's header, read back: {version, tag, commit, untagged, vendored, state, missing} — {} for a PIN without one."""
+    head = next((l[2:] for l in pin_text.splitlines() if l.startswith("# shoalmark ")), None)
+    if head is None:
+        return {}
+    fields = [f.strip() for f in head.split(" · ")]
+    out = {"version": fields[0].split()[-1]}
+    for f in fields[1:]:
+        k, _, v = f.partition(" ")
+        out[k] = v if v else True
+    out["missing"] = next((l[len("# missing: "):].split(", ") for l in pin_text.splitlines() if l.startswith("# missing: ")), [])
+    return out
+
+
+def pin_report():
+    """What `--check` says of a vendored copy's PIN header: where it came from — and a warning when it was no release."""
+    pin = HERE / "PIN"
+    if not pin.exists() or ROOT not in HERE.parents:
+        return []
+    m = pin_manifest(pin.read_text(encoding="utf-8"))
+    if not m:
+        return []
+    source = f"tag {m['tag']} (commit {str(m.get('commit', ''))[:10]})" if m.get("tag") else f"untagged {m.get('untagged', '')}"
+    lines = [f"pinned {m['version']} from {source}, vendored {m.get('vendored', '?')}, {'partial' if m.get('partial') else 'complete'}"]
+    if not m.get("tag"):
+        lines.append("warning: this copy was vendored from a working copy, not a release — vendor again from a clone at a tag")
+    if m.get("partial"):
+        lines.append(f"warning: this copy is partial — missing {', '.join(m['missing']) or '(unnamed)'}")
+    return lines
+
+
+def vendor(dest, partial=False, allow_untagged=False):
+    """Copy this tool into `dest` and pin every file (FM-011). Refused — exit 4, nothing written — when the source is
+    not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
+    (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
+    in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
     dest = pathlib.Path(dest).resolve()
     had = (dest / "VERSION").read_text(encoding="utf-8").strip() if (dest / "VERSION").exists() else ""
     edited = [l.partition("  ")[2] for l in ((dest / "PIN").read_text(encoding="utf-8").splitlines() if (dest / "PIN").exists() else [])
-              if l.partition("  ")[2] and (dest / l.partition("  ")[2]).exists()
+              if not l.startswith("#") and l.partition("  ")[2] and (dest / l.partition("  ")[2]).exists()
               and digest(dest / l.partition("  ")[2]) != l.partition("  ")[0]]
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
         return EXIT_LINT
+    missing = [rel for rel in TOOL_FILES if not (HERE / rel).is_file()]
+    if missing and not partial:
+        print(f"--vendor: {HERE} is not the whole tool — missing {', '.join(missing)}. Vendor from a clone at a release tag; "
+              f"nothing was written. (`--partial` copies what there is and names the rest in the PIN.)", file=sys.stderr)
+        return EXIT_LINT
+    tag, sha, dirty, why = source_provenance()
+    if why and not allow_untagged:
+        print(f"--vendor: {why}. A consumer runs a release, never a working copy: check out v{__version__} in a clean clone "
+              f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+        return EXIT_LINT
     lines = []
     for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES):
         src = HERE / rel
-        if not src.exists():
+        if not src.is_file():
             continue
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dest / rel)
         lines.append(f"{digest(src)}  {rel}")
-    put((dest / "PIN"), "\n".join(lines) + "\n")
-    print(f"vendored shoalmark {__version__} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
+    source = (f"tag {tag} · commit {sha}" if tag else f"untagged {sha[:10] or '(no git)'}" + (" (dirty)" if dirty else ""))
+    head = [f"# shoalmark {__version__} · {source} · vendored {datetime.date.today().isoformat()} · {'partial' if missing else 'complete'}"]
+    head += [f"# missing: {', '.join(missing)}"] if missing else []
+    put((dest / "PIN"), "\n".join(head + lines) + "\n")
+    print(f"vendored shoalmark {__version__} from {'tag ' + tag if tag else 'an untagged source, ' + (sha[:10] or 'no git')} into {dest} — {len(lines)} files, pinned in PIN"
+          + (f" (was {had})" if had and had != __version__ else "") + (f" — PARTIAL: missing {', '.join(missing)}" if missing else ""))
     if had and had != __version__ and changes_since(had):
         print("\nWhat changes for this repository:\n\n" + changes_since(had))
     return EXIT_OK
@@ -3607,7 +3678,7 @@ def main(argv=None):
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
-        return vendor(args.vendor)
+        return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
     if args.brand is not None:
         return brand_report(args.brand or None)
     if args.init:
@@ -3731,7 +3802,7 @@ def main(argv=None):
                 print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
         if not drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
-        for line in sessions_report():                      # a report, never a refusal (FM-024)
+        for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
     else:
         put(OUT, body)

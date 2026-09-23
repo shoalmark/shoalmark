@@ -308,7 +308,7 @@ with tempfile.TemporaryDirectory() as d:
     dest = root / "tools" / "shoalmark"
     out = io.StringIO()
     with redirect_stdout(out):
-        fm.vendor(dest)
+        fm.vendor(dest, allow_untagged=True)                 # the suite's own tree is a working copy, not a release (0.17.8)
     pin = (dest / "PIN").read_text()
     check("a vendored copy carries its licence: both texts, the notice, and the SPDX line in the tool",
           all((dest / f).exists() and f in pin for f in ("LICENSE-APACHE", "LICENSE-MIT", "NOTICE"))
@@ -647,17 +647,17 @@ fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
     with redirect_stdout(io.StringIO()):
-        fm.vendor(dest)
+        fm.vendor(dest, allow_untagged=True)
     # FM-009: `--vendor` compares the consumer's VERSION file against our version. While the version was ALSO declared
     # as a constant beside that file the two could drift — and did, for two releases — so a consumer pinned at the
     # stale constant read as up to date and the changelog it was owed was suppressed.
     check("what `--vendor` copies is what it reports — the version that lands in the copy is the version named",
           (dest / "VERSION").read_text().strip() == fm.__version__)
     (dest / "VERSION").write_text("0.2.0\n")
-    (dest / "PIN").write_text("\n".join(f"{fm.digest(dest / l.partition('  ')[2])}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines()) + "\n")
+    (dest / "PIN").write_text("\n".join(f"{fm.digest(dest / l.partition('  ')[2])}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines() if not l.startswith("#")) + "\n")
     out = io.StringIO()
     with redirect_stdout(out):
-        fm.vendor(dest)
+        fm.vendor(dest, allow_untagged=True)
     check("vendoring again says which version it replaces and what changed since", "(was 0.2.0)" in out.getvalue() and "## 0.3.0" in out.getvalue() and "## 0.2.0" not in out.getvalue())
     _heads = re.findall(r"^## (\d+\.\d+\.\d+)", (HERE / "CHANGELOG.md").read_text(), re.M)
     check(f"a consumer one release behind ({_heads[1]}) is shown exactly the section it lacks — the newest, which is this version's",
@@ -667,6 +667,43 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stderr(err):
         code = fm.vendor(dest)
     check("vendoring never overwrites a copy that was edited in place", code == fm.EXIT_LINT and "edited in place" in err.getvalue() and (dest / "shoalmark.py").read_text() == "# edited\n")
+
+# --- FM-011, 0.17.8: a vendoring vouches for what it copies — the whole tool, from a release — and the PIN says where from --
+import shutil
+with tempfile.TemporaryDirectory() as d:
+    base = Path(d).resolve(); src = base / "source"; src.mkdir()
+    for rel in fm.TOOL_FILES:
+        (src / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel, src / rel)
+    ver = (src / "VERSION").read_text().strip()
+    g = lambda *a: subprocess.run(["git", "-C", str(src), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    g("init", "-q"); g("add", "-A"); g("commit", "-qm", "the release"); g("tag", f"v{ver}"); tagged = g("rev-parse", "HEAD").stdout.strip()
+    vend = lambda dest, *flags: subprocess.run([sys.executable, str(src / "shoalmark.py"), "--vendor", str(dest), *flags], cwd=str(base), capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    cons = base / "consumer"; cons.mkdir()
+    ok_ = vend(cons / "tools/shoalmark"); pin_ = (cons / "tools/shoalmark/PIN").read_text() if (cons / "tools/shoalmark/PIN").exists() else ""
+    tool_ = [sys.executable, str(cons / "tools/shoalmark/shoalmark.py"), "--root", str(cons)]
+    subprocess.run(tool_ + ["--init", "--key", "msr"], capture_output=True, env=_ENV); subprocess.run(tool_, capture_output=True, env=_ENV)
+    said_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-011 · from a clean clone at its release tag the copy is pinned with its manifest — version, tag, commit, date, complete — and the consumer's --check says where it came from (saw {pin_.splitlines()[:1]}, {said_.stdout.strip().splitlines()[-1:]})",
+          ok_.returncode == 0 and f"from tag v{ver}" in ok_.stdout
+          and pin_.startswith(f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored {datetime.date.today().isoformat()} · complete\n")
+          and len([l for l in pin_.splitlines() if not l.startswith("#")]) == len(fm.TOOL_FILES)
+          and said_.returncode == 0 and f"pinned {ver} from tag v{ver} (commit {tagged[:10]})" in said_.stdout and "warning" not in said_.stdout)
+    (src / "NOTICE").unlink(); gone_ = vend(base / "c2/tools/shoalmark")
+    g("checkout", "-q", "--", "NOTICE"); (src / "README.md").write_text((src / "README.md").read_text() + "\na local change\n"); dirty_ = vend(base / "c3/tools/shoalmark")
+    check(f"FM-011 · a source missing a file of the tool is refused, naming it; a source with a change is refused, naming the path — exit 4, nothing written (saw {gone_.stderr.strip()[:90]!r} · {dirty_.stderr.strip()[:90]!r})",
+          gone_.returncode == fm.EXIT_LINT and "missing NOTICE" in gone_.stderr and not (base / "c2").exists()
+          and dirty_.returncode == fm.EXIT_LINT and "the tree has changes: README.md" in dirty_.stderr and not (base / "c3").exists())
+    g("commit", "-qam", "past the tag"); moved = g("rev-parse", "HEAD").stdout.strip()
+    refused_ = vend(base / "c4/tools/shoalmark"); allowed_ = vend(cons / "tools/shoalmark", "--allow-untagged")
+    upin_ = (cons / "tools/shoalmark/PIN").read_text(); subprocess.run(tool_, capture_output=True, env=_ENV)
+    uwarn_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    (src / "NOTICE").unlink(); part_ = vend(base / "c5/tools/shoalmark", "--partial", "--allow-untagged")
+    ppin_ = (base / "c5/tools/shoalmark/PIN").read_text() if (base / "c5/tools/shoalmark/PIN").exists() else ""
+    check(f"FM-011 · HEAD past the tag is refused, naming it; --allow-untagged vendors and the PIN says `untagged <sha>`, which the consumer's --check warns of; --partial names what is missing (saw {upin_.splitlines()[:1]}, {ppin_.splitlines()[:2]})",
+          refused_.returncode == fm.EXIT_LINT and f"HEAD {moved[:10]} is not at the tag v{ver} (it carries" not in refused_.stderr and f"HEAD {moved[:10]} is not at the tag v{ver}" in refused_.stderr
+          and allowed_.returncode == 0 and upin_.startswith(f"# shoalmark {ver} · untagged {moved[:10]} · vendored ")
+          and uwarn_.returncode == 0 and f"pinned {ver} from untagged {moved[:10]}" in uwarn_.stdout and "warning: this copy was vendored from a working copy, not a release" in uwarn_.stdout
+          and part_.returncode == 0 and "· partial" in ppin_.splitlines()[0] and "# missing: NOTICE" in ppin_ and "PARTIAL: missing NOTICE" in part_.stdout)
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
@@ -1131,7 +1168,7 @@ with tempfile.TemporaryDirectory() as d:
         board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n")
         dest = base / "client" / "tools" / "shoalmark"
         with redirect_stdout(io.StringIO()):
-            fm.vendor(dest)
+            fm.vendor(dest, allow_untagged=True)
         check("C7 · the organisation's brand travels with --vendor and is pinned like the rest of the copy",
               (dest / "brand/theme.css").read_text() == ":root{--blue:#123456}" and "brand/theme.css" in (dest / "PIN").read_text() and "brand/labels.yaml" in (dest / "PIN").read_text())
         (base / "client/docs/work-tracker").mkdir(parents=True)
@@ -2118,7 +2155,7 @@ else:
         code, _, err = run(root, "--install-hook")
         check("S2 · a TortoiseSVN hook that is not ours is left alone, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "theirs.js" in svn("propget", "tsvn:precommithook", ".", cwd=root).stdout)
         hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
-        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark")); fm.configure(root)
+        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
         hook("start")                                           # the vendored copy names its own command in INDEX.md — it writes it first
         ok = hook("pre"); made.write_text(made.read_text(encoding="utf-8").replace("status: Proposed", "status: Bogus"), encoding="utf-8"); bad = hook("pre")
         made.write_text(made.read_text(encoding="utf-8").replace("status: Bogus", "status: In Progress"), encoding="utf-8"); start = hook("start")

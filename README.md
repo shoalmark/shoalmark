@@ -152,7 +152,8 @@ Never `--no-verify`. Never hand-edit `INDEX.md` — it is generated.
 ## 6. Install and upgrade
 
 ```bash
-python3 <shoalmark>/shoalmark.py --vendor <repo>/tools/shoalmark     # a pinned, self-contained copy + PIN (sha256)
+git clone --branch vX.Y.Z <shoalmark-url> /tmp/shoalmark           # a release: a clean clone at its tag
+python3 /tmp/shoalmark/shoalmark.py --vendor <repo>/tools/shoalmark  # a pinned, self-contained copy + PIN (sha256)
 cd <repo>
 python3 tools/shoalmark/shoalmark.py --init --key MSR               # shoalmark.toml · TRIAGE.md · .gitignore · the contract in AGENTS.md · a CLAUDE.md router
 python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git hooks; a hook that is not shoalmark's is never overwritten
@@ -172,8 +173,17 @@ writes an example in italics, a whole product, for him to overwrite:
 A pass reads everything he writes under the intent and leaves out only the scaffold's own lead-in and examples,
 recognised by their exact text, never by italics, bold or length: an example with one word changed is his.
 
-Upgrade: `--vendor` again (it prints what changed since the version it replaces and refuses a copy that
-was edited in place), then `--init` again to refresh the contract between its markers — your text outside them is kept.
+**`--vendor` vouches for what it copies.** It refuses — exit 4, nothing written — a source that is not the whole tool
+(it names the missing files), a source that is no release (a git checkout whose HEAD is exactly at `v<VERSION>`, with
+a clean tree — it names the HEAD and the changed paths), and a copy in the target that was edited in place. A consumer
+runs a release, never a working copy. `--partial` copies an incomplete source anyway and `--allow-untagged` a working
+copy; each says so in the PIN. The PIN's first line is the manifest —
+`# shoalmark X.Y.Z · tag vX.Y.Z · commit <sha> · vendored <date> · complete` — and the consumer's `--check` prints
+where its copy came from, with a warning for an untagged or partial one.
+
+Upgrade: `--vendor` again from the new release's clone (it names the tag, prints what changed since the version it
+replaces, and refuses a copy that was edited in place), then `--init` again to refresh the contract between its markers
+— your text outside them is kept.
 
 What lives where, by convention — no setting names any of it:
 
