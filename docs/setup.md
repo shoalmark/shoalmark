@@ -58,3 +58,5 @@ needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calend
 [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.
+
+*These pages, built with `zensical build`:* the built site opens from `site/index.html`, or serve it: `python3 -m http.server -d site 8000`.

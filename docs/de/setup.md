@@ -58,3 +58,5 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 Zeile ist, was Sie braucht. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
+
+*Diese Seiten, gebaut mit `zensical build`:* die Website öffnet sich aus `site/index.html`, oder liefern Sie sie aus: `python3 -m http.server -d site 8000`.
