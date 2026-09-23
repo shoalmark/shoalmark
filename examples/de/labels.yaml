@@ -85,6 +85,7 @@ sessions.open: Sitzungen · {0} offen
 sessions.abandoned: verwaist
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
+reviews.trunk: auf dem Stamm {0}
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären

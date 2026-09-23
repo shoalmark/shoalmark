@@ -37,10 +37,13 @@ opened in the S3 commit, and every commit of this seat from S1+S2 on carries `Se
   exactly what S3's `<parent>/<seat>-<n>` needs. Row `8d6537be` is closed with that note, and the rest of the build
   runs as `8e509911/implementer-1`. The commits `89e0586` … `0743a45` keep `Session: 8d6537be`: trailers are not
   rewritten, so 0.17.6's own first verdict is no measurement of independence.
-- **The reviewed range** is the tip's own branch: from where its first-parent line meets the trunk's first-parent line
-  (`origin/main`, else `main`, else `master`) to the tip, less other verdicts, so an earlier review on the branch is not
-  counted as an author. **A third word, *untraced*,** for a verdict or a range that names no session: the report says
-  what it cannot know rather than guessing.
+- **The reviewed range** (the Reviewer's R2, the Principal's ruling): the branch's own commits, `git rev-list <tip>
+  ^<trunk> --no-merges` (`origin/main`, else `main`, else `master`), less other verdicts — what the branch merged in from
+  the trunk is not its. **Beyond the ruling's formula, for the Principal to strike:** a tip the trunk has since merged is
+  measured against the trunk as it stood before the merge that brought it (`^M^1`); by the formula alone every verdict of
+  the week would read *on trunk* the moment its branch lands, and the week's count would empty. A tip on the trunk's own
+  first-parent line reads *on trunk — not a branch verdict*. **A third word, *untraced*,** for a verdict or a range that
+  names no session.
 - **Where the gate runs:** the plain pre-commit hook runs it when a tracker, the configuration or the tool is staged. A
   seat's code-only commit is judged by `--check` at HEAD, or when a merge brings it.
 - **This worktree's hooks:** `core.hooksPath` (worktree setting) points at a private copy of lefthook's scripts, now
@@ -229,6 +232,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R2: the reviewed range is the branch's own commits (`<tip> ^<trunk> --no-merges`, less verdicts; a landed tip against the trunk before its merge); a tip on the trunk reads *on trunk — not a branch verdict*; label `reviews.trunk`. The Reviewer's planted sibling reads *independent*, before and after the branch lands. One check. |
 | 2026-09-23 | R3: a sub-agent's id derives from its parent's — `--session open` refuses otherwise; row `8d6537be` closed, this build re-opened as `8e509911/implementer-1`. R1: a seat's commit that removes the registry, drops a row or re-opens an ended one is refused, against its parent's registry; a session's own closing commit passes. Two checks. |
 | 2026-09-23 | **Slice 1 built** for 0.17.6: S1+S2, S3, S4, S5, S6, S7 each in its own commit, with its checks (eleven: ten fail on 0.17.5, one is a control); the release's own registry holds its first row, and its commits carry `Session: 8d6537be`. |
 | 2026-09-23 | **Slice 1 fixed for 0.17.6 on the Owner's word** (*a prerequisite; before tomorrow*): S1–S8 above — the trailer, the registry, the gate's three refusals, the independence *report* (a count, not yet a refusal), the board's strip, eight checks. Design choices recorded, none asked; the Owner may strike. FM-023 waits until it is ripe — agreed. The Reviewer's attack on the filing is folded into its attack on the build, a departure from the research chain, said here. |

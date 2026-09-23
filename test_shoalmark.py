@@ -567,6 +567,31 @@ with tempfile.TemporaryDirectory() as d:
           [word(v) for v in (v_same, v_ind, v_none, v_late)] == ["same session", "independent", "untraced", "independent"]
           and "reviews this week · 4 verdict(s) · independent 2 · same session 1 · untraced 1" in said and run_safe(root, "--check")[0] == 0)
 
+# --- R2: the reviewed range is the branch's own commits — never the trunk it merged in; a tip on the trunk is no branch verdict
+    with tempfile.TemporaryDirectory() as d2:
+        r2 = Path(d2).resolve()
+        git(r2, "init", "-q"); run(r2, "--init", "--key", "msr"); tracker(r2, "MSR-001"); run(r2)
+        (r2 / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n")
+        git(r2, "add", "-A"); git(r2, "commit", "-qm", "the trunk")
+        sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(r2), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+        trunk_name, t0 = subprocess.run(["git", "-C", str(r2), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(), sha()
+        git(r2, "checkout", "-q", "-b", "n"); git(r2, "commit", "-q", "--allow-empty", "-m", "release N's docket\n\nSession: P")
+        git(r2, "checkout", "-q", trunk_name); git(r2, "merge", "-q", "--no-ff", "-m", "the Owner merges N", "n")
+        git(r2, "checkout", "-q", "-b", "n1", t0); git(r2, "commit", "-q", "--allow-empty", "-m", "N+1 built\n\nSession: I")
+        git(r2, "merge", "-q", "--no-ff", "-m", f"the trunk merged in\n\nSession: I", trunk_name); tip = sha()
+        git(r2, "commit", "-q", "--allow-empty", "-m", f"review\n\nReviewed: {tip}\nSession: P/reviewer-1"); v_sib = sha()
+        git(r2, "commit", "-q", "--allow-empty", "-m", f"review\n\nReviewed: {tip}\nSession: I/reviewer-1"); v_own = sha()
+        words = lambda said, vs: [(re.search(rf"verdict {v[:10]} on \w+: ([a-z ]+?) —", said) or [None, "?"])[1] for v in vs]
+        on_branch = words(run_safe(r2, "--check")[1], (v_sib, v_own))
+        git(r2, "checkout", "-q", trunk_name); git(r2, "merge", "-q", "--no-ff", "-m", "the Owner merges N+1", "n1")
+        landed = words(run_safe(r2, "--check")[1], (v_sib, v_own))
+        git(r2, "commit", "-q", "--allow-empty", "-m", "work on the trunk itself\n\nSession: K"); w = sha()
+        git(r2, "commit", "-q", "--allow-empty", "-m", f"review\n\nReviewed: {w}\nSession: J"); v_trunk = sha()
+        on_trunk = run_safe(r2, "--check")[1]
+        check(f"R2 · a sibling whose session authored only a commit the branch merged in from the trunk is independent of the branch — before and after the branch lands; the branch's own session is not; a tip on the trunk is no branch verdict (saw {on_branch}, {landed})",
+              on_branch == ["independent", "same session"] and landed == ["independent", "same session"]
+              and f"verdict {v_trunk[:10]} on {w[:10]}: on trunk — not a branch verdict" in on_trunk and "on trunk 1" in on_trunk)
+
     # --- FM-024 S7: the board's strip and the digest's line — which sessions are open, for what; how independent the week was
     now_ = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
@@ -870,6 +895,7 @@ sessions.open: Sitzungen · {0} offen
 sessions.abandoned: verwaist
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
+reviews.trunk: auf dem Stamm {0}
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären

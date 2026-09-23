@@ -288,15 +288,17 @@ for more than a day is *abandoned*. `--check` lists it (a report, not a refusal)
 silently.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
-reports each verdict of the last `triage_days` days: the reviewed range is the tip's own branch (from where its
-first-parent line meets the trunk's to the tip, less other verdicts), and the verdict is **independent** when its
-session's root (`a9` of `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of
-them — a Reviewer run as a sub-agent of the author's session is not independent — and **untraced** when either side
-names no session. A count, not a refusal: the refusal is a later slice, after a week of counts.
+reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —
+`git rev-list <tip> ^<trunk> --no-merges` (`origin/main`, else `main`, else `master`), less other verdicts; for a tip
+the trunk has since merged, the trunk as it stood before that merge — so what the branch merged in from the trunk is
+not its, and the report does not change when it lands. The verdict is **independent** when its session's root (`a9` of
+`a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of them — a Reviewer run as a
+sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
+trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts.
 
 **Seen:** the board's first lines carry the strip — *sessions · 3 open — d8 principal (the product items) · a9
 principal (the tool) · a9/implementer-1 implementer (build)*, an abandoned row marked — and *reviews this week ·
-independent n · same session m*; `--owner`, the digest, ends with one line, the open sessions by seat. Four new labels,
+independent n · same session m*; `--owner`, the digest, ends with one line, the open sessions by seat. Five new labels,
 `sessions.*` and `reviews.*` (§9).
 
 ## 7. The one seam: a deriver

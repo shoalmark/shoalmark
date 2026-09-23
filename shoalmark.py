@@ -30,6 +30,7 @@ import datetime
 import difflib
 import hashlib
 import collections
+import itertools
 import json
 import math
 import os
@@ -1292,7 +1293,7 @@ function draw(){
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry (FM-024): which sessions are open, for what — and how independent this week's verdicts were
     +(REG?"\n\n<b>"+l("sessions.open",REG.open.length)+"</b>"+(REG.open.length?" — "+REG.open.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})${r[4]?" · "+l("sessions.abandoned"):""}`).join(" · "):"")
-      +(REG.reviews?"\n"+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):""):""):""):"";
+      +(REG.reviews?"\n"+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -1376,7 +1377,7 @@ LABELS = {
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
     "sessions.open": "sessions · {0} open", "sessions.abandoned": "abandoned",
-    "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}",
+    "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "OK — give me the command", "answer.abort": "abort",
@@ -2658,21 +2659,35 @@ def abandoned_sessions(rows, now=None):
     return out
 
 
-def mainline():
-    """The trunk's first-parent history — a reviewed branch's range starts where its own first-parent line meets it."""
-    for ref in ("origin/main", "main", "master"):
-        out = git_out("rev-list", "--first-parent", ref)
-        if out:
-            return set(out.split())
-    return set()
+def trunk_ref():
+    """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master`."""
+    return next((ref for ref in ("origin/main", "main", "master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
+
+
+def reviewed_range(tip, trunk, first_parents, on_line):
+    """The reviewed branch's OWN commits (R2): `git rev-list <tip> ^<trunk> --no-merges` — what the trunk brought in by a
+    merge is not the branch's. A tip the trunk has since merged is measured against the trunk as it stood before the merge
+    that brought it (`^M^1`), so the report does not change when the branch lands. None: the tip is on the trunk's own
+    first-parent line — not a branch verdict. Returned as the arguments of the `git log` that reads the range."""
+    if not trunk:
+        return ["--no-merges", tip]
+    if git_out("merge-base", "--is-ancestor", tip, trunk) is None:
+        stop = trunk
+    elif tip in on_line:
+        return None
+    else:                                                   # the trunk's first-parent commits that contain the tip are a
+        after = set((git_out("rev-list", "--ancestry-path", f"{tip}..{trunk}") or "").split())     # prefix of its line;
+        landed = [c for c in itertools.takewhile(lambda c: c in after, first_parents)]            # the oldest brought it
+        stop = f"{landed[-1]}^1" if landed else trunk
+    return ["--no-merges", tip, f"^{stop}"]
 
 
 def verdict_reports(days=None):
     """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
-    range's, *same session* when it is one of them, *untraced* when either side names no session. The range is the
-    reviewed tip's own branch: from where its first-parent line meets the trunk to the tip, less other verdicts. A
-    report, never a refusal (slice 2 refuses, after a week of counts)."""
+    range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
+    is on the trunk's first-parent line (not a branch verdict). The range is the branch's own commits, less other
+    verdicts (`reviewed_range`). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", "--format=%H%x01%(trailers:key=Reviewed,valueonly,separator=%x03)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", "HEAD") or ""
     found = []
@@ -2682,20 +2697,23 @@ def verdict_reports(days=None):
             found.append((parts[0], parts[1].split("\x03")[0].strip(), parts[2].split("\x03")[0].strip()))
     if not found:
         return []
-    trunk, out = mainline(), []
+    trunk = trunk_ref()
+    first_parents = (git_out("rev-list", "--first-parent", trunk) or "").split() if trunk else []      # newest first
+    on_line = set(first_parents)
+    out = []
     for verdict, reviewed, sid in found:
         tip = (git_out("rev-parse", "--verify", "--quiet", f"{reviewed}^{{commit}}") or "").strip()
-        chain = (git_out("rev-list", "--first-parent", tip) or "").split() if tip else []
-        base = next((c for c in chain if c in trunk), None)
+        own = reviewed_range(tip, trunk, first_parents, on_line) if tip else []
         ranged = set()
-        if tip and base and base != tip:
-            rng = git_out("log", "--format=%(trailers:key=Reviewed,valueonly)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", f"{base}..{tip}") or ""
+        if own:
+            rng = git_out("log", "--format=%(trailers:key=Reviewed,valueonly)%x01%(trailers:key=Session,valueonly,separator=%x03)%x02", *own) or ""
             for rec in rng.split("\x02"):
                 rv, _, ss = rec.strip("\n").partition("\x01")
                 if not rv.strip():
                     ranged |= {s.strip() for s in ss.split("\x03") if s.strip()}
         roots = {s.split("/")[0] for s in ranged}
-        word = "untraced" if not sid or not ranged else "same session" if sid.split("/")[0] in roots else "independent"
+        word = ("on trunk" if own is None else "untraced" if not sid or not ranged
+                else "same session" if sid.split("/")[0] in roots else "independent")
         out.append((verdict, reviewed, sid, sorted(ranged), word))
     return out
 
@@ -2711,8 +2729,9 @@ def sessions_report():
     if reps:
         count = collections.Counter(w for *_x, w in reps)
         lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
-                     + (f" · untraced {count['untraced']}" if count["untraced"] else ""))
-        lines += [f"  verdict {v[:10]} on {r[:10]}: {w} — its session {s or '(none)'}; the range's {', '.join(rs) or '(none)'}" for v, r, s, rs, w in reps]
+                     + (f" · untraced {count['untraced']}" if count["untraced"] else "") + (f" · on trunk {count['on trunk']}" if count["on trunk"] else ""))
+        lines += [f"  verdict {v[:10]} on {r[:10]}: " + ("on trunk — not a branch verdict" if w == "on trunk" else
+                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w in reps]
     return lines
 
 
@@ -2725,7 +2744,7 @@ def board_sessions():
     gone, reps = {r["id"] for r, _ in abandoned_sessions(rows)}, verdict_reports()
     count = collections.Counter(w for *_x, w in reps)
     return {"open": [[r["id"], r["seat"], r["scope"], r["worktree"], r["id"] in gone] for r in rows if r["open"]],
-            "reviews": [count["independent"], count["same session"], count["untraced"]] if reps else None}
+            "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"]] if reps else None}
 
 
 def sessions_digest():

@@ -30,10 +30,11 @@ author's session looked as independent as any other.
   *closed by the pass of <date>* — and prints it for the pass's paragraph.
 - **Verdicts reported, not refused.** A review commit names the tip it judged with `Reviewed: <sha>`. `--check`
   reports each verdict of the last `triage_days` days as *independent*, *same session* (its session root is one of the
-  reviewed range's) or *untraced*. The refusal of a same-session verdict is a later slice, after a week of counts.
+  reviewed branch's own commits' — never what the branch merged in from the trunk), *untraced*, or *on trunk* for a
+  tip on the trunk's first-parent line. The refusal of a same-session verdict is a later slice, after a week of counts.
 - **Seen.** The board's first lines name the open sessions (seat, scope, an abandoned one marked) and count the week's
-  verdicts; `--owner` ends with the open sessions by seat. **Labels:** four new — `sessions.open`,
-  `sessions.abandoned`, `reviews.week`, `reviews.untraced` — in English and in `examples/de/labels.yaml`.
+  verdicts; `--owner` ends with the open sessions by seat. **Labels:** five new — `sessions.open`,
+  `sessions.abandoned`, `reviews.week`, `reviews.untraced`, `reviews.trunk` — in English and in `examples/de/labels.yaml`.
 
 ## 0.17.5 — 2026-09-23
 
