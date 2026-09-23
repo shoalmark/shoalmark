@@ -2,6 +2,13 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.7 — 2026-09-23
+
+- **A consumer's secret-shape gate read the trailer query as a credential** and refused the vendored `shoalmark.py`:
+  the tool asked git to filter trailers by key, a `<name>=<value>` shape in the source. It now reads git's plain
+  trailer block and picks `Session:` and `Reviewed:` in Python — the same values, in the same order.
+- Nothing to do: no setting, label or command changed.
+
 ## 0.17.6 — 2026-09-23
 
 **A seat's commit names its session, and the record knows the session** (FM-024, slice 1). The seat says who may; it
