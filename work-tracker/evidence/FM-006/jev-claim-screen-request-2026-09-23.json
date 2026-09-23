@@ -1,0 +1,248 @@
+{
+  "model": "jev-latest",
+  "state": {
+    "task": "Candidate lines for one page that pitches a software tool to the human owner of a code repository whose work is done by a fleet of AI agents. Each question gives one line and a slot. Apply that slot's six gates in order, G0 to G5, as a knockout: the first gate the line fails is its level. A line that fails no gate is at the top level.",
+    "facts_the_record_proves": [
+      "One command per question to the owner produces one signed answer: a signed commit in his name.",
+      "The owner's sitting is fifteen minutes a day, at a time he chooses, sent as a calendar invite.",
+      "In one project, before: the last 200 pull requests were merged unread, and none was reviewed. After, in just over a day: 9 of 13 pull requests carried a reviewer's file before they were opened.",
+      "The board reports, for every review, whether it came from a different agent session than the code it judged. It is a report, not a proof."
+    ],
+    "the_bar": {
+      "english": "Get a better-performing human Owner.",
+      "what_it_does": "The owner's own headline. It commands the fleet and provokes the owner by talking about him."
+    },
+    "the_fleets_line": "To the fleet: you do not wait for tools, you wait for your human. Put to him what only he can decide, as one sentence per question, once a day, and make his answer one command.",
+    "the_owners_never": [
+      "Never degrade the owner to a push-a-button.",
+      "Never promote rubber-stamping."
+    ],
+    "slots": {
+      "owner_claim": "A second claim beside the bar, addressed to the owner himself. German register: Sie.",
+      "headline_twin": "The German twin of the bar's English line. It addresses the fleet in du and talks about the owner."
+    }
+  },
+  "questions": {
+    "q01": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Ihr Nicken ist keine Entscheidung.» English: «Your nod is not a decision.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q02": {
+      "type": "score",
+      "instructions": "Slot: headline_twin. English bar: «Get a better-performing human Owner.» German candidate: «Hol dir einen besseren menschlichen Eigner.» Apply this slot's gates in order and stop at the first the German fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q03": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Hören Sie auf, jede Frage selbst zu beantworten. Ihre Agenten können das.» English: «Stop answering every question yourself. Your agents can.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q04": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Ihre Agenten arbeiten an Ihnen.» English: «Your agents are working on you.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q05": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Hol dir einen leistungsstärkeren menschlichen Eigner.» English: «Get a better-performing human Owner.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q06": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Sie sind der Engpass. Und das ist richtig so.» English: «You are the bottleneck. And rightly so.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q07": {
+      "type": "score",
+      "instructions": "Slot: headline_twin. English bar: «Get a better-performing human Owner.» German candidate: «Hol dir einen leistungsstärkeren menschlichen Eigner.» Apply this slot's gates in order and stop at the first the German fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q08": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Wer hat eigentlich geprüft, was Sie freigegeben haben?» English: «Who actually checked what you approved?» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q09": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Ihre Agenten warten nicht auf Werkzeuge. Sie warten auf Sie.» English: «Your agents are not waiting for tools. They are waiting for you.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q10": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Wann haben Sie zuletzt gelesen, was Sie freigegeben haben?» English: «When did you last read what you approved?» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q11": {
+      "type": "score",
+      "instructions": "Slot: headline_twin. English bar: «Get a better-performing human Owner.» German candidate: «Hol dir einen leistungsstärkeren menschlichen Owner.» Apply this slot's gates in order and stop at the first the German fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q12": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Ihre fünfzehn Minuten am Tag – oder drei Tage Stillstand pro Frage.» English: «Your fifteen minutes a day, or three days' standstill per question.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q13": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Sie sind nicht zu langsam. Sie werden zu oft gefragt.» English: «You are not too slow. You are asked too often.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q14": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Machen Sie Ihre Agenten nicht zu Bittstellern.» English: «Don't turn your agents into supplicants.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q15": {
+      "type": "score",
+      "instructions": "Slot: headline_twin. English bar: «Get a better-performing human Owner.» German candidate: «Hol dir einen besseren menschlichen Owner.» Apply this slot's gates in order and stop at the first the German fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the German is more than one line, or has more than 12 words, or is not addressed to the fleet in the informal du while talking about the owner, or is not a provocation the owner can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German does not read as native German: a German reader hears a translation, a word is not what a native speaker would say, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the German promises more than the English bar does.",
+        "Passes G0 to G2 but fails G3, the owner's never: the German degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: the German does not both command the fleet and provoke the owner.",
+        "Passes G0 to G4 but fails G5, the bar: the German does not carry what the English bar says, or says it more weakly.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q16": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Fünfzehn Minuten am Tag, für das, was nur Sie entscheiden können.» English: «Fifteen minutes a day, for what only you can decide.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    },
+    "q17": {
+      "type": "score",
+      "instructions": "Slot: owner_claim. German: «Unterschreiben statt abnicken.» English: «Sign it. Don't nod it through.» Apply this slot's gates in order and stop at the first the line fails. Which level describes it?",
+      "criteria": [
+        "Fails G0, form: the line is more than one line, or has more than 12 words, or is not addressed to the owner himself (it speaks about him, or to someone else), or is not a provocation he can take, or uses jargon or internal ids.",
+        "Passes G0 but fails G1, language: the German or the English does not read as written natively in that language: a German reader hears a translation, a word is not what a native speaker would say, the line is ambiguous, or it slips on an idiom.",
+        "Passes G0 and G1 but fails G2, truth: the line says or promises something the facts in the state do not prove. Any promise of delegation, of speed, or of an end to merging fails here.",
+        "Passes G0 to G2 but fails G3, the owner's never: the line degrades the owner to someone who presses a button, promotes rubber-stamping, flatters him into pressing, or insults him.",
+        "Passes G0 to G3 but fails G4, both ways: read beside the fleet's line, it does not both provoke the owner and tell the fleet what changes.",
+        "Passes G0 to G4 but fails G5, the bar: read beside the bar, the line is weaker, or it adds nothing the bar does not already say.",
+        "Passes all six gates, G0 to G5."
+      ]
+    }
+  }
+}

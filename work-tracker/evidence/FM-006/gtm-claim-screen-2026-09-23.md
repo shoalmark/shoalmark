@@ -7,6 +7,10 @@
 - **Disclosure:** this runtime wrote the pool **and** screened it. It wore two hats in sequence, and no independent
   check has run on this file. The pool was not written blind to the gates.
 - **This seat chooses nothing, ranks nothing and does not edit the pitch.** The Owner rules.
+- **Second pass, 2026-09-23 22:24, session `2ab3afad`, appended below the first.** It corrects the first pass's third
+  G2 anchor (*0 → 17 of 21 … independent* is not in the record). It screens the German claim (*Owner* vs *Eigner*,
+  *leistungsstärkeren* vs *besseren*) and re-reads the second claim beside the new bar. The first pass stands as
+  filed.
 
 ## Cold start
 
@@ -184,3 +188,229 @@ only now that they have survived. Each carries its strongest counterfact.
 
 **Provenance:** Seat: GtM · Session `ee61f1fe` · Model: Claude Opus 5.5 · 2026-09-23 · on the Owner's convening, under
 the seat's charter (generate, screen, ledger; never choose).
+
+---
+
+## Second pass — 2026-09-23 22:24 CEST, session `2ab3afad`
+
+The Owner convened this pass after his claim changed.
+
+- **What was open for the screen:** *Owner* vs *Eigner* in German, *leistungsstärkeren* vs *besseren*, and the second,
+  owner-facing claim.
+- **Where it reads the pitch:** the tip of `fm/006-the-human-pages-open-from-a-file`, `32e92f8`, read there by `git
+  show`. This branch stays cut from `589d328`, and none of its files moved on the pitch branch.
+- **This session:** a new row in `sessions.md`. It runs in the same harness session as `ee61f1fe`, and the tool uses
+  an id once (`shoalmark.py:2530`).
+
+### What changed since the first pass
+
+- **The claim is the Owner's.**
+  - English: *Get a better-performing human Owner.*, from `82a20cb` (`docs/index.md:5`).
+  - German: *Hol dir einen leistungsstärkeren menschlichen Eigner.*, from `53d4277`, which has landed
+    (`docs/de/index.md:5`).
+- **The register is ruled.** The claim commands the fleet (*du*) and provokes the owner by talking about him. The
+  owner pages stay in *Sie*.
+- **The German pages say *Eigner* for the person.** Counted here at `32e92f8` (**E**):
+  - *Eigner* 7 times: `index` 4, `setup` 2, `signing` 1;
+  - no capitalised *Owner*;
+  - lower-case `owner` 5 times, all code or the seat name. The Reviewer's delta on `53d4277` counts the same.
+- **The measured block is now the record's own:**
+  - *Before:* the last 200 pull requests were merged unread.
+  - *After, in just over a day:* 9 of 13 carried a Reviewer's file before they were opened (`docs/index.md:17–18`).
+  - The board *reports*, for every review, whether it came from another session. *A report, not a proof: git cannot
+    yet show it* (`:23–24`).
+
+### Correction to the first pass
+
+The first pass took four G2 anchors from its brief.
+
+- **The third anchor was wrong.** It read *an independent review file before a pull request is opened*, cited as
+  *0 → 17 of 21* from `docs/index.md:17` at `589d328`, and it is not in the record.
+- **The Reviewer found it** (R3, P1, on `589d328`): the source holds **9 of 13** with a *Reviewer's* file, and in the
+  same paragraph it says git cannot tell whether a pass was independent.
+- **This seat flagged the number as not recounted, and used it anyway.** It should not have.
+
+**The anchors, as the page states them at `32e92f8`:**
+
+1. one command, one signed commit per question (`docs/index.md:22, 41`; `shoalmark.py:829`);
+2. one sitting, fifteen minutes (`docs/index.md:40`; `shoalmark.py:806`);
+3. before: the last 200 pull requests merged unread; after, in just over a day: 9 of 13 with a Reviewer's file
+   before opening (`docs/index.md:17–18`);
+4. the board reports whether a review came from another session than the code it judged. It is a report, not a proof
+   (`docs/index.md:23–24`).
+
+**What the correction moves:** no verdict. No line dies and none revives. C12's counterfact is rewritten below.
+
+### The German claim — four variants
+
+**The English line is not screened: it is the bar.** Three gates are adapted to the headline slot, and this is how:
+
+- **G0:** the addressee clause turns. Per the ruled register, the headline commands the fleet (*du*) and provokes the
+  owner by talking about him. The rest of G0 stands.
+- **G2:** the German may promise no more than the English.
+- **G5:** the German must carry what the Owner's English carries, and no less.
+
+The word counts are executed (**E**). Every variant has 6 words; the English has 5.
+
+| # | German | First fatal gate | One-line reason | Class |
+|---|---|---|---|---|
+| H1 | Hol dir einen leistungsstärkeren menschlichen Owner. (`82a20cb`) | **G0** | *Owner* in German is jargon. It is the Product-Owner loanword, as the Owner's own update calls it, and an English term of art to a reader outside agile work. The German pages have dropped it since `53d4277` (0 capitalised *Owner* in `docs/de/`, counted) | E |
+| H3 | Hol dir einen besseren menschlichen Owner. | **G0** | The same jargon: *Owner* | E |
+| H4 | Hol dir einen besseren menschlichen Eigner. | **G5** | A weaker twin. It drops the performance word, and that word makes the joke: the fleet speaks of its human as one speaks of hardware. *besser* judges him; *leistungsstärker* judges his output | I |
+| H2 | Hol dir einen leistungsstärkeren menschlichen Eigner. (`53d4277`) | survives | — | K |
+
+**H2, gate by gate, now that it has survived:**
+
+- **G0:**
+  - it has 6 words;
+  - it speaks *du* to the fleet, as ruled;
+  - it is a provocation the owner can take;
+  - *Eigner* is plain German for an owner, above all of a ship or a company;
+  - it carries no ids.
+- **G1 (K):**
+  - *Hol dir* with a comparative is the voice of German product advertising.
+  - *leistungsstärker* is what one says of a battery or an engine, and that is the joke.
+  - The Reviewer graded `index:5` as native (the delta on `53d4277`).
+- **G2:** it promises what the English promises, no more.
+- **G3:** it judges his output, not his person.
+- **G4:** it commands the fleet, and the Eigner reads over its shoulder.
+- **G5:**
+  - *leistungsstärker* keeps the English's *better-performing*;
+  - *Eigner* moves the role into German and into the chart the name draws (the *Schiffseigner*).
+
+**H2's strongest counterfacts:**
+
+- *Eigner* is the rarer, higher word. *Eigentümer* and *Inhaber* are the everyday ones, and some readers will hear the
+  yacht club or the business pages before they hear *the one who decides*.
+- The tool keeps `owner` in its commands (`--owner`, `[seats] owner`, `next: owner`). The pages bridge the two words
+  with *(owner)* beside *Eigner* (`de/setup.md:55, 57`).
+- *menschlich* also means *humane* (*ein menschlicher Chef*). Beside the agents, *human* reads first, but not for
+  every reader.
+- The claim says *du*, and the page says *ihr* to the fleet and *Sie* to the Eigner. That register is ruled, and the
+  Reviewer noted it too.
+
+**What the four show:** the two axes part cleanly. *Owner* dies at G0 with either adjective, and *besseren* dies at G5
+with *Eigner*.
+
+**The one survivor is the line the Owner had already ruled.** Taste-matching would have produced exactly this result.
+Its control is H1: the Owner's own committed wording of `82a20cb`, which died at G0 in writing.
+
+### The control, re-run on the new line
+
+*Get a better-performing human Owner.* / *Hol dir einen leistungsstärkeren menschlichen Eigner.* dies at **G0** in
+the owner-facing slot (**E**).
+
+- It commands the fleet (*Get*, *Hol dir*) and talks about the owner, and the ruling says so in those words.
+- It is the same finding as the first pass: the headline and the second claim are two forms.
+
+### The second claim, beside the new bar
+
+G0–G3 do not read the bar. G4 reads the fleet's line, which is unchanged in substance (`docs/index.md:7`). G5 reads
+the bar. Every one of the twelve lines is in *Sie*, as the ruled owner pages are, and none uses *Owner* or *Eigner*.
+
+| # | First pass | This pass | What moved |
+|---|---|---|---|
+| C1–C8 | G0–G4 as filed | the same | Citations were re-read at `32e92f8`. C1's *Sie holen* / ***Sie** schreiben* are now `docs/de/index.md:28, 33`. C5's command is `docs/index.md:41`, and `docs/signing.md:15` is unchanged |
+| C9 | G5 | **G5** | The bar now tells the fleet to get a better human. C9 tells the human his fleet is at it, so it is the same sentence, turned |
+| C10 | survives | **survives** | The counterfact is sharper: beside *better-performing*, *not too slow* reads closer to a retraction. It survives because performance is not speed, and it names a cause the bar does not |
+| C11 | survives | **survives** | Nothing moved. The owner block still says *Sie nicken ab* (`docs/de/index.md:10`) |
+| C12 | survives | **survives** | The counterfact is rewritten below |
+
+**C12's counterfact, rewritten.** *Who actually checked what you approved?*
+
+- **What the record can answer:** *who* checked. A Reviewer's file names its seat and its session.
+- **What it cannot:** whether that check came from another session. The page itself calls that *a report, not a
+  proof* (`docs/index.md:23`).
+- *eigentlich* / *actually* leans on exactly what git cannot yet show.
+- In the one project, 4 of 13 pull requests carried no Reviewer's file at all.
+- **The line survives because it asserts nothing.** Its risk is a question the page can answer only in part.
+
+**Survivors, second claim:** C10, C11 and C12, unranked.
+
+### Jev — a third reader, outside this runtime's lineage
+
+On the Owner's direction, this pass also scores the screen through TypeSafe's **Jev**, which reports a Score with a
+confidence. The request is `jev-claim-screen-request-2026-09-23.json`, beside this file.
+
+**It was committed before the call was run,** so the rubric cannot have been tuned to the answer. The Owner runs the
+call, and this seat has no key.
+
+- **The rubric:** one Score per line. It has seven levels:
+  - level 0 means the line dies at G0, and so on to level 5, which means it dies at G5;
+  - level 6 means it passes all six gates.
+
+  Jev's most probable level therefore lines up with the ledger's *first fatal gate*. The four H variants carry the
+  headline rubric: G0 and G5 adapted as above.
+- **The gates are given as the brief wrote them**, with the corrected anchors, and **not in this seat's reading**. If
+  Jev reads G2 strictly, C10 is where it will part from the ledger.
+- **Jev sees no verdicts.** The questions carry neutral keys in shuffled order, and the mapping is below.
+- **Only generic input leaves the machine:** the lines, the gates, the bar, the fleet's line and the four anchors as
+  numbers. No tracker's text, and no name: the tool is *the tool*, and the project is *one project*.
+- **Kept in the record:** each call's question, answer and confidence. The answer lands in a file beside the request,
+  and in a *Jev* column added to this pass.
+- **Unproven until run:** whether Jev's confidence is calibrated at all.
+  - The control C0 has to come back at level 0.
+  - H1 and H3 have to come back at level 0, on the jargon.
+
+  If they do not, the column is read as noise.
+- **Jev's own documentation** says non-English input *currently has lower accuracy*
+  (`docs.typesafe.ai/concepts/state`). So G1 in German is the gate where its reading is weakest.
+
+**The key mapping,** shuffled by hand so that the keys follow neither the ledger's order nor its verdicts:
+
+| key | line |
+|---|---|
+| q01 | C11 |
+| q02 | H4 |
+| q03 | C3 |
+| q04 | C9 |
+| q05 | C0 |
+| q06 | C6 |
+| q07 | H2 |
+| q08 | C12 |
+| q09 | C1 |
+| q10 | C7 |
+| q11 | H1 |
+| q12 | C4 |
+| q13 | C10 |
+| q14 | C2 |
+| q15 | H3 |
+| q16 | C8 |
+| q17 | C5 |
+
+**The Jev column is pending the call.**
+
+### What this pass did not run
+
+- **No native German reader.** H2's nativeness rests on this runtime and on the Reviewer's grading: another seat's
+  reading, not a native speaker's.
+- **Other German words were not screened:**
+  - *Eigentümer*, *Inhaber*, *Chef*;
+  - *stärkeren*, *fähigeren*;
+  - a claim without *menschlichen*.
+- **The 9 of 13 was not recounted.** It is cited as the page and the Reviewer state it. Its source belongs to another
+  project, and this seat did not open it.
+- **The English claim was not screened.** It is the bar.
+- **As in the first pass:** no outside owner, no web search, nothing rendered, and no independent hostile review.
+
+### Handoff, second pass
+
+- **Conclusion:**
+  - **The German claim:** of four variants, H2 survives, the landed line. *Owner* dies at G0, and *besseren* dies at
+    G5.
+  - **The second claim:** no verdict moved, and C10, C11 and C12 survive, unranked. One anchor is corrected, and
+    C12's counterfact is rewritten.
+- **Strongest counterfact:** the one headline survivor is the ruled line, the result taste-matching would also give.
+  Its control is H1 dying at G0.
+- **Unresolved unknown:** does a German owner hear *Eigner* as *the one who decides*, or in a yacht-club register?
+- **Closure and reversal:**
+  - H2 falls if a native German reader hears *Eigner* as the wrong register for a company's owner, or *menschlichen*
+    as *humane*.
+  - H1 and H3 revive only if the Owner rules *Owner* no jargon for his readers.
+- **Seat shadow:**
+  - *Taste-matching:* see above.
+  - *The first pass used a number it had not verified:* corrected here, in writing.
+- **Authority:** nothing chosen, and the pitch not edited. The Owner rules.
+
+**Provenance:** Seat: GtM · Session `2ab3afad` · Model: Claude Opus 5.5 · 2026-09-23 · the second pass, on the
+Owner's convening.
