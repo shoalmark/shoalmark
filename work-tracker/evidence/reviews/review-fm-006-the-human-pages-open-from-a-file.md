@@ -282,3 +282,54 @@ Owner and *Session* for the agents, the same on every page.
 - **R4:** restore the row and append.
 - **What holds:** the build is clean, links and clicks hold, search works when served, and the claim is the Owner's
   in both languages.
+
+## Delta on da84aa0
+
+2026-09-23, 22:14 CEST. **READY WITH FINDINGS: R7 and R8 (P3).** R3–R6 are closed.
+
+**R3 · closed.**
+- *Before:* the consumer's count tracker on its `main`, read-only, says in *What is true now*: *the last 200 merged
+  pull requests, 22 days, 85 % merged under a minute after opening, 0 reviewed*. The pitch's *200 … merged unread; none
+  was reviewed* matches it.
+- *After:* *9 of 13 with a Reviewer's file before opening* matches its totals.
+- *Independent* is gone from the pitch in both languages.
+- The board's line is worded as a report: *a report, not a proof: git cannot yet show it* / *eine Meldung, kein
+  Beweis*.
+
+**R7 · P3 · *In a day and a half* overstates the span.**
+- **What:** From the ruling (2026-09-22 10:34:36Z) to the second count's tip (2026-09-23 14:24:13Z) is **27 h 50 min**:
+  just over a day, not thirty-six hours. It errs against the page's own interest, but it is not the measured span.
+- **What closes it:** *in just over a day* / *in gut einem Tag*, or *in 28 hours* / *in 28 Stunden*.
+
+**R4 · closed.** `76d1872`'s row is present byte-identical to git's own copy. The withdrawal row stands above it,
+newest first as the log is kept, and names `589d328`.
+
+**R5 · closed, with one wrong reason (R8).** Both signing pages now say `answer/ap-007`.
+
+**R8 · P3 · The English page's reason is wrong.**
+- **What:** It says *(git refs are lower-case; …)*. Git refs are case-sensitive and may be any case; shoalmark
+  lower-cases the branch it cuts (`shoalmark.py:895`). The German *(Branch-Namen klein: …)* is right in substance.
+- **What closes it:** *(shoalmark writes the branch in lower case; `AP-007` is the tracker, `ap-007` the branch)*.
+
+**R6 · closed.**
+- All sixteen rewordings are in, and every flagged phrase is gone.
+- *Sitzung* is absent from all four German pages. The Owner's sitting is *Standup* and an agent's run is *Session*,
+  consistently.
+- **The line under the name, graded as German:** *Eine Markierung auf der Seekarte, die die Flotte vor dem Auflaufen
+  bewahrt.* It is correct and idiomatic: *vor dem Auflaufen bewahren* is the right nautical phrase. If the Owner wants
+  it closer to the README's own image (*a stake or a buoy*): *Ein Seezeichen, das die Flotte vor dem Auflaufen
+  bewahrt.* The words are his.
+
+**Build and gates:**
+
+| check | result |
+|---|---|
+| `zensical build` | exit 0, *No issues found* |
+| `llms_txt.py site` | exit 0, 9 pages |
+| links | 130 page links, all `.html` and resolving; 43 resources; 0 unresolved; 404's 14 absolute |
+| clicks from `file://` | EN → *Your answer is your commit*; DE → *Ihre Antwort ist Ihr Commit*, *Der Standup* |
+| served search | *signature*: 5 results |
+| `--check` · `--session-check` | exit 0 each |
+
+**The German pitch** is 493 words, code blocks left out: 2.0–2.5 minutes at 250–200 words a minute. That is an
+estimate from the count. A model's reading time is not a person's, so I report none of my own.
