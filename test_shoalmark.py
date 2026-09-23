@@ -704,6 +704,24 @@ with tempfile.TemporaryDirectory() as d:
           and allowed_.returncode == 0 and upin_.startswith(f"# shoalmark {ver} · untagged {moved[:10]} · vendored ")
           and uwarn_.returncode == 0 and f"pinned {ver} from untagged {moved[:10]}" in uwarn_.stdout and "warning: this copy was vendored from a working copy, not a release" in uwarn_.stdout
           and part_.returncode == 0 and "· partial" in ppin_.splitlines()[0] and "# missing: NOTICE" in ppin_ and "PARTIAL: missing NOTICE" in part_.stdout)
+    # R1: the manifest is checked, not displayed — the form --vendor writes, and agreeing with the pinned VERSION
+    body_ = "\n".join(l for l in (cons / "tools/shoalmark/PIN").read_text().splitlines() if not l.startswith("#"))
+    good_ = f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored 2026-09-23 · complete"
+    heads_ = {"good": good_, "dashes": good_.replace(" · ", " - "), "an empty field": good_.replace(f"tag v{ver}", "tag "),
+              "no commit": good_.replace(f" · commit {tagged}", ""), "a version over VERSION": good_.replace(ver, "9.9.9"), "a # line first": "# a note\n" + good_}
+    read_ = {}
+    for name_, head_ in heads_.items():
+        (cons / "tools/shoalmark/PIN").write_text(head_ + "\n" + body_ + "\n")
+        r_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        read_[name_] = (r_.returncode, [l for l in r_.stdout.splitlines() if "manifest" in l or l.startswith("pinned")])
+    (cons / "tools/shoalmark/PIN").write_text(body_ + "\n")
+    bare_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
+    says_ = lambda k, word: read_[k][0] == 0 and len(read_[k][1]) == 1 and read_[k][1][0].startswith("warning: the PIN's manifest ") and word in read_[k][1][0] and "unverified" in read_[k][1][0]
+    check(f"FM-011 R1 · a hand-edited manifest is never believed: separators changed, an empty field, no commit — not the line --vendor writes; a version over VERSION — named; a # line first — not the first line; each unverified, the good one read as before (saw {read_})",
+          read_["good"][1] == [f"pinned {ver} from tag v{ver} (commit {tagged[:10]}), vendored 2026-09-23, complete"]
+          and all(says_(k, "is not the line --vendor writes") for k in ("dashes", "an empty field", "no commit"))
+          and says_("a version over VERSION", f"says 9.9.9, and the pinned VERSION is {ver}") and says_("a # line first", "is not the PIN's first line")
+          and "no manifest — pinned before 0.17.8" in bare_)
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------

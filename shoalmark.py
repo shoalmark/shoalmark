@@ -3243,34 +3243,57 @@ def source_provenance():
     return (want if want in tags else ""), sha, dirty, why
 
 
-def pin_manifest(pin_text):
-    """The PIN's header, read back: {version, tag, commit, untagged, vendored, state, missing} — {} for a PIN without one."""
-    head = next((l[2:] for l in pin_text.splitlines() if l.startswith("# shoalmark ")), None)
-    if head is None:
-        return {}
-    fields = [f.strip() for f in head.split(" · ")]
-    out = {"version": fields[0].split()[-1]}
-    for f in fields[1:]:
-        k, _, v = f.partition(" ")
-        out[k] = v if v else True
-    out["missing"] = next((l[len("# missing: "):].split(", ") for l in pin_text.splitlines() if l.startswith("# missing: ")), [])
-    return out
+# The manifest `--vendor` writes as a PIN's first line — the only form `--check` accepts (FM-011, R1)
+MANIFEST_RE = re.compile(r"# shoalmark (\d+\.\d+\.\d+) · (?:tag v(\d+\.\d+\.\d+) · commit ([0-9a-f]{7,40})|untagged ([0-9a-f]{7,40}|\(no git\))( \(dirty\))?)"
+                         r" · vendored (\d{4}-\d\d-\d\d) · (complete|partial)")
+
+
+def pin_manifest(pin_text, pinned_version):
+    """The PIN's manifest, checked: (the manifest, "") when its first line is exactly what `--vendor` writes and agrees
+    with itself and with the pinned `VERSION`; ({}, what is wrong) otherwise; ({}, "") for a PIN with no manifest (one
+    vendored before 0.17.8). Nothing in it is believed that was not checked."""
+    lines = pin_text.splitlines()
+    first = lines[0] if lines else ""
+    if not first.startswith("#"):
+        return {}, ""
+    m = MANIFEST_RE.fullmatch(first)
+    if not m:
+        later = any(MANIFEST_RE.fullmatch(l) for l in lines[1:])
+        return {}, "is not the PIN's first line" if later else "is not the line --vendor writes"
+    version, tag, commit, untagged, dirty, date, state = m.groups()
+    try:
+        datetime.date.fromisoformat(date)
+    except ValueError:
+        return {}, "is not the line --vendor writes (its date is no date)"
+    if tag and tag != version:
+        return {}, f"names the tag v{tag} for the version {version}"
+    if version != pinned_version:
+        return {}, f"says {version}, and the pinned VERSION is {pinned_version or '(missing)'}"
+    missing = lines[1][len("# missing: "):].split(", ") if state == "partial" and len(lines) > 1 and lines[1].startswith("# missing: ") else None
+    if state == "partial" and not missing:
+        return {}, "says partial and names nothing missing"
+    return {"version": version, "tag": tag, "commit": commit, "untagged": (untagged or "") + (dirty or ""), "vendored": date,
+            "partial": state == "partial", "missing": missing or []}, ""
 
 
 def pin_report():
-    """What `--check` says of a vendored copy's PIN header: where it came from — and a warning when it was no release."""
+    """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning when it
+    was no release or is partial, and one naming what is wrong when the manifest is not what `--vendor` wrote."""
     pin = HERE / "PIN"
     if not pin.exists() or ROOT not in HERE.parents:
         return []
-    m = pin_manifest(pin.read_text(encoding="utf-8"))
+    pinned = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else ""
+    m, wrong = pin_manifest(pin.read_text(encoding="utf-8"), pinned)
+    if wrong:
+        return [f"warning: the PIN's manifest {wrong} — this copy is unverified; vendor again from a release"]
     if not m:
-        return []
-    source = f"tag {m['tag']} (commit {str(m.get('commit', ''))[:10]})" if m.get("tag") else f"untagged {m.get('untagged', '')}"
-    lines = [f"pinned {m['version']} from {source}, vendored {m.get('vendored', '?')}, {'partial' if m.get('partial') else 'complete'}"]
-    if not m.get("tag"):
+        return ["no manifest — pinned before 0.17.8; where the copy came from is not recorded"]
+    source = f"tag v{m['tag']} (commit {m['commit'][:10]})" if m["tag"] else f"untagged {m['untagged']}"
+    lines = [f"pinned {m['version']} from {source}, vendored {m['vendored']}, {'partial' if m['partial'] else 'complete'}"]
+    if not m["tag"]:
         lines.append("warning: this copy was vendored from a working copy, not a release — vendor again from a clone at a tag")
-    if m.get("partial"):
-        lines.append(f"warning: this copy is partial — missing {', '.join(m['missing']) or '(unnamed)'}")
+    if m["partial"]:
+        lines.append(f"warning: this copy is partial — missing {', '.join(m['missing'])}")
     return lines
 
 

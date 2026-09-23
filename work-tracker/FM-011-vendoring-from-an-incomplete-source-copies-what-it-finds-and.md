@@ -110,5 +110,6 @@ right call for import; it is the wrong call for `--vendor`, which can check befo
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R1: `--check` accepts only the manifest line `--vendor` writes, cross-checks tag, version and the pinned `VERSION`, and otherwise warns naming what is wrong and calls the copy *unverified*; no manifest reads *pinned before 0.17.8*. One check, the Reviewer's five hand-edited headers and the good one. |
 | 2026-09-23 | Built for 0.17.8: an incomplete source and one that is no release are refused before anything is written; `--partial`, `--allow-untagged`; the PIN's manifest line; the consumer's `--check` reads it. Three checks, each failing on 0.17.7. |
 | 2026-09-22 | Filed. Raised by the reviewer of PR #10; reproduced from a lone-file source, and the reporting half traced to FM-009's version derivation rather than to the pre-existing skip. |

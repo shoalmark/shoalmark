@@ -178,8 +178,10 @@ recognised by their exact text, never by italics, bold or length: an example wit
 a clean tree — it names the HEAD and the changed paths), and a copy in the target that was edited in place. A consumer
 runs a release, never a working copy. `--partial` copies an incomplete source anyway and `--allow-untagged` a working
 copy; each says so in the PIN. The PIN's first line is the manifest —
-`# shoalmark X.Y.Z · tag vX.Y.Z · commit <sha> · vendored <date> · complete` — and the consumer's `--check` prints
-where its copy came from, with a warning for an untagged or partial one.
+`# shoalmark X.Y.Z · tag vX.Y.Z · commit <sha> · vendored <date> · complete` — and the consumer's `--check` checks it
+(that exact form, the tag against the version, the version against the copy's `VERSION`) before it prints where the
+copy came from, with a warning for an untagged or partial one; any other line is named, and the copy called
+*unverified*.
 
 Upgrade: `--vendor` again from the new release's clone (it names the tag, prints what changed since the version it
 replaces, and refuses a copy that was edited in place), then `--init` again to refresh the contract between its markers

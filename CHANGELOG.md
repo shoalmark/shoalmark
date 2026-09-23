@@ -14,8 +14,10 @@ and report success — from a lone `shoalmark.py` it wrote a PIN of one line and
   the PIN says `untagged <sha>`. *Vendor from a clean clone at the release tag — `git clone --branch vX.Y.Z` — as
   README §6 now shows.*
 - **The PIN's first line is a manifest**: `# shoalmark <version> · tag <vX.Y.Z> · commit <sha> · vendored <date> ·
-  complete|partial`. Your `--check` prints one line — *pinned 0.17.8 from tag v0.17.8* — and warns when the copy is
-  untagged or partial. A PIN without the line (from 0.17.7 or older) is read as before.
+  complete|partial`. Your `--check` checks it — the exact form `--vendor` writes, its tag against its version, its
+  version against the copy's `VERSION` — then prints one line, *pinned 0.17.8 from tag v0.17.8*, and warns when the
+  copy is untagged or partial. A line in any other form is named in a warning and the copy called *unverified*. A PIN
+  without the line (from 0.17.7 or older) says *no manifest — pinned before 0.17.8* and verifies as before.
 - The message on success names the tag, and still prints the sections new to your copy.
 
 ## 0.17.7 — 2026-09-23
