@@ -56,5 +56,6 @@ A section that is empty by design has to say so. Otherwise it reads as a defect 
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Correction (R3) to the *Built* row below, which says all four checks were shown to fail on 0.17.4: two fail on 0.17.4 — the *no pass* Chrome check and the `test_core.py` string check; *one tracker carries `triaged:`* and *`TRIAGE.md` records a pass* are controls and pass on both. |
 | 2026-09-23 | Built: the empty `progress` line says why while no pass has run, in English and German; three Chrome checks and a string check, shown to fail on 0.17.4. |
 | 2026-09-23 | Filed. |

@@ -61,6 +61,7 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Correction (R3) to the *Built* row below, which says all three checks were shown to fail on 0.17.4: two fail on 0.17.4 — the whole-id Chrome check and the `test_core.py` string check; the third, `~ID` · partial id · word, is a control and passes on both. Across the release before the review: 5 checks fail on 0.17.4 (FM-020 ×2, FM-021 ×2, FM-022 ×1) and 4 are controls (FM-020 ×1, FM-021 ×2, the CHANGELOG/version check). |
 | 2026-09-23 | R2: the hint and the CHANGELOG say what `~ID` holds — links only — and send a story's chapters to the story view; `~ID` is not widened (the Principal's ruling). |
 | 2026-09-23 | R1: the counter over an id searched alone says `1 tracker · <id>`; a Chrome check searches a Shipped id in the story view with *open* pressed (it read `1 open` at `8402732`). |
 | 2026-09-23 | Built: a whole id alone is its row; `~ID`, a partial id and words unchanged; two Chrome checks and a string check, shown to fail on 0.17.4. |
