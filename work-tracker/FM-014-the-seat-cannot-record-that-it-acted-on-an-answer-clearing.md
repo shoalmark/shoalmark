@@ -1,9 +1,8 @@
 ---
 id: FM-014
-status: In Progress
+status: Shipped
 considered: FM-008, FM-005
 tags: bug
-next: review
 hook: "`--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front matter. The rights gate reads any change to those three lines as the `answer` transition, which only the owner seat holds — so the seat that holds `ask`, the one whose job clearing is, is refused. Acted-on answers stay in the front matter, and `--answered` lists them as not acted on, for ever."
 ---
 
@@ -11,7 +10,7 @@ hook: "`--clear-ask` moves an answered exchange into the body and removes `answe
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.**
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`; merged 2026-09-23 (#12), released as 0.17.4.**
 `transitions()` now tells the clearing move from an answer: the three answer lines leave the front matter **and** the
 body gains a record under `## Asks` holding the same question, the same answer and the same answered-by (one more such
 record than the file had before) — that is `clear`, and `rights_problems` judges it under the **`ask`** right, with its
@@ -20,7 +19,7 @@ is still `answer`. Five checks in a scratch repository with `[seats]`: the princ
 pre-commit run and in `--check` on the commit; the implementer's is refused naming `ask`; the answer removed with no
 record is refused as `answer` and as a ruling gone from the record; the answer's text edited by the principal is
 refused as `answer`. Under Subversion nothing changes: the gate reads lines there, and a cleared answer has none.
-**What is left:** review, merge, the tag.
+**What is left:** nothing.
 
 Met by a consumer's principal seat clearing answers the Owner had given.
 
@@ -65,5 +64,6 @@ the ruling verbatim into the body.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Merged (#12), released as 0.17.4. |
 | 2026-09-23 | Built: the clearing move — lines gone, record added — is judged under `ask`; anything else touching the answer stays `answer`. Five checks. |
 | 2026-09-23 | Filed. Reproduced from the rules as shipped in 0.17.0: `--clear-ask` by the principal seat is refused as an `answer` change. |

@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-23 · 20 trackers (20 work).
+> Generated 2026-09-23 · 23 trackers (23 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -33,14 +33,9 @@
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
 | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | — | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress | triage | — |
-| [FM-019](FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md) | — | On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carr… | In Progress | triage | — |
-| [FM-017](FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md) | — | When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with… | In Progress | triage | — |
-| [FM-015](FM-015-seats-silently-drops-a-signature-that-answerers-asked-for.md) | — | From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['ali… | In Progress | triage | — |
-| [FM-014](FM-014-the-seat-cannot-record-that-it-acted-on-an-answer-clearing.md) | — | `--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front… | In Progress | triage | — |
-| [FM-013](FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md) | — | In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the… | In Progress | triage | — |
-| [FM-012](FM-012-a-load-spawns-git-once-per-tracker-and-answer-is-silent-for.md) | — | Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of th… | In Progress | triage | — |
-| [FM-010](FM-010-the-answerers-deprecation-warning-never-reaches-the.md) | — | The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only wher… | In Progress | triage | — |
-| [FM-009](FM-009-version-has-drifted-from-version-and-vendor-suppresses-the.md) | — | `__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG say 0.17.2. Two tags shipped that way. `--vend… | In Progress | triage | — |
+| [FM-022](FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md) | — | A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something… | In Progress | triage | — |
+| [FM-021](FM-021-the-progress-section-is-empty-beside-work-in-progress-and.md) | — | The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that… | In Progress | triage | — |
+| [FM-020](FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md) | — | The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He… | In Progress | triage | — |
 | [FM-008](FM-008-an-ask-reaches-the-owner-only-through-the-gate.md) | — | The ask/answer flow holds only while every agent has read AGENTS.md and chooses to obey it. Nothing in the tool refuses… | In Progress | triage | — |
 | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | — | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress | triage | — |
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | — | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | triage | — |
@@ -50,5 +45,13 @@
 | [FM-016](FM-016-an-answered-ask-still-shows-as-unanswered-on-the-branch-the.md) | — | After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept an… | Proposed | triage | — |
 | [FM-011](FM-011-vendoring-from-an-incomplete-source-copies-what-it-finds-and.md) | — | `vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete so… | Proposed | triage | — |
 | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | P1 | The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not… | Proposed | triage | — |
+| [FM-019](FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md) | — | On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carr… | Shipped | done | — |
+| [FM-017](FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md) | — | When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with… | Shipped | done | — |
+| [FM-015](FM-015-seats-silently-drops-a-signature-that-answerers-asked-for.md) | — | From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['ali… | Shipped | done | — |
+| [FM-014](FM-014-the-seat-cannot-record-that-it-acted-on-an-answer-clearing.md) | — | `--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front… | Shipped | done | — |
+| [FM-013](FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md) | — | In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the… | Shipped | done | — |
+| [FM-012](FM-012-a-load-spawns-git-once-per-tracker-and-answer-is-silent-for.md) | — | Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of th… | Shipped | done | — |
+| [FM-010](FM-010-the-answerers-deprecation-warning-never-reaches-the.md) | — | The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only wher… | Shipped | done | — |
+| [FM-009](FM-009-version-has-drifted-from-version-and-vendor-suppresses-the.md) | — | `__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG say 0.17.2. Two tags shipped that way. `--vend… | Shipped | done | — |
 | [FM-003](FM-003-the-tool-is-proven-only-on-macos-with-git-a-first-outside.md) | — | Every proof so far is macOS, git, one Owner. The first outside user works on Windows, with Subversion and TortoiseSVN,… | Shipped | done | — |
 | [FM-002](FM-002-a-board-anyone-can-brand-the-person-the-repository-the.md) | — | The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English onl… | Shipped | done | — |

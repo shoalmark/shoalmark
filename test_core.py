@@ -343,6 +343,15 @@ check("the triage date, the rank and the board section travel in the row — the
       re.search(r'"2026-09-20", 0, "\w+", \[[^\]]*\], "", "[^"]*", "[^"]*", \[\], \d+, \["", false\], \{\}, \{\}, \["", "", "", \[\], "", "", \[\], \[\]\]\]', _tri) is not None)
 check("untriaged is derived — exactly what the next pass lists: the generator's word, and work in progress judged too long ago — counted, and searchable by its word",
       'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in _tri and '(untriaged(t)?" untriaged "+' in _tri and 'L["count.untriaged"]' in _tri)
+check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourhood, and anything else still matches by substring",
+      'exact=!hood&&byId.get(q.toUpperCase())' in _tri and "hood?near.has(t[0]):exact?t==exact:(every||OPEN.has(t[2]))&&words.every(" in _tri
+      and '"search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story\'s chapters: the story view.' in _tri
+      and '$("q").title=L["search.help"]' in _tri)
+check("FM-020 · the counter names an id searched alone — it is that tracker, open or not, never counted as `open`",
+      '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
+check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
+      'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
+      and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
 check("a story's header says how much of it a pass has judged, and closed chapters are not called shipped",
       '${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}' in _tri and '${l("story.done")} ·' in _tri and "} shipped ·" not in _tri)
 check("the board is the first view: progress · triage · triaged · backlog · done, one section per tracker plus the newest pass",

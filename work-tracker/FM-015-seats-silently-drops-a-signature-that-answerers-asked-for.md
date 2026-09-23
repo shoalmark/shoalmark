@@ -1,9 +1,8 @@
 ---
 id: FM-015
-status: In Progress
+status: Shipped
 considered: FM-010, FM-007, FM-008
 tags: bug, security
-next: review
 hook: "From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['alice signed']` and `[seats] owner = 'alice'` now accepts Alice's unsigned answer, `--answer` stops signing, and the deprecation note tells that repository `answerers` still works — it is not read there at all."
 ---
 
@@ -11,7 +10,7 @@ hook: "From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** Where
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`; merged 2026-09-23 (#12), released as 0.17.4.** Where
 `[seats]` exists and an `answerers` entry is `signed`, the gate finds the seat that answers for that identity — the one
 `[seats]` spells the same way, a name or an email — and **refuses** when it is not `signed`, naming both lines and the
 two ways out (add `signed` to the seat, or remove `answerers`). Where no seat is spelled like the entry — `answerers`
@@ -22,7 +21,7 @@ anything. The note now depends on the repository: with `[seats]`, *`answerers` �
 signed + answerers signed → clean; seats unsigned → refused, and `--answer` refused with no branch cut; a seat spelled by
 email beside an entry spelled by name → refused; no seats → today's note; seats and no answerers → silent. One existing
 check changed its premise: *`answerers` still works beside `[seats]`* is now *is not read for answers there*. **What is
-left:** review, merge, the tag.
+left:** nothing.
 
 Found by a consumer's seat reading the tool before vendoring 0.17.3.
 
@@ -61,5 +60,6 @@ migration FM-010's note asks for — exactly the ones reading that note.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Merged (#12), released as 0.17.4. |
 | 2026-09-23 | Built: the refusal where a signed `answerers` entry meets an unsigned answering seat, in the gate and in `--answer`; the note says what is read. Six checks. |
 | 2026-09-23 | Filed from a consumer seat's reading of 0.17.3 before vendoring it. |
