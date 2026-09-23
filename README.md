@@ -265,8 +265,10 @@ Started · Ended`. A session's first commit carries its row:
 <cmd> --session close a9f3c2d1                                     # dates its end; the row stays
 ```
 
-Each writes the row and stages the file. A session convened by a session (*session a9f3c2d1*) is a sub-agent, and its
-id must derive from its parent's — or the independence report cannot see that the two are one run. An id is used once; a worktree that an open row holds is refused to a second
+Each writes the row and stages the file. A session convened by a session is a sub-agent: when *convened by* carries a
+session id — eight hex characters, or `<id>/<seat>-<n>` — the new id must derive from it (`a9f3c2d1/reviewer-1`), or
+`--session open` refuses; a plain word never names a parent (*"the morning session today"* opens as a top-level
+session). One name for a session: its id. An id is used once; a worktree that an open row holds is refused to a second
 session — *one worktree per session*. The worktree defaults to the checkout's directory name.
 
 **The gate** holds it wherever the registry exists — a repository adopts it by opening its first session, and a commit

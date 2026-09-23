@@ -2442,6 +2442,7 @@ def rights_problems(trackers):
 SESSIONS_NAME = "sessions.md"
 SESSION_COLUMNS = ("Session", "Seat", "Convened by", "Scope", "Worktree", "Started", "Ended")
 SESSION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*")      # a9 · 8e509911 · a9/reviewer-1
+SESSION_PARENT_RE = re.compile(r"(?<![\w/.-])([0-9a-f]{8}(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*|[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)+)(?![\w/.-])")
 SESSION_IDLE = 86400          # seconds: an open session with no commit for longer than a day is abandoned — listed, closed by a pass
 SESSIONS_HOME = """\
 # Sessions
@@ -2521,8 +2522,10 @@ def session_cmd(words):
         worktree = rest[4] if len(rest) == 5 else (pathlib.Path(top.strip()).name if top else ROOT.name)
         hand = sid.rsplit("/", 1)[-1] if "/" in sid else None
         # convened by a SESSION, not a person: a sub-agent — its id derives from its parent's, or the independence report
-        # cannot see that the two are one run (R3: a sibling's verdict was read as independent of the builder)
-        parent = (re.search(r"\bsession\s+(" + SESSION_ID_RE.pattern + r")", convened) or [None, None])[1]
+        # cannot see that the two are one run (R3: a sibling's verdict was read as independent of the builder). A parent is
+        # read only from a token in the session-id form — eight hex characters, or `<id>/<seat>-<n>` — never from a plain
+        # word: "the morning session today" names no session (R6)
+        parent = (SESSION_PARENT_RE.search(convened) or [None, None])[1]
         why = ("is not a session id — letters, digits, `.`, `_`, `-`; a sub-agent's is `<parent>/<seat>-<n>`" if not SESSION_ID_RE.fullmatch(sid)
                else f"is already in {SESSIONS_NAME} — an id is used once" if sid in ids
                else f"is convened by session {parent} — a sub-agent's id derives from its parent's: `{parent}/{seat}-<n>`" if parent and not sid.startswith(parent + "/")

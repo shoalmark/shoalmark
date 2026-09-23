@@ -16,7 +16,9 @@ author's session looked as independent as any other.
   message carries one. *A repository with its own hook runner calls `--session-trailer "$1"` from its
   prepare-commit-msg hook; README §6 gives the lefthook line. Run `--install-hook` again to get the hook.*
 - **The registry, `<tracker dir>/sessions.md`.** `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]`
-  writes a row and stages it; `--session close <id>` dates its end. A sub-agent's id is `<parent>/<seat>-<n>`. An id
+  writes a row and stages it; `--session close <id>` dates its end. A sub-agent's id is `<parent>/<seat>-<n>`:
+  when *convened by* carries a session id (eight hex characters, or `<id>/<seat>-<n>`), `--session open` refuses an id
+  that does not derive from it — a plain word never names a parent. An id
   is used once; a worktree an open row holds is refused to a second session.
 - **The gate, where the registry exists.** A seat's commit — never the Owner's — must carry a `Session:` whose row is
   open and names the author's seat, in a worktree no earlier open row holds; exit 4 otherwise, with one of three

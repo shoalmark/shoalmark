@@ -439,16 +439,20 @@ with tempfile.TemporaryDirectory() as d:
     bad_hand = run_safe(root, "--session", "open", "a9/reviewer-2", "principal", "session a9", "x", "wt-x")
     again = run_safe(root, "--session", "open", "a9", "principal", "the Owner", "x", "wt-y")
     clash = run_safe(root, "--session", "open", "d8", "principal", "the Owner, 07:28", "the product items", "wt-a")
-    orphan = run_safe(root, "--session", "open", "8d6537be", "implementer", "the Principal session a9", "build", "wt-i")          # R3
+    orphan = run_safe(root, "--session", "open", "8d6537be", "implementer", "session 8e509911", "build", "wt-i")                  # R3
+    prose = [run_safe(root, "--session", "open", sid_, "principal", said_, "the morning", wt_)[0]                                    # R6
+             for sid_, said_, wt_ in (("q1", "the Owner, after the morning session today", "wt-q1"), ("q2", "the Owner — his session of 09-23", "wt-q2"), ("q3", "the Principal session a9", "wt-q3"))]
+    child = run_safe(root, "--session", "open", "8e509911/reviewer-3", "reviewer", "session 8e509911", "attack", "wt-r3")[0]
     c1 = run_safe(root, "--session", "close", "a9")[0]
     o3 = run_safe(root, "--session", "open", "d8", "principal", "the Owner, 07:28", "the product items", "wt-a")[0]
     rows = {r["id"]: r for r in fm.parse_sessions(reg.read_text())} if reg.exists() and hasattr(fm, "parse_sessions") else {}
-    check(f"FM-024 S3 · --session open writes a row and stages it; a sub-agent's id is parent and hand — one convened by a session without its parent's id, a wrong hand, a used id and an open worktree are refused; close dates the end (saw {sorted(rows)})",
+    check(f"FM-024 S3 · --session open writes a row and stages it; a sub-agent's id is parent and hand — one convened by a session id without it, a wrong hand, a used id and an open worktree are refused, a session convened in prose is not; close dates the end (saw {sorted(rows)})",
           (o1, o2, c1, o3) == (0, 0, 0, 0) and "docs/work-tracker/sessions.md" in staged
           and bad_hand[0] == fm.EXIT_LINT and "`<parent>/principal-<n>`" in bad_hand[2] and again[0] == fm.EXIT_LINT and "used once" in again[2]
           and clash[0] == fm.EXIT_LINT and "wt-a is open under session a9 — one worktree per session" in clash[2]
-          and orphan[0] == fm.EXIT_LINT and "is convened by session a9 — a sub-agent's id derives from its parent's: `a9/implementer-<n>`" in orphan[2]
-          and sorted(rows) == ["a9", "a9/reviewer-1", "d8"] and not rows["a9"]["open"] and re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", rows["a9"]["ended"]) is not None
+          and orphan[0] == fm.EXIT_LINT and "is convened by session 8e509911 — a sub-agent's id derives from its parent's: `8e509911/implementer-<n>`" in orphan[2]
+          and prose == [0, 0, 0] and child == 0
+          and sorted(rows) == ["8e509911/reviewer-3", "a9", "a9/reviewer-1", "d8", "q1", "q2", "q3"] and not rows["a9"]["open"] and re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", rows["a9"]["ended"]) is not None
           and rows["a9/reviewer-1"]["open"] and rows["a9/reviewer-1"]["convened"] == "session a9" and rows["a9"]["scope"] == "the day's findings | the tool" and rows["d8"]["open"])
 
 # --- FM-024 S4: the gate — a seat's commit names an open session of its own seat, in a worktree no earlier session holds
