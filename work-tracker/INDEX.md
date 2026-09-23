@@ -18,7 +18,12 @@
 > Everything unranked follows below by status; a triage pass (`--triage`) re-judges open work weekly.
 > *Kind* is the kind of problem that is left: plain where a seat judged it (`kind-of-problem:`), *italic* where the move already says it.
 
-*No current path is written — the Owner names it in `TRIAGE.md`.*
+*The Owner's. A pass judges every tier against it; only the Owner changes it.*
+
+1. The daily sitting runs on a tagged release with a signed answer and no failed run.
+2. What a sitting finds is filed that day and fixed when it is small and ready; the rest is tracked.
+3. A pull request without an independent review's evidence file cannot merge - checked, not asked.
+4. The owner shall be involved less when trust in the process has build but the trust must come from evidence and be earned.
 
 *Nothing is ranked yet — no triage pass has run.*
 
