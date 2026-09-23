@@ -1194,16 +1194,21 @@ LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
 fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
-BOARD={progress:l("desc.progress"),triage:l("desc.triage","__DAYS__"),triaged:LAST?l("desc.triaged",LAST):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
+// has a pass run? ONE answer for every line that asks: the newest date a pass left on a tracker, or else the date of the
+// newest pass TRIAGE.md records. `progress` holds only what a pass kept — until a first pass it is empty by rule and says so (FM-021)
+PASSED=LAST||(HOME.last.match(/\d{4}-\d\d-\d\d/)||[""])[0],
+BOARD={progress:PASSED?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
 board=t=>[...(recent(t)?["triaged"]:[]),untriaged(t)?"triage":t[19]],   // t[19] is the generator's; staleness is the one clock rule, and only work in progress goes stale
 MARK={"In Progress":"b","Shipped":"t","Parked":"y","Closed":"z"},mark=t=>blocked(t)?"r":t[2].startsWith("Shipped")?"t":MARK[t[2]]||"",
 ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">${i}</a>`:i),   // TRIAGE.md — an id opens its tracker rendered, as in a row
 chips=(ids,arrow,to="~")=>ids.length?`<div class="m">${arrow} `+ids.map(i=>`<a href="#${to}${i}" class="${byId.has(i)&&OPEN.has(byId.get(i)[2])?"":"off"}">${i}</a>`).join(" ")+"</div>":"";
 let all=false,gi=0,shut=new Set(),touched=new Set();
 function draw(){
-  const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),words=q.toLowerCase().split(/\s+/).filter(Boolean);
+  // a whole id alone is that tracker — not every row whose body links to it (FM-020). What links to it is `~ID` (Markdown
+  // links only: a chapter's `epic:` and `blocked-by:` are not in it); a story's chapters are the story view
+  const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),exact=!hood&&byId.get(q.toUpperCase()),words=q.toLowerCase().split(/\s+/).filter(Boolean);
   const near=hood&&new Set([hood[0],...hood[12],...(inb.get(hood[0])||[])]),[gname,gkey]=GROUPS[gi],every=all||gname=="board";
-  const rows=T.filter(t=>hood?near.has(t[0]):(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+" "+sl(t[2])+(blocked(t)?" blocked "+sl("Blocked"):"")+(untriaged(t)?" untriaged "+(L["count.untriaged"]||""):"")).toLowerCase().includes(w)))
+  const rows=T.filter(t=>hood?near.has(t[0]):exact?t==exact:(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+" "+sl(t[2])+(blocked(t)?" blocked "+sl("Blocked"):"")+(untriaged(t)?" untriaged "+(L["count.untriaged"]||""):"")).toLowerCase().includes(w)))
     .sort((x,y)=>(x[2]=="Parked")-(y[2]=="Parked")||((x[18]||99)-(y[18]||99))||(x[1]<y[1]?-1:x[1]>y[1]?1:0)||y[8]-x[8]);
   const groups=new Map(),order=Object.keys(BOARD);
   for(const t of rows)for(const k of[].concat(gkey(t)))groups.set(k,[...(groups.get(k)||[]),t]);
@@ -1221,7 +1226,7 @@ function draw(){
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
     return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
-  $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
+  $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
   $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q?(all_=>{
     // ONLY what passes the ask rules is a question here — t[29][7] is why it is not. The Owner never reads a malformed
@@ -1320,7 +1325,7 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
   if(h2.length>5)v.querySelector(".md").insertAdjacentHTML("beforebegin",`<p class="m toc">${h2.map(h=>`<a data-s="${esc(h.id.slice(2))}">${esc(h.textContent)}</a>`).join(" · ")}</p>`);
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
-for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];
+for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
 // light or dark is the viewer's choice: auto follows the system; the other two switch every theme's
 // `prefers-color-scheme` rule on or off — so a brand needs to know nothing about the button. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
@@ -1342,7 +1347,8 @@ onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
     "tagline": "", "footer": "",
-    "search": "search — id, tier, status, words · blocked · untriaged · ~ID = its neighbours",
+    "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
+    "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
     "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark",
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
@@ -1350,11 +1356,12 @@ LABELS = {
     "status.Shipped": "Shipped", "status.Closed": "Closed", "status.Blocked": "Blocked",
     "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.done": "done",
     "desc.progress": "kept by triage — by rank, then tier",
+    "desc.progress.none": "empty until a first triage pass has run — --triage",
     "desc.triage": "what the next --triage lists — in progress and unjudged or judged over {0} days ago, and new filings",
     "desc.triaged": "judged {0} — each also sits in its own section", "desc.triaged.none": "no triage pass has run yet",
     "desc.backlog": "waiting — P0 to P3, then untiered, then parked", "desc.done": "shipped or closed",
     "group.none": "no {0}",
-    "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.in_progress": "in progress",
+    "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.id": "tracker · {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
@@ -1532,7 +1539,23 @@ def triage_home():
     # an unfilled home is not a path and not an intent: what is left once the italic notes and the bare list
     # markers are gone has to say something, or INDEX.md and the board would print the template as if it were one
     said = lambda text: text if re.search(r"\w{3,}", re.sub(r"\*\*[^*]*\*\*|\*[^*]*\*", "", text)) else ""
-    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": said(part("intent"))}
+    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": owners_intent(part("intent"))}
+
+
+def owners_intent(text):
+    """The intent as the Owner WROTE it: everything under the heading, less the scaffold's own words — its note, its
+    lead-in, its examples and its bare lines, recognised by their exact text (whitespace aside), never by italics, bold
+    or length. An example with one word changed is his; so is a line in italics, a line in bold, a line of two letters
+    (FM-022, R11). A paragraph is compared whole, so the wrapped lead-in is one piece; a line is compared alone."""
+    scaffold = {" ".join(s.split()) for s in INTENT_SCAFFOLD}
+    kept = []
+    for para in re.split(r"\n[ \t]*\n", text):
+        if " ".join(para.split()) in scaffold:
+            continue
+        lines = [line for line in para.splitlines() if " ".join(line.split()) not in scaffold]
+        if any(line.strip() for line in lines):
+            kept.append("\n".join(lines))
+    return "\n\n".join(kept).strip()
 
 
 def write_views(trackers):
@@ -2835,6 +2858,31 @@ def vendor(dest):
     return EXIT_OK
 
 
+# The scaffold's own words under the intent heading. `--init` writes the English ones; examples/de/TRIAGE.md holds the
+# German ones; the bare lines are the scaffold before 0.17.5. `owners_intent()` leaves out exactly these texts and reads
+# everything else there as the Owner's (R11) — so the scaffold and the reader can never disagree on what is whose.
+INTENT_NOTE = "*The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*"
+INTENT_LEAD = """*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of
+it, is for · what is true when it works · what no pass or seat may do to get there. The example is a whole product;
+overwrite it — a pass reads everything you write here and leaves out only this lead-in and the examples as they stand.*"""
+INTENT_EXAMPLES = (
+    "- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*",
+    "- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*",
+    "- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*",
+)
+INTENT_NOTE_DE = "*Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*"
+INTENT_LEAD_DE = """*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
+kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+lässt nur diese Einleitung und die unveränderten Beispiele aus.*"""
+INTENT_EXAMPLES_DE = (
+    "- **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*",
+    "- **damit** — *z. B. ein Mitglied ein Buch und die Bibliothekarin ein Mitglied mit einem Blick findet, und nichts Verliehenes verloren geht*",
+    "- **niemals** — *z. B. verleihen, was der Katalog nicht führt, oder die Akte eines Mitglieds löschen, bevor seine letzte Ausleihe zurück ist*",
+)
+INTENT_SCAFFOLD = (INTENT_NOTE, INTENT_LEAD, *INTENT_EXAMPLES, "- **for** —", "- **so that** —", "- **never** —",
+                   INTENT_NOTE_DE, INTENT_LEAD_DE, *INTENT_EXAMPLES_DE, "- **für** —", "- **damit** —", "- **niemals** —")
+
 TRIAGE_HOME = """\
 # Triage
 
@@ -2843,11 +2891,7 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 ## {intent}
 
-*The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
-
-- **for** —
-- **so that** —
-- **never** —
+""" + INTENT_NOTE + "\n\n" + INTENT_LEAD + "\n\n" + "\n".join(INTENT_EXAMPLES) + """
 
 ## {path}
 

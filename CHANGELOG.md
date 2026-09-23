@@ -2,6 +2,35 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.5 — 2026-09-23
+
+**One id finds one row, and an empty section says why.** Two things an Owner read as defects on his board, and the
+intent he found hard to start.
+
+- **A whole id in the board's search shows that tracker alone.** The search matched each word as a substring of
+  about thirty fields of a row, the ids its body links to among them. So an id found its own row **and every row
+  that links to it**: `FM-005` showed itself and every row that links to it, on a large board most of the list. A
+  query that is exactly one known id (trimmed, any case) now shows that tracker alone, whether or not it is open. A
+  partial id (`FM-00`) and a query of several words still match by substring. The full help is the search box's
+  tooltip; the placeholder, `search · ~ID`, fits the box at its 200 px minimum. *What links to an id is `~ID`: what its body links to and what links to it, by Markdown link only.
+  A story's chapters are the story view. A chapter's `epic:`, a `blocked-by:` or an id in plain text is in neither.*
+- **The empty `progress` section says why.** `progress` holds only what a triage pass kept, so until a first pass
+  has run it reads 0 beside work in progress. While no tracker carries `triaged:` and `TRIAGE.md` records no pass,
+  its line now reads *empty until a first triage pass has run — --triage*. The rule is unchanged. `INDEX.md`,
+  `--triage` and the board still agree on what is owed a pass.
+- **`--init` gives the intent a way in.** The three lines were bare: `for —` · `so that —` · `never —`. The scaffold
+  now opens them with a lead-in: they describe the repository as a whole, what all of it is for, what is true when
+  it works, and what no pass or seat may do to get there. Each line carries an example in italics, a whole product
+  to overwrite. **The intent a pass prints is what the Owner wrote — only the scaffold's own lead-in and examples
+  are left out**, recognised by their exact text, never by italics, bold or length. So an untouched scaffold is no
+  intent, one line of his own is that line alone, and an example with one word changed is his. *`--triage` no
+  longer prints the template's italic note above your intent. A `TRIAGE.md` you already have is never rewritten;
+  README §6 carries the lead-in and the example, and `examples/de/TRIAGE.md` carries them in German.*
+- **Labels:** three new labels, `desc.progress.none`, `count.id` (the counter over an id searched alone:
+  *1 tracker · <id>*) and `search.help` (the search box's tooltip: the whole help), and `search` shortened to fit
+  the box at its 200 px minimum. All in English and in `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets
+  `search` keeps its old hint. One without the new labels shows the English words.*
+
 ## 0.17.4 — 2026-09-23
 
 **The answer says what it does** — the Owner's one command, and everything around it, met by an Owner on one morning.

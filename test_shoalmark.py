@@ -109,6 +109,38 @@ with tempfile.TemporaryDirectory() as d:
     check("--init scaffolds the configuration with ONE id space keyed by the project, the triage home and the ignore lines",
           code == 0 and 'MSR = "Work"' in (root / "shoalmark.toml").read_text() and "MSR-001" in out and (root / "docs/work-tracker/TRIAGE.md").exists()
           and "docs/work-tracker/index.html" in (root / ".gitignore").read_text() and "next:" in out)
+    home_md = root / "docs/work-tracker/TRIAGE.md"; home_text = home_md.read_text(); fm.configure(root)
+    unsaid, unpathed = fm.triage_home()["intent"], fm.triage_home()["path"]
+    home_md.write_text(re.sub(r"- \*\*for\*\* — \*e\.g\. [^*]*\*", "- **for** — the stock we sell", home_text))
+    said = fm.triage_home()["intent"]; home_md.write_text(home_text)
+    lead = re.sub(r"\s+", " ", home_text)
+    check("FM-022 · the scaffolded intent starts with a lead-in that names the repository as a whole, and one example per line, in italics; a fresh scaffold has no intent and no path; one line in the Owner's words is the intent, exactly that line — never the lead-in or the examples left around it",
+          "*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of it, is for · what is true when it works · what no pass or seat may do to get there." in lead
+          and all(f"- **{w}** — *e.g. " in home_text for w in ("for", "so that", "never")) and unsaid == "" and unpathed == "" and said == "- **for** — the stock we sell")
+    # R11: only the scaffold's exact text is left out — never a line of the Owner's for its italics, its bold or its length
+    # the three example lines as the scaffold writes them — read from the tool, else spelled out, so a run of these
+    # checks on a tool without the tuple fails them instead of stopping the suite
+    ex = getattr(fm, "INTENT_EXAMPLES", ("- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*",
+                                         "- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*",
+                                         "- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*"))
+    cases = {
+        "(b) three real lines": ([(ex[0], "- **for** — the stock we sell"), (ex[1], "- **so that** — an order is never promised twice"), (ex[2], "- **never** — a number typed in by hand")],
+                                 "- **for** — the stock we sell\n- **so that** — an order is never promised twice\n- **never** — a number typed in by hand"),
+        "(c) a line wholly in italics": ([(ex[2], "- **never** — *sell what we lack*")], "- **never** — *sell what we lack*"),
+        "(c) a line in bold alone": ([(ex[2], "- **never** — **sell what we lack**")], "- **never** — **sell what we lack**"),
+        "(d) a short line": ([(ex[0], "- **for** ok")], "- **for** ok"),
+        "(e) the example with one word changed": ([(ex[1], ex[1].replace("finds a book", "finds a film"))], ex[1].replace("finds a book", "finds a film")),
+    }
+    read_as = {}
+    for name, (swaps, _) in cases.items():
+        t = home_text
+        for a, b in swaps:
+            t = t.replace(a, b)
+        home_md.write_text(t); read_as[name] = fm.triage_home()["intent"]
+    home_md.write_text(home_text)
+    wrong = {n: read_as[n] for n, (_, want) in cases.items() if read_as[n] != want}
+    check(f"R11 · the intent reader leaves out only the scaffold's exact text: (a) untouched, nothing; (b) three real lines, exactly those; (c) a line in italics or in bold, (d) a short line, (e) an example with one word changed — each read (wrong: {wrong})",
+          unsaid == "" and unpathed == "" and not wrong and set(ex) <= set(getattr(fm, "INTENT_SCAFFOLD", ())) and getattr(fm, "INTENT_LEAD", "\0") in home_text and getattr(fm, "INTENT_NOTE", "\0") in home_text)
     before = (root / "shoalmark.toml").read_text()
     (root / "shoalmark.toml").write_text(before + "\n# mine\n")
     run(root, "--init")
@@ -353,6 +385,9 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stdout(out):
         fm.vendor(dest)
     check("vendoring again says which version it replaces and what changed since", "(was 0.2.0)" in out.getvalue() and "## 0.3.0" in out.getvalue() and "## 0.2.0" not in out.getvalue())
+    _heads = re.findall(r"^## (\d+\.\d+\.\d+)", (HERE / "CHANGELOG.md").read_text(), re.M)
+    check(f"a consumer one release behind ({_heads[1]}) is shown exactly the section it lacks — the newest, which is this version's",
+          _heads[0] == fm.__version__ and fm.changes_since(_heads[1]).startswith(f"## {fm.__version__} — ") and fm.changes_since(_heads[1]).count("\n## ") == 0)
     (dest / "shoalmark.py").write_text("# edited\n")
     err = io.StringIO()
     with redirect_stderr(err):
@@ -380,6 +415,83 @@ if _CHROME:
               "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
 else:
     print("  skip  no browser found — the board was not rendered")
+
+# --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
+if _CHROME:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve()
+        run(root, "--init", "--key", "msr")
+        tracker(root, "MSR-001", title="Stock is booked per warehouse")
+        tracker(root, "MSR-002", title="Stock is counted per shelf", body="## What is true now\n\nIt needs [MSR-001](MSR-001-x.md) first.\n\n## Done when\n\nit is.\n")
+        tracker(root, "MSR-003", status="Shipped", title="A shipped one")
+        run(root)
+
+        def found(frag):
+            """The rows a query typed into the box leaves on the board (the URL hash is typed there), and the counter."""
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
+                                 (root / "docs/work-tracker/index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            rows = re.findall(r'<tr class="t[^"]*"><td class="m"><i class="q[^"]*"></i><a href="#=(MSR-\d+)">', d_[d_.find("<tbody"):d_.find("</tbody>")])
+            return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
+        whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
+        check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
+              whole[0] == ["MSR-001"] and whole[1].startswith("1 tracker · MSR-001 ·") and low[0] == ["MSR-001"])
+        check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
+              sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
+        # a view with open/all (every view but the board), *open* pressed, a closed tracker searched by its id: it is shown,
+        # and the counter names it — it never counts it as open (R1)
+        probe = '<script>{gi=GROUPS.findIndex(g=>g[0]=="epic");all=false;$("q").value="MSR-003";draw();document.body.dataset.probe=$("n").textContent+"|"+[...document.querySelectorAll("#b tr.t")].map(r=>r.querySelector("a").textContent).join(",")}</script>'
+        wt_ = root / "docs/work-tracker"
+        (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+        pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+        seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
+        check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
+              seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
+        # the placeholder fits the box at its CSS minimum (200 px) — measured with the box's own font, not by a window —
+        # in both shipped languages, and the whole help is the box's title (R6, R12)
+        import html as _html, json as _json
+        probe = '<script>{const i=$("q"),c=document.createElement("canvas").getContext("2d");c.font=getComputedStyle(i).font;document.body.dataset.probe=JSON.stringify({min:parseFloat(getComputedStyle(i).minWidth),need:Math.ceil(c.measureText(i.placeholder).width),title:i.title})}</script>'
+        fits = {}
+        for lang, labels in (("en", None), ("de", HERE / "examples/de/labels.yaml")):
+            if labels:
+                (wt_ / "brand").mkdir(exist_ok=True); (wt_ / "brand/labels.yaml").write_text(labels.read_text(encoding="utf-8"), encoding="utf-8"); run(root)
+            (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--window-size=500,900", "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            fits[lang] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "{}"])[1]) or "{}")
+        want = {"en": fm.LABELS.get("search.help"), "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("search.help")}
+        check(f"R12 · the search placeholder fits the box at its 200 px minimum, in English and in German, measured in Chrome with the box's font; the whole help is the box's title (saw need/min: { {k: (v.get('need'), v.get('min')) for k, v in fits.items()} })",
+              len(fits) == 2 and all(v.get("min") == 200 and v.get("need") and v["need"] <= v["min"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
+
+# --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
+if _CHROME:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve()
+        run(root, "--init", "--key", "msr")
+        tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", title="Stock is counted per shelf")
+
+        def progress_line():
+            run(root)
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
+                                 (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
+            progress_line.triaged = (re.search(r"[▾▸] triaged · \d+ · (.*?) [▾▸] backlog", shown) or [None, ""])[1].strip()
+            return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
+        before = progress_line()
+        tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
+        after = progress_line()
+        check(f"FM-021 · work in progress and no pass run: the empty progress section says why, and names the command (saw: {before!r})",
+              before == "empty until a first triage pass has run — --triage")
+        check(f"FM-021 · …and once one tracker carries a pass's date, the line is its usual one again (saw: {after!r})",
+              after == "kept by triage — by rank, then tier")
+        (root / "docs/work-tracker/MSR-003-x.md").unlink()
+        home = root / "docs/work-tracker/TRIAGE.md"
+        home.write_text(home.read_text(encoding="utf-8").replace("*None yet.*", "2026-09-20 — a pass judged one tracker; worksheet `evidence/triage/triage-2026-09-20.md`."), encoding="utf-8")
+        passed = progress_line()
+        check(f"FM-021 · …and so it is when TRIAGE.md records a pass, though no tracker carries its date any more (saw: {passed!r})",
+              passed == "kept by triage — by rank, then tier")
+        check(f"R4 · in that state the triaged line agrees — it names the pass TRIAGE.md records, never 'no triage pass has run yet' (saw: {progress_line.triaged!r})",
+              progress_line.triaged.startswith("judged 2026-09-20 — each also sits in its own section") and "no triage pass" not in progress_line.triaged)
 
 # --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
 DERIVER = """#!/usr/bin/env python3
@@ -526,6 +638,7 @@ fm.configure(HERE)
 GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
 search: Suche — Id, Stufe, Status, Wörter
+search.help: Eine ganze Id zeigt diesen Eintrag.
 view.by: nach {0}
 view.board: Tafel
 view.epic: Vorhaben
@@ -593,6 +706,7 @@ section.triaged: gesichtet
 section.backlog: Vorrat
 section.done: erledigt
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
+desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
@@ -602,6 +716,7 @@ group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
 count.around: rund um {0}
+count.id: Eintrag · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet
@@ -760,6 +875,22 @@ with tempfile.TemporaryDirectory() as d:
         else:
             os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
+
+# --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    (root / "shoalmark.toml").write_text((HERE / "examples/de/shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+    (root / "docs/work-tracker").mkdir(parents=True)
+    de_home = (HERE / "examples/de/TRIAGE.md").read_text(encoding="utf-8")
+    (root / "docs/work-tracker/TRIAGE.md").write_text(de_home, encoding="utf-8")
+    fm.configure(root); untouched = fm.triage_home()
+    (root / "docs/work-tracker/TRIAGE.md").write_text(re.sub(r"- \*\*für\*\* — \*z\. B\. [^*]*\*", "- **für** — die Ausleihe unserer Bücherei", de_home), encoding="utf-8")
+    one = fm.triage_home()["intent"]
+fm.configure(HERE)
+check("R10 · the German triage home carries the lead-in (the repository as a whole) and one example per line, in italics — a pass reads none of it, and one line of the Owner's as exactly that line",
+      "über das Repository als Ganzes" in de_home and all(f"- **{w}** — *z. B. " in de_home for w in ("für", "damit", "niemals"))
+      and all(x in de_home for x in (getattr(fm, "INTENT_NOTE_DE", "\0"), getattr(fm, "INTENT_LEAD_DE", "\0"), *getattr(fm, "INTENT_EXAMPLES_DE", ("\0",))))
+      and untouched["intent"] == "" and untouched["path"] == "" and one == "- **für** — die Ausleihe unserer Bücherei")
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
 with tempfile.TemporaryDirectory() as tmp:

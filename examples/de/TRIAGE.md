@@ -7,9 +7,14 @@ und die beiden Abschnitte darunter; seine Arbeitsblätter sind das Protokoll, in
 
 *Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*
 
-- **für** —
-- **damit** —
-- **niemals** —
+*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
+kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+lässt nur diese Einleitung und die unveränderten Beispiele aus.*
+
+- **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*
+- **damit** — *z. B. ein Mitglied ein Buch und die Bibliothekarin ein Mitglied mit einem Blick findet, und nichts Verliehenes verloren geht*
+- **niemals** — *z. B. verleihen, was der Katalog nicht führt, oder die Akte eines Mitglieds löschen, bevor seine letzte Ausleihe zurück ist*
 
 ## Der aktuelle Weg
 

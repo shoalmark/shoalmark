@@ -1,6 +1,7 @@
 # ein deutsches Board
 tagline: Arbeitsstand
-search: Suche — Id, Stufe, Status, Wörter
+search: Suche · ~Id
+search.help: Eine ganze Id zeigt diesen Eintrag. Was darauf verweist: ~Id (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.
 view.by: nach {0}
 view.board: Tafel
 view.epic: Vorhaben
@@ -26,6 +27,7 @@ section.triaged: gesichtet
 section.backlog: Vorrat
 section.done: erledigt
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
+desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
@@ -35,6 +37,7 @@ group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
 count.around: rund um {0}
+count.id: Eintrag · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet

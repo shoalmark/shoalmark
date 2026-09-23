@@ -1,6 +1,6 @@
 # Triage
 
-The home of the recurring triage pass: `python3 fathom_mark.py --triage`. The command prints the rules and the two sections
+The home of the recurring triage pass: `python3 shoalmark.py --triage`. The command prints the rules and the two sections
 below; its worksheets are the record, in `evidence/triage/`.
 
 ## The intent
