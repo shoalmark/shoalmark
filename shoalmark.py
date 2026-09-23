@@ -2519,8 +2519,12 @@ def session_cmd(words):
         top = git_out("rev-parse", "--show-toplevel")
         worktree = rest[4] if len(rest) == 5 else (pathlib.Path(top.strip()).name if top else ROOT.name)
         hand = sid.rsplit("/", 1)[-1] if "/" in sid else None
+        # convened by a SESSION, not a person: a sub-agent — its id derives from its parent's, or the independence report
+        # cannot see that the two are one run (R3: a sibling's verdict was read as independent of the builder)
+        parent = (re.search(r"\bsession\s+(" + SESSION_ID_RE.pattern + r")", convened) or [None, None])[1]
         why = ("is not a session id — letters, digits, `.`, `_`, `-`; a sub-agent's is `<parent>/<seat>-<n>`" if not SESSION_ID_RE.fullmatch(sid)
                else f"is already in {SESSIONS_NAME} — an id is used once" if sid in ids
+               else f"is convened by session {parent} — a sub-agent's id derives from its parent's: `{parent}/{seat}-<n>`" if parent and not sid.startswith(parent + "/")
                else f"names the hand `{hand}`, not the seat `{seat}` — a sub-agent's id is `<parent>/{seat}-<n>`" if hand and not re.fullmatch(rf"{re.escape(seat)}-\d+", hand)
                else f"is for the seat `{seat}`, which `[seats]` does not name" if SEATS and seat not in SEATS else "")
         clash = next((r for r in rows if r["open"] and r["worktree"] == worktree), None)
@@ -3017,7 +3021,7 @@ def parse_args(argv):
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--session", nargs="+", metavar="WORD",
-        help="a seat's session (FM-024): `--session new` prints an id no row carries — for a harness with no session id of its own; "
+        help="a seat's session (FM-024): a sub-agent derives its id from its parent's, `<parent>/<seat>-<n>`; `--session new` prints an id no row carries — for a session with no parent and a harness with no id; "
              "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`. "
              "`--session open <id> <seat> \"<convened by>\" \"<scope>\" [<worktree>]` writes its row in <tracker dir>/sessions.md and stages it — "
              "a sub-agent's id is `<parent>/<seat>-<n>`; `--session close <id>` dates its end")

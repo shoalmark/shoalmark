@@ -235,7 +235,8 @@ worktree carries a second setting beside its badge, and every commit made there 
 ```bash
 git config --worktree user.email principal@seat      # the seat — read by the gate for rights
 git config --worktree seat.session a9f3c2d1          # the session — the harness's session id, its first eight hex characters;
-                                                     # a harness with none: `<cmd> --session new` prints one no row carries
+                                                     # a sub-agent derives its id from its parent's: a9f3c2d1/reviewer-1;
+                                                     # a session with no parent and a harness with no id: `<cmd> --session new`
 ```
 
 **The trailer:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` to every
@@ -260,7 +261,8 @@ Started · Ended`. A session's first commit carries its row:
 <cmd> --session close a9f3c2d1                                     # dates its end; the row stays
 ```
 
-Each writes the row and stages the file. An id is used once; a worktree that an open row holds is refused to a second
+Each writes the row and stages the file. A session convened by a session (*session a9f3c2d1*) is a sub-agent, and its
+id must derive from its parent's — or the independence report cannot see that the two are one run. An id is used once; a worktree that an open row holds is refused to a second
 session — *one worktree per session*. The worktree defaults to the checkout's directory name.
 
 **The gate** holds it wherever the registry exists — a repository adopts it by opening its first session, and a commit

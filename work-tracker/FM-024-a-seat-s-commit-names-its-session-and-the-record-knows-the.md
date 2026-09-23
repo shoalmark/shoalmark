@@ -30,9 +30,11 @@ opened in the S3 commit, and every commit of this seat from S1+S2 on carries `Se
 - **Adoption is the registry's existence.** A tree without `sessions.md` is not judged, and neither is any commit made
   before the file existed in its tree. Without this, every consumer with `[seats]` would be refused on vendoring, and
   every merge bringing a seat commit from before 0.17.6 would turn `--check` red on its trunk.
-- **The implementer's id is `8d6537be` from `--session new`, not `a9/implementer-1`.** The coordinator's instruction:
-  the harness gave this sub-agent only its parent's id (`CLAUDE_CODE_SESSION_ID`, with `CLAUDE_CODE_CHILD_SESSION=1`).
-  S3's sub-agent form is supported and tested; it was not used here.
+- **The implementer's first id, `8d6537be` from `--session new`, was wrong** (the Reviewer's R3): the harness gave this
+  sub-agent its parent's id (`CLAUDE_CODE_SESSION_ID` = `8e509911…`, with `CLAUDE_CODE_CHILD_SESSION=1`), which is
+  exactly what S3's `<parent>/<seat>-<n>` needs. Row `8d6537be` is closed with that note, and the rest of the build
+  runs as `8e509911/implementer-1`. The commits `89e0586` … `0743a45` keep `Session: 8d6537be`: trailers are not
+  rewritten, so 0.17.6's own first verdict is no measurement of independence.
 - **The reviewed range** is the tip's own branch: from where its first-parent line meets the trunk's first-parent line
   (`origin/main`, else `main`, else `master`) to the tip, less other verdicts, so an earlier review on the branch is not
   counted as an author. **A third word, *untraced*,** for a verdict or a range that names no session: the report says
@@ -199,7 +201,7 @@ The design choices below are the Principal's, recorded so the Owner can strike a
 |---|---|---|
 | S1 | `seat.session` — a per-worktree git configuration value; `--init` and the README say so beside `user.email`. The id: the harness's session id, first eight hex characters, else `python3 shoalmark.py --session new` prints one. Uniqueness is checked against the registry only. | the id's source |
 | S2 | The trailer `Session: <id>` appended by a `prepare-commit-msg` hook the tool installs (`--install-hook` writes it beside the pre-commit hook); a consumer with its own hook runner gets one line to call `python3 shoalmark.py --session-trailer "$1"`. Never typed by hand; a commit that carries one already is left alone. | |
-| S3 | The registry `work-tracker/sessions.md`: `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]` writes a row and stages it; `--session close <id>` dates *ended*. A sub-agent's id is `<parent>/<seat>-<n>` (`a9/reviewer-1`): parent and hand, *convened by* = the parent session. | sub-agents carry parent and hand |
+| S3 | The registry `work-tracker/sessions.md`: `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]` writes a row and stages it; `--session close <id>` dates *ended*. A sub-agent's id is `<parent>/<seat>-<n>` (`a9/reviewer-1`): parent and hand, *convened by* = the parent session. The cost of breaking it, measured on this release: the implementer registered from `--session new` as `8d6537be`, and the independence report called the Reviewer's verdict *independent* of the builder though both were sub-agents of session `8e509911` — so `--session open` now refuses a session convened by a session unless its id derives from the parent's (R3). | sub-agents carry parent and hand |
 | S4 | The gate (`--check`, the pre-commit): a commit by a seat named in `[seats]` must carry a `Session:` whose row is open and whose seat is the author's; the Owner's commits are exempt; a worktree already open under another session is refused (*one worktree per session*). Exit 4 with the three messages of example e. | |
 | S5 | Abandoned rows: `--triage` and `--check` list open rows with no commit for more than a day; the next pass closes them and says so in its paragraph. Nothing closes silently. | who closes an abandoned row |
 | S6 | Verdicts: a review commit names the tip it judged with a `Reviewed: <sha>` trailer (the Reviewer types this one); `--check` computes the reviewed range's sessions (merge-base with `main` → tip) and **reports** each verdict as *independent* or *same session*; the board's line *reviews · independent n · same session m*. **A report, not a refusal** in 0.17.6 — the refusal is slice 2, after one week of counts. | count first, refuse later |
