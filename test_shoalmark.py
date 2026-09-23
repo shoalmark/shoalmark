@@ -443,6 +443,42 @@ with tempfile.TemporaryDirectory() as d:
           and clash[0] == fm.EXIT_LINT and "wt-a is open under session a9 — one worktree per session" in clash[2]
           and sorted(rows) == ["a9", "a9/reviewer-1", "d8"] and not rows["a9"]["open"] and re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d", rows["a9"]["ended"]) is not None
           and rows["a9/reviewer-1"]["open"] and rows["a9/reviewer-1"]["convened"] == "session a9" and rows["a9"]["scope"] == "the day's findings | the tool" and rows["d8"]["open"])
+
+# --- FM-024 S4: the gate — a seat's commit names an open session of its own seat, in a worktree no earlier session holds
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + '\n[seats]\nowner = "owner@example.org"\nprincipal = "principal@seat"\nreviewer = "reviewer@seat"\n')
+    tracker(root, "MSR-001"); run(root)
+    AS = lambda who: {"GIT_AUTHOR_NAME": who, "GIT_AUTHOR_EMAIL": who, "GIT_COMMITTER_NAME": who, "GIT_COMMITTER_EMAIL": who}
+    git(root, "add", "-A")
+    subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "before the registry: a seat's commit with no trailer, not judged"],
+                   env=dict(_ENV, **AS("principal@seat")), check=True)
+    session = lambda sid: subprocess.run(["git", "-C", str(root), "config", *(["seat.session", sid] if sid else ["--unset", "seat.session"])], env=_ENV)
+    grandfathered = run_safe(root, "--check", git_env=AS("principal@seat"))
+    (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
+                                                         "| a9 | principal | the Owner | the tool | wt-a | 2026-09-23 12:21 | — |\n"
+                                                         "| d8 | principal | the Owner | the product | wt-a | 2026-09-23 13:00 | — |\n"
+                                                         "| q7 | principal | the Owner | done | wt-q | 2026-09-22 09:00 | 2026-09-22 18:00 |\n")
+    git(root, "add", "docs/work-tracker/sessions.md")          # as `--session open` leaves it: staged, the commit being made carries it
+    seen = {}
+    for name, sid, who in (("no trailer", "", "principal@seat"), ("closed row", "q7", "principal@seat"), ("no row", "z1", "principal@seat"),
+                           ("collision", "d8", "principal@seat"), ("wrong seat", "a9", "reviewer@seat"), ("open row", "a9", "principal@seat"), ("the Owner", "", "owner@example.org")):
+        session(sid); seen[name] = run_safe(root, "--check", git_env=AS(who))
+    session("")
+    say = {k: v[2] for k, v in seen.items()}
+    check(f"FM-024 S4 · the gate refuses a seat's commit with no Session:, with a session whose row is closed or missing, of another seat, or in a worktree an earlier open row holds (saw exits { {k: v[0] for k, v in seen.items()} })",
+          all(seen[k][0] == fm.EXIT_LINT for k in ("no trailer", "closed row", "no row", "collision", "wrong seat"))
+          and "carries no Session: trailer — set `git config --worktree seat.session <id>`" in say["no trailer"] and "Session: q7 has no open row in docs/work-tracker/sessions.md" in say["closed row"]
+          and "Session: z1 has no open row" in say["no row"] and "wt-a is open under session a9 — one worktree per session" in say["collision"]
+          and "is open for the seat principal" in say["wrong seat"])
+    check(f"FM-024 S4 · …and passes an open row of the author's own seat, the Owner's commit with no session at all, and a seat's commit made before its tree had a registry (saw {seen['open row'][2]!r} {seen['the Owner'][2]!r})",
+          seen["open row"][0] == 0 and seen["the Owner"][0] == 0 and grandfathered[0] == 0 and "Session" not in seen["the Owner"][2])
+    git(root, "add", "-A")
+    subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "a seat's commit\n\nSession: z1"], env=dict(_ENV, **AS("principal@seat")), check=True)
+    made = run_safe(root, "--check")
+    check(f"FM-024 S4 · on a clean tree the commit at HEAD is judged by its own trailer against the registry in its own tree (saw {made[2].strip()[:160]!r})",
+          made[0] == fm.EXIT_LINT and "Session: z1 has no open row in docs/work-tracker/sessions.md" in made[2])
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"

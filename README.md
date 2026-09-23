@@ -261,6 +261,21 @@ Started · Ended`. A session's first commit carries its row:
 Each writes the row and stages the file. An id is used once; a worktree that an open row holds is refused to a second
 session — *one worktree per session*. The worktree defaults to the checkout's directory name.
 
+**The gate** holds it wherever the registry exists — a repository adopts it by opening its first session, and a commit
+made before its tree had a registry is not judged by it. A commit by a seat `[seats]` names — never the Owner's — must
+carry a `Session:` whose row is open and names the author's seat, in a worktree no earlier open row holds. Exit 4, and
+one of three lines:
+
+```text
+refused: this commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row (<cmd> --session open)
+refused: Session: q7 has no open row in work-tracker/sessions.md
+refused: worktrees/principal is open under session d8 — one worktree per session
+```
+
+It judges what the rights are judged on: the commit being made (by its worktree's `seat.session`, the trailer its hook
+will write), the commit at HEAD by its trailer, and every commit a merge brings, each against the registry in its own
+tree.
+
 ## 7. The one seam: a deriver
 
 The core knows nothing about releases, deploys or product areas. A repository that needs them puts one executable

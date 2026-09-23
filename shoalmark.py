@@ -2550,6 +2550,44 @@ def session_trailer(message_file):
         print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
     return r.returncode
 
+
+def trailers_of(commit, key):
+    """Every value of one trailer on one commit."""
+    out = git_out("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x1f)", commit)
+    return [v.strip() for v in (out or "").strip().split("\x1f") if v.strip()]
+
+
+def session_problems():
+    """The gate's three refusals (example e): a seat's commit — not the Owner's — must carry a `Session:` whose row is
+    open and is the author's seat, and whose worktree no earlier open row holds. Judged on every change the rights are
+    judged on (`changes_under_review`): the commit being made reads `seat.session`, the trailer its hook will write; a
+    made commit reads its trailer; each against the registry in its OWN tree — a tree with none is not judged."""
+    if not SEATS or vcs() != "git":
+        return []
+    rel, out = sessions_file().relative_to(ROOT).as_posix(), []
+    for _bases, _files, name, email, commit, result, label in changes_under_review():
+        seat = seat_of(name, email)
+        if seat in (None, "owner"):
+            continue
+        text = (sessions_file().read_text(encoding="utf-8") if sessions_file().exists() else None) if result is None else git_out("show", f"{result}:{rel}")
+        if text is None:
+            continue
+        rows, where = parse_sessions(text), (label + " — " if label else "")
+        sid = (trailers_of(commit, "Session") or [""])[0] if commit else (git_out("config", "--get", "seat.session") or "").strip()
+        who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
+        row = next((r for r in rows if r["id"] == sid), None)
+        if not sid:
+            out.append(f"{where}refused: {who} carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row ({CMD} --session open)")
+        elif row is None or not row["open"]:
+            out.append(f"{where}refused: Session: {sid} has no open row in {rel}")
+        elif row["seat"] != seat:
+            out.append(f"{where}refused: Session: {sid} is open for the seat {row['seat']}, and {who} is the seat {seat}")
+        else:
+            first = next(r for r in rows if r["open"] and r["worktree"] == row["worktree"])
+            if first is not row:
+                out.append(f"{where}refused: {row['worktree']} is open under session {first['id']} — one worktree per session")
+    return out
+
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
 
@@ -2688,6 +2726,7 @@ def lint(trackers, committing=False):
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
     problems += rights_problems(trackers)
+    problems += session_problems()                   # FM-024: a seat's commit names an open session of its own seat
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
