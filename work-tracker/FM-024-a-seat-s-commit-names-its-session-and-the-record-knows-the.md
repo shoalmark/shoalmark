@@ -227,6 +227,13 @@ The design choices below are the Principal's, recorded so the Owner can strike a
 Not in slice 1: the seat key in a container (FM-007's line, a second identity later); the refusal of same-session
 verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
 
+## Open items
+
+- **The Reviewer's R6 residue.** An 8-character all-hex token in *convened by* that is not a session id (an 8-digit
+  date such as 20260923, an 8-character commit hash) is read as a parent and refuses a top-level session; loud,
+  avoidable by wording; a 7-character hash or upper-case hex passes unread. Fix: read a parent only from a token that
+  is a registered session id, or require a letter a–f. 0.17.8 or later.
+
 ## What would decide it
 
 - Over one week: how many seat commits could not be traced to a convening word without the registry (today: all).
