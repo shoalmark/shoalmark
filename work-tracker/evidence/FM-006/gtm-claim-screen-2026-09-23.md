@@ -788,3 +788,59 @@ The glosses are there for the reader. **They are not twins, and nothing here is 
 
 **Provenance:** Seat: GtM · Session `ad81b142` · Model: Claude Opus 5.5 · 2026-09-23 · the third pass, on the Owner's
 direction.
+
+---
+
+## The reader, stated — 2026-09-23 22:59 CEST, session `d578f49e`
+
+**The Owner, quoted with his spelling normalised:** *"I have to pitch this and it must stick. German audience but
+English-fluent. Tech investor and well educated, so make this one count, no BS."*
+
+- **Until now,** every pass read the claim as the repository's owner and his fleet would read it.
+- **This addendum re-reads the survivors for the reader the Owner named.** It changes no verdict above, and it ranks
+  nothing.
+
+### What this reader changes
+
+1. **The German line has to beat the English, not just carry it.** A reader fluent in both hears a German line that
+   is weaker than the English as a translation. That costs the German page more than having no German line at all.
+2. **So the null candidate is live: the English bar on the German page too.**
+   - It passes G1 by construction, because nothing is translated.
+   - It costs FM-006's rule that German is *a full second language from the first page*, a rule written for the
+     first two outside owners, not for an investor.
+   - **That conflict is the Owner's to rule, not this seat's.**
+
+### The survivors, read by this reader
+
+| # | Line | What this reader hears | Class |
+|---|---|---|---|
+| N10 | *Hol mehr aus deinem Eigner raus.* | The consumer-flyer formula. It says *get more out of the human*, and not why that is a business | I |
+| N11 | *Dein Eigner bremst. Tunen statt tauschen.* | To a tech reader, *tunen* is performance tuning, and fine-tuning, before it is the car scene; the third pass's counterfact weighs less here. The line also meets this reader's first question, *why not replace the human with more autonomy?*, with a thesis: keep him, tune him. **Held to "no BS":** what the tool tunes is his intake (once a day, one sentence per question, one command per answer), and the page proves that | I |
+| N12 | *Bring deinem Eigner das Entscheiden bei.* | A clever inversion that states a mechanism the tool does not have. Nothing in the tool teaches anyone to decide; it batches and phrases the questions. **Read for this reader, it dies at G2:** an investor asks *how does it teach?*, and the page has no answer | I |
+
+**Survivors for this reader: N10 and N11, unranked, and the null candidate beside them.**
+
+### "No BS": what this reader will probe on the page, beyond the claim
+
+This is flagged here, not edited; the pitch is not this seat's to edit.
+
+- ***Measured, not promised* rests on one project,** the author's own, over *just over a day*, with 9 of 13 (`docs/index.md:13–18`).
+  - An educated investor reads n = 13 in one day, in the founder's own repository, as an anecdote.
+  - A heading that says *measured* over an anecdote is the overclaim this reader looks for first.
+  - **What would hold:** saying it at its size (*one project, our own, 9 of 13 in the first day*), or waiting for the
+    week's count.
+- **The *before* is a confession:** the author's own last 200 pull requests were merged unread. That is honest, and
+  it may be the strongest line on the page for this reader, *if* it is presented as the founder's own problem.
+- **One page, three registers.** The German page says *du* in the claim, *ihr* to the fleet and *Sie* to the Eigner.
+  An educated reader notices; it was ruled, and it is noted again only because this reader is new.
+
+### Not run
+
+- No investor has read anything.
+- No German native has read anything either.
+- No search for prior use of *Tunen statt tauschen*.
+
+**The Owner chooses.**
+
+**Provenance:** Seat: GtM · Session `d578f49e` · Model: Claude Opus 5.5 · 2026-09-23 · an addendum, on the Owner's
+statement of the reader.
