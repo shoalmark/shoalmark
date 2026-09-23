@@ -30,6 +30,10 @@ full second language from the first page, because the first two outside owners a
 signature proves which key, not which hand. On a machine agents use, `commit.gpgsign true` makes every agent commit
 verify as the Owner. The page says: sign on demand (`-S`), never by default, on such a machine.
 
+**The Owner's requirement for the site, 2026-09-23** (quoted, spelling normalised): *"The site is for humans, so this
+one has to be designed like a pitch and sell the idea. Easy, convenient and a one-shot integration mostly done through
+your agents."*
+
 ## Done when
 
 The site builds in CI from `docs/` and is served; the README is rendered there and not copied; `llms.txt` and the
@@ -40,6 +44,7 @@ one outside Owner has followed the setup page without asking anything.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **The next slice is the pitch**, on the Owner's requirement above: one page an Owner reads in five minutes — the measured claim, the one-shot setup his agents run, what he signs, what an answer costs him; German first. Not built tonight. The pages are eight releases stale (0.17.0 → 0.17.8), and Pages deploys only for a public repository (D5). |
 | 2026-09-23 | **The human pages open from a file** (the Owner's finding: *"clicking links does not work currently because it tries to open files"*): `use_directory_urls = false` — links are `setup.html`, not `setup/` — and `navigation.instant` dropped, whose page fetches `file://` blocks. Built with Zensical 0.0.64: the start page's local links are all `.html` and 133 of 145 local links across the site resolve to files on disk (the 12 others are `404.html`'s absolute `/shoalmark/…` paths, for Pages); a click on *Set up* in headless Chrome from `file://…/site/index.html` opens `setup.html`. The setup pages (EN, DE) say how to open or serve the built site. The content refresh is the next slice. |
 | 2026-09-22 | The site builds green in CI; Pages refuses a private repository (*"Upgrade or make this repository public"*). The deploy step waits for the public release, by condition in the workflow. **Ruled the same hour: CI runs only on a ready pull request and on a release tag — minutes are paid for; the site builds on a tag.** |
 | 2026-09-22 | Filed; Zensical tried on a scratch build first (0.3 s, search and dark mode in, four anchor warnings from the README); the signing page written. |
