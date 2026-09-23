@@ -157,7 +157,19 @@ python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git 
 ```
 
 Then **the Owner** writes the intent and the current path in `<tracker dir>/TRIAGE.md`. Nobody else edits those two
-sections. Upgrade: `--vendor` again (it prints what changed since the version it replaces and refuses a copy that
+sections. The intent is three lines in his own words about the repository as a whole, never one feature of it: what
+this repository, all of it, is for · what is true when it works · what no pass or seat may do to get there. `--init`
+writes an example in italics, a whole product, for him to overwrite:
+
+```markdown
+- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*
+- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*
+- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*
+```
+
+Until he writes words of his own, the examples are not read as an intent.
+
+Upgrade: `--vendor` again (it prints what changed since the version it replaces and refuses a copy that
 was edited in place), then `--init` again to refresh the contract between its markers — your text outside them is kept.
 
 What lives where, by convention — no setting names any of it:

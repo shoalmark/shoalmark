@@ -2848,9 +2848,13 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 *The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
 
-- **for** —
-- **so that** —
-- **never** —
+*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of
+it, is for · what is true when it works · what no pass or seat may do to get there. The example is a whole product;
+overwrite it.*
+
+- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*
+- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*
+- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*
 
 ## {path}
 
