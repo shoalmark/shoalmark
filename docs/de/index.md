@@ -15,7 +15,7 @@ shoalmark sammelt diese Fragen, legt sie Ihnen einmal am Tag vor, und jede Antwo
 In einem Projekt, das shoalmark nutzt:
 
 - **Vorher:** Die letzten 200 Pull Requests wurden ungelesen gemergt, keiner wurde geprüft.
-- **Danach, in anderthalb Tagen:** 9 von 13 Pull Requests hatten eine Reviewer-Datei, bevor sie geöffnet wurden.
+- **Danach, in gut einem Tag:** 9 von 13 Pull Requests hatten eine Reviewer-Datei, bevor sie geöffnet wurden.
 
 Was shoalmark dazu ausgibt, jeden Tag:
 
