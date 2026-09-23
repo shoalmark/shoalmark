@@ -26,6 +26,7 @@ section.triaged: gesichtet
 section.backlog: Vorrat
 section.done: erledigt
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
+desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen

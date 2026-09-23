@@ -403,6 +403,33 @@ if _CHROME:
         check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
               sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
 
+# --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
+if _CHROME:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve()
+        run(root, "--init", "--key", "msr")
+        tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", title="Stock is counted per shelf")
+
+        def progress_line():
+            run(root)
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
+                                 (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
+            return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
+        before = progress_line()
+        tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
+        after = progress_line()
+        check(f"FM-021 · work in progress and no pass run: the empty progress section says why, and names the command (saw: {before!r})",
+              before == "empty until a first triage pass has run — --triage")
+        check(f"FM-021 · …and once one tracker carries a pass's date, the line is its usual one again (saw: {after!r})",
+              after == "kept by triage — by rank, then tier")
+        (root / "docs/work-tracker/MSR-003-x.md").unlink()
+        home = root / "docs/work-tracker/TRIAGE.md"
+        home.write_text(home.read_text(encoding="utf-8").replace("*None yet.*", "2026-09-20 — a pass judged one tracker; worksheet `evidence/triage/triage-2026-09-20.md`."), encoding="utf-8")
+        passed = progress_line()
+        check(f"FM-021 · …and so it is when TRIAGE.md records a pass, though no tracker carries its date any more (saw: {passed!r})",
+              passed == "kept by triage — by rank, then tier")
+
 # --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
 DERIVER = """#!/usr/bin/env python3
 import json, subprocess, sys, os
@@ -615,6 +642,7 @@ section.triaged: gesichtet
 section.backlog: Vorrat
 section.done: erledigt
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
+desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen

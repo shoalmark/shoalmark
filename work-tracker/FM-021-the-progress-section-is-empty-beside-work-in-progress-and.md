@@ -1,9 +1,9 @@
 ---
 id: FM-021
-status: Proposed
+status: In Progress
 considered: FM-002, FM-005, FM-006, FM-009
 tags: bug
-next: build
+next: review
 hook: "The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that the section stays empty until a first triage pass has run. The Owner read it as a defect."
 ---
 
@@ -11,8 +11,22 @@ hook: "The board says 13 trackers are in progress, and its progress section besi
 
 ## What is true now
 
-**Filed 2026-09-23; nothing is built.** The Principal chose the fix: a line that says why the section is empty.
-The rule itself stays.
+**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; open for review, not
+merged.** The Principal chose the fix: a line that says why the section is empty. The rule itself stays. While no
+tracker carries `triaged:` and `TRIAGE.md` records no pass (`LAST` and `HOME.last` both empty), the board's
+`progress` line reads *empty until a first triage pass has run — --triage* (German: *leer, bis eine erste Sichtung
+gelaufen ist — --triage*), under the new label `desc.progress.none`. Otherwise it reads as before. Only the page
+changes. `INDEX.md` and `board()` do not.
+
+| check | result |
+|---|---|
+| Chrome: two trackers `In Progress`, no pass | the new line. On 0.17.4: *kept by triage — by rank, then tier* (fails, as it should) |
+| Chrome: one tracker carries `triaged:` | the usual line |
+| Chrome: no `triaged:` left, but `TRIAGE.md` records a pass | the usual line |
+| `test_core.py`, for a machine without a browser | the condition and the label are in the page; fails on 0.17.4 |
+| key parity: the shipped German table and the suite's German fixture | both carry `desc.progress.none` (the fixture gained that one line) |
+
+**What is left:** review, merge, the tag.
 
 **The rule, on purpose.** `board()` (`shoalmark.py:606–614` at 0.17.4) puts `In Progress` work under `progress` only
 once a pass has dated it with `triaged:`. Until then the work sits under `triage`. `owed_a_pass()` (:598–603) is the
@@ -42,3 +56,4 @@ A section that is empty by design has to say so. Otherwise it reads as a defect 
 | Date | Event |
 |---|---|
 | 2026-09-23 | Filed. |
+| 2026-09-23 | Built: the empty `progress` line says why while no pass has run, in English and German; three Chrome checks and a string check, shown to fail on 0.17.4. |
