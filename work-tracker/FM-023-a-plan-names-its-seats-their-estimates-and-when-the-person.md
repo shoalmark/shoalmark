@@ -42,10 +42,11 @@ what to take in. Without it, the same information is typed into chat twice a day
 
 ## Candidates — to be attacked, none chosen
 
-1. **A `## Plan` section the tool reads:** one table per tracker — step · seat · estimate (a clock time or a duration) ·
-   actual · the person's window (`needed: owner ≈ 15:30–16:00 — open + merge, tag`). The board and `--owner` print the
-   next window; a seat's report writes the actual. Cost: a parser, two board lines, one label pair. Risk: a plan nobody
-   updates becomes a stale promise.
+1. **A `plan:` line in the front matter the tool parses** (pipe-separated steps: step · seat · estimate · actual, the
+   `ask-options:` idiom) plus a `## Plan` table in the body for the step texts; *needed* derived from the owner's rows and
+   drawn on the board and in `--owner`; a seat's report writes its actual. The examples below. Cost: a parser (~40 lines),
+   a board strip (~15), one label pair. Risk: a plan nobody updates becomes a stale promise — the gate's append-only rule
+   for estimates makes the staleness visible, not impossible.
 2. **Front matter only:** `plan-next: owner 2026-09-23 15:30–16:00 "open + merge, tag"` — one line the board reads; the
    split stays prose. Cheapest; carries one window, not the split.
 3. **Ship-log rows by convention** (`estimate:` / `actual:` prefixes a scorer greps). No code; nothing prints *when you
@@ -61,10 +62,22 @@ what to take in. Without it, the same information is typed into chat twice a day
 
 ## Examples — how candidate 1 would look, on the Owner's ask (illustrative, nothing is built)
 
-One front-matter line the tool reads and prints on the board and in `--owner` (*needed: owner ≈ 15:30–16:00 — …*), and one
-`## Plan` table in the body that people and seats edit. Estimates are never overwritten: a re-estimate is appended in the
-same cell with its time, so the record keeps both. Times are clock times of the day the plan is written; a plan that
-spans days carries dates.
+**The Owner's requirement for the examples:** the plan is drawn on the board, so it must live in the front matter, where
+the tool parses it. The shape below keeps the tool's own idiom — one key, pipe-separated items, a fixed field order inside
+each item (as `ask-options:` does) — so today's line parser reads it without a YAML library:
+
+```
+plan: "<step> · <seat[+seat][@session]> · <estimate> · <actual> | <step> · … "
+```
+
+- `<step>` — a number for seat work, `W<n>` for a window of the person; the body's `## Plan` table carries each step's
+  text and notes under the same key.
+- `<seat>` — a seat name from `[seats]`; several joined with `+`; `@A` names the session when more than one runs.
+- `<estimate>` — a clock time `≈15:30`, a range `15:30–16:00`, or a duration `~15m`; a re-estimate is **appended**, never
+  overwritten: `≈15:30→15:40@14:38`. `<actual>` — a clock time or range once done, `—` until then.
+- `plan-by:` who estimated and when · `plan-updated:` the newest update · `plan-closed:` when every actual is in.
+- **Nothing else is written for the board:** *needed* is **derived** — the owner's `W` rows in clock order, the next one
+  first — and printed on the board and in `--owner` as *needed: owner 15:40–16:00 — tag*.
 
 ### a. The estimate, as filed before the work (12:55)
 
@@ -73,50 +86,42 @@ spans days carries dates.
 id: FM-0xx
 status: In Progress
 next: build
-needed: "owner 15:30–16:00 — open + merge the release PR, tag v0.17.5; then 16:30–17:00 — open + merge the pin PR"
+plan-by: principal 2026-09-23 12:55
+plan: "1 · research · ≈13:05 · — | 2 · principal · ≈13:30 · — | 3 · implementer · ≈14:30 · — | 4 · reviewer+implementer · ≈15:30 · — | W1 · owner · 15:30–16:00 · — | 5 · implementer+reviewer · ≈16:30 · — | W2 · owner · 16:30–17:00 · —"
 ---
 
 ## Plan
 
-*Estimated 12:55 by the Principal seat. Moves it: a P1 from the Reviewer (+1 h) · the search fix being template
-surgery rather than a filter (+1 h) · the triage pass finding more than the two issues worth fixing today (the rest is
-filed, not built).*
+*Moves it: a P1 from the Reviewer (+1 h) · the search fix being template surgery rather than a filter (+1 h) · the
+triage pass finding more than the two issues worth fixing today (the rest is filed, not built).*
 
-| # | Step | Seat | Estimate | Actual | Note |
-|---|---|---|---|---|---|
-| 1 | Research: the triage state, the two board issues | research | ≈ 13:05 | | |
-| 2 | Filings for the two issues; the first triage pass | principal | ≈ 13:30 | | |
-| 3 | Build the release on a branch | implementer | ≈ 14:30 | | |
-| 4 | Review, one fix round, verification of the final tree | reviewer · implementer | ≈ 15:30 | | |
-| W1 | **Open + merge the release PR, tag** | **owner** | **15:30–16:00** | | |
-| 5 | Vendor the tag into the consumer as its own pin PR; review | implementer · reviewer | ≈ 16:30 | | |
-| W2 | **Open + merge the pin PR** | **owner** | **16:30–17:00** | | before 07:30 |
+| # | Step | Note |
+|---|---|---|
+| 1 | Research: the triage state, the two board issues | |
+| 2 | Filings for the two issues; the first triage pass | |
+| 3 | Build the release on a branch | |
+| 4 | Review, one fix round, verification of the final tree | |
+| W1 | **Open + merge the release PR, tag** | |
+| 5 | Vendor the tag into the consumer as its own pin PR; review | |
+| W2 | **Open + merge the pin PR** | before 07:30 |
 ```
 
-### b. An update while it runs (14:38) — the cells that change, and the one line the board reads
+*What the board draws from it:* one lane per seat, each step a bar from its estimate; the owner's rows as a strip at the
+top — **needed: owner 15:30–16:00 — tag · 16:30–17:00 — the pin PR**; the digest prints the next window only.
+
+### b. An update while it runs (14:38) — the two lines that change
 
 ```diff
--needed: "owner 15:30–16:00 — open + merge the release PR, tag v0.17.5; then 16:30–17:00 — open + merge the pin PR"
-+needed: "owner 15:40–16:00 — open + merge the release PR, tag v0.17.5; then 16:40–17:10 — open + merge the pin PR"
-
--*Estimated 12:55 by the Principal seat. Moves it: …*
-+*Estimated 12:55 by the Principal seat · updated 14:38 (two fix-and-verify rounds the estimate did not have). Moves it: …*
-
--| 1 | Research: the triage state, the two board issues | research | ≈ 13:05 | | |
-+| 1 | Research: the triage state, the two board issues | research | ≈ 13:05 | 13:00 | |
--| 2 | Filings for the two issues; the first triage pass | principal | ≈ 13:30 | | |
-+| 2 | Filings for the two issues; the first triage pass | principal | ≈ 13:30 | 13:33 filings · pass deferred | the pass waits for the release — the Owner's word, 14:40 |
--| 3 | Build the release on a branch | implementer | ≈ 14:30 | | |
-+| 3 | Build the release on a branch | implementer | ≈ 14:30 | 13:44 | one more tracker taken in mid-flight (the Owner's finding) |
--| 4 | Review, one fix round, verification of the final tree | reviewer · implementer | ≈ 15:30 | | |
-+| 4 | Review, one fix round, verification of the final tree | reviewer · implementer | ≈ 15:30 → ≈ 15:40 (14:38) | 14:12 pass · 14:36 fixes · 15:10 NOT READY, one P2 | a second round; the estimate had one |
--| W1 | **Open + merge the release PR, tag** | **owner** | **15:30–16:00** | | |
-+| W1 | **Open + merge the release PR, tag** | **owner** | **15:30–16:00 → 15:40–16:00 (14:38)** | | |
+-plan: "1 · research · ≈13:05 · — | 2 · principal · ≈13:30 · — | 3 · implementer · ≈14:30 · — | 4 · reviewer+implementer · ≈15:30 · — | W1 · owner · 15:30–16:00 · — | 5 · implementer+reviewer · ≈16:30 · — | W2 · owner · 16:30–17:00 · —"
++plan: "1 · research · ≈13:05 · 13:00 | 2 · principal · ≈13:30 · 13:33 | 3 · implementer · ≈14:30 · 13:44 | 4 · reviewer+implementer · ≈15:30→15:40@14:38 · — | W1 · owner · 15:30–16:00→15:40–16:00@14:38 · — | 5 · implementer+reviewer · ≈16:30→16:40@14:38 · — | W2 · owner · 16:30–17:00→16:40–17:10@14:38 · —"
++plan-updated: principal 2026-09-23 14:38
 ```
 
-*Who writes an update:* the seat whose step moved, in its own report commit — the actual into its row, a re-estimate only
-by the seat that owns the plan (here the Principal), the `needed:` line whenever a window moves. The board shows the
-newest `needed:` and, beside it, how many times it moved.
+The body table gains its notes in the same commit (*step 2: the pass deferred — waits for the release, the Owner's
+word 14:40 · step 3: one more tracker taken in mid-flight · step 4: a second round the estimate did not have*).
+*Who writes it:* the seat whose step finished writes its actual in its own report commit; only the seat named in
+`plan-by:` re-estimates; a window moves only by a re-estimate. The board shows the newest window and, beside it, how
+many times it moved (`→` count).
 
 ### c. The record of a finished tracker (closed the same evening)
 
@@ -124,30 +129,17 @@ newest `needed:` and, beside it, how many times it moved.
 ---
 id: FM-0xx
 status: Shipped
-needed: none
-plan-closed: 2026-09-23 17:05
+plan-by: principal 2026-09-23 12:55
+plan-updated: principal 2026-09-23 15:12
+plan-closed: principal 2026-09-23 17:05
+plan: "1 · research · ≈13:05 · 13:00 | 2 · principal · ≈13:30 · 13:33 | 3 · implementer · ≈14:30 · 13:44 | 4 · reviewer+implementer · ≈15:30→15:40@14:38 · 15:52 | W1 · owner · 15:30–16:00→15:40–16:00@14:38 · 15:58–16:04 | 5 · implementer+reviewer · ≈16:30→16:40@14:38 · 16:41 | W2 · owner · 16:30–17:00→16:40–17:10@14:38 · 16:58–17:04"
 ---
-
-## Plan
-
-*Estimated 12:55 by the Principal seat · updated 14:38, 15:12 · closed 17:05. Seat time: estimated 3–4 h, actual 4 h 10.
-Owner time: estimated 2 windows × 30 min, actual 2 × 6 min at the keyboard (buttons), 55 min of chat around them.
-Largest miss: step 4, +1 h 10 — two rounds where one was estimated; the cause is in FM-0yy's ship log.*
-
-| # | Step | Seat | Estimate | Actual | Note |
-|---|---|---|---|---|---|
-| 1 | Research: the triage state, the two board issues | research | ≈ 13:05 | 13:00 | −5 min |
-| 2 | Filings for the two issues; the first triage pass | principal | ≈ 13:30 | 13:33 filings · pass deferred | moved to its own tracker |
-| 3 | Build the release on a branch | implementer | ≈ 14:30 | 13:44 | −46 min; one tracker added mid-flight |
-| 4 | Review, one fix round, verification of the final tree | reviewer · implementer | ≈ 15:30 → ≈ 15:40 (14:38) | 15:52 READY TO TAG | +22 min on the re-estimate; two rounds |
-| W1 | **Open + merge the release PR, tag** | **owner** | **15:30–16:00 → 15:40–16:00 (14:38)** | 15:58–16:04 | 6 min at the keyboard |
-| 5 | Vendor the tag into the consumer as its own pin PR; review | implementer · reviewer | ≈ 16:30 | 16:41 | +11 min |
-| W2 | **Open + merge the pin PR** | **owner** | **16:30–17:00 → 16:40–17:10 (14:38)** | 16:58–17:04 | before 07:30 ✓ |
 ```
 
-*What the closed record gives the next plan:* per seat, the estimate error over this arc (research −5 · implementer −46,
-+11 · reviewer + implementer +22 on a re-estimate · owner 6 min per window against 30 estimated). Ten such arcs and
-*what to take in* is arithmetic; the board's *needed* line can then carry a margin the record earned.
+*What the tool derives from a closed plan, per seat:* the estimate error (research −5 min · implementer −46, +11 ·
+reviewer+implementer +22 on the re-estimate · owner 6 min at the keyboard per window against 30 estimated); the count of
+re-estimates (1); the largest miss (step 4). Ten closed plans and the board can print a margin the record earned beside
+every new *needed* line — that is the feedback the Owner asked for.
 
 ### d. An extract for a multi-session tracker — two sessions of one seat, one Owner
 
@@ -155,28 +147,40 @@ Largest miss: step 4, +1 h 10 — two rounds where one was estimated; the cause 
 ---
 id: FM-0xx
 status: In Progress
-needed: "owner 15:40–16:00 — tag (session A) · his own slot — the hands sitting, ~15 min (session B) · 16:40–17:10 — the pin PR (session A)"
+plan-by: principal@A 2026-09-23 12:55
+plan: "A1 · implementer+reviewer@A · ≈15:40 · 15:52 | W1 · owner · 15:40–16:00 · — | B1 · implementer+reviewer@B · ≈16:00 · 12:22 | B2 · principal@B · ≈12:30 · 12:12 | WB · owner · ~15m · — | A2 · implementer+reviewer@A · ≈16:40 · — | W2 · owner · 16:40–17:10 · —"
 ---
 
 ## Plan
 
 *Two Principal sessions run today by the Owner's design — A on the day's findings and the tool, B on the product items.
-Each session owns its rows and writes only those; the `needed:` line merges every session's windows in clock order,
-and ONE session reports to the Owner per topic (session A for this tracker). A row's seat names its session.*
+A session writes only the steps that carry its `@` mark; the owner's `W` rows are anyone's to read and one session's
+to move — the one named in `plan-by:`. A window without a clock (`~15m`) is the Owner's own slot.*
 
-| # | Step | Seat · session | Estimate | Actual | Note |
-|---|---|---|---|---|---|
-| A1 | Build, review, tag the release | implementer · reviewer · **A** | ≈ 15:40 | 15:52 ready | |
-| W1 | **Tag the release** | **owner** (A reports) | **15:40–16:00** | | |
-| B1 | The negative-control build, its review, the pre-registration | implementer · reviewer · **B** | ≈ 16:00 | 12:22 pushed | early; waits on B2 |
-| B2 | The run sheet for the Owner's hands — four reads, one command each | principal **B** | ≈ 12:30 | 12:12 pushed | |
-| WB | **The hands sitting — its own slot, outside the standup budget** | **owner** (B reports) | **his slot, ~15 min** | | not a standup item |
-| A2 | Vendor the tag into the consumer; review | implementer · reviewer · **A** | ≈ 16:40 | | |
-| W2 | **Open + merge the pin PR** | **owner** (A reports) | **16:40–17:10** | | before 07:30 |
+| # | Step | Note |
+|---|---|---|
+| A1 | Build, review, tag the release | |
+| W1 | **Tag the release** | A reports |
+| B1 | The negative-control build, its review, the pre-registration | early; waits on B2 |
+| B2 | The run sheet for the Owner's hands — four reads, one command each | |
+| WB | **The hands sitting — its own slot, outside the standup budget** | B reports; not a standup item |
+| A2 | Vendor the tag into the consumer; review | |
+| W2 | **Open + merge the pin PR** | A reports; before 07:30 |
 ```
 
-*The rule the extract carries:* windows are the Owner's, in one line, in clock order, whoever's session they came from;
-a session never edits another session's row; a collision (two sessions, one row) is a finding, not an update.
+*What the board draws:* **needed: owner 15:40–16:00 — tag (A) · your own slot ~15 min — the hands sitting (B) ·
+16:40–17:10 — the pin PR (A)** — every session's windows in one strip, in clock order, slots without a clock last.
+*The rule the extract carries:* a session never edits another session's step; two sessions writing one step is a
+finding, not an update.
+
+### What the parser needs (for the Reviewer to attack)
+
+One key, one regex per field, no YAML: split on `|`, then on `·`; step `^(W?[A-Z]?\d+)$`; seats `^[a-z]+(\+[a-z]+)*(@[A-Z])?$`
+against `[seats]`; estimate `^(≈\d\d:\d\d|\d\d:\d\d–\d\d:\d\d|~\d+[mh])(→…@\d\d:\d\d)*$`; actual `^(—|\d\d:\d\d(–\d\d:\d\d)?)$`.
+The gate refuses a `plan:` whose seat is not in `[seats]`, whose `W` row's seat is not the owner, or whose estimate was
+edited rather than appended (the previous commit's value must be a prefix of the new one). About 40 lines and one label
+pair; the board's strip about 15 lines of the template. Unproven: whether a person reads a 200-character line — the body
+table is the readable copy, and the gate can check the two agree on the step keys.
 
 ## Done when
 
@@ -188,5 +192,5 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
-| 2026-09-23 | **Four worked examples added on the Owner's ask** — the estimate as filed, an update while it runs, the finished record, a multi-session extract — all illustrative of candidate 1, nothing built. |
+| 2026-09-23 | **Four worked examples added on the Owner's ask, then reworked on his second word — *it must be visual on the board, so it must be in the front matter to be parseable*:** the plan is one `plan:` line (pipe-separated steps, fixed field order, re-estimates appended), *needed* is derived from the owner's rows, the body table holds only step texts; the estimate as filed, an update, the finished record with per-seat error, a multi-session extract, and what the parser needs. Illustrative; nothing built. |
 | 2026-09-23 | Filed on the Owner's requirement, tagged `research`, with the instance that raised it as its first evidence. Held against FM-004 (adoption), FM-005 (the person asked mid-flight), FM-006 (a page for the humans). Not built this week — the current path's line 2: tracked, not built. |
