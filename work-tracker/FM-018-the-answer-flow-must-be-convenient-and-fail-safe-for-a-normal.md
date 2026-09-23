@@ -33,6 +33,10 @@ fail-safe."*
 6. the board on his main branch offered an ask he had already answered (FM-016);
 7. the dialog's last button was *abort* (FM-013).
 
+**Open, from [FM-013](FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md) (shipped in 0.17.4):** the
+dialog's second screen is not proven with a real clipboard in the Owner's browser, at phone width, or against the live
+signing page, which is served only once the documentation site is public.
+
 **The Principal's candidate, NOT chosen:** `--answer` finds the branch that carries the ask, commits in a **temporary
 `git worktree`** of that branch — signed, with the Owner's identity and key — pushes `answer/<id>`, and removes the
 worktree whether it succeeded or failed. No switch, no checkout hook in his tree, nothing left behind; and a branch a
@@ -55,4 +59,5 @@ routed around the gate is the one thing the gate exists to prevent.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | FM-013's three unproven points joined the open items (R9). |
 | 2026-09-23 | Filed from the Owner's morning and his words; FM-012, FM-013, FM-016 and FM-017 named as its parts. The design is his to rule. |

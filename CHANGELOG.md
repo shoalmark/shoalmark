@@ -2,6 +2,78 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.7 — 2026-09-23
+
+- **A consumer's secret-shape gate read the trailer query as a credential** and refused the vendored `shoalmark.py`:
+  the tool asked git to filter trailers by key, a `<name>=<value>` shape in the source. It now reads git's plain
+  trailer block and picks `Session:` and `Reviewed:` in Python — the same values, in the same order.
+- Nothing to do: no setting, label or command changed.
+
+## 0.17.6 — 2026-09-23
+
+**A seat's commit names its session, and the record knows the session** (FM-024, slice 1). The seat says who may; it
+could not say which run — two sessions of one seat are one author in git, and a Reviewer run as a sub-agent of the
+author's session looked as independent as any other.
+
+- **`seat.session`, a second per-worktree setting beside the badge.** `git config --worktree seat.session <id>` — the
+  harness's session id, its first eight hex characters; `--session new` prints one no row carries. `--init` names
+  both settings.
+- **The trailer.** `--install-hook` now also writes a `prepare-commit-msg` hook that appends `Session: <id>` to every
+  commit made in a worktree with `seat.session` — nothing where it is unset (the Owner's checkout), nothing when the
+  message carries one. *A repository with its own hook runner calls `--session-trailer "$1"` from its
+  prepare-commit-msg hook; README §6 gives the lefthook line. Run `--install-hook` again to get the hook.*
+- **The registry, `<tracker dir>/sessions.md`.** `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]`
+  writes a row and stages it; `--session close <id>` dates its end. A sub-agent's id is `<parent>/<seat>-<n>`:
+  when *convened by* carries a session id (eight hex characters, or `<id>/<seat>-<n>`), `--session open` refuses an id
+  that does not derive from it — a plain word never names a parent. An id
+  is used once; a worktree an open row holds is refused to a second session.
+- **The gate, where the registry exists.** A seat's commit — never the Owner's — must carry a `Session:` whose row is
+  open and names the author's seat, in a worktree no earlier open row holds; exit 4 otherwise, with one of three
+  lines. Judged on the commit being made, the commit at HEAD and every commit a merge brings, each against the
+  registry in its own tree. A seat's commit that removes the registry, drops a row or re-opens an ended one is refused
+  and judged against its parent's registry: only the Owner removes it. *Nothing changes for your repository until it opens its first session: a tree without
+  `sessions.md` is not judged, and neither is any commit made before the file existed.* The pre-commit hook runs the
+  session rule on every commit, a tracker staged or not (`--session-check`, cheap: no tracker is read). *With your own
+  hook runner, add that line to its pre-commit as well; README §6 has both lines.*
+- **Abandoned rows.** An open row with no commit for a day: `--check` lists it, the next `--triage` closes it —
+  *closed by the pass of <date>* — and prints it for the pass's paragraph.
+- **Verdicts reported, not refused.** A review commit names the tip it judged with `Reviewed: <sha>`. `--check`
+  reports each verdict of the last `triage_days` days as *independent*, *same session* (its session root is one of the
+  reviewed branch's own commits' — never what the branch merged in from the trunk), *untraced*, or *on trunk* for a
+  tip on the trunk's first-parent line. The refusal of a same-session verdict is a later slice, after a week of counts.
+- **Seen.** The board's first lines name the open sessions (seat, scope, an abandoned one marked) and count the week's
+  verdicts; `--owner` ends with the open sessions by seat. **Labels:** five new — `sessions.open`,
+  `sessions.abandoned`, `reviews.week`, `reviews.untraced`, `reviews.trunk` — in English and in `examples/de/labels.yaml`.
+
+## 0.17.5 — 2026-09-23
+
+**One id finds one row, and an empty section says why.** Two things an Owner read as defects on his board, and the
+intent he found hard to start.
+
+- **A whole id in the board's search shows that tracker alone.** The search matched each word as a substring of
+  about thirty fields of a row, the ids its body links to among them. So an id found its own row **and every row
+  that links to it**: `FM-005` showed itself and every row that links to it, on a large board most of the list. A
+  query that is exactly one known id (trimmed, any case) now shows that tracker alone, whether or not it is open. A
+  partial id (`FM-00`) and a query of several words still match by substring. The full help is the search box's
+  tooltip; the placeholder, `search · ~ID`, fits the box at its 200 px minimum. *What links to an id is `~ID`: what its body links to and what links to it, by Markdown link only.
+  A story's chapters are the story view. A chapter's `epic:`, a `blocked-by:` or an id in plain text is in neither.*
+- **The empty `progress` section says why.** `progress` holds only what a triage pass kept, so until a first pass
+  has run it reads 0 beside work in progress. While no tracker carries `triaged:` and `TRIAGE.md` records no pass,
+  its line now reads *empty until a first triage pass has run — --triage*. The rule is unchanged. `INDEX.md`,
+  `--triage` and the board still agree on what is owed a pass.
+- **`--init` gives the intent a way in.** The three lines were bare: `for —` · `so that —` · `never —`. The scaffold
+  now opens them with a lead-in: they describe the repository as a whole, what all of it is for, what is true when
+  it works, and what no pass or seat may do to get there. Each line carries an example in italics, a whole product
+  to overwrite. **The intent a pass prints is what the Owner wrote — only the scaffold's own lead-in and examples
+  are left out**, recognised by their exact text, never by italics, bold or length. So an untouched scaffold is no
+  intent, one line of his own is that line alone, and an example with one word changed is his. *`--triage` no
+  longer prints the template's italic note above your intent. A `TRIAGE.md` you already have is never rewritten;
+  README §6 carries the lead-in and the example, and `examples/de/TRIAGE.md` carries them in German.*
+- **Labels:** three new labels, `desc.progress.none`, `count.id` (the counter over an id searched alone:
+  *1 tracker · <id>*) and `search.help` (the search box's tooltip: the whole help), and `search` shortened to fit
+  the box at its 200 px minimum. All in English and in `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets
+  `search` keeps its old hint. One without the new labels shows the English words.*
+
 ## 0.17.4 — 2026-09-23
 
 **The answer says what it does** — the Owner's one command, and everything around it, met by an Owner on one morning.

@@ -6,6 +6,7 @@ triage_days = 7
 owner = "holgoijo@gmail.com signed"
 principal = "principal@seat"
 implementer = "implementer@seat"
+reviewer = "reviewer@seat"
 
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"

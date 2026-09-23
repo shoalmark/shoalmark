@@ -1,9 +1,8 @@
 ---
 id: FM-017
-status: In Progress
+status: Shipped
 considered: FM-012, FM-016, FM-013
 tags: bug
-next: review
 hook: "When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with the Owner's answer, the INDEX.md the hook rewrote, and a new `answer/<id>` with no commit of its own, checked out. His next `--answer`, on another ask, is refused with *the working tree has changes* — no paths, no word that the changes are the tool's own, and his answer text nowhere on screen."
 ---
 
@@ -11,7 +10,7 @@ hook: "When the pre-commit gate refuses the commit, `--answer` returns and leave
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`, for 0.17.4; open for review, not merged.** It hit the
+**Built 2026-09-23 on `fix/0.17.4-the-answer-says-what-it-does`; merged 2026-09-23 (#12), released as 0.17.4.** It hit the
 Owner the same day.
 
 **A failure after the first write now leaves nothing behind.** `--answer` refuses a tree with tracked changes before it
@@ -30,7 +29,7 @@ tool's is named apart: *commit or stash it*.
 Four checks, in a scratch repository whose pre-commit hook rewrites INDEX.md and exits 1: after `--answer` the tree is
 clean, the run is on its starting branch, no `answer/<id>` is left, the hook's words and the answer are printed, the exit
 is non-zero; the refusal names the paths, calls the leftover what it is, and its command restores the tool's files and
-leaves the Owner's own change. **What is left:** review, merge, the tag.
+leaves the Owner's own change. **What is left:** nothing.
 
 **What happened, at 0.17.3.** `--answer` checked the tree was clean, cut `answer/<id>`, wrote the three lines, staged
 them and committed. The gate refused the commit (exit 4) and the command returned `the commit failed — <git's last
@@ -59,4 +58,5 @@ staged file he has no reason to look at.
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | Merged (#12), released as 0.17.4. |
 | 2026-09-23 | Filed and built: a failed run restores its paths, goes back, deletes its empty branch, prints the hook's words and the answer; the dirty-tree refusal names the paths and the undo. Four checks. |
