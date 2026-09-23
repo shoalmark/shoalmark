@@ -361,6 +361,9 @@ with tempfile.TemporaryDirectory() as d:
     with redirect_stdout(out):
         fm.vendor(dest)
     check("vendoring again says which version it replaces and what changed since", "(was 0.2.0)" in out.getvalue() and "## 0.3.0" in out.getvalue() and "## 0.2.0" not in out.getvalue())
+    _heads = re.findall(r"^## (\d+\.\d+\.\d+)", (HERE / "CHANGELOG.md").read_text(), re.M)
+    check(f"a consumer one release behind ({_heads[1]}) is shown exactly the section it lacks — the newest, which is this version's",
+          _heads[0] == fm.__version__ and fm.changes_since(_heads[1]).startswith(f"## {fm.__version__} — ") and fm.changes_since(_heads[1]).count("\n## ") == 0)
     (dest / "shoalmark.py").write_text("# edited\n")
     err = io.StringIO()
     with redirect_stderr(err):

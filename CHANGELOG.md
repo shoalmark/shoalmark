@@ -2,6 +2,31 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.5 — 2026-09-23
+
+**One id finds one row, and an empty section says why.** Two things an Owner read as defects on his board, and the
+intent he found hard to start.
+
+- **A whole id in the board's search shows that tracker alone.** The search matched each word as a substring of
+  about thirty fields of a row, the ids its body links to among them. So an id found its own row **and every row
+  that links to it**: `FEAT-161` showed 17 rows on a 505-tracker board, 16 of them only through a link. A query that
+  is exactly one known id (trimmed, any case) now shows that tracker alone, whether or not it is open. `~ID` still
+  shows the neighbourhood, what it links to and what links to it. A partial id (`FEAT-16`) and a query of several
+  words still match by substring. The hint says so. *If you used an id to find what references it, `~ID` is that
+  search.*
+- **The empty `progress` section says why.** `progress` holds only what a triage pass kept, so until a first pass
+  has run it reads 0 beside work in progress. While no tracker carries `triaged:` and `TRIAGE.md` records no pass,
+  its line now reads *empty until a first triage pass has run — --triage*. The rule is unchanged. `INDEX.md`,
+  `--triage` and the board still agree on what is owed a pass.
+- **`--init` gives the intent a way in.** The three lines were bare: `for —` · `so that —` · `never —`. The scaffold
+  now opens them with a lead-in: they describe the repository as a whole, what all of it is for, what is true when
+  it works, and what no pass or seat may do to get there. Each line carries an example in italics, a whole product
+  to overwrite. An untouched scaffold is still read as no intent. *A `TRIAGE.md` you already have is never
+  rewritten; README §6 carries the lead-in and the example.*
+- **Labels:** one new label, `desc.progress.none`, and `search` reworded, in English and in
+  `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets `search` keeps its old hint. One without
+  `desc.progress.none` shows the English line.*
+
 ## 0.17.4 — 2026-09-23
 
 **The answer says what it does** — the Owner's one command, and everything around it, met by an Owner on one morning.
