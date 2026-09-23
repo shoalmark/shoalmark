@@ -370,6 +370,44 @@ with tempfile.TemporaryDirectory() as d:
     code, _, err = run(root, "--install-hook")
     check("a hook that is not shoalmark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
 fm.configure(HERE)
+
+
+def run_safe(root, *argv, git_env=None):
+    """`run`, but a flag this copy of the tool does not know is a failed check, not a stopped suite — what a check that
+    must fail on an older tool needs."""
+    try:
+        return run(root, *argv, git_env=git_env)
+    except SystemExit as e:
+        return (e.code if isinstance(e.code, int) else 2), "", ""
+
+
+# --- FM-024 S1+S2: a seat's commit names its session — the trailer the hook appends, and an id when a harness has none --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); _, init_out, _ = run(root, "--init", "--key", "msr"); code, _, _ = run(root, "--install-hook")
+    pcm = root / ".git/hooks/prepare-commit-msg"
+    commit_ = lambda msg: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", msg], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    body = lambda: subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%B"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
+    c0 = commit_("a person's commit"); plain = body()
+    subprocess.run(["git", "-C", str(root), "config", "seat.session", "a9"], env=_ENV, check=True)
+    c1 = commit_("a seat's commit"); stamped = body()
+    c2 = commit_("typed by hand\n\nSession: k3"); typed = body()
+    check(f"FM-024 S2 · --install-hook writes a prepare-commit-msg hook: a commit where seat.session is set carries `Session: <id>`, one where it is not carries none, one that has one keeps it (saw {stamped!r})",
+          code == 0 and pcm.exists() and os.access(pcm, os.X_OK) and '--session-trailer "$1"' in pcm.read_text()
+          and all(c.returncode == 0 for c in (c0, c1, c2)) and "Session:" not in plain and stamped.rstrip().endswith("Session: a9") and typed.count("Session:") == 1 and "Session: k3" in typed)
+    (root / "docs/work-tracker/sessions.md").write_text("| Session | Seat | Convened by | Scope | Worktree | Started | Ended |\n|---|---|---|---|---|---|---|\n"
+                                                         "| a9a9a9a9 | principal | the Owner | the day | wt | 2026-09-23 12:21 | — |\n")
+    import secrets
+    _hex, _seq = secrets.token_hex, iter(["a9a9a9a9", "0b0b0b0b"])
+    secrets.token_hex = lambda n=4: next(_seq)
+    try:
+        code, out, _ = run_safe(root, "--session", "new")
+    finally:
+        secrets.token_hex = _hex
+    fresh = run_safe(root, "--session", "new")[1].strip()
+    check(f"FM-024 S1 · `--session new` prints an id no row carries — eight hex characters, for a harness with none of its own; `--init` names `seat.session` beside `user.email` (saw {out.strip()!r}, {fresh!r})",
+          code == 0 and out.strip() == "0b0b0b0b" and re.fullmatch(r"[0-9a-f]{8}", fresh) is not None and "seat.session" in init_out and "user.email" in init_out)
+fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
     with redirect_stdout(io.StringIO()):

@@ -224,6 +224,30 @@ credential store); the svn command line runs no hook, so the server's own `pre-c
 the layer that refuses and the board's *sent back* group is the backstop. A seat's **charter** — how it thinks, a bold
 Principal against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
 
+### Sessions
+
+The seat says **who may**; it cannot say **which run**: two sessions of one seat are one author in git. So a seat's
+worktree carries a second setting beside its badge, and every commit made there names its session.
+
+```bash
+git config --worktree user.email principal@seat      # the seat — read by the gate for rights
+git config --worktree seat.session a9f3c2d1          # the session — the harness's session id, its first eight hex characters;
+                                                     # a harness with none: `<cmd> --session new` prints one no row carries
+```
+
+**The trailer:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` to every
+commit made in that worktree — never typed, and a message that carries one already is left alone. A repository with no
+`seat.session` (the Owner's checkout) gets nothing appended: his signature is his id. Read it back with
+`git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository with its own hook runner adds one line —
+with lefthook:
+
+```yaml
+prepare-commit-msg:
+  commands:
+    session:
+      run: python3 tools/shoalmark/shoalmark.py --session-trailer {1}
+```
+
 ## 7. The one seam: a deriver
 
 The core knows nothing about releases, deploys or product areas. A repository that needs them puts one executable

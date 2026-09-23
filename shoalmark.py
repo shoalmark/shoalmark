@@ -2423,6 +2423,81 @@ def rights_problems(trackers):
     return out
 
 
+# --- sessions (FM-024): a seat's commit names its session, and the record knows the session ------------------------
+# Seat = author: WHO MAY, read by the rights above. Session = which RUN: a `Session: <id>` trailer on every seat commit,
+# appended by the prepare-commit-msg hook from the worktree's `seat.session`, and one row per session in the registry
+# `<tracker dir>/sessions.md` — who convened it, for what, in which worktree. The rules hold where the registry
+# exists: a repository adopts them by opening its first session, and a commit made before its tree had a registry is
+# not judged by them.
+SESSIONS_NAME = "sessions.md"
+SESSION_COLUMNS = ("Session", "Seat", "Convened by", "Scope", "Worktree", "Started", "Ended")
+SESSION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*")      # a9 · 8e509911 · a9/reviewer-1
+SESSION_IDLE = 86400          # seconds: an open session with no commit for longer than a day is abandoned — listed, closed by a pass
+SESSIONS_HOME = """\
+# Sessions
+
+One row per session of a seat: who convened it, for what, in which worktree. `{cmd} --session open` writes a row and
+`{cmd} --session close` dates its end; the gate refuses a seat's commit whose `Session:` trailer names no open row
+here, or whose worktree is open under another session. An open row with no commit for a day is closed by the next
+triage pass, which says so.
+
+| {head} |
+|{sep}|
+"""
+
+
+def git_out(*a, cwd=None):
+    """One git call's stdout, or None when it failed."""
+    r = subprocess.run(["git", *a], cwd=cwd or ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    return r.stdout if r.returncode == 0 else None
+
+
+def sessions_file():
+    return TRACKER_DIR / SESSIONS_NAME
+
+
+def parse_sessions(text):
+    """The registry's rows, in order: each a dict of the seven columns, plus `open` (no end written). A cell may carry
+    `|` escaped as `\\|`. Anything that is not a seven-cell table row, or is the header or its rule, is not a row."""
+    rows = []
+    for line in (text or "").splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]]
+        if len(cells) != len(SESSION_COLUMNS) or cells[0] in ("Session", "") or set(cells[0]) <= set("-: "):
+            continue
+        row = dict(zip(("id", "seat", "convened", "scope", "worktree", "started", "ended"), cells))
+        row["open"] = row["ended"] in ("", "—", "-")
+        rows.append(row)
+    return rows
+
+
+def session_cmd(words):
+    """`--session new`: an id no row of the registry carries — for a harness that has no session id of its own."""
+    rows = parse_sessions(sessions_file().read_text(encoding="utf-8")) if sessions_file().exists() else []
+    ids = {r["id"] for r in rows}
+    if words == ["new"]:
+        import secrets
+        sid = next(s for s in iter(lambda: secrets.token_hex(4), None) if s not in ids)
+        print(sid)
+        return EXIT_OK
+    print("--session: new", file=sys.stderr)
+    return EXIT_LINT
+
+
+def session_trailer(message_file):
+    """What the prepare-commit-msg hook calls: append `Session: <seat.session>` to the message being written. Nothing
+    when this worktree has no `seat.session` (the Owner's checkout, a person's clone), and nothing when the message
+    carries a `Session:` already — an amend, a rebase, a seat that typed it."""
+    sid = (git_out("config", "--get", "seat.session") or "").strip()
+    if not sid or not message_file:
+        return EXIT_OK
+    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", message_file],
+                       cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if r.returncode:
+        print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
+    return r.returncode
+
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
 
@@ -2704,7 +2779,7 @@ def parse_args(argv):
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts. A failure after it wrote anything undoes it all and prints the answer and the command to give it again")
@@ -2712,6 +2787,11 @@ def parse_args(argv):
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
+    add("--session", nargs="+", metavar="WORD",
+        help="a seat's session (FM-024): `--session new` prints an id no row carries — for a harness with no session id of its own; "
+             "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`")
+    add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
+                                                            "to a seat's commit — nothing without `seat.session`, nothing when the message carries one already")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -2992,11 +3072,13 @@ if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)
   printf '%s\\n' "$written" | git add --pathspec-from-file=-
 fi
 """,
+    "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
     "post-merge": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
     "post-checkout": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
 }
 
 
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"'}     # the one line a hook that is not ours needs
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
@@ -3065,7 +3147,7 @@ def install_hook():
     for name, text in HOOKS.items():
         path = hooks / name
         if path.exists() and not any(m in path.read_text(encoding="utf-8", errors="replace") for m in (HOOK_MARK, LEGACY_HOOK_MARK)):
-            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{CMD} {'--print-written' if name == 'pre-commit' else '--html-only'}`", file=sys.stderr)
+            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{CMD} {HOOK_LINES.get(name, '--html-only')}`", file=sys.stderr)
             code = EXIT_LINT
             continue
         put(path, text.format(**fill))
@@ -3115,7 +3197,8 @@ def init(key=None):
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
-          f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate")
+          f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
+          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one)")
     return EXIT_OK
 
 
@@ -3223,6 +3306,10 @@ def main(argv=None):
         return init(args.key)
     if args.install_hook:
         return install_hook()
+    if args.session_trailer:                                # every commit runs this: it reads one git setting, never the trackers
+        return session_trailer(args.session_trailer[0])
+    if args.session:
+        return session_cmd(args.session)
     if args.answer:
         answer_step(args.answer[0].upper(), 1, "reading the trackers")
     trackers = load_trackers()
