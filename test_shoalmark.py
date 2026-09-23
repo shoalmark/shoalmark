@@ -117,6 +117,30 @@ with tempfile.TemporaryDirectory() as d:
     check("FM-022 · the scaffolded intent starts with a lead-in that names the repository as a whole, and one example per line, in italics; a fresh scaffold has no intent and no path; one line in the Owner's words is the intent, exactly that line — never the lead-in or the examples left around it",
           "*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of it, is for · what is true when it works · what no pass or seat may do to get there." in lead
           and all(f"- **{w}** — *e.g. " in home_text for w in ("for", "so that", "never")) and unsaid == "" and unpathed == "" and said == "- **for** — the stock we sell")
+    # R11: only the scaffold's exact text is left out — never a line of the Owner's for its italics, its bold or its length
+    # the three example lines as the scaffold writes them — read from the tool, else spelled out, so a run of these
+    # checks on a tool without the tuple fails them instead of stopping the suite
+    ex = getattr(fm, "INTENT_EXAMPLES", ("- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*",
+                                         "- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*",
+                                         "- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*"))
+    cases = {
+        "(b) three real lines": ([(ex[0], "- **for** — the stock we sell"), (ex[1], "- **so that** — an order is never promised twice"), (ex[2], "- **never** — a number typed in by hand")],
+                                 "- **for** — the stock we sell\n- **so that** — an order is never promised twice\n- **never** — a number typed in by hand"),
+        "(c) a line wholly in italics": ([(ex[2], "- **never** — *sell what we lack*")], "- **never** — *sell what we lack*"),
+        "(c) a line in bold alone": ([(ex[2], "- **never** — **sell what we lack**")], "- **never** — **sell what we lack**"),
+        "(d) a short line": ([(ex[0], "- **for** ok")], "- **for** ok"),
+        "(e) the example with one word changed": ([(ex[1], ex[1].replace("finds a book", "finds a film"))], ex[1].replace("finds a book", "finds a film")),
+    }
+    read_as = {}
+    for name, (swaps, _) in cases.items():
+        t = home_text
+        for a, b in swaps:
+            t = t.replace(a, b)
+        home_md.write_text(t); read_as[name] = fm.triage_home()["intent"]
+    home_md.write_text(home_text)
+    wrong = {n: read_as[n] for n, (_, want) in cases.items() if read_as[n] != want}
+    check(f"R11 · the intent reader leaves out only the scaffold's exact text: (a) untouched, nothing; (b) three real lines, exactly those; (c) a line in italics or in bold, (d) a short line, (e) an example with one word changed — each read (wrong: {wrong})",
+          unsaid == "" and unpathed == "" and not wrong and set(ex) <= set(getattr(fm, "INTENT_SCAFFOLD", ())) and getattr(fm, "INTENT_LEAD", "\0") in home_text and getattr(fm, "INTENT_NOTE", "\0") in home_text)
     before = (root / "shoalmark.toml").read_text()
     (root / "shoalmark.toml").write_text(before + "\n# mine\n")
     run(root, "--init")
@@ -864,6 +888,7 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 check("R10 · the German triage home carries the lead-in (the repository as a whole) and one example per line, in italics — a pass reads none of it, and one line of the Owner's as exactly that line",
       "über das Repository als Ganzes" in de_home and all(f"- **{w}** — *z. B. " in de_home for w in ("für", "damit", "niemals"))
+      and all(x in de_home for x in (getattr(fm, "INTENT_NOTE_DE", "\0"), getattr(fm, "INTENT_LEAD_DE", "\0"), *getattr(fm, "INTENT_EXAMPLES_DE", ("\0",))))
       and untouched["intent"] == "" and untouched["path"] == "" and one == "- **für** — die Ausleihe unserer Bücherei")
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---

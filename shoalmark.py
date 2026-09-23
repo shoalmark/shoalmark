@@ -1539,12 +1539,23 @@ def triage_home():
     # an unfilled home is not a path and not an intent: what is left once the italic notes and the bare list
     # markers are gone has to say something, or INDEX.md and the board would print the template as if it were one
     said = lambda text: text if re.search(r"\w{3,}", re.sub(r"\*\*[^*]*\*\*|\*[^*]*\*", "", text)) else ""
-    # the intent is what the Owner WROTE. What the template leaves in italics is the template's: a paragraph wholly in
-    # italics (a note, the lead-in) and an example standing alone after a line's dash; a line with nothing of his left
-    # is not his. So one line of his own is read as exactly that line, not with the scaffold around it (FM-022, R5)
-    written = lambda text: "\n".join(l for l in re.sub(r"(?m)^([ \t]*[-*+][ \t]+\*\*[^*]+\*\*[ \t]*—)[ \t]*\*(?!\*)[^*]+\*[ \t]*$", r"\1",
-                                                    re.sub(r"(?m)^\*(?!\*)[^*]+\*[ \t]*$", "", text)).splitlines() if said(l)).strip()
-    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": written(part("intent"))}
+    return {"path": said(part("path")), "last": passes[0] if passes else "", "intent": owners_intent(part("intent"))}
+
+
+def owners_intent(text):
+    """The intent as the Owner WROTE it: everything under the heading, less the scaffold's own words — its note, its
+    lead-in, its examples and its bare lines, recognised by their exact text (whitespace aside), never by italics, bold
+    or length. An example with one word changed is his; so is a line in italics, a line in bold, a line of two letters
+    (FM-022, R11). A paragraph is compared whole, so the wrapped lead-in is one piece; a line is compared alone."""
+    scaffold = {" ".join(s.split()) for s in INTENT_SCAFFOLD}
+    kept = []
+    for para in re.split(r"\n[ \t]*\n", text):
+        if " ".join(para.split()) in scaffold:
+            continue
+        lines = [line for line in para.splitlines() if " ".join(line.split()) not in scaffold]
+        if any(line.strip() for line in lines):
+            kept.append("\n".join(lines))
+    return "\n\n".join(kept).strip()
 
 
 def write_views(trackers):
@@ -2847,6 +2858,31 @@ def vendor(dest):
     return EXIT_OK
 
 
+# The scaffold's own words under the intent heading. `--init` writes the English ones; examples/de/TRIAGE.md holds the
+# German ones; the bare lines are the scaffold before 0.17.5. `owners_intent()` leaves out exactly these texts and reads
+# everything else there as the Owner's (R11) — so the scaffold and the reader can never disagree on what is whose.
+INTENT_NOTE = "*The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*"
+INTENT_LEAD = """*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of
+it, is for · what is true when it works · what no pass or seat may do to get there. The example is a whole product;
+overwrite it — a pass reads everything you write here and leaves out only this lead-in and the examples as they stand.*"""
+INTENT_EXAMPLES = (
+    "- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*",
+    "- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*",
+    "- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*",
+)
+INTENT_NOTE_DE = "*Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*"
+INTENT_LEAD_DE = """*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
+kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+lässt nur diese Einleitung und die unveränderten Beispiele aus.*"""
+INTENT_EXAMPLES_DE = (
+    "- **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*",
+    "- **damit** — *z. B. ein Mitglied ein Buch und die Bibliothekarin ein Mitglied mit einem Blick findet, und nichts Verliehenes verloren geht*",
+    "- **niemals** — *z. B. verleihen, was der Katalog nicht führt, oder die Akte eines Mitglieds löschen, bevor seine letzte Ausleihe zurück ist*",
+)
+INTENT_SCAFFOLD = (INTENT_NOTE, INTENT_LEAD, *INTENT_EXAMPLES, "- **for** —", "- **so that** —", "- **never** —",
+                   INTENT_NOTE_DE, INTENT_LEAD_DE, *INTENT_EXAMPLES_DE, "- **für** —", "- **damit** —", "- **niemals** —")
+
 TRIAGE_HOME = """\
 # Triage
 
@@ -2855,15 +2891,7 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 ## {intent}
 
-*The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
-
-*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of
-it, is for · what is true when it works · what no pass or seat may do to get there. The example is a whole product;
-overwrite it.*
-
-- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*
-- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*
-- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*
+""" + INTENT_NOTE + "\n\n" + INTENT_LEAD + "\n\n" + "\n".join(INTENT_EXAMPLES) + """
 
 ## {path}
 

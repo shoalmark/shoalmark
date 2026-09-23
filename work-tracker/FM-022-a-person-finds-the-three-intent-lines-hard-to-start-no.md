@@ -23,9 +23,10 @@ it works · what no pass or seat may do to get there. The example is a whole pro
 example per line, in italics: a village library's whole lending system, not one feature of it. The Owner corrected the
 first build, whose example was feature-sized, because his own first draft came out feature-sized after a seat's
 feature-sized example. `README.md` §6 says the same where it tells the Owner to write the intent. **The intent is what he wrote**
-(`triage_home()`, R5): a paragraph wholly in italics and an example standing alone after a line's dash are the
-template's and are dropped, and so is a line with nothing of his left. An untouched scaffold reads as *none is
-written*; one line of his reads as exactly that line.
+(`owners_intent()`, R5 and R11): only the scaffold's own words are left out, its note, its lead-in, its examples and
+its bare lines, recognised by their exact text in one tuple, `INTENT_SCAFFOLD`, which the scaffold is built from. A
+line in italics, a line in bold, a line of two letters and an example with one word changed are all his and are read.
+The lead-in says so in one clause. An untouched scaffold reads as *none is written*.
 
 | check | result |
 |---|---|
@@ -58,6 +59,7 @@ no way in gets left empty, and while it is empty `--triage` has nothing to judge
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R11: the reader leaves out only the scaffold's exact text (`INTENT_SCAFFOLD`, English and German, shared with the scaffold), never a line for its italics, bold or length; the R5 reader dropped an Owner line with no plain word of three letters. One check, five cases. |
 | 2026-09-23 | R10: `examples/de/TRIAGE.md` gets the lead-in and the whole-product example in German, in the form a pass drops; one check reads it through `triage_home()`. |
 | 2026-09-23 | R5: the intent is what the Owner wrote — the lead-in, the examples left in italics and empty lines are not read; the scaffold check now asserts a fresh scaffold has no intent and no path, and one written line is exactly that line. |
 | 2026-09-23 | Filed and built: a lead-in that names the repository as a whole and a whole-product example (the Owner's correction of a feature-sized first build) in the scaffold and the README; one check, shown to fail on 0.17.4. |

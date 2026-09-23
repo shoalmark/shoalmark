@@ -21,9 +21,9 @@ intent he found hard to start.
 - **`--init` gives the intent a way in.** The three lines were bare: `for —` · `so that —` · `never —`. The scaffold
   now opens them with a lead-in: they describe the repository as a whole, what all of it is for, what is true when
   it works, and what no pass or seat may do to get there. Each line carries an example in italics, a whole product
-  to overwrite. **The intent a pass prints is what the Owner wrote:** a paragraph wholly in italics (the template's
-  notes, the lead-in) and an example left alone after a line's dash are not read, and neither is a line with nothing
-  of his on it. So an untouched scaffold is no intent, and one line of his own is that line alone. *`--triage` no
+  to overwrite. **The intent a pass prints is what the Owner wrote — only the scaffold's own lead-in and examples
+  are left out**, recognised by their exact text, never by italics, bold or length. So an untouched scaffold is no
+  intent, one line of his own is that line alone, and an example with one word changed is his. *`--triage` no
   longer prints the template's italic note above your intent. A `TRIAGE.md` you already have is never rewritten;
   README §6 carries the lead-in and the example, and `examples/de/TRIAGE.md` carries them in German.*
 - **Labels:** three new labels, `desc.progress.none`, `count.id` (the counter over an id searched alone:
