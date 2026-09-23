@@ -90,10 +90,10 @@ Möglichkeiten und dem, was sie aufhält; OK gibt Ihnen einen Befehl. Führen Si
 python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
 ```
 
-Er legt den Branch `answer/AP-007` an, schreibt die drei Zeilen, committet sie mit Ihrem Schlüssel signiert (ein
+Er legt den Branch `answer/ap-007` an (Branch-Namen klein: `AP-007` ist das Arbeitspaket, `ap-007` der Branch), schreibt die drei Zeilen, committet sie mit Ihrem Schlüssel signiert (ein
 Hardware-Schlüssel wartet auf Ihre Berührung) und pusht; jeden Schritt nennt er, bevor er ihn tut. Scheitert etwas,
 macht er alles rückgängig, was er geschrieben hat, und druckt den Befehl, mit dem Sie die Antwort erneut geben.
-`git log -1 --format=%G? answer/AP-007` druckt `G`, und die Frage hat Ihre Liste verlassen.
+`git log -1 --format=%G? answer/ap-007` druckt `G`, und die Frage hat Ihre Liste verlassen.
 
 ## Was das Werkzeug ablehnt, und was es sagt
 

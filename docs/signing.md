@@ -89,9 +89,9 @@ holds up; OK gives you one command. Run it in a terminal, in the repository:
 python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
 ```
 
-It cuts the branch `answer/AP-007`, writes the three lines, commits them signed with your key (a hardware key waits for
+It cuts the branch `answer/ap-007` (git refs are lower-case; `AP-007` is the tracker, `ap-007` the branch), writes the three lines, commits them signed with your key (a hardware key waits for
 your touch), and pushes, naming each step as it starts. If anything fails it undoes everything it wrote and prints the
-command to give the answer again. `git log -1 --format=%G? answer/AP-007` prints `G`, and the ask leaves your queue.
+command to give the answer again. `git log -1 --format=%G? answer/ap-007` prints `G`, and the ask leaves your queue.
 
 ## What the tool refuses, and what it says
 
