@@ -179,3 +179,55 @@ All as ruled.
 - The suite's edits are minimal and weaken nothing.
 - No consumer runs the suite.
 - R1 is a display that believes a hand-edited header.
+
+## Delta on 984113b
+
+2026-09-23, 21:00 CEST. **READY WITH FINDINGS: R2 (P3). R1 is closed.**
+
+**R1 · closed.** `MANIFEST_RE` accepts only the line `--vendor` writes. `pin_manifest()` then cross-checks the date,
+the tag against the version, the version against the pinned `VERSION`, and a partial copy's `# missing:` line. The
+consumer's `--check` in a scratch copy vendored at a scratch `v0.17.8`, every case exit 0:
+
+| the PIN's first line | `--check` says |
+|---|---|
+| the good header | *pinned 0.17.8 from tag v0.17.8 (commit 984113b971), vendored 2026-09-23, complete* |
+| extra spaces | *warning: … is not the line --vendor writes — this copy is unverified* |
+| commit missing | the same warning |
+| `·` replaced by `-` | the same warning |
+| fields with no values | the same warning |
+| bare `# shoalmark` | the same warning |
+| a commit hash of 6 characters | the same warning |
+| the date `2026-9-3` | the same warning |
+| the date `2026-13-45` | *… (its date is no date)* |
+| a `#` line before it | *… is not the PIN's first line* |
+| 0.17.9 over `VERSION` 0.17.8 | *… says 0.17.9, and the pinned VERSION is 0.17.8* |
+| tag v0.17.7 for 0.17.8 | *… names the tag v0.17.7 for the version 0.17.8* |
+| partial with no `# missing:` line | *… says partial and names nothing missing* |
+| a PIN with no header | *no manifest — pinned before 0.17.8; where the copy came from is not recorded* |
+| the consumer's real 0.17.7 copy (read-only) | the same *no manifest* line; `pin_problems()` is empty |
+
+**R2 · P3 · A manifest moved below the hash lines reads as *no manifest — pinned before 0.17.8*.**
+- **What:** `pin_manifest()` returns `({}, "")` whenever the first line does not start with `#`
+  (`shoalmark.py:3257`), so a 0.17.8 manifest placed after the hashes is reported as a PIN from before 0.17.8, not
+  flagged.
+- **What closes it:** Ask the same question the `#`-first branch asks: when a later line is a manifest, warn *is not
+  the PIN's first line*.
+- **Cost:** A misstatement only, reached only by hand-editing a PIN.
+
+**The scratch release:**
+- A scratch clone of `984113b` with the local tag `v0.17.8`, vendored into a scratch 0.17.7 consumer: exit 0, only
+  `## 0.17.8`, PIN `OK` × 8.
+- The pin stages `CHANGELOG.md`, `PIN`, `README.md`, `VERSION` and `shoalmark.py`. The consumer's detector on that
+  stage: exit 0, 0 findings.
+- The consumer's `--check`: the good line, and no warning.
+
+**Gates:**
+
+| Gate | Result |
+|---|---|
+| `test_shoalmark.py` | exit 0 on Python 3.14.3 and 3.9.6 · 264 ok |
+| `test_core.py` | exit 0 on both · 148 ok |
+| `--check` · `--html-only` | exit 0 each |
+| `py_compile` (the three files) | exit 0 each |
+| `VERSION` | 0.17.8 |
+| the tip's suite on the 0.17.7 tool, the five edits undone | 260 ok; exactly the four FM-011 checks fail, R1's new check included |
