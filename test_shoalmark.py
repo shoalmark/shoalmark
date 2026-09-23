@@ -410,9 +410,19 @@ if _CHROME:
             return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
         whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
         check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
-              whole[0] == ["MSR-001"] and whole[1].startswith("1 trackers") and low[0] == ["MSR-001"])
+              whole[0] == ["MSR-001"] and whole[1].startswith("1 tracker · MSR-001 ·") and low[0] == ["MSR-001"])
         check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
               sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
+        # a view with open/all (every view but the board), *open* pressed, a closed tracker searched by its id: it is shown,
+        # and the counter names it — it never counts it as open (R1)
+        probe = '<script>{gi=GROUPS.findIndex(g=>g[0]=="epic");all=false;$("q").value="MSR-003";draw();document.body.dataset.probe=$("n").textContent+"|"+[...document.querySelectorAll("#b tr.t")].map(r=>r.querySelector("a").textContent).join(",")}</script>'
+        wt_ = root / "docs/work-tracker"
+        (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+        pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+        seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
+        check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
+              seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _CHROME:
@@ -663,6 +673,7 @@ group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
 count.around: rund um {0}
+count.id: Eintrag · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet

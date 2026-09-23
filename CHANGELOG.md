@@ -23,9 +23,9 @@ intent he found hard to start.
   it works, and what no pass or seat may do to get there. Each line carries an example in italics, a whole product
   to overwrite. An untouched scaffold is still read as no intent. *A `TRIAGE.md` you already have is never
   rewritten; README §6 carries the lead-in and the example.*
-- **Labels:** one new label, `desc.progress.none`, and `search` reworded, in English and in
-  `examples/de/labels.yaml`. *A `labels.yaml` of your own that sets `search` keeps its old hint. One without
-  `desc.progress.none` shows the English line.*
+- **Labels:** two new labels, `desc.progress.none` and `count.id` (the counter over an id searched alone:
+  *1 tracker · <id>*), and `search` reworded, in English and in `examples/de/labels.yaml`. *A `labels.yaml` of your own
+  that sets `search` keeps its old hint. One without the new labels shows the English words.*
 
 ## 0.17.4 — 2026-09-23
 

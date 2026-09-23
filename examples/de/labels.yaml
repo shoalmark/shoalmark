@@ -36,6 +36,7 @@ group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
 count.around: rund um {0}
+count.id: Eintrag · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet

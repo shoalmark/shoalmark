@@ -15,7 +15,8 @@ hook: "The Owner typed one tracker's id into the board's search and got seventee
 **Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; open for review, not
 merged.** The Principal chose the fix. In `draw()`, a query that is exactly one known id (trimmed, any case) is that
 tracker alone: `exact=!hood&&byId.get(q.toUpperCase())`, and the row filter reads `hood ? neighbourhood : exact ? that
-tracker : the substring match as before`. Like `~ID`, it shows the tracker whether or not it is open. The hint says
+tracker : the substring match as before`. Like `~ID`, it shows the tracker whether or not it is open, and the counter
+names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The hint says
 *an id alone = its row · ~ID = its neighbours* (German: *eine Id allein = nur dieser Eintrag · ~Id = seine Nachbarn*).
 
 | check | result |
@@ -56,5 +57,6 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R1: the counter over an id searched alone says `1 tracker · <id>`; a Chrome check searches a Shipped id in the story view with *open* pressed (it read `1 open` at `8402732`). |
 | 2026-09-23 | Built: a whole id alone is its row; `~ID`, a partial id and words unchanged; two Chrome checks and a string check, shown to fail on 0.17.4. |
 | 2026-09-23 | Filed. |
