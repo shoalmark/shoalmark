@@ -91,4 +91,25 @@ answer.change.hint: "Ihre Änderung, in einer Zeile — mehr gehört in den Text
 answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
 answer.ok: "OK — den Befehl geben"
 answer.abort: abbrechen
-answer.run: "Kopiert. Im Repository ausführen; es legt den Antwort-Zweig an, schreibt die drei Zeilen, committet signiert und pusht:"
+answer.sign.title: Ihre Antwort signieren
+answer.sign.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht signieren — Ihr Terminal tut es, mit Ihrem Schlüssel. Diesen Befehl ausführen:"
+answer.sign.copy: nochmals kopieren
+answer.sign.copied: Kopiert.
+answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Befehl markieren und kopieren."
+answer.sign.where: Wo
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem diese Tafel gebaut wurde."
+answer.sign.does: Was er tut
+answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
+answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.push: pusht den Zweig
+answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
+answer.sign.success: Wenn es geklappt hat
+answer.sign.check: Zur Kontrolle
+answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."
+answer.sign.fail: Wenn es scheitert
+answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
+answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
+answer.sign.url: "https://holgo99.github.io/shoalmark/de/signing/"
+answer.done: Fertig

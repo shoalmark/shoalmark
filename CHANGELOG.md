@@ -2,6 +2,64 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.17.4 — 2026-09-23
+
+**The answer says what it does** — the Owner's one command, and everything around it, met by an Owner on one morning.
+
+- **A load no longer spawns git once per tracker.** `answered-by:` empty or `<you>` is filled from
+  `git config user.name` — and the test was *the key is empty*, true of every tracker with no answer at all. On a
+  505-tracker corpus that was 504 git processes and 15.2 s of a 16.8 s load; `--answer` pays for a load about four
+  times (itself, the checkout hook, the pre-commit gate). The name is now read only where a tracker carries an
+  `answer:`, and at most once per run. Measured on the same corpus before and after: **16.4 s → 0.80 s, 504 → 0 calls.**
+  Every run that reads the trackers is faster — the gate in your pre-commit hook above all.
+- **`--answer` says each step as it starts**, on stderr, flushed: `answering <id> — 1/4 reading the trackers` ·
+  `2/4 cutting answer/<id> from <branch>` · `3/4 committing, signed` (your key may ask for a touch; the gate runs) ·
+  `4/4 pushing to origin`. Silent until its last line, it was stopped by an Owner who took it for hung. Its last lines
+  are unchanged.
+- **A failed `--answer` leaves nothing behind.** When the gate refuses the commit — or anything fails after the run has
+  written — it restores every tracked path it changed (it begins only on a tree with none), goes back to the branch it
+  started on, deletes an `answer/<id>` it cut that carries no commit, and prints what refused it (the hook's own
+  output, not git's last line), the answer, and **the command that gives it again**. At 0.17.3 it left the answer
+  staged, INDEX.md rewritten and the empty branch checked out, and the next `--answer` refused as a dirty tree.
+- **The dirty-tree refusal names the paths.** Where one is a tracker carrying an answer that was never committed — what a
+  failed 0.17.3 run left — it says so, prints one command that restores only the tool's leftovers, and the answer to
+  give again. *If you have such a leftover from 0.17.3, the refusal tells you what to run.*
+- **The board's answer dialog has a second screen.** OK used to disable itself and leave one enabled button, *abort*,
+  which read as taking the decision back — and it said *Copied* whether or not anything was. Now OK opens *Sign your
+  answer*: the command with *Copy again*, where to run it (the board names the branch it was built from — one
+  `git branch --show-current` per board build), what it does in four steps, what success looks like, how to check the
+  signature (`git log -1 --format=%G? answer/<id>` prints `G`), the signing page for when it fails — and **Done**, the
+  one way out; Esc too. *Copied* appears only when the clipboard said so.
+- **Labels:** 22 new — `answer.sign.*` and `answer.done`, in English and in `examples/de/labels.yaml`. **`answer.run` is
+  gone** with the line it drove: a `labels.yaml` that sets it is now told it is not a label — delete the line.
+  `answer.sign.url` is the signing page the dialog links to; point it at your own if you have one.
+- **The seat that acts on an answer can record that it did.** `--clear-ask` drops the three answer lines and writes the
+  exchange under `## Asks`; under `[seats]` the gate read any change to those lines as `answer` — the owner's right — and
+  refused the principal. A change that removes the lines **and** adds the matching record (same question, answer and
+  answered-by) is now the **`ask`** right's move. Removing the answer without its record, or editing its text, is
+  still `answer`. *Answers your seat could not clear are still in the front matter: clear them now.*
+- **`[seats]` no longer drops a signature `answerers` asked for.** From 0.17.1 `[seats]` alone decides who may answer,
+  so `answerers = ["alice signed"]` beside `[seats] owner = "alice"` accepted Alice's unsigned answer and `--answer`
+  stopped signing — while the note said `answerers` *still works*. **The gate now refuses that configuration**, naming
+  both lines: add `signed` to the seat, or remove `answerers`. Where no seat is spelled like the entry (a name there,
+  an email here), every seat holding `answer` stands in for it. `--answer` refuses the same way before it touches
+  anything. *A repository with both keys may turn red on vendoring this — that is the point; the fix is one line.*
+- **The deprecation note says what is read.** With `[seats]`: `answerers` *is not read for answers here — `[seats]`
+  decides … It can be removed.* Without `[seats]`: unchanged, and `answerers` is still removed no sooner than the release
+  after 0.17.3.
+- **A merge commit is no longer the merger's.** On a clean tree the gate judged HEAD against HEAD~1 — for a merge,
+  everything the pull request carried, every answer and close in it attributed to whoever merged. The forge's merge
+  identity is no seat and signs with its own key, so `--check` on a trunk went red on every merge that carried a status
+  change; shoalmark's own `main` was red this way at 0.17.3. Now a merge is judged by its **own** change — the tracker
+  files where it differs from every parent, under the merger — and **each commit it brings** against its own parent,
+  under its own author and signature, so a commit made with `--no-verify` or in the forge's editor is still read, and a
+  refusal names that commit. The same rule in the pre-commit run of a merge, and when asking whether an answer a merge
+  brings in is committed. The brought commits are read only when HEAD is a merge — one `git log`; a merge bringing 20
+  commits checks in about 1.6 s. *Merging with a merge commit is what keeps the Owner's signed answers: keep doing it.*
+- **Known, not in this release:** an ask the Owner has answered is still offered on the branch he returns to, until the
+  merge brings the answer there — and answering it again is refused with advice to delete the branch that carries the
+  first answer. Don't. Filed; the way forward is the Owner's to rule, with the rest of the answer flow's shape.
+
 ## 0.17.3 — 2026-09-22
 
 - **A consumer one release behind was told nothing had changed.** The version was declared twice — `VERSION`, which

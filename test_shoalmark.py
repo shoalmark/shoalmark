@@ -554,7 +554,28 @@ answer.change.hint: "Ihre Änderung, in einer Zeile — mehr gehört in den Text
 answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
 answer.ok: "OK — den Befehl geben"
 answer.abort: abbrechen
-answer.run: "Kopiert. Im Repository ausführen; es legt den Antwort-Zweig an, schreibt die drei Zeilen, committet signiert und pusht:"
+answer.sign.title: Ihre Antwort signieren
+answer.sign.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht signieren — Ihr Terminal tut es, mit Ihrem Schlüssel. Diesen Befehl ausführen:"
+answer.sign.copy: nochmals kopieren
+answer.sign.copied: Kopiert.
+answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Befehl markieren und kopieren."
+answer.sign.where: Wo
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem diese Tafel gebaut wurde."
+answer.sign.does: Was er tut
+answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
+answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.push: pusht den Zweig
+answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
+answer.sign.success: Wenn es geklappt hat
+answer.sign.check: Zur Kontrolle
+answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."
+answer.sign.fail: Wenn es scheitert
+answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
+answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
+answer.sign.url: "https://holgo99.github.io/shoalmark/de/signing/"
+answer.done: Fertig
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -668,6 +689,9 @@ with tempfile.TemporaryDirectory() as d:
         _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
               set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
+        _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+        check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
+              set(fm.LABELS) - set(_shipped_de) <= {"footer", "tagline"} and not set(_shipped_de) - set(fm.LABELS))
         if _CHROME:
             dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
             text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
@@ -925,6 +949,54 @@ with tempfile.TemporaryDirectory() as tmp:
           code == fm.EXIT_LINT and "AP-080: `ask-proposal:` recommends 'z'" in err + _ and "a | b | c" in err + _)
 fm.configure(HERE)
 
+# --- FM-013: after OK, a second screen — how to sign it, where, what it does, the end, the check, and one way out ------
+# OK used to disable itself and leave one enabled button, abort, which read as taking the decision back; and it said
+# *Copied* whether or not anything was. The Owner: "Only a "Done" button to close the dialog."
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "checkout", "-q", "-b", "fix/ap-090")
+    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    tracker(root, "AP-090", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
+    run(root); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    two_ = page.split("const sign=")[1].split('d.querySelector(".copy")')[0]
+    menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
+    check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
+          '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
+          and 'value="done"' in menus_[0] and 'l("answer.done")' in menus_[0] and all(f'"{k}"' in page for k in fm.LABELS if k.startswith("answer.sign.")))
+    check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
+          '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
+    if _CHROME:
+        def _sign(clip):
+            """OK pressed in the browser, the second screen read as rendered — with the clipboard there, or with none."""
+            stub = {"yes": 'Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});',
+                    "none": 'Object.defineProperty(navigator,"clipboard",{value:undefined});'}[clip]
+            go = ('const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[0];R.checked=true;R.dispatchEvent(new Event("change"));'
+                  'D.querySelector("button.go").click();setTimeout(()=>{const B=document.body.dataset;B.menu=[...D.querySelectorAll("menu button")].map(b=>b.textContent).join("|");'
+                  'B.said=D.querySelector(".said").textContent;B.buttons=D.querySelectorAll("button").length;D.querySelector("menu button").click();B.open=String(D.open)},300);')
+            p_ = root / "docs/work-tracker" / f"s2-{clip}.html"
+            p_.write_text(page + f'<script>{stub}setTimeout(()=>{{ACT(T.find(x=>x[0]=="AP-090"),"accept");{go}}},50)</script>', encoding="utf-8")
+            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", p_.as_uri()],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+            p_.unlink()
+            body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]
+            said = {k: (re.search(rf'data-{k}="([^"]*)"', d_) or [None, None])[1] for k in ("menu", "said", "buttons", "open")}
+            return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
+        s2_, b2_, yes_ = _sign("yes")
+        check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
+              "Sign your answer" in s2_ and re.search(r'<pre class="cmd">[^<]*--answer AP-090 accept "b"</pre>', b2_) is not None and "Copy again" in s2_
+              and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
+              and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
+              and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
+              and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
+              and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
+        check(f"FM-013 · …with ONE way out — Done, the only button in its menu, closes the dialog; the only other control is Copy again (saw: {yes_})",
+              yes_["menu"] == "Done" and yes_["buttons"] == "2" and yes_["open"] == "false")
+        _n0, _n1, none_ = _sign("none")
+        check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
+              yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-007: the Owner's one command — --answer cuts the branch, writes, signs, pushes ------------------------------
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
@@ -949,7 +1021,14 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--answer refuses a rejection without its reason", code == fm.EXIT_LINT and "carries its reason" in err)
     (root / "dirty.txt").write_text("x"); git(root, "add", "dirty.txt"); code, _, err = run(root, "--answer", "AP-070", "accept"); git(root, "rm", "-q", "-f", "dirty.txt")
     check("--answer refuses a dirty tree — an answer is one commit with nothing else in it", code == fm.EXIT_LINT and "working tree has changes" in err)
+    start_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     code, out, err = run(root, "--answer", "AP-070", "accept", "count one week first")
+    # FM-012: silent until its last line, the command was stopped by an Owner who took it for hung. Each step is said as
+    # it STARTS — the waits are the checkout hook and the pre-commit gate, and both come after the line that names them
+    steps_ = [err.find(s) for s in ("answering AP-070 — 1/4 reading the trackers …", f"answering AP-070 — 2/4 cutting `answer/ap-070` from `{start_}`",
+                                    "answering AP-070 — 3/4 committing, signed", "answering AP-070 — 4/4 pushing to `origin` …")]
+    check("FM-012 · --answer names each step as it starts, in order — reading the trackers · cutting answer/<id> from the branch it is on · committing, signed · pushing — and its last lines are unchanged",
+          -1 not in steps_ and steps_ == sorted(steps_) and out.startswith("AP-070 answered: accepted - count one week first\n  signed, on `answer/ap-070`, pushed\n"))
     sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %an %s"], capture_output=True, text=True, env=_ENV).stdout.strip()
     on = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     remote = subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
@@ -990,6 +1069,72 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "pd/070"); git(root, "config", "--unset", "user.signingkey"); code, _, err = run(root, "--answer", "AP-070", "accept")
     check("--answer refuses before touching anything when it cannot end in a verified answer — no signing key, no branch cut", code == fm.EXIT_LINT and "no `user.signingkey`" in err
           and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() == "pd/070")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-012: reading the trackers asks git who is typing only where an answer needs the name, and at most once -------
+# `answered-by:` empty or `<you>` is filled from `git config user.name` — and the test was *the key is empty*, true of
+# every tracker with no answer at all. One git process per tracker: 504 of them, 15.2 s of a 16.8 s load, on a
+# 505-tracker corpus, and `--answer` reads the corpus about four times.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "config", "user.name", "holgo")
+    (root / "shoalmark.toml").write_text('name = "l"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    for n_ in range(500, 520):
+        tracker(root, f"AP-{n_}", title="asks nothing")
+    asked_ = lambda: sum(1 for c in argv_of(fm.load_trackers) if c[:3] == ["git", "config", "user.name"])
+    fm.configure(root); none_ = asked_(); ts0_ = {t_["id"]: t_ for t_ in fm.load_trackers()}
+    for n_ in (520, 521, 522):
+        tracker(root, f"AP-{n_}", extra=f'next: owner\nask: "Shall {n_} ship?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "ship it"\n'
+                                          f'answer: "accepted"\nanswered: {new_}\nanswered-by: <you>\n', title="answered by hand")
+    fm.configure(root); several_ = asked_(); ts_ = {t_["id"]: t_ for t_ in fm.load_trackers()}
+    check("FM-012 · a load where no tracker carries an answer asks git for no name — it asked once per tracker",
+          none_ == 0 and ts0_["AP-500"]["answered_by"] == "")
+    check("FM-012 · a load with three `answered-by: <you>` asks git once, and fills all three",
+          several_ == 1 and all(ts_[f"AP-{n_}"]["answered_by"] == "holgo" for n_ in (520, 521, 522)) and ts_["AP-500"]["answered_by"] == "")
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-017: a failed --answer leaves nothing behind — and a leftover from one is named, with the command that undoes it -
+# What the Owner met: the gate refused the commit, and the run returned with his answer staged, INDEX.md rewritten by the
+# hook and an empty `answer/<id>` checked out. His next `--answer`, on another ask, said only "the working tree has changes".
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false"), ("core.hooksPath", str(root / ".git" / "hooks"))):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "f"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\n', encoding="utf-8")
+    for id_, q_ in (("AP-500", "Shall the launcher ship first?"), ("AP-501", "Shall the importer ship first?")):
+        tracker(root, id_, extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
+    (root / "notes.txt").write_text("the Owner's own file\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks", "--author=holgo <h@x>")
+    sh_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout.strip()
+    start_ = sh_("branch", "--show-current")
+    hook_ = root / ".git" / "hooks" / "pre-commit"; hook_.parent.mkdir(parents=True, exist_ok=True)
+    hook_.write_bytes(b'#!/bin/sh\necho "regenerated by the hook" >> docs/work-tracker/INDEX.md\necho "gate: AP-500 refused - the reason the Owner must read" >&2\nexit 1\n')
+    hook_.chmod(0o755)
+    code, out, err = run(root, "--answer", "AP-500", "accept", "count one week first")
+    check("FM-017 · a commit the gate refuses leaves NOTHING behind: the tree is clean — the tracker and the INDEX.md the hook rewrote restored — the run is back on the branch it started on, and the answer/<id> it cut is gone",
+          code == fm.EXIT_LINT and sh_("status", "--porcelain", "--untracked-files=no") == "" and sh_("branch", "--show-current") == start_
+          and sh_("branch", "--list", "answer/ap-500") == "" and "answer:" not in (root / "docs/work-tracker/AP-500-x.md").read_text().split("---")[1]
+          and "restored docs/work-tracker/AP-500-x.md, docs/work-tracker/INDEX.md" in err and "`answer/ap-500` deleted" in err)
+    check("FM-017 · …and it says what refused it — the hook's own words, not git's last line — and the answer, with the command that gives it again: no answer is lost",
+          "gate: AP-500 refused - the reason the Owner must read" in err and "your answer, not lost: accepted - count one week first" in err
+          and 'to give it again: ' in err and '--answer AP-500 accept "count one week first"' in err)
+    # the leftover 0.17.3 left: the answer staged, INDEX.md rewritten — and a file of the Owner's own changed beside them
+    p5_ = root / "docs/work-tracker/AP-500-x.md"
+    p5_.write_text(p5_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - count one week first"\nanswered: {new_}\nanswered-by: holgo\n'), encoding="utf-8")
+    git(root, "add", str(p5_)); (root / "docs/work-tracker/INDEX.md").write_text((root / "docs/work-tracker/INDEX.md").read_text() + "x\n", encoding="utf-8")
+    (root / "notes.txt").write_text("the Owner's own change\n", encoding="utf-8")
+    code, out, err = run(root, "--answer", "AP-501", "accept")
+    undo_ = "git restore --staged --worktree -- docs/work-tracker/AP-500-x.md docs/work-tracker/INDEX.md"
+    check("FM-017 · the dirty-tree refusal names the paths — and a tracker carrying an answer that was never committed is called what it looks like, a failed earlier `--answer`, with ONE command that undoes it and the answer to give again",
+          code == fm.EXIT_LINT and "working tree has changes" in err and all(p_ in err.split("Changed:")[1].split("\n")[0] for p_ in ("docs/work-tracker/AP-500-x.md", "docs/work-tracker/INDEX.md", "notes.txt"))
+          and "AP-500 carries an answer that was never committed" in err and "failed half-way" in err and undo_ in err
+          and '--answer AP-500 accept "count one week first"' in err and "commit or stash it: notes.txt" in err)
+    subprocess.run(undo_.split()[:1] + ["-C", str(root)] + undo_.split()[1:], check=True, capture_output=True, env=_ENV)
+    check("FM-017 · the command it gives undoes exactly what the tool left — the Owner's own change stays", sh_("status", "--porcelain", "--untracked-files=no") == "M notes.txt")
     rm_git(root)
 fm.configure(HERE)
 
@@ -1112,8 +1257,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check("5 · signed by the key the repository trusts for that seat, the same ask passes — one verifier, the answer's", code == 0 and "does not verify" not in err)
     (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo99"]\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\n', encoding="utf-8")
     code, _, err = run(root)
-    check("5 · `answerers` still works beside `[seats]` — a deprecation line, never a refusal: one release to move it",
-          code == 0 and "`answerers` is the old name for the `answer` right" in err)
+    check("5 · `answerers` beside `[seats]` is a note, never a refusal — and since `[seats]` alone decides there, the note says it is not read for answers (FM-015), never that it still works",
+          code == 0 and "`answerers` is the old name for the `answer` right" in err and "here it is not read for answers" in err and "still works" not in err)
     # FM-010: the note was guarded on `answerers` AND `[seats]`, so the only repositories told were the ones already
     # migrating. A repository wholly on the old key — the entire population the deprecation is for — heard nothing,
     # while the note promised removal in the next release. `answerers` must go ABOVE any table header: a bare key is
@@ -1131,6 +1276,42 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root)
     check("5 · a repository on `[seats]` with no `answerers` is never warned about a key it does not use",
           code == 0 and "is the old name for the `answer` right" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-015: `[seats]` must not silently drop a signature `answerers` asked for ---------------------------------------
+# From 0.17.1 `[seats]` alone says who may answer, so `answerers = ["alice signed"]` beside `[seats] owner = "alice"`
+# accepted Alice's unsigned answer, `--answer` stopped signing, and the note said `answerers` "still works". `answerers`
+# goes ABOVE every table header, or it is read as `[tags].answerers` and the case passes for the wrong reason.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "alice"), ("user.email", "alice@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    cfg_ = lambda answerers, seats: (root / "shoalmark.toml").write_text('name = "a"\n' + (f"answerers = {answerers}\n" if answerers else "")
+                                                                      + '[kinds]\nAP = "Work"\n' + (f'[seats]\n{seats}\nprincipal = "p@seat"\n' if seats else ""), encoding="utf-8")
+    cfg_("", "")
+    tracker(root, "AP-700", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=p <p@seat>")     # asked by the principal, which signs nothing
+    cfg_('["alice signed"]', 'owner = "alice signed"'); code_a, _, err_a = run(root, "--check")
+    check("FM-015 · `answerers` signed and the seat that answers for it signed — clean, and told `answerers` is not read here and can go",
+          code_a == 0 and "answerers" in err_a and "here it is not read for answers" in err_a and "is not signed" not in err_a)
+    cfg_('["alice signed"]', 'owner = "alice"'); code_b, _, err_b = run(root, "--check")
+    check("FM-015 · `answerers` signed and the seat that answers for it NOT signed — REFUSED, naming both lines and the two ways out",
+          code_b == fm.EXIT_LINT and '`answerers = ["alice signed"]` asks for a signed answer' in err_b and '`[seats] owner = "alice"`' in err_b
+          and 'Add `signed` to the seat (`owner = "alice signed"`), or remove `answerers`' in err_b)
+    code_c, _, err_c = run(root, "--answer", "AP-700", "accept")
+    check("FM-015 · …and `--answer` refuses the same way before it touches anything — it would have committed unsigned",
+          code_c == fm.EXIT_LINT and '`[seats] owner = "alice"`' in err_c and "answering AP-700 — 2/4" not in err_c
+          and subprocess.run(["git", "-C", str(root), "branch", "--list", "answer/ap-700"], capture_output=True, text=True, env=_ENV).stdout.strip() == "")
+    cfg_('["alice signed"]', 'owner = "alice@x"'); code_d, _, err_d = run(root, "--check")
+    check("FM-015 · where no seat is spelled like the `answerers` entry — a name there, an email here — the seats holding `answer` stand in for it, and an unsigned one is refused",
+          code_d == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_d and "no seat is spelled `alice`" in err_d)
+    cfg_('["alice signed"]', ""); code_e, _, err_e = run(root, "--check")
+    check("FM-015 · no `[seats]` — `answerers` is read, and the note is today's, with its removal anchored to 0.17.3",
+          code_e == 0 and "and still works" in err_e and "the release after 0.17.3" in err_e and "is not signed" not in err_e)
+    cfg_("", 'owner = "alice"'); code_f, _, err_f = run(root, "--check")
+    check("FM-015 · `[seats]` and no `answerers` — silent: no note, no refusal", code_f == 0 and "answerers" not in err_f)
     rm_git(root)
 fm.configure(HERE)
 
@@ -1346,6 +1527,142 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root, "--answer", "AP-301", "accept", "the importer")
     check("9 · an ask that parsed but is not its own line gets a refusal, not a traceback out of `next(...)`",
           code == fm.EXIT_LINT and "has no `ask:` line" in err and "Traceback" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-014: clearing an answered ask WITH its record is the `ask` right's move, not an `answer` --------------------------
+# `--clear-ask` drops the three answer lines and writes the exchange under `## Asks`. The rights gate read ANY change to
+# those lines as `answer` — the owner's alone — so the seat that acts on answers could never record that it had.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "c"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in (600, 601, 602, 603):
+        tracker(root, f"AP-{n_}", extra=f'next: owner\nask: "Shall {n_} ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "ship it"\n'
+                                         f'answer: "accepted - ship it, and count a week"\nanswered: {new_}\nanswered-by: holgo\n', title="answered")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the answers", "--author=holgo <h@x>")
+    wt_ = root / "docs/work-tracker"
+    def _as(seat_email, change):
+        """the seat at the keyboard makes `change`, stages it, and the pre-commit run judges it; then it is put back"""
+        git(root, "config", "user.email", seat_email); change(); git(root, "add", "-A")
+        r_ = run(root, "--print-written"); git(root, "reset", "-q", "--hard"); return r_
+    code, _, err = _as("principal@seat", lambda: run(root, "--clear-ask", "AP-600", "build"))
+    check("FM-014 · the principal clears an answered ask with `--clear-ask` — the record written, the lines gone — and the gate passes it: a clear is the `ask` right's",
+          code == 0 and "does not hold" not in err and "nowhere in the body" not in err)
+    git(root, "config", "user.email", "principal@seat"); run(root, "--clear-ask", "AP-600", "build"); run(root); git(root, "add", "-A")
+    git(root, "commit", "-qm", "AP-600 acted on", "--author=p <principal@seat>"); code, _, err = run(root, "--check")
+    check("FM-014 · …and committed, `--check` reads the same commit the same way", code == 0 and "does not hold" not in err)
+    code, _, err = _as("implementer@seat", lambda: run(root, "--clear-ask", "AP-601", "build"))
+    check("FM-014 · the implementer, which holds no `ask`, is refused the same clear — naming the move and the right",
+          code == fm.EXIT_LINT and "AP-601: this change clears an answered ask" in err and "which does not hold `ask`" in err)
+    strip_ = lambda n_: (lambda p_: p_.write_text("".join(l + "\n" for l in p_.read_text().split("\n")[:-1] if not l.startswith("answer")), encoding="utf-8"))(next(wt_.glob(f"AP-{n_}-*.md")))
+    code, _, err = _as("principal@seat", lambda: strip_(602))
+    check("FM-014 · the answer removed WITHOUT its record is refused — as an `answer`, the Owner's, and as a ruling gone from the record",
+          code == fm.EXIT_LINT and "AP-602: this change is a `answer`" in err and "does not hold `answer`" in err and "AP-602: the answer is being removed and the exchange is nowhere in the body" in err)
+    edit_ = lambda: (lambda p_: p_.write_text(p_.read_text().replace("ship it, and count a week", "ship it"), encoding="utf-8"))(next(wt_.glob("AP-603-*.md")))
+    code, _, err = _as("principal@seat", edit_)
+    check("FM-014 · the answer's text edited by the principal is refused as an `answer` — only the Owner writes his words",
+          code == fm.EXIT_LINT and "AP-603: this change is a `answer`" in err and "clears an answered ask" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-019: a merge is judged by its own change — never by everything its branch carried ------------------------------
+# On a clean tree the gate read HEAD against HEAD~1. For a merge that is the whole pull request, every answer and close
+# in it attributed to whoever merged — the forge's merge identity, no seat — so `--check` on a trunk went red on the first
+# merge that carried one. A merge's own change is what differs from EVERY parent: a conflict resolved, an edit in the merge.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "m"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    ask19_ = lambda n_, q_: tracker(root, f"AP-{n_}", extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
+    ask19_(800, "Shall the launcher ship first?"); ask19_(811, "Shall the importer ship first?")
+    tracker(root, "AP-801", title="to close"); tracker(root, "AP-802", title="to judge")
+    tracker(root, "AP-810", body="## What is true now\n\n**One thing is left.**\n\nleft: the first thing\n\n## Done when\n\nit is.\n", title="both sides edit")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    edit19_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
+    answer19_ = lambda n_: edit19_(n_, 'ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: {new_}\nanswered-by: holgo\n')
+    merged19_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
+                                          env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+    # (a) a branch carrying an answer (the owner's), a close and a triage verdict (the principal's) — each by the seat that may
+    git(root, "switch", "-q", "-c", "pr/a")
+    answer19_(800); git(root, "commit", "-qam", "AP-800: accepted", "--author=holgo <h@x>")
+    edit19_(801, "status: In Progress", "status: Shipped"); git(root, "commit", "-qam", "AP-801 shipped", "--author=p <principal@seat>")
+    edit19_(802, "considered: none\n", "considered: none\ntier: P1\n"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-802 judged", "--author=p <principal@seat>")
+    git(root, "switch", "-q", trunk_); (root / "notes.txt").write_text("trunk moved on\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+    mg_ = merged19_("merge", "--no-ff", "-q", "pr/a", "-m", "Merge pull request from pr/a")
+    code, _, err = run(root, "--check")
+    check("FM-019 · (a) a clean merge by the forge's identity, no seat, of a branch carrying an answer, a close and a triage verdict — no rights problem: it made none of them",
+          mg_.returncode == 0 and code == 0 and "not a seat" not in err and "this change is a" not in err)
+    # (b) a conflict the merger resolves, and in resolving it closes the tracker: THAT is the merge's own, and its seat's
+    git(root, "switch", "-q", "-c", "pr/b"); answer19_(811); git(root, "commit", "-qam", "AP-811: accepted", "--author=holgo <h@x>")
+    edit19_(810, "left: the first thing", "left: the branch's thing"); git(root, "commit", "-qam", "AP-810 on the branch", "--author=p <principal@seat>")
+    git(root, "switch", "-q", trunk_); edit19_(810, "left: the first thing", "left: the trunk's thing"); git(root, "commit", "-qam", "AP-810 on the trunk", "--author=p <principal@seat>")
+    conflict_ = merged19_("merge", "--no-ff", "-q", "pr/b", "-m", "Merge pull request from pr/b")
+    p810_ = next((root / "docs/work-tracker").glob("AP-810-*.md"))
+    p810_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "left: both things\n", p810_.read_text(), flags=re.S).replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+    git(root, "config", "user.email", "implementer@seat"); git(root, "add", "-A"); run(root); git(root, "add", "-A")
+    code_pre, _, err_pre = run(root, "--print-written")
+    check("FM-019 · (b) the merge being committed: a conflict resolution that closes a tracker is the merger's `close`, judged under the seat at the keyboard — and the answer the branch brought in is not",
+          conflict_.returncode != 0 and code_pre == fm.EXIT_LINT and "AP-810: this change is a `close`" in err_pre and "which does not hold `close`" in err_pre and "AP-811: this change" not in err_pre)
+    git(root, "config", "user.email", "principal@seat"); run(root); git(root, "add", "-A")        # the INDEX.md the hook would stage, without the refusal's banner
+    git(root, "commit", "-q", "--no-edit", "--author=impl <implementer@seat>"); code, _, err = run(root, "--check")
+    check("FM-019 · (b) …and committed, `--check` reads the merge the same way: its own close, the implementer's, refused — nothing the branch carried",
+          code == fm.EXIT_LINT and "AP-810: this change is a `close`" in err and "`implementer@seat` is the seat `implementer`" in err and "AP-811: this change" not in err and "AP-811: in `" not in err)
+    git(root, "commit", "-q", "--amend", "--no-edit", "--author=p <principal@seat>"); code, _, err = run(root, "--check")
+    check("FM-019 · (b) the same resolution merged by the principal, which holds `close`, passes", code == 0 and "this change is a" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-019: …and a merge does not launder what it brings: every commit it brings is read, under its own author --------
+# A commit made without the hook — `--no-verify`, a clone with none installed, the forge's editor — was never judged. The
+# merge's own change is the merger's; each commit it brings is judged against its own parent, under its own signature.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "l"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x signed"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in range(920, 940):
+        tracker(root, f"AP-{n_}", title="worked on")
+    tracker(root, "AP-900", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
+    tracker(root, "AP-901", title="to close")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    sha_ = lambda rev="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev], capture_output=True, text=True, env=_ENV).stdout.strip()
+    move_ = lambda text: ((root / "notes.txt").write_text(text, encoding="utf-8"), git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>"))
+    # the cost: a merge that brings twenty commits, each working on a tracker — read only because HEAD is a merge
+    git(root, "switch", "-q", "-c", "pr/twenty")
+    for n_ in range(920, 940):
+        p_ = next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")); p_.write_text(p_.read_text() + f"\nWorked on in commit {n_}.\n", encoding="utf-8")
+        git(root, "commit", "-qam", f"AP-{n_}: worked on", "--author=i <implementer@seat>")
+    git(root, "switch", "-q", trunk_); move_("trunk moved\n"); git(root, "merge", "-q", "--no-ff", "pr/twenty", "-m", "Merge twenty")
+    import time as _time
+    t0_ = _time.perf_counter(); code, _, err = run(root, "--check"); took_ = _time.perf_counter() - t0_
+    check(f"FM-019 · a merge that brings twenty commits is read commit by commit — `--check` passed in {took_:.2f} s", code == 0 and "this change is a" not in err)
+    # (f) a close made by a seat that holds no `close`, without the hook, brought in by the principal's merge — which holds it
+    git(root, "switch", "-q", "-c", "pr/f")
+    p_ = next((root / "docs/work-tracker").glob("AP-901-*.md")); p_.write_text(p_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-901 shipped, no hook", "--author=i <implementer@seat>"); f_ = sha_()
+    git(root, "switch", "-q", trunk_); move_("trunk moved again\n"); git(root, "merge", "-q", "--no-ff", "pr/f", "-m", "Merge pr/f")
+    code, _, err = run(root, "--check")
+    check("FM-019 · (f) a merge brings a close made by a seat without `close` — refused, naming THAT commit and its seat, not the merge that brought it",
+          code == fm.EXIT_LINT and f"AP-901: in `{f_[:10]}` (implementer@seat), which the merge brings" in err and "which does not hold `close`" in err and sha_()[:10] not in err)
+    # (e) an unsigned answer whose author is the signed owner's identity — a string anyone can type — brought in by a merge
+    git(root, "switch", "-q", "-c", "pr/e")
+    p_ = next((root / "docs/work-tracker").glob("AP-900-*.md"))
+    p_.write_text(p_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: {new_}\nanswered-by: holgo\n'), encoding="utf-8")
+    git(root, "commit", "-qam", "AP-900: accepted, unsigned", "--author=holgo <h@x>"); e_ = sha_()
+    git(root, "switch", "-q", trunk_); move_("and again\n"); git(root, "merge", "-q", "--no-ff", "pr/e", "-m", "Merge pr/e")
+    code, _, err = run(root, "--check")
+    check("FM-019 · (e) a merge brings an UNSIGNED answer under the signed owner's identity — refused, and the refusal names that commit, not the merge",
+          code == fm.EXIT_LINT and f"the commit `{e_[:10]}` making a `answer` change does not verify as the seat `owner`" in err and sha_()[:10] not in err)
     rm_git(root)
 fm.configure(HERE)
 

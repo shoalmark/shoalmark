@@ -45,6 +45,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 # a second time here is what let 0.17.1 and 0.17.2 ship with a stale constant, silencing the changelog (FM-009).
 __version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else "unknown"
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
+# how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
+# second screen (a repository with its own page overrides the label `answer.sign.url`)
+SIGNING_PAGE = "https://holgo99.github.io/shoalmark/signing/"
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty
@@ -178,7 +181,8 @@ def configure(root=None):
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -565,7 +569,9 @@ def extract(path):
         "ask_options": [o.strip() for o in (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
         "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
         "answered": (fm.get("answered") or "").strip(),
-        "answered_by": (lambda v: git_user() if v in ("", "<you>") else v)((fm.get("answered-by") or "").strip()),
+        # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
+        # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
+        "answered_by": (lambda v: git_user() if v in ("", "<you>") and (fm.get("answer") or "").strip() else v)((fm.get("answered-by") or "").strip()),
         # `kind-of-problem: complicated`: the kind of problem that is LEFT, which picks the dispatch.
         "problem": (fm.get("kind-of-problem") or "").strip().lower(),
         "fm_tier": (fm.get("tier") or "").strip(),
@@ -808,6 +814,13 @@ def standup(trackers, invite=None):
     return EXIT_OK
 
 
+def answer_step(tid, n, text):
+    """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
+    reads the trackers, and a checkout hook and the pre-commit gate read them again; silent for that long, it was
+    stopped by an Owner who took it for hung (FM-012). What it prints at the end is unchanged."""
+    print(f"answering {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
+
+
 def answer_cmd(words, trackers):
     """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
     `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes.
@@ -832,6 +845,9 @@ def answer_cmd(words, trackers):
     if vcs() != "git":
         print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
+    for p_ in answerers_problems():                           # a signature the configuration asks for and `[seats]` drops (FM-015)
+        print(f"--answer: {p_}", file=sys.stderr)
+        return EXIT_LINT
     # who may answer is asked in ONE place, `may_answer()`: with `[seats]`, the seats that hold `answer`, matched on
     # the identity git will actually write; with none, `answerers`, which always meant the author's name
     me, allowed = git_user(), may_answer()
@@ -845,11 +861,12 @@ def answer_cmd(words, trackers):
         return EXIT_LINT
     signed = (SEATS[seat][1] if SEATS else allowed.get(me)) == "signed"
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
-        print("--answer: the working tree has changes — an answer is one commit with nothing else in it; commit or stash first", file=sys.stderr)
+    dirty = changed_paths(git)
+    if dirty:
+        print(dirty_refusal(git, dirty), file=sys.stderr)
         return EXIT_LINT
     if signed and not git("config", "user.signingkey").stdout.strip():
-        print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page', file=sys.stderr)
+        print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
         return EXIT_LINT
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
@@ -861,7 +878,39 @@ def answer_cmd(words, trackers):
         return EXIT_LINT
     path = TRACKER_DIR / t["file"]
     rel = path.relative_to(ROOT).as_posix()
-    branch, here = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip()
+    # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
+    # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal.
+    # Asked before the branch is cut — nothing is touched for an answer that cannot be written
+    if not any(l.startswith("ask:") for l in path.read_text(encoding="utf-8").split("\n")):
+        print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
+              f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
+        return EXIT_LINT
+    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
+    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "")
+    branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
+    created = switched = False
+
+    def undo(what, said=""):
+        """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
+        change (refused above otherwise), so every tracked path that differs now is its own — the tracker it wrote, the
+        INDEX.md a hook regenerated — and is restored. Then it goes back to the branch it started on, and an
+        `answer/<id>` it cut and never committed to is deleted. Left behind, those made the Owner's next `--answer`, on
+        another ask, refuse as a dirty tree without saying why. His answer is printed with the command that gives it
+        again: a refusal never costs him the words."""
+        restored = changed_paths(git)
+        if restored:
+            git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in restored])
+        back = gone = ""
+        if switched:
+            s_ = git("switch", here) if here else git("switch", "--detach", start)
+            back = f"back on `{here or start[:10]}`" if s_.returncode == 0 else f"could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}"
+            if created and s_.returncode == 0 and git("rev-parse", "--verify", "-q", branch).stdout.strip() == start and git("branch", "-D", branch).returncode == 0:
+                gone = f"`{branch}` deleted — it carried no commit"
+        print(f"--answer: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
+        print("  undone: " + " · ".join(x for x in (f"restored {', '.join(restored)}" if restored else "", back, gone) if x) if restored or back else "  nothing was changed", file=sys.stderr)
+        print(f"  your answer, not lost: {answer}\n  to give it again: {again}", file=sys.stderr)
+        return EXIT_LINT
+
     if here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
             # an `answer/<id>` left over from another branch does not carry this ask: switching to it would write the
@@ -871,30 +920,37 @@ def answer_cmd(words, trackers):
                 print(f"--answer: `{branch}` exists and its tip does not carry this ask — it was cut from another branch or the ask has changed since. "
                       f"Delete it (`git branch -D {branch}`) or answer from the branch that carries the ask", file=sys.stderr)
                 return EXIT_LINT
+            answer_step(tid, 2, f"switching to `{branch}` — the checkout hook, where one is installed, rebuilds the board")
             r = git("switch", branch)
         else:
+            answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
             r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
+            created = r.returncode == 0
         if r.returncode:
-            print(f"--answer: could not switch to `{branch}` — {r.stderr.strip()}", file=sys.stderr)
-            return EXIT_LINT
-    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
+            return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
+        switched = True
+    else:
+        answer_step(tid, 2, f"on `{branch}` already")
     lines = path.read_text(encoding="utf-8").split("\n")
-    # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
-    # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal
     at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
     if at is None:
-        print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
-              f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
-        return EXIT_LINT
+        return undo(f"{tid} has no `ask:` line in {t['file']} on `{branch}` — the front matter's question is what the answer is written under")
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
-    put(path, "\n".join(lines))
-    git("add", "--", rel)
+    try:
+        put(path, "\n".join(lines))
+    except OSError as e:
+        return undo(f"could not write {rel} — {e}")
+    if git("add", "--", rel).returncode:
+        return undo(f"could not stage {rel}")
+    answer_step(tid, 3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
+                else "committing — the pre-commit gate runs")
     r = git("commit", *(["-S"] if signed else []), "-m", f"{tid}: {answer[:60]}")
     if r.returncode:
-        print(f"--answer: the commit failed — {r.stderr.strip()[-300:]}", file=sys.stderr)
-        return EXIT_LINT
+        # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
+        said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
+        return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
     if signed:
         # the gate's own rule, asked here so the answer is never pushed under one the gate will refuse: a good signature
         # (`%G?`) AND the principal the key is trusted for (`%GS`) being the author's email — a trusted key still says
@@ -904,9 +960,52 @@ def answer_cmd(words, trackers):
             print(f"--answer: committed, but the signature does not verify as `{me}` — `git commit --amend -S`, or check the signers file; "
                   f"NOT pushed, and the gate would refuse this answer", file=sys.stderr)
             return EXIT_LINT
+    answer_step(tid, 4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
     print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
     return EXIT_OK if r.returncode == 0 else EXIT_LINT
+
+
+def changed_paths(git):
+    """Every tracked path that differs from HEAD, staged or not — repository-relative, as git names them. `-z`, so a
+    path git would quote comes back as it is; a rename's second name, which `-z` sends after it, is skipped."""
+    out, paths, skip = git("status", "--porcelain", "-z", "--untracked-files=no").stdout.split("\0"), [], False
+    for entry in out:
+        if skip or len(entry) < 4:
+            skip = False
+            continue
+        paths.append(entry[3:])
+        skip = entry[0] in "RC"
+    return paths
+
+
+def dirty_refusal(git, dirty):
+    """`--answer` on a tree with changes: WHICH paths, and — where one is a tracker carrying an answer that is not
+    committed — that it looks like an earlier `--answer` that failed half-way (0.17.3 left its writes behind, FM-017), the
+    one command that undoes it, and the answer it would have filed, so the Owner never types it from memory."""
+    top = pathlib.Path(git("rev-parse", "--show-toplevel").stdout.strip() or ROOT)
+    said = f"--answer: the working tree has changes — an answer is one commit with nothing else in it. Changed: {', '.join(dirty)}"
+    left = []
+    for p_ in dirty:
+        name = p_.rsplit("/", 1)[-1]
+        if not KIND_RE.match(name) or not (top / p_).is_file():
+            continue
+        now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
+        was_ = (parse_frontmatter(git("show", f"HEAD:{p_}").stdout)[0].get("answer") or "").strip()
+        if now_ and now_ != was_:
+            left.append((p_, "-".join(name.split("-")[:2]), now_.strip('"')))
+    if not left:
+        return said + " — commit or stash them first"
+    generated = {pathlib.Path(os.path.relpath(f, top)).as_posix() for f in [OUT, *DERIVED_FILES]}
+    mine = [p_ for p_ in dirty if p_ in {l_[0] for l_ in left} | generated]
+    theirs = [p_ for p_ in dirty if p_ not in mine]
+    for p_, tid, ans in left:
+        m = re.fullmatch(r"(accepted|rejected)(?:\s+-\s+(.*))?", ans)
+        said += (f"\n  {tid} carries an answer that was never committed — {ans!r}. It looks like an earlier `--answer` that failed half-way"
+                 + (f"; to give it again: {CMD} --answer {tid} {m.group(1)[:-2]}" + (f' "{m.group(2)}"' if m.group(2) else "") if m else ""))
+    said += (f"\n  undo what it left with ONE command:\n    git{'' if top == ROOT else ' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}"
+             + (f"\n  the rest is not the tool's — commit or stash it: {', '.join(theirs)}" if theirs else ""))
+    return said
 
 
 def ready_needs(t, by_id):
@@ -1047,7 +1146,10 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
 #dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
 #dlg menu{display:flex;gap:8px;margin:14px 0 0;padding:0}#dlg button{border:1px solid var(--line);padding:6px 12px;font-size:12px}#dlg button.go{border-color:var(--ink);color:var(--ink)}#dlg button:disabled{opacity:.4}
-#dlg .out{white-space:pre-wrap;border-left:2px solid var(--teal);padding:6px 8px;margin:10px 0 0;color:var(--dim);font-size:12px}
+/* the second screen: the decision is made, the terminal signs it — the command, then where, what, the end, the check, the way out */
+#dlg h4{margin:14px 0 4px;font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}#dlg ol{margin:4px 0;padding-left:20px}#dlg li{margin:2px 0}#dlg p{margin:4px 0}
+#dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
+#dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
@@ -1065,7 +1167,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
-const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -1074,6 +1176,8 @@ dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}},          // `#100%
 // every word of the chrome comes from L (labels.yaml, merged over the built-in English). What the page's LOGIC compares —
 // a status, a section, a move — stays the word an agent types; only what is SHOWN goes through here.
 l=(k,...a)=>esc((L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??"")),sl=s=>L["status."+s]||s,vn=g=>L["view."+g]||g,
+// …and `lh` for a label whose {0} is MARKUP the page built itself (a `<code>`, a link): the label is escaped, the parts are not
+lh=(k,...a)=>esc(L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??""),
 byId=new Map(T.map(t=>[t[0],t])),inb=new Map();
 for(const t of T)for(const l of t[12])inb.set(l,[...(inb.get(l)||[]),t[0]]);
 EPICS=new Set(T.map(t=>t[13])),
@@ -1144,15 +1248,33 @@ function draw(){
         <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
         ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
         :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
-        <p class="m out" hidden></p><menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
-      const f=d.querySelector("form"),ta=f.text,out=f.querySelector(".out");
+        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+      const f=d.querySelector("form"),ta=f.text;
       f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
         // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
         const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
         const line=`${cmd} --answer ${id} ${kind}${chosen?` "${chosen}"`:""}`;
-        navigator.clipboard?.writeText(line);out.textContent=l("answer.run")+"\n"+line;out.hidden=false;f.querySelector(".go").disabled=true};
+        sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
       d.showModal()};
+    // THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
+    // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step
+    // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done
+    // (Esc too: it is the dialog's own). It says *Copied* only when the clipboard said so: from a file there may be none.
+    const sign=(d,id,line,said)=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
+      d.innerHTML=`<form method="dialog" class="sign"><h3>${l("answer.sign.title")} · <a href="#=${id}">${id}</a></h3>
+        <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
+        <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
+        <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
+        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"))}</li>
+        <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
+        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} answered: ${said}\n  signed, on \`${br}\`, pushed`)}</pre>
+        <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
+        <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}</a>`)}</p>
+        <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
+      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())
+        .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);
+      d.querySelector(".copy").onclick=copy;copy();d.querySelector(".go").focus()};
     window.ACT=act;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
@@ -1241,7 +1363,23 @@ LABELS = {
     "waiting.malformed": "{0} asks sent back — not for you",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
-    "answer.ok": "OK — give me the command", "answer.abort": "abort", "answer.run": "Copied. Run this in the repository; it cuts the answer branch, writes the three lines, commits signed and pushes:",
+    "answer.ok": "OK — give me the command", "answer.abort": "abort",
+    # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
+    "answer.sign.title": "Sign your answer",
+    "answer.sign.intro": "Your decision is made. A browser cannot sign it — your terminal does, with your key. Run this command:",
+    "answer.sign.copy": "Copy again", "answer.sign.copied": "Copied.",
+    "answer.sign.nocopy": "Not copied — this page has no clipboard here (a board opened from a file often has none). Select the command and copy it.",
+    "answer.sign.where": "Where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
+    "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
+    "answer.sign.does": "What it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
+    "answer.sign.step.push": "pushes the branch",
+    "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
+    "answer.sign.success": "When it worked", "answer.sign.check": "To check",
+    "answer.sign.check.text": "{0} prints {1} — a good signature, under a key this repository trusts.",
+    "answer.sign.fail": "If it fails", "answer.sign.fail.text": "No signing key is set, or the signature does not verify: set up your key once — {0}.",
+    "answer.sign.page": "the signing page", "answer.sign.url": SIGNING_PAGE,
+    "answer.done": "Done",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
@@ -1424,6 +1562,16 @@ def latest_verdicts():
     return out
 
 
+def built_on():
+    """The branch this board is built from — the answer dialog's second screen names it as the place to run `--answer`:
+    the board shows the asks of the trackers on this branch, so this is the branch that carries them. git only; empty on
+    a detached HEAD, under Subversion, or with no version control, and the screen then says it without a name."""
+    if vcs() != "git":
+        return ""
+    out = subprocess.run(["git", "branch", "--show-current"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
 def html_escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
@@ -1461,7 +1609,7 @@ def render_html(trackers):
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
     page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace(
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
@@ -1886,9 +2034,13 @@ def render_schema():
 
 
 def git_user():
-    """The committer's own name, as git will write it — so `answered-by:` need not be typed."""
-    out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    return out.stdout.strip() if out.returncode == 0 else ""
+    """The committer's own name, as git will write it — so `answered-by:` need not be typed. Read ONCE per run and
+    kept (`configure` forgets it): the answer is the only place it is needed, and a run does not change who is typing."""
+    global _GIT_USER
+    if _GIT_USER is None:
+        out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        _GIT_USER = out.stdout.strip() if out.returncode == 0 else ""
+    return _GIT_USER
 
 
 def svn_blame(rel):
@@ -1959,12 +2111,15 @@ def line_author(path, needle):
         # too. `-G` runs the regex over each changed line with its `+`/`-` stripped, so `^` is the line start and only a
         # commit that changed the FRONT-MATTER line matches. A commit that rewrote the line's text matches as well,
         # which is right: the setter is whoever wrote the line the file carries now.
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        # during a merge the line may be committed on the side coming in: its history is read too, and "is it committed"
+        # asks every parent, not HEAD alone — or an answer a merge brings reads as never committed (FM-019)
+        tips = ["HEAD", *merge_heads()]
+        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), *tips, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode == 0 and log.stdout.strip():
             commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
             dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
-            head = lambda: subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
-            if not (dirty and not any(l.startswith(needle) for l in head().splitlines())):
+            at = lambda rev: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
+            if not (dirty and not any(l.startswith(needle) for rev in tips for l in at(rev).splitlines())):
                 out = (name, email, "git", commit)
     _LINE_AUTHOR[(rel, needle)] = out
     return out
@@ -2031,6 +2186,29 @@ def may_answer():
     return dict(ANSWERERS)
 
 
+def answerers_problems():
+    """A SIGNATURE `answerers` ASKS FOR AND `[seats]` DROPS (FM-015). With `[seats]`, `may_answer()` reads the seats
+    alone, so `answerers = ["alice signed"]` beside `[seats] owner = "alice"` stopped being enforced at 0.17.1: Alice's
+    unsigned answer counted, and `--answer` stopped signing. The seat that answers for an `answerers` identity is the one
+    `[seats]` spells the same way — a name or an email; where none does, the tool cannot tell which of the seats holding
+    `answer` is that person, so each of them stands in for it. One of those not `signed` is refused, naming both lines
+    and the two ways out."""
+    if not SEATS:
+        return []
+    out = []
+    answering = [s for s, (who, _m) in SEATS.items() if who and holds(s, "answer")]
+    for name, mode in ANSWERERS.items():
+        if mode != "signed":
+            continue
+        same = [s for s in answering if SEATS[s][0] == name]
+        for s in [s for s in (same or answering) if SEATS[s][1] != "signed"]:
+            out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and `[seats] {s} = "{SEATS[s][0]}"` — '
+                       + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
+                       + f' — is not signed. `[seats]` alone decides who may answer (from 0.17.1), so that answer would count unsigned. '
+                       f'Add `signed` to the seat (`{s} = "{SEATS[s][0]} signed"`), or remove `answerers`')
+    return out
+
+
 def no_seat(name, email, right, what):
     """The one refusal, worded once: who the version control system says made the change, the right it needed, and
     what the repository's seats are. It names the seat and the right — an agent told only *refused* tries again."""
@@ -2073,14 +2251,39 @@ def seat_problems(t):
     return []
 
 
+def asks_records(body):
+    """The records under the body's `## Asks` heading — one paragraph each, as `--clear-ask` writes them — normalised
+    for comparison: lower case, every run of whitespace one space, quotes gone."""
+    at = ASKS_HEAD_RE.search(body)
+    if not at:
+        return []
+    rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
+    section = body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())]
+    return [re.sub(r"\s+", " ", p.replace('"', "")).strip().lower() for p in re.split(r"\n\s*\n", section) if p.strip()]
+
+
+def cleared(b, b_body, a, a_body):
+    """THE CLEARING MOVE (FM-014): the three answer lines leave the front matter AND the body gains the record of that
+    exchange under `## Asks` — the same question, the same answer, the same answered-by. That is the seat's receipt for
+    acting on the answer, not an answer, and it is judged under `ask`. Anything else that touches the three lines —
+    removing them with no record, editing the answer — stays the Owner's `answer`."""
+    if not (b.get("answer") or "").strip() or any((a.get(k) or "").strip() for k in ("answer", "answered", "answered-by")):
+        return False
+    quiet = lambda s: re.sub(r"\s+", " ", (s or "").replace('"', "")).strip().lower()
+    want = [quiet(b.get("ask")), quiet(b.get("answer"))] + ([quiet(b.get("answered-by"))] if quiet(b.get("answered-by")) not in ("", "<you>") else [])
+    count = lambda records: sum(all(w in r for w in want) for r in records)
+    return all(want[:2]) and count(asks_records(a_body)) > count(asks_records(b_body))
+
+
 def transitions(before, after, new_file=False):
     """Which of the four rights a change exercises, read from the front matter on both sides. A NEW tracker is not a
-    triage verdict for carrying `considered:` — that line is the filing rule; a `tier:` or a `rank:` on it is."""
-    b, _ = parse_frontmatter(before)
-    a, _ = parse_frontmatter(after)
+    triage verdict for carrying `considered:` — that line is the filing rule; a `tier:` or a `rank:` on it is. Clearing
+    an answered ask with its record is `clear` — the `ask` right's, judged on the change (`rights_problems`)."""
+    b, b_body = parse_frontmatter(before)
+    a, a_body = parse_frontmatter(after)
     got, changed = set(), lambda k: (a.get(k) or "").strip() != (b.get(k) or "").strip()
     if any(changed(k) for k in ("answer", "answered", "answered-by")):
-        got.add("answer")
+        got.add("clear" if cleared(b, b_body, a, a_body) else "answer")
     if (a.get("next") or "").strip().lower() == "owner" and (b.get("next") or "").strip().lower() != "owner":
         got.add("ask")
     if a.get("status") and classify_status(a["status"]) not in OPEN_STATUSES and (not b.get("status") or classify_status(b["status"]) in OPEN_STATUSES):
@@ -2090,26 +2293,67 @@ def transitions(before, after, new_file=False):
     return got
 
 
-def change_under_review():
-    """WHAT THIS RUN IS JUDGING, once: (base revision, the tracker files it touches, author name, author email,
-    commit). The commit being made — staged, or simply not committed yet — read against HEAD; on a clean tree, the
-    commit at HEAD read against its parent. Nothing else needs a version-control call."""
+def merge_heads():
+    """The other parents of a merge being committed right now — `MERGE_HEAD`, one line per head — or none."""
+    out = subprocess.run(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    f = pathlib.Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else None
+    f = f if f is None or f.is_absolute() else ROOT / f
+    return f.read_text(encoding="utf-8").split() if f is not None and f.is_file() else []
+
+
+def changes_under_review():
+    """WHAT THIS RUN IS JUDGING, once — a list of changes, each (the revisions it is read against, the tracker files it
+    touches, author name, author email, the commit or "" when it is not made yet, the revision that holds its result or
+    None for the working tree, a label that names it). The commit being made — staged, or simply not committed yet —
+    read against HEAD; on a clean tree, the commit at HEAD read against its parent.
+
+    A MERGE (FM-019) is two kinds of change, and neither is the merger's alone:
+    1. EACH COMMIT IT BRINGS — every non-merge commit reachable from it and not from its first parent — against its own
+       parent, under its own author and its own signature. A commit made without the hook (`--no-verify`, a clone with no
+       hook installed, the forge's editor) was never judged; a merge must not launder it.
+    2. ITS OWN CHANGE — the tracker files where the result differs from EVERY parent (a conflict resolved, an edit made in
+       the merge), judged under the merger. A clean merge adds nothing of its own.
+    Read against its first parent alone, a merge was everything its branch carried and all of it the merger's: `--check`
+    on a trunk went red on the first pull request carrying an answer or a close, the forge's merge identity being no
+    seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
+    merge brings are read only when there is a merge: one `git log` for all of them."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if COMMITTING:
-        return ("HEAD", staged_now(), *pending_author(), "")
-    dirty = git("diff", "--name-only", "--relative", "HEAD")
-    if dirty.returncode == 0 and dirty.stdout.strip():
-        return ("HEAD", set(dirty.stdout.split("\n")), *pending_author(), "")
-    changed = git("diff", "--name-only", "--relative", "HEAD~1", "HEAD")
-    if changed.returncode != 0:
-        return (None, set(), "", "", "")                 # a root commit has no parent to compare with
-    who = git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n")
-    return ("HEAD~1", set(changed.stdout.split("\n")), *(who + ["", "", ""])[:3])
+    names = lambda r: set(r.stdout.split("\n")) - {""} if r.returncode == 0 else set()
+
+    def brought(tips, first):
+        """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
+        if not tips:
+            return []
+        out = []
+        log = git("log", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x00%H%x00%an%x00%ae", *tips, "--not", first)
+        records = log.stdout.split("\x00")[1:]          # hash · name · email, then the files --name-only lists under it
+        for i in range(0, len(records) - 2, 3):
+            c, an, rest = records[i], records[i + 1], records[i + 2]
+            ae, _, files = rest.partition("\n")
+            out.append(([f"{c}^1"], set(files.split("\n")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+        return out
+
+    heads = merge_heads()
+    if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
+        files = set(staged_now()) if COMMITTING else names(git("diff", "--name-only", "--relative", "HEAD"))
+        for h in heads:
+            files &= names(git("diff", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
+        return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
+    parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
+    if not parents:
+        return []                                        # a root commit has no parent to compare with
+    files = None
+    for parent in parents:
+        got = names(git("diff", "--name-only", "--relative", parent, "HEAD"))
+        files = got if files is None else files & got
+    name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
+    return (brought(parents[1:], parents[0]) if len(parents) > 1 else []) + [(parents, files, name, email, commit, "HEAD", "")]
 
 
 def rights_problems(trackers):
     """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
-    transition the change makes. (`ask` is judged on the line, by `seat_problems`.) Under Subversion there is no
+    transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
+    no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
     pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
     the author of each line is the one the server authenticated, so the transitions are read from the lines."""
     if not SEATS or vcs() not in ("git", "svn"):
@@ -2130,26 +2374,29 @@ def rights_problems(trackers):
                 if how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
-    base, files, name, email, commit = change_under_review()
-    if base is None:
-        return []
-    seat = seat_of(name, email)
     show = lambda rev, rel: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    for t in trackers:
-        rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        if rel not in files:
-            continue
-        was = show(base, rel)
-        now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if base == "HEAD" or COMMITTING else show("HEAD", rel).stdout
-        for right in sorted(transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0) - {"ask"}):
-            if not holds(seat, right):
-                out.append(f'{t["id"]}: ' + no_seat(name, email, right, f'this change is a `{right}`'))
-            elif SEATS[seat][1] == "signed":
-                if not commit:
-                    print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
-                elif not verified_as(commit, email or None):
-                    out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
-                               f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
+    rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
+    for bases, files, name, email, commit, result, label in changes_under_review():
+        seat, where = seat_of(name, email), (label + " — " if label else "")
+        for rel in sorted(files & set(rels)):
+            t = rels[rel]
+            now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if result is None else show(result, rel).stdout
+            moves = None                                # a merge's own move is one it makes against EVERY parent (FM-019)
+            for base in bases:
+                was = show(base, rel)
+                made = transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0)
+                moves = made if moves is None else moves & made
+            for move in sorted(moves - {"ask"}):
+                right = "ask" if move == "clear" else move
+                if not holds(seat, right):
+                    out.append(f'{t["id"]}: {where}' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
+                                                                if move == "clear" else f'this change is a `{right}`'))
+                elif SEATS[seat][1] == "signed":
+                    if not commit:
+                        print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
+                    elif not verified_as(commit, email or None):
+                        out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
+                                   f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
     return out
 
 
@@ -2171,6 +2418,10 @@ def record_problems(t):
     had = (before.get("answer") or "").strip()
     if not had or t.get("answer"):
         return []
+    for h in merge_heads():                              # a merge loses an answer only if EVERY parent had it (FM-019)
+        other = subprocess.run(["git", "show", f"{h}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        if not (parse_frontmatter(other.stdout)[0].get("answer") or "").strip():
+            return []
     quiet = lambda s: re.sub(r"\s+", " ", s.strip().strip('"').lower())
     text = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
     if not t.get("asks_block"):
@@ -2274,12 +2525,18 @@ def lint(trackers, committing=False):
     # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
     # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
     # the old key, which is the entire population the deprecation is for (FM-010).
-    if ANSWERERS:
+    if ANSWERERS and SEATS:
+        # with `[seats]` the key is NOT READ for answers (`may_answer`, from 0.17.1): telling such a repository it "still
+        # works" is what let a signature it asked for go unenforced without a word (FM-015)
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right, and here it is not read for answers — `[seats]` decides '
+              f'who may answer and whether the answer is signed. It can be removed', file=sys.stderr)
+    elif ANSWERERS:
         # The schedule is ANCHORED to 0.17.3, never phrased against "this release": this note prints unchanged in every
         # later release, and a floating "the clock starts here" would restart the countdown each time it was read.
         print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`. '
               f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
+    problems += answerers_problems()
     problems += rights_problems(trackers)
     by_ask = asks_by_key(trackers)
     for t in trackers:
@@ -2426,10 +2683,11 @@ def parse_args(argv):
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
-    add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes")
+    add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
+             "naming each step as it starts. A failure after it wrote anything undoes it all and prints the answer and the command to give it again")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
     add("--clear-ask", nargs="+", metavar="WORD",
-        help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move. The gate refuses an answer removed without its record")
+        help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
@@ -2921,6 +3179,8 @@ def main(argv=None):
         return init(args.key)
     if args.install_hook:
         return install_hook()
+    if args.answer:
+        answer_step(args.answer[0].upper(), 1, "reading the trackers")
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
