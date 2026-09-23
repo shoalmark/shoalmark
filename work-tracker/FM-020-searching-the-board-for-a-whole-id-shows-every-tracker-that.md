@@ -1,10 +1,11 @@
 ---
 id: FM-020
 kind-of-problem: obvious
-status: In Progress
+status: Shipped
 considered: FM-002, FM-006, FM-016
 tags: bug
 next: review
+triaged: 2026-09-23
 hook: "The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He read it as the search not filtering at all."
 ---
 
@@ -12,8 +13,7 @@ hook: "The Owner typed one tracker's id into the board's search and got a long l
 
 ## What is true now
 
-**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; open for review, not
-merged.** The Principal chose the fix. In `draw()`, a query that is exactly one known id (trimmed, any case) is that
+**Built 2026-09-23 on `fix/0.17.5-one-id-one-row-and-an-empty-bucket-says-why`, for 0.17.5; **Shipped 2026-09-23: merged as #16 and tagged `v0.17.5` (`59eebeb`), reviewed on the branch (R1–R12 closed, the review file under `evidence/reviews/`).**** The Principal chose the fix. In `draw()`, a query that is exactly one known id (trimmed, any case) is that
 tracker alone: `exact=!hood&&byId.get(q.toUpperCase())`, and the row filter reads `hood ? neighbourhood : exact ? that
 tracker : the substring match as before`. Like `~ID`, it shows the tracker whether or not it is open, and the counter
 names it as itself (`1 tracker · <id>`, the label `count.id`), never as *open* (the Reviewer's R1). The full help is
@@ -65,6 +65,7 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | **Shipped in 0.17.5** — #16 merged and tagged `v0.17.5` (`59eebeb`); status set by the first triage pass (`fix`). |
 | 2026-09-23 | R12: the placeholder is `search · ~ID` (German `Suche · ~Id`) and fits the box at its 200 px minimum; the R6 hint fitted a 500 px window only. The check measures the placeholder with the box's font against its CSS minimum, both languages, and reads the title. |
 | 2026-09-23 | R7: no consumer id or number in shoalmark's files — the CHANGELOG's example is `FM-005`, and this tracker's hook and *Reproduced* paragraph are generic. |
 | 2026-09-23 | R6: the hint is short enough for its box in a 500 px window (English and German, measured in Chrome), and the whole help is the box's title (`search.help`). One Chrome check. |
