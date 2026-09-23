@@ -48,7 +48,7 @@ no way in gets left empty, and while it is empty `--triage` has nothing to judge
 ## Done when
 
 - `--init` writes a lead-in above the three lines, saying they describe the repository as a whole, and one short
-  generic example per line, in italics, a whole product, for the person to overwrite. No PortDive or client content.
+  generic example per line, in italics, a whole product, for the person to overwrite. No consumer's or client's content.
 - `README.md` says the same where the intent is described.
 - A scaffold check pins the lead-in (it names the whole repository) and the three example lines, and shows that the examples alone are not an intent.
 

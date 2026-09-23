@@ -29,7 +29,7 @@
 |----|------|------|--------|-------|---------|
 | [FM-022](FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md) | — | A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something… | In Progress | triage | — |
 | [FM-021](FM-021-the-progress-section-is-empty-beside-work-in-progress-and.md) | — | The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that… | In Progress | triage | — |
-| [FM-020](FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md) | — | The Owner typed one tracker's id into the board's search and got seventeen rows back, not the one tracker he asked for.… | In Progress | triage | — |
+| [FM-020](FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md) | — | The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He… | In Progress | triage | — |
 | [FM-008](FM-008-an-ask-reaches-the-owner-only-through-the-gate.md) | — | The ask/answer flow holds only while every agent has read AGENTS.md and chooses to obey it. Nothing in the tool refuses… | In Progress | triage | — |
 | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | — | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress | triage | — |
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | — | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | triage | — |

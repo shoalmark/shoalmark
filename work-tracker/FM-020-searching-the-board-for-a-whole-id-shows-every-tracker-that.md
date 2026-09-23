@@ -5,7 +5,7 @@ status: In Progress
 considered: FM-002, FM-006, FM-016
 tags: bug
 next: review
-hook: "The Owner typed one tracker's id into the board's search and got seventeen rows back, not the one tracker he asked for. He read it as the search not filtering at all."
+hook: "The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He read it as the search not filtering at all."
 ---
 
 # FM-020 — Searching the board for a whole id shows every tracker that links to it
@@ -24,7 +24,9 @@ box at its narrowest (R6); the box's title says it in full: *a whole id shows th
 
 | check | result |
 |---|---|
-| Chrome: MSR-002 links to MSR-001; `#MSR-001` and `#msr-001 ` | MSR-001 alone, counter `1 trackers`. On 0.17.4: MSR-001 and MSR-002, `2 trackers` (fails, as it should) |
+| Chrome: MSR-002 links to MSR-001; `#MSR-001` and `#msr-001 ` | MSR-001 alone, counter `1 tracker · MSR-001`. On 0.17.4: MSR-001 and MSR-002, `2 trackers` (fails, as it should) |
+| Chrome: Shipped MSR-003 searched by id, story view, *open* pressed (R1) | shown, counter `1 tracker · MSR-003`. At `8402732`: `1 open` |
+| Chrome, 500 px window, English and German (R6) | the hint fits its box; the box's title is the whole help |
 | Chrome controls: `#~MSR-001` · `#MSR-00` · `#stock` | both neighbours · all three by substring · both title matches. The same on 0.17.4 and now |
 | `test_core.py`, for a machine without a browser | the filter and the hint are in the page; fails on 0.17.4 |
 
@@ -33,16 +35,16 @@ whether they should be is a design question, not this release's.
 
 **What is left:** review, merge, the tag.
 
-**Why seventeen.** `draw()` (`shoalmark.py:1203–1206` at 0.17.4) matches every typed word as a lower-case substring
+**Why a long list.** `draw()` (`shoalmark.py:1203–1206` at 0.17.4) matches every typed word as a lower-case substring
 of about thirty fields of a row joined together. One of them is `t[12]`: the ids of every tracker the row's body
 links to (`TRACKER_LINK_RE`, :220, into the row at :1590). So a whole id matches its own row **and every row that
 links to it**. The search does hide the rows that do not match, and the counts do update: what it finds is every
 reference.
 
-**Reproduced** by the Research seat on PortDive's board (505 trackers, 0.17.4, headless Chrome): `FEAT-161` in the
-*by suite · all* view shows 24 rows, 17 of them under *agentic-portfolios*. 16 of those 17 match only through the
-linked ids. 448 of the 505 ids, searched whole, return more rows than their own. On shoalmark's own board the effect
-is small: `FM-012` shows FM-012 and FM-018.
+**Reproduced** by the Research seat on a consumer's large board (0.17.4, headless Chrome): a whole id showed its own
+row and many more, nearly all of them only through the linked ids, and most ids on that board, searched whole, return
+more rows than their own. The numbers stay with the consumer (R7). On shoalmark's own board the effect is small:
+`FM-012` shows FM-012 and FM-018.
 
 ## Why
 
@@ -63,6 +65,7 @@ A person who types an id is looking for that tracker. The rows that link to it a
 
 | Date | Event |
 |---|---|
+| 2026-09-23 | R7: no consumer id or number in shoalmark's files — the CHANGELOG's example is `FM-005`, and this tracker's hook and *Reproduced* paragraph are generic. |
 | 2026-09-23 | R6: the hint is short enough for its box in a 500 px window (English and German, measured in Chrome), and the whole help is the box's title (`search.help`). One Chrome check. |
 | 2026-09-23 | Correction (R3) to the *Built* row below, which says all three checks were shown to fail on 0.17.4: two fail on 0.17.4 — the whole-id Chrome check and the `test_core.py` string check; the third, `~ID` · partial id · word, is a control and passes on both. Across the release before the review: 5 checks fail on 0.17.4 (FM-020 ×2, FM-021 ×2, FM-022 ×1) and 4 are controls (FM-020 ×1, FM-021 ×2, the CHANGELOG/version check). |
 | 2026-09-23 | R2: the hint and the CHANGELOG say what `~ID` holds — links only — and send a story's chapters to the story view; `~ID` is not widened (the Principal's ruling). |
