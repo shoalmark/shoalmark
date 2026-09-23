@@ -414,3 +414,86 @@ call, and this seat has no key.
 
 **Provenance:** Seat: GtM · Session `2ab3afad` · Model: Claude Opus 5.5 · 2026-09-23 · the second pass, on the
 Owner's convening.
+
+### Jev's answer — 2026-09-23, session `2ab3afad`
+
+**The call.** The Owner ran it in TypeSafe's playground.
+
+- **Model:** `jev-1.13.0`; request `playground_1dc13a5396120604295ac49453f6fbbe7fe`.
+- **Size and time:** 7,361 tokens in, 259 out, 174 ms.
+- **Kept verbatim:** the answer is in `jev-claim-screen-response-2026-09-23.json`, beside the request.
+- **Checked here (E):** every answer's legend is the rubric the committed request carried, level for level.
+
+**The controls, set before the call:** C0, H1 and H3 must come back at level 0.
+
+| control | came back at | p(level 0) | confidence |
+|---|---|---|---|
+| C0, the Owner's line in the owner-facing slot | **level 1** (p 0.35; level 5 at 0.34) | 0.12 | 0 |
+| H1, *… leistungsstärkeren … Owner* | level 0 (p 0.44) | 0.44 | 0.09 |
+| H3, *… besseren … Owner* | level 0 (p 0.45) | 0.45 | 0.18 |
+
+**C0 failed, so, by the rule written before the call, the column is read as noise. No verdict in this ledger moves.**
+
+**The two controls that passed separate nothing.** H2 (*… leistungsstärkeren … Eigner*), which the ledger passes, came
+back at level 0 more surely than either: p 0.59, confidence 0.36. Jev puts every German headline twin at G0 or G1.
+Its level 0 for H1 and H3 therefore does not show that it read *Owner* as jargon.
+
+**The Jev column** (E, from the response). *Level* is Jev's most probable level. *Score* is its expected level, 0–6.
+
+| # | Ledger: first fatal gate | Jev: level (p) | p of the ledger's level | Score | Confidence |
+|---|---|---|---|---|---|
+| C0 · control | G0 | 1 (0.35) | 0.12 | 2.70 | 0 |
+| C1 | G1 | 0 (0.38) | 0.07 | 2.47 | 0 |
+| C2 | G1 | 6 (0.24) | 0.18 | 3.23 | 0 |
+| C3 | G2 | 0 (0.36) | 0.19 | 1.82 | 0 |
+| C4 | G2 | 0 / 2 (0.35 each) | 0.35 | 1.51 | 0.12 |
+| C5 | G3 | 3 (0.30) | 0.30 | 2.94 | 0.12 |
+| C6 | G3 | 3 (0.27) | 0.27 | 2.76 | 0.16 |
+| C7 | G4 | 1 (0.22) | 0.17 | 2.90 | 0 |
+| C8 | G0 | 0 (0.24) | 0.24 | 2.76 | 0 |
+| C9 | G5 | 1 (0.37) | 0.05 | 1.68 | 0.28 |
+| C10 | survives (6) | 0 / 4 (0.22 each) | 0.12 | 2.65 | 0 |
+| C11 | survives (6) | 3 (0.49) | 0.14 | 3.27 | 0.36 |
+| C12 | survives (6) | 3 (0.42) | 0.10 | 2.96 | 0.28 |
+| H1 | G0 | 0 (0.44) | 0.44 | 1.56 | 0.09 |
+| H2 | survives (6) | 0 (0.59) | 0.06 | 1.09 | 0.36 |
+| H3 | G0 | 0 (0.45) | 0.45 | 1.41 | 0.18 |
+| H4 | G5 | 1 (0.39) | 0.03 | 1.41 | 0.32 |
+
+**How the answers spread:**
+
+- 7 of 17 answers carry confidence 0, and the highest is 0.36.
+- On 6 of 17 lines, Jev's most probable level includes the ledger's; on one of the six it is a tie. Guessing at
+  random over seven levels would match about 2.4 lines.
+- None of this is claimed as signal: the rule has already read the column as noise.
+
+**The likely cause is this seat's request, not only the model.**
+
+- The rubric packs six gates into one Score. Jev's documentation says the opposite (`docs.typesafe.ai/primitives/score`,
+  read 2026-09-23, **E**):
+  - *"Keep each question to one dimension"*;
+  - for complex judgments, *"split into multiple Score questions … then combine with weights in code"*.
+- Its state documentation adds that non-English input *currently has lower accuracy*.
+- **The fair test is one yes-or-no question per gate per line:** 6 × 17 = 102 questions in one call. The code then
+  computes the first fatal gate, and the same three controls run first. **It has not been run, and running it is the
+  Owner's call.**
+
+**What the answer would say, were it read.** None of this is used; it is recorded so that nobody finds it in the raw
+file and takes it for news.
+
+- **The most confident answer of the call puts H2, the landed German claim, at G0** (p 0.59, confidence 0.36).
+- **The two most confident owner-claim answers put C11 (p 0.49) and C12 (p 0.42) at G3,** the owner's never. That is
+  the unknown this ledger already names: provocation, or insult. It goes to the native reader and to the hostile
+  review as a question, not as evidence.
+
+**What this seat did not run:**
+
+- Jev's known-issues page for `jev-1.13` (`docs.typesafe.ai/model-jaggedness/jev-1.13`);
+- a second call, so whether the same request gives the same numbers is unknown;
+- the per-gate design above.
+
+**The guard held.** The request file is the whole of what left the machine: lines, gates, the bar, the fleet's line
+and four facts as numbers. It carries no tracker's text and no name.
+
+**The session closes.** The screen is filed: the Jev column is recorded and read as noise by its own rule, the
+verdicts stand as the seat ledgered them, and the Owner rules.
