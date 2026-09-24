@@ -472,7 +472,7 @@ with tempfile.TemporaryDirectory() as d:
     now_ = commit_as(root, "implementer@seat", "at work now\n\nSession: 5555eeee/implementer-2\nWorktree: wt-now")
     busy = run_safe(root, "--owner")[1]
     check(f"FM-032 S2 · the digest names the sessions with a commit in the last day, by seat — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
-          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · implementer 1 (5555eeee/implementer-2)" in busy and "1111aaaa" not in busy)
+          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · implementer 1 (5555eeee/implementer-2 in wt-now)" in busy and "1111aaaa" not in busy)
     opened, closed = run_safe(root, "--session", "open", "6666ffff", "principal", "the Owner", "x"), run_safe(root, "--session", "close", "1111aaaa")
     gone = "--session open/close are gone since 0.18.0: the registry is a report — run --sessions"
     check(f"FM-032 S2 · `--session open` and `--session close` are gone: one line, exit 2, nothing written (saw {opened[0]}, {closed[0]}, {opened[2].strip()!r})",
@@ -2284,6 +2284,30 @@ with tempfile.TemporaryDirectory() as d:
           code0 == 0 and "filing freeze" not in check0 and refused_ and "`freeze_at`" in fm.render_schema() and "only a product defect" in fm.render_schema())
 fm.configure(HERE)
 
+# --- R4, R6: the freeze passes `freeze_tag`, and a `[tags]` without it freezes nothing; lone flags are refused -----
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    cfg_ = root / "shoalmark.toml"; base_cfg = cfg_.read_text()
+    wt_ = root / "docs/work-tracker"
+    cfg_.write_text(re.sub(r'(?m)^bug = .*\n', "", base_cfg).replace("triage_days = 7\n", "triage_days = 7\nfreeze_at = 1\n"))
+    tracker(root, "MSR-001"); run(root)
+    said_ = run(root, "--check")[1]; code_free, _, _ = run(root, "--new", "a process change while nothing can pass")
+    cfg_.write_text(cfg_.read_text().replace("freeze_at = 1\n", 'freeze_at = 1\nfreeze_tag = "defect"\n') + 'defect = "the tool does wrong for the person using it"\n'); run(root)
+    code_no, _, err_no = run(root, "--new", "another process change")
+    code_yes, _, _ = run_safe(root, "--new", "the export drops a row", "--tags", "Defect")
+    wrote_ = next(iter(wt_.glob("MSR-003-*.md")), None)
+    check(f"R4 · with `freeze_at` set and no `freeze_tag` in [tags], `--check` says so in one line and the freeze refuses nothing; with `freeze_tag = \"defect\"` in [tags] the freeze holds and `--tags Defect` passes it, written as [tags] spells it (saw {said_.strip()[-160:]!r})",
+          "filing freeze: off — `freeze_tag` 'bug' is not in [tags]" in said_ and code_free == 0
+          and code_no == fm.EXIT_LINT and "carries no `defect` tag" in err_no and "--tags defect" in err_no
+          and code_yes == 0 and wrote_ is not None and fm.parse_frontmatter(wrote_.read_text())[0].get("tags") == "defect"
+          and "`freeze_tag`" in fm.render_schema())
+    code_t, _, err_t = run_safe(root, "--tags", "bug"); code_s, _, err_s = run_safe(root, "--supersede"); code_e, _, err_e = run_safe(root, "--new", "x", "--tags", " , ")
+    check(f"R6 · `--tags` without `--new` and `--supersede` without `--answer` are refused in one line, exit 2; an empty `--tags` says no tag was given (saw {err_t.strip()!r}, {err_s.strip()!r})",
+          (code_t, code_s) == (2, 2) and len(err_t.strip().splitlines()) == 1 and len(err_s.strip().splitlines()) == 1
+          and "--tags goes with --new" in err_t and "--supersede goes with --answer" in err_s and code_e == fm.EXIT_LINT and "no tag was given" in err_e)
+fm.configure(HERE)
+
 # --- RV-479: a spent `answer/<id>` is cut fresh, an unmerged one is never deleted; the run goes back where it started;
 #     an answer is revoked or superseded, never overwritten in place, and the one it replaces moves into the ship log ---
 with tempfile.TemporaryDirectory() as tmp:
@@ -2356,12 +2380,13 @@ with tempfile.TemporaryDirectory() as tmp:
     in_pr = branch_("b-pr", "the open pull request's work", {"p.txt": "p\n"}); inner = sha("HEAD")
     pr_head = commit_("more on the open pull request", {"p.txt": "p2\n"})
     git(root, "checkout", "-q", "-b", "b-inside", inner)
-    none_ = branch_("b-none", "work nobody opened", {"n.txt": "n\n"})
+    none_ = branch_("b-none", "work nobody opened", {"n.txt": "n\n"}); git(root, "branch", "b-inner", none_)
+    none_ = commit_("more work nobody opened", {"n.txt": "n2\n"}); git(root, "branch", "b-twin", none_)     # R2: inside b-none, and b-none's twin
     w_ = branch_("b-ready", "reviewed work", {"r.txt": "r\n"})
     ready = commit_(f"review: at {w_[:7]} — READY WITH FINDINGS (R1 P3)\n\nReviewed: {w_}", {"docs/work-tracker/evidence/reviews/r.md": "R1\n"})
     clash = branch_("b-conflict", "conflicting work", {"shared.txt": "two\n"}, frm=t0)
     git(root, "checkout", "-q", "main"); commit_("the trunk moves", {"shared.txt": "three\n"})
-    git(root, "push", "-q", "origin", "main", "b-merged", "answer/msr-001", "b-pr", "b-inside", "b-none", "b-ready", "b-conflict"); git(root, "fetch", "-q", "origin")
+    git(root, "push", "-q", "origin", "main", "b-merged", "answer/msr-001", "b-pr", "b-inside", "b-none", "b-inner", "b-twin", "b-ready", "b-conflict"); git(root, "fetch", "-q", "origin")
     prs = [{"number": 7, "title": "b-pr", "headRefName": "b-pr", "headRefOid": pr_head, "baseRefName": "main", "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": "2026-09-24T08:00:00Z"}]
     fm.configure(root)
     found_ = _no_git_env(lambda: fm.pushed_branches(prs)) if hasattr(fm, "pushed_branches") else []
@@ -2373,6 +2398,18 @@ with tempfile.TemporaryDirectory() as tmp:
                              f"branch b-ready @ {ready[:7]}  wait: no pull request — verdict {ready[:7]} READY WITH FINDINGS: open it",
                              "4 waiting on you: 0 merge, 0 close, 1 wait, 3 pushed without a pull request"]
           and lines_[0].startswith("PR 7  wait: no verdict on"))
+    # R3: a single-branch clone fetches one head; the queue fetches the others it lists, and a head still missing is
+    # one line's `not fetched here` — never every verdict gone
+    subprocess.run(["git", "clone", "-q", "--single-branch", "--branch", "main", str(base / "origin.git"), str(base / "sb")], check=True, capture_output=True, env=_ENV)
+    fm.configure(base / "sb")
+    single_ = _no_git_env(lambda: fm.pushed_branches([])) if hasattr(fm, "pushed_branches") else []
+    ghost_ = [{"name": "b-ghost", "sha": "f" * 40, "base": "main", "here": False}]
+    sb_lines_ = _no_git_env(lambda: fm.queue_lines(fm.queue_actions([], single_ + ghost_))) if single_ else [""]
+    check(f"R2, R3 · a pushed head inside another pushed branch, or its twin, is no line of its own; in a single-branch clone the listed heads are fetched and read — a READY verdict survives — and a head that cannot be had reads `not fetched here` on its own line (saw {sb_lines_})",
+          [b_["name"] for b_ in single_] == ["b-conflict", "b-none", "b-pr", "b-ready"] and all(b_["here"] for b_ in single_)
+          and f"branch b-ready @ {ready[:7]}  wait: no pull request — verdict {ready[:7]} READY WITH FINDINGS: open it" in sb_lines_
+          and "branch b-conflict @ " + clash[:7] + "  wait: no pull request — conflict in shared.txt" in sb_lines_
+          and "branch b-ghost @ fffffff  wait: no pull request — not fetched here" in sb_lines_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -2401,6 +2438,10 @@ with tempfile.TemporaryDirectory() as tmp:
     fm.configure(root)
     read_ = lambda: [a_ for _p, _k, a_, _d in _no_git_env(lambda: fm.queue_actions(prs))]
     trusted_ = read_()
+    plain_cfg = cfg_.read_text(); cfg_.write_text(plain_cfg.replace('answerers = ["t signed"]\n', "") + '\n[seats]\nowner = "t signed"\n'); fm.configure(root)
+    by_name_ = read_(); cfg_.write_text(plain_cfg); fm.configure(root)
+    check(f"R1 · with `[seats]` naming the Owner by his git name, as the gate matches a seat (email or name), his signed answer reads `merge: your answer` (saw {by_name_})",
+          by_name_ == ["merge: your answer", "wait: unsigned answer"])
     git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
     git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
     untrusted_ = read_(); code_, _, err_ = run(root, "--check")

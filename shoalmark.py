@@ -65,6 +65,9 @@ DEFAULTS = {
     # filing that carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits.
     # Filing outran closing two to one, and the open count only grew. 0 = off.
     "freeze_at": 0,
+    # the tag that passes the freeze — a repository's own `[tags]` may have no `bug`; one that names none of its tags
+    # freezes nothing, and `--check` says so
+    "freeze_tag": "bug",
     # who may answer an ask. An answer is three lines in the tracker, committed by the answerer, and the commit is the
     # proof — but git's author is a string anyone can type. So an entry is `"name"` (Subversion, whose server
     # authenticates the committer; or git with NO enforcement, and the gate says so) or `"name signed"` (git: the
@@ -190,6 +193,11 @@ def configure(root=None):
     FREEZE_AT = CONFIG["freeze_at"]
     if isinstance(FREEZE_AT, bool) or not isinstance(FREEZE_AT, int) or FREEZE_AT < 0:
         raise SystemExit(f"{CONFIG_NAME}: `freeze_at` is a whole number of open trackers — the filing freeze holds at that count and above; 0 turns it off. Got {FREEZE_AT!r}")
+    global FREEZE_TAG
+    FREEZE_TAG = CONFIG["freeze_tag"]
+    if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
+        raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
+    FREEZE_TAG = FREEZE_TAG.strip()
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
@@ -894,7 +902,9 @@ def pushed_branches(prs):
     """The branches on `origin` that no pull request carries — what the forge's banner offers the Owner, and nothing else
     showed him: every head `git ls-remote` names, less the default branch, `answer/*`, an open pull request's branch, a
     head any pull request ever had (the forge's `refs/pull/N/head`, open or closed), and a head already inside the
-    default branch or an open pull request's head. [{name, sha, base}], by name."""
+    default branch, an open pull request's head, or another such branch's head (of twins with one head, the first by
+    name stays). A head this clone never fetched — a single-branch clone fetches one — is fetched here, by its ref;
+    one still missing stays, marked, and is read as *not fetched here*. [{name, sha, base, here}], by name."""
     out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head")
     if out is None:
         return []
@@ -912,16 +922,34 @@ def pushed_branches(prs):
         return []
     inside = lambda a, b: git_out("merge-base", "--is-ancestor", a, b) is not None
     carried = {p["headRefName"] for p in prs} | {p["headRefOid"] for p in prs} | pulled
-    return [{"name": name, "sha": sha, "base": default} for name, sha in sorted(heads.items())
-            if name != default and not name.startswith("answer/") and name not in carried and sha not in carried
-            and not inside(sha, f"origin/{default}") and not any(inside(sha, p["headRefOid"]) for p in prs)]
+    named = [(name, sha) for name, sha in sorted(heads.items())
+             if name != default and not name.startswith("answer/") and name not in carried and sha not in carried]
+    lacking = set(have_not([sha for _n, sha in named]))
+    if lacking:                                             # the one fetch for heads the configured refspec does not cover
+        git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking])
+    gone = set(have_not(sorted(lacking)))
+    kept = [(name, sha) for name, sha in named if sha in gone
+            or not (inside(sha, f"origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
+    kept = [(name, sha) for name, sha in kept if sha in gone or not any(
+        (other != sha and inside(sha, other)) or (other == sha and o_name < name) for o_name, other in kept if other not in gone)]
+    return [{"name": name, "sha": sha, "base": default, "here": sha not in gone} for name, sha in kept]
+
+
+def have_not(shas):
+    """The commits of these that this clone does not have — one `git cat-file --batch-check` for all of them."""
+    if not shas:
+        return []
+    r = subprocess.run(["git", "cat-file", "--batch-check"], input="".join(f"{s_}^{{commit}}\n" for s_ in shas), cwd=ROOT,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    return [s_ for s_, line in zip(shas, r.stdout.splitlines()) if line.endswith(" missing")]
 
 
 def answer_reading(head):
     """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when its
     head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits."""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
-    if (email if SEATS else name) in may_answer() and verified_as(head, email if SEATS else None):
+    may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
+    if may and verified_as(head, email or None):
         return "merge", "merge: your answer", f"signed {head[:7]}"
     gap = signature_gap(head)
     return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
@@ -984,7 +1012,8 @@ def queue_actions(prs, branches=()):
         return ["(paths unread — the forge says CONFLICTING)"] if p.get("mergeable") == "CONFLICTING" else []
 
     pushed = [{"number": None, "title": b["name"], "headRefName": b["name"], "headRefOid": b["sha"], "baseRefName": b["base"], "createdAt": ""} for b in branches]
-    heads = sorted({head(p) for p in prs + pushed})
+    absent = set(have_not(sorted({head(p) for p in prs + pushed})))       # one head this clone lacks must not blank every verdict
+    heads = sorted({head(p) for p in prs + pushed} - absent)
     bases = sorted({"^" + base(p) for p in prs + pushed if git("rev-parse", "--verify", "--quiet", base(p)).returncode == 0})
     log = git("log", f"--format=%H%x01%s%x01{TRAILERS}%x02", *heads, *bases).stdout if heads else ""
     verdicts = []                                           # newest first: (verdict, the full sha it reviewed, its word)
@@ -1013,7 +1042,9 @@ def queue_actions(prs, branches=()):
         carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
         paths = conflicts(p) if not (within[num(p)] or carried) else []
         last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p)))), None)
-        if within[num(p)]:
+        if head(p) in absent:
+            rows.append((p, "wait", f"wait: {head(p)[:7]} not fetched here", ""))
+        elif within[num(p)]:
             rows.append((p, "close", f"closes with PR {num(outermost(within[num(p)]))}", ""))
         elif carried:
             rows.append((p, "close", f"close: carried into PR {num(outermost(carried))}", ""))
@@ -1028,9 +1059,9 @@ def queue_actions(prs, branches=()):
         else:
             rows.append((p, "merge", "merge", f"verdict {last[0][:7]} {last[1]}"))
     for b in pushed:
-        paths = conflicts(b)
+        paths = conflicts(b) if head(b) not in absent else []
         last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b)))), None)
-        said = ("conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
+        said = ("not fetched here" if head(b) in absent else "conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
                 else f"NOT READY ({last[0][:7]})" if last[1] == "NOT READY" else f"verdict {last[0][:7]} {last[1]}: open it")
         rows.append((b, "branch", "wait: no pull request — " + said, ""))
     return sorted(rows, key=lambda row: (row[1] == "branch", row[1] == "wait", age(row[0]) if row[1] != "branch" else row[0]["headRefName"]))
@@ -2393,8 +2424,10 @@ def shape_words(shape):
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
-                  "carries `tags: bug`, as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest open "
-                  "tracker's body, or waits. `--check` says when it holds"),
+                  "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
+                  "open tracker's body, or waits. `--check` says when it holds"),
+    "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
+                   "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
 }
 
 
@@ -3068,8 +3101,8 @@ def sessions_digest():
     if not reg or not reg["recent"]:
         return ""
     by = collections.defaultdict(list)
-    for sid, seat, _w in reg["recent"]:
-        by[seat].append(sid)
+    for sid, seat, w in reg["recent"]:
+        by[seat].append(sid + (f" in {w}" if w and w != "—" else ""))
     return "SESSIONS IN THE LAST DAY · " + " · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items())
 
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
@@ -3359,7 +3392,10 @@ def parse_args(argv):
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
-             "naming each step as it starts. A failure after it wrote anything undoes it all and prints the answer and the command to give it again")
+             "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
+             "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
+             "`--answer <id> accept|reject \"<option>\" --supersede` — the old one moves into the ship log. A failure after it wrote anything undoes it all and "
+             "prints the answer and the command to give it again")
     add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
@@ -3368,7 +3404,9 @@ def parse_args(argv):
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
-                                            "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…) — in the order to take them. "
+                                            "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
+                                            "merge: your answer · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
+                                            "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
     add("--session", nargs="+", metavar="WORD",
         help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
@@ -3936,9 +3974,18 @@ WANTED_NUM = None
 
 def filing_freeze(trackers):
     """FM-032 S4 — (open, the line) while the filing freeze holds: the trackers whose status is open number `freeze_at` or
-    more. None while they do not, or where `freeze_at` is 0."""
+    more. None while they do not, where `freeze_at` is 0, and where `[tags]` has no `freeze_tag` — a freeze nothing could
+    pass would refuse even the defect it exists to let through (`freeze_unpassable` says so)."""
     n = sum(t["status"] in OPEN_STATUSES for t in trackers)
-    return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT else None
+    return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT and not freeze_unpassable() else None
+
+
+def freeze_unpassable():
+    """The one line `--check` owes a repository whose freeze is set and whose `[tags]` cannot pass it — or ""."""
+    if FREEZE_AT and FREEZE_TAG.lower() not in {k.lower() for k in TAGS}:
+        return (f"filing freeze: off — `freeze_tag` {FREEZE_TAG!r} is not in [tags] ({', '.join(sorted(TAGS)) or 'none'}); "
+                f"add it there, or set `freeze_tag` in {CONFIG_NAME} to the tag a product defect carries")
+    return ""
 
 
 def new_tracker(words, trackers, tags_arg=None):
@@ -3961,15 +4008,19 @@ def new_tracker(words, trackers, tags_arg=None):
     frozen = filing_freeze(trackers)
     tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
     if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
-        tags = list(dict.fromkeys(x.strip().lstrip("#") for x in tags_arg.split(",") if x.strip()))
-        unknown = [x for x in tags if TAGS and x not in TAGS]
+        vocab = {k.lower(): k for k in TAGS}                # matched as the template's are, case aside; written as [tags] spells it
+        said = [x.strip().lstrip("#") for x in tags_arg.split(",") if x.strip().lstrip("#")]
+        tags = list(dict.fromkeys(vocab.get(x.lower(), x) for x in said))
+        unknown = [x for x in tags if vocab and x.lower() not in vocab]
         if not tags or unknown or len(tags) > MAX_TAGS:
-            print(f"--new: --tags {tags_arg!r} — " + (f"{', '.join(unknown)} not in the vocabulary ({', '.join(sorted(TAGS))}, [tags] in {CONFIG_NAME})" if unknown
-                  else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}") + " — nothing was written", file=sys.stderr)
+            why = ("no tag was given" if not tags else f"{', '.join(unknown)} not in the vocabulary ({', '.join(sorted(TAGS))}, [tags] in {CONFIG_NAME})" if unknown
+                   else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}")
+            print(f"--new: --tags {tags_arg!r} — {why} — nothing was written", file=sys.stderr)
             return EXIT_LINT
-    if frozen and "bug" not in tags:
+    if frozen and FREEZE_TAG.lower() not in {x.lower() for x in tags}:
         print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
-              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `bug` tag — a product defect is filed with `--tags bug`; nothing was written", file=sys.stderr)
+              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `{FREEZE_TAG}` tag — "
+              f"a product defect is filed with `--tags {FREEZE_TAG}`; nothing was written", file=sys.stderr)
         return EXIT_LINT
     # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
@@ -3993,6 +4044,10 @@ def main(argv=None):
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
     args = parse_args(argv)
+    for flag, needs, alone in (("--tags", "--new", args.tags is not None and not args.new), ("--supersede", "--answer", args.supersede and not args.answer)):
+        if alone:                                           # a flag that means nothing alone is refused, never silently ignored
+            print(f"{flag} goes with {needs} — " + ('`--new KIND "the title" --tags bug`' if flag == "--tags" else '`--answer <id> accept|reject "<option>" --supersede`'), file=sys.stderr)
+            return 2
     if args.tsvn_hook:
         # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
         # one this copy of the tool lives in. `start` runs before the commit dialog lists its files, so the INDEX.md
@@ -4139,7 +4194,9 @@ def main(argv=None):
             print(line, file=log)
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
-            print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only bug filings", file=log)
+            print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
+        elif freeze_unpassable():
+            print(freeze_unpassable(), file=log)
     else:
         put(OUT, body)
         put(HTML_OUT, render_html(trackers))   # git-ignored; never staged

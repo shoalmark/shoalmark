@@ -38,8 +38,11 @@ defects of `--answer` found the same day).
   *Nothing to do, as long as each verdict's subject says READY, READY WITH FINDINGS, READY TO TAG or NOT READY.*
 - **The filing freeze** (FM-032 S4): `freeze_at` in `shoalmark.toml` — at that many open trackers or more, `--new`
   refuses a filing without `tags: bug`, exit 4; `--new KIND "title" --tags bug,process` writes `tags:` as it files
-  (comma-separated, deduplicated, each from `[tags]`); `--check` says the freeze holds in one line, its exit
-  unchanged; `--schema` lists the key. *Off (0) until you set it.*
+  (comma-separated, deduplicated, each from `[tags]`, case aside); `--check` says the freeze holds in one line, its
+  exit unchanged; `--schema` lists the key. `freeze_tag` (default `bug`) is the tag that passes it: where your `[tags]`
+  does not carry it, the freeze refuses nothing and `--check` says so in one line. `--tags` without `--new`, and
+  `--supersede` without `--answer`, are refused in one line, exit 2. *Off (0) until you set it; if your `[tags]` has no
+  `bug`, set `freeze_tag` to the tag a product defect carries.*
 - **`--answer` after an earlier answer**: a local `answer/<id>` merged into `origin`'s default branch is deleted and
   cut fresh; one not merged is refused, naming `git branch -D answer/<id>`, and nothing unmerged is deleted. After
   the push it goes back to the branch it started on.
@@ -47,11 +50,14 @@ defects of `--answer` found the same day).
   `--answer <id> accept|reject "<option>" --supersede`. The answer it replaces moves into the ship log with the
   commit that wrote it, and the board's tracker view shows the answer and *supersedes <sha>*.
 - **`--queue` sees what waits beyond the open pull requests.** Each branch on `origin` that no pull request carries —
-  not the default branch, not `answer/*`, not already merged or inside an open pull request — follows as
-  `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>` · `— verdict <sha> READY …: open it` ·
-  `— conflict in <paths>`, and the count line adds *n pushed without a pull request*. An `answer/*` pull request is
-  the Owner's own answer and needs no verdict: `merge: your answer` when its head's author may answer and the commit
-  verifies, `wait: unsigned answer` when not.
+  not the default branch, not `answer/*`, not already merged, not inside an open pull request or another such
+  branch — follows as `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>` · `— verdict <sha> READY …:
+  open it` · `— NOT READY (<sha>)` · `— conflict in <paths>`, and the count line adds *n pushed without a pull
+  request*. A head your clone's fetch does not cover (a single-branch clone) is fetched by its ref; one that still is
+  not there reads `not fetched here` on its own line. An `answer/*` pull request is the Owner's own answer and needs no
+  verdict: `merge: your answer` when its head's author may answer — the seat matched as the gate matches it, email or
+  name — and the commit verifies; `wait: answer not verified here — <why>` when it is signed and your clone cannot
+  check it; `wait: unsigned answer` when not.
 - **A signed commit this clone cannot verify is no longer told to sign.** With `gpg.ssh.allowedSignersFile` unset or
   missing, or a GPG key not in the keyring, `--check` says *it is signed, but this clone cannot verify: <why> — see
   the signing page*; an unsigned commit is still asked to sign, and the exit is unchanged. *Nothing to do in a clone
