@@ -1,6 +1,6 @@
 ---
 id: FM-030
-status: Proposed
+status: In Progress
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: build
@@ -94,3 +94,4 @@ acts this kind covers are the ones the design reserves for him because they carr
 | 2026-09-24 | Widened by one line to rulings whose act is the Owner's (FM-007), on the Auditor seat's raise; nothing built. |
 | 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-030's share of R1–R10, and R11–R15 stay open. |
 | 2026-09-24 | Widened a second time, on the Auditor seat's check 24: `next: owner` after an answer; 0.18.3 builds this line (ruling · determination · ceremony → `next: run`; action stays `owner`). |
+| 2026-09-24 | In Progress — 0.18.3 builds its second widening — `next:` after an answer (the Auditor seat's check 24); the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
