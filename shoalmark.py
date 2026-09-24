@@ -890,10 +890,49 @@ def forge_prs():
     return prs, None
 
 
-def queue_actions(prs):
+def pushed_branches(prs):
+    """The branches on `origin` that no pull request carries — what the forge's banner offers the Owner, and nothing else
+    showed him: every head `git ls-remote` names, less the default branch, `answer/*`, an open pull request's branch, a
+    head any pull request ever had (the forge's `refs/pull/N/head`, open or closed), and a head already inside the
+    default branch or an open pull request's head. [{name, sha, base}], by name."""
+    out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head")
+    if out is None:
+        return []
+    heads, pulled, default = {}, set(), ""
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if sha.startswith("ref: refs/heads/") and ref == "HEAD":
+            default = sha[len("ref: refs/heads/"):]
+        elif ref.startswith("refs/heads/"):
+            heads[ref[len("refs/heads/"):]] = sha
+        elif ref.startswith("refs/pull/"):
+            pulled.add(sha)
+    default = default or next((b for b in ("main", "master") if b in heads), "")
+    if not default:
+        return []
+    inside = lambda a, b: git_out("merge-base", "--is-ancestor", a, b) is not None
+    carried = {p["headRefName"] for p in prs} | {p["headRefOid"] for p in prs} | pulled
+    return [{"name": name, "sha": sha, "base": default} for name, sha in sorted(heads.items())
+            if name != default and not name.startswith("answer/") and name not in carried and sha not in carried
+            and not inside(sha, f"origin/{default}") and not any(inside(sha, p["headRefOid"]) for p in prs)]
+
+
+def answer_reading(head):
+    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when its
+    head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits."""
+    name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
+    if (email if SEATS else name) in may_answer() and verified_as(head, email if SEATS else None):
+        return "merge", "merge: your answer", f"signed {head[:7]}"
+    gap = signature_gap(head)
+    return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
+
+
+def queue_actions(prs, branches=()):
     """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
-    inside each, the oldest first. Returns [(pr, kind, action, detail)], `kind` one of merge · close · wait. The first
-    rule that holds is the action:
+    inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
+    verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
+    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict. For a pull
+    request the first rule that holds is the action:
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
@@ -944,8 +983,9 @@ def queue_actions(prs):
         # merge-tree could not run — a git older than 2.38, or a head that is not here: the forge's own word stands in
         return ["(paths unread — the forge says CONFLICTING)"] if p.get("mergeable") == "CONFLICTING" else []
 
-    heads = sorted({head(p) for p in prs})
-    bases = sorted({"^" + base(p) for p in prs if git("rev-parse", "--verify", "--quiet", base(p)).returncode == 0})
+    pushed = [{"number": None, "title": b["name"], "headRefName": b["name"], "headRefOid": b["sha"], "baseRefName": b["base"], "createdAt": ""} for b in branches]
+    heads = sorted({head(p) for p in prs + pushed})
+    bases = sorted({"^" + base(p) for p in prs + pushed if git("rev-parse", "--verify", "--quiet", base(p)).returncode == 0})
     log = git("log", f"--format=%H%x01%s%x01{TRAILERS}%x02", *heads, *bases).stdout if heads else ""
     verdicts = []                                           # newest first: (verdict, the full sha it reviewed, its word)
     for rec in log.split("\x02"):
@@ -979,24 +1019,34 @@ def queue_actions(prs):
             rows.append((p, "close", f"close: carried into PR {num(outermost(carried))}", ""))
         elif paths:
             rows.append((p, "wait", "wait: conflict in " + ", ".join(paths), ""))
+        elif p["headRefName"].startswith("answer/"):
+            rows.append((p, *answer_reading(head(p))))
         elif last is None:
             rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
         elif last[1] == "NOT READY":
             rows.append((p, "wait", f"wait: NOT READY ({last[0][:7]})", ""))
         else:
             rows.append((p, "merge", "merge", f"verdict {last[0][:7]} {last[1]}"))
-    return sorted(rows, key=lambda row: (row[1] == "wait", age(row[0])))
+    for b in pushed:
+        paths = conflicts(b)
+        last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b)))), None)
+        said = ("conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
+                else f"NOT READY ({last[0][:7]})" if last[1] == "NOT READY" else f"verdict {last[0][:7]} {last[1]}: open it")
+        rows.append((b, "branch", "wait: no pull request — " + said, ""))
+    return sorted(rows, key=lambda row: (row[1] == "branch", row[1] == "wait", age(row[0]) if row[1] != "branch" else row[0]["headRefName"]))
 
 
 def queue_lines(rows):
     """The queue as the Owner reads it: one line per pull request, its columns aligned, and the count last."""
     cut = lambda b: b if len(b) <= QUEUE_BRANCH_MAX else b[:QUEUE_BRANCH_MAX - 1] + "…"
-    cells = [(f"PR {p['number']}", action, f"{cut(p['headRefName'])} @ {p['headRefOid'][:7]}", detail) for p, _k, action, detail in rows]
+    cells = [(f"PR {p['number']}", action, f"{cut(p['headRefName'])} @ {p['headRefOid'][:7]}", detail) for p, k, action, detail in rows if k != "branch"]
     w = [max([len(c[i]) for c in cells] or [0]) for i in range(3)]
     w[1] = max([len(c[1]) for c in cells if len(c[1]) <= QUEUE_ACTION_MAX] or [0])      # an action past the cap runs on in its own line
     kinds = collections.Counter(k for _p, k, _a, _d in rows)
     return ([f"{a:<{w[0]}}  {b:<{w[1]}}  {c:<{w[2]}}  {d}".rstrip() for a, b, c, d in cells]
-            + [f"{len(rows)} waiting on you: {kinds['merge']} merge, {kinds['close']} close, {kinds['wait']} wait"])
+            + [f"branch {cut(p['headRefName'])} @ {p['headRefOid'][:7]}  {action}" for p, k, action, _d in rows if k == "branch"]
+            + [f"{len(rows)} waiting on you: {kinds['merge']} merge, {kinds['close']} close, {kinds['wait']} wait, "
+               f"{kinds['branch']} pushed without a pull request"])
 
 
 def queue_cmd():
@@ -1005,7 +1055,7 @@ def queue_cmd():
     if prs is None:
         print(why, file=sys.stderr)
         return EXIT_NO_FORGE
-    print("\n".join(queue_lines(queue_actions(prs))))
+    print("\n".join(queue_lines(queue_actions(prs, pushed_branches(prs)))))
     return EXIT_OK
 
 
@@ -1014,7 +1064,7 @@ def queue_section():
     prs, _why = forge_prs()
     if prs is not None:
         print("\nPULL REQUESTS — in the order to take them")
-        print("\n".join("  " + line for line in queue_lines(queue_actions(prs))))
+        print("\n".join("  " + line for line in queue_lines(queue_actions(prs, pushed_branches(prs)))))
 
 
 def answer_step(tid, n, text):
@@ -2466,6 +2516,31 @@ def verified_as(commit, email=None):
     return good.strip() == "G" and bool(claimed) and claimed in signer
 
 
+def signature_gap(commit):
+    """Why a SIGNED commit cannot be verified in this clone — the clone's configuration, not the commit — or "": the commit
+    carries no signature, or the check could run. A refusal that said *sign it* to a signed commit blamed the Owner's
+    key for a missing file in the reader's setup: SSH needs `gpg.ssh.allowedSignersFile`, GPG the key in the keyring."""
+    head = (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    if not re.search(r"^gpgsig(-sha256)? ", head, re.M):
+        return ""
+    if "BEGIN SSH SIGNATURE" in head:
+        path = (git_out("config", "--path", "--get", "gpg.ssh.allowedSignersFile") or "").strip()
+        if not path:
+            return "`gpg.ssh.allowedSignersFile` is not set"
+        if not (pathlib.Path(path) if os.path.isabs(path) else ROOT / path).is_file():
+            return f"`gpg.ssh.allowedSignersFile` names {path}, which does not exist"
+    elif "BEGIN PGP SIGNATURE" in head and (git_out("log", "-1", "--format=%G?", commit) or "").strip() == "E":
+        return "the signing key is not in this clone's GPG keyring"
+    return ""
+
+
+def unverified(commit, tail):
+    """The end of a refusal for a commit that does not verify: *cannot verify* and why, where the clone cannot check a
+    signed commit — else the seat's own words (`tail`), which ask for a signature."""
+    gap = signature_gap(commit)
+    return f"it is signed, but this clone cannot verify: {gap} — see {SIGNING_PAGE}" if gap else tail
+
+
 def staged_now():
     """What the commit being made is about to carry — read once. The gate's version-control calls cost real seconds in
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
@@ -2569,8 +2644,8 @@ def seat_problems(t):
         if not commit:
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
         elif not verified_as(commit, email or None):
-            return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — `[seats]` asks this seat to '
-                    f'sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach him']
+            return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — '
+                    + unverified(commit, f'`[seats]` asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach him')]
     return []
 
 
@@ -2719,7 +2794,7 @@ def rights_problems(trackers):
                         print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
                     elif not verified_as(commit, email or None):
                         out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
-                                   f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
+                                   + unverified(commit, '`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
     return out
 
 
@@ -3167,8 +3242,8 @@ def lint(trackers, committing=False):
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
                     if not verified_as(commit, email if SEATS else None):
                         problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{email if SEATS else who}` — '
-                                        f'{"`[seats]` asks this seat" if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
-                                        f'sign it (`git commit -S`), or it does not count')
+                                        + unverified(commit, f'{"`[seats]` asks this seat" if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
+                                                             f'sign it (`git commit -S`), or it does not count'))
                 elif how == "git":
                     print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
                           f'{"that seat in `[seats]`" if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)

@@ -46,6 +46,16 @@ defects of `--answer` found the same day).
 - **An answer is revoked or superseded, never overwritten:** `--answer <id> revoke "<reason>"`, or
   `--answer <id> accept|reject "<option>" --supersede`. The answer it replaces moves into the ship log with the
   commit that wrote it, and the board's tracker view shows the answer and *supersedes <sha>*.
+- **`--queue` sees what waits beyond the open pull requests.** Each branch on `origin` that no pull request carries —
+  not the default branch, not `answer/*`, not already merged or inside an open pull request — follows as
+  `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>` · `— verdict <sha> READY …: open it` ·
+  `— conflict in <paths>`, and the count line adds *n pushed without a pull request*. An `answer/*` pull request is
+  the Owner's own answer and needs no verdict: `merge: your answer` when its head's author may answer and the commit
+  verifies, `wait: unsigned answer` when not.
+- **A signed commit this clone cannot verify is no longer told to sign.** With `gpg.ssh.allowedSignersFile` unset or
+  missing, or a GPG key not in the keyring, `--check` says *it is signed, but this clone cannot verify: <why> — see
+  the signing page*; an unsigned commit is still asked to sign, and the exit is unchanged. *Nothing to do in a clone
+  that verifies today; in a fresh clone, set `gpg.ssh.allowedSignersFile` as the signing page shows.*
 
 ## 0.17.8 — 2026-09-23
 
