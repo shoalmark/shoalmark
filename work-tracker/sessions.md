@@ -22,7 +22,11 @@ which says so.
 | 63f5b126 | gtm | the Owner, 2026-09-23 23:06 | both readers per line, and what would be data | shoalmark-gtm | 2026-09-23 23:06 | 2026-09-23 23:06 |
 | e0be0fa0 | gtm | the Owner, 2026-09-23 23:28 | the pitch on main verified; the mark: wordmark and icon screen | shoalmark-gtm | 2026-09-23 23:28 | 2026-09-23 23:46 |
 | 8e509911/implementer-5 | implementer | session 8e509911 | the Pricke drawn to be looked at | shoalmark-impl-2 | 2026-09-23 23:59 | 2026-09-24 00:43 |
+| 8e509911/implementer-6 | implementer | session 8e509911 | the site wears the Pricke | shoalmark-impl-2 | 2026-09-24 01:02 | 2026-09-24 01:14 |
+| 8e509911/implementer-7 | implementer | session 8e509911 | the lockup at 1×, 2×, 4× | shoalmark-impl-2 | 2026-09-24 07:11 | 2026-09-24 07:18 |
+| 8e509911/implementer-8 | implementer | session 8e509911 | the dark-ink fix on the site slice | shoalmark-impl-2 | 2026-09-24 07:34 | 2026-09-24 07:35 |
 | 6cecddb3 | gtm | the Owner, 2026-09-24 07:35 | the mark screen's outcome recorded; the tagline with the Pricke drafted | shoalmark-gtm | 2026-09-24 07:35 | 2026-09-24 07:36 |
+| 8e509911/implementer-9 | implementer | session 8e509911 | the tagline D2 as its own slice | shoalmark-impl-2 | 2026-09-24 07:48 | — |
 | 0cbdba3f | gtm | the Owner, 2026-09-24 07:50 | the tagline's English ruled: D2 with Pricke | shoalmark-gtm | 2026-09-24 07:50 | 2026-09-24 07:50 |
 | 8e509911/implementer-10 | implementer | the Owner, 2026-09-24 08:24, in session 8e509911 | filing: can the Owner keep up with parallel streams | shoalmark-impl-3 | 2026-09-24 08:24 | 2026-09-24 08:26 |
 | 8e509911/implementer-11 | implementer | session 8e509911 | FM-031 adopted by the Principal: the ask drafted, the slices named | shoalmark-impl-3 | 2026-09-24 08:32 | 2026-09-24 08:36 |
