@@ -1,7 +1,7 @@
 ---
 id: FM-033
 status: Proposed
-considered: FM-005, FM-024, FM-030, FM-031, FM-032
+considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
 next: owner
 ask: "Does a signed answer that says *now* count as the judgement?"
@@ -36,7 +36,7 @@ rules and as a new issue."* Nothing is built.** Every time and sha below is from
 
 | Work | Filed | Authority at the time | First build commit | Marked In Progress | Judged |
 |---|---|---|---|---|---|
-| FM-024, the session trailer and the registry | `fe4d9eb` 09-23 15:24 | "on the Owner's word": no ask, no answer, unsigned seat commit `5a4ad6e` | `89e0586` 16:16 (S1–S8, R1–R6 until 18:15) | `5a4ad6e` 16:02 | 09-24 14:49, marked Shipped in that pass by the seat that built it |
+| FM-024, the session trailer and the registry | `fe4d9eb` 09-23 15:24 | "on the Owner's word": no ask, no answer, unsigned seat commit `5a4ad6e` | `89e0586` 16:16 (S1–S8, R1–R7 until 18:18, `8b5588e`) | `5a4ad6e` 16:02 | 09-24 14:49: the pass's first version (`7d3e632`) marked it Shipped, by the seat that built it; the pass re-made on its Reviewer's R1 (`87bac4e`) keeps it, P2 #8, judged by that seat's own session |
 | FM-032 S2 and S4, the registry as a report and the freeze | `4af2c9b` 09-24 09:35 | signed answer `ffa63b8` 11:07:43, *"all four now"* | `3c0754f` 11:31 | `a2956a5` 11:45, **14 min after the build began** | 14:49 |
 | FM-031 S2, `--queue` | `d935807` 08:25 | signed answer `d20bc89` 11:08:24, *"all three rules now, S1 then S2"* | `90d3d6f` 12:01 | `fbc2697` 12:19, on the release branch, **18 min after the build began**; on `main` only at 14:35 (PR 49) | 14:49 |
 | `--answer … revoke` and `--supersede` | **no tracker** | the Owner's chat request of 11:29:05, *"we need a path that the user can choose"* (written and signed nowhere) | `bd7d5ea` 12:15, subject "RV-479", a finding id from another repository | never | never |
@@ -54,7 +54,7 @@ All four shipped in `v0.18.0` (tag on `095f1d3`, PR 49 merged 14:35).
 
 ## Why a gate on the status alone misses it
 
-The proposed gate for 0.18.1 would refuse "an In Progress tracker without a judgement". Applied to the four builds:
+A gate proposed to the Owner in chat on 2026-09-24, not in this repository and never built, would refuse "an In Progress tracker without a judgement". Applied to the four builds:
 - FM-024 would have been refused at the status commit (16:02), before its build.
 - FM-032 and FM-031 were built while still *Proposed*. That gate would have fired only at the later status change, after the build.
 - The revoke/supersede work named no tracker, so that gate never fires.
