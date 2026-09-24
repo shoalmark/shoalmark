@@ -177,3 +177,70 @@ What holds:
 
 Not verified: the Owner's words and their time (13:07:09) against the transcript, and D1's answer in the parent
 project beyond its ledger row.
+
+## Second pass at 3c1c334 (2026-09-24 13:41 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `3c1c334` (`3c1c334fb28101d966a4212ccaa830cc9fab946b`) is one commit by the principal seat, under
+`8e509911`, on this verdict `172c425`.
+- `git diff 172c425 3c1c334` names the FM-029 tracker and nothing else: 11 lines in, 7 out. This review file is
+  unchanged, and so are `sessions.md` and INDEX.
+- Against `origin/main` the branch touches three files: the tracker, this review and `sessions.md`. The tier is
+  still docs.
+- The commit message names no branch of the parent project and carries no pull-request number with the sign.
+- Independence: same session `8e509911`, reported.
+
+**The gates at `3c1c334`.**
+- `--check` 0; `--session-check` 0.
+- `python3 shoalmark.py`: 32 trackers, and `git status --porcelain` is empty.
+- `--owner`: `1 NEED THE OWNER`, FM-029, with the new question.
+- `test_shoalmark.py` 0 (264 ok, all green); `test_core.py` 0 (148 ok, all green).
+- `git merge-tree --write-tree origin/main HEAD` is clean, and `origin/main` `ed11081` is an ancestor.
+
+**The ask, measured again.**
+- `ask:` is **293** characters, with one `?`, at its end.
+- The options are 87, 32, 14 and 30 characters. `ask-proposal:` is option 1 verbatim.
+- `ask-kind: ruling`, `ask-since: 2026-09-24` and `next: owner` stand.
+- The parent project's ledger row (`asks.md:61` on its FEAT-190 branch, last changed at 13:36:21, read-only) equals
+  the `ask:` byte for byte (293 = 293). Its proposal is option 1, with *old and new* added, as before.
+
+**Closed.**
+- **R1:** the new verbs are *(changed, chose)* *beside accept, reject and revoke*. *From the two verbs* is gone. Option 2
+  is *the relation only — no new verbs*, and the proposal names *the verbs changed and chose*.
+  - None of the four signable answers now rules on `revoke`. Each one leaves it standing, as the body says.
+- **R2:** alternative 1 now reads *the board and every reading print the answer's relation …, the signed line
+  unchanged*. That matches candidate 1's *Leaves* (`:95–97`). The list now has five relations, with *rejected*.
+  - *Every reading* holds. The tool reads an answer in `answered()` (`:744`), in the board's row (`:1628`) and in
+    `clear_ask()` (`:2860`), and on 0.18.0 at the same three places. All are in candidate 1's list, or in FM-030's
+    future lists, which the candidate also names.
+  - Note, not a finding: under *both*, the words *the signed line unchanged* read as *not rewritten*. That is true,
+    because none of the candidates rewrites a signed line. The proposal says outright that new answers carry
+    *changed* and *chose*.
+- **R3:** `:81–82` give the source, `bd7d5ea` on the unmerged 0.18.0 branch, where it is on both 0.18.0 branches.
+  They also name `accept|reject "<option>" --supersede`, *which replaces an answer and rows the old one*, which is
+  what 0.18.0's `answer_cmd()` does. The name sits in the shared sentence, not in candidate 2's list, and that is
+  enough.
+- **R4:** the mark is at `:68` (*13:07:09 (spelling normalised)*) and in the 13:14 row.
+- **R5:** there are two new rows: 13:22 (`37e48bb`, the proposal set, the ask put to him) and 13:37 (this
+  rewrite). They are newest first, as the log runs. Both times are the commits' own, 13:22:11 and 13:37:28.
+- **R6:** `:115–117` now name the fourth line for answers signed before it, and the seventh line's old-record
+  cases.
+
+**Standing.** **R7 (P3)** stands. `37e48bb`'s pushed message names the parent's branch, and it is not rewritten.
+`3c1c334`'s message does not repeat it.
+
+**R8 · P3 · Candidate 1 still says *the two verbs stay*.**
+- **What:** `:85`, *The two verbs stay; the dialog and `--answer` write what they write today*. This is R1's
+  remainder, in the body. On 0.18.0, `--answer` takes three verbs.
+- **The ask is right.** It says *no new verbs*.
+- **Fix:** *No verb is added; the dialog and `--answer` write what they write today.*
+
+**R9 · P3 · Three new body lines are not wrapped at 120.**
+- **What:** `:68` is 147 characters, `:81` is 129 and `:82` is 125. The rest of the body wraps at 120. FM-032's R6 is
+  the precedent.
+- **Fix:** rewrap them in the next change.
+
+**Verdict:** READY WITH FINDINGS. R8, R9 and the standing R7 are P3, and under the docs tier they are fixed forward.
+R1 and R2, the two P2s, are closed, and so are R3–R6.
+
+Not verified, as before: the Owner's words and their time against the transcript, and D1's answer beyond the ledger
+row.
