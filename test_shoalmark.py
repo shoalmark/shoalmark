@@ -2718,9 +2718,75 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 old_record_ = "# X-1 — t\n\n## Asks\n\n**2026-09-20** · Ship it?\n**answered** — accepted - ship it, S1 first · holgo\n\n## Ship log\n"
 new_record_ = old_record_.replace("· holgo\n", "· holgo\n**relation** — accepted with a change\n")
-check("FM-029 · a record `--clear-ask` wrote before 0.18.1 is read as it is — *relation not computable*: its proposal is gone, and nothing guesses it; a withdrawn one has no relation",
+withdrawn_ = "## Asks\n\n**2026-09-20** · Ship it?\n**withdrawn** — no answer was given\n"
+check("FM-029 · read from the body alone, a record `--clear-ask` wrote before 0.18.1 says *relation not computable* — its proposal left with the ask, and the body guesses nothing; its answer is what the readings find the answer's commit by (below); a withdrawn one has no relation",
       fm.recorded_relation(old_record_) == "relation not computable" and fm.recorded_relation(new_record_) == "accepted with a change"
-      and fm.recorded_relation("## Asks\n\n**2026-09-20** · Ship it?\n**withdrawn** — no answer was given\n") == "" and fm.recorded_relation("# no asks\n") == "")
+      and fm.recorded_relation(withdrawn_) == "" and fm.recorded_relation("# no asks\n") == ""
+      and fm.unrelated_answer(old_record_) == "accepted - ship it, S1 first" and fm.unrelated_answer(new_record_) == ""
+      and fm.unrelated_answer(withdrawn_) == "" and fm.unrelated_answer("# no asks\n") == "")
+
+# --- FM-029, 0.18.3 (the Auditor seat's check 9): a record written before 0.18.1 prints the relation of its answer's commit -
+# FM-031 and FM-032 on main were cleared by a tool that wrote no `**relation** —` line, and `--answered` printed *relation not
+# computable* for both. The commit that wrote the answer still holds the proposal and the options: every reading reads them
+# there — found by the answer's text, never guessed — and where no commit wrote that answer, it still says not computable.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    today_ = datetime.date.today().isoformat()
+    q31_, q32_ = "Rule the three house rules and the build order?", "Rule the deregulation?"
+    ask31_ = (f'next: owner\nask: "{q31_}"\nask-kind: ruling\nask-since: 2026-09-23\n'
+              'ask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later"\nask-proposal: "all three rules now, S1 then S2"\n')
+    ask32_ = f'next: owner\nask: "{q32_}"\nask-kind: ruling\nask-since: 2026-09-23\nask-options: "all four now | the review tier only | none"\nask-proposal: "all four now"\n'
+    said_ = lambda a: f'answer: "{a}"\nanswered: {today_}\nanswered-by: holgo\n'
+    changed_ = "accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked"
+    # the clear as a tool before 0.18.1 made it: the ask lines gone, the exchange under `## Asks` with no relation line
+    cleared_ = lambda tid, q, a, relation="": tracker(root, tid, extra="next: build\n", body=f"## Asks\n\n**{today_}** · {q}\n**answered** — {a} · holgo\n{relation}\n## Ship log\n")
+    f310_ = tracker(root, "AP-310", extra=ask31_); tracker(root, "AP-311", extra=ask32_); tracker(root, "AP-312", extra=ask32_); tracker(root, "AP-313", extra=ask31_)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the asks")
+    # FM-031's history: the proposal answered first, then rewritten with changed text — the record holds the NEWER answer
+    tracker(root, "AP-310", extra=ask31_ + said_("accepted - all three rules now, S1 then S2")); git(root, "commit", "-qam", "AP-310: accepted - the proposal")
+    tracker(root, "AP-310", extra=ask31_ + said_(changed_)); tracker(root, "AP-311", extra=ask32_ + said_("accepted - all four now")); tracker(root, "AP-313", extra=ask31_ + said_(changed_))
+    git(root, "commit", "-qam", "the answers")
+    answer_sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    cleared_("AP-310", q31_, changed_); cleared_("AP-311", q32_, "accepted - all four now")
+    cleared_("AP-312", q32_, "accepted - all four now, the freeze at 8")                   # an answer no commit ever wrote
+    cleared_("AP-313", q31_, changed_, "**relation** — accepted with a change\n")        # a record from 0.18.1 on: its own line
+    git(root, "commit", "-qam", "the asks acted on, cleared as a tool before 0.18.1 cleared them")
+    fm.configure(root)
+    load_calls_ = argv_of(fm.load_trackers)
+    by_ = {t["id"]: t for t in fm.load_trackers()}
+    batch_calls_ = argv_of(lambda: fm.recover_relations(list(by_.values())))
+    got_ = {k: fm.record_relation(by_[k]) for k in ("AP-310", "AP-311", "AP-312", "AP-313")}
+    t313_ = next(t for t in fm.load_trackers() if t["id"] == "AP-313"); line_calls_ = argv_of(lambda: fm.record_relation(t313_))
+    check(f"FM-029 · 0.18.3 · a record written before 0.18.1 prints the relation of the commit that wrote its answer: FM-031's shape — the proposal answered, then changed text — reads *accepted with a change* from the NEWER answer's commit; FM-032's shape *accepted the proposal*; an answer no commit wrote *relation not computable*; a record with its line, that line (saw {got_})",
+          got_["AP-310"][0] == "accepted with a change" and len(got_["AP-310"][1]) >= 7 and answer_sha_.startswith(got_["AP-310"][1])
+          and got_["AP-311"][0] == "accepted the proposal" and answer_sha_.startswith(got_["AP-311"][1]) and len(got_["AP-311"][1]) >= 7
+          and got_["AP-312"] == ("relation not computable", "") and got_["AP-313"] == ("accepted with a change", "")
+          and "**relation**" not in f310_.read_text())
+    check("FM-029 · 0.18.3 · its cost: a load spends no git call on it; a reading spends ONE `git log` for all the records that lack the line, and one `git show` per record whose commit was found — and a record that carries its line calls no git at all",
+          not any(fm.line_regex("answer:") in c for c in load_calls_)
+          and [c for c in batch_calls_ if "log" in c and fm.line_regex("answer:") in c] == [c for c in batch_calls_ if "log" in c] and len([c for c in batch_calls_ if "log" in c]) == 1
+          and len([c for c in batch_calls_ if "show" in c]) == 2 and len(batch_calls_) == 3 and line_calls_ == [])
+    _, said_out_, _ = run(root, "--answered")
+    acted_ = dict(re.findall(r"^  (AP-31\d) — acted on in `[0-9a-f]+` · (.*)$", said_out_, re.M))
+    check(f"FM-029 · 0.18.3 · `--answered` prints it on each acted-on line and names the answer's commit it was read from (saw {acted_})",
+          acted_.get("AP-310") == f"accepted with a change, read from the answer's commit `{got_['AP-310'][1]}`"
+          and acted_.get("AP-311") == f"accepted the proposal, read from the answer's commit `{got_['AP-311'][1]}`"
+          and acted_.get("AP-312") == "relation not computable" and acted_.get("AP-313") == "accepted with a change")
+    run(root, "--html-only")
+    import json
+    view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
+    check("FM-029 · 0.18.3 · the board's tracker view prints it under the record's `**answered** —`, where a record from 0.18.1 on carries its own line, and names the commit — the file itself is not touched",
+          f"**answered** — {changed_} · holgo\n**relation** — accepted with a change · read from the answer's commit `{got_['AP-310'][1]}`\n\n## Ship log" in view_("AP-310")
+          and f"**answered** — accepted - all four now · holgo\n**relation** — accepted the proposal · read from the answer's commit `{got_['AP-311'][1]}`\n" in view_("AP-311")
+          and "**answered** — accepted - all four now, the freeze at 8 · holgo\n**relation** — relation not computable\n" in view_("AP-312")
+          and view_("AP-313") == fm.parse_frontmatter((root / "docs/work-tracker/AP-313-x.md").read_text())[1] and view_("AP-313").count("**relation**") == 1
+          and "**relation**" not in f310_.read_text())
+    rm_git(root)
+fm.configure(HERE)
 
 # --- FM-029: the half-written answer's *give it again* knows all three words, and a superseding answer's flag ----------
 with tempfile.TemporaryDirectory() as tmp:

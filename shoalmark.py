@@ -496,6 +496,19 @@ def norm_dash(v):
     return v if v and v not in {"-", "--", "—", "n/a", "none"} else "—"
 
 
+def answer_fields(fm):
+    """The three lines an answer's relation is read from — `ask-proposal:`, `ask-options:`, `answer:` — as the loader
+    reads them: the outer quotes off, the options split. ONE reader, for a tracker as it is and for the revision its
+    answer's commit left (`recover_relations`, FM-029)."""
+    unquote = lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v
+    return {
+        "ask_proposal": unquote((fm.get("ask-proposal") or "").strip()),
+        # the choices as ONE line — `a | b | c`. Split here so the board and the gate read the same list
+        "ask_options": [o.strip() for o in unquote((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
+        "answer": unquote((fm.get("answer") or "").strip()),
+    }
+
+
 def extract(path):
     text = path.read_text(encoding="utf-8")
     fm, body = parse_frontmatter(text)
@@ -588,10 +601,7 @@ def extract(path):
         "next": (fm.get("next") or "").strip().lower(),
         "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
-        "ask_proposal": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-proposal") or "").strip()),
-        # the choices as ONE line — `a | b | c`. Split here so the board and the gate read the same list
-        "ask_options": [o.strip() for o in (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
-        "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
+        **answer_fields(fm),                            # ask_proposal · ask_options · answer
         "answered": (fm.get("answered") or "").strip(),
         # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
         # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
@@ -612,6 +622,9 @@ def extract(path):
         "asks_block": bool(ASKS_HEAD_RE.search(body)),
         # the relation the newest of those records carries (FM-029) — what `--answered` says an acted-on answer was
         "asks_relation": recorded_relation(body),
+        # …and, where that record carries none (written before 0.18.1), its answer: what `recover_relations` looks up in
+        # git when the relation is printed — never here, where every load passes (FM-012)
+        "asks_answer": unrelated_answer(body),
         # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
         "supersedes": superseded(body),
     }
@@ -820,18 +833,100 @@ def relation_text(rel):
     return RELATION_TEXT[rel[0]].format(rel[1]) + (f": {rel[2]}" if rel[2] else "") if rel else ""
 
 
-def recorded_relation(body):
-    """The relation the newest record under `## Asks` carries — `--clear-ask` writes it from 0.18.1 on — or, for a record
-    written before, *relation not computable*: the proposal and the options left with the ask, and are guessed at by no one."""
+RELATION_LINE_RE = re.compile(r"^\*\*relation\*\* — (.+)$", re.M)     # the line `--clear-ask` writes under `**answered** —`
+
+
+def newest_record(body):
+    """Where the newest record under the body's `## Asks` stands — the section's last paragraph, as `--clear-ask` writes
+    it — as (start, end) in `body`; (0, 0) where there is none."""
     at = ASKS_HEAD_RE.search(body)
     if not at:
-        return ""
+        return 0, 0
     rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
-    records = [p for p in re.split(r"\n\s*\n", body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())]) if p.strip()]
-    if not records or "**answered**" not in records[-1]:
+    section = body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())].rstrip()
+    records = [p for p in re.split(r"\n\s*\n", section) if p.strip()]
+    return (at.end() + len(section) - len(records[-1]), at.end() + len(section)) if records else (0, 0)
+
+
+def recorded_relation(body):
+    """The relation the newest record under `## Asks` carries — `--clear-ask` writes it from 0.18.1 on — or, for a record
+    written before, *relation not computable*: the proposal and the options left with the ask, and the file cannot say it.
+    Where it is printed, `record_relation` recovers it from the answer's own commit; read from the body alone, it is this."""
+    start, end = newest_record(body)
+    if "**answered**" not in body[start:end]:
         return ""
-    m = re.search(r"^\*\*relation\*\* — (.+)$", records[-1], re.M)
+    m = RELATION_LINE_RE.search(body[start:end])
     return m.group(1).strip() if m else RELATION_TEXT["unknown"]
+
+
+def unrelated_answer(body):
+    """The answer of the newest record under `## Asks` when that record has no `**relation** —` line, else "" — the text
+    the commit that wrote it is found by. The record's line is `**answered** — <answer> · <answered-by>`."""
+    start, end = newest_record(body)
+    m = None if RELATION_LINE_RE.search(body[start:end]) else re.search(r"^\*\*answered\*\* — (.+)$", body[start:end], re.M)
+    if not m:
+        return ""
+    answer, sep, _by = m.group(1).strip().rpartition(" · ")
+    return answer if sep else m.group(1).strip()
+
+
+def recover_relations(trackers):
+    """FM-029, the Owner's scope — every reading prints the relation — for a record `--clear-ask` wrote before 0.18.1: it
+    has no `**relation** —` line, and the proposal and the options left the file with the ask. The commit that wrote the
+    answer still holds them. Found, never guessed: the newest commit whose diff adds an `answer:` line equal to the
+    record's answer (the answer's own normalisation on both sides), its revision read back with `git show`, and that
+    revision's `answer:` must be the record's answer too; its three lines go through `answer_fields` and
+    `answer_relation`, the reader a live answer goes through. Where no commit in this checkout wrote that answer — or
+    under Subversion — *relation not computable*, as before. Sets `t["asks_recovered"]` = (relation, the commit's short sha).
+
+    Cost, and why it is spent only here: one `git log` for ALL the records asked about at once, and one `git show` per
+    record whose answer's commit was found. `extract` never calls it — every load, the pre-commit hook's included, would
+    pay; FM-012 measured one git call per tracker at 504 calls and 15.2 s of a 16.8 s load. It runs where the relation is
+    printed (`--answered`'s acted-on lines, the board's tracker view), and only for a record that lacks the line. The one
+    `git log` is not one per record because each walks the whole history: 0.4 s a file on a 3,755-commit repository."""
+    need = {}
+    for t in trackers:
+        if t.get("asks_answer") and "asks_recovered" not in t:
+            t["asks_recovered"] = (RELATION_TEXT["unknown"], "")
+            need[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
+    if not need or vcs() != "git":
+        return
+    git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                                    errors="replace", env=nested_git_env())
+    # `-G ^answer:` anchored as `line_regex` anchors it; `--full-history` as `acted_on` has it — an answer written on a
+    # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
+    # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `git show <sha>:./<path>` reads them;
+    # `-U0`: only the lines that changed
+    log = git("log", "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+              "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
+    found = {rel: [] for rel in need}                     # newest first, as `git log` lists them
+    for chunk in log.stdout.split("\x00")[1:]:
+        head, _, diff = chunk.partition("\n")
+        rel = None
+        for line in diff.splitlines():
+            if line.startswith("diff --git "):            # `a/<path> b/<path>`: one path twice (no renames); quoted, it is none of these
+                both = line[len("diff --git a/"):] if line.startswith("diff --git a/") else ""
+                rel = both[: (len(both) - len(" b/")) // 2] if both else None
+            elif (line.startswith("+answer:") and rel in need and head not in found[rel]
+                  and answer_norm(answer_fields({"answer": line[len("+answer:"):]})["answer"]) == answer_norm(need[rel]["asks_answer"])):
+                found[rel].append(head)
+    for rel, heads in found.items():
+        for head in heads:
+            sha, _, short = head.partition(" ")
+            fields = answer_fields(parse_frontmatter(git("show", f"{sha}:./{rel}").stdout)[0])
+            if answer_norm(fields["answer"]) == answer_norm(need[rel]["asks_answer"]):
+                need[rel]["asks_recovered"] = (relation_text(answer_relation(fields)), short)
+                break
+
+
+def record_relation(t):
+    """What every reading prints for the newest record under `## Asks`: the relation its `**relation** —` line says, or —
+    for a record without one — the one `recover_relations` reads from the answer's commit, else *relation not computable*;
+    as (relation, the answer's commit where it was recovered, else ""). "" for no record, or a withdrawn one. A record
+    that carries its line costs no git call."""
+    if t.get("asks_answer") and "asks_recovered" not in t:
+        recover_relations([t])
+    return t["asks_recovered"] if t.get("asks_answer") else (t.get("asks_relation", ""), "")
 
 
 def answered(trackers):
@@ -844,8 +939,10 @@ def answered(trackers):
     acted = acted_on(trackers)
     if acted:
         print(f"\nACTED ON SINCE THE LAST STANDUP — {len(acted)}")
+        recover_relations([t for t, _ in acted])           # a record without its relation line: one `git log` for all of them
         for t, commit in acted:
-            print(f"  {t['id']} — acted on in `{commit}`" + (f" · {t['asks_relation']}" if t.get("asks_relation") else ""))
+            said, source = record_relation(t)
+            print(f"  {t['id']} — acted on in `{commit}`" + (f" · {said}" if said else "") + (f", read from the answer's commit `{source}`" if source else ""))
     return EXIT_OK
 
 
@@ -2319,11 +2416,22 @@ def owners_intent(text):
 
 
 def write_views(trackers):
-    """One `view/<ID>.js` per tracker — `V(id, markdown)`. Rewritten only when changed; strays removed."""
+    """One `view/<ID>.js` per tracker — `V(id, markdown)`. Rewritten only when changed; strays removed. The markdown is
+    the file's body, and one line more where the newest record under `## Asks` has no `**relation** —` line: the
+    relation `recover_relations` read from the answer's commit, under `**answered** —` where a record from 0.18.1 on
+    carries its own, naming that commit — or *relation not computable* (FM-029: every reading prints the relation)."""
     VIEW_DIR.mkdir(exist_ok=True)
     keep = set()
+    recover_relations(trackers)
     for t in trackers:
         _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
+        if t.get("asks_answer"):
+            start, end = newest_record(body)
+            said, source = record_relation(t)
+            line = re.search(r"^\*\*answered\*\* — .*$", body[start:end], re.M)
+            if line:
+                cut = start + line.end()
+                body = body[:cut] + f"\n**relation** — {said}" + (f" · read from the answer's commit `{source}`" if source else "") + body[cut:]
         out, text = VIEW_DIR / f'{t["id"]}.js', f'V({json.dumps(t["id"])},{json.dumps(body, ensure_ascii=False)})\n'
         keep.add(out.name)
         if not out.exists() or out.read_text(encoding="utf-8") != text:
@@ -3803,7 +3911,8 @@ def parse_args(argv):
     add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
-                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries")
+                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries — "
+                                               "for a record written before 0.18.1, the one the commit that wrote its answer gives")
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
