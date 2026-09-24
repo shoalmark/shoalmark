@@ -9,6 +9,9 @@ ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "all four now | the review tier and the freeze now, the registry and the miss rule later | the review tier only | none — keep the loop as it is"
 ask-proposal: "all four now"
+answer: "accepted - all four now"
+answered: 2026-09-24
+answered-by: holgo99
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
