@@ -23,4 +23,4 @@ which says so.
 | e0be0fa0 | gtm | the Owner, 2026-09-23 23:28 | the pitch on main verified; the mark: wordmark and icon screen | shoalmark-gtm | 2026-09-23 23:28 | 2026-09-23 23:46 |
 | 8e509911/implementer-5 | implementer | session 8e509911 | the Pricke drawn to be looked at | shoalmark-impl-2 | 2026-09-23 23:59 | 2026-09-24 00:43 |
 | 8e509911/implementer-6 | implementer | session 8e509911 | the site wears the Pricke | shoalmark-impl-2 | 2026-09-24 01:02 | 2026-09-24 01:14 |
-| 8e509911/implementer-7 | implementer | session 8e509911 | the lockup at 1×, 2×, 4× | shoalmark-impl-2 | 2026-09-24 07:11 | — |
+| 8e509911/implementer-7 | implementer | session 8e509911 | the lockup at 1×, 2×, 4× | shoalmark-impl-2 | 2026-09-24 07:11 | 2026-09-24 07:18 |
