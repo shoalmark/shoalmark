@@ -160,8 +160,8 @@ FM-004 can close without it.**
   `START WITH`. The other conditions of a park hold: P3, a real remainder, nobody on it (no branch or worktree names
   them), and a restart named in the reason (loosely for FM-027, R7).
 - **Also:** all three keep `next: review` while their *Now* opens *nothing is built*.
-- **Fix:** the Owner strikes these rows or lets them stand; he rules by merging. If *a filing alone is not work* is
-  what the seat meant, that is a rule. Under the freeze, it goes as one line into the closest open tracker.
+- **Fix:** carried to the next triage pass, unless a Principal seat puts it to the board as an ask; a merge rules
+  nothing (path line 5). If *a filing alone is not work* is what the seat meant, that is a rule. Under the freeze, it goes as one line into the closest open tracker.
 
 **R5 · P3 · FM-024's closing names the wrong release and no commit.**
 - **What:** the reason and the closing row say *the trailer rule shipped in 0.17.7*. It shipped in 0.17.6: CHANGELOG
@@ -204,8 +204,8 @@ record:
 - R1: FM-024's slice 2, which the path's line 3 needs and README §6 promises.
 - R2: FM-026's candidates and done-condition, which FM-004's *Done when* does not cover.
 
-R3–R7 are P3 and are fixed forward. R5 folds into R1's fix. R3 and R4 are the Owner's to strike or keep when he
-merges.
+R3–R7 are P3 and are fixed forward. R5 folds into R1's fix. What is not fixed is carried to the next triage pass;
+the merge decides nothing about it (path line 5).
 
 What holds:
 - The gates are green, both suites pass, and INDEX is the generated one.
@@ -254,13 +254,13 @@ Not verified:
 - **R2 ✓ closed.** FM-026 is `park P3` and still open, with its candidates and *Done when* in place. FM-004 is main's.
   The reason says why this is no merge.
 - **R3 ✓ closed.** The builds come first (#6, #7, #8), and the waits after them (#9, #10).
-- **R4 · P3 · stands, for the Owner to rule.**
+- **R4 · P3 · stands, carried to the next triage pass.**
   - The rows of FM-023, FM-025, FM-026 and FM-027 still read *keep*. The rule's letter is unchanged: *a row that
     fails the keep test*, *park it, unless it was worked on this week*.
   - The pass now states its ground in the paragraph: the filing itself is the only date, and nobody is on them. It
     holds on git: FM-026 and FM-027 have no commit after 09-23, and FM-023's last is 09-23 15:33.
   - I do not count it as meeting the rule. It reads *worked on* as *worked on since filing*, which the rules do not
-    say. It is now open and checkable, which is what he needs to strike it or let it stand.
+    say. It is now open and checkable, which is what the next pass or an ask needs.
   - Two smaller points:
     - FM-026's and FM-027's reasons name no restart. The rule asks for one: *"the Owner ranks it" counts*.
     - All four still say `next: review` with nothing built.
@@ -278,8 +278,8 @@ Not verified:
 **R8 · P3 · FM-024's reason places slice 2 on the path's line 3, and its tier and rank read as if it did not.**
 - **What:** the scale the command prints is *P1 on the current path* and *harm … after the path's own work, unless it
   blocks it*. FM-024 is P2 and ranked #8, behind FM-030 (#6) and FM-028 (#7), two defects the path does not name.
-- **Fix:** the Owner's to strike when he merges. Or the next pass either makes it P1 and ranks it ahead of those two,
-  or says in the reason why line 3 does not name it.
+- **Fix:** carried to the next triage pass, which either makes it P1 and ranks it ahead of those two, or says in the
+  reason why line 3 does not name it; or a Principal seat puts it to the board as an ask. The merge decides nothing.
 - **Not the pass's to fix:** FM-024's *What is true now* still opens *open for the merge, not merged*, and `--next`
   prints that under #8. A pass writes no note into a tracker. The seat that takes FM-024 up rewrites it first (README
   §3).
@@ -298,7 +298,8 @@ Not verified:
 - The second to land keeps both, and regenerates INDEX.
 
 **Verdict on 87bac4e: READY WITH FINDINGS (R4, R8, R9 P3).** R1, R2, R3, R6 and R7 are closed, and R5 is moot. Under
-the docs tier the P3s are fixed forward. R4 and R8 are the Owner's to strike or keep when he merges.
+the docs tier the P3s are fixed forward. R4 and R8 are carried to the next triage pass; the merge decides nothing
+about them (path line 5).
 
 Not verified: the Owner's word before the pass (chat), and the Auditor's grading (R9).
 
@@ -359,23 +360,23 @@ FM-033).
   that cannot move.
 - **Fix:** on today's sheet, FM-033 `keep P2 #9 build`, FM-032 `#10 wait`, FM-031 unranked (or the seat's order),
   then run `--triage` again. FM-029's #1 is freed by the seat that closes FM-029 against `v0.18.1`, not by a pass.
-  Or leave all of it to the Owner's strike.
+  Or carry it to the next triage pass.
 
 **R11 · P3 · confidence medium · The self-judgement is disclosed where the Owner does not read it.** This is the CREDO
 question, graded.
 - **In lane:** a *keep* is triage, and the Principal signs triage. A keep clears nothing: the violation stays open,
   its record intact, its cure queued. The CREDO's bar, *may not clear its own work*, is not crossed.
 - **Not a control:** *Self-critique is preparation, not clearance*, and *who independently receives the record?*
-  This Reviewer is the same session, and `--check` counts it so. So the only independent receiver is the Owner,
-  through his strike at the merge (README §4).
+  This Reviewer is the same session, and `--check` counts it so. So the only independent receiver is the Owner.
+  His merge rules nothing (path line 5): what he decides is an answer signed through the board.
   - The disclosure is in the worksheet's Reason and the commit body.
-  - It is not in the TRIAGE.md addendum, which is where he rules a pass.
+  - It is not in the TRIAGE.md addendum, which is where he reads a pass.
   - `--owner` says *NOTHING NEEDS THE OWNER*.
 - **Where the shadow could act:** in the tier and the rank. The one choice with a stated ground is the rank, and it
   rests on the constraint R10 shows is not one.
 - **Grade:** enough for a keep once the Owner is shown it. Not enough as written.
-- **Fix, forward:** one clause in the addendum, *judged by the session whose builds FM-033 records; the Owner strikes
-  the row if he sees a conflict*. Name FM-033 as the violation's filing in the paragraph, which also completes R9.
+- **Fix, forward:** one clause in the addendum, *judged by the session whose builds FM-033 records*; a conflict he sees
+  is put to the board as an ask, not left to the merge. Name FM-033 as the violation's filing in the paragraph, which also completes R9.
 
 **For the merge order, not a finding.**
 - `fm/033-the-auditors-fix-forward` (`645e4d4`, with its verdict `bf5b2cc`) also touches FM-033: `considered:` gains
@@ -435,4 +436,21 @@ strike is the independent control (the Auditor's R11).*
 - The paragraph still does not name FM-033 as *its own filing* of the violation. The addendum's first words name
   FM-033, which is enough.
 
-**Verdict on f4e7658: READY.** R10 and R11 are closed. R4 and R8 stand as findings the Owner rules on at the merge.
+**Verdict on f4e7658: READY.** R10 and R11 are closed. R4 (the four parks on rows that pass the keep test) and R8
+(FM-024 ranked #8 behind two defects while its slice belongs to path line 3) are open findings carried to the next
+triage pass, unless a Principal seat puts one of them to the board as an ask; nothing about them is decided by the
+merge.
+
+## Correction, the verdict line (2026-09-24, Reviewer, session `8e509911/reviewer-1`)
+
+The Auditor pointed it out, through the Owner: path line 5 says no act of the Owner, a merge included, is an answer.
+So a merge rules nothing. Where this file said the Owner rules, strikes or keeps a finding *at the merge* or *by
+merging*, that reading is struck: in the first pass's R4 and verdict, in the 87bac4e pass's R4, R8 and verdict, and
+in the FM-033 row's R10 fix and R11 (its grading and its fix).
+- R4 and R8 are open findings, carried to the next triage pass unless a Principal seat puts one of them to the board
+  as an ask.
+- The same holds for R11's control. The disclosure part stays closed: the addendum names the self-judgement. The
+  addendum's *the Owner's strike is the independent control* rests on the reading struck here. A strike made at the
+  merge decides nothing. His ruling on a conflict would be a signed answer through the board. That clause is carried
+  with R4 and R8.
+No verdict changes: 7d3e632 NOT READY, 87bac4e READY WITH FINDINGS, 81dce10 READY WITH FINDINGS, f4e7658 READY.
