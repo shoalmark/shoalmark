@@ -6,6 +6,7 @@
     python3 pricke.py pair SITE_DIR ID   # variant ID beside B1 (the GtM's isolated-danger beacon), same slot, same page
     python3 pricke.py site SITE_DIR      # the BUILT site as it is (logo, favicon, fonts, palette): site-header-*, the tab,
                                          # the fonts the browser used, and site-header-a-vs-d-2x.png for the Owner
+    python3 pricke.py lockup SITE_DIR    # the header's lockup scaled whole (DPR 1, 2, 4) and d24 at 24 px: lockup-scale.png
     python3 pricke.py measure            # the facts the note states, read off the renders
     python3 pricke.py fonts              # proves IBM Plex Sans 600 loads in headless Chrome (header and pair check it first)
 
@@ -102,12 +103,30 @@ MARKS = {
 }
 
 
+# d24: `d` redrawn on a 24-unit grid for a 24 px header slot (the Owner: "we could try a 24 px variant") — the same four
+# strokes and neck, the fan finer against its size, the stake still 2 px. Not in the sheet; `lockup` writes its SVG.
+D24 = (24, pix(
+    "......#..........#......",
+    "......#..........#......",
+    ".#.....#........#.....#.",
+    "..#....#........#....#..",
+    "...#....#......#....#...",
+    "....#...#......#...#....",
+    ".....#...#....#...#.....",
+    "......#..#....#..#......",
+    ".......#..#..#..#.......",
+    "........#.#..#.#........",
+    ".........#.##.#.........",
+    "..........####..........",
+    *["...........##..........."] * 12))
+
+
 # B1 is the GtM seat's source, copied verbatim from fm/006-gtm-mark-screen (mark/marks.py), for the side-by-side only.
 B1 = (16, '<circle cx="8" cy="2" r="2"/><circle cx="8" cy="7" r="2"/><rect x="7" y="8" width="2" height="8"/>')
 
 
 def svg(i, size=None, color="currentColor"):
-    grid, body = (B1 if i == "B1" else MARKS[i][1:3])
+    grid, body = {"B1": B1, "d24": D24}.get(i) or MARKS[i][1:3]
     wh = f' width="{size}" height="{size}"' if size else ""
     inner = body if body.startswith("<") else f'<path d="{body}"/>'
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {grid} {grid}"{wh} fill="{color}">{inner}</svg>'
@@ -419,6 +438,59 @@ def compare(site_dir):
         p.unlink()
 
 
+def stems(g, ink):
+    """Full-height vertical strokes in a crop: runs of columns inked over 85 % of the inked rows, their widths."""
+    rows = [r for r in range(len(g)) if any(ink(v) for v in g[r])]
+    full = [c for c in range(len(g[0])) if sum(ink(g[r][c]) for r in rows) >= 0.85 * len(rows)]
+    runs = []
+    for c in full:
+        runs.append([c]) if not runs or c != runs[-1][-1] + 1 else runs[-1].append(c)
+    return [len(r) for r in runs]
+
+
+def lockup(site_dir):
+    """The header's lockup — `d` and the wordmark in IBM Plex Mono 500, the theme's own gap — scaled as a whole: the
+    unmodified built page at device-pixel ratio 1, 2 and 4, so the mark is 16, 32 and 64 device px and the name 18, 36
+    and 72, drawn by the browser at that size (nothing is enlarged after the fact). Then `d24` in the same slot at 24 px,
+    at 1x and 2x, on a scratch copy of the page. Prints stake width against the name's stems for each."""
+    (HERE / "d24.svg").write_text(svg("d24") + "\n", encoding="utf-8")
+    page = pathlib.Path(site_dir).resolve() / "de/index.html"
+    s = page.read_text(encoding="utf-8")
+    start = s.index('class="md-header__button md-logo"')
+    a0, a1 = s.index(">", start) + 1, s.index("</a>", start)
+    alt = page.with_name("_d24.html")
+    alt.write_text((s[:a0] + svg("d24").replace('fill="currentColor"', 'fill="currentColor" shape-rendering="crispEdges"') + s[a1:])
+                   .replace("</head>", "<style>.md-header__button.md-logo svg{width:24px;height:24px}</style></head>", 1),
+                   encoding="utf-8")
+    x, y, w, h = 120, 0, 190, 48
+    cells, tmp = [], []
+    print("| lockup | scale | mark (device px) | stake | the name's stems | grey levels in the mark |")
+    print("|---|---|---|---|---|---|")
+    for mark, src, scales in (("d", page, (1, 2, 4)), ("d24", alt, (1, 2))):
+        for k in scales:
+            for tag in ("light", "dark"):
+                png = OUT / f"_lk-{mark}-{k}-{tag}.png"
+                chrome(src, png, 1440, 330, k, dark=tag == "dark")
+                magick(png, "-crop", f"{w * k}x{h * k}+{x * k}+{y * k}", "+repage", png)
+                tmp.append(png)
+                size = 16 if mark == "d" else 24
+                cells.append((png, f"{mark} · ×{k} · mark {size * k} px, name {18 * k} px · {tag}"))
+                g = grey(png, 0, 0, w * k, h * k)
+                ink = (lambda v: v < 128) if tag == "light" else (lambda v: v > 128)
+                m = [row[: (size + 14) * k] for row in g]              # the mark's columns: the slot, not the name
+                mr = [r for r in range(len(m)) if any(ink(v) for v in m[r])]
+                mc = [c for c in range(len(m[0])) if any(ink(m[r][c]) for r in mr)]
+                box = {m[r][c] for r in range(mr[0], mr[-1] + 1) for c in range(mc[0], mc[-1] + 1)}
+                stake = sum(1 for v in m[mr[-1]] if ink(v))
+                name = stems([row[(size + 16) * k:] for row in g], ink)
+                if tag == "light":
+                    print(f"| {mark} | ×{k} | {mc[-1] - mc[0] + 1} × {mr[-1] - mr[0] + 1} | {stake} px | {name} px | {len(box)} |")
+    alt.unlink()
+    board(cells, 2, "lockup-scale")
+    for p_ in tmp:
+        p_.unlink()
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "sheet":
@@ -426,6 +498,8 @@ if __name__ == "__main__":
     elif cmd == "site":
         site(sys.argv[2])
         compare(sys.argv[2])
+    elif cmd == "lockup":
+        lockup(sys.argv[2])
     elif cmd == "measure":
         measure()
         measure_site()
