@@ -1,10 +1,12 @@
 ---
 id: FM-026
-status: Proposed
+status: Parked
 considered: FM-004, FM-006
 tags: research
 kind-of-problem: complex
 next: review
+triaged: 2026-09-24
+tier: P3
 hook: "Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because nothing tells an existing fleet how its trackers, seats and habits move over; the adopt note must carry that migration, and the case its agents make to their owner"
 ---
 

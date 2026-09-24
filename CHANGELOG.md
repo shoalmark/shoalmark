@@ -37,6 +37,33 @@ of its mark.
 Mono as the wordmark, the site's tab icon as the logo, the site's light and dark palettes, IBM Plex from files beside
 the theme, and the German claim as the tagline. It is this repository's place: `--vendor` never copies it.
 
+## 0.18.1 — 2026-09-24
+
+**Every reading names the answer's relation to the proposal; the signed line is unchanged** (FM-029, the Owner's
+ruling: the relation only, no new verbs). Under `accepted` the board's dialog and `--answer` write the proposal, another
+listed option and changed text alike, and a reader counting how often the Owner took the proposal counted all three.
+
+- **The relation is computed where the answer is read**, from `answer:` against `ask-proposal:` and `ask-options:`,
+  with the answer's own normalisation on both sides (trimmed, whitespace runs one space, `"` as `'`): *accepted the
+  proposal* · *chose option N: <its first words>* (N its place in `ask-options:`) · *accepted with a change* ·
+  *rejected: <reason>* · *revoked: <reason>* · *relation not computable* — an accepted answer with no proposal to
+  compare it with, or a word that is none of the three. A hand-written `accepted — <text>` reads as `accepted - <text>`.
+- **Where it is printed:** `--answered`, beside each answer and on each acted-on line; the board's tracker view, beside
+  the answer; and the record `--clear-ask` writes under `## Asks`, as a `**relation** —` line after `**answered** —`,
+  because the proposal and the options leave with the ask. A record written before reads as it is: *relation not
+  computable*, never a guess. `--owner` and `--standup` list no answered ask yet, so they print none.
+- **The signed line is not touched:** `answer:` and the answer's commit subject still say `accepted - <text>`, and
+  `--answer` and the dialog write what they wrote.
+- **`--queue`:** an `answer/*` pull request whose head's author may not answer reads `wait: not an answerer
+  (<author>)`, signed or not. It read `wait: unsigned answer`, which a signed commit by someone else is not.
+  `wait: unsigned answer` and `wait: answer not verified here — <why>` stay for an author who may answer.
+- **A half-written answer** left by a failed `--answer` is given again for `revoked - <reason>` too, as
+  `--answer <id> revoke "<reason>"`; an answer that replaced a committed one is given again with `--supersede`.
+
+*Nothing to do on upgrade: no key, no hook line and no command changes. The board has six new labels —
+`relation.proposal` · `relation.option` · `relation.changed` · `relation.rejected` · `relation.revoked` ·
+`relation.unknown` — in English until a `labels.yaml` translates them; `examples/de/labels.yaml` carries the German.*
+
 ## 0.18.0 — 2026-09-24
 
 **The session registry is a report, generated from the commit trailers** (FM-032 S2, which is FM-031's S1). It was a

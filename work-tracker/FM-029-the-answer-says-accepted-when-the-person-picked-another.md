@@ -1,17 +1,12 @@
 ---
 id: FM-029
-status: Proposed
+status: In Progress
 considered: FM-008, FM-013, FM-014, FM-017, FM-018, FM-030
 tags: bug
-next: owner
-ask: "Rule the answer's word for 0.18.1: the board and every reading print the answer's relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?"
-ask-kind: ruling
-ask-since: 2026-09-24
-ask-proposal: "both — the relation computed for every answer, the verbs changed and chose for new ones"
-ask-options: "both — the relation computed for every answer, the verbs changed and chose for new ones | the relation only — no new verbs | the verbs only | none — the word stays accepted"
-answer: "accepted - the relation only — no new verbs"
-answered: 2026-09-24
-answered-by: holgo99
+next: build
+triaged: 2026-09-24
+rank: 1
+tier: P2
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
 
@@ -19,7 +14,7 @@ hook: "The person picked the third of three options, not the proposal, and the s
 
 ## What is true now
 
-**Filed 2026-09-24; nothing is built.** Found on 0.17.7 in a consumer repository. The lines below are from 0.17.8
+**Filed 2026-09-24; candidate 1, as the Owner ruled it (`140f799`), is built for 0.18.1 on `fm/029-0-18-1-the-relation-computed` and not yet merged — every reading computes the relation, the signed line unchanged; the ask cleared as acted on by the Principal (`ad37f41`), judged #1 P2 by the pass of the same day.** Found on 0.17.7 in a consumer repository. The lines below are from 0.17.8
 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on an earlier chain of this branch, which was
 replaced before its merge to keep unredacted detail out of the record; it found R1–R16, and this text closes R1–R10.
 
@@ -121,9 +116,8 @@ seventh's old-record cases (a bare `accepted`, the em-dash form, a cleared excha
 
 ## Done when
 
-- **A new answer says its relation to the proposal in the front matter.** It is one of: the proposal, another option
-  (and not the proposal), changed text, or rejected. It no longer writes `accepted` in front of an option that is not
-  the proposal. The builder chooses the wording.
+- **Struck by the ruling of 14:24:00 (*the relation only — no new verbs*):** the signed line keeps `accepted - <option>`;
+  the relation is computed wherever the answer is read (the lines below), never written into the front matter.
 - **`--clear-ask` keeps the relation.** The `## Asks` block carries the proposal (or the relation itself), so a
   cleared exchange still says whether the answer was the proposal.
 - **Records already signed read right without edits,** wherever the file still holds the proposal. The comparison
@@ -138,10 +132,18 @@ seventh's old-record cases (a bare `accepted`, the em-dash form, a cleared excha
   hand-written em-dash answer; an ask with no proposal; and a cleared exchange from before the fix, which must read as
   *relation not recorded*. The existing key-parity check covers the German labels.
 
+## Asks
+
+**2026-09-24** · Rule the answer's word for 0.18.1: the board and every reading print the answer's relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?
+**answered** — accepted - the relation only — no new verbs · holgo99
+**relation** — chose option 2: the relation only — no new verbs
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-24 16:03 CEST | Main merged in after PR 50 (the pass: #1, P2, `triaged: 2026-09-24`); the ask cleared as acted on by the Principal at `ad37f41` (15:38), the exchange under *## Asks* with its relation line — the Implementer seat may not run `--clear-ask`; the first *Done when* line struck by the ruling (R3 of the 0.18.1 review). |
+| 2026-09-24 15:23 CEST | Built for 0.18.1 by the Implementer on `fm/029-0-18-1-the-relation-computed`, candidate 1 as the Owner ruled it: `answer_relation()` reads `answer:` against `ask-proposal:` and `ask-options:`, the answer's own normalisation on both sides — *accepted the proposal* · *chose option N* · *accepted with a change* · *rejected* · *revoked* · *relation not computable* — and `--answered`, the board's tracker view and the `## Asks` record `--clear-ask` writes print it; the signed line is untouched (`4dfb999`, docs `4446b90`). The answer of 14:24:00 (`140f799`) is this tracker's own case: under the word *accepted* it took the second option, not the proposal, and the new function reads it *chose option 2: the relation only — no new verbs* (`--answered`). The ask is not cleared here: `--clear-ask FM-029 build` is the `ask` right's move, which the Implementer seat does not hold, and the gate refused it; the seat that holds it runs it, and the record it writes carries that relation line. |
 | 2026-09-24 13:37 CEST | The question rewritten on its Reviewer's R1 and R2 (P2, `172c425`): *revoked* is 0.18.0's verb, not a new one — the new verbs are *changed* and *chose*, and the second option says *no new verbs*; *the record* named the signed line, which the first alternative leaves as it is — now *every reading*, the signed line unchanged, and *rejected* in the list. R3–R6 fixed with it. The parent project's ledger row was rewritten first. One more pass. |
 | 2026-09-24 13:22 CEST | The proposal set by the Principal — *both* — and the ask put to the Owner (`next: owner`, `37e48bb`); its row in the parent project's ledger came first. |
 | 2026-09-24 13:14 CEST | The ask drafted for 0.18.1 on the Owner's word of 13:07:09 (spelling normalised: *we plan v0.18.1 right away*) after his signed PR 46 rewrote FM-031's answer by hand under the word *accepted*: three candidates, the proposal the Principal's. |
