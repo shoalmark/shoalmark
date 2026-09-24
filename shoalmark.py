@@ -61,6 +61,10 @@ DEFAULTS = {
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
     "triage_days": 7,
+    # THE FILING FREEZE (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a
+    # filing that carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits.
+    # Filing outran closing two to one, and the open count only grew. 0 = off.
+    "freeze_at": 0,
     # who may answer an ask. An answer is three lines in the tracker, committed by the answerer, and the commit is the
     # proof — but git's author is a string anyone can type. So an entry is `"name"` (Subversion, whose server
     # authenticates the committer; or git with NO enforcement, and the gate says so) or `"name signed"` (git: the
@@ -182,6 +186,10 @@ def configure(root=None):
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
+    global FREEZE_AT
+    FREEZE_AT = CONFIG["freeze_at"]
+    if isinstance(FREEZE_AT, bool) or not isinstance(FREEZE_AT, int) or FREEZE_AT < 0:
+        raise SystemExit(f"{CONFIG_NAME}: `freeze_at` is a whole number of open trackers — the filing freeze holds at that count and above; 0 turns it off. Got {FREEZE_AT!r}")
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
@@ -2240,10 +2248,19 @@ def shape_words(shape):
     return "one of " + " · ".join(shape.split("|")) if re.fullmatch(r"[A-Za-z| ]+", shape) else f"shape `{shape}`"
 
 
+CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
+    "freeze_at": ("a whole number; `0` = off (the default)",
+                  "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
+                  "carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits. `--check` says when it holds"),
+}
+
+
 def render_schema():
     rows = [f"| `{k}:`{' — required' + (' on open work' if required == 'open' else '') if required else ''} | {shape_words(shape) if shape else 'free text'} | {who} | {says} |"
             for k, (shape, required, who, says) in FRONT_MATTER.items()]
-    return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows)
+    return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows
+                     + ["", f"`{CONFIG_NAME}`, at its top level:", "", "| Key | Value | Says |", "|---|---|---|"]
+                     + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()])
 
 
 def git_user():
@@ -3836,6 +3853,13 @@ def next_up(trackers):
 WANTED_NUM = None
 
 
+def filing_freeze(trackers):
+    """FM-032 S4 — (open, the line) while the filing freeze holds: the trackers whose status is open number `freeze_at` or
+    more. None while they do not, or where `freeze_at` is 0."""
+    n = sum(t["status"] in OPEN_STATUSES for t in trackers)
+    return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT else None
+
+
 def new_tracker(words, trackers):
     global WANTED_NUM
     m = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)-(\d+)", words[0]) if len(words) > 1 else None
@@ -3851,6 +3875,14 @@ def new_tracker(words, trackers):
           else "Nothing related is filed yet.")
     for score, t in near:
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
+    house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
+    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
+    frozen = filing_freeze(trackers)
+    tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
+    if frozen and "bug" not in tags:
+        print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
+              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `bug` tag — nothing was written", file=sys.stderr)
+        return EXIT_LINT
     # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
     if WANTED_NUM is not None:
@@ -3862,8 +3894,6 @@ def new_tracker(words, trackers):
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
-    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
     put(path, template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
     print(f"wrote {path.relative_to(ROOT).as_posix()} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
@@ -4018,6 +4048,9 @@ def main(argv=None):
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
+        frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
+        if frozen:
+            print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only bug filings", file=log)
     else:
         put(OUT, body)
         put(HTML_OUT, render_html(trackers))   # git-ignored; never staged
