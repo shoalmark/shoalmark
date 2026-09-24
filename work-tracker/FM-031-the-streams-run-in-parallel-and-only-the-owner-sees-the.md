@@ -9,7 +9,7 @@ ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later | none — keep the current fan-out"
 ask-proposal: "all three rules now, S1 then S2"
-answer: "accepted - all three rules now, S1 then S2"
+answer: "accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked 2026-09-24"
 answered: 2026-09-24
 answered-by: holgo99
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
