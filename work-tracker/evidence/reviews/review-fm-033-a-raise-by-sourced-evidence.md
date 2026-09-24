@@ -178,3 +178,35 @@ commit, the same day as a now, and a pass that finds it not ready asks you again
 
 **Verdict:** READY WITH FINDINGS. AU-1 is met: the FM-033 rule is in the contract, true to his answer in its three
 clauses. R5 and R6 are P3, to be fixed forward. R1–R4 are carried.
+
+## AU-5 and R6, 918c266 (2026-09-24 18:50 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `918c266` (`918c26617b25a22e8151c5d0000c8602fdb5fcc3`) is one commit by the principal seat, under
+`8e509911`, on this verdict's `66a2ab2`. `git diff 66a2ab2 918c266 --name-only` names only `AGENTS.md`: the FM-033
+bullet's last three lines, now four.
+
+**R5 / AU-5 · closed.**
+- The bullet now reads *before any change outside `work-tracker/` is committed under it — code, tests, configuration,
+  hooks and documentation alike*.
+- That is FM-033's definition in *What would have refused all four* (`:65`): *a commit that changes anything outside
+  `work-tracker/` must name a tracker*. *Under it* is that section's naming, through the branch or a trailer.
+- The last clause now says *refuses such a commit*, so the contract and the gate FM-033 will build draw the same line.
+- This commit changes `AGENTS.md` under FM-033, which PR 56's pass kept (P2 #9). So it follows the rule it writes.
+- Note, not a finding: the gate as FM-033 designs it also requires *In Progress* at the parent. The ruling does not say
+  that, and the bullet rightly does not add it.
+
+**R6 · closed.**
+- The bullet now reads *on 2026-09-23 and 2026-09-24*.
+- `89e0586` (FM-024) is 2026-09-23 16:16. `3c0754f` (11:31), `90d3d6f` (12:01) and `bd7d5ea` (12:15) are 2026-09-24.
+
+**Unchanged.** The three clauses of his answer (`65f37a4`) stand as verified at `21bd5e8`. The rewrapped lines run to
+124 characters.
+
+**Gates at `918c266`.**
+- `python3 shoalmark.py` rewrites nothing, and `git status --porcelain` stays empty. `--check` 0; `--session-check` 0.
+- `test_shoalmark.py` 0 (298 ok); `test_core.py` 0 (148 ok).
+- `git merge-tree --write-tree origin/main 918c266` onto `da2228e` is clean, writes `59e25de`, and has no conflicted
+  path.
+- The commit message carries no pull-request number with the sign.
+
+**Verdict:** READY WITH FINDINGS. R5 and R6 are closed. R1–R4 are P3 and carried, to be fixed forward.
