@@ -27,4 +27,4 @@ which says so.
 | 0cbdba3f | gtm | the Owner, 2026-09-24 07:50 | the tagline's English ruled: D2 with Pricke | shoalmark-gtm | 2026-09-24 07:50 | 2026-09-24 07:50 |
 | 8e509911/implementer-10 | implementer | the Owner, 2026-09-24 08:24, in session 8e509911 | filing: can the Owner keep up with parallel streams | shoalmark-impl-3 | 2026-09-24 08:24 | 2026-09-24 08:26 |
 | 8e509911/implementer-11 | implementer | session 8e509911 | FM-031 adopted by the Principal: the ask drafted, the slices named | shoalmark-impl-3 | 2026-09-24 08:32 | 2026-09-24 08:36 |
-| 8e509911/implementer-12 | implementer | session 8e509911 | PR #35: FM-028's R1 (the collided session id) and R2; main merged in | shoalmark-impl-4 | 2026-09-24 08:33 | — |
+| 8e509911/implementer-12 | implementer | session 8e509911 | PR #35: FM-028's R1 (the collided session id) and R2; main merged in | shoalmark-impl-4 | 2026-09-24 08:33 | 2026-09-24 09:00 |
