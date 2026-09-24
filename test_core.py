@@ -603,7 +603,7 @@ finally:
 check("the page shows a tracker's newest verdict and its reason — read from the pass's worksheet, never stored in the tracker",
       _lv == {"FEAT-91002": ["2026-09-20", "park P3 owner", "restarts when the Owner ranks it | not before"]})
 check("the printed rules say the five things a cold agent must not have to find elsewhere",
-      all(k in gti.TRIAGE_RULES for k in ("merged into", "rules by merging", "triaged:", "RESUMABLE", "one evidence file",
+      all(k in gti.TRIAGE_RULES for k in ("merged into", "a merge rules nothing", "triaged:", "RESUMABLE", "one evidence file",
                                           "THE INTENT", "NEVER GUESS", "RUN THIS COMMAND AGAIN", "BY HAND", "NEXT, NOT NOW")))
 # triage ranks: at most ten, unique, only on live work; the dashboard lists them first
 check("two trackers cannot share a rank, and a rank is 1–10 on open, unparked work",

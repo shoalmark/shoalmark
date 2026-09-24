@@ -2727,7 +2727,8 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
      `status: Parked`, `epic:`, `tier:`, `rank:`, `next:`), refreshes INDEX.md and the board, keeps your rows, and lists what is left.
      Do not make those edits by hand. The reason lives in the worksheet.
   3. The pass is RESUMABLE: whatever carries a `triaged:` date is done. Stop when you must; the next run continues.
-  4. The Owner rules by merging the pull request, and can strike any row first.
+  4. The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees
+     with is re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing (path 5).
   5. This worksheet is the pass's one evidence file, and one paragraph
      under *Passes* in {home} says what the pass changed — never touch its *current path*; that is the
      Owner's.

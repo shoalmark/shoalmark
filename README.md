@@ -137,7 +137,8 @@ pass* (the Owner's answer, FM-033). A day decides: a raise written after the sam
 own re-run.
 
 Never write a note into a tracker during a pass; the reason lives in the worksheet. Never touch the current path.
-The Owner rules by merging the pass's pull request, striking any row first.
+The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees with is
+re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing (path 5).
 
 ## 5. The gate refused me
 
