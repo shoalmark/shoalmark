@@ -9,6 +9,9 @@ ask-kind: ruling
 ask-since: 2026-09-24
 ask-proposal: "both — the relation computed for every answer, the verbs changed and chose for new ones"
 ask-options: "both — the relation computed for every answer, the verbs changed and chose for new ones | the relation only — no new verbs | the verbs only | none — the word stays accepted"
+answer: "accepted - the relation only — no new verbs"
+answered: 2026-09-24
+answered-by: holgo99
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
 
