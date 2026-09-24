@@ -126,6 +126,9 @@ defects of `--answer` found the same day).
 - **An answer is revoked or superseded, never overwritten:** `--answer <id> revoke "<reason>"`, or
   `--answer <id> accept|reject "<option>" --supersede`. The answer it replaces moves into the ship log with the
   commit that wrote it, and the board's tracker view shows the answer and *supersedes <sha>*.
+  Built on the Owner's word of 2026-09-24 that revoking or changing a given answer needs a path the person can
+  choose; FM-031's ship log records his signed revocation of the cap (PR 46, `7c97c5b`), written by hand before
+  0.18.0's `--supersede` existed.
 - **`--queue` sees what waits beyond the open pull requests.** Each branch on `origin` that no pull request carries —
   not the default branch, not `answer/*`, not already merged, not inside an open pull request or another such
   branch — follows as `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>` · `— verdict <sha> READY …:
