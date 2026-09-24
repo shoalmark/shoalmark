@@ -4,11 +4,11 @@ status: Proposed
 considered: FM-008, FM-013, FM-014, FM-017, FM-018, FM-030
 tags: bug
 next: owner
-ask: "Rule the answer's word for 0.18.1: the board and the record print its relation to the proposal (accepted it · with a change · chose option N · revoked) from the two verbs; or new verbs you type (changed, chose, revoked); or both?"
+ask: "Rule the answer's word for 0.18.1: the board and every reading print the answer's relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?"
 ask-kind: ruling
 ask-since: 2026-09-24
-ask-proposal: "both — the relation computed for every answer, the verbs for new ones"
-ask-options: "both — the relation computed for every answer, the verbs for new ones | the relation only — two verbs stay | the verbs only | none — the word stays accepted"
+ask-proposal: "both — the relation computed for every answer, the verbs changed and chose for new ones"
+ask-options: "both — the relation computed for every answer, the verbs changed and chose for new ones | the relation only — no new verbs | the verbs only | none — the word stays accepted"
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
 
@@ -65,7 +65,7 @@ misstates him, and any measure of how often he follows the seat is wrong in the 
 
 ## Candidates for 0.18.1
 
-**The Owner's word of 2026-09-24: *we plan v0.18.1 right away*.** Two answers signed that day say *accepted* over a
+**The Owner's word of 2026-09-24, 13:07:09 (spelling normalised): *we plan v0.18.1 right away*.** Two answers signed that day say *accepted* over a
 choice that is not the proposal:
 
 - **The parent project's D1** (its FEAT-190), answered through the board's dialog: the third of three options, under
@@ -78,7 +78,8 @@ choice that is not the proposal:
 The other answers signed on this `main` took the proposal, and their word is right: FM-007
 (`accepted - a hardware key that needs a touch`) and FM-032 (`accepted - all four now`).
 
-Three candidates. Each keeps FM-017's *give it again* and 0.18.0's `revoke` (`revoked - <reason>`), and none rewrites a
+Three candidates. Each keeps FM-017's *give it again* and 0.18.0's `revoke` (`revoked - <reason>`; on the unmerged 0.18.0 branch,
+`bd7d5ea`, beside `accept|reject "<option>" --supersede`, which replaces an answer and rows the old one), and none rewrites a
 signed line.
 
 1. **The relation is computed.** The two verbs stay; the dialog and `--answer` write what they write today. One reader
@@ -112,7 +113,8 @@ signed line.
 
 **Against *Done when* as written:** only 3 meets every line. 1 alone leaves the first line (the relation in the front
 matter) to the readers, and that line would be reworded. 2 alone leaves the third (records already signed read right)
-unmet.
+unmet, and with it the fourth for every answer signed before it (`--answered` shows `accepted - <option>`) and the
+seventh's old-record cases (a bare `accepted`, the em-dash form, a cleared exchange).
 
 ## Done when
 
@@ -137,5 +139,7 @@ unmet.
 
 | Date | Event |
 |---|---|
-| 2026-09-24 13:14 CEST | The ask drafted for 0.18.1 on the Owner's word of 13:07:09 (*we plan v0.18.1 right away*) after his signed PR 46 rewrote FM-031's answer by hand under the word *accepted*: three candidates, the proposal the Principal's. |
+| 2026-09-24 13:37 CEST | The question rewritten on its Reviewer's R1 and R2 (P2, `172c425`): *revoked* is 0.18.0's verb, not a new one — the new verbs are *changed* and *chose*, and the second option says *no new verbs*; *the record* named the signed line, which the first alternative leaves as it is — now *every reading*, the signed line unchanged, and *rejected* in the list. R3–R6 fixed with it. The parent project's ledger row was rewritten first. One more pass. |
+| 2026-09-24 13:22 CEST | The proposal set by the Principal — *both* — and the ask put to the Owner (`next: owner`, `37e48bb`); its row in the parent project's ledger came first. |
+| 2026-09-24 13:14 CEST | The ask drafted for 0.18.1 on the Owner's word of 13:07:09 (spelling normalised: *we plan v0.18.1 right away*) after his signed PR 46 rewrote FM-031's answer by hand under the word *accepted*: three candidates, the proposal the Principal's. |
 | 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-029's share of R1–R10, and R11–R15 stay open. |
