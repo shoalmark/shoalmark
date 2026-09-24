@@ -52,9 +52,9 @@ never on a default; a word in chat changes none of them until he signs it.
   defects are filed — `tags: bug`, something the tool does wrong for the person using it. Anything else goes as one line
   into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
   and `--check` says when the freeze holds.
-- **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner the same
-  day at 11:29:05, in chat (the coordinating session's transcript). His signed revocation is owed through the board (`--answer FM-031 … --supersede`, or `revoke`); until it
-  is signed no seat counts the cap, and until it is written here nobody reads chat as the rule. `--queue` shows what waits.
+- **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner's signed
+  answer the same day (`7c97c5b`, PR 46, merged 12:53:18). Not a rule. What waits on him is read from `--queue`,
+  pull requests and pushed branches alike.
 - **One channel** (FM-031). The Owner speaks to the coordinating session. His rulings are recorded once, in the tool's
   ask and answer — never relayed through chat as the record.
 - **Seats never need the Owner's checkout** (FM-031). He looks at a seat's branch with

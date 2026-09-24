@@ -3,15 +3,7 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: owner
-ask: "Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat's branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?"
-ask-kind: ruling
-ask-since: 2026-09-24
-ask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later | none — keep the current fan-out"
-ask-proposal: "all three rules now, S1 then S2"
-answer: "accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked 2026-09-24"
-answered: 2026-09-24
-answered-by: holgo99
+next: build
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
@@ -19,11 +11,12 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 
 ## What is true now
 
-**Filed 2026-09-24 08:24 CEST on the Owner's question; ruled by his signed answer at 11:08 (`d20bc89`): all three rules
-now, S1 then S2. S2, `--queue`, is built (`90d3d6f`, on `fm/031-0-18-0-the-queue-in-one-view-and-the-freeze`); S1 is
-being built as FM-032's S2 on another branch; the rules are in AGENTS.md. The cap of 2 he revoked at 11:29:05, in chat
-(the coordinating session's transcript); his signed revocation is owed. What is left: S1, then a week of parallel
-streams read against *Done when*.**
+**Filed 2026-09-24 08:24 CEST on the Owner's question; ruled by his signed answer at 11:08:24 (`d20bc89`): all three
+rules now, S1 then S2 — then the cap of 2 revoked by his own signed edit at 12:5x (`7c97c5b`, PR 46), so two rules stand:
+one channel, and the detached switch. Built for 0.18.0 on one branch: S2, `--queue` (`90d3d6f`, pull requests and
+pushed branches alike); S1 as FM-032's S2, the registry a report from the trailers (`3c0754f`); the rules in AGENTS.md
+(`fbc2697`, the cap paragraph rewritten on the merge of PR 46). What is left: a week of parallel streams read against
+*Done when*.**
 
 The measurements below are read from the record: git, the forge, and `work-tracker/sessions.md` on every remote
 branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
@@ -150,10 +143,16 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
   minute, without asking a seat.
 - A week of parallel streams shows no conflict on the registry, and no pull request left open as a twin.
 
+## Asks
+
+**2026-09-24** · Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat's branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?
+**answered** — accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked 2026-09-24 · holgo99
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-24 12:55 CEST | The answer of 11:08:24 superseded by the Owner's own signed edit `7c97c5b` (PR 46, merged 12:53:18): it read *"accepted - all three rules now, S1 then S2"* (`d20bc89`); the new one keeps one channel and the detached switch, S1 then S2, and revokes the cap of 2 waiting pull requests. Written by hand, in place, before 0.18.0's `--supersede` existed; rowed here as that command does from now on. The word *accepted* in front of a partial acceptance is FM-029's pattern, typed by hand this time. |
 | 2026-09-24 12:18 CEST | S2 built by the Implementer at `90d3d6f`: `--queue` reads the open pull requests with `gh`, fetches `origin` once, and gives each one action — merge · closes with PR N · close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…) — actionable first, oldest first, and a count; `--owner` and `--standup` end with it where the forge can be read. Replayed at the 08:18 heads still reachable (PR 33, 35–38): PR 33 merge, PR 37 closes with PR 33, PR 35 conflict in `sessions.md`, PR 36 no verdict, as read by hand; PR 38 reads *merge* — its rows reached PR 33 as copied text, not as its commits, which the rule does not see. S1 is being built as FM-032's S2 on the other branch. The three rules written into AGENTS.md; the cap of 2 was revoked by the Owner in chat the same day — his signed revocation is owed (`--answer FM-031 … --supersede`, or `revoke`, built on this branch at `bd7d5ea`), and until it is signed no seat counts the cap. |
 | 2026-09-24 11:43 CEST | **S1 built as FM-032's S2** at `3c0754f` (0.18.0, branch `fm/032-0-18-0-the-registry-becomes-a-report`), by the Owner's two answers of 2026-09-24: not one file per session with a generated table, but no file — `--sessions` generates the registry from the commit trailers and `sessions.md` is deleted, so two branches that land cannot conflict on it. S2, the queue in one view, is another seat's. |
 | 2026-09-24 08:53 CEST | The Reviewer's verdict at `3c72e84` — NOT READY (`bda30ae`, R1 P2, R2–R4 P3) — fixed by the Implementer. R1: filings re-dated by id across both paths, one window from the first filing (2026-09-21 13:13): 31 filed against 15 closed in 2.82 days, 11.0 against 5.3 a day, 2.07 to one, open growing about 5.7 a day; the Reviewer's 1.89-day window re-derived as 26 filed against 13 closed (not 15: FM-002 and FM-003 closed before it), 2.00 to one — *about two to one* stands. R2: 22 sessions under 21 ids. R3: six open by 08:18, not at 08:10. R4: why a tracker of its own, in the body under *Why*. |
