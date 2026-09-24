@@ -3,10 +3,11 @@ id: FM-029
 status: Proposed
 considered: FM-008, FM-013, FM-014, FM-017, FM-018, FM-030
 tags: bug
-next: review
+next: owner
 ask: "Rule the answer's word for 0.18.1: the board and the record print its relation to the proposal (accepted it · with a change · chose option N · revoked) from the two verbs; or new verbs you type (changed, chose, revoked); or both?"
 ask-kind: ruling
 ask-since: 2026-09-24
+ask-proposal: "both — the relation computed for every answer, the verbs for new ones"
 ask-options: "both — the relation computed for every answer, the verbs for new ones | the relation only — two verbs stay | the verbs only | none — the word stays accepted"
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
@@ -136,5 +137,5 @@ unmet.
 
 | Date | Event |
 |---|---|
-| 2026-09-24 13:14 CEST | The ask drafted for 0.18.1 on the Owner's word of 13:0x (*we plan v0.18.1 right away*) after his signed PR 46 rewrote FM-031's answer by hand under the word *accepted*: three candidates, the proposal the Principal's. |
+| 2026-09-24 13:14 CEST | The ask drafted for 0.18.1 on the Owner's word of 13:07:09 (*we plan v0.18.1 right away*) after his signed PR 46 rewrote FM-031's answer by hand under the word *accepted*: three candidates, the proposal the Principal's. |
 | 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-029's share of R1–R10, and R11–R15 stay open. |
