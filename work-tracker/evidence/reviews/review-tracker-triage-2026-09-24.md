@@ -301,3 +301,96 @@ Not verified:
 the docs tier the P3s are fixed forward. R4 and R8 are the Owner's to strike or keep when he merges.
 
 Not verified: the Owner's word before the pass (chat), and the Auditor's grading (R9).
+
+## The FM-033 row, 81dce10 (2026-09-24 16:50 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** Branch `tracker/triage-2026-09-24-fm-033`, tip `81dce10` (`81dce10fbba0c8da157d3beb8b6dead1e3534985`). It
+is one commit by the principal seat (`Session: 8e509911`) on `origin/main` `86f7595` (PR 54, the Owner's answer to
+FM-033).
+- `git diff --name-only origin/main...HEAD` names FM-033, INDEX, TRIAGE.md (one paragraph changed: the addendum
+  appended) and the worksheet (one row added). **Tier: docs, one pass.** It was reviewed in a fresh worktree,
+  `shoalmark-review-4`.
+- Independence: same session `8e509911`, reported. This matters for R11.
+
+**What I ran.**
+- `--triage`: *0 trackers to judge*, *Applied nothing*, and the tree is clean after it.
+- `--check` 0, with *17 open*; `--session-check` 0.
+- `python3 shoalmark.py`: 33 trackers, and the tree is clean.
+- `test_shoalmark.py` 0 (298 ok, on 0.18.1); `test_core.py` 0 (148 ok).
+- `git merge-tree` with `origin/main`: clean, and `86f7595` is an ancestor.
+- `--next`: ranks #1 … #10 unchanged, each held once, and `START WITH: FM-029`.
+
+**The command wrote exactly the verdict.** ✓
+- FM-033's front matter differs from main's in three lines: `next: owner` → `build`, `triaged: 2026-09-24`,
+  `tier: P2`.
+- It has no `rank:`, and `status: Proposed` stays.
+- `ask*`, `answer:`, `answered:` and `answered-by:` are untouched.
+- Replayed in the scratchpad clone: `--triage` on `86f7595` writes an FM-033 row whose derived cells are identical to
+  the branch's. With the branch's worksheet copied in, it writes FM-033 and the worksheet byte-identical. INDEX
+  differs only by that clone's signature-lint lines.
+- `owner` → `build` is allowed. The ask is answered (`65f37a4`, signed `G`, 16:29:09, the proposal verbatim), and
+  *Now* says *Nothing is built*.
+
+**The reason's facts.** ✓
+- The filing is `35c7664`, 15:31:27, after the re-made pass (`87bac4e`, 15:19). It comes from the Auditor's draft,
+  as *Now* says (session `8b91dba2`).
+- The answer, at 16:29, is the proposal.
+- *Its build is the gate keyed on the build commit and the board's activity view*: FM-033's *Done when*, lines 1–2.
+- *Every rank 1–10 is held today*: true as a count. It is not a constraint (R10).
+- *First of the unranked*: nothing keeps such an order. `--next` prints only the ranked when any are ranked
+  (`next_up`), so FM-033 does not appear in it at all.
+
+**The addendum's numbers.** ✓
+- 16:29, P2, unranked, `next: build`.
+- The open count 17: `OPEN_STATUSES` counts 17 on `86f7595` and 17 on this tip. FM-033's filing made it 17, and the
+  row changes nothing.
+- It also closes the earlier **R9** in fact. *Tracked as its own filing* now exists: FM-033, written by the Auditor
+  seat. The paragraph does not yet name FM-033 as that filing (R11).
+
+**R10 · P3 · confidence high · *All ten ranks held* is not a constraint, and #1 is held by shipped work.**
+- **What:** the command takes a rank from its holder for a verdict that stands, and an unranked verdict drops one
+  (`apply_verdict`: `set_front(text, "rank", … else None)`). Today's sheet is re-applied as a whole.
+  - So FM-033, a build the Owner answered today, could hold #9 or #10.
+  - Those two are held by waits, FM-032 and FM-031. The printed rule is that *what cannot be worked on now … is not
+    ranked ahead of what can*.
+  - FM-029 holds #1 with `next: build` and a *Now* that says *not yet merged*. Its branch merged at 16:25:41 and is
+    tagged `v0.18.1`, so `START WITH` points at shipped work.
+- **Why it matters:** unranked, the cure for the day's violation is invisible in `--next`. It sits below two trackers
+  that cannot move.
+- **Fix:** on today's sheet, FM-033 `keep P2 #9 build`, FM-032 `#10 wait`, FM-031 unranked (or the seat's order),
+  then run `--triage` again. FM-029's #1 is freed by the seat that closes FM-029 against `v0.18.1`, not by a pass.
+  Or leave all of it to the Owner's strike.
+
+**R11 · P3 · confidence medium · The self-judgement is disclosed where the Owner does not read it.** This is the CREDO
+question, graded.
+- **In lane:** a *keep* is triage, and the Principal signs triage. A keep clears nothing: the violation stays open,
+  its record intact, its cure queued. The CREDO's bar, *may not clear its own work*, is not crossed.
+- **Not a control:** *Self-critique is preparation, not clearance*, and *who independently receives the record?*
+  This Reviewer is the same session, and `--check` counts it so. So the only independent receiver is the Owner,
+  through his strike at the merge (README §4).
+  - The disclosure is in the worksheet's Reason and the commit body.
+  - It is not in the TRIAGE.md addendum, which is where he rules a pass.
+  - `--owner` says *NOTHING NEEDS THE OWNER*.
+- **Where the shadow could act:** in the tier and the rank. The one choice with a stated ground is the rank, and it
+  rests on the constraint R10 shows is not one.
+- **Grade:** enough for a keep once the Owner is shown it. Not enough as written.
+- **Fix, forward:** one clause in the addendum, *judged by the session whose builds FM-033 records; the Owner strikes
+  the row if he sees a conflict*. Name FM-033 as the violation's filing in the paragraph, which also completes R9.
+
+**For the merge order, not a finding.**
+- `fm/033-the-auditors-fix-forward` (`645e4d4`, with its verdict `bf5b2cc`) also touches FM-033: `considered:` gains
+  FM-021 and FM-029, and the body changes. It sits on the same `86f7595`.
+- `git merge-tree 81dce10 origin/fm/033-the-auditors-fix-forward` is clean. Merged in the scratchpad clone, FM-033
+  auto-merges to `considered:` (7 ids), `next: build`, `triaged:` and `tier:`. The generator then changes nothing but
+  that clone's own lint lines.
+- **Neither needs a conflict resolution.** The second to land is behind `main` and merges cleanly as it stands. Only
+  a merge rule that demands an up-to-date branch would make it take `origin/main` first, and that merge is also
+  clean.
+- After both land, the worksheet row still says *FM-029 … NOT considered* and *FM-021 … NOT considered*. That was
+  true of the tracker when the pass read it, and the worksheet stays as written.
+
+**Verdict on 81dce10: READY WITH FINDINGS (R10, R11 P3).** Both are fixed forward under the docs tier, or struck by
+the Owner. R9 of the pass on 87bac4e is closed in fact by FM-033's filing. R4 and R8 stand as before.
+
+Not verified: the Auditor seat's session `8b91dba2`. No commit of it is on any ref of this repository. The filing
+says it was *filed word for word* from its draft (sha256 `19d16c62…`), and I did not see the draft.
