@@ -37,7 +37,7 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
 
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
-Ruled by his signed answers to FM-031 (`d20bc89`, 11:08) and FM-032 (`ffa63b8`, 11:07). Each took effect on his answer,
+Ruled by his signed answers to FM-031 (`d20bc89`, 11:08), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on his answer,
 never on a default; a word in chat changes none of them until he signs it.
 
 - **Two tiers of review** (FM-032 S1). A change that touches only trackers, their evidence and the documentation — no
@@ -59,3 +59,8 @@ never on a default; a word in chat changes none of them until he signs it.
   ask and answer — never relayed through chat as the record.
 - **Seats never need the Owner's checkout** (FM-031). He looks at a seat's branch with
   `git fetch && git switch --detach origin/<branch>`, so his checkout never holds it.
+- **A pass judges before the first build commit** (FM-033) — ruled 2026-09-24 16:29:09 (`65f37a4`). A signed answer
+  authorises the work; it does not judge it ready: a triage pass keeps the tracker before any change outside `work-tracker/`
+  is committed under it — code, tests, configuration, hooks and documentation alike — the same day when the answer says
+  *now*, and a pass that finds it not ready asks the Owner again. Four pieces were built unjudged on 2026-09-23 and
+  2026-09-24 (FM-033's record); the gate that refuses such a commit on an unjudged tracker builds under FM-033.

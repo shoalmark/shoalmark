@@ -3,15 +3,12 @@ id: FM-033
 status: Proposed
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
-next: build
-ask: "Does a signed answer that says *now* count as the judgement?"
+next: owner
+ask: "Does a sourced raise that names a signed rule it undermines trigger a same-day pass, as a now does?"
 ask-kind: ruling
 ask-since: 2026-09-24
-ask-options: "a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again | the signed now is the judgement: --answer writes the judgement fields | --answer prints what a pass would judge, and a pass still runs"
-ask-proposal: "a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again"
-answer: "accepted - a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again"
-answered: 2026-09-24
-answered-by: holgo99
+ask-options: "a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass | every raise waits for the next pass | a raise re-ranks nothing; the pass reads it when it runs"
+ask-proposal: "a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
 triaged: 2026-09-24
 rank: 9
 tier: P2
@@ -83,3 +80,15 @@ Today the seats read *"all four now"* and *"all three rules now"* as leave to bu
 - The gate above refuses a build commit on an unjudged, not-In-Progress, or unnamed tracker (suite cases for the four rows above).
 - The board shows activity beside judgement: a tracker with commits on a pushed branch in the last day says so, in whichever section it sits.
 - The four rows above are recorded against this tracker as the violation, and the seat's ledger row links here.
+
+## Asks
+
+**2026-09-24** · Does a signed answer that says *now* count as the judgement?
+**answered** — accepted - a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again · holgo99
+**relation** — accepted the proposal
+
+## Ship log
+
+| Date | Event |
+|---|---|
+| 2026-09-24 | The answered exchange cleared as acted on — the pass his answer required was held (#9 build, PR 56) — and the Auditor seat's second question put to him, its words: does a sourced raise that names a signed rule trigger a same-day pass; the raise line is in FM-007, the widening line in FM-030; the parent project's ledger rows came first (`a0b7272c`, 18:05:13). |

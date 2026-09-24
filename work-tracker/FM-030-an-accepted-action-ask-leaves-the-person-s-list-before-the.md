@@ -51,6 +51,11 @@ run only his hands can make.
 **A related design, not this defect.** FM-023's worked example puts *the hands sitting* in its own slot, outside the
 standup budget (FM-023:171). That is a planning view. This tracker is about the lists telling him nothing is owed.
 
+**Widened 2026-09-24 on the Auditor seat's raise of FM-007 (the Principal's line on its proposal, item 3):** the person's lists —
+`--owner`, `--standup`, the board — also show a `next: owner` tracker whose act is the Owner's own, a ruling he gave whose hands are
+his, under *YOUR HANDS — raised* with its raise line, whether its ask is open, answered or absent. As filed, this tracker covered
+accepted *action* asks only; FM-007 is the case it would still miss.
+
 ## Why
 
 The digest is what a session's last message leads with, and the standup is the person's one sitting. *Nothing needs
@@ -84,4 +89,5 @@ acts this kind covers are the ones the design reserves for him because they carr
 
 | Date | Event |
 |---|---|
+| 2026-09-24 | Widened by one line to rulings whose act is the Owner's (FM-007), on the Auditor seat's raise; nothing built. |
 | 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-030's share of R1–R10, and R11–R15 stay open. |

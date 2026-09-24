@@ -46,6 +46,13 @@ documentation says so. That is a habit, not an enforcement.
 
 The honest order is 1 or 2 for the Owner, and 3 in the tool regardless — it costs nothing and it caught tonight's case.
 
+## Raised
+
+*One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts. The Auditor seat's
+proposal of 2026-09-24 (its draft, sha256 `39690e54…`), applied under the freeze as a line, not a command.*
+
+- 2026-09-24 · Auditor (8b91dba2), through the Owner · the key that signs the Owner's answers (ED25519 SHA256:uNcUULP20UyJ7Iyv3xImxOrg9cXTcRqIxbWsekBYzCQ, 65f37a4, 7dd6ba6) is a software key in the shared ssh-agent, used by every seat push without a prompt — ssh-add -l, ~/.ssh/config (AddKeysToAgent, UseKeychain) · undermines: TRIAGE.md path 5, FM-033's answer
+
 ## Done when
 
 The Owner's answers are signed by something an agent on his machine cannot operate (1 or 2, recorded here with what
@@ -55,4 +62,5 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-09-24 | **Raised** by the Auditor seat through the Owner, the line above word for word from its draft; the day of the hardware key put to him in the parent project's ledger (kind B, before the sitting of 09-25). Rank #2 stands; the act is his. |
 | 2026-09-22 | Filed from the Owner's finding; `commit.gpgsign` unset the same day, on his word. |
