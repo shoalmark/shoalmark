@@ -93,3 +93,19 @@ six were open from 08:18. The count is right; the time is not.
 **R5 · P3:** *10 of them take between 2.7 and 7.7 hours* is 9 by my count, and the tenth is at 2.6 h.
 
 **Verdict:** READY WITH FINDINGS. R5 is a P3.
+
+## Correction, still at c133cde (2026-09-24 09:07 CEST)
+
+**R5 is withdrawn: the tracker's line is right and my count was wrong.**
+- My duration list had 16 values for 15 closes, and it contained times no tracker has (0.2 h, 0.4 h and 2.6 h).
+- **Re-derived per id, with the filing and the close from git:**
+  - FM-003: filed 09-21 19:12 (`cf64c9b`), closed 19:45 (`7c93df8`), 0.54 h. This is the *half an hour*.
+  - FM-002: 16:31 (`26b2f5a`) to 17:21 (`3339b79`), 0.83 h.
+  - FM-022: 2.7 h.
+  - The rest: 3.1, 3.1, 4.0, 5.0, four at 5.3, 7.7, 19.0, 19.1 and 26.4 (FM-008).
+- That is 15 values from 0.54 h to 26.4 h, and **10** of them fall between 2.7 and 7.7 h, exactly as the tracker
+  says.
+
+**The finding count after this correction:** R1–R4 are closed and R5 is withdrawn, so no finding is open.
+
+**Verdict:** READY TO TAG.
