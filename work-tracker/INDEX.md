@@ -24,6 +24,7 @@
 2. What a sitting finds is filed that day and fixed when it is small and ready; the rest is tracked.
 3. A pull request without an independent review's evidence file cannot merge - checked, not asked.
 4. The owner shall be involved less when trust in the process has been built, but the trust must come from evidence and has to be earned first.
+5. An answer is written and signed through the board. No act of the Owner, a click, a merge, an opened pull request, is an answer, and no seat reads one as such.
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
