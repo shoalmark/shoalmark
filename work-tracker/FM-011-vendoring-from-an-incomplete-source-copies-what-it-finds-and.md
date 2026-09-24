@@ -1,12 +1,11 @@
 ---
 id: FM-011
-status: In Progress
+status: Shipped
 considered: FM-009
 tags: bug
 next: review
 kind-of-problem: obvious
 triaged: 2026-09-23
-rank: 1
 tier: P1
 hook: "`vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete source copies what it finds, pins only that, and reports success. From a lone `shoalmark.py` it writes one file and a one-entry PIN, leaves the consumer's old `VERSION` on disk, and the integrity check then covers a single file while appearing to cover the copy."
 ---
@@ -110,6 +109,7 @@ right call for import; it is the wrong call for `--vendor`, which can check befo
 
 | Date | Event |
 |---|---|
+| 2026-09-24 | **Shipped — v0.17.8 (`62db9f8`, PR #20, tagged 2026-09-23 ≈ 21:16 CEST).** The vendor refuses an incomplete or untagged source and the PIN's manifest line is validated; the status set to Shipped by the principal seat (the close right) at 08:02 CEST (`86a4540`, its commit date 08:02:44 +02:00 — not the seat's clock, which had said 07:56), the morning after — the tag had gone out with the tracker still *In Progress*. Open, not closed by this: R2 (P3) — a hand-moved manifest reads as none. |
 | 2026-09-23 | R1: `--check` accepts only the manifest line `--vendor` writes, cross-checks tag, version and the pinned `VERSION`, and otherwise warns naming what is wrong and calls the copy *unverified*; no manifest reads *pinned before 0.17.8*. One check, the Reviewer's five hand-edited headers and the good one. |
 | 2026-09-23 | Built for 0.17.8: an incomplete source and one that is no release are refused before anything is written; `--partial`, `--allow-untagged`; the PIN's manifest line; the consumer's `--check` reads it. Three checks, each failing on 0.17.7. |
 | 2026-09-22 | Filed. Raised by the reviewer of PR #10; reproduced from a lone-file source, and the reporting half traced to FM-009's version derivation rather than to the pre-existing skip. |
