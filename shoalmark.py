@@ -759,8 +759,9 @@ def owner_digest(trackers):
     if not q:
         print("NOTHING NEEDS THE OWNER.")
         sent_back(trackers)
-        if sessions_digest():
-            print("\n" + sessions_digest())
+        line = sessions_digest()
+        if line:
+            print("\n" + line)
         return EXIT_OK
     ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
     print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
@@ -769,8 +770,9 @@ def owner_digest(trackers):
         print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
         print("   " + t["ask"])
     sent_back(trackers)
-    if sessions_digest():
-        print("\n" + sessions_digest())
+    line = sessions_digest()
+    if line:
+        print("\n" + line)
     return EXIT_OK
 
 
@@ -1291,9 +1293,9 @@ function draw(){
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
-    // the registry (FM-024): which sessions are open, for what — and how independent this week's verdicts were
-    +(REG?"\n\n<b>"+l("sessions.open",REG.open.length)+"</b>"+(REG.open.length?" — "+REG.open.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})${r[4]?" · "+l("sessions.abandoned"):""}`).join(" · "):"")
-      +(REG.reviews?"\n"+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"";
+    // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
+    +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
+      +(REG.reviews?(REG.recent.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -1376,7 +1378,7 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
-    "sessions.open": "sessions · {0} open", "sessions.abandoned": "abandoned",
+    "sessions.recent": "sessions · {0} in the last day",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -2433,28 +2435,16 @@ def rights_problems(trackers):
     return out
 
 
-# --- sessions (FM-024): a seat's commit names its session, and the record knows the session ------------------------
+# --- sessions (FM-024, FM-032): a seat's commit names its session, and the registry is a report of the trailers --------
 # Seat = author: WHO MAY, read by the rights above. Session = which RUN: a `Session: <id>` trailer on every seat commit,
-# appended by the prepare-commit-msg hook from the worktree's `seat.session`, and one row per session in the registry
-# `<tracker dir>/sessions.md` — who convened it, for what, in which worktree. The rules hold where the registry
-# exists: a repository adopts them by opening its first session, and a commit made before its tree had a registry is
-# not judged by them.
-SESSIONS_NAME = "sessions.md"
-SESSION_COLUMNS = ("Session", "Seat", "Convened by", "Scope", "Worktree", "Started", "Ended")
-SESSION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*")      # a9 · 8e509911 · a9/reviewer-1
-SESSION_PARENT_RE = re.compile(r"(?<![\w/.-])([0-9a-f]{8}(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*|[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)+)(?![\w/.-])")
-SESSION_IDLE = 86400          # seconds: an open session with no commit for longer than a day is abandoned — listed, closed by a pass
-SESSIONS_HOME = """\
-# Sessions
-
-One row per session of a seat: who convened it, for what, in which worktree. `--session open` writes a row and
-`--session close` dates its end; the gate refuses a seat's commit whose `Session:` trailer names no open row here, or
-whose worktree is open under another session. An open row with no commit for a day is closed by the next triage pass,
-which says so.
-
-| {head} |
-|{sep}
-"""
+# appended by the prepare-commit-msg hook from the worktree's `seat.session`, with `Worktree: <the checkout's directory>`
+# beside it. The registry is generated from those trailers by `--sessions`, the way INDEX is from the trackers, and is
+# kept in no file: until 0.18.0 it was `<tracker dir>/sessions.md`, written by hand and read by the gate, and it
+# conflicted whenever two branches landed (FM-032 S2, which is FM-031's S1). The gate keeps one rule: a seat's commit
+# carries a `Session:` of the accepted shape whose seat part is its own.
+SESSIONS_NAME = "sessions.md"          # the registry's file until 0.18.0 — `--check` warns where one is left
+SESSION_ID_RE = re.compile(r"[0-9a-f]{8}(?:/([A-Za-z][A-Za-z0-9_-]*)-\d+)?")      # 8e509911 · 8e509911/reviewer-1
+SESSION_RECENT = 86400        # seconds: the board and the digest name the sessions with a commit this recent
 
 
 def git_out(*a, cwd=None):
@@ -2467,101 +2457,83 @@ def sessions_file():
     return TRACKER_DIR / SESSIONS_NAME
 
 
-def parse_sessions(text):
-    """The registry's rows, in order: each a dict of the seven columns, plus `open` (no end written). A cell may carry
-    `|` escaped as `\\|`. Anything that is not a seven-cell table row, or is the header or its rule, is not a row."""
-    rows = []
-    for line in (text or "").splitlines():
-        if not line.lstrip().startswith("|"):
-            continue
-        cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]]
-        if len(cells) != len(SESSION_COLUMNS) or cells[0] in ("Session", "") or set(cells[0]) <= set("-: "):
-            continue
-        row = dict(zip(("id", "seat", "convened", "scope", "worktree", "started", "ended"), cells))
-        row["open"] = row["ended"] in ("", "—", "-")
-        rows.append(row)
-    return rows
+def session_log(since=None):
+    """Every commit of HEAD's history that carries a `Session:`, oldest first — (short sha, commit time, author email,
+    author name, the trailer block). One `git log`; `since` (seconds) keeps it to the recent ones."""
+    log = git_out("log", "--reverse", "-i", "--grep", "^session:", f"--format=%h%x01%ct%x01%ae%x01%an%x01{TRAILERS}%x02",
+                  *([f"--since={int(since)}"] if since else []), "HEAD") or ""
+    out = []
+    for rec in log.split("\x02"):
+        sha, stamp, email, name, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
+        if sha and stamp.strip().isdigit():
+            out.append((sha, int(stamp), email, name, block))
+    return out
 
 
-def render_session_row(r):
+def session_rows(since=None):
+    """THE REGISTRY, generated (FM-032 S2): one row per `Session:` id in HEAD's history — its seat (the author through
+    `[seats]`, else the raw author), its first and last commit (time, short sha), how many commits carry it, and its
+    worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both) — in the order of the
+    first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
+    rows = {}
+    for sha, stamp, email, name, block in session_log(since):
+        sid = (trailer_values(block, "Session") or [""])[0]
+        if not sid:
+            continue
+        r = rows.setdefault(sid, dict(id=sid, seats=[], first=(stamp, sha), last=(stamp, sha), commits=0, worktrees=[]))
+        seat, where = seat_of(name, email) or email or name, (trailer_values(block, "Worktree") or [""])[0]
+        r["seats"] += [seat] if seat not in r["seats"] else []
+        r["worktrees"] += [where] if where and where not in r["worktrees"] else []
+        r["first"] = (stamp, sha) if stamp < r["first"][0] else r["first"]          # oldest first: a tie keeps the earlier
+        r["last"] = (stamp, sha) if stamp >= r["last"][0] else r["last"]            # …and the later one here
+        r["commits"] += 1
+    return sorted(rows.values(), key=lambda r: r["first"][0])
+
+
+def sessions_cmd():
+    """`--sessions`: the registry as Markdown on stdout — generated from the trailers, written nowhere."""
+    if vcs() != "git":
+        print("--sessions: the registry is read from git's commit trailers — this is no git repository", file=sys.stderr)
+        return EXIT_LINT
+    rows = session_rows()
+    when = lambda st: f"{datetime.datetime.fromtimestamp(st[0]).strftime('%Y-%m-%d %H:%M')} · {st[1]}"
     cell = lambda v: (v or "—").replace("|", "\\|").replace("\n", " ")
-    return "| " + " | ".join(cell(r[k]) for k in ("id", "seat", "convened", "scope", "worktree", "started", "ended")) + " |"
-
-
-def write_sessions(rows):
-    """Rewrite the registry with these rows, keeping whatever stands above the table, and stage it."""
-    path = sessions_file()
-    have = path.read_text(encoding="utf-8") if path.exists() else SESSIONS_HOME.format(head=" | ".join(SESSION_COLUMNS), sep="---|" * len(SESSION_COLUMNS))
-    lines = have.rstrip("\n").split("\n")
-    table = [i for i, l in enumerate(lines) if l.lstrip().startswith("|")]
-    head = lines[:table[0] + 2] if table else lines + ["", "| " + " | ".join(SESSION_COLUMNS) + " |", "|" + "---|" * len(SESSION_COLUMNS)]
-    tail = lines[table[-1] + 1:] if table else []
-    path.parent.mkdir(parents=True, exist_ok=True)
-    put(path, "\n".join(head + [render_session_row(r) for r in rows] + tail) + "\n")
-    if vcs() == "git":
-        git_out("add", "--", path.relative_to(ROOT).as_posix())
-
-
-def session_now():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    print("# Sessions\n\nGenerated by `--sessions` from the `Session:` and `Worktree:` trailers of this checkout's history — "
+          f"{len(rows)} session(s), {sum(r['commits'] for r in rows)} commit(s). Nothing is kept in a file.\n")
+    print("| Session | Seat | First commit | Last commit | Commits | Worktree |\n|---|---|---|---|---|---|")
+    for r in rows:
+        print("| " + " | ".join(cell(v) for v in (r["id"], ", ".join(r["seats"]), when(r["first"]), when(r["last"]), str(r["commits"]), ", ".join(r["worktrees"]))) + " |")
+    twice = [r for r in rows if len(r["worktrees"]) > 1]
+    if twice:
+        print("\n" + "\n".join(f"- one id, {len(r['worktrees'])} worktrees: {r['id']} ({', '.join(r['worktrees'])})" for r in twice))
+    return EXIT_OK
 
 
 def session_cmd(words):
-    """`--session new` · `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]` · `--session close <id>`."""
-    rows = parse_sessions(sessions_file().read_text(encoding="utf-8")) if sessions_file().exists() else []
-    ids = {r["id"] for r in rows}
-    verb, rest = words[0], words[1:]
-    if verb == "new":
+    """`--session new` prints an id no `Session:` in this history carries. `open` and `close` are gone since 0.18.0."""
+    verb = words[0]
+    if verb in ("open", "close"):
+        print("--session open/close are gone since 0.18.0: the registry is a report — run --sessions", file=sys.stderr)
+        return 2                                        # a command that no longer exists, as argparse says of one it never knew
+    if verb == "new" and len(words) == 1:
         import secrets
-        sid = next(s for s in iter(lambda: secrets.token_hex(4), None) if s not in ids)
-        print(sid)
+        ids = {r["id"] for r in session_rows()} if vcs() == "git" else set()
+        print(next(s for s in iter(lambda: secrets.token_hex(4), None) if s not in ids))
         return EXIT_OK
-    if verb == "open" and 4 <= len(rest) <= 5:
-        sid, seat, convened, scope = rest[:4]
-        top = git_out("rev-parse", "--show-toplevel")
-        worktree = rest[4] if len(rest) == 5 else (pathlib.Path(top.strip()).name if top else ROOT.name)
-        hand = sid.rsplit("/", 1)[-1] if "/" in sid else None
-        # convened by a SESSION, not a person: a sub-agent — its id derives from its parent's, or the independence report
-        # cannot see that the two are one run (R3: a sibling's verdict was read as independent of the builder). A parent is
-        # read only from a token in the session-id form — eight hex characters, or `<id>/<seat>-<n>` — never from a plain
-        # word: "the morning session today" names no session (R6)
-        parent = (SESSION_PARENT_RE.search(convened) or [None, None])[1]
-        why = ("is not a session id — letters, digits, `.`, `_`, `-`; a sub-agent's is `<parent>/<seat>-<n>`" if not SESSION_ID_RE.fullmatch(sid)
-               else f"is already in {SESSIONS_NAME} — an id is used once" if sid in ids
-               else f"is convened by session {parent} — a sub-agent's id derives from its parent's: `{parent}/{seat}-<n>`" if parent and not sid.startswith(parent + "/")
-               else f"names the hand `{hand}`, not the seat `{seat}` — a sub-agent's id is `<parent>/{seat}-<n>`" if hand and not re.fullmatch(rf"{re.escape(seat)}-\d+", hand)
-               else f"is for the seat `{seat}`, which `[seats]` does not name" if SEATS and seat not in SEATS else "")
-        clash = next((r for r in rows if r["open"] and r["worktree"] == worktree), None)
-        if why or clash:
-            print(f"--session open: {sid} {why}" if why else f"--session open: {worktree} is open under session {clash['id']} — one worktree per session", file=sys.stderr)
-            return EXIT_LINT
-        rows.append(dict(id=sid, seat=seat, convened=convened, scope=scope, worktree=worktree, started=session_now(), ended="—", open=True))
-        write_sessions(rows)
-        mine = (git_out("config", "--get", "seat.session") or "").strip()
-        print(f"opened session {sid} ({seat}, {scope}) in {worktree} — {sessions_file().relative_to(ROOT).as_posix()} is staged; the session's first commit carries it"
-              + ("" if mine == sid else f"\nthis worktree's commits carry it once: git config --worktree seat.session {sid}"))
-        return EXIT_OK
-    if verb == "close" and len(rest) == 1:
-        row = next((r for r in rows if r["id"] == rest[0]), None)
-        if row is None or not row["open"]:
-            print(f"--session close: {rest[0]} is {'not in ' + SESSIONS_NAME if row is None else 'closed already'}", file=sys.stderr)
-            return EXIT_LINT
-        row["ended"] = session_now()
-        write_sessions(rows)
-        print(f"closed session {row['id']} — {sessions_file().relative_to(ROOT).as_posix()} is staged")
-        return EXIT_OK
-    print('--session: new · open <id> <seat> "<convened by>" "<scope>" [<worktree>] · close <id>', file=sys.stderr)
+    print("--session: new — prints an id no commit carries; the registry is `--sessions`", file=sys.stderr)
     return EXIT_LINT
 
 
 def session_trailer(message_file):
-    """What the prepare-commit-msg hook calls: append `Session: <seat.session>` to the message being written. Nothing
-    when this worktree has no `seat.session` (the Owner's checkout, a person's clone), and nothing when the message
-    carries a `Session:` already — an amend, a rebase, a seat that typed it."""
+    """What the prepare-commit-msg hook calls: append `Session: <seat.session>` and `Worktree: <the checkout's directory>`
+    to the message being written. Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's
+    clone); a trailer the message carries already is left alone — an amend, a rebase, a seat that typed it."""
     sid = (git_out("config", "--get", "seat.session") or "").strip()
     if not sid or not message_file:
         return EXIT_OK
-    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", message_file],
+    top = (git_out("rev-parse", "--show-toplevel") or "").strip()
+    worktree = pathlib.Path(top).name if top else ROOT.name
+    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", "--trailer", f"Worktree: {worktree}", message_file],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if r.returncode:
         print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
@@ -2589,57 +2561,40 @@ def trailers_of(commit, name):
     return trailer_values((git_out("log", "-1", f"--format={TRAILERS}", commit) or "").strip("\n"), name)
 
 
+def history_has_sessions(revs):
+    """Has this history adopted the session rule — does any commit reachable from `revs` carry a `Session:`? A repository
+    adopts the rule with its first trailer, as it adopted it with its first registry row until 0.18.0: a seat's commit
+    made before any is not judged, and a consumer that never set `seat.session` is not refused on vendoring."""
+    return bool(revs) and bool((git_out("log", "-1", "--format=%H", "-i", "--grep", "^session:", *revs) or "").strip())
+
+
 def session_problems():
-    """The gate's three refusals (example e): a seat's commit — not the Owner's — must carry a `Session:` whose row is
-    open and is the author's seat, and whose worktree no earlier open row holds. Judged on every change the rights are
-    judged on (`changes_under_review`): the commit being made reads `seat.session`, the trailer its hook will write; a
-    made commit reads its trailer; each against the registry in its own tree — a tree with none, whose parent had none,
-    is not judged. A change that REMOVES the registry, drops a row or re-opens an ended one is judged against its
-    parent's registry and refused (R1): the registry is the record the gate reads, so a seat never writes its way past
-    it — only the Owner removes it. The commit that closes its own session's row is that session's, still (its last)."""
+    """THE GATE'S ONE RULE (FM-032 S2): a commit by a seat `[seats]` names — never the Owner's, never an author outside
+    `[seats]` — carries a `Session:` of the accepted shape, `<8 hex>` or `<8 hex>/<seat>-<n>`, whose seat part, where it
+    has one, is the author's seat. Judged on every change the rights are judged on (`changes_under_review`): the commit
+    being made reads `seat.session`, the trailer its hook will write; a made commit — HEAD, or one a merge brings — reads
+    its own trailer. A commit with no `Session:` anywhere in its history is not judged (`history_has_sessions`). No row
+    is read: the open and closed rows, the one-worktree rule and the registry's removal went with the file in 0.18.0."""
     if not SEATS or vcs() != "git":
         return []
-    rel, out = sessions_file().relative_to(ROOT).as_posix(), []
-    for bases, _files, name, email, commit, result, label in changes_under_review():
+    out = []
+    for bases, _files, name, email, commit, _result, label in changes_under_review():
         seat = seat_of(name, email)
         if seat in (None, "owner"):
             continue
-        if result is not None:
-            after = git_out("show", f"{result}:{rel}")
-        elif COMMITTING:
-            after = git_out("show", f":{rel}")              # the index: what this commit will carry
-        else:
-            after = sessions_file().read_text(encoding="utf-8") if sessions_file().exists() else None
-        before = git_out("show", f"{bases[0]}:{rel}") if bases else None
-        if after is None and before is None:
-            continue
-        where = label + " — " if label else ""
         sid = (trailers_of(commit, "Session") or [""])[0] if commit else (git_out("config", "--get", "seat.session") or "").strip()
         who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
-        was = parse_sessions(before) if before is not None else []
-        rows = parse_sessions(after) if after is not None else was
-        now_by_id = {r["id"]: r for r in rows}
-        if after is None:
-            out.append(f"{where}refused: {who} removes {rel} — the registry is the Owner's to remove; a session ends with `{CMD} --session close <id>`")
-        else:
-            dropped = [r["id"] for r in was if r["id"] not in now_by_id]
-            reopened = [r["id"] for r in was if not r["open"] and now_by_id.get(r["id"], {}).get("open")]
-            if dropped or reopened:
-                said_ = ([f"drops the row{'s' if len(dropped) > 1 else ''} {', '.join(dropped)}"] if dropped else []) + ([f"re-opens {', '.join(reopened)}, which had ended"] if reopened else [])
-                out.append(f"{where}refused: {who} {'; '.join(said_)} in {rel} — a row once written stays, and an ended session stays ended: open a new one")
-                rows, now_by_id = was, {r["id"]: r for r in was}
-        row = now_by_id.get(sid)
-        closing = row is not None and not row["open"] and any(r["id"] == sid and r["open"] for r in was)     # its last commit
+        shape = SESSION_ID_RE.fullmatch(sid)
         if not sid:
-            out.append(f"{where}refused: {who} carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row ({CMD} --session open)")
-        elif row is None or not (row["open"] or closing):
-            out.append(f"{where}refused: Session: {sid} has no open row in {rel}")
-        elif row["seat"] != seat:
-            out.append(f"{where}refused: Session: {sid} is open for the seat {row['seat']}, and {who} is the seat {seat}")
-        elif row["open"]:
-            first = next(r for r in rows if r["open"] and r["worktree"] == row["worktree"])
-            if first is not row:
-                out.append(f"{where}refused: {row['worktree']} is open under session {first['id']} — one worktree per session")
+            why = f"{who} carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: the harness's session id, its first eight hex characters, or `<parent>/{seat}-<n>` for a sub-agent"
+        elif not shape:
+            why = f"{who} carries `Session: {sid}` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent"
+        elif shape[1] and shape[1] != seat:
+            why = f"{who} is the seat {seat}, and its Session: {sid} names the seat {shape[1]}"
+        else:
+            continue
+        if history_has_sessions(bases):
+            out.append(f"{label + ' — ' if label else ''}refused: {why}")
     return out
 
 
@@ -2653,39 +2608,6 @@ def session_check():
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK
-
-
-def session_stamp(text):
-    """A registry time (`YYYY-MM-DD HH:MM`, or a bare date) as seconds, or None."""
-    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
-        try:
-            return datetime.datetime.strptime((text or "")[:len("2026-01-01 00:00") if fmt.endswith("%M") else 10], fmt).timestamp()
-        except ValueError:
-            pass
-    return None
-
-
-def abandoned_sessions(rows, now=None):
-    """Open rows with no commit carrying their id for longer than SESSION_IDLE — each (row, the last sign of life as
-    `YYYY-MM-DD HH:MM`). One `git log` over the commits since the oldest open row started."""
-    live = [r for r in rows if r["open"]]
-    if not live:
-        return []
-    now = now or datetime.datetime.now().timestamp()
-    since = min((session_stamp(r["started"]) or now) for r in live)
-    last = {}
-    log = git_out("log", f"--since={int(since)}", f"--format=%ct%x01{TRAILERS}%x02", "HEAD") or ""
-    for rec in log.split("\x02"):
-        stamp, _, block = rec.strip("\n").partition("\x01")
-        if stamp.strip().isdigit():
-            for sid in trailer_values(block, "Session"):
-                last[sid] = max(last.get(sid, 0), int(stamp.strip()))
-    out = []
-    for r in live:
-        seen = max(last.get(r["id"], 0), session_stamp(r["started"]) or 0)
-        if now - seen > SESSION_IDLE:
-            out.append((r, datetime.datetime.fromtimestamp(seen).strftime("%Y-%m-%d %H:%M") if seen else "never"))
-    return out
 
 
 def trunk_ref():
@@ -2748,12 +2670,11 @@ def verdict_reports(days=None):
 
 
 def sessions_report():
-    """What `--check` says of the registry, never a refusal: the abandoned rows a pass will close, and this week's
+    """What `--check` says of sessions, never a refusal: a registry file left from before 0.18.0, and this week's
     verdicts by independence."""
-    if not sessions_file().exists() or vcs() != "git":
-        return []
-    lines = [f"session {r['id']} ({r['seat']}, {r['scope']}) has no commit since {seen} — abandoned; the next triage pass closes it"
-             for r, seen in abandoned_sessions(parse_sessions(sessions_file().read_text(encoding="utf-8")))]
+    lines = [f"warning: {sessions_file().relative_to(ROOT).as_posix()} is a report since 0.18.0 — delete it; --sessions prints it"] if sessions_file().exists() else []
+    if vcs() != "git":
+        return lines
     reps = verdict_reports()
     if reps:
         count = collections.Counter(w for *_x, w in reps)
@@ -2765,40 +2686,28 @@ def sessions_report():
 
 
 def board_sessions():
-    """The registry as the board shows it — the open rows (id, seat, scope, worktree, abandoned) and this week's verdicts
-    as [independent, same session, untraced] — or None where there is no registry."""
-    if not sessions_file().exists() or vcs() != "git":
+    """The report as the board shows it — the sessions with a commit in the last day (id, seat, worktree) and this week's
+    verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
+    if vcs() != "git":
         return None
-    rows = parse_sessions(sessions_file().read_text(encoding="utf-8"))
-    gone, reps = {r["id"] for r, _ in abandoned_sessions(rows)}, verdict_reports()
+    recent = session_rows(since=datetime.datetime.now().timestamp() - SESSION_RECENT)
+    reps = verdict_reports()
+    if not recent and not reps:
+        return None
     count = collections.Counter(w for *_x, w in reps)
-    return {"open": [[r["id"], r["seat"], r["scope"], r["worktree"], r["id"] in gone] for r in rows if r["open"]],
+    return {"recent": [[r["id"], ", ".join(r["seats"]), ", ".join(r["worktrees"]) or "—"] for r in recent],
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"]] if reps else None}
 
 
 def sessions_digest():
-    """The digest's one line: the open sessions, by seat — or nothing where there is no registry."""
+    """The digest's one line: the sessions with a commit in the last day, by seat — or nothing where there is none."""
     reg = board_sessions()
-    if reg is None:
+    if not reg or not reg["recent"]:
         return ""
     by = collections.defaultdict(list)
-    for sid, seat, *_x in reg["open"]:
+    for sid, seat, _w in reg["recent"]:
         by[seat].append(sid)
-    return "SESSIONS OPEN · " + (" · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items()) or "none")
-
-
-def close_abandoned(today):
-    """A triage pass closes every abandoned row — dated, with why — and returns them for its paragraph. Nothing closes
-    silently: the pass prints them, and its paragraph in TRIAGE.md names them."""
-    if not sessions_file().exists() or vcs() != "git":
-        return []
-    rows = parse_sessions(sessions_file().read_text(encoding="utf-8"))
-    gone = abandoned_sessions(rows)
-    for r, seen in gone:
-        r["ended"] = f"closed by the pass of {today} — no commit since {seen}"
-    if gone:
-        write_sessions(rows)
-    return gone
+    return "SESSIONS IN THE LAST DAY · " + " · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items())
 
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
@@ -2938,7 +2847,7 @@ def lint(trackers, committing=False):
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
     problems += rights_problems(trackers)
-    problems += session_problems()                   # FM-024: a seat's commit names an open session of its own seat
+    problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
@@ -3091,14 +3000,16 @@ def parse_args(argv):
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
     add("--session", nargs="+", metavar="WORD",
-        help="a seat's session (FM-024): a sub-agent derives its id from its parent's, `<parent>/<seat>-<n>`; `--session new` prints an id no row carries — for a session with no parent and a harness with no id; "
-             "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`. "
-             "`--session open <id> <seat> \"<convened by>\" \"<scope>\" [<worktree>]` writes its row in <tracker dir>/sessions.md and stages it — "
-             "a sub-agent's id is `<parent>/<seat>-<n>`; `--session close <id>` dates its end")
+        help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
+             "its first eight hex characters; a sub-agent's is its parent's and its hand, `<parent>/<seat>-<n>`. `--session new` prints an id no commit carries, for a session "
+             "with no parent and a harness with no id. `open` and `close` are gone since 0.18.0: the registry is a report, `--sessions`")
+    add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
+                                               "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
-                                                     "a tracker staged or not; reads git and the registry, never the trackers")
+                                                     "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
-                                                            "to a seat's commit — nothing without `seat.session`, nothing when the message carries one already")
+                                                            "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
+                                                            "a trailer the message carries already is left alone")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -3714,6 +3625,8 @@ def main(argv=None):
         return session_check()
     if args.session:
         return session_cmd(args.session)
+    if args.sessions:                                       # the registry: a report of the trailers, read from git alone
+        return sessions_cmd()
     if args.answer:
         answer_step(args.answer[0].upper(), 1, "reading the trackers")
     trackers = load_trackers()
@@ -3757,8 +3670,6 @@ def main(argv=None):
             print(f"--triage: {home.relative_to(ROOT).as_posix()} names no current path — tiers cannot be judged; the Owner writes it first", file=sys.stderr)
             return EXIT_LINT
         today = datetime.date.today().isoformat()
-        for r, seen in close_abandoned(today):              # FM-024: the pass closes what nobody closed — and says so
-            print(f"closed abandoned session {r['id']} ({r['seat']}, {r['scope']}) — no commit since {seen}. Say so in this pass's paragraph in {home.relative_to(ROOT).as_posix()}.")
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
