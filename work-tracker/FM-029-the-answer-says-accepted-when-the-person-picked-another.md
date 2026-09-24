@@ -3,15 +3,7 @@ id: FM-029
 status: In Progress
 considered: FM-008, FM-013, FM-014, FM-017, FM-018, FM-030
 tags: bug
-next: owner
-ask: "Rule the answer's word for 0.18.1: the board and every reading print the answer's relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?"
-ask-kind: ruling
-ask-since: 2026-09-24
-ask-proposal: "both — the relation computed for every answer, the verbs changed and chose for new ones"
-ask-options: "both — the relation computed for every answer, the verbs changed and chose for new ones | the relation only — no new verbs | the verbs only | none — the word stays accepted"
-answer: "accepted - the relation only — no new verbs"
-answered: 2026-09-24
-answered-by: holgo99
+next: build
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
 
@@ -137,6 +129,12 @@ seventh's old-record cases (a bare `accepted`, the em-dash form, a cleared excha
   `--answer`; a proposal containing `"` and a double space, which must read as *the proposal*; bare `accepted`; a
   hand-written em-dash answer; an ask with no proposal; and a cleared exchange from before the fix, which must read as
   *relation not recorded*. The existing key-parity check covers the German labels.
+
+## Asks
+
+**2026-09-24** · Rule the answer's word for 0.18.1: the board and every reading print the answer's relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?
+**answered** — accepted - the relation only — no new verbs · holgo99
+**relation** — chose option 2: the relation only — no new verbs
 
 ## Ship log
 
