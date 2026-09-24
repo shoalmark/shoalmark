@@ -12,3 +12,6 @@
   width: 16px;
   height: 16px;
 }
+
+/* The slate palette paints the header title white and leaves the logo at the 82 % default: give the mark the name's ink. */
+[data-md-color-scheme=slate] .md-header__button.md-logo{color:hsla(var(--md-hue),0%,100%,1)}
