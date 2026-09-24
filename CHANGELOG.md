@@ -2,6 +2,45 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.18.2 — 2026-09-24
+
+**A fourth brand file, `wordmark.svg`: the mark and the name drawn as one** (FM-006), for a brand whose name is part
+of its mark.
+
+- **Where a place has `wordmark.svg`, the header shows it inline**, in place of the logo and the name. The name stays
+  the page's `<title>` and is the wordmark's accessible name (`role="img"`, `aria-label`); the logo, where there is
+  one, stays the browser tab's; the tagline and the footer stay labels. The later place wins, as for the other files,
+  and `--brand` names the place.
+- **Inline, it takes the page's ink:** drawn in `currentColor` it follows the theme's `--ink` in light and dark and
+  through `◐`, the mark and the name in one colour. It keeps the size its `<svg height>` gives, else the logo's 22 px.
+- **Shapes and text only, held to a grammar.** The elements are shapes, text, gradients, masks and a `<use>` of the
+  file's own ids; each takes only the attributes its row in the tool names, and each value is read whole, in one pass,
+  as that attribute's kind — ASCII; colours as `#hex`, `currentColor`, `none` or a plain name; a paint, mask or clip
+  only as `url(#id)` of its own; and numbers written plainly, `-?digits(.digits)?`, one space or one comma between
+  two — stricter than SVG itself: no `.5`, no `1e3`, no `+`, no `1-2`, so a minifier's compact output is refused.
+  No `style` attribute, no `class`, no handler. The file is UTF-8 without a byte-order mark, with no control character,
+  no DOCTYPE or entity; at most 32 deep; every id defined once; every reference — a `<use>`, a mask, a clip, a paint —
+  to an id it has, at most 3 deep, never in a cycle, and at most 2,000 elements painted with every reference followed
+  (a mask used ten times paints ten times). Anything else — a `<script>`, a `<style>`, an image, a link, a reference
+  outside the file, a CSS escape — and the file is not shown, with one warning that says why; the header keeps the
+  logo and the name. Over 200,000 bytes, the same, and checking never takes more than a bounded number of steps. What
+  an editor adds in its own namespace (Inkscape's, Sketch's) is left out, and every id is prefixed `wm-`, so none
+  shadows one of the page's. *Export with presentation attributes, not CSS, and without minifying the numbers.*
+- *Nothing to do on upgrade: without `wordmark.svg` the header is as it was.* To draw your own: one `<svg>` with a
+  `viewBox`, a `height` in pixels, `fill="currentColor"` (and `stroke="currentColor"` where it strokes); the name as
+  paths (outline the text in your editor), or as `<text>` in a font your `theme.css` loads. A pixel mark shown at a
+  whole multiple of its grid stays sharp. `--brand DIR`'s starter says the same in a comment.
+- **Every page names the tool and the version it runs: `<mark> shoalmark · v0.18.2`** — one small line at the bottom
+  left, below the footer, in the muted ink, on the board and in a tracker's view alike: the Pricke at 16 px, the
+  smallest size its 16-unit grid stays sharp at, and the name in the mono at 11 px, linking to the tool's repository;
+  then the version from the copy's own `VERSION`, linking to that release's page — a vendored copy names the version
+  it was vendored at. Both open in a new tab. It is the tool's line, in every repository, brand or none: not a label,
+  never translated. *Nothing to do.*
+
+**shoalmark's own board wears the site's brand**, from `work-tracker/brand/`: the Pricke beside the name in IBM Plex
+Mono as the wordmark, the site's tab icon as the logo, the site's light and dark palettes, IBM Plex from files beside
+the theme, and the German claim as the tagline. It is this repository's place: `--vendor` never copies it.
+
 ## 0.18.1 — 2026-09-24
 
 **Every reading names the answer's relation to the proposal; the signed line is unchanged** (FM-029, the Owner's

@@ -49,6 +49,7 @@ MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinn
 # how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
 # second screen (a repository with its own page overrides the label `answer.sign.url`)
 SIGNING_PAGE = "https://holgo99.github.io/shoalmark/signing/"
+TOOL_PAGE = "https://github.com/holgo99/shoalmark"          # the running line's links: the tool, and its release at VERSION
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty
@@ -1585,8 +1586,9 @@ tr.c td:first-child{padding-left:20px}
 #v [data-s]{cursor:pointer;text-decoration:underline}#v .toc{white-space:normal;line-height:1.9;margin:10px 0}
 #v blockquote{margin:12px 0;padding-left:12px;border-left:2px solid var(--line);color:var(--dim)}
 @media(max-width:640px){.x{display:none}}
-/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
-#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
+/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise. A wordmark takes the
+   place of the logo and the name, inline, so its currentColor is the name's ink: the size its height says, else the logo's */
+#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H .wm{display:flex}#H .wm svg{display:block;flex:none}#H .wm svg:not([height]){height:22px;width:auto}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
@@ -1597,11 +1599,14 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
 #dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
+/* the running line: the tool's, on every screen, below the footer — its mark at 16 px, the smallest size its 16-unit grid
+   stays sharp at, and the name linking to the tool; the version to its release. Muted like any link here: underlined on hover */
+#r{display:flex;gap:.6em;align-items:center;margin:20px 0 0;color:var(--mute);font-size:11px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
 @media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
 </style>__THEMES__
-<div id="B"><div id="H">__LOGO__<b>__NAME__</b><span data-l="tagline"></span><button id="s"></button></div>
+<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>
 <header><input id="q" autofocus>
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
@@ -1609,6 +1614,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table>
 <p id="f" class="m" data-l="footer"></p></div>
 <article id="v" hidden></article>
+__RUNNING__
 <dialog id="dlg"></dialog>
 <script>__MARKED__</script>
 <script>
@@ -1855,8 +1861,288 @@ LABELS = {
     "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
 }
-BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "labels.yaml")
-LOGO_MAX = 200_000            # bytes — a logo is inlined into the page; past this it is skipped, with a warning
+BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "wordmark.svg", "labels.yaml")
+# The tool's own mark, the Pricke (FM-006) — the site's `overrides/.icons/shoalmark/pricke.svg`, one path on a 16-unit
+# grid. The running line ends every page with it: the tool's name and version, not a brand, not a label, in every repository.
+PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"
+LOGO_MAX = 200_000            # bytes — a logo or a wordmark is inlined into the page; past this it is skipped, with a warning
+# What an inlined SVG may be. A logo sits in an <img>, where nothing an SVG carries can run or load; a wordmark sits IN
+# the page, where a script would run, a handler fire, a reference load and a style restyle the board — so it is held to a
+# grammar, not screened for bad words, and written out again from what was read (0.18.2; the Reviewer's R1–R9).
+#   the file   at most LOGO_MAX bytes; UTF-8, no byte-order mark, no control character (C0 but tab and line ends, DEL,
+#              C1); no DOCTYPE, ENTITY or CDATA; an <?xml?> that names an encoding names UTF-8 — all before the parse
+#   the tree   at most SVG_DEPTH deep; only the elements below (another namespace's are left out, with what they hold);
+#              every id defined once; every reference — a <use>'s href, a url(#id) in fill, stroke, mask or clip-path —
+#              to an id the file has, followed at most SVG_REF_DEPTH deep, never in a cycle, and at most SVG_DRAWN
+#              elements painted with every reference followed (a mask used n times paints n times)
+#   attributes only those the element's row names — no style, no class, no handler, nothing else — each value ASCII,
+#              without \ & < http data: javascript, and whole in its kind, read by one pass of a scanner, never a regex:
+#                number   -?[0-9]+(.[0-9]+)?   — no +, no exponent, no .5; a length adds px or % (a font size em)
+#                list     numbers, one space or one comma between two (x, y, dx, dy, points; viewBox exactly four)
+#                path     path letters and numbers; one space or one comma between two numbers, at most one around a
+#                         letter; nothing before the first, nothing after the last
+#                transform  name(list) — matrix translate scale rotate skewX skewY — one space or comma between two
+#                paint    #hex (3, 4, 6, 8) · currentColor · none · a plain colour name · url(#id); mask, clip: none · url(#id)
+#              at most SVG_VALUE characters a value (a path's and points' at most SVG_TOKENS tokens), and SVG_BUDGET steps
+#              for the whole file — every token read and every element visited is a step; past it, the file is refused
+_SVG_SHAPE = {"id", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin",
+              "stroke-miterlimit", "opacity", "transform", "clip-path", "clip-rule", "mask", "shape-rendering"}
+_SVG_TEXT = {"x", "y", "dx", "dy", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "letter-spacing", "xml:space"}
+SVG_ATTRS = {
+    "svg": _SVG_SHAPE | {"viewBox", "width", "height", "x", "y", "preserveAspectRatio", "version", "xml:space"},
+    "g": _SVG_SHAPE, "defs": {"id"}, "symbol": _SVG_SHAPE | {"viewBox", "preserveAspectRatio"},
+    "use": _SVG_SHAPE | {"href", "x", "y", "width", "height"}, "title": set(), "desc": set(), "metadata": set(),
+    "path": _SVG_SHAPE | {"d"}, "rect": _SVG_SHAPE | {"x", "y", "width", "height", "rx", "ry"}, "circle": _SVG_SHAPE | {"cx", "cy", "r"},
+    "ellipse": _SVG_SHAPE | {"cx", "cy", "rx", "ry"}, "line": _SVG_SHAPE | {"x1", "y1", "x2", "y2"},
+    "polyline": _SVG_SHAPE | {"points"}, "polygon": _SVG_SHAPE | {"points"}, "text": _SVG_SHAPE | _SVG_TEXT, "tspan": _SVG_SHAPE | _SVG_TEXT,
+    "clipPath": {"id", "transform", "clipPathUnits"}, "mask": {"id", "x", "y", "width", "height", "maskUnits", "maskContentUnits"},
+    "linearGradient": {"id", "x1", "y1", "x2", "y2", "gradientUnits", "gradientTransform", "spreadMethod"},
+    "radialGradient": {"id", "cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform", "spreadMethod"},
+    "stop": {"offset", "stop-color", "stop-opacity"},
+}
+SVG_DEPTH, SVG_DRAWN, SVG_REF_DEPTH = 32, 2000, 3
+SVG_VALUE, SVG_TOKENS, SVG_BUDGET = 1000, 20_000, 200_000
+SVG_NS, XLINK_NS, XML_NS = "http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/XML/1998/namespace"
+_SVG_COLOURS = {"currentColor", "none", "black", "white", "silver", "gray", "grey", "red", "maroon", "orange", "yellow", "olive", "lime",
+                "green", "teal", "aqua", "cyan", "blue", "navy", "fuchsia", "magenta", "purple", "transparent"}
+_SVG_ENUMS = {
+    "fill-rule": {"nonzero", "evenodd"}, "clip-rule": {"nonzero", "evenodd"}, "stroke-linecap": {"butt", "round", "square"},
+    "stroke-linejoin": {"miter", "round", "bevel"}, "shape-rendering": {"auto", "crispEdges", "geometricPrecision", "optimizeSpeed"},
+    "gradientUnits": {"userSpaceOnUse", "objectBoundingBox"}, "clipPathUnits": {"userSpaceOnUse", "objectBoundingBox"},
+    "maskUnits": {"userSpaceOnUse", "objectBoundingBox"}, "maskContentUnits": {"userSpaceOnUse", "objectBoundingBox"},
+    "spreadMethod": {"pad", "reflect", "repeat"}, "font-weight": {"normal", "bold", *(f"{n}00" for n in range(1, 10))},
+    "font-style": {"normal", "italic", "oblique"}, "text-anchor": {"start", "middle", "end"}, "xml:space": {"default", "preserve"},
+    "preserveAspectRatio": {"none", *(f"x{a}Y{b}{m}" for a in ("Min", "Mid", "Max") for b in ("Min", "Mid", "Max") for m in ("", " meet", " slice"))},
+}
+_SVG_NUMBERS = {  # attribute: (units a number may carry, at most how many numbers — 0 is any, up to SVG_TOKENS)
+    **{k: (("", "px", "%"), 1) for k in ("width", "height", "rx", "ry", "cx", "cy", "r", "fx", "fy", "x1", "y1", "x2", "y2", "stroke-width", "stroke-miterlimit")},
+    **{k: (("", "%"), 1) for k in ("opacity", "fill-opacity", "stroke-opacity", "stop-opacity", "offset")},
+    **{k: (("", "px", "%"), 0) for k in ("x", "y", "dx", "dy")},
+    "font-size": (("", "px", "em", "%"), 1), "letter-spacing": (("", "px", "em"), 1), "version": (("",), 1), "points": (("",), 0), "viewBox": (("",), 4),
+}
+_SVG_PATH_LETTERS, _SVG_TRANSFORMS = set("MmZzLlHhVvCcSsQqTtAa"), ("matrix(", "translate(", "scale(", "rotate(", "skewX(", "skewY(")
+
+
+def _svg_number(v, i):
+    """The end of the number -?[0-9]+(.[0-9]+)? that starts at i, or -1. One step a character, never back."""
+    n = len(v)
+    if i < n and v[i] == "-":
+        i += 1
+    j = i
+    while i < n and "0" <= v[i] <= "9":
+        i += 1
+    if i == j:
+        return -1
+    if i < n and v[i] == ".":
+        i += 1; j = i
+        while i < n and "0" <= v[i] <= "9":
+            i += 1
+        if i == j:
+            return -1
+    return i
+
+
+def _svg_value(key, v):
+    """How many tokens `v` is, read whole as `key`'s kind in one pass — or -1 at the first character that does not fit.
+    The kinds are the comment above SVG_ATTRS; nothing here backtracks, so a value costs its length and no more."""
+    n = len(v)
+    is_id = lambda t: 0 < len(t) <= 64 and t[0].isalpha() and all(c.isalnum() or c in "_-" for c in t)
+    ref = lambda t: t.startswith("url(#") and t.endswith(")") and is_id(t[5:-1])
+    if key == "id":
+        return 1 if is_id(v) else -1
+    if key == "href":
+        return 1 if v[:1] == "#" and is_id(v[1:]) else -1
+    if key in ("fill", "stroke", "stop-color"):
+        hexa = v[:1] == "#" and len(v) in (4, 5, 7, 9) and all(c in "0123456789abcdefABCDEF" for c in v[1:])
+        return 1 if hexa or v in _SVG_COLOURS or key != "stop-color" and ref(v) else -1
+    if key in ("mask", "clip-path"):
+        return 1 if v == "none" or ref(v) else -1
+    if key in _SVG_ENUMS:
+        return 1 if v in _SVG_ENUMS[key] else -1
+    if key == "font-family":
+        return 1 if v and all(c.isalnum() or c in " ,'-" for c in v) else -1
+    if key in _SVG_NUMBERS:                                 # numbers, each with a unit it may carry, one separator between two
+        units, most = _SVG_NUMBERS[key]
+        i, count = 0, 0
+        while True:
+            i = _svg_number(v, i)
+            if i < 0:
+                return -1
+            i += next((len(u) for u in units if u and v.startswith(u, i)), 0)
+            count += 1
+            if count > (most or SVG_TOKENS):
+                return -1
+            if i == n:
+                return count if most in (0, 1) or count == most else -1
+            if v[i] not in " ,":
+                return -1
+            i += 1
+    if key == "d":                                          # letters and numbers; a separator only between two tokens, at most one
+        i, count, last = 0, 0, ""                           # last: "" nothing yet · L a letter · N a number · S a separator
+        while i < n:
+            c = v[i]
+            if c in _SVG_PATH_LETTERS:
+                i, last = i + 1, "L"
+            elif c in " ,":
+                if last in ("", "S"):
+                    return -1
+                i, last = i + 1, "S"
+            else:
+                if last == "N":
+                    return -1                               # two numbers need a separator: no 1-2, no .5.5
+                i, last = _svg_number(v, i), "N"
+                if i < 0:
+                    return -1
+            count += 1
+            if count > SVG_TOKENS:
+                return -1
+        return count if last != "S" else -1
+    if key in ("transform", "gradientTransform"):          # name(numbers), one separator or none between two
+        i, count = 0, 0
+        while True:
+            name = next((f for f in _SVG_TRANSFORMS if v.startswith(f, i)), None)
+            if not name:
+                return -1
+            i += len(name)
+            while True:
+                i = _svg_number(v, i)
+                if i < 0:
+                    return -1
+                count += 1
+                if count > SVG_TOKENS:
+                    return -1
+                if i < n and v[i] in " ," and i + 1 < n and v[i + 1] != ")":
+                    i += 1
+                    continue
+                break
+            if i >= n or v[i] != ")":
+                return -1
+            i += 1
+            if i == n:
+                return count
+            if v[i] in " ,":
+                i += 1
+    return -1
+
+
+def inline_svg(data, prefix="wm-"):
+    """(markup, "") — the SVG written out again from what was read, safe to put in the page — or ("", why it is not).
+    The rules are the comment above SVG_ATTRS; the first one broken refuses the file whole. Every id gets `prefix`, and
+    every `#id` it is referred to by, so no id of the page's is ever shadowed; an underscore is written `&#95;`, so no
+    `__PLACEHOLDER__` of the page's template can be spelled inside it. No step recurses, and none backtracks: the whole
+    file costs at most SVG_BUDGET steps, and the count of what it paints stops the moment it passes SVG_DRAWN."""
+    import xml.etree.ElementTree as ET
+    if len(data) > LOGO_MAX:
+        return "", f"it is {len(data):,} bytes — over {LOGO_MAX:,}"
+    try:
+        if data.startswith((b"\xef\xbb\xbf", b"\xff\xfe", b"\xfe\xff")):
+            raise UnicodeError
+        text = data.decode("utf-8")
+    except UnicodeError:
+        return "", "it is not UTF-8 without a byte-order mark"
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", text):
+        return "", "it holds a control character"
+    if re.search(r"<!(?:DOCTYPE|ENTITY)|<!\[CDATA\[", text, re.I):
+        return "", "it declares a DOCTYPE, an entity or CDATA"
+    decl = re.match(r"\s*<\?xml\b[^>]*?\bencoding\s*=\s*[\"']([^\"']*)", text[:200])
+    if decl and decl.group(1).lower().replace("-", "") != "utf8":
+        return "", f"its <?xml?> names the encoding {decl.group(1)[:20]}, not UTF-8"
+
+    class Builder(ET.TreeBuilder):                          # a DOCTYPE the checks above missed still stops the parse
+        def doctype(self, *_):
+            raise ValueError("it declares a DOCTYPE")
+    try:
+        top = ET.fromstring(text.encode("utf-8"), parser=ET.XMLParser(target=Builder(), encoding="utf-8"))
+    except ValueError as e:
+        return "", str(e)
+    except ET.ParseError as e:
+        return "", f"it is not well-formed XML ({e})"
+    split = lambda n: n[1:].partition("}")[::2] if isinstance(n, str) and n.startswith("{") else ("", n)
+    if split(top.tag) != (SVG_NS, "svg"):
+        return "", "its root is not an <svg> in the SVG namespace"
+    steps = [0]
+
+    def spend(k):
+        steps[0] += k
+        if steps[0] > SVG_BUDGET:
+            raise ValueError(f"it takes over {SVG_BUDGET:,} steps to check")
+    esc = lambda t: html_escape(t).replace("_", "&#95;")
+    try:
+        stack = [(top, 1)]
+        while stack:                                        # the depth first, without recursion: 1,000 nested <g> is a refusal
+            e, depth = stack.pop()
+            spend(1)
+            if depth > SVG_DEPTH:
+                raise ValueError(f"it nests deeper than {SVG_DEPTH}")
+            stack.extend((c, depth + 1) for c in e)
+        out, ids, edges, stack = [], {}, [], [top]
+        while stack:
+            e = stack.pop()
+            if isinstance(e, str):                           # a closing tag and the text after it
+                out.append(e)
+                continue
+            spend(1)
+            ns, tag = split(e.tag)
+            tail = "" if e is top else esc(e.tail or "")
+            if ns != SVG_NS:
+                out.append(tail)
+                continue
+            if tag not in SVG_ATTRS:
+                raise ValueError(f"it holds <{tag}>")
+            attrs, refs = "", []
+            for k, v in e.attrib.items():
+                kns, name = split(k)
+                if kns not in ("", XLINK_NS, XML_NS):
+                    continue                                 # an editor's own attribute (Inkscape's, Sketch's) draws nothing
+                key = "xml:" + name if kns == XML_NS else name
+                if key not in SVG_ATTRS[tag] or kns == XLINK_NS and name != "href":
+                    raise ValueError(f"it holds {'xlink:' if kns == XLINK_NS else ''}{key}= on <{tag}>, which a wordmark may not carry")
+                low = v.lower()
+                bad = (not v.isascii() or any(c in v for c in "\\&<") or "http" in low or "data:" in low or "javascript" in low
+                       or len(v) > SVG_VALUE and key not in ("d", "points"))
+                tokens = -1 if bad else _svg_value(key, v)
+                if tokens < 0:
+                    raise ValueError(f'its {key}="{v[:40]}" on <{tag}> is not what {key} takes')
+                spend(tokens)
+                if key == "id":
+                    if v in ids:
+                        raise ValueError(f"the id {v} is defined twice")
+                    ids[v] = e
+                    v = prefix + v
+                elif key == "href":
+                    refs.append(v[1:]); v = "#" + prefix + v[1:]
+                elif v.startswith("url(#"):
+                    refs.append(v[5:-1]); v = "url(#" + prefix + v[5:]
+                attrs += f' {"xlink:" if kns == XLINK_NS else ""}{key}="{esc(v)}"'
+            if refs:
+                edges.append((e, refs))
+            out.append(f"<{tag}{attrs}>{esc(e.text or '')}")
+            stack.append(f"</{tag}>{tail}")
+            stack.extend(reversed(list(e)))
+        refers = {}
+        for e, refs in edges:
+            for r in refs:
+                spend(1)
+                if r not in ids:
+                    raise ValueError(f"it refers to #{r[:40]}, which the file does not have")
+            refers[e] = refs
+        painted, stack = 0, [(top, ())]                     # what the browser paints: every element, and at every reference
+        while stack:                                        # the whole of what it refers to — counted as it goes, never after
+            e, chain = stack.pop()
+            painted += 1
+            spend(1)
+            if painted > SVG_DRAWN:
+                raise ValueError(f"it paints over {SVG_DRAWN:,} elements once its references are followed")
+            stack.extend((c, chain) for c in e if split(c.tag)[0] == SVG_NS)
+            for r in refers.get(e, ()):
+                if r in chain:
+                    raise ValueError("its references form a cycle")
+                if len(chain) >= SVG_REF_DEPTH:
+                    raise ValueError(f"its references nest deeper than {SVG_REF_DEPTH}")
+                stack.append((ids[r], chain + (r,)))
+    except ValueError as e:
+        return "", str(e)
+    return "".join(out), ""
 
 
 def brand_places():
@@ -1893,8 +2179,9 @@ def contrast(a, b):
 
 
 def brand():
-    """The board's brand, assembled: (themes [(who, css)], logo (who, data-uri) or None, labels, sources, warnings)."""
-    themes, logo, labels, src, warn = [], None, dict(LABELS), {"theme.css": [], "logo": [], "labels.yaml": []}, []
+    """The board's brand, assembled: (themes [(who, css)], logo (who, data-uri) or None, labels, sources, warnings,
+    wordmark (who, inline svg markup) or None)."""
+    themes, logo, wordmark, labels, src, warn = [], None, None, dict(LABELS), {"theme.css": [], "logo": [], "wordmark": [], "labels.yaml": []}, []
     for who, d in brand_places():
         f = d / "theme.css"
         if f.is_file():
@@ -1921,10 +2208,17 @@ def brand():
             f = d / name
             if f.is_file():
                 if f.stat().st_size > LOGO_MAX:
-                    warn.append(f"{who}'s {name} is {f.stat().st_size // 1000} kB — over {LOGO_MAX // 1000} kB, not shown")
+                    warn.append(f"{who}'s {name} is {f.stat().st_size:,} bytes — over {LOGO_MAX:,}, not shown")
                 else:
                     logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(f.read_bytes()).decode("ascii"))); src["logo"].append(who)
                 break
+        f = d / "wordmark.svg"
+        if f.is_file():
+            svg, why = ("", f"it is {f.stat().st_size:,} bytes — over {LOGO_MAX:,}") if f.stat().st_size > LOGO_MAX else inline_svg(f.read_bytes())
+            if svg:
+                wordmark = (who, svg); src["wordmark"].append(who)
+            else:
+                warn.append(f"{who}'s wordmark.svg is not shown: {why} — the header keeps {'the wordmark before it' if wordmark else 'the logo and the name'}")
         f = d / "labels.yaml"
         if f.is_file():
             given = read_flat(f.read_text(encoding="utf-8"))
@@ -1936,7 +2230,7 @@ def brand():
     if loose:
         warn.append(f"{', '.join(loose)} beside the trackers {'are' if len(loose) > 1 else 'is'} not read — a repository's brand lives in "
                     f"{(TRACKER_DIR / 'brand').relative_to(ROOT).as_posix()}/ (since 0.9.0); move {'them' if len(loose) > 1 else 'it'} there")
-    return themes, logo, labels, src, warn
+    return themes, logo, labels, src, warn, wordmark
 
 
 def brand_report(dest=None):
@@ -1947,14 +2241,14 @@ def brand_report(dest=None):
                                                            + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
             if not (dest / name).exists():
                 put(dest / name, text); print(f"wrote {dest / name}")
-        print("a logo is logo.svg or logo.png beside them; the name is `name` in " + CONFIG_NAME)
+        print("a logo is logo.svg or logo.png beside them, a wordmark wordmark.svg; the name is `name` in " + CONFIG_NAME)
         return EXIT_OK
-    themes, logo, labels, src, warn = brand()
+    themes, logo, labels, src, warn, _wordmark = brand()
     print("the board is built from these places, the later one winning:")
     for who, d in brand_places():
         print(f"  {who:<13} {d}")
     print(f"  name          {CONFIG['name'] or ROOT.name}  ({CONFIG_NAME})")
-    for kind in ("theme.css", "logo", "labels.yaml"):
+    for kind in ("theme.css", "logo", "wordmark", "labels.yaml"):
         print(f"  {kind:<13} {' → '.join(src[kind]) or 'built in'}")
     changed = sorted(k for k in LABELS if labels[k] != LABELS[k])
     print(f"  labels changed: {len(changed)} of {len(LABELS)}")
@@ -1981,6 +2275,16 @@ THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is 
 }}
 /* fonts: name one that is installed, or put a font file beside the trackers and load it:
    @font-face{font-family:"Mine";src:url("mine.woff2")}  body{font-family:"Mine",system-ui,sans-serif} */
+/* a wordmark — the mark and the name drawn as one — is wordmark.svg beside this file. It is inlined in the header in
+   place of the logo and the name; the logo stays the browser tab's. To draw one:
+   - one <svg> with a viewBox, and a height in pixels to fix its size — else it is the logo's 22 px;
+   - fill="currentColor" (stroke="currentColor" where it strokes), so it takes --ink in light and dark alike;
+   - the name as paths (outline the text in your editor), or as <text> in a font this file loads;
+   - a pixel mark at a whole multiple of its grid stays sharp;
+   - UTF-8, shapes, text, gradients, masks and a <use> of its own ids only; colours as #hex, currentColor, none or a
+     plain name; numbers as -?digits(.digits)?, one space or comma between two (no .5, 1e3, 1-2: do not minify them);
+     every id once; presentation attributes, never style="…" (export "with attributes, not CSS"). Anything else — a
+     script, a handler, a <style>, a class, a reference outside the file — refuses it whole, with a warning. */
 """
 
 
@@ -2082,12 +2386,23 @@ def render_html(trackers):
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD))
-    themes, logo, labels, _src, warnings = brand()
+    themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
     # each place's theme is its OWN stylesheet, in order — `@import` and `@font-face` only work at the top of one
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
-    page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
+    # a wordmark is the mark and the name in one drawing: it takes their place, and the name stays the page's title and
+    # the wordmark's accessible name. The logo stays the tab's.
+    name = html_escape(CONFIG["name"] or ROOT.name)
+    page = page.replace("__HEADMARK__", f'<b class="wm" role="img" aria-label="{name}">{wordmark[1]}</b>' if wordmark
+                        else (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
+    page = page.replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
+    # the running line: outside the board and the tracker view, so every screen shows it — the copy's own VERSION
+    v = html_escape(__version__)
+    page = page.replace("__RUNNING__", f'<p id="r" class="m"><a href="{TOOL_PAGE}" target="_blank" rel="noopener" aria-label="shoalmark on GitHub">'
+                        '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
+                        f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
+                        f'aria-label="release v{v}">v{v}</a></p>')
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__REG__", json.dumps(board_sessions(), ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
         "__ROWS__", ",\n".join(rows)
@@ -3514,7 +3829,7 @@ def parse_args(argv):
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
              "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
     add("--brand", nargs="?", const="", metavar="DIR",
-        help="why does my board look like this: which places gave it its theme, logo and labels. With DIR: write a commented starter there")
+        help="why does my board look like this: which places gave it its theme, logo, wordmark and labels. With DIR: write a commented starter there")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy. Only from a release: "
