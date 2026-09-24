@@ -2,7 +2,10 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.18.3, 2026-09-24
+## 0.18.3 — 2026-09-24
+
+**Every reading prints the relation, an answer writes the next move, and no build commit comes before a judgement**
+(FM-029, FM-030, FM-031, FM-033, FM-034 — the Auditor seat's checks on v0.18.2).
 
 - **A record `--clear-ask` wrote before 0.18.1 prints its relation too** (FM-029; the Auditor seat's check 9). Such a
   record has no `**relation** —` line, and `--answered` read it as *relation not computable* — FM-031's and FM-032's
@@ -12,6 +15,30 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   change, read from the answer's commit `7c97c5b`* — and the file is not touched. Where no commit in the checkout wrote
   that answer (a hand-written record, a shallow clone), *relation not computable*, as before. It costs one `git log` for
   all such records and one `git show` for each one found, spent where the relation is printed, never on a load.
+- **An answer writes the next move** (FM-030; the Auditor seat's check 24). `--answer` wrote the three lines and left
+  `next: owner` — the Owner's move after his move was made. It now writes `next:` in the same commit: `build` for a
+  ruling, a determination or a ceremony, the seat's move (`run` stays for something built that waits for its run);
+  `next: owner` kept for an action, whose yes is a promise of his own hands, not the act. `revoke` and `--supersede` key
+  on the answer being there, so they work after the move is written. `--schema` says what an answer writes, and that an
+  ask whose yes needs the Owner's hands is `action`, whatever else it decides; the board's second screen names the move.
+- **A fresh clone's `--check` no longer says the INDEX is stale** (FM-034; the Auditor seat's check 20). A finding that
+  is the checkout's, not the ledger's — a signed commit this clone cannot verify (no `gpg.ssh.allowedSignersFile`, a key
+  not in the keyring), a pinned file this checkout has not got — was written into the generated INDEX's header, so the
+  INDEX a clone generated differed from the committed one by that line and `--check` said *STALE* beside the finding.
+  It is now said on stderr only, once per cause — `checkout: it is signed, but this clone cannot verify: … — N signed
+  commit(s) it could not check: …` — and the run still fails; the drift test is not widened. The committed INDEX reads
+  the same in every clone.
+- **The 0.18.0 bullet on revoke and supersede names its authority** (FM-031; the Auditor seat's check 14): the Owner's
+  word of 2026-09-24 that revoking or changing a given answer needs a path the person can choose, and his signed
+  revocation of the cap (PR 46, `7c97c5b`) in FM-031's ship log.
+- **A raise naming a signed rule re-judges the tracker the same day** (FM-033, the Owner's second answer; the Auditor
+  seat's AU-16). A raise is one line under a tracker's `## Raised` (`raised` in `[headings]`):
+  `- <date> · <who> · <fact> · <source> · undermines: <what>`, read by its date and its `undermines:` token. Dated after
+  the tracker's `triaged:` and naming a line of the current path (`path 5`) or a tracker's signed answer (`FM-033's
+  answer`), it makes an open tracker owed a pass: under *triage* on the board and in INDEX.md, and on the next worksheet
+  however fresh its judgement, marked RAISED with the raise in its Now cell. Any other raise waits for the next pass. A
+  day decides: a raise written after the same day's pass is re-judged by the seat's own re-run that day, as this
+  evening's was. `--triage` prints the rule in the Owner's words.
 - **No build commit before a judgement** (FM-033; the Auditor seat's check 26). With `judged_before_build = true` in
   `shoalmark.toml` — off by default, on in this repository — a commit that changes a path outside the tracker directory
   names a tracker, the ids in its subject or else its branch `<kind>/<NNN>-…`, that at the commit's parent carries
@@ -23,13 +50,15 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker, and the board
   showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`; build on a branch
   `<kind>/<NNN>-…` whose tracker a pass has kept In Progress.*
-- **A fresh clone's `--check` no longer says the INDEX is stale** (FM-034; the Auditor seat's check 20). A finding that
-  is the checkout's, not the ledger's — a signed commit this clone cannot verify (no `gpg.ssh.allowedSignersFile`, a key
-  not in the keyring), a pinned file this checkout has not got — was written into the generated INDEX's header, so the
-  INDEX a clone generated differed from the committed one by that line and `--check` said *STALE* beside the finding.
-  It is now said on stderr only, once per cause — `checkout: it is signed, but this clone cannot verify: … — N signed
-  commit(s) it could not check: …` — and the run still fails; the drift test is not widened. The committed INDEX reads
-  the same in every clone.
+- **The suite runs `--queue` itself on a branch pushed without a pull request** (FM-031; the Auditor seat's check 8):
+  `gh` stubbed, `origin` a local bare repository, it reads `branch <name> @ <sha>  wait: no pull request — no verdict
+  on <sha>` and the count. A check, not a change.
+- **The tool's rule 4** (FM-033; the Auditor seat's AU-7 and AU-21): `--triage`'s printed rules and README §4 read *the
+  pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees with is re-made by
+  the seat on his word, or ruled by his signed answer — a merge rules nothing (path 5)*. They said the Owner rules by
+  merging and can strike any row.
+
+*Nothing to do on upgrade: one new configuration key, `judged_before_build`, off by default.*
 
 ## 0.18.2 — 2026-09-24
 
