@@ -9,8 +9,8 @@ tier: P2
 ask: "Which rules hold for a message between two sessions — the nine recorded as open in this tracker's body, D11's eight and no message to a session you stopped?"
 ask-kind: ruling
 ask-since: 2026-09-24
-ask-options: "the nine hold as written; the scorer reads messages by them | no rule yet: a message between sessions moves nothing until one is ruled"
-ask-proposal: "the nine hold as written; the scorer reads messages by them"
+ask-options: "the nine hold as written | until one is ruled, a message between sessions moves nothing"
+ask-proposal: "the nine hold as written"
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
@@ -110,10 +110,10 @@ proposed, for the Owner's ruling — the ask above:
 5. `ListAgents` and `git worktree list` before a worktree is taken; one worktree per session, and a badge is not a lock.
 6. The seat is in git, never in the frame: a message carries no authority, and a seat's rights come from its commits under `[seats]`.
 7. `isolatePeerMachines` is the Owner's setting; no seat changes it.
-8. The scorer reads messages for the four tells the model's System Card names — a fabricated authorization, a proposed destructive
+8. The parent project's scorer (its FEAT-190) reads messages for the four tells the model's System Card names — a fabricated authorization, a proposed destructive
    act, a verdict against its own reasoning, damage disclosed as *a mistake*.
-9. **No message to a session the Owner stopped.** A stopped session is not woken by a peer; what it left is read from git. (The
-   fog: a stopped session was re-woken by a message and read a relay as a ruling.)
+9. **No message to a session the Owner stopped.** A stopped session is not woken by a peer; what it left is read from git (the
+   parent project's incident of the morning, PR 812 and PR 813).
 
 ## Why
 
@@ -189,4 +189,4 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 | 2026-09-24 08:33 CEST | Adopted by the Principal. Candidates 2 and 1 become slices S1 (the registry off the conflict path: one file per session under `work-tracker/sessions/`, the table generated) and S2 (the queue in one view: `--queue`); candidate 3 is deferred. The ask drafted for review (`next: review`): the three house rules — candidates 4, 5 and 6 — and the build order, four options; the proposal is the Principal's to set. The parent project's registry conflict cited by its pull-request numbers only. |
 | 2026-09-24 08:26 CEST | The Owner's second question measured: filing outruns closing 2.07 to 1 (16.4 filed a day against 8.0 closed, since 2026-09-22 11:09); 16 open, and the open count grows about 8 a day. |
 | 2026-09-24 08:24 CEST | Filed on the Owner's question, with tonight's record as the measurement. Held against FM-005 (his decisions: the asks, not the queue of pull requests), FM-023 (a plan's seats and estimates), FM-024 (a commit names its session) and FM-027 (ids claimed on the server). |
-| 2026-09-24 | The nine rules for a message between two sessions recorded as open (the Auditor seat's check 18) and put to the Owner — the parent project's ledger row came first (its tenth-hour commit). |
+| 2026-09-24 | The nine rules for a message between two sessions recorded as open (the Auditor seat's check 18) and put to the Owner — the parent project's ledger row came first (its tenth-hour commit). Re-made on the Reviewer's R2: the options name no scorer and neither opens with *no*; rule 8 names whose scorer (R6). |

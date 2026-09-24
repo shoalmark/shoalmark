@@ -7,7 +7,7 @@ next: owner
 triaged: 2026-09-24
 tier: P2
 ask: "How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file?"
-ask-kind: ruling
+ask-kind: action
 ask-since: 2026-09-24
 ask-options: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | one Reviewer docs pass, always, as any docs change | path 3 stays as written: the tool refuses the merge without a review file"
 ask-proposal: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
@@ -128,4 +128,4 @@ Each takes effect on the Owner's answer, never on a default.
 | 2026-09-24 09:48 CEST | Verified READY WITH FINDINGS at `db15a31` (R1–R5, all P3); closed in the text before the ask reaches him because two touch what he answers: R3 — the freeze's number is 8, half of today's 16, carried by *all four now*; R4 — FM-031's S1 is read as this S2, one design; R1 the -15 instance; R2 the parent's hash gone; R5 *a fifth, like for like*. One more pass, the last. |
 | 2026-09-24 09:39 CEST | The Principal sets the proposal — *all four now* — and puts the ask to the Owner (`next: owner`), on his ruling of ≈ 09:19 that the proposal becomes an ask. Main after PR 35 merged in first. Verified next, then the pull request. |
 | 2026-09-24 09:30 CEST | Filed on the Owner's question (≈ 09:12), and on his word at ≈ 09:19 that the Principal's proposal becomes an ask. The evidence is re-derived from git and the forge; the seven passes, the parent project's two docs-only branches (four passes, about 800K tokens, 75 minutes) and the Principal's four catches are marked *reported*. The ask is drafted (`next: review`, four options, trimmed to 298 characters: *the session registry* is now *the registry*, *docs and ledger changes* is now *docs and ledgers*). The proposal is the Principal's. Held against FM-031 (the fan-out; its S1 is refined here into a report), FM-024 (the registry as a gate), FM-027 (ids claimed on the server, moot under S2) and FM-005 (the Owner's decisions). |
-| 2026-09-24 | Asked: how an answer pull request passes path 3 (the Auditor seat's check 21; its AU-11 on the seat's first proposal — the signature alone is what any process on the account can produce until FM-007's key) — the parent project's ledger row came first. #10 freed to FM-034 by the evening re-run of the pass: a wait ranks after the builds. |
+| 2026-09-24 | Asked, kind action — a yes writes path 3, which only the Owner's hands write (the Reviewer's R3, this branch's own FM-030 line): how an answer pull request passes path 3 (the Auditor seat's check 21; its AU-11 on the seat's first proposal — the signature alone is what any process on the account can produce until FM-007's key) — the parent project's ledger row came first. #10 freed to FM-034 by the evening re-run of the pass: a wait ranks after the builds. |
