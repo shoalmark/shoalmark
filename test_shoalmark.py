@@ -2269,7 +2269,7 @@ with tempfile.TemporaryDirectory() as d:
     lines_ = fm.queue_lines(rows_) if hasattr(fm, "queue_lines") else [""]
     starts_ = {l_.index("fm/") for l_ in lines_[:-1]}
     check(f"FM-031 S2 · the queue prints one line per pull request, its columns aligned — `PR n  action  branch @ head  verdict` — a long branch cut, and one summary line last (saw {lines_[0]!r}, {lines_[-1]!r})",
-          len(lines_) == len(prs) + 1 and len(starts_) == 1 and lines_[-1] == "8 waiting on you: 1 merge, 3 close, 4 wait"
+          len(lines_) == len(prs) + 1 and len(starts_) == 1 and lines_[-1] == "8 waiting on you: 1 merge, 3 close, 4 wait, 0 pushed without a pull request"
           and re.fullmatch(r"PR 1 +merge +" + re.escape(prs[0]["headRefName"][:getattr(fm, "QUEUE_BRANCH_MAX", 32) - 1] + "…") + f" @ {h1[:7]} +verdict {v1[:7]} READY WITH FINDINGS", lines_[2]) is not None
           and re.fullmatch(rf"PR 2 +closes with PR 1 +fm/002-inside @ {w1[:7]}", lines_[0]) is not None)
     # the forge is never called here: no `origin`, a local `origin`, a GitHub `origin` and no `gh` — each one line, exit 3
@@ -2379,6 +2379,84 @@ with tempfile.TemporaryDirectory() as tmp:
     check("RV-479 · `revoke` and `--supersede` on an ask with no answer are refused — there is nothing to replace; a revocation without its reason too",
           code7 == fm.EXIT_LINT and "carries no answer to revoke" in err7 and code8 == fm.EXIT_LINT and "carries no answer to supersede" in err8
           and run(root, "--answer", "AP-080", "revoke")[0] == fm.EXIT_LINT)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    git(root, "remote", "add", "origin", str(base / "origin.git")); run(root, "--init", "--key", "msr")
+    sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def commit_(msg, files):
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); git(root, "commit", "-q", "--allow-empty", "-m", msg)
+        return sha()
+    t0 = commit_("the trunk", {"shared.txt": "one\n"}); git(root, "branch", "-q", "-M", "main")
+    subprocess.run(["git", "--git-dir", str(base / "origin.git"), "symbolic-ref", "HEAD", "refs/heads/main"], check=True, env=_ENV)
+    branch_ = lambda name, msg, files, frm="main": (git(root, "checkout", "-q", "-b", name, frm), commit_(msg, files))[1]
+    merged = branch_("b-merged", "merged work", {"m.txt": "m\n"}); git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--ff-only", "b-merged")
+    ans = branch_("answer/msr-001", "an answer", {"a.txt": "a\n"})
+    in_pr = branch_("b-pr", "the open pull request's work", {"p.txt": "p\n"}); inner = sha("HEAD")
+    pr_head = commit_("more on the open pull request", {"p.txt": "p2\n"})
+    git(root, "checkout", "-q", "-b", "b-inside", inner)
+    none_ = branch_("b-none", "work nobody opened", {"n.txt": "n\n"})
+    w_ = branch_("b-ready", "reviewed work", {"r.txt": "r\n"})
+    ready = commit_(f"review: at {w_[:7]} — READY WITH FINDINGS (R1 P3)\n\nReviewed: {w_}", {"docs/work-tracker/evidence/reviews/r.md": "R1\n"})
+    clash = branch_("b-conflict", "conflicting work", {"shared.txt": "two\n"}, frm=t0)
+    git(root, "checkout", "-q", "main"); commit_("the trunk moves", {"shared.txt": "three\n"})
+    git(root, "push", "-q", "origin", "main", "b-merged", "answer/msr-001", "b-pr", "b-inside", "b-none", "b-ready", "b-conflict"); git(root, "fetch", "-q", "origin")
+    prs = [{"number": 7, "title": "b-pr", "headRefName": "b-pr", "headRefOid": pr_head, "baseRefName": "main", "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": "2026-09-24T08:00:00Z"}]
+    fm.configure(root)
+    found_ = _no_git_env(lambda: fm.pushed_branches(prs)) if hasattr(fm, "pushed_branches") else []
+    lines_ = _no_git_env(lambda: fm.queue_lines(fm.queue_actions(prs, found_))) if found_ else [""]
+    check(f"FM-031 · a branch on `origin` that no pull request carries is in the queue after the pull requests — `branch <name> @ <sha>  wait: no pull request — …` read as a pull request is: no verdict, a READY verdict (open it), a conflict — never the default branch, `answer/*`, a pull request's branch, a merged head or one inside an open pull request; and the count says how many (saw {lines_})",
+          [b_["name"] for b_ in found_] == ["b-conflict", "b-none", "b-ready"]
+          and lines_[1:] == [f"branch b-conflict @ {clash[:7]}  wait: no pull request — conflict in shared.txt",
+                             f"branch b-none @ {none_[:7]}  wait: no pull request — no verdict on {none_[:7]}",
+                             f"branch b-ready @ {ready[:7]}  wait: no pull request — verdict {ready[:7]} READY WITH FINDINGS: open it",
+                             "4 waiting on you: 0 merge, 0 close, 1 wait, 3 pushed without a pull request"]
+          and lines_[0].startswith("PR 7  wait: no verdict on"))
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone
+#     cannot verify is said to be that — never "sign it" ---------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("t@t " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
+        git(root, "config", k_, v_)
+    run(root, "--init", "--key", "msr")
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+    tr_ = tracker(root, "MSR-001", extra=f'next: owner\nask: "Ship it?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n')
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask"); git(root, "branch", "-q", "-M", "main"); t0 = sha()
+    git(root, "update-ref", "refs/remotes/origin/main", t0)
+    tr_.write_text(tr_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: t\n'))
+    git(root, "checkout", "-q", "-b", "answer/msr-001"); git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", "MSR-001: accepted")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-q", "--amend", "-S", "--no-edit"); signed_ = sha()      # the INDEX as the hook would stage it
+    git(root, "checkout", "-q", "-b", "answer/msr-002", t0); (root / "x.txt").write_text("x"); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-002: unsigned"); unsigned_ = sha()
+    prs = [{"number": n_, "title": b_, "headRefName": b_, "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"}
+           for n_, b_, h_ in ((1, "answer/msr-001", signed_), (2, "answer/msr-002", unsigned_))]
+    fm.configure(root)
+    read_ = lambda: [a_ for _p, _k, a_, _d in _no_git_env(lambda: fm.queue_actions(prs))]
+    trusted_ = read_()
+    git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
+    git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
+    untrusted_ = read_(); code_, _, err_ = run(root, "--check")
+    check(f"FM-031 · an `answer/*` pull request whose head the Owner signed and this clone verifies reads `merge: your answer`; an unsigned one `wait: unsigned answer` — no Reviewer verdict is asked of either (saw {trusted_})",
+          trusted_ == ["merge: your answer", "wait: unsigned answer"] and ok_ == 0)
+    check(f"RV · with `gpg.ssh.allowedSignersFile` unset, a SIGNED answer is refused as unverifiable here, naming the setting and the signing page — never 'sign it'; the exit is unchanged, and the queue says the same (saw {err_.strip()[-220:]!r}, {untrusted_})",
+          code_ == fm.EXIT_LINT and "it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see " + fm.SIGNING_PAGE in err_
+          and "sign it (`git commit -S`)" not in err_ and untrusted_[0] == "wait: answer not verified here — `gpg.ssh.allowedSignersFile` is not set")
+    git(root, "commit", "-q", "--amend", "--no-edit", "--no-gpg-sign"); code2_, _, err2_ = run(root, "--check")
+    check("RV · an answer committed with no signature at all is still asked to be signed",
+          code2_ == fm.EXIT_LINT and "sign it (`git commit -S`)" in err2_ and "cannot verify" not in err2_)
     rm_git(root)
 fm.configure(HERE)
 
