@@ -407,6 +407,8 @@ Where Chrome or Chromium is installed the board is rendered and read back. `test
 behaviour on a synthetic corpus; `test_shoalmark.py` pins what was built here. A change ships with its check, and
 the check is shown to fail without the change. Every consumer-visible change gets a `CHANGELOG.md` entry —
 `--vendor` prints it to the repository that upgrades. This repository tracks itself: `python3 shoalmark.py --next`.
+How a change here is reviewed, what a miss costs, and how the Owner is spoken to are this repository's house rules — the
+Owner's signed answers of 2026-09-24, in [`AGENTS.md`](AGENTS.md).
 
 ## Licence
 
