@@ -296,7 +296,9 @@ def front_matter_schema():
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
         "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
-        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue"),
+        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue. "
+                                                                        "Never overwritten in place: `--answer <id> revoke \"<reason>\"` makes it `revoked - <reason>`, and `--answer <id> accept|reject \"<option>\" --supersede` replaces it — "
+                                                                        "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
@@ -595,6 +597,8 @@ def extract(path):
         # the body's `## Asks` section: where an exchange goes when its ask is cleared. Read here because `extract` is
         # the only place the file text is read, and both the gate and `--answered` ask whether the record is there.
         "asks_block": bool(ASKS_HEAD_RE.search(body)),
+        # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
+        "supersedes": superseded(body),
     }
 
 
@@ -827,6 +831,10 @@ def standup(trackers, invite=None):
     return EXIT_OK
 
 
+# a ship-log row `--answer … revoke` or `--supersede` writes: `| <date> | Answer of <answered> superseded: *"<answer>"* (<sha>) — …`
+SUPERSEDED_RE = re.compile(r'\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Answer of [^|]*?superseded: \*".*?"\* \(([0-9a-f]{7,40})\)')
+
+
 # FM-031 S2 — THE QUEUE IN ONE VIEW. The streams run in parallel, and only the Owner saw the whole queue of pull requests:
 # he was the integrator by default. He asked one seat which to merge five times in two hours, and each answer was the
 # forge and `git merge-tree`, read by hand. `--queue` reads the same two and gives every open pull request ONE action, in
@@ -1014,12 +1022,15 @@ def answer_step(tid, n, text):
     print(f"answering {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
 
 
-def answer_cmd(words, trackers):
+def answer_cmd(words, trackers, supersede=False):
     """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
-    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes.
-    It refuses before touching anything when it cannot end in a verified answer."""
-    if len(words) < 2 or words[1] not in ("accept", "reject"):
-        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change", file=sys.stderr)
+    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes,
+    and goes back to the branch it started on. It refuses before touching anything when it cannot end in a verified answer.
+    An answer he takes back or changes (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
+    the answer it replaces moves into the ship log, with the commit that wrote it."""
+    if len(words) < 2 or words[1] not in ("accept", "reject", "revoke"):
+        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change. "
+              "An answer given already: `--answer <id> revoke \"<reason>\"`, or `--answer <id> accept|reject \"<option>\" --supersede`", file=sys.stderr)
         return EXIT_LINT
     # the answer is ONE front-matter line: every run of whitespace — a newline above all — collapses to one space.
     # A newline would close the line and the next fragment would be read as another key (`status: Shipped` flipped one),
@@ -1029,11 +1040,19 @@ def answer_cmd(words, trackers):
     if not t or not t.get("ask") or t.get("next") != "owner":
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
         return EXIT_LINT
-    if t.get("answer"):
-        print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten; a new question is a new ask", file=sys.stderr)
+    if t.get("answer") and not (supersede or verdict == "revoke"):
+        print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten in place. "
+              f"To take it back: `{CMD} --answer {tid} revoke \"<reason>\"`; to change it: `{CMD} --answer {tid} accept|reject \"<option>\" --supersede` — "
+              f"either way the answer it replaces moves into the ship log", file=sys.stderr)
+        return EXIT_LINT
+    if not t.get("answer") and (supersede or verdict == "revoke"):
+        print(f"--answer: {tid} carries no answer to " + ("revoke" if verdict == "revoke" else "supersede") + f" — answer it: `{CMD} --answer {tid} accept|reject`", file=sys.stderr)
         return EXIT_LINT
     if verdict == "reject" and not text:
         print("--answer: a rejection carries its reason, and how the ask should be reworded", file=sys.stderr)
+        return EXIT_LINT
+    if verdict == "revoke" and not text:
+        print("--answer: a revocation carries its reason — the ship log keeps it beside the answer it takes back", file=sys.stderr)
         return EXIT_LINT
     if vcs() != "git":
         print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
@@ -1078,10 +1097,12 @@ def answer_cmd(words, trackers):
         print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
               f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
         return EXIT_LINT
-    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
-    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "")
+    answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
+    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else "")
     branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
     created = switched = False
+    # the answer this one replaces, and the commit that wrote it — read here, on the branch the new one is cut from
+    replaced = (t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed") if t.get("answer") else None
 
     def undo(what, said=""):
         """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
@@ -1106,19 +1127,20 @@ def answer_cmd(words, trackers):
 
     if here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
-            # an `answer/<id>` left over from another branch does not carry this ask: switching to it would write the
-            # answer where the question is not, and push a branch the ask's own branch never sees
-            tip = git("show", f"{branch}:{rel}")
-            if tip.returncode or ask_key(parse_frontmatter(tip.stdout)[0].get("ask", "")) != ask_key(t["ask"]):
-                print(f"--answer: `{branch}` exists and its tip does not carry this ask — it was cut from another branch or the ask has changed since. "
-                      f"Delete it (`git branch -D {branch}`) or answer from the branch that carries the ask", file=sys.stderr)
+            # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
+            # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for him
+            trunk = default_trunk(git)
+            if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
+                print(f"--answer: `{branch}` exists and is not merged into `{trunk or 'origin'}` — it may hold work, and nothing is deleted for you. "
+                      f"Clear it with `git branch -D {branch}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
-            answer_step(tid, 2, f"switching to `{branch}` — the checkout hook, where one is installed, rebuilds the board")
-            r = git("switch", branch)
-        else:
-            answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
-            r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
-            created = r.returncode == 0
+            if git("branch", "-D", branch).returncode != 0:
+                print(f"--answer: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                return EXIT_LINT
+            print(f"--answer: `{branch}` was left by an earlier answer and is merged into `{trunk}` — deleted, and cut fresh", file=sys.stderr)
+        answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
+        r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
+        created = r.returncode == 0
         if r.returncode:
             return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
         switched = True
@@ -1128,9 +1150,17 @@ def answer_cmd(words, trackers):
     at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
     if at is None:
         return undo(f"{tid} has no `ask:` line in {t['file']} on `{branch}` — the front matter's question is what the answer is written under")
+    if replaced:                                             # the lines it replaces leave the front matter, and the ship log keeps them
+        end = next((i for i, l in enumerate(lines) if i and l.strip() == "---"), len(lines))
+        lines = [l for i, l in enumerate(lines) if i >= end or not l.startswith(("answer:", "answered:", "answered-by:"))]
+        at = next(i for i, l in enumerate(lines) if l.startswith("ask:"))
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
+    if replaced:
+        cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
+        lines = ship_log_row(lines, f'Answer of {replaced[1]} superseded: *"{cell(replaced[0])}"* ({replaced[2]}) — '
+                                    + (f"revoked: {cell(text)}" if verdict == "revoke" else f'replaced by: *"{cell(answer)}"*'))
     try:
         put(path, "\n".join(lines))
     except OSError as e:
@@ -1156,7 +1186,64 @@ def answer_cmd(words, trackers):
     answer_step(tid, 4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
     print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
-    return EXIT_OK if r.returncode == 0 else EXIT_LINT
+    if r.returncode != 0:
+        return EXIT_LINT
+    if switched:                                             # pushed: back where he started, so his next --answer does not begin on this one's branch
+        s_ = git("switch", here) if here else git("switch", "--detach", start)
+        print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
+    return EXIT_OK
+
+
+def default_trunk(git):
+    """`origin`'s default branch as this clone last fetched it — `origin/HEAD`, else `origin/main`, else `origin/master` —
+    or None: what an earlier `answer/<id>` must be merged into before `--answer` deletes it."""
+    head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
+    if head.startswith("refs/remotes/"):
+        return head[len("refs/remotes/"):]
+    return next((r for r in ("origin/main", "origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+
+
+def ship_log_table(lines):
+    """Where a tracker's ship log is: (its heading's line, the table's rule line or None, the last row's line, newest
+    first?) — or None where it has no log. The order is the log's own: oldest first only when its first dated row is
+    older than its last; this repository writes the newest on top."""
+    head_re = re.compile(r"^#{2,3}\s+(ship log|" + re.escape(HEAD["log"]) + r")\s*$", re.I)
+    at = next((i for i, l in enumerate(lines) if head_re.match(l)), None)
+    if at is None:
+        return None
+    end = next((i for i in range(at + 1, len(lines)) if re.match(r"^#{1,3}\s", lines[i])), len(lines))
+    sep = next((i for i in range(at + 1, end) if TABLE_SEP_RE.match(lines[i])), None)
+    last = sep
+    while sep is not None and last + 1 < end and lines[last + 1].lstrip().startswith("|"):
+        last += 1
+    dates = [m.group(1) for m in (re.match(r"\|\s*(\d{4}-\d{2}-\d{2})", lines[i].strip()) for i in range(sep + 1, last + 1)) if m] if sep is not None else []
+    return at, sep, last, not (len(dates) >= 2 and dates[0] < dates[-1])
+
+
+def ship_log_row(lines, event):
+    """A tracker's lines with one ship-log row for today, where the log's own order puts it: first under its header when
+    the newest row is on top, last when it runs oldest first. A tracker with no log gets one."""
+    row, log = f"| {datetime.date.today().isoformat()} | {event} |", ship_log_table(lines)
+    if log is None:
+        while lines and not lines[-1].strip():
+            lines = lines[:-1]
+        return lines + ["", f"## {HEAD['log']}", "", "| Date | Event |", "|---|---|", row, ""]
+    at, sep, last, newest_first = log
+    if sep is None:
+        return lines[:at + 1] + ["", "| Date | Event |", "|---|---|", row] + lines[at + 1:]
+    at_row = sep + 1 if newest_first else last + 1
+    return lines[:at_row] + [row] + lines[at_row:]
+
+
+def superseded(body):
+    """The commit that wrote the answer this tracker's answer replaced — from the newest ship-log row `--answer … revoke`
+    or `--supersede` wrote, read in the log's own order — or ""."""
+    lines = body.split("\n")
+    log = ship_log_table(lines)
+    if not log or log[1] is None:
+        return ""
+    hits = [m.group(2) for m in (SUPERSEDED_RE.match(lines[i].strip()) for i in range(log[1] + 1, log[2] + 1)) if m]
+    return (hits[0] if log[3] else hits[-1]) if hits else ""
 
 
 def changed_paths(git):
@@ -1507,6 +1594,7 @@ function view(id){
   const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
   v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
+${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
@@ -1593,6 +1681,7 @@ LABELS = {
     "viewer.no_copy": "no rendered copy of {0} — run {1}",
     "viewer.intent": "intent", "viewer.from": "from {0}", "viewer.intent.missing": "missing — the Owner states it on the tracker or its story",
     "viewer.verdict": "verdict", "viewer.verdict.none": "none yet — no triage pass has judged it",
+    "viewer.answer": "the Owner's answer", "viewer.supersedes": "supersedes {0}",
     "viewer.stale": "stale — older than {0} days, it counts as untriaged again",
     "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
@@ -1813,7 +1902,8 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask)]],
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
+              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", "")]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -3283,6 +3373,8 @@ def parse_args(argv):
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts. A failure after it wrote anything undoes it all and prints the answer and the command to give it again")
+    add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
+                                                 "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
@@ -3954,7 +4046,7 @@ def main(argv=None):
     if args.answered:
         return answered(trackers)
     if args.answer:
-        return answer_cmd(args.answer, trackers)
+        return answer_cmd(args.answer, trackers, supersede=args.supersede)
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:

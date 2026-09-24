@@ -66,6 +66,8 @@ viewer.from: aus {0}
 viewer.intent.missing: fehlt — der Auftraggeber nennt sie am Eintrag oder am Vorhaben
 viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
+viewer.answer: die Antwort des Auftraggebers
+viewer.supersedes: ersetzt {0}
 viewer.stale: veraltet — älter als {0} Tage, gilt wieder als ungesichtet
 viewer.handover: Übergabe
 viewer.next: nächster Schritt
