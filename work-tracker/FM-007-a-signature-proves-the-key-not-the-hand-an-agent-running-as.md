@@ -13,7 +13,7 @@ ask-proposal: "a hardware key that needs a touch"
 answer: "accepted - a hardware key that needs a touch"
 answered: 2026-09-22
 answered-by: holgo99
-triaged: 2026-09-23
+triaged: 2026-09-24
 rank: 2
 hook: "The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not which hand: an agent running as the Owner on his machine, with his key loaded, signs as him — and with commit.gpgsign true set, every agent commit did, until it was caught. Nothing in git, the forge or the tool can tell the difference. Named by the Owner: a doorway for any rogue agent."
 ---

@@ -3,7 +3,7 @@ id: FM-033
 status: Proposed
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
-next: owner
+next: build
 ask: "Does a sourced raise that names a signed rule it undermines trigger a same-day pass, as a now does?"
 ask-kind: ruling
 ask-since: 2026-09-24
