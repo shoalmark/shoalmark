@@ -147,3 +147,92 @@ FM-032 tracker. INDEX is unchanged, and `--check` agrees.
 
 **Correction to R6 (2026-09-24 09:52 CEST).** The unwrapped new body lines are 54, 75, 94 and 149, not *54, 94 and 153*. I wrote the
 numbers before I measured them. The verdict is unchanged.
+
+## Full pass at 413451a, PR 42 (2026-09-24 10:56 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `413451a` (`413451a2ca18aedfcb590ccab947c5322f7dec9e`) is one commit by the principal seat, under
+`8e509911`. It merges `origin/main` `608de9e` (PR 34 and PR 43) into `26af793`, and in the same commit it fixes R6 and
+R7. The tip is new, so the verdicts at `db15a31` and `48f926e` no longer stand, and this is a full pass.
+
+**The merge kept both sides' registry rows.**
+- `26af793` has 27 rows, `608de9e` has 28, their base `4b472cc` has 26, and `413451a` has 29. Every row of each parent
+  is in the tip, byte for byte. No row is in neither parent, and none is there twice. The text above the table is the
+  same in all three.
+- This branch's one row of its own is `8e509911/implementer-14`; `main`'s are `e8e309df` and `e8e309df/reviewer-7`.
+  The tip carries all three, and column 6 (*Started*) is in order over all 29 rows.
+- The 29 rows hold 28 ids: the two `8e509911/implementer-6` rows stand on both parents, as before.
+- Replayed, `git merge-tree 26af793 608de9e` conflicts on `sessions.md` and `INDEX.md`, as the commit says.
+
+**The INDEX is the generated one.** `python3 shoalmark.py` wrote 32 trackers, and `git status --porcelain` stayed
+empty. Against `main`'s, INDEX differs only by FM-032's row and the count (31 to 32).
+
+**Nothing from `main` was altered.**
+- `git diff 608de9e 413451a --name-only` names four files: the FM-032 tracker, its review, `INDEX.md` and
+  `sessions.md`.
+- `git diff 608de9e 413451a -- work-tracker/TRIAGE.md` is empty. The Owner's path line 5 (*An answer is written and
+  signed through the board. …*) came in with `7dd6ba6`, whose `%G?` prints `G`.
+- This review file is unchanged against `26af793`.
+
+**The FM-032 text changes only as the commit says.** `git diff 26af793 413451a` on the tracker has four hunks, all in
+the body:
+- R6: the top-level `-15` bullet is gone, and its content ends the paragraph *This filing is `-14` …* (`:55–57`).
+- R7: *builds S2 if FM-031's S1 is ruled* is gone (`:96–99`). The three sentences the commit names stand in its place.
+- The four long lines are wrapped. The longest body line is now 120 characters; it was 358.
+- S4: *half of today's 16* is now *half of the 16 open at filing* (`:154`).
+
+**What the change left alone still holds.**
+- The front matter (`:1–13`) is byte-identical to `26af793`'s. The ask is 298 characters, with one `?`, at its end. It
+  has four options; `ask-proposal: "all four now"` is option 1; `ask-kind: ruling`, `ask-since: 2026-09-24` and
+  `next: owner` stand.
+- Every hash the body cites resolves in this repository (nine commits).
+- The counts still add up: 16 at filing is the 15 before it plus this one (`:69`, `:154`, `:162`);
+  11 = 8 + 3 (`:28–30`); 11 = 6 + 3 + 2 (`:32`); the four token counts sum to 803K (`:35`); 15 = 4 + 7 + 2 + 1 + 1
+  (`:69–70`).
+- The paragraph at `:55` is indented two spaces after a blank line, below a sub-list whose items' text starts at four.
+  So it continues the outer item *A closed row never re-opens*, not the `-13` sub-item.
+
+**Gates at `413451a`.**
+- `--check` 0; `--session-check` 0; `test_shoalmark.py` 0 (264 ok, all green); `test_core.py` 0 (148 ok, all
+  green).
+- `git merge-tree --write-tree origin/main 413451a` is clean and writes the tip's own tree, `7109bde`: `origin/main`
+  `608de9e` is an ancestor, so the merge is a fast-forward.
+- The commit message carries no pull-request number with the sign.
+
+**Independence.** Same session `8e509911` — reported, not refused. `--check` counts this branch's three earlier
+verdicts as *same session*, and it will count this one the same way.
+
+**Closed.**
+- **R6:** the `-15` note now ends the `-14` paragraph, so it reads after `-14` and inside the item it belongs to. No
+  top-level bullet without a bold lead is left there. The four unwrapped lines are wrapped.
+- **R7:** the clause is gone, and a ruled FM-031 S1 now waits for this ask. The text says which answer stands under
+  *the registry later* and under *none*, as R7 asked. R8 is the one option it leaves out.
+  - Note, not a finding: under *the registry later*, FM-031's S1 is built now as per-session files, and a later ruling
+    of S2 would replace them with the report. That is two designs built one after the other, which R4 set out to
+    avoid. The text says so openly, so it is the Owner's to weigh.
+
+**R8 · P3 · R7's fix names two of the three answers that leave S2 unruled.**
+- `:98` says what happens under *the registry later* (option 2) and under *none* (option 4). Option 3, *the review
+  tier only*, also leaves S2 unruled. The text does not say that FM-031's S1 is then built as FM-031 wrote it.
+- A ruled FM-031 S1 waits for this ask, so under option 3 its wait has no stated end.
+- The fix: *If S2 is not ruled here (the registry later, the review tier only, or none), FM-031's S1 is built as
+  FM-031 wrote it.*
+
+**R9 · P3 · *What is true now* still says the ask is a draft.**
+- `:19–20`: *The four measures below are a draft ask (`next: review`); the proposal is the Principal's to set.* The
+  front matter says `next: owner` and `ask-proposal: "all four now"`. Both were set at 09:39 by `db15a31`, and the
+  ship log says so.
+- AGENTS.md rule 1: *What is true now* is rewritten in place when the truth changes. The line has been stale since
+  `db15a31`, and the three earlier passes missed it, mine among them.
+- The fix: *The four measures below are the ask put to the Owner (`next: owner`); the Principal's proposal is all four
+  now.*
+
+**R10 · P3 · The ship log has no row for this change.**
+- Its last row (09:48) ends *One more pass, the last*, and it records R4 as *FM-031's S1 is read as this S2, one
+  design*. Two passes followed, and R7's fix changed that reading: a ruled FM-031 S1 now waits for this ask, and under
+  *the registry later* or *none* it is built as FM-031 wrote it.
+- The merge of `main` and the closing of R6 and R7 have no row. The earlier rounds of fixes each have one: here at
+  09:48, on FM-031 at 08:53, on FM-028 at 08:54.
+- The fix: one row at 10:49. It says that `main` after PR 34 and PR 43 came in, that R6 and R7 are closed, and how
+  FM-031's S1 now waits.
+
+**Verdict:** READY WITH FINDINGS. R8, R9 and R10 are P3. R6 and R7 are closed.
