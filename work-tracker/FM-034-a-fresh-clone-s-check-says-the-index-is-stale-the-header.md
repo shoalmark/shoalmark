@@ -1,6 +1,6 @@
 ---
 id: FM-034
-status: Proposed
+status: In Progress
 considered: FM-024, FM-019, FM-011
 tags: bug
 triaged: 2026-09-24
@@ -45,3 +45,4 @@ Auditor's verification and a new seat meet the tool; a `--check` that says STALE
 | Date | Event |
 |---|---|
 | 2026-09-24 | Filed, from the Auditor seat's check 20 as the Owner pasted it; `--related` held it against FM-024, FM-019 and FM-011 — none owns the INDEX header. |
+| 2026-09-24 | In Progress — 0.18.3 builds it; the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
