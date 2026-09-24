@@ -246,3 +246,124 @@ stake, and the figure reads as the letter **i**, the information sign (`renders/
 
 **Provenance:** Seat: GtM · Session `e0be0fa0` · Model: Claude Opus 5.5 · 2026-09-23 · on the Owner's brief for the
 wordmark and icon.
+
+---
+
+## Outcome — the Owner's rulings, recorded 2026-09-24 07:35 CEST, session `6cecddb3`
+
+**This ledger ends with *B1 survives, narrowly* and *A5 (the Pricke) dies at G1*.** The mark was decided afterwards,
+by the Owner, and this note points to his rulings. **Nothing above is rewritten.**
+
+1. **G1 waived for the Pricke** (2026-09-23, relayed, spelling normalised): *"Do the broom also. Who cares if people
+   know the meaning — I know it. It has to render visually attractive, then it is fine."*
+   - The Implementer drew it as `a`–`d`, in `mark/pricke/pricke-2026-09-23.md` (`683e7b8`, merged in PR #30).
+   - The meaning gate that killed A5 here does not apply to it.
+2. **The mark is `d`, at 16 px.**
+   - At ≈ 00:55 the Owner locked `a` in the header, with `d` as the tab.
+   - At ≈ 01:05 he tried `d` alone: *"let's try d alone as proposed with the mono, this could be stellar"* (`69c14b2`).
+   - On 2026-09-24 he ruled: *"16 px is the better-fitting one; we could try a 24 px variant, but 16 px will do"*
+     (`9875bfc`, `mark/pricke/renders/lockup-scale.png`).
+   - At the time of writing these three commits are on `fm/006-the-site-wears-the-pricke`, not yet merged.
+3. **The wordmark is IBM Plex Mono.**
+   - IBM Plex was ruled as the family in `3f8ab19`.
+   - **G4 here read *without being monospace on the page*, and the Owner ruled that clause away.** Its other clause,
+     one family, holds: Plex Sans for the page text, Plex Mono for the name.
+4. **B1** was held for the stand-in readers in `3f8ab19`. The Owner's choice of `d` makes that test moot for the mark.
+
+**A fact this ledger's A5 row missed, recorded now (E, de.wikipedia *Pricke*):**
+
+- The port-hand Pricke's crown is the ***Besen nach oben***, and a channel marked with them is a ***Besenstraße***.
+  *Broom* is the sailors' own word.
+- A5 died here with *"it reads as a broom … Only a Wadden sailor sees a Pricke"*. A stranger who sees a broom is
+  seeing what the sailors call it. The verdict stands as recorded at the time; this is the fact it lacked.
+- `d` is the port form: twigs bound below, splaying upward. That is the Pricke used most, per the same article.
+
+**What this seat sees in the finalized lockup** (`lockup-scale.png`, the 16 px tab ×10, `d.svg`; **E** unless marked):
+
+- **At 16 px, `d` holds exactly two values, full ink or empty, on light and on dark.** No other mark drawn in these
+  screens did.
+- **The stake matches the name's stems** at ×1, ×2 and ×4, as the Implementer's table prints.
+- **Three things to watch; none of them is a verdict:**
+  1. **At ×4 the 1 px diagonals are visible stair-steps beside smooth type.** A slide or a projector shows exactly
+     that. Either own it as pixel art, or use the vector `a` above about 48 px.
+  2. **On dark, the theme draws the mark at 189 of 255 and the name at 255,** so the mark is dimmer than the name
+     (visible in the dark rows). One CSS line would give them the same ink.
+  3. **A stranger's first reading is a Y, an antenna or a Ψ (I).** The Owner has ruled that meaning does not matter.
+     It follows that the page should say *Pricke* once, so the investor hears it before thinking *antenna*. The
+     tagline is the place for it, and it is also finding P4.
+
+## The tagline, naming the Pricke — drafts, screened
+
+The Owner asked for this 2026-09-24; it is a draft until he rules. **The bar is the tagline on the page:** *Eine
+Markierung auf der Seekarte, die die Flotte vor dem Auflaufen bewahrt.* / *A mark on the chart that keeps the fleet off
+the shoal.* That is P4's line: it puts the mark on the chart.
+
+**The facts every draft is held to (E):**
+
+- A Pricke is *"meist junge Birken oder Stangen mit Zweigbüscheln"*. It marks *"ein schmales und flaches Fahrwasser
+  (meistens im Wattenmeer)"* (de.wikipedia, *Pricke*).
+- Its English counterpart is the ***withy***, used *"to mark minor tidal channels in UK harbours and estuaries … to
+  indicate where the deeper water lies"* (en.wikipedia, *Withy*).
+- Which side of a channel a mark stands on depends on the direction of travel.
+
+**The gates:**
+
+| Gate | Kills on |
+|---|---|
+| G0 | more than one line · more than 12 German words (counted in code) · does not name the Pricke · jargon or ids |
+| G1 | not native German, or an English twin that is not native English |
+| G2 | not true to the facts above, or it still puts the mark on the chart |
+| G3 | a register that is not the claim's: a warning mark, not a postcard |
+| G4 | it clashes with the page: it repeats or pre-empts the claim, or breaks the fleet that the next line addresses |
+| G5 | weaker than the bar: it must keep what the bar does, the fleet kept off the shoal |
+
+| # | German | English | First fatal gate | One-line reason | Class |
+|---|---|---|---|---|---|
+| D4 | Birke im Schlick: Wer an der falschen Seite fährt, sitzt auf dem Watt. | Birch in the mud: pass it on the wrong side and you are on the flats. | **G0** | 13 words | E |
+| D5 | Eine Pricke im Watt – links Fahrwasser, rechts Grund. | A withy in the mud: channel to the left, ground to the right. | **G2** | Left and right depend on the direction of travel. The line is false half the time | E |
+| D3 | Die Pricke steht, wo das Watt beginnt. | The withy stands where the flats begin. | **G5** | True and terse, but it says where the mark stands, not what it does for the fleet. It drops what the bar carries. *This seat's favourite, killed in writing* | I |
+| D1 | Die Pricke im Watt: Sie zeigt der Flotte, wo das Fahrwasser endet. | A withy on the flats shows the fleet where deep water ends. | survives | — | I |
+| D2 | Eine Pricke im Watt – sie hält die Flotte im Fahrwasser. | A withy in the mud keeps the fleet in the channel. | survives | — | I |
+| D6 | Eine Pricke im Watt, die die Flotte vor dem Auflaufen bewahrt. | A withy on the flats that keeps the fleet off the shoal. | survives | — | I |
+
+**The survivors, unranked:**
+
+- **D1** says what a Pricke does: it shows where the navigable water ends. It carries the fleet.
+  - *Counterfact:* it is at the 12-word limit, and *endet* can be misread as the channel's end, not its edge.
+- **D2** is the shortest that keeps the fleet, and it says it positively: *im Fahrwasser*.
+  - *Counterfact:* it guides rather than warns. The danger is only implied.
+- **D6** is the bar with P4 fixed: the chart becomes *eine Pricke im Watt*, and the rest is kept word for word.
+  - *Counterfact:* it keeps the bar's *die die*, which a reader stumbles on when reading aloud.
+
+**Common to all three English twins:**
+
+- *withy* is the native word, but it is British. A German reading the English page may know neither *withy* nor
+  *Pricke*. Keeping *Pricke* in the English, as a name, is the alternative.
+- A Pricke marks a narrow, shallow channel. A *fleet* in it stretches the picture, and it stretches it for the bar
+  just as much.
+
+**Not run:** no native German or English reader, no sailor. Nothing on the page is edited. **The Owner chooses, or
+keeps the bar.**
+
+**Provenance:** Seat: GtM · Session `6cecddb3` · Model: Claude Opus 5.5 · 2026-09-24 · on the Owner's approval of the
+Principal's recommendation.
+
+---
+
+## The tagline — ruled, 2026-09-24 07:50 CEST, session `0cbdba3f`
+
+**The Owner, in chat:** *"D2 shall then be renamed for the english variant to 'A Pricke on the Wadden flats …'"*
+
+This followed the seat's answer that *withy* is the British counterpart, a plain stick in UK estuaries, and not the
+German Pricke with its twig crown (en.wikipedia, *Withy*; de.wikipedia, *Pricke*).
+
+| | Line |
+|---|---|
+| **DE** | *Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.* |
+| **EN** | ***A Pricke on the Wadden flats keeps the fleet in the channel.*** (the Owner's opening, completed with the rest of D2's English: 12 words, counted in code) |
+
+- ***Pricke* is kept in English as a name.** It matches the mark `d`, it is German-first, and it is the word said
+  aloud in the pitch. D2's *withy* twin above is superseded.
+- **D2's counterfact stands:** it guides rather than warns, and the danger is implied.
+- **This seat does not edit the page.** Applying the line to `docs/de/index.md:3` and `docs/index.md:3`, in place of
+  the tagline that P4 flagged, is the Implementer's slice.

@@ -25,4 +25,6 @@ which says so.
 | 8e509911/implementer-6 | implementer | session 8e509911 | the site wears the Pricke | shoalmark-impl-2 | 2026-09-24 01:02 | 2026-09-24 01:14 |
 | 8e509911/implementer-7 | implementer | session 8e509911 | the lockup at 1×, 2×, 4× | shoalmark-impl-2 | 2026-09-24 07:11 | 2026-09-24 07:18 |
 | 8e509911/implementer-8 | implementer | session 8e509911 | the dark-ink fix on the site slice | shoalmark-impl-2 | 2026-09-24 07:34 | 2026-09-24 07:35 |
+| 6cecddb3 | gtm | the Owner, 2026-09-24 07:35 | the mark screen's outcome recorded; the tagline with the Pricke drafted | shoalmark-gtm | 2026-09-24 07:35 | 2026-09-24 07:36 |
 | 8e509911/implementer-9 | implementer | session 8e509911 | the tagline D2 as its own slice | shoalmark-impl-2 | 2026-09-24 07:48 | — |
+| 0cbdba3f | gtm | the Owner, 2026-09-24 07:50 | the tagline's English ruled: D2 with Pricke | shoalmark-gtm | 2026-09-24 07:50 | 2026-09-24 07:50 |
