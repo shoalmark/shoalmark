@@ -103,3 +103,44 @@ in this repository: `8e509911` (the session root the registry already uses) and 
 - It is marked *reported*, so this is wording, but the section's point is rigor.
 
 **Verdict:** READY WITH FINDINGS. R1–R5 are all P3.
+
+## Re-verified at 48f926e (2026-09-24 09:52 CEST)
+
+**Scope.** `48f926e` is one commit by the principal seat, under `8e509911`. Against `4264e5c` it changes only the
+FM-032 tracker. INDEX is unchanged, and `--check` agrees.
+- The ask, its options and the proposal are unchanged: 298 characters and one `?`.
+- The commit message carries no `#N`.
+- No consumer name and no foreign hash is added.
+
+**Closed.**
+- **R1:** the `-15` instance is in the body, marked *reported by that Implementer*. R6 is about where it sits.
+- **R2:** the parent's hash is gone, and *the last READY* stands in for it.
+- **R3:** S4 names the line: **8**, half of today's 16. *All four now* carries it, and he may name another.
+  - Note, not a finding: the ask he presses still does not show 8. It stands at 298 characters against `ASK_MAX`
+    300 (`shoalmark.py:267`), so *below 8* would need a trim somewhere else in it.
+- **R5:** *a fifth, like for like* (16.4 against 13.8 in the same window, 11.0 over the full window). 16.4 / 13.8 =
+  1.19.
+- **R4** is closed in part. The body now says how the two asks meet. R7 is what remains.
+
+**Gates at `48f926e`.**
+- `--check` 0; `--session-check` 0; `test_shoalmark.py` 0 (264 ok); `test_core.py` 0 (148 ok).
+- `origin/main` `4b472cc` is an ancestor, so the merge is a fast-forward.
+
+**R6 · P3 · The `-15` bullet sits outside the list it belongs to.**
+- It is a top-level `- ` item, placed between the `-13` sub-item and the paragraph that continues the bullet *A
+  closed row never re-opens* (*This filing is `-14` …*). In Markdown that paragraph now continues the `-15` bullet,
+  and `-15` reads before `-14`.
+- It is also the only top-level bullet there without a bold lead.
+- The fix is to make it a third sub-item, after the `-14` sentence or with it.
+- The new body lines, 54, 94 and 153, are not wrapped at 120 as the rest of the file is.
+
+**R7 · P3 · R4's remainder: an answer to FM-031 is read as a ruling on this S2.**
+- The sentence *builds S2 if FM-031's S1 is ruled* would build this tracker's S2 on an answer to FM-031's ask. That S2
+  is a report from the trailers, without `--session open`/`close` and without two refusals, while FM-031's S1 is
+  per-session files.
+- FM-031's own text is unchanged, so the reading lives only here.
+- If he then answers this ask *the registry later* or *none*, the text does not say which answer stands.
+- Either FM-031 gets one line saying that its S1 waits on this ruling, or the clause goes, so that a ruled FM-031 S1
+  waits for this ask.
+
+**Verdict:** READY WITH FINDINGS. R6 and R7 are P3. R1, R2, R3 and R5 are closed, and R4 is closed in part.
