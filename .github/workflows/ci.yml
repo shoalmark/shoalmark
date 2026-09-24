@@ -19,7 +19,9 @@ jobs:
           - {os: windows-latest, python: "3.12"}
     runs-on: ${{ matrix.os }}
     steps:
+      # the whole history: a check judges FM-033's five builds at their own parents in this repository's own record
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: "${{ matrix.python }}"}
       - name: Subversion (Linux)

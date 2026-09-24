@@ -2716,6 +2716,128 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-033, 0.18.3 (the Auditor seat's check 26, AU-14): no build commit before a judgement ---------------------------
+# The Owner's rule: a pass judges before the first build commit. A commit that changes a path outside the tracker directory
+# names a tracker — the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's PARENT carries
+# `triaged:`, is not Parked and is In Progress. Keyed on the work, not on the status: a status gate would have missed three
+# of the four builds FM-033 rows.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "g"\njudged_before_build = true\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    day_ = datetime.date.today().isoformat()
+    tracker(root, "AP-001", status="Proposed", title="unjudged")
+    tracker(root, "AP-002", status="Parked", extra=f"triaged: {day_}\ntier: P3\n", title="judged, parked")
+    tracker(root, "AP-003", status="Proposed", extra=f"triaged: {day_}\ntier: P2\n", title="judged, proposed")
+    tracker(root, "AP-004", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="judged, in progress")
+    (root / "src.txt").write_text("one\n")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk"); git(root, "branch", "-q", "-M", "main")
+    git(root, "push", "-q", "-u", "origin", "main"); git(root, "remote", "set-head", "origin", "main")
+    sha_ = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def build_(branch, subject, files, frm="main"):        # a branch cut from `frm`, one commit on it — made without the hook
+        git(root, "switch", "-q", "-c", branch, frm)
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); git(root, "commit", "-qm", subject)
+        return sha_()
+    def judged_(branch=None):                              # `--check`'s judgement on the branch checked out, read afresh
+        if branch:
+            git(root, "switch", "-q", branch)
+        fm.configure(root)
+        return _no_git_env(fm.build_judgement)
+    def staged_(branch, files, frm="main"):                # the hook's judgement of a commit being made on `branch`
+        git(root, "switch", "-q", "-c", branch, frm)
+        for name, text in files.items():
+            (root / name).write_text(text)
+        git(root, "add", "-A")
+        code_, _o, err_ = run(root, "--session-check")
+        git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
+        return code_, err_
+    c1_ = build_("ap/001-build", "the importer", {"src.txt": "two\n"}); r1_ = judged_()
+    c2_ = build_("ap/002-build", "the importer", {"src.txt": "two\n"}); r2_ = judged_()
+    c3_ = build_("ap/003-build", "the importer", {"src.txt": "two\n"}); r3_ = judged_()
+    c4_ = build_("ap/004-build", "the importer", {"src.txt": "two\n"}); r4_ = judged_()
+    check(f"FM-033 · `--check` refuses a build commit under an unjudged tracker, a judged Parked one and a judged Proposed one — naming the commit, the tracker and what was missing — and passes it under a judged In Progress one (saw {r1_[0]!r})",
+          len(r1_[0]) == 1 and r1_[0][0].startswith(f'refused: commit {c1_[:7]} "the importer" changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed) — a pass judges before the first build commit (FM-033)')
+          and len(r2_[0]) == 1 and "AP-002: Parked" in r2_[0][0] and len(r3_[0]) == 1 and "AP-003: not In Progress (Proposed)" in r3_[0][0]
+          and r4_[0] == [] and r4_[1] == "judged before build: on — 1 commit(s) on `ap/004-build` since origin/main, every build commit under a judged In Progress tracker")
+    git(root, "switch", "-q", "ap/001-build")
+    code_, out_, err_ = run(root, "--check")
+    check(f"FM-033 · end to end: `--check` exits 4 on the refusal and says the gate is on in one line (saw {err_.strip()[-200:]!r})",
+          code_ == fm.EXIT_LINT and f"refused: commit {c1_[:7]}" in err_ and "judged before build: on — 1 commit(s) on `ap/001-build` since origin/main, 1 refused" in out_)
+    t1_ = build_("ap/001-notes", "AP-001: a note", {"docs/work-tracker/AP-001-x.md": (root / "docs/work-tracker/AP-001-x.md").read_text() + "\nA note.\n"}); rt_ = judged_()
+    cn_ = build_("docs/tidy", "tidy the readme", {"README.md": "tidy\n"}); rn_ = judged_()
+    cs_ = build_("docs/tidy-2", "AP-004: tidy the readme", {"README.md": "tidy\n"}); rs_ = judged_()
+    cw_ = build_("ap/004-wrong", "AP-001: the importer, under another tracker's branch", {"src.txt": "three\n"}); rw_ = judged_()
+    check(f"FM-033 · a commit that touches only the tracker directory is not judged; one that names no tracker is refused as such; the subject's ids decide before the branch's (C1) — a judged one passes on any branch, an unjudged one is refused on a judged branch (saw {rn_[0]!r})",
+          rt_[0] == [] and len(rn_[0]) == 1 and f"refused: commit {cn_[:7]} \"tidy the readme\" changes README.md outside docs/work-tracker/ — names no tracker: no AP-N in its subject, and its branch names none" in rn_[0][0]
+          and rs_[0] == [] and len(rw_[0]) == 1 and "AP-001: not judged" in rw_[0][0])
+    git(root, "switch", "-q", "--detach", "ap/004-build"); rd_ = judged_()
+    git(root, "switch", "-q", "--detach", "docs/tidy-2"); rd2_ = judged_()
+    check(f"FM-033 · on a detached HEAD the subject must name the tracker (C3): a subject without an id is `names no tracker`, one with a judged id passes (saw {rd_[0]!r})",
+          len(rd_[0]) == 1 and "names no tracker" in rd_[0][0] and rd2_[0] == [] and "on a detached HEAD since origin/main" in rd2_[1])
+    # a merge: its own change is never the merger's; the commits it carries are judged, at their own parents
+    side_ = build_("side/import", "AP-001: the importer on the side", {"side.txt": "s\n"})
+    git(root, "switch", "-q", "ap/004-build"); git(root, "merge", "-q", "--no-ff", "-m", "merge the side", "side/import")
+    rm_ = judged_()
+    git(root, "switch", "-q", "-c", "ap/004-merge-now", "ap/004-build~1"); git(root, "merge", "-q", "--no-ff", "--no-commit", "side/import")
+    codem_, _o, errm_ = run(root, "--session-check"); git(root, "merge", "--abort"); git(root, "switch", "-q", "main")
+    check(f"FM-033 · a merge commit is skipped and every commit it carries is judged — by `--check`, and by the hook on a merge being made (saw {rm_[0]!r}, {errm_.strip()[-160:]!r})",
+          len(rm_[0]) == 1 and rm_[0][0].startswith(f'refused: commit {side_[:7]} "AP-001: the importer on the side"') and "merge the side" not in " ".join(rm_[0])
+          and codem_ == fm.EXIT_LINT and f"refused: commit {side_[:7]}" in errm_)
+    # main moves under a commit nobody judged; a judged branch that merges main carries none of it into its range
+    git(root, "switch", "-q", "main"); (root / "main.txt").write_text("m\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves")
+    git(root, "push", "-q", "origin", "main"); git(root, "fetch", "-q", "origin")
+    git(root, "switch", "-q", "-c", "ap/004-uptodate", "ap/004-build~1"); git(root, "merge", "-q", "--no-ff", "-m", "main merged in", "origin/main")
+    ru_ = judged_(); git(root, "switch", "-q", "main"); rmain_ = judged_()
+    check("FM-033 · a merge of `origin`'s default branch brings none of its commits into the judged range; on the default branch itself nothing is judged",
+          ru_[0] == [] and rmain_[0] == [] and rmain_[1] == "judged before build: on — `main` is the default branch: nothing on it is judged")
+    # the hook: the commit being made, by its branch, at HEAD
+    h1_ = staged_("ap/001-hook", {"src.txt": "hook\n"}); h4_ = staged_("ap/004-hook", {"src.txt": "hook\n"})
+    hn_ = staged_("docs/hook", {"src.txt": "hook\n"}); ht_ = staged_("ap/001-hook-notes", {"docs/work-tracker/AP-001-x.md": "---\nid: AP-001\n---\n\n# AP-001 — t\n"})
+    git(root, "switch", "-q", "--detach", "main"); (root / "src.txt").write_text("detached\n"); git(root, "add", "-A")
+    hd_ = run(root, "--session-check"); git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
+    (root / "src.txt").write_text("on main\n"); git(root, "add", "-A"); hm_ = run(root, "--session-check"); git(root, "reset", "-q", "--hard")
+    check(f"FM-033 · the pre-commit hook judges the commit being made by its branch, at HEAD: an unjudged tracker's branch is refused, a judged one passes, a branch that names none and a detached HEAD are refused with the reason, a tracker-only commit and a commit on the default branch pass (saw {h1_[1].strip()!r}, {hn_[1].strip()!r})",
+          h1_[0] == fm.EXIT_LINT and "refused: this commit changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed)" in h1_[1]
+          and h4_[0] == 0 and hn_[0] == fm.EXIT_LINT and "names no tracker: its branch `docs/hook` is no `<kind>/<NNN>-…`" in hn_[1]
+          and ht_[0] == 0 and hd_[0] == fm.EXIT_LINT and "names no tracker: its branch — a detached HEAD — is no" in hd_[2] and hm_[0] == 0)
+    # the tracker made In Progress and judged in the SAME commit as the build: the parent is what counts
+    git(root, "switch", "-q", "-c", "ap/001-all-at-once", "main")
+    tracker(root, "AP-001", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="unjudged"); (root / "src.txt").write_text("at once\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "AP-001: judged and built at once"); ra_ = judged_()
+    tracker(root, "AP-001", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="unjudged", body="## What is true now\n\n**Built.**\n\n## Done when\n\nit is.\n")
+    (root / "src.txt").write_text("after\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-001: the next build commit"); ra2_ = judged_()
+    check(f"FM-033 · a tracker set In Progress and judged in the same commit as its first build is refused — the judgement is read at the commit's parent — and the next build commit passes (saw {ra_[0]!r})",
+          len(ra_[0]) == 1 and "AP-001: not judged" in ra_[0][0] and len(ra2_[0]) == 1 and "judged and built at once" in ra2_[0][0])
+    # off: silent
+    git(root, "switch", "-q", "ap/001-build"); (root / "shoalmark.toml").write_text('name = "g"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    ro_ = judged_(); codeo_, _o, erro_ = run(root, "--session-check"); (root / "shoalmark.toml").write_text('name = "g"\njudged_before_build = 1\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    try:
+        fm.configure(root); bad_ = ""
+    except SystemExit as e:
+        bad_ = str(e)
+    git(root, "checkout", "-q", "--", "shoalmark.toml")
+    check(f"FM-033 · the key off (the default), nothing is judged and `--check` says so; the key is `true` or `false`, and `--schema` prints it (saw {bad_!r})",
+          ro_ == ([], "judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on") and codeo_ == 0
+          and "`judged_before_build` is true or false" in bad_ and "| `judged_before_build` | `true` or `false` (the default) |" in fm.render_schema())
+    rm_git(root)
+fm.configure(HERE)
+# FM-033's five, judged at their own parents in this repository's history — by their subjects, their branches not being in
+# the record. CI checks out the whole history for this (`fetch-depth: 0`); the seat that built them was not this one.
+_five = ["89e0586", "3c0754f", "90d3d6f", "bd7d5ea", "4dfb999"]
+_judged5 = _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_five), ""))
+check(f"FM-033 · the four builds of FM-033's table and the fifth are each refused, judged at their own parents: FM-024 not judged, FM-032, FM-031 and FM-029 not judged and Proposed, and bd7d5ea names no tracker (saw {[l_[:60] for l_ in _judged5]})",
+      len(_judged5) == 5 and all(any(l_.startswith(f"refused: commit {c_}") for l_ in _judged5) for c_ in _five)
+      and any(l_.startswith("refused: commit 89e0586") and "FM-024: not judged —" in l_ for l_ in _judged5)
+      and all(any(l_.startswith(f"refused: commit {c_}") and f"{t_}: not judged, not In Progress (Proposed)" in l_ for l_ in _judged5)
+              for c_, t_ in (("3c0754f", "FM-032"), ("90d3d6f", "FM-031"), ("4dfb999", "FM-029")))
+      and any(l_.startswith("refused: commit bd7d5ea") and "names no tracker" in l_ for l_ in _judged5))
+_own = ["cba97b6", "b9f8a29", "6f54242", "3c3e02f", "172a2ad", "f44e7f9"]
+check("FM-033 · and 0.18.3's own build commits pass the same judgement — each under FM-029, FM-030, FM-031 or FM-033, judged and In Progress at its parent",
+      _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_own), "")) == [] and len(fm.commit_list("--no-walk", *_own)) == len(_own))
+
 # --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone
 #     cannot verify is said to be that — never "sign it" ---------------------------------------------------------------
 with tempfile.TemporaryDirectory() as tmp:

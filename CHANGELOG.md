@@ -12,6 +12,17 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   change, read from the answer's commit `7c97c5b`* — and the file is not touched. Where no commit in the checkout wrote
   that answer (a hand-written record, a shallow clone), *relation not computable*, as before. It costs one `git log` for
   all such records and one `git show` for each one found, spent where the relation is printed, never on a load.
+- **No build commit before a judgement** (FM-033; the Auditor seat's check 26). With `judged_before_build = true` in
+  `shoalmark.toml` — off by default, on in this repository — a commit that changes a path outside the tracker directory
+  names a tracker, the ids in its subject or else its branch `<kind>/<NNN>-…`, that at the commit's parent carries
+  `triaged:`, is not Parked and is `In Progress`; a commit that names none is refused too. The pre-commit hook
+  (`--session-check`) judges the commit being made by its branch, at HEAD; `--check` judges each commit of the branch
+  since `origin`'s default branch — a merge by the commits it carries, never as the merger's own change — and says in
+  one line whether the gate is on. On the default branch nothing is judged; on a detached HEAD the subject must name the
+  tracker. Judged at their own parents, the four builds of FM-033's table and the fifth are each refused. What FM-033
+  also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker, and the board
+  showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`; build on a branch
+  `<kind>/<NNN>-…` whose tracker a pass has kept In Progress.*
 
 ## 0.18.2 — 2026-09-24
 

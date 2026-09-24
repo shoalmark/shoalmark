@@ -69,6 +69,10 @@ DEFAULTS = {
     # the tag that passes the freeze — a repository's own `[tags]` may have no `bug`; one that names none of its tags
     # freezes nothing, and `--check` says so
     "freeze_tag": "bug",
+    # A PASS JUDGES BEFORE THE FIRST BUILD COMMIT (FM-033, the Owner's rule of 2026-09-24): a commit that changes a path
+    # outside the tracker directory names a tracker that, at the commit's parent, a pass has kept `In Progress`. Off by
+    # default: a repository that vendors the tool may carry no `triaged:` yet.
+    "judged_before_build": False,
     # who may answer an ask. An answer is three lines in the tracker, committed by the answerer, and the commit is the
     # proof — but git's author is a string anyone can type. So an entry is `"name"` (Subversion, whose server
     # authenticates the committer; or git with NO enforcement, and the gate says so) or `"name signed"` (git: the
@@ -199,6 +203,9 @@ def configure(root=None):
     if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
         raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
     FREEZE_TAG = FREEZE_TAG.strip()
+    if not isinstance(CONFIG["judged_before_build"], bool):
+        raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
+                         f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
@@ -217,6 +224,8 @@ def configure(root=None):
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
     COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
+    global _BUILD
+    _BUILD = None                                       # FM-033's judgement of this run, read once
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -518,8 +527,10 @@ def answer_fields(fm):
     }
 
 
-def extract(path):
-    text = path.read_text(encoding="utf-8")
+def extract(path, text=None):
+    """One tracker as the loader reads it — from its file, or from `text`: the file as a revision had it (FM-033's gate reads
+    the named tracker at a commit's parent through this one reader)."""
+    text = path.read_text(encoding="utf-8") if text is None else text
     fm, body = parse_frontmatter(text)
     tracker_id = path.name.split("-")[0] + "-" + path.name.split("-")[1]
 
@@ -3014,6 +3025,12 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                   "open tracker's body, or waits. `--check` says when it holds"),
     "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
                    "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
+    "judged_before_build": ("`true` or `false` (the default)",
+                            "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
+                            "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
+                            "`In Progress`; else it is refused, and so is one that names none. The pre-commit hook judges the commit being made by its branch; "
+                            "`--check` judges each commit of the branch since `origin`'s default branch, a merge by the commits it carries; on the default "
+                            "branch nothing is judged. `--check` says whether it is on"),
 }
 
 
@@ -3581,15 +3598,162 @@ def session_problems():
 
 
 def session_check():
-    """`--session-check`: the session rule on the commit being made, and nothing else — cheap enough for every commit.
-    The full gate runs only when a tracker, the configuration or the tool is staged; without this, a seat's code-only
-    commit would be judged by no automatic run at all (R4)."""
+    """`--session-check`: the session rule on the commit being made — and, where `judged_before_build` is on, the judgement
+    rule (FM-033) — and nothing else: cheap enough for every commit. The full gate runs only when a tracker, the
+    configuration or the tool is staged; without this, a seat's code-only commit would be judged by no automatic run at
+    all (R4)."""
     global COMMITTING
     COMMITTING = True
-    problems = session_problems()
+    problems = session_problems() + build_problems()
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK
+
+
+BUILD_WHY = "a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker"
+
+
+def branch_tracker(name):
+    """The tracker a branch names: `fm/029-…` → FM-029 — the kind in lower case, a slash, the number, then a dash or the end
+    (the house shape `<kind>/<NNN>-<slug>`). None for any other name, and for a detached HEAD."""
+    m = re.match(r"(%s)/(\d+)(?:-|$)" % "|".join(KINDS), name or "", re.I)
+    return f"{m.group(1).upper()}-{m.group(2)}" if m else None
+
+
+def named_trackers(subject, branch):
+    """The trackers a commit is built under: the ids its subject names when it names any, else its branch's (C1 of the
+    0.18.3 design, ruled 2026-09-24) — a commit `FM-030: …` on a branch named for FM-029 is FM-030's work."""
+    ids = list(dict.fromkeys(re.findall(rf"(?<![A-Za-z0-9])({_IDS})(?!\d)", subject or "")))
+    return ids or [b for b in [branch_tracker(branch)] if b]
+
+
+def commit_list(*revs):
+    """[(commit, its first parent, the paths it changes relative to ROOT, its subject)] of `git log --no-merges <revs>`,
+    newest first — one call for all of them."""
+    out = git_out("log", "--no-merges", "--relative", "--name-only", "--format=%x00%H%x00%P%x00%s", *revs) or ""
+    records, got = out.split("\x00")[1:], []
+    for i in range(0, len(records) - 2, 3):
+        subject, _, files = records[i + 2].partition("\n")
+        got.append((records[i], (records[i + 1].split() or [""])[0], set(files.split("\n")) - {""}, subject.strip()))
+    return got
+
+
+def cat_blobs(specs):
+    """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there."""
+    if not specs:
+        return {}
+    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
+                       capture_output=True, env=nested_git_env())
+    got, data, i = {}, r.stdout, 0
+    for spec in specs:
+        nl = data.find(b"\n", i)
+        if nl < 0:
+            break
+        head, i = data[i:nl].decode("utf-8", "replace"), nl + 1
+        if head.endswith((" missing", " ambiguous")):
+            got[spec] = None
+            continue
+        size = int(head.rsplit(" ", 1)[1])
+        got[spec], i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
+    return got
+
+
+def judge_commits(commits, branch):
+    """FM-033's gate over made or pending commits — [(commit or "", the parent it is judged at, paths, subject)] — as refusal
+    lines. A commit that changes no path outside the tracker directory is not judged. One that does names its trackers
+    (`named_trackers`), and at its parent at least one of them carries `triaged:`, is not Parked and is `In Progress`, read
+    through `extract` from the parent's own file: one `git ls-tree` per parent and one `git cat-file --batch` for all."""
+    rel = TRACKER_DIR.resolve().relative_to(ROOT).as_posix().rstrip("/") + "/"
+    work = []
+    for commit, parent, files, subject in commits:
+        outside = sorted(f for f in files if f and not f.startswith(rel))       # `staged_now` keeps git's last empty line
+        if outside:
+            work.append((commit, parent, outside, subject, named_trackers(subject, branch)))
+    key = lambda tid: (tid.split("-")[0].upper(), int(tid.split("-")[1]))
+    names = {}
+    for parent in sorted({w[1] for w in work if w[4]}):
+        listed = (git_out("ls-tree", "--full-name", "--name-only", parent, "--", rel) or "").split("\n")
+        names[parent] = {}
+        for full in listed:
+            m = re.match(r"(%s)-(\d+)-" % "|".join(KINDS), full.rsplit("/", 1)[-1])
+            if m:
+                names[parent][(m.group(1), int(m.group(2)))] = full
+    wanted = {f"{parent}:{names[parent][key(tid)]}" for _c, parent, _o, _s, ids in work for tid in ids if key(tid) in names.get(parent, {})}
+    texts = cat_blobs(sorted(wanted))
+    out = []
+    for commit, parent, outside, subject, ids in work:
+        reasons = []
+        for tid in ids:
+            full = names.get(parent, {}).get(key(tid))
+            text = texts.get(f"{parent}:{full}") if full else None
+            t = extract(pathlib.Path(full), text=text) if text is not None else None
+            if t is None:
+                reasons.append(f"{tid}: not at its parent")
+            elif t["status"] == "Parked":
+                reasons.append(f"{tid}: Parked")
+            elif not t.get("triaged"):
+                reasons.append(f"{tid}: not judged" + ("" if t["status"] == "In Progress" else f", not In Progress ({t['status']})"))
+            elif t["status"] != "In Progress":
+                reasons.append(f"{tid}: not In Progress ({t['status']})")
+            else:
+                reasons = []
+                break
+        else:
+            if not ids:
+                reasons = [f"names no tracker: no {'/'.join(KINDS)}-N in its subject, and its branch names none (`<kind>/<NNN>-…`)" if commit
+                           else f"names no tracker: its branch {f'`{branch}`' if branch else '— a detached HEAD —'} is no `<kind>/<NNN>-…`"]
+        if reasons:
+            who = f'commit {commit[:7]} "{first_words(subject, 60)}"' if commit else "this commit"
+            more = f" (+{len(outside) - 1} more)" if len(outside) > 1 else ""
+            out.append(f"refused: {who} changes {outside[0]}{more} outside {rel} — {'; '.join(reasons)} — {BUILD_WHY}")
+    return out
+
+
+_BUILD = None
+
+
+def build_judgement():
+    """(refusals, the one line `--check` says) — FM-033's gate, where `judged_before_build` is on. The pre-commit run judges
+    the commit being made at HEAD by its branch (a merge: each commit it brings, the trunk's aside, at its own parent by its
+    own subject; its own change never); any other run judges each commit of `merge-base(origin's default, HEAD)..HEAD`,
+    merges walked, not judged. On the default branch nothing is judged. Read once per run."""
+    global _BUILD
+    if _BUILD is not None:
+        return _BUILD
+    if not CONFIG.get("judged_before_build"):
+        _BUILD = ([], f"judged before build: off — `judged_before_build = true` in {CONFIG_NAME} turns it on")
+        return _BUILD
+    if vcs() != "git":
+        _BUILD = ([], "judged before build: on — this is no git repository: nothing is judged")
+        return _BUILD
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk, branch = default_trunk(git), built_on()
+    if trunk and branch == trunk.split("/", 1)[1]:
+        _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
+        return _BUILD
+    if COMMITTING:
+        heads = merge_heads()
+        if heads:
+            commits = commit_list(*heads, "--not", "HEAD", *([trunk] if trunk else []))
+        elif git("rev-parse", "--verify", "-q", "HEAD").returncode == 0:
+            commits = [("", "HEAD", set(staged_now()), "")]
+        else:
+            commits = []                                   # a first commit has no parent to be judged at
+        _BUILD = (judge_commits(commits, branch), "")
+        return _BUILD
+    if not trunk:
+        _BUILD = ([], "judged before build: on — no `origin` default branch to measure from: nothing is judged")
+        return _BUILD
+    base = git("merge-base", trunk, "HEAD").stdout.strip()
+    commits = commit_list(f"{base}..HEAD") if base else []
+    refused = judge_commits(commits, branch)
+    _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+                       + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker"))
+    return _BUILD
+
+
+def build_problems():
+    return build_judgement()[0]
 
 
 def trunk_ref():
@@ -3833,6 +3997,7 @@ def lint(trackers, committing=False):
     problems += answerers_problems()
     problems += rights_problems(trackers)
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
+    problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
@@ -4006,7 +4171,8 @@ def parse_args(argv):
     add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
-                                                     "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
+                                                     "a tracker staged or not: a seat's commit carries a `Session:` of its own seat; where `judged_before_build` is on, a commit that changes "
+                                                     "a path outside the tracker directory is under its branch's tracker, judged and In Progress at HEAD (FM-033). Reads git, never the working tree's trackers")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
@@ -4783,6 +4949,7 @@ def main(argv=None):
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
+        print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
             print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
