@@ -436,3 +436,112 @@ wordmark hangs every command that builds the board.**
 R8 (the grammar's backtracking hangs the build and the hooks) is P2. R9 is P3. The running line and the merge are
 confirmed. **The Owner may not tag this tip.** First: R7 and R8 fixed, each with a test that fails today, and a
 verification.
+
+## Pass on da9e3f6 (2026-09-24 18:01 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** The tip `da9e3f6` (`da9e3f682da66d929d411374c63844b335538582`) of
+`fm/006-0-18-2-the-board-wears-the-mark`, on my verdict `6ab7681`.
+- `31863fb`, the code: `_svg_number` and `_svg_value` replace every regex on an attribute value; the reference graph
+  is rebuilt.
+- `7798f0c` and `da9e3f6`, FM-006's row.
+- All three under `8e509911/implementer-17`. The same session root, reported.
+- `origin/main` has moved to `fcac7b6` (PRs 55 and 56). Those PRs touch trackers, reviews and INDEX only; no tool
+  file. `git merge-tree` of the tip and `origin/main` is clean.
+
+### What I ran
+
+- **Gates.** `--check` and `--session-check` exit 0. `python3 shoalmark.py` twice leaves `git status --porcelain`
+  empty. `--brand` names `repository` for all four files.
+- **Suites.** `test_shoalmark.py` is 355 ok and `test_core.py` 148 ok, on 3.14.3 and on `/usr/bin/python3` 3.9.6.
+  All green, run one after another. The four Chrome checks ran on both Pythons: the board, the German chrome, the
+  wordmark's ink through `◐`, and the running line on both screens.
+- **Unchanged since the second pass.**
+  - `git diff 06d884e da9e3f6` is empty for `work-tracker/brand/`, the generator, `pricke.svg`, the favicon and
+    the site's stylesheet.
+  - The generator, re-run, still rewrites `wordmark.svg` byte for byte. This repository's wordmark passes the new
+    scanner with no warning: 1,647 steps.
+  - The header, probed in Chrome: 130 × 16; `rgb(33, 33, 33)` light, `rgb(255, 255, 255)` dark and auto.
+  - The running line: `shoalmark · v0.18.2` below the board and below FM-033's view, its mark 16 px. Its code is
+    unchanged since `3f4b4a4`.
+  - VERSION is 0.18.2. The CHANGELOG runs 0.18.2, 0.18.1, 0.18.0. 0.18.1's section, the preface and everything
+    from 0.18.0 down equal main's `86f7595`, and main's `relation.*` labels are in the page.
+  - Every attribute in `SVG_ATTRS` has a value that passes, so no row is dead.
+
+### R7–R9 at `3f4b4a4`
+
+| | Grade then | Now | Evidence |
+|---|---|---|---|
+| R7 · the expansion cap reads a different graph; masks go around it | P2 | **closed** | A duplicated id refuses the file (*the id a is defined twice*): both my decoy files, and the 7-deep chain. Every `url(#…)` on fill, stroke, mask and clip-path is followed like a `<use>`. The 6 × 10 mask chain and the 7 × 10 clip chain are refused at depth 3. A mask of 100 used 30 times is refused (*paints over 2,000*). `use → g → mask → gradient`, used twice, passes (depth 3); one level more is refused. |
+| R8 · the grammar backtracks | P2 | **closed** | No regex reads a value. On both Pythons, my cases run in under 1 ms at every size where they used to take 2–186 s: `x="111 … !"` at k = 12–22, `transform="scale(1)  … !"` at k = 14–22, `width` of 20,000 digits and `!`. A failing 999-character `x` takes 9–10 ms, and a failing 20,000-token `d` 9 ms on 3.14 and 22 ms on 3.9 (both including the parse). The 246-byte file is a warning; the suite checks the build and `--print-written`. |
+| R9 · the rule's letter | P3 | **closed** | The count stops as it goes: 183 kB and 190 kB of `<use>` are refused in 0.1 s on 3.14 and 0.2–0.3 s on 3.9, where they took 11–17 s. `url(#nope)` and `url(#H)` are refused (*the file does not have*). `١٢`, `１`, DEL and U+0085 are refused. |
+
+### The scanner, case by case
+
+| Case | Result |
+|---|---|
+| `-` · `-.` · `1.` · `1e5` · `--1` · `1..2` · `+1` · `1PX` · `1em` on `width` · empty | refused |
+| `-0` · `007` · `1px` | shown. Plain numbers; harmless |
+| `width` of 1,000 characters · 1,001 | shown · refused (*SVG_VALUE*) |
+| `x="1 2.5px,3%"` · `1  2` · `1, 2` · leading or trailing space | shown · refused · refused · refused |
+| `viewBox` of 3 · 5 · with `%` · `-1 -1 10 10` | refused · refused · refused · shown |
+| `d`: `%` · `M1-2` · `M1 -2` · a leading, trailing or doubled separator · `M 0,0 L 1,1 Z` · `MZMZ` · empty · `e1` | refused · refused · shown · refused · shown · shown · shown · refused |
+| `d` of 20,000 tokens · 20,001 · one number of 50,000 digits | shown in 2.8 ms · refused · shown in 5 ms (a finite path) |
+| `points` of 20,000 numbers · 20,001 | shown in 16 ms · refused |
+| `rotate(1,2,3,4)` | shown: the arity is not checked. The browser drops an invalid transform; harmless |
+| `rotate()` · `rotate((1))` · `rotate(1` · `rotate(1))` · `rotate (1)` · `ROTATE(1)` · `rotate(1,)` · `rotate(1 )` · `translate(1px)` · `perspective(1)` · `scale(1) , scale(2)` · `scale(1) ` | all refused |
+| `scale(1)scale(2)` · `translate(1,2) scale(2)` | shown |
+| `#ABCDEF` · `#1234` | shown (CSS Color 4 `#RGBA`) |
+| `#12345` · `#12` · `#GGG` · `currentcolor` · `Red` · `rgb(0,0,0)` | refused. Lower-case `currentcolor` is refused though browsers accept it; the docs say `currentColor` |
+| `stop-color="url(#g)"` · `url(#a b)` · `url(#1a)` | refused |
+| an id of 64 characters · 65 · with `_` | shown · refused · shown, written `&#95;` |
+| `font-family="'IBM Plex Mono', monospace"` · `a;b` | shown · refused |
+| `filter`, `marker`, `pattern` as elements · `filter=`, `marker-start=` as attributes | refused |
+| mask self-reference · a fill of its own ancestor | refused: *a cycle* |
+| `href` and `xlink:href` on one `<use>`, to two ids | shown, both followed and counted |
+| an id inside a foreign element, then `<use>`d | refused: *the file does not have* |
+| `xml:id` | refused. Ids differing only in case (`a`, `A`) are shown as distinct, as the browser treats them |
+| `<use>` with no `href` | shown (it was refused at `3f4b4a4`). It draws nothing; harmless |
+| **the step budget** | Exact: with nine paths of 20,000 `Z`, one of *n*, a group of 150 `<g/>` and 12 `<use>`s of it, *n* = 17,640 is 199,999 steps and shown; 17,641 is 200,000 steps and shown; 17,642 is 200,001 steps and refused, *it takes over 200,000 steps to check* (198,614 bytes, 29 ms). I counted steps by bisecting `SVG_BUDGET`. |
+| 199 kB files of 1-byte paths · of `<use>`s · of `fill="url(#g)"` · of 33,000 foreign elements | refused in 156 · 143 · 159 ms · shown in 105 ms, the foreign elements left out |
+| the first and second passes' cases | every attack still refused, or dropped with its subtree where it is in another namespace. The fetch file (R1), the UTF-16 laughs (R3), 1,000 nested `<g>` (R4) and `style`, `autofocus`, `xml:base` (R5) each end in one warning |
+
+### Findings, third pass
+
+**R10 · P3 · confidence medium (headless Chrome with CPU raster; a GPU was not measured) · The caps count
+elements, not geometry: a 44 kB wordmark inside every cap makes the board slow to paint.**
+- **The worst case.** A path of 20,000 tokens (4,995 self-intersecting segments), stroked 4,000 wide with miter joins,
+  `<use>`d 998 times. That paints 1,997 elements, under 2,000, and the file is 43,824 bytes. It is shown with no
+  warning.
+- **The cost.** Headless Chrome takes 16 s to screenshot the board, where the clean board takes 2 s. With three `◐`
+  switches, 30 s.
+- **Other shapes:**
+  - the same path filled with `evenodd`, `<use>`d 998 times: 12 s;
+  - stroked 40 wide, round joins: 11 s;
+  - inside a mask used 660 times: 9–12 s;
+  - inside a clip-path used 660 times: 7 s.
+- **Why this is P3.** It is not R7's freeze. Every case finishes. But each paint, and each theme switch, costs
+  seconds, from a file of a size an editor could plausibly write.
+- **Fix:** weigh each painted element by its tokens. Add a path's or points' tokens to a second counter every time it
+  is painted, for example at most 100,000 per file. The heaviest case above weighs about 2 × 10⁷, while this
+  repository's wordmark takes 1,647 steps in all. A cap on `stroke-width` against the `viewBox` would cover the stroke case.
+
+**R11 · P3 · confidence high · The timing checks measure the length cap, not the scanner.**
+- The suite's R8/R9 cases are 10 kB and 20 kB values: `x="111 … !"`, the two transforms, 20,000 digits. They are
+  refused by `SVG_VALUE`'s 1,000 characters before `_svg_value` reads a character, so the 0.2–0.3 ms they report
+  says nothing of the scanner.
+- FM-006's row makes the same claim: *`x="111 … !"` at 10 kB is refused in 0.2 ms*.
+- The scanner is linear: at 999 characters, 9 ms including the parse. But a later edit that brings back
+  backtracking would pass the check.
+- **Fix:** time cases under the cap. A failing `x` and `transform` of 999 characters, and a failing `d` of 20,000
+  tokens, each refused in well under 50 ms; say *999 characters* in the row.
+
+### Not verified
+
+- Firefox and Safari. R10 was not measured with GPU rasterisation.
+- Windows.
+- The vendored copy's version link was not re-run by hand. The code is unchanged since `3f4b4a4` and the suite's
+  check is green.
+
+**Verdict:** READY WITH FINDINGS. R7, R8 and R9 are closed; R1–R6 stay closed. R10 and R11 are P3, to fix forward.
+**The Owner may tag this tip** once the PR is merged. `origin/main`'s PRs 55 and 56 merge cleanly and touch no
+tool file.
