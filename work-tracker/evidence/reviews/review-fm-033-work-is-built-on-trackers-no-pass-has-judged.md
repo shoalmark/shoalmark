@@ -178,3 +178,52 @@ make the Owner's signed answer ambiguous or wrong is P2.
   Progress. The fix is now one clause: *re-made at `87bac4e` (15:19), FM-024 kept open*.
 
 **Verdict:** READY WITH FINDINGS. The merge of `main` is confirmed. R1–R4 are P3.
+
+## The fix-forward at 645e4d4 (2026-09-24 16:39 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `645e4d4` (`645e4d4a6f03ced9200a8991779243b995138ad9`), on branch `fm/033-the-auditors-fix-forward`, is
+one commit by the principal seat, under `8e509911`, on `origin/main` `86f7595`. `main` now carries PR 51's merge
+`412ffde`, PR 53, and the Owner's answer `65f37a4` (signed `G`, 16:29:09) through PR 54. The commit changes only the
+FM-033 tracker: three lines, the Auditor seat's three replacements.
+
+**The Auditor's check, run as a script.**
+- The script replaced each of the three new texts at `645e4d4` with the text it replaced. Each occurs exactly once.
+- The expected file is FM-033 at `412ffde` with the Owner's three lines from `65f37a4` (`answer:`, `answered:`,
+  `answered-by:`) inserted after `ask-proposal:`.
+- `diff expected reversed` is empty (exit 0), and the expected file is byte-identical to FM-033 on `main` `86f7595`.
+  So the commit changes nothing but the three replacements. The ask, its options, its proposal and his answer are
+  untouched.
+- FM-033 at `412ffde` is byte-identical to the file verified at `7c04534`.
+
+**The findings are closed.**
+- **R1 · closed.** The row now says what each version of the pass did.
+  - `7d3e632` marked FM-024 Shipped.
+  - `87bac4e`, re-made on its Reviewer's R1 (*the `fix` closes FM-024 with its slice 2 open*, P2), keeps it In
+    Progress, P2 #8.
+  - Both carry `Session: 8e509911`, the session whose Implementers built FM-024.
+  - Note, not a finding: the cell's *14:49* now times only the first version. The re-made pass is cited by its sha
+    (15:19:52).
+- **R2 · closed.** *R1–R7 until 18:18, `8b5588e`*: that commit is 18:18:31 and changes `README.md`.
+- **R3 · closed.** The sentence now says the gate was *proposed to the Owner in chat …, not in this repository and
+  never built*. That the chat happened is not verifiable here. `git grep` still finds the phrase only in FM-033,
+  which is what the sentence now says.
+- **R4 · closed.** `considered:` now names FM-005, FM-021, FM-024, FM-029, FM-030, FM-031 and FM-032. All seven
+  exist.
+
+**His answer.** `--answered` prints FM-033 as *answered 2026-09-24 by holgo99* with the relation *accepted the
+proposal*, and it points to `--clear-ask FM-033 <next move>` after the act. `--owner` prints *NOTHING NEEDS THE
+OWNER*. The tracker still says `next: owner` until that `--clear-ask`, which is the tool's order, not a defect here.
+
+**Gates at `645e4d4`.**
+- `python3 shoalmark.py` rewrites nothing, and `git status --porcelain` stays empty. `--check` 0, with the freeze at
+  17 open. `--session-check` 0.
+- `test_shoalmark.py` 0 (298 ok, all green); `test_core.py` 0 (148 ok, all green).
+- `git merge-tree --write-tree origin/main 645e4d4` is clean and writes the tip's own tree, `3733cba`. `origin/main`
+  `86f7595` is an ancestor, so the merge is a fast-forward.
+- The commit message carries no pull-request number with the sign.
+- `git fetch` was refused in this worktree (publickey). The refs came from the shared object store, where
+  `origin/main` is `86f7595` and the branch is `645e4d4`.
+
+**Independence.** Same session `8e509911`, reported, not refused.
+
+**Verdict:** READY. R1–R4 are closed.
