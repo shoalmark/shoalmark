@@ -30,3 +30,49 @@
 and FM-005 have no line saying why they are not this.
 
 **Verdict:** NOT READY. R1 (P2) is open, and R2 is a P3.
+
+## Re-verified at f8ccf60 (2026-09-24 09:16 CEST)
+
+**Scope.** `30c4f89` → `f8ccf60`. The Implementer's five commits, `ab176a4` to `53a34a3`, all under
+`8e509911/implementer-12`, opened first and closed last. Then the merge `f8ccf60`, by the principal seat under
+`8e509911`, whose parents are `53a34a3` and `6da5d34` (PR 33 merged on `main`).
+
+**R1 is closed, by ruling.**
+- In `c60f300` the FM-028 row `8e509911/implementer-6` (opened 07:41) is closed at 08:49 and not renamed. Its scope
+  cell records the collision: the same id names *the site wears the Pricke* (01:02–01:14), FM-027's class, and the
+  registry is append-only (FM-024).
+- **The gate behaviour in the ship log is confirmed in the code.** `session_problems` (`shoalmark.py:2620`)
+  indexes rows by id, and the last row wins. So an ended row beside a later open row with the same id reads as a
+  re-open (`:2626`).
+
+**The simulation, repeated against the real `main`.**
+- I ran it in a scratch clone against `6da5d34`, which contains `f2cc7bd`:
+  - I merged `53a34a3` with `6da5d34` and resolved `sessions.md` myself as a union in opened order. `--check`
+    was 0.
+  - Then one more seat commit (reviewer), which does not touch the registry: `--session-check` 0, `--check` 0.
+  - The same, with FM-028's -6 row left open: `--session-check` 4, *re-opens 8e509911/implementer-6, which had
+    ended*.
+- My resolution of the registry is byte-identical to the one at `f8ccf60`.
+
+**The unions: no row lost or doubled.**
+- At `64f7b99` (with `main` `3ba7383`): 21 ids, the same set as both sides, in opened order, none doubled. The
+  row `implementer-4` takes the branch's end (07:41) over `main`'s open cell, and an ended session stays ended.
+- At `f8ccf60`: 24 ids in 25 rows, in opened order. The only id with two rows is `-6`, and both rows are closed.
+- **`f8ccf60` brings only `main`'s files.** Against `53a34a3` it changes 21 files: 20 are byte-identical to
+  `6da5d34`, and the 21st is the registry, which gains `main`'s four rows (-6 at 01:02, -7, -8, -9).
+- INDEX is unchanged against `53a34a3`, as expected: `main`'s INDEX differs from the branch's only by FM-028's row.
+
+**R2 is closed.** `considered: FM-024, FM-027, FM-005`, and the body now gives the reason for FM-027 (which number,
+not which date) and for FM-005 (the ask's design, not a defect in shipped code).
+
+**The rest.**
+- None of the six commit messages from `ab176a4` to `f8ccf60` carries a pull-request number with the sign.
+- The archive ref is still on the server and points at `30c4f89`, and the twin PR 41 is still open. Both are the
+  Owner's to remove, as the ship log says.
+- Gates at `f8ccf60`: `--check` 0; `--session-check` 0; `test_shoalmark.py` 0 (264 ok); `test_core.py` 0 (148
+  ok).
+- `6da5d34` is an ancestor, so the merge into `origin/main` is a fast-forward.
+
+**Noted, not this branch's:** on `main`, the row `8e509911/implementer-9` (the tagline slice) is still open.
+
+**Verdict:** READY TO TAG. R1 is closed by ruling and R2 is closed. No finding is open.
