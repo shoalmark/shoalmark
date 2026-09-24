@@ -127,3 +127,54 @@ stays under *ANSWERED, NOT YET ACTED ON*.
 
 **Verdict:** READY WITH FINDINGS. R1–R4 are P3. The ask carries no P2 defect, and the raise line holds no sensitive
 data.
+
+## AU-1, 21bd5e8 (2026-09-24 18:41 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `21bd5e8` (`21bd5e82fd19e1cbdf4938980ec5b657afc2ec75`) is one commit by the principal seat, under
+`8e509911`, on this verdict's `48a7178`. It is the Auditor's AU-1 on PR 57: the Owner's FM-033 rule goes into the
+contract. `git diff 48a7178 21bd5e8 --name-only` names only `AGENTS.md`, with five lines in and one out.
+
+That is docs tier. The tool does not read the house rules: `--init` rewrites only the block between its markers, and
+this repository's `AGENTS.md` has none.
+
+**The bullet against his answer** (`65f37a4`, signed `G`, 16:29:09: *accepted - a pass judges before the first build
+commit, the same day as a now, and a pass that finds it not ready asks you again*).
+- ✓ **The answer authorises but does not judge.** *A signed answer authorises the work; it does not judge it ready* is
+  the *no* his accepted option gives to *Does a signed answer that says now count as the judgement?*.
+- ✓ **The same day as a now.** *… the same day when the answer says *now**.
+- ✓ **A pass that is not ready asks again.** *… a pass that finds it not ready asks the Owner again*. The answer's
+  *you* becomes *the Owner*.
+- ✓ **Before the first build commit.** The bullet says *before any code is built on it*; R5 is about that wording.
+- ✓ **The date.** *ruled 2026-09-24 16:29:09 (`65f37a4`)* is the commit's time and hash.
+
+**The form.**
+- ✓ The bullet has a bold lead, `(FM-033)`, and *— ruled <date> <time> (`<sha>`)*, as FM-031's cap bullet does. It sits
+  last, after *Seats never need the Owner's checkout*.
+- ✓ The intro now names FM-033 (`65f37a4`, 16:29) beside FM-031 (`d20bc89`, 11:08) and FM-032 (`ffa63b8`, 11:07), in
+  the same form.
+- Note, not a finding: the intro line is now 146 characters and was not re-wrapped. The section's other lines run to
+  125.
+
+**Gates at `21bd5e8`.**
+- `python3 shoalmark.py` rewrites nothing, and `git status --porcelain` stays empty. `--check` 0; `--session-check` 0.
+- `test_shoalmark.py` 0 (298 ok, all green); `test_core.py` 0 (148 ok, all green).
+- `git merge-tree --write-tree origin/main 21bd5e8` onto `da2228e` is clean, writes `08b9583`, and has no conflicted
+  path. PR 52 does not touch `AGENTS.md`. The merge is not a fast-forward, because `main` moved at 18:12.
+- The commit message carries no pull-request number with the sign.
+
+**R5 · P3 · medium · *Before any code is built* narrows *the first build commit*.**
+- FM-033's gate (`:65`) keys on *a commit that changes anything outside `work-tracker/`*. That includes README and
+  `AGENTS.md`, which this very commit changes.
+- The bullet reads to a seat as *code only*, the same line the two tiers draw where documentation is docs. So the
+  contract and the gate FM-033 will build would disagree about a docs commit outside `work-tracker/`.
+- His answer says *build commit* and does not define it.
+- Fix: *before its first build commit (FM-033's gate: any change outside `work-tracker/`)*. Or say that where the line
+  falls is FM-033's to settle.
+
+**R6 · P3 · high · *Four pieces were built unjudged on 2026-09-24* is one day short.**
+- FM-024's first build commit, `89e0586`, is 2026-09-23 16:16, as FM-033's own table says. The other three were built
+  on 09-24.
+- Fix: *on 2026-09-23 and 2026-09-24*.
+
+**Verdict:** READY WITH FINDINGS. AU-1 is met: the FM-033 rule is in the contract, true to his answer in its three
+clauses. R5 and R6 are P3, to be fixed forward. R1–R4 are carried.
