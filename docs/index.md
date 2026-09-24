@@ -1,6 +1,6 @@
 # shoalmark
 
-*A withy in the mud keeps the fleet in the channel.*
+*A Pricke on the Wadden flats keeps the fleet in the channel.*
 
 ## Get a better-performing human Owner.
 
