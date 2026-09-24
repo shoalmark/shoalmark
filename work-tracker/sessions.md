@@ -23,7 +23,7 @@ which says so.
 | e0be0fa0 | gtm | the Owner, 2026-09-23 23:28 | the pitch on main verified; the mark: wordmark and icon screen | shoalmark-gtm | 2026-09-23 23:28 | 2026-09-23 23:46 |
 | 8e509911/implementer-5 | implementer | session 8e509911 | the Pricke drawn to be looked at | shoalmark-impl-2 | 2026-09-23 23:59 | 2026-09-24 00:43 |
 | 6cecddb3 | gtm | the Owner, 2026-09-24 07:35 | the mark screen's outcome recorded; the tagline with the Pricke drafted | shoalmark-gtm | 2026-09-24 07:35 | 2026-09-24 07:36 |
-| 8e509911/implementer-6 | implementer | session 8e509911 | file FM-028 (the clock); FM-011 to Shipped | shoalmark-impl | 2026-09-24 07:41 | — |
+| 8e509911/implementer-6 | implementer | session 8e509911 | file FM-028 (the clock); FM-011 to Shipped. id guessed on a branch — the same id names the session *the site wears the Pricke* in PR #33/#37 (FM-027's class); recorded, not renamed: the registry is append-only (FM-024); f9a7e49's trailer carries it; closed by the Principal's ruling so the merged registry reads closed → closed | shoalmark-impl | 2026-09-24 07:41 | 2026-09-24 08:49 |
 | 0cbdba3f | gtm | the Owner, 2026-09-24 07:50 | the tagline's English ruled: D2 with Pricke | shoalmark-gtm | 2026-09-24 07:50 | 2026-09-24 07:50 |
 | 8e509911/implementer-10 | implementer | the Owner, 2026-09-24 08:24, in session 8e509911 | filing: can the Owner keep up with parallel streams | shoalmark-impl-3 | 2026-09-24 08:24 | 2026-09-24 08:26 |
 | 8e509911/implementer-11 | implementer | session 8e509911 | FM-031 adopted by the Principal: the ask drafted, the slices named | shoalmark-impl-3 | 2026-09-24 08:32 | 2026-09-24 08:36 |
