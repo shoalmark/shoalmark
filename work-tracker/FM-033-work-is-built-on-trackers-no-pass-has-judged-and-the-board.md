@@ -4,11 +4,11 @@ status: Proposed
 considered: FM-005, FM-024, FM-030, FM-031, FM-032
 tags: bug
 next: owner
-ask: "Does a signed answer that says now count as the judgement — `--answer` writes the judgement fields with the answer — or does a pass run before the first build commit?"
+ask: "Does a signed answer that says *now* count as the judgement?"
 ask-kind: ruling
 ask-since: 2026-09-24
-ask-options: "no — a pass runs before the first build commit, the same day when the answer says now | yes — the answer writes the judgement fields | yes for now only | no, and --answer prints what a pass would judge"
-ask-proposal: "no — a pass runs before the first build commit, the same day when the answer says now"
+ask-options: "a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again | the signed now is the judgement: --answer writes the judgement fields | --answer prints what a pass would judge, and a pass still runs"
+ask-proposal: "a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again"
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
 ---
 
@@ -16,7 +16,7 @@ hook: "On 2026-09-24 the board showed the day's release work under triage and fo
 
 ## What is true now
 
-**Filed 2026-09-24 by the Auditor seat (session src-d6), on the Owner's word: *"This shall be tracked as a violation of the
+**Written 2026-09-24 by the Auditor seat (session 8b91dba2), filed word for word by the Principal, on the Owner's word: *"This shall be tracked as a violation of the
 rules and as a new issue."* Nothing is built.** Every time and sha below is from git or GitHub. Times are CEST.
 
 ## The violation
