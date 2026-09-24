@@ -13,7 +13,7 @@ which says so.
 | 8e509911/implementer-2 | implementer | session 8e509911 | build 0.17.7 | shoalmark-impl | 2026-09-23 18:47 | 2026-09-23 20:11 |
 | 8e509911 | principal | the Owner, 2026-09-23 12:21 | the day's findings into the tool; releases 0.17.5-0.17.7, the first triage pass, FM-023/FM-024 | shoalmark-principal | 2026-09-23 19:14 | — |
 | 8e509911/implementer-3 | implementer | session 8e509911 | build 0.17.8 | shoalmark-impl | 2026-09-23 20:11 | 2026-09-23 21:40 |
-| 8e509911/implementer-4 | implementer | session 8e509911 | the human pages open from a file | shoalmark-impl | 2026-09-23 21:40 | — |
+| 8e509911/implementer-4 | implementer | session 8e509911 | the human pages open from a file | shoalmark-impl | 2026-09-23 21:40 | 2026-09-24 07:41 |
 | ee61f1fe | gtm | the Owner, 2026-09-23 22:02 | screen the owner-facing claim | shoalmark-gtm | 2026-09-23 22:02 | 2026-09-23 22:12 |
 | 2ab3afad | gtm | the Owner, 2026-09-23 22:24 | second pass: Owner vs Eigner, leistungsstärkeren vs besseren, the second claim beside the new bar (the harness session of ee61f1fe; an id is used once) | shoalmark-gtm | 2026-09-23 22:24 | 2026-09-23 22:33 |
 | c1652143 | gtm | the Owner, 2026-09-23 22:40 | the Jev gate test: 17 lines x 6 gates, run twice | shoalmark-gtm | 2026-09-23 22:40 | 2026-09-23 22:52 |
@@ -23,3 +23,4 @@ which says so.
 | e0be0fa0 | gtm | the Owner, 2026-09-23 23:28 | the pitch on main verified; the mark: wordmark and icon screen | shoalmark-gtm | 2026-09-23 23:28 | 2026-09-23 23:46 |
 | 8e509911/implementer-5 | implementer | session 8e509911 | the Pricke drawn to be looked at | shoalmark-impl-2 | 2026-09-23 23:59 | 2026-09-24 00:43 |
 | 6cecddb3 | gtm | the Owner, 2026-09-24 07:35 | the mark screen's outcome recorded; the tagline with the Pricke drafted | shoalmark-gtm | 2026-09-24 07:35 | 2026-09-24 07:36 |
+| 8e509911/implementer-6 | implementer | session 8e509911 | file FM-028 (the clock); FM-011 to Shipped | shoalmark-impl | 2026-09-24 07:41 | — |
