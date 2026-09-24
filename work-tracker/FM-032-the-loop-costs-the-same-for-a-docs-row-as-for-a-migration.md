@@ -11,6 +11,9 @@ ask-kind: action
 ask-since: 2026-09-24
 ask-options: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | one Reviewer docs pass, always, as any docs change | path 3 stays as written: the tool refuses the merge without a review file"
 ask-proposal: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
+answer: "accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
+answered: 2026-09-24
+answered-by: holgo99
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
