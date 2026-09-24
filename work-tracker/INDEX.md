@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-24 · 32 trackers (32 work).
+> Generated 2026-09-24 · 33 trackers (33 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -55,6 +55,7 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | — | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | Proposed | triage | — |
 | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | P2 | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | Proposed | backlog | 2026-09-24 |
 | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | P2 | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | Proposed | backlog | 2026-09-24 |
 | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | P2 | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed | backlog | 2026-09-24 |
