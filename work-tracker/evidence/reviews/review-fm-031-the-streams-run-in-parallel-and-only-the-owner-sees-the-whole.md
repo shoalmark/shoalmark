@@ -64,3 +64,32 @@ six were open from 08:18. The count is right; the time is not.
 - The reasons given say why each is not *this*, but not why this is not a slice of one of them. The default is a slice.
 
 **Verdict:** NOT READY. R1 (P2) is open; R2, R3 and R4 are P3.
+
+## Re-verified at c133cde (2026-09-24 09:04 CEST)
+
+**R1 is closed, and my own window was wrong too.**
+- I re-derived the closes on `main` following both paths: FM-002 and FM-003 closed on 09-21, at 17:21 (`3339b79`) and
+  19:45 (`7c93df8`).
+- So my window (09-22 11:09 → 08:26) had 13 closes, not 15: 26 against 13 is **2.00**, not the 1.73 I gave. The
+  Implementer is right, and so is the line in the body.
+- **The new window, re-derived:** 5/2/3 · 6/0/9 · 16/13/12 · 4/0/16. That is 31 filed and 15 closed in 2.82 days:
+  11.0 against 5.3 a day, 2.07, and the open count growing 5.7 a day.
+- **One count I do not match:** *10 of them between 2.7 and 7.7 h*. I count 9, with one at 2.6 h (R5).
+
+**R2, R3 and R4 are closed.**
+- R2: 22 sessions under 21 ids, the Implementer's nine carrying eight ids.
+- R3: by 08:18 six were open; #33 was opened at 07:52 and #34–#38 at 08:17–08:18.
+- R4: the paragraph under *Why*, which says the case is weakest for S1.
+- **The hook's *two conflicted* is right at 08:18:** against `main` `cdd6e3f`, the heads of #35 and #37 conflict in
+  `sessions.md`, and the other four merge cleanly. The body's three (#33, #35, #37) are the night's, and #33's was
+  resolved by its merge of `main`.
+
+**The rest.**
+- `8e509911/implementer-13` appears only on this branch; it is opened in `5afcfda` and closed in `c133cde`.
+- `--session-check` as `-13` after its close: 4, by design.
+- Gates at `c133cde`: `--check` 0; `--session-check` 0; `test_shoalmark.py` 0 (264 ok); `test_core.py` 0 (148 ok).
+  It merges cleanly into `origin/main` `3ba7383`.
+
+**R5 · P3:** *10 of them take between 2.7 and 7.7 hours* is 9 by my count, and the tenth is at 2.6 h.
+
+**Verdict:** READY WITH FINDINGS. R5 is a P3.
