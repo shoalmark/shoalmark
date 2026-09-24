@@ -2579,6 +2579,39 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-031, 0.18.3 (the Auditor seat's check 8): `--queue` ITSELF, `gh` stubbed — a branch pushed without a pull request --
+# The check above reads that case through `pushed_branches` and `queue_actions`; this one runs `--queue` as the Owner does.
+# `gh pr list` is answered by a stub (no pull request open); `origin` is a local bare repository the scratch clone pushed to,
+# which the forge's URL check is told is GitHub; git runs for real — the fetch, `ls-remote`, the verdicts — and no real
+# remote is touched.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir(); bare_ = base / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare_)], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    git(root, "remote", "add", "origin", str(bare_)); run(root, "--init", "--key", "msr")
+    (root / "shared.txt").write_text("one\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk"); git(root, "branch", "-q", "-M", "main")
+    subprocess.run(["git", "--git-dir", str(bare_), "symbolic-ref", "HEAD", "refs/heads/main"], check=True, env=_ENV)
+    git(root, "checkout", "-q", "-b", "fm/002-pushed"); (root / "w.txt").write_text("w\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "work pushed, no pull request opened")
+    pushed_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "checkout", "-q", "main"); git(root, "push", "-q", "origin", "main", "fm/002-pushed")
+    asked_, real_run, real_which, real_forge = [], subprocess.run, fm.shutil.which, fm.github_remote
+    def gh_stub_(*a, **k):
+        if a and list(a[0])[:1] == ["gh-stub"]:                  # the forge: no pull request is open
+            asked_.append(list(a[0]))
+            return subprocess.CompletedProcess(a[0], 0, "[]", "")
+        return real_run(*a, **k)
+    subprocess.run, fm.shutil.which = gh_stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which(name, *a, **k))
+    fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge(url)
+    try:
+        code_, out_, err_ = run_safe(root, "--queue")
+    finally:
+        subprocess.run, fm.shutil.which, fm.github_remote = real_run, real_which, real_forge
+    check(f"FM-031 · `--queue` itself, `gh` stubbed and `origin` a local bare repository: a branch pushed without a pull request reads `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>`, and the count names it (saw {out_!r}, {err_!r})",
+          code_ == 0 and out_.splitlines() == [f"branch fm/002-pushed @ {pushed_[:7]}  wait: no pull request — no verdict on {pushed_[:7]}",
+                                               "1 waiting on you: 0 merge, 0 close, 0 wait, 1 pushed without a pull request"]
+          and [c_[1:3] for c_ in asked_] == [["pr", "list"]])
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone
 #     cannot verify is said to be that — never "sign it" ---------------------------------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
