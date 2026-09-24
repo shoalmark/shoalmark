@@ -3,11 +3,12 @@ id: FM-032
 status: Proposed
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
-next: review
+next: owner
 ask: "Rule the deregulation: one Reviewer pass for docs and ledgers, findings below P2 fixed forward, no re-pass; the registry a report generated from commit trailers, not a gate; a miss rowed only if it cost you a command or a decision; a filing freeze except product defects until the open count falls?"
 ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "all four now | the review tier and the freeze now, the registry and the miss rule later | the review tier only | none — keep the loop as it is"
+ask-proposal: "all four now"
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
@@ -163,4 +164,5 @@ Each takes effect on the Owner's answer, never on a default.
 
 | Date | Event |
 |---|---|
+| 2026-09-24 09:39 CEST | The Principal sets the proposal — *all four now* — and puts the ask to the Owner (`next: owner`), on his ruling of ≈ 09:19 that the proposal becomes an ask. Main after PR 35 merged in first. Verified next, then the pull request. |
 | 2026-09-24 09:30 CEST | Filed on the Owner's question (≈ 09:12), and on his word at ≈ 09:19 that the Principal's proposal becomes an ask. The evidence is re-derived from git and the forge; the seven passes, the parent project's two docs-only branches (four passes, about 800K tokens, 75 minutes) and the Principal's four catches are marked *reported*. The ask is drafted (`next: review`, four options, trimmed to 298 characters: *the session registry* is now *the registry*, *docs and ledger changes* is now *docs and ledgers*). The proposal is the Principal's. Held against FM-031 (the fan-out; its S1 is refined here into a report), FM-024 (the registry as a gate), FM-027 (ids claimed on the server, moot under S2) and FM-005 (the Owner's decisions). |
