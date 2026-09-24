@@ -62,5 +62,6 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-09-24 | Correcting the Reason of the evening worksheet row: whether a hand that was not his has ever signed is not shown by the record either way — the tier P1 rests on path 5 being undermined, not on that; and rank #2 behind #1 is a judgement of order, not of whether an owner move is work (it is). |
 | 2026-09-24 | **Raised** by the Auditor seat through the Owner, the line above word for word from its draft; the day of the hardware key put to him in the parent project's ledger (kind B, before the sitting of 09-25). Rank #2 stands; the act is his. |
 | 2026-09-22 | Filed from the Owner's finding; `commit.gpgsign` unset the same day, on his word. |
