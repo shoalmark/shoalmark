@@ -365,3 +365,32 @@ FM-031's paragraph and one row.
 - **Fix:** use one of them, the commit's, as everywhere else in these files, or say which clock it is.
 
 **Verdict:** READY WITH FINDINGS. R8 and R9 are P3; R1–R7 are closed. The Owner may tag this tip.
+
+## Pass on dbaa62b — the merge of main only (2026-09-24 14:40 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `dbaa62b` (`dbaa62b29d0766613793b277196f5205320cb30e`) is the principal seat's merge, under `8e509911` in
+`shoalmark-principal`. It merges `origin/main` `b4ee8e2` (PR 47, FM-029's ask) into my verdict `88cc069`.
+
+**The merge brought main's changes and nothing else.**
+- `git diff 88cc069 dbaa62b --stat` names two files:
+  - FM-029's tracker;
+  - `evidence/reviews/review-fm-029-the-answer-word-for-0-18-1.md`.
+
+  These are what main brought since the merge base, except `sessions.md`.
+- `git diff b4ee8e2 dbaa62b` is empty on both files, so main's ask and its review are untouched.
+- Main added one row to `sessions.md`, for `8e509911/implementer-17`, and `git merge-tree 88cc069 b4ee8e2` conflicts
+  on that file alone.
+  - The file stays deleted, and against main the branch deletes 600 lines where it deleted 599: that one row.
+  - The row stays in history: `--sessions` prints `8e509911/implementer-17`, with 1 commit, `9f9bbe8`, at 13:17.
+- INDEX is unchanged against `88cc069`. `--check` says it is up to date, and a regeneration writes nothing.
+- `origin/main` `b4ee8e2` is an ancestor, so the merge to main is a fast-forward.
+
+**Gates at `dbaa62b`.**
+- `--check` 0; `--session-check` 0; `python3 shoalmark.py` idempotent (`git status --porcelain` empty).
+- `test_shoalmark.py` 285 ok on Python 3.14 and on 3.9.6; `test_core.py` 148 ok on both. All are green.
+- The first 3.9 run of `test_shoalmark.py` stopped at the brand-vendoring check. I had started it in parallel with the
+  3.14 run of the same suite. Run on its own, it is green, as it was at `c253124`. I did not find out why two runs at
+  once collide.
+
+**Verdict:** READY WITH FINDINGS. The merge of main is confirmed. R8 and R9 are still P3 and are fixed forward. The
+Owner may tag this tip.
