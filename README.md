@@ -129,6 +129,13 @@ or so, and at the end: it applies what you filled, refreshes `INDEX.md`, keeps y
 | `park P3` | fails the keep test; a real remainder, nobody on it. **P2 or P3 only — harm is never parked** | `status: Parked` `tier:` `triaged:` |
 | `merge MSR-003` · `close` · `fix` | its scope belongs elsewhere · retired · its status is simply wrong | `triaged:` only — **you finish these by hand**, as the rules say |
 
+**A raise** is one line under a tracker's `## Raised` — `- <date> · <who> · <fact> · <source> · undermines: <what>`. Dated
+after the tracker's `triaged:` and naming a signed rule it undermines — `path N` of the current path, or `<ID>'s answer`
+of a tracker he answered — it puts an open tracker under *triage* and on the next worksheet, marked RAISED, with the raise
+in its Now cell: *a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next
+pass* (the Owner's answer, FM-033). A day decides: a raise written after the same day's pass is re-judged by that seat's
+own re-run.
+
 Never write a note into a tracker during a pass; the reason lives in the worksheet. Never touch the current path.
 The Owner rules by merging the pass's pull request, striking any row first.
 
@@ -207,7 +214,7 @@ What lives where, by convention — no setting names any of it:
 
 | Path | What |
 |---|---|
-| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `freeze_at` (0, off — the filing freeze, §2) · `freeze_tag` (`bug`, the tag that passes it) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the eight section names the tool reads and writes (`state` `why` `done` `log` `asks` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
+| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `freeze_at` (0, off — the filing freeze, §2) · `freeze_tag` (`bug`, the tag that passes it) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the nine section names the tool reads and writes (`state` `why` `done` `log` `asks` `raised` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
 | git · Subversion · Windows | `--install-hook` wires what the system has: git hooks, or on Subversion the TortoiseSVN hook properties and `svn:ignore`. **`svn commit` on the command line runs no hook — run the tool first.** On Windows the command is `python`. CI proves all three systems |
 | what an ask must be | ONE question — one `?`, at the end, at most 300 characters — with `ask-kind:`, `ask-since:` and `ask-proposal:`, and never the same question as another open tracker's. At most five `ask-options:`, 120 characters each. The gate refuses the rest, and the board shows what got in anyway as *N asks sent back — not for you* |
 | drafting an ask | an `ask:` with `next: review` is a **draft**: any seat writes one (the question and its `ask-options:`), it needs no proposal and the Owner never sees it. The Principal rewrites it, orders the options, sets `ask-proposal:`, `ask-since:` and `next: owner` — that is what puts it in front of him |

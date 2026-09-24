@@ -98,7 +98,7 @@ DEFAULTS = {
     # repository's language. They are here and not in a brand's labels.yaml because the gate depends on them: what
     # the gate says is a function of the repository alone. The English ones are always understood as well.
     "headings": {"state": "What is true now", "why": "Why", "done": "Done when", "log": "Ship log",
-                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks"},
+                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks", "raised": "Raised"},
 }
 
 
@@ -199,7 +199,7 @@ def configure(root=None):
     if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
         raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
     FREEZE_TAG = FREEZE_TAG.strip()
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
@@ -225,6 +225,8 @@ def configure(root=None):
     DONE_RE = re.compile(_DONE_WORDS + "|" + re.escape(HEAD["done"]), re.I)
     # the body section an exchange is moved into when its ask is cleared — the repository's own word, English always
     ASKS_HEAD_RE = re.compile(r"^#{2,3}\s+(asks|" + re.escape(HEAD["asks"]) + r")\s*$", re.I | re.M)
+    # …and the one a raise is written under (FM-033's second answer): one sourced line per raise
+    RAISED_HEAD_RE = re.compile(r"^#{2,3}\s+(raised|" + re.escape(HEAD["raised"]) + r")\s*$", re.I | re.M)
     KINDS = tuple(KIND_LABELS)
     if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
         raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
@@ -634,7 +636,35 @@ def extract(path):
         "asks_answer": unrelated_answer(body),
         # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
         "supersedes": superseded(body),
+        # the lines under `## Raised` — read here, the one place the body is read; which of them re-open the tracker to a
+        # pass is decided by `mark_raised`, which sees the path and every answer
+        "raises": raise_lines(body),
     }
+
+
+def raise_lines(body):
+    """The raises under the body's `## Raised` — one bullet each, `- <date> · <who> · <fact> · <source> · undermines: <what>`
+    — as {date, line, undermines: [what it names]}. Keyed on the date that opens the bullet and on the `undermines:` token
+    wherever it sits, never on a count of fields: FM-007's line joins its fact and its source with a dash. A bullet wrapped
+    onto indented lines is read whole."""
+    at = RAISED_HEAD_RE.search(body)
+    if not at:
+        return []
+    rest = re.search(r"^#{1,3}\s+", body[at.end():], re.M)
+    bullets = []
+    for line in body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())].splitlines():
+        if re.match(r"\s*[-*]\s", line):
+            bullets.append(line.strip()[1:].strip())
+        elif bullets and line.strip() and line[:1].isspace():
+            bullets[-1] += " " + line.strip()
+        elif not line.strip() and bullets:
+            bullets.append(None)                            # a blank line ends a bullet; nothing more is joined to it
+    out = []
+    for b in filter(None, bullets):
+        m, u = re.match(r"(\d{4}-\d{2}-\d{2})\b", b), re.search(r"\bundermines:\s*([^·]+)", b, re.I)
+        if m:
+            out.append({"date": m.group(1), "line": b, "undermines": [w.strip() for w in u.group(1).split(",") if w.strip()] if u else []})
+    return out
 
 
 def is_new_filing(t):
@@ -644,11 +674,11 @@ def is_new_filing(t):
 
 
 def owed_a_pass(t):
-    """The ONE definition of what a triage pass reads, clock aside: `In Progress` work, and a new filing. The
-    worksheet and the board both ask it, so the Owner's page never says *84 to triage* while the command says
-    *0 trackers to judge*. Older `Proposed`, `Reserved` and `Parked` work is backlog: the current
+    """The ONE definition of what a triage pass reads, clock aside: `In Progress` work, a new filing, and a tracker a raise
+    re-opened (`mark_raised`). The worksheet and the board both ask it, so the Owner's page never says *84 to triage*
+    while the command says *0 trackers to judge*. Older `Proposed`, `Reserved` and `Parked` work is backlog: the current
     path restarts it, not a clock."""
-    return t["status"] == "In Progress" or is_new_filing(t)
+    return t["status"] == "In Progress" or is_new_filing(t) or bool(t.get("raised"))
 
 
 def board(t):
@@ -657,7 +687,7 @@ def board(t):
     judgement older than TRIAGE_DAYS counts as `triage` again — lives in the page and in the worksheet."""
     if t["status"] not in ("In Progress", "Parked", "Proposed", "Reserved", "?"):
         return "done"
-    if not t.get("triaged") and owed_a_pass(t):
+    if t.get("raised") or (not t.get("triaged") and owed_a_pass(t)):     # a raise on a signed rule re-judges it (FM-033)
         return "triage"
     return "progress" if t["status"] == "In Progress" else "backlog"
 
@@ -1622,6 +1652,29 @@ def mark_blocked(trackers):
     by_id = {t["id"]: t for t in trackers}
     for t in trackers:
         t["blocked_now"] = blocked_now(t, by_id)
+    return trackers
+
+
+def mark_raised(trackers):
+    """THE RAISE RULE — the Owner's answer to FM-033 (`9e48ee8`): *a raise naming a signed rule re-judges the tracker the
+    same day; any other raise waits for the next pass.* `t["raised"]` is the raises of an OPEN tracker that are dated
+    after its `triaged:` (any date, where it carries none) and whose `undermines:` names a signed rule: a line of the
+    current path in TRIAGE.md (`path 5`, `TRIAGE.md path 5` — a number the path has), or a tracker's signed answer
+    (`FM-033's answer` — a tracker with an answer that is not revoked, or an answered record under `## Asks`). Such a
+    tracker is owed a pass and sits under *triage*. Clock-free: every input is a committed file, and a day decides — a raise
+    written after the same day's pass is re-judged by that seat's own re-run, not by this rule. A done tracker's raise
+    changes nothing here."""
+    lines = {int(n) for n in re.findall(r"^\s*(\d+)\.\s", triage_home()["path"], re.M)}
+    answered = {t["id"] for t in trackers if (t.get("answer") and (answer_relation(t) or ("",))[0] != "revoked") or t.get("asks_relation")}
+    def signed(what):
+        m = re.fullmatch(r"(?:TRIAGE\.md\s+)?path\s+(\d+)", what, re.I)
+        if m:
+            return int(m.group(1)) in lines
+        m = re.fullmatch(rf"({_IDS})['’]s answer", what)
+        return bool(m) and m.group(1) in answered
+    for t in trackers:
+        t["raised"] = [r for r in t.get("raises") or [] if t["status"] in OPEN_STATUSES and r["date"] > (t.get("triaged") or "")
+                       and any(signed(w) for w in r["undermines"])]
     return trackers
 
 
@@ -2658,6 +2711,11 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
              is that reader, whatever the row's status. Its Closest cell holds what the filing says it was held
              against (`considered:`) beside the three trackers the machine finds closest, done ones included.
              OPEN every one marked NOT considered. The same work: `merge ID`. Otherwise judge the row like any other.
+     RAISED: a row marked RAISED carries a raise — a line under the tracker's `## Raised` — dated after its last
+             judgement and naming a signed rule it undermines: a line of the current path, or a tracker's signed
+             answer. The Owner's rule (FM-033): a raise naming a signed rule re-judges the tracker the same day; any
+             other raise waits for the next pass. Its Now cell is the raise: judge the row again, whatever its keep
+             test says.
      THE ROW carries two cells you do not fill. NOW is the opening of the tracker's *What is true now* — what
              is left; judge from it before the Hook, which only tells the problem as it was filed. FACTS are
              DERIVED: the repos whose commits name the tracker · the tokens it costs to read · the ready marks
@@ -2747,8 +2805,8 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
     day = lambda d: datetime.date.fromisoformat(d) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) else datetime.date.min
     fresh = lambda d: (datetime.date.fromisoformat(today) - day(d)).days <= TRIAGE_DAYS    # one window: the keep test, and the life of a judgement
     is_new = is_new_filing
-    todo = [t for t in trackers if t["id"] not in done
-            and owed_a_pass(t) and not fresh(t.get("triaged") or "")]
+    todo = [t for t in trackers if t["id"] not in done         # a raise re-judges it however fresh its judgement (FM-033)
+            and (t.get("raised") or (owed_a_pass(t) and not fresh(t.get("triaged") or "")))]
     open_now = [t for t in trackers if t["status"] in ("Proposed", "In Progress", "Parked", "Reserved")]
     rows = []
     for t in todo:
@@ -2770,7 +2828,7 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
         lines[-2:-2] = ["**Intent — the Owner's words; a row inherits its Story's.** Judge what is left against what the work is *for*.", ""] + [
             f"- **{c}** — {by_id[c]['intent']}" for c in carriers if c in by_id] + [""]
     for _d, t, last, near in rows:
-        test = ("keep" if fresh(last) else "FAILS") + (" · NEW FILING" if is_new(t) else "")
+        test = ("keep" if fresh(last) else "FAILS") + (" · NEW FILING" if is_new(t) else "") + (" · RAISED" if t.get("raised") else "")
         title = t["title"].replace("|", "\\|")
         title = title if len(title) <= 70 else title[:67] + "…"
         if is_new(t):
@@ -2785,6 +2843,8 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
         facts = (f'repos {", ".join(repos.get(t["id"], [])) or "—"} · reads {t.get("reads", 0) / 1000:.1f}k'
                  + (f' · next {t["next"]}' if t.get("next") else "") + (f' · kind {t["problem"]}' if t.get("problem") else "") + (f' · NOT {", ".join(fails)}' if fails else ""))
         now = (t.get("state") or "").replace("|", "\\|")                       # what is left — a seat fathoms this, not the hook
+        if t.get("raised"):                                                   # …and for a raised row, the raise it is re-judged on
+            now = max(t["raised"], key=lambda r: r["date"])["line"].replace("|", "\\|")
         now = (now if len(now) <= NOW_MAX else now[:NOW_MAX - 1].rstrip() + "…") or "—"
         lines.append(f'| [{t["id"]}](../../{t["file"]}) — {title} | {t["tier"]} | {t.get("epic", "—")} | {last} · {test} | {closest} | {hook} | {now} | {facts} | | |')
     return "\n".join(lines + judged) + "\n", len(rows)
@@ -4043,7 +4103,7 @@ def run_deriver(trackers, mode="write", flags=()):
 
 
 def load_trackers():
-    return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
+    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)]))
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy

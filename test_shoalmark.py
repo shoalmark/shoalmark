@@ -1364,7 +1364,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (wt / "TRIAGE.md").write_text(home.replace("1.\n", "1. MSR-001 zuerst, dann der Rest.\n").replace("*None yet.*", "**2026-09-21 — der erste Durchgang.** Alles gesichtet."), encoding="utf-8")
     for f_ in (made, wt / "TRIAGE.md"):                     # German whatever the templates wrote — this check is about READING
         x = f_.read_text(encoding="utf-8")
-        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge", "asks": "Fragen"}[en] + "\n")
+        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge", "asks": "Fragen", "raised": "Einwände"}[en] + "\n")
         f_.write_text(x, encoding="utf-8")
     home = (wt / "TRIAGE.md").read_text(encoding="utf-8").replace("1. MSR-001 zuerst, dann der Rest.\n", "1.\n")
     fm.configure(root); now = made.read_text(encoding="utf-8"); th = fm.triage_home()
@@ -2576,6 +2576,58 @@ with tempfile.TemporaryDirectory() as tmp:
     check("FM-030 · `--schema`: `next:` says what an answer writes, and `ask-kind:` that an ask whose yes needs the Owner's hands is `action`, whatever else it decides",
           "`--answer` writes it with the answer: `build` for a ruling, a determination or a ceremony" in schema_ and "`owner` kept for an action" in schema_
           and "An ask whose yes needs the Owner's hands is `action`, whatever else it decides" in schema_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-033's second answer, 0.18.3 (AU-16): a raise naming a signed rule re-judges the tracker the same day ---------------
+# A raise is a line under `## Raised`, dated, naming what it undermines. Dated after the tracker's judgement and naming a
+# line of the current path or a signed answer, it puts the tracker under triage and on the next worksheet, marked RAISED.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    git(root, "init", "-q")
+    (root / "shoalmark.toml").write_text('name = "r"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    d_ = lambda n: (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
+    wt_ = root / "docs/work-tracker"; wt_.mkdir(parents=True)
+    (wt_ / "TRIAGE.md").write_text("# Triage\n\n## The intent\n\n- **for** people who build with agents\n\n## The current path\n\n1. The sitting runs on a tagged release.\n"
+                                   "2. What a sitting finds is filed that day.\n3. A review's evidence is checked, not asked.\n4. Trust is earned first.\n"
+                                   "5. An answer is written and signed through the board.\n\n## Passes\n\nNewest first.\n", encoding="utf-8")
+    raise_ = lambda day, what: f"## Raised\n\n- {day} · Auditor (8b91dba2), through the Owner · the key signs without a touch — ssh-add -l · undermines: {what}\n\n"
+    judged_ = lambda day, status="Proposed": f"triaged: {day}\ntier: P2\n"
+    body_ = lambda raised: "## What is true now\n\n**One thing is left.**\n\n" + raised + "## Done when\n\nit is.\n"
+    tracker(root, "AP-210", status="Proposed", extra="next: build\n" + judged_(d_(3)), title="answered",      # his answer, cleared into the record
+            body=body_(f"## Asks\n\n**{d_(3)}** · Which key signs?\n**answered** — accepted - a hardware key · holgo\n**relation** — accepted the proposal\n\n"))
+    tracker(root, "AP-201", status="Proposed", extra=judged_(d_(1)), title="FM-007's shape", body=body_(raise_(d_(0), "TRIAGE.md path 5, AP-210's answer")))
+    tracker(root, "AP-202", status="Proposed", extra=judged_(d_(1)), title="no signed rule", body=body_(raise_(d_(0), "the shadow week")))
+    tracker(root, "AP-203", status="Proposed", extra=judged_(d_(1)), title="raised before", body=body_(raise_(d_(2), "path 5")))
+    tracker(root, "AP-204", status="Proposed", extra=judged_(d_(0)), title="the same day", body=body_(raise_(d_(0), "path 5")))
+    tracker(root, "AP-205", status="Proposed", extra=judged_(d_(1)), title="no such rule", body=body_(raise_(d_(0), "path 9, AP-299's answer")))
+    tracker(root, "AP-206", status="Shipped", extra=judged_(d_(1)), title="done", body=body_(raise_(d_(0), "path 5")))
+    tracker(root, "AP-207", status="In Progress", extra=judged_(d_(1)), title="the token mid-line",
+            body=body_(f"## Raised\n\n- {d_(0)} · undermines: path 1 · Auditor · the release was\n  not tagged · git tag -l\n\n"))
+    run(root)
+    fm.configure(root); by_ = {t["id"]: t for t in fm.load_trackers()}
+    boards_ = {k: fm.board(t) for k, t in by_.items()}
+    index_ = (wt_ / "INDEX.md").read_text(encoding="utf-8")
+    check(f"FM-033 · a raise dated after the judgement that names a signed rule — a line of the current path, a tracker's answer — makes the tracker owed a pass and puts it under triage, INDEX.md too (saw {boards_})",
+          fm.owed_a_pass(by_["AP-201"]) and boards_["AP-201"] == "triage" and re.search(r"^\| \[AP-201\].*\| triage \|", index_, re.M) is not None
+          and [r_["undermines"] for r_ in by_["AP-201"]["raises"]] == [["TRIAGE.md path 5", "AP-210's answer"]])
+    check("FM-033 · and nothing else does: a raise naming no signed rule, one dated before the judgement, one on the judgement's own day (a day decides), a path line or an answer that is not there, a raise on done work",
+          all(not fm.owed_a_pass(by_[k]) for k in ("AP-202", "AP-203", "AP-204", "AP-205")) and boards_["AP-202"] == boards_["AP-203"] == boards_["AP-204"] == boards_["AP-205"] == "backlog"
+          and boards_["AP-206"] == "done" and not by_["AP-206"]["raised"])
+    check("FM-033 · the raise line is keyed on its date and its `undermines:` token wherever it sits — never on a count of fields — and a wrapped bullet is read whole",
+          boards_["AP-207"] == "triage" and by_["AP-207"]["raises"][0]["undermines"] == ["path 1"] and by_["AP-207"]["raises"][0]["line"].endswith("not tagged · git tag -l"))
+    code_, out_, _ = run(root, "--triage")
+    sheet_ = (wt_ / "evidence/triage" / f"triage-{d_(0)}.md").read_text(encoding="utf-8")
+    row_ = next((l for l in sheet_.splitlines() if l.startswith("| [AP-201]")), "")
+    check(f"FM-033 · `--triage` lists the raised tracker, judged yesterday, with RAISED in its keep-test cell and the raise in its Now cell — and prints the rule in the Owner's words (saw {row_[:220]!r})",
+          code_ == 0 and "· RAISED |" in row_ and f"| {d_(0)} · Auditor (8b91dba2), through the Owner · the key signs without a touch — ssh-add -l · undermines: TRIAGE.md path 5, AP-210's answer |" in row_
+          and not any(l.startswith(f"| [{k}]") for l in sheet_.splitlines() for k in ("AP-202", "AP-203", "AP-204", "AP-205", "AP-206"))
+          and "a raise naming a signed rule re-judges the tracker the same day; any" in out_ and "other raise waits for the next pass" in out_)
+    (wt_ / "evidence/triage" / f"triage-{d_(0)}.md").write_text(sheet_.replace(row_, row_[: -len(" | | |")] + " | keep P2 | re-judged on the raise |") if row_.endswith(" | | |") else sheet_, encoding="utf-8")
+    code2_, _o, err2_ = run(root, "--triage")
+    fm.configure(root); t201_ = next(t for t in fm.load_trackers() if t["id"] == "AP-201")
+    check(f"FM-033 · the pass that re-judges it dates it today, and the raise no longer re-opens it (saw {t201_.get('triaged')!r}, {err2_.strip()[-160:]!r})",
+          code2_ == 0 and t201_.get("triaged") == d_(0) and not t201_["raised"] and fm.board(t201_) == "backlog")
     rm_git(root)
 fm.configure(HERE)
 
