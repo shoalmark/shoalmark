@@ -42,6 +42,23 @@ branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
 - **The Owner's own checkout had a seat's branch checked out.** Git refused that branch to the seats twice, and they
   worked on a detached head instead.
 
+**Filing outruns closing about two to one.** The Owner asked it on 2026-09-24 (spelling normalised): *"How much faster
+are we filing than we are being able to close?"* The measurement is read from `main`'s history: each tracker's first
+commit, and the first commit where its status reads *Shipped* or *Closed*.
+
+- **The record starts 2026-09-22 11:09, 1.9 days ago.**
+
+  | Day | Filed | Closed | Open at the day's end |
+  |---|---|---|---|
+  | 2026-09-22 | 11 | 2 | 9 |
+  | 2026-09-23 | 16 | 13 | 12 |
+
+- **Four more are filed on branches but not yet on `main`:** FM-028, FM-029, FM-030 and FM-031. That makes 31 filed
+  against 15 closed, and 16 open.
+- **Rate:** 16.4 filed a day against 8.0 closed, a ratio of 2.07. The open count grows by about 8 a day.
+- **Filing to closing takes 0 to 26 hours** for the 15 that closed. Most take 3 to 8 hours.
+- **The pull requests show the same shape,** from 2026-09-23 18:00 to 2026-09-24 08:20: 22 opened, 13 merged.
+
 **What coordinates today:**
 - Every commit names its session (FM-024).
 - The registry says who is running where.
@@ -97,4 +114,5 @@ None is chosen. The Owner or the Principal rules.
 
 | Date | Event |
 |---|---|
+| 2026-09-24 08:26 CEST | The Owner's second question measured: filing outruns closing 2.07 to 1 (16.4 filed a day against 8.0 closed, since 2026-09-22 11:09); 16 open, and the open count grows about 8 a day. |
 | 2026-09-24 08:24 CEST | Filed on the Owner's question, with tonight's record as the measurement. Held against FM-005 (his decisions: the asks, not the queue of pull requests), FM-023 (a plan's seats and estimates), FM-024 (a commit names its session) and FM-027 (ids claimed on the server). |
