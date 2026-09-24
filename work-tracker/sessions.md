@@ -31,4 +31,4 @@ which says so.
 | 8e509911/implementer-10 | implementer | the Owner, 2026-09-24 08:24, in session 8e509911 | filing: can the Owner keep up with parallel streams | shoalmark-impl-3 | 2026-09-24 08:24 | 2026-09-24 08:26 |
 | 8e509911/implementer-11 | implementer | session 8e509911 | FM-031 adopted by the Principal: the ask drafted, the slices named | shoalmark-impl-3 | 2026-09-24 08:32 | 2026-09-24 08:36 |
 | 8e509911/implementer-13 | implementer | session 8e509911 | FM-031 NOT READY at 3c72e84: the Reviewer's R1-R4 fixed | shoalmark-impl-3 | 2026-09-24 08:50 | 2026-09-24 08:56 |
-| 8e509911/implementer-14 | implementer | session 8e509911 | file FM-032: the loop costs the same for a docs row as for a migration; the Owner's ask drafted | shoalmark-impl-3 | 2026-09-24 09:29 | — |
+| 8e509911/implementer-14 | implementer | session 8e509911 | file FM-032: the loop costs the same for a docs row as for a migration; the Owner's ask drafted | shoalmark-impl-3 | 2026-09-24 09:29 | 2026-09-24 09:35 |
