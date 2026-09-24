@@ -1,6 +1,6 @@
 # shoalmark
 
-*A mark on the chart that keeps the fleet off the shoal.*
+*A withy in the mud keeps the fleet in the channel.*
 
 ## Get a better-performing human Owner.
 
