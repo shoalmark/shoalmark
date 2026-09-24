@@ -1,10 +1,10 @@
 ---
 id: FM-024
-status: In Progress
+status: Shipped
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: review
+triaged: 2026-09-24
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -250,6 +250,7 @@ row.
 
 | Date | Event |
 |---|---|
+| 2026-09-24 | **Shipped — closed out by the 2026-09-24 triage pass (*fix*):** the trailer rule shipped in 0.17.7 and stands, every seat's commit names its session; the registry this tracker built — rows opened and closed by hand, a gate on them — was retired by FM-032 S2 in 0.18.0, where `--sessions` generates the report from the trailers. *What is true now* above is history from here. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |

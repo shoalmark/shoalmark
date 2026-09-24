@@ -1,10 +1,12 @@
 ---
 id: FM-027
-status: Proposed
+status: Parked
 considered: FM-008, FM-011, FM-024
 tags: research
 kind-of-problem: complicated
 next: review
+triaged: 2026-09-24
+tier: P3
 hook: "`--new` takes the next id it can see on the branch it runs on; two branches that have not merged both get it — it happened twice in one evening. A readable prefix and a counting number stay; the claim moves to the one place that is atomic for everyone, the server"
 ---
 

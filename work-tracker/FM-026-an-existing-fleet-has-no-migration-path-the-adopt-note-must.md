@@ -1,10 +1,10 @@
 ---
 id: FM-026
-status: Proposed
+status: Closed
 considered: FM-004, FM-006
 tags: research
 kind-of-problem: complex
-next: review
+triaged: 2026-09-24
 hook: "Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because nothing tells an existing fleet how its trackers, seats and habits move over; the adopt note must carry that migration, and the case its agents make to their owner"
 ---
 
@@ -68,4 +68,5 @@ prompts rerun give at least 2 of 3.
 
 | Date | Event |
 |---|---|
+| 2026-09-24 | **Merged into FM-004 by the 2026-09-24 triage pass:** the migration path for an existing fleet is FM-004's adoption question; its line stands in FM-004's *What is true now*, and the case to write it from is today's vendoring of 0.18.0 into the parent project. Closed. |
 | 2026-09-23 | Filed on the Owner's direction, tagged `research`; held against FM-004 (the 0 of 3 and its reason) and FM-006 (the owner's page); FM-025 (the cold start's cost), on its own branch, is its neighbour. Not built this week — the path's line 2. |

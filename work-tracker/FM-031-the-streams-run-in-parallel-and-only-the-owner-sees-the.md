@@ -3,7 +3,10 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: build
+next: wait
+triaged: 2026-09-24
+rank: 8
+tier: P2
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 

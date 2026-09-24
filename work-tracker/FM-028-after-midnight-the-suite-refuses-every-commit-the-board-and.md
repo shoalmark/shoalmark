@@ -3,7 +3,10 @@ id: FM-028
 status: Proposed
 considered: FM-024, FM-027, FM-005
 tags: bug
-next: review
+next: build
+triaged: 2026-09-24
+rank: 9
+tier: P2
 hook: "Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC. The board counts an ask's age from UTC midnight while the suite and --standup count it by the local calendar, so for the hours the two dates differ they disagree by a day."
 ---
 
