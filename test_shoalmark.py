@@ -1034,6 +1034,12 @@ viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
 viewer.answer: die Antwort des Auftraggebers
 viewer.supersedes: ersetzt {0}
+relation.proposal: den Vorschlag angenommen
+relation.changed: mit einer Änderung angenommen
+relation.option: Option {0} gewählt
+relation.rejected: abgelehnt
+relation.revoked: zurückgenommen
+relation.unknown: Bezug zum Vorschlag nicht bestimmbar
 viewer.stale: veraltet — älter als {0} Tage, gilt wieder als ungesichtet
 viewer.handover: Übergabe
 viewer.next: nächster Schritt
@@ -2351,7 +2357,7 @@ with tempfile.TemporaryDirectory() as tmp:
           code4 == fm.EXIT_LINT and "answered already" in err4 and "revoke" in err4 and "--supersede" in err4
           and code5 == 0 and t_["answer"] == "accepted - the exporter instead" and t_.get("supersedes") == revoked_ and gate_ == 0
           and f'superseded: *"revoked - the importer waits for the audit"* ({revoked_}) — replaced by: *"accepted - the exporter instead"*' in ap80.read_text()
-          and f'"accepted - the exporter instead", "yes", [], [], "{datetime.date.today().isoformat()}", "holgo", "{revoked_}"]' in page_ and 'l("viewer.supersedes"' in page_)
+          and f'"accepted - the exporter instead", "yes", [], [], "{datetime.date.today().isoformat()}", "holgo", "{revoked_}", ["changed", 0, ""]]' in page_ and 'l("viewer.supersedes"' in page_)
     git(root, "switch", "-q", trunk_)
     tracker(root, "AP-081", extra=ask_("Ship the exporter?"), title="unanswered"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "a second ask")
     code7, _, err7 = run(root, "--answer", "AP-081", "revoke", "nothing to take back"); code8, _, err8 = run_safe(root, "--answer", "AP-081", "accept", "--supersede")
@@ -2433,26 +2439,148 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "checkout", "-q", "-b", "answer/msr-001"); git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", "MSR-001: accepted")
     run(root); git(root, "add", "-A"); git(root, "commit", "-q", "--amend", "-S", "--no-edit"); signed_ = sha()      # the INDEX as the hook would stage it
     git(root, "checkout", "-q", "-b", "answer/msr-002", t0); (root / "x.txt").write_text("x"); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-002: unsigned"); unsigned_ = sha()
+    git(root, "checkout", "-q", "-b", "answer/msr-003", t0); (root / "y.txt").write_text("y"); git(root, "add", "-A")
+    git(root, "commit", "-q", "-S", "--author=mallory <m@m>", "-m", "MSR-003: signed, and not by an answerer"); impostor_ = sha()
     prs = [{"number": n_, "title": b_, "headRefName": b_, "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"}
-           for n_, b_, h_ in ((1, "answer/msr-001", signed_), (2, "answer/msr-002", unsigned_))]
+           for n_, b_, h_ in ((1, "answer/msr-001", signed_), (2, "answer/msr-002", unsigned_), (3, "answer/msr-003", impostor_))]
     fm.configure(root)
     read_ = lambda: [a_ for _p, _k, a_, _d in _no_git_env(lambda: fm.queue_actions(prs))]
     trusted_ = read_()
     plain_cfg = cfg_.read_text(); cfg_.write_text(plain_cfg.replace('answerers = ["t signed"]\n', "") + '\n[seats]\nowner = "t signed"\n'); fm.configure(root)
     by_name_ = read_(); cfg_.write_text(plain_cfg); fm.configure(root)
     check(f"R1 · with `[seats]` naming the Owner by his git name, as the gate matches a seat (email or name), his signed answer reads `merge: your answer` (saw {by_name_})",
-          by_name_ == ["merge: your answer", "wait: unsigned answer"])
+          by_name_ == ["merge: your answer", "wait: unsigned answer", "wait: not an answerer (m@m)"])
     git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
     git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
     untrusted_ = read_(); code_, _, err_ = run(root, "--check")
     check(f"FM-031 · an `answer/*` pull request whose head the Owner signed and this clone verifies reads `merge: your answer`; an unsigned one `wait: unsigned answer` — no Reviewer verdict is asked of either (saw {trusted_})",
-          trusted_ == ["merge: your answer", "wait: unsigned answer"] and ok_ == 0)
+          trusted_[:2] == ["merge: your answer", "wait: unsigned answer"] and ok_ == 0)
+    check(f"R8 · a SIGNED `answer/*` commit by someone who may not answer reads `wait: not an answerer (<author>)` — not *unsigned*: the impostor is named (saw {trusted_})",
+          trusted_[2] == "wait: not an answerer (m@m)" and bool(subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%GK", impostor_], capture_output=True, text=True, env=_ENV).stdout.strip()))
     check(f"RV · with `gpg.ssh.allowedSignersFile` unset, a SIGNED answer is refused as unverifiable here, naming the setting and the signing page — never 'sign it'; the exit is unchanged, and the queue says the same (saw {err_.strip()[-220:]!r}, {untrusted_})",
           code_ == fm.EXIT_LINT and "it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see " + fm.SIGNING_PAGE in err_
           and "sign it (`git commit -S`)" not in err_ and untrusted_[0] == "wait: answer not verified here — `gpg.ssh.allowedSignersFile` is not set")
     git(root, "commit", "-q", "--amend", "--no-edit", "--no-gpg-sign"); code2_, _, err2_ = run(root, "--check")
     check("RV · an answer committed with no signature at all is still asked to be signed",
           code2_ == fm.EXIT_LINT and "sign it (`git commit -S`)" in err2_ and "cannot verify" not in err2_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-029: the answer's relation to the proposal — computed by every reading, the signed line untouched ---------------
+# One word covered three answers: under `accepted` the board's dialog and `--answer` write the proposal, another listed
+# option and changed text alike, and a reader counting how often the Owner took the proposal counted all three. The
+# relation is read from `answer:` against `ask-proposal:` and `ask-options:`, the answer's own normalisation on both sides.
+rel_ = lambda answer, proposal="", options=(): fm.answer_relation({"answer": answer, "ask_proposal": proposal, "ask_options": list(options)})
+opts_ = ["ship the importer", "ship the exporter", "ship neither"]
+check("FM-029 · the proposal, by its text or by a bare `accepted`; another option by its place in `ask-options:`, from 1; changed text; a rejection and a revocation with their reasons",
+      rel_("accepted - ship the importer", "ship the importer", opts_) == ("proposal", 0, "")
+      and rel_("accepted", "ship the importer", opts_) == ("proposal", 0, "")
+      and rel_("accepted - ship neither", "ship the importer", opts_) == ("option", 3, "ship neither")
+      and rel_("accepted - ship the importer, and count a week first", "ship the importer", opts_) == ("changed", 0, "")
+      and rel_("rejected - not this quarter", "ship the importer", opts_) == ("rejected", 0, "not this quarter")
+      and rel_("revoked - the audit comes first", "ship the importer", opts_) == ("revoked", 0, "the audit comes first")
+      and rel_("rejected", "ship the importer") == ("rejected", 0, "") and rel_("Accepted - ship the importer", "ship the importer") == ("proposal", 0, ""))
+check("FM-029 · the answer's own normalisation on BOTH sides: a proposal holding a double quote and a double space reads as the proposal, not as changed text — and an option as that option",
+      rel_("accepted - ship 'the importer' first", 'ship "the importer"  first', ['ship "the importer"  first', "wait  a week"]) == ("proposal", 0, "")
+      and rel_('accepted -   wait a   week ', 'ship "the importer"  first', ['ship "the importer"  first', "wait  a week"]) == ("option", 2, "wait a week"))
+check("FM-029 · the schema's hand-written em-dash form reads as the dash `--answer` writes; with no proposal an option still reads as its option and other text as a change",
+      rel_("accepted — ship neither", "ship the importer", opts_) == ("option", 3, "ship neither")
+      and rel_("rejected — the audit first", "ship the importer") == ("rejected", 0, "the audit first")
+      and rel_("accepted - ship the exporter", "", opts_) == ("option", 2, "ship the exporter") and rel_("accepted - ship both", "", opts_) == ("changed", 0, ""))
+check("FM-029 · *relation not computable*, never a guess: a bare `accepted` on an ask with no proposal, accepted text with neither a proposal nor options, a word that is none of the three; no answer, no relation",
+      rel_("accepted") == ("unknown", 0, "") and rel_("accepted", "", opts_) == ("unknown", 0, "") and rel_("accepted - ship it") == ("unknown", 0, "")
+      and rel_("yes - ship it", "ship it") == ("unknown", 0, "") and rel_("accepted: ship it", "ship it") == ("unknown", 0, "") and rel_("") is None
+      and fm.relation_text(rel_("accepted")) == "relation not computable" and fm.relation_text(None) == "")
+long_ = "keep the importer, the exporter and the reconciliation in one release, then measure a week"
+check("FM-029 · the relation quotes an option's or a reason's first words, cut between two words",
+      fm.relation_text(rel_(f"accepted - {long_}", "ship the importer", ["ship the importer", long_])) == "chose option 2: keep the importer, the exporter and the…"
+      and fm.relation_text(rel_("accepted - ship neither", "ship the importer", opts_)) == "chose option 3: ship neither"
+      and fm.relation_text(rel_("rejected - not this quarter")) == "rejected: not this quarter")
+# the Owner's own three, as synthetic trackers carrying their lines — nothing here reads a real corpus
+FM029_ = ('ask: "Rule the answer\'s word for 0.18.1: the board and every reading print the answer\'s relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?"\n'
+          'ask-kind: ruling\nask-since: {since}\nask-proposal: "both — the relation computed for every answer, the verbs changed and chose for new ones"\n'
+          'ask-options: "both — the relation computed for every answer, the verbs changed and chose for new ones | the relation only — no new verbs | the verbs only | none — the word stays accepted"\n')
+FM031_ = ('ask: "Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat\'s branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?"\n'
+          'ask-kind: ruling\nask-since: {since}\nask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later | none — keep the current fan-out"\n'
+          'ask-proposal: "all three rules now, S1 then S2"\n')
+D1_ = ('ask: "Which week does the shadow run take?"\nask-kind: ruling\nask-since: {since}\nask-proposal: "this week, as planned"\n'
+       'ask-options: "this week, as planned | next week, after the release | a week of your choosing, "shadow" only on weekdays"\n')
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat(); today_ = datetime.date.today().isoformat()
+    ask_ = lambda lines: "next: owner\n" + lines.format(since=since_)
+    answered_ = lambda answer: f'answer: "{answer}"\nanswered: {today_}\nanswered-by: holgo\n'
+    d1_ = tracker(root, "AP-290", extra=ask_(D1_), title="D1 by shape")
+    f31_ = tracker(root, "AP-291", extra=ask_(FM031_) + answered_("accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked 2026-09-24"), title="FM-031 as PR 46 left it")
+    f29_ = tracker(root, "AP-292", extra=ask_(FM029_) + answered_("accepted - the relation only — no new verbs"), title="FM-029 as 140f799 left it")
+    q_ = tracker(root, "AP-293", extra=ask_('ask: "Which ships first?"\nask-kind: ruling\nask-since: {since}\nask-proposal: ship "the importer"  first\n'), title="a quoted proposal")
+    r_ = tracker(root, "AP-294", extra=ask_('ask: "Shall the exporter ship?"\nask-kind: ruling\nask-since: {since}\nask-proposal: "yes"\n'), title="to reject")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks", "--author=holgo <h@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    # the board's dialog: OK gives `--answer <id> accept "<q(option)>"`, q() trimming and writing `"` as `'` — option 3 of three
+    dialog_ = lambda o: o.strip().replace('"', "'")
+    d1_opt3 = fm.parse_frontmatter(d1_.read_text())[0]["ask-options"].strip('"').split(" | ")[2]
+    codes_ = [run(root, "--answer", "AP-290", "accept", dialog_(d1_opt3))[0], run(root, "--answer", "AP-293", "accept", 'ship "the importer"  first')[0],
+              run(root, "--answer", "AP-294", "reject", "not this quarter — the audit comes first")[0]]
+    for id_ in ("ap-290", "ap-293", "ap-294"):
+        git(root, "merge", "-q", "--no-ff", "-m", f"the Owner merges {id_}", f"answer/{id_}")
+    fm.configure(root); by_ = {t["id"]: t for t in fm.load_trackers()}
+    rels_ = {k: fm.answer_relation(by_[k]) for k in ("AP-290", "AP-291", "AP-292", "AP-293", "AP-294")}
+    check(f"FM-029 · the Owner's own three: D1's shape — the third of three options, picked in the dialog — reads *chose option 3*; FM-031's line as PR 46 left it reads *accepted with a change*; FM-029's own answer of 14:24:00 reads *chose option 2* (saw {rels_})",
+          codes_ == [0, 0, 0] and rels_["AP-290"][:2] == ("option", 3) and rels_["AP-291"] == ("changed", 0, "")
+          and rels_["AP-292"] == ("option", 2, "the relation only — no new verbs"))
+    check(f"FM-029 · through `--answer`: a proposal typed with a double quote and a double space reads *the proposal*; a rejection reads *rejected* with its reason — and the signed lines are what `--answer` wrote, word unchanged",
+          rels_["AP-293"] == ("proposal", 0, "") and rels_["AP-294"] == ("rejected", 0, "not this quarter — the audit comes first")
+          and "\nanswer: \"accepted - ship 'the importer' first\"\n" in q_.read_text() and "\nanswer: \"accepted - a week of your choosing, 'shadow' only on weekdays\"\n" in d1_.read_text()
+          and '\nanswer: "rejected - not this quarter — the audit comes first"\n' in r_.read_text())
+    _, said_, _ = run(root, "--answered"); run(root, "--html-only"); page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    check("FM-029 · `--answered` prints the relation beside each answer",
+          "   answer: accepted - a week of your choosing, 'shadow' only on weekdays\n   relation: chose option 3: a week of your choosing, 'shadow' only…\n" in said_
+          and "   relation: accepted with a change\n" in said_ and "   relation: chose option 2: the relation only — no new verbs\n" in said_
+          and "   relation: accepted the proposal\n" in said_ and "   relation: rejected: not this quarter — the audit comes first\n" in said_)
+    check("FM-029 · the board's tracker view carries the relation next to the answer, in the words of its labels — English built in, German in the table the tool ships",
+          '"accepted - the relation only — no new verbs"' in page_ and '["option", 2, "the relation only — no new verbs"]]' in page_ and '["changed", 0, ""]]' in page_
+          and 'l("relation."+r[0],r[1])' in page_ and '"relation.option": "chose option {0}"' in page_ and '"relation.unknown": "relation not computable"' in page_)
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the answers merged", "--author=holgo <h@x>")
+    code_, out_, _ = run(root, "--clear-ask", "AP-292", "build"); body_ = f29_.read_text()
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-292 acted on", "--author=holgo <h@x>")
+    fm.configure(root); t292_ = next(t for t in fm.load_trackers() if t["id"] == "AP-292"); _, said2_, _ = run(root, "--answered")
+    check(f"FM-029 · `--clear-ask` writes the relation into the record under `## Asks` — the proposal and the options leave with the ask, the relation stays — and `--answered` names it on the acted-on line (saw {said2_.strip()[-160:]!r})",
+          code_ == 0 and "**answered** — accepted - the relation only — no new verbs · holgo\n**relation** — chose option 2: the relation only — no new verbs\n" in body_
+          and "ask-options:" not in body_.split("---")[1] and t292_["asks_relation"] == "chose option 2: the relation only — no new verbs"
+          and "AP-292 — acted on in `" in said2_ and "` · chose option 2: the relation only — no new verbs" in said2_ and run(root, "--check")[0] == 0)
+    rm_git(root)
+fm.configure(HERE)
+old_record_ = "# X-1 — t\n\n## Asks\n\n**2026-09-20** · Ship it?\n**answered** — accepted - ship it, S1 first · holgo\n\n## Ship log\n"
+new_record_ = old_record_.replace("· holgo\n", "· holgo\n**relation** — accepted with a change\n")
+check("FM-029 · a record `--clear-ask` wrote before 0.18.1 is read as it is — *relation not computable*: its proposal is gone, and nothing guesses it; a withdrawn one has no relation",
+      fm.recorded_relation(old_record_) == "relation not computable" and fm.recorded_relation(new_record_) == "accepted with a change"
+      and fm.recorded_relation("## Asks\n\n**2026-09-20** · Ship it?\n**withdrawn** — no answer was given\n") == "" and fm.recorded_relation("# no asks\n") == "")
+
+# --- FM-029: the half-written answer's *give it again* knows all three words, and a superseding answer's flag ----------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "h"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    lines_ = lambda q: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+    a_ = tracker(root, "AP-296", extra=lines_("Ship the importer?") + f'answer: "accepted - yes"\nanswered: {since_}\nanswered-by: holgo\n')
+    b_ = tracker(root, "AP-297", extra=lines_("Ship the exporter?") + f'answer: "accepted - yes"\nanswered: {since_}\nanswered-by: holgo\n')
+    c_ = tracker(root, "AP-298", extra=lines_("Ship the reports?"))
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "answered", "--author=holgo <h@x>")
+    a_.write_text(a_.read_text().replace('answer: "accepted - yes"', 'answer: "revoked - the audit comes first"'), encoding="utf-8")
+    b_.write_text(b_.read_text().replace('answer: "accepted - yes"', 'answer: "rejected - not this quarter"'), encoding="utf-8")
+    code_, _, err_ = run(root, "--answer", "AP-298", "accept")
+    check(f"FM-029 · the half-written-answer recovery reads `revoked` too — its *give it again* is `revoke \"<reason>\"` — and an answer that replaced a committed one is given again with `--supersede` (saw {err_.strip()[-300:]!r})",
+          code_ == fm.EXIT_LINT and '--answer AP-296 revoke "the audit comes first"' in err_ and '--answer AP-296 revoke "the audit comes first" --supersede' not in err_
+          and '--answer AP-297 reject "not this quarter" --supersede' in err_)
     rm_git(root)
 fm.configure(HERE)
 

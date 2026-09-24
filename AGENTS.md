@@ -53,7 +53,7 @@ never on a default; a word in chat changes none of them until he signs it.
   into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
   and `--check` says when the freeze holds.
 - **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner's signed
-  answer the same day (`7c97c5b`, PR 46, merged 12:53:18). Not a rule. What waits on him is read from `--queue`,
+  answer the same day (`7c97c5b`, PR 46, merged 12:53:19). Not a rule. What waits on him is read from `--queue`,
   pull requests and pushed branches alike.
 - **One channel** (FM-031). The Owner speaks to the coordinating session. His rulings are recorded once, in the tool's
   ask and answer — never relayed through chat as the record.
