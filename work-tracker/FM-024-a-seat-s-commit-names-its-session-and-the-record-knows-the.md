@@ -4,10 +4,15 @@ status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: build
+next: owner
 triaged: 2026-09-24
 rank: 8
 tier: P2
+ask: "Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict?"
+ask-kind: action
+ask-since: 2026-09-24
+ask-options: "a cold Reviewer session you start reviews 0.18.3 | this session's own Reviewer sub-agent, independence reported same-session | 0.18.3 waits until FM-024's slice 2 is built and a same-session verdict is refused"
+ask-proposal: "a cold Reviewer session you start reviews 0.18.3"
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -262,3 +267,5 @@ row.
 | 2026-09-23 | **Slice 1 fixed for 0.17.6 on the Owner's word** (*a prerequisite; before tomorrow*): S1–S8 above — the trailer, the registry, the gate's three refusals, the independence *report* (a count, not yet a refusal), the board's strip, eight checks. Design choices recorded, none asked; the Owner may strike. FM-023 waits until it is ripe — agreed. The Reviewer's attack on the filing is folded into its attack on the build, a departure from the research chain, said here. |
 | 2026-09-23 | **Worked examples added on the Owner's ask** — the worktree setup, the commit with its trailer, the registry with a collision and a sub-agent row, a verdict under the independence rule, the board's and the gate's lines, the plan's mark. Illustrative; nothing built. |
 | 2026-09-23 | Filed on the Owner's question, written to be attacked; held against FM-005 (the person asked mid-flight), FM-007 (a signature proves the key, not the hand), FM-008 (an ask reaches the Owner only through the gate); FM-023 (the plan's `@session`, on its own branch) is the consumer of this id. Not built this week — the path's line 2. |
+| 2026-09-24 | Asked, kind action: who verifies 0.18.3 — slice 2 (a same-session verdict refused) is unbuilt and 55 of this week's 57 verdicts are one session's own sub-agents (the Auditor seat's AU-17); the parent project's ledger row came first. |
+| 2026-09-24 | Correcting the row above (the Reviewer's R6): the 55 of 57 are *same session* as `--check` counts them — each verdict by its own branch's session, 54 of them this session's sub-agents and one another's — not one session's. |
