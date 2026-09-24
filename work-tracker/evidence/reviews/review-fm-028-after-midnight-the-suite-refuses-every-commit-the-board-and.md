@@ -76,3 +76,26 @@ not which date) and for FM-005 (the ask's design, not a defect in shipped code).
 **Noted, not this branch's:** on `main`, the row `8e509911/implementer-9` (the tagline slice) is still open.
 
 **Verdict:** READY TO TAG. R1 is closed by ruling and R2 is closed. No finding is open.
+
+## Re-verified at 3131e8c (2026-09-24 09:24 CEST)
+
+**Scope.** `3131e8c` is the principal seat's merge (under `8e509911`) of `main` `9bde71f` (PR 36 and PR 40
+merged) into my verdict commit `6a9fa8f`.
+
+**It brings only `main`'s files, the registry and INDEX.**
+- Against `6a9fa8f` it changes 6 files. Four are byte-identical to `9bde71f`: FM-011's and FM-031's trackers, and
+  their review files.
+- The registry gains one row, `8e509911/implementer-13` (08:50–08:56), and changes no other.
+- INDEX differs from `main`'s only by FM-028's row and the count (29 against 28).
+
+**The registry loses and doubles nothing.** It has 25 ids in 26 rows, the same id set as both parents, in opened
+order, and no cell differs from either parent. The two closed rows under `8e509911/implementer-6` (01:02–01:14 and
+07:41–08:49) still stand.
+
+**Gates at `3131e8c`.** `--check` 0; `--session-check` 0; `test_shoalmark.py` 0 (264 ok); `test_core.py` 0 (148
+ok). `main` `9bde71f` is an ancestor, so the merge is a fast-forward. The commit message carries no `#N`.
+
+**For FM-032:** this is the third merge of `main` that this pull request has paid for (`64f7b99`, `f8ccf60`,
+`3131e8c`), each forced by the registry and INDEX that every branch writes, not by any change to FM-028's own work.
+
+**Verdict:** READY TO TAG. No finding is open.
