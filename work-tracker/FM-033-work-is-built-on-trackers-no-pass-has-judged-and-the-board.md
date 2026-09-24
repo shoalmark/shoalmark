@@ -1,6 +1,6 @@
 ---
 id: FM-033
-status: Proposed
+status: In Progress
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
 next: build
@@ -104,3 +104,4 @@ Today the seats read *"all four now"* and *"all three rules now"* as leave to bu
 |---|---|
 | 2026-09-24 | The answered exchange cleared as acted on — the pass his answer required was held (#9 build, PR 56) — and the Auditor seat's second question put to him, its words: does a sourced raise that names a signed rule trigger a same-day pass; the raise line is in FM-007, the widening line in FM-030; the parent project's ledger rows came first (`a0b7272c`, 18:05:13). |
 | 2026-09-24 | The fifth case rowed — 0.18.1 built at 15:12:28 on FM-029, judged 15:19:52 (the Auditor seat's check 26, through the Owner at 19:10; a violation, not a miss — his class). The evening re-run of the pass moved this tracker's `next:` from `owner` to `build` on its standing verdict, the second ask answered at 18:59. |
+| 2026-09-24 | In Progress — 0.18.3 builds the raise in the worksheet and on the board, the gate keyed on the build commit, and the tool's rule 4 reworded (path 5); the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
