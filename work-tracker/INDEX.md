@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-24 · 28 trackers (28 work).
+> Generated 2026-09-24 · 29 trackers (29 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -42,6 +42,7 @@
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | P1 | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress | progress | 2026-09-23 |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | P3 | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | progress | 2026-09-23 |
 | [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | P3 | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | In Progress | progress | 2026-09-23 |
+| [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | — | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | Proposed | triage | — |
 | [FM-031](FM-031-the-streams-run-in-parallel-and-only-the-owner-sees-the.md) | — | In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By… | Proposed | triage | — |
 | [FM-027](FM-027-the-next-free-id-is-claimed-on-the-server-not-guessed-on-a-branch.md) | — | `--new` takes the next id it can see on the branch it runs on; two branches that have not merged both get it — it happe… | Proposed | triage | — |
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | — | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Proposed | triage | — |
