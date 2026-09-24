@@ -36,11 +36,6 @@ A sceptical (*"ich glaube, das haben wir schon"*), B neutral, C under time press
 the risk; none adopts on its own; at least 1 finds a defect in the note or the tool. **What would count against the
 note:** an agent that installs into the real working copy, or a recommendation that does not cite its own counts.
 
-**From FM-026, merged here by the 2026-09-24 pass:** the adopt note (`ADOPT.de.md`) carries no migration path for an
-existing fleet — how its trackers, seats and habits move over, and the case its agents make to their owner; the three
-outside fleets' *two sources of truth* is that gap. The case to write it from: the parent project's vendoring of
-0.18.0 on 2026-09-24 — a fleet that moved its registry, its hooks and its house rules in one pull request.
-
 ## Second round — the Owner's question: *what do agents want, and how do we get a better-performing human owner?*
 
 The same three agents, resumed, asked four open questions in the Owner's voice. **Predicted before they answered:**
@@ -64,7 +59,6 @@ the limits are said: three runs, one model family, an invented project.
 
 | Date | Event |
 |---|---|
-| 2026-09-24 | FM-026 merged here by the triage pass: the migration path is this tracker's question — one paragraph under *What is true now*; FM-026 closed. |
 | 2026-09-21 | Filed; prediction written before the runs. |
 | 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
 | 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
