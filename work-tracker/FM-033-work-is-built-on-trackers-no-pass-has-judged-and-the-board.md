@@ -46,6 +46,14 @@ rules and as a new issue."* Nothing is built.** Every time and sha below is from
 
 All four shipped in `v0.18.0` (tag on `095f1d3`, PR 49 merged 14:35).
 
+**The fifth, found by the Auditor seat's check 26 on v0.18.2 (P2, 80%), through the Owner at 19:10, rowed by the Principal seat — a violation of this class, after the Owner's own word at 14:38 and forty minutes after he pointed at the board; no seat reported it:**
+
+| Work | Filed | Authority at the time | First build commit | Marked In Progress | Judged |
+|---|---|---|---|---|---|
+| FM-029, the answer's relation (0.18.1) | `137d9ba` 09-24 10:17:59 | signed answer `140f799` 14:24:00, *"the relation only — no new verbs"* | `4dfb999` 15:12:28, on v0.18.0, where FM-029 reads Proposed, `next: owner` | `68eeee6` 15:24:50, **12 min after the build began** | `87bac4e` 15:19:52 — the pass's first version `7d3e632` (14:49:42) had been voided by a NOT READY verdict; **7 min after the build began** |
+
+Shipped in `v0.18.1` (tag on `1251f84`, PR 53 merged 16:25:41). The Owner's rule for this tracker was signed at 16:29:09, after the build; his intent's *never take up work that is not ready* was in force before it.
+
 ## Why the person saw nothing
 
 - **`progress` lists only judged trackers** ("kept by triage — by rank, then tier"). **`triage` lists everything unjudged**,
@@ -95,3 +103,4 @@ Today the seats read *"all four now"* and *"all three rules now"* as leave to bu
 | Date | Event |
 |---|---|
 | 2026-09-24 | The answered exchange cleared as acted on — the pass his answer required was held (#9 build, PR 56) — and the Auditor seat's second question put to him, its words: does a sourced raise that names a signed rule trigger a same-day pass; the raise line is in FM-007, the widening line in FM-030; the parent project's ledger rows came first (`a0b7272c`, 18:05:13). |
+| 2026-09-24 | The fifth case rowed — 0.18.1 built at 15:12:28 on FM-029, judged 15:19:52 (the Auditor seat's check 26, through the Owner at 19:10; a violation, not a miss — his class). The evening re-run of the pass moved this tracker's `next:` from `owner` to `build` on its standing verdict, the second ask answered at 18:59. |

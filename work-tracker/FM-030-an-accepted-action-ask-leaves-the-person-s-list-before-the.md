@@ -56,6 +56,8 @@ standup budget (FM-023:171). That is a planning view. This tracker is about the 
 his, under *YOUR HANDS — raised* with its raise line, whether its ask is open, answered or absent. As filed, this tracker covered
 accepted *action* asks only; FM-007 is the case it would still miss.
 
+**Widened 2026-09-24 a second time, on the Auditor seat's check 24 on v0.18.2 (P3), through the Owner:** after `--answer` the front matter still reads `next: owner` — the record says the Owner's move after his move is made (FM-033 read so from 18:59 until the evening pass re-applied its verdict). For a ruling, a determination or a ceremony the seat's move follows, and 0.18.3 writes `next: run` with the answer; for an action ask — one whose *yes* needs the Owner's hands — `next: owner` stays, because the act is still his (this tracker's own line: the answer is a promise, not the act), and `--schema` says that an ask whose yes needs his hands is `action`, whatever else it decides (the Auditor's AU-12 and AU-22). `revoke` and `--supersede` key on the answer's presence, not on `next: owner`.
+
 ## Why
 
 The digest is what a session's last message leads with, and the standup is the person's one sitting. *Nothing needs
@@ -91,3 +93,4 @@ acts this kind covers are the ones the design reserves for him because they carr
 |---|---|
 | 2026-09-24 | Widened by one line to rulings whose act is the Owner's (FM-007), on the Auditor seat's raise; nothing built. |
 | 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-030's share of R1–R10, and R11–R15 stay open. |
+| 2026-09-24 | Widened a second time, on the Auditor seat's check 24: `next: owner` after an answer; 0.18.3 builds this line (ruling · determination · ceremony → `next: run`; action stays `owner`). |
