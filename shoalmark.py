@@ -261,6 +261,11 @@ RANK_MAX = 10
 # What a ranked verdict names instead is the NEXT MOVE — who or what moves the tracker next. It is EXTRACTED
 # from what the tracker says is left, not judged: the words are moves, in the order the rules test them.
 MOVES = ("review", "run", "wait", "owner", "script", "build")
+# FM-030 — the move an answer writes with itself, by the ask's kind. A ruling, a determination or a ceremony is decided by
+# the answer, and the seat's move follows: `build`, the move the rules give unbuilt work (`run` is for something BUILT that
+# waits for its run); `--clear-ask <id> <move>` sets the real one when the answer is acted on. An action's yes is a promise
+# of the Owner's own hands, not the act: `next: owner` stays. An ask of no known kind keeps the move it had.
+ANSWER_MOVE = {"ruling": "build", "determination": "build", "ceremony": "build", "action": "owner"}
 MOVE_RE = re.compile(r"\b(%s)\b" % "|".join(MOVES), re.I)
 # `kind-of-problem:` — the second try at that word, built on what took the first
 # one out. A cold pass never judges it: it is left, like `next:`, by a seat that has the tracker OPEN. And it is
@@ -301,7 +306,8 @@ def front_matter_schema():
                             "what this open work waits on — tracker ids, and `Owner` or `Owner — <the ruling awaited>`. *Blocked* is derived from it and clears itself; it orders nothing"),
         "considered":      (rf"none|{_IDS}(?:\s*,\s*{_IDS})*", False, "the filing seat", "the existing trackers this filing was held against — listed means LOOKED AT, not merged — or none. Triage at intake: run `--related` first; the gate refuses a new tracker without this line"),
         "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence he can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
-        "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk"),
+        "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk. "
+                                                                        "An ask whose yes needs the Owner's hands is `action`, whatever else it decides"),
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
         "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
@@ -318,7 +324,8 @@ def front_matter_schema():
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
         "rank":            (r"\d+", False, "a triage pass", "working order, 1–%d — the first item to work on next" % RANK_MAX),
-        "next":            ("|".join(MOVES), False, "the seat that ends work; a pass only where none was left", "the next move — who or what moves it next"),
+        "next":            ("|".join(MOVES), False, "the seat that ends work; `--answer`, with the answer; a pass only where none was left", "the next move — who or what moves it next. `--answer` writes it with the answer: `build` for a ruling, a determination or a ceremony — the seat's move follows; "
+                                                                                                         "`owner` kept for an action, whose act is still the Owner's"),
         "kind-of-problem": ("|".join(PROBLEM_KINDS), False, "a seat with the tracker open — never a pass from a row",
                             "the kind of problem that is LEFT: a script does it · found by reading · found only by running · harm now"),
     }
@@ -1297,8 +1304,13 @@ def answer_cmd(words, trackers, supersede=False):
     # and the tracker's body is where a long answer belongs.
     tid, verdict, text = words[0].upper(), words[1], " ".join(" ".join(words[2:]).split())
     t = next((x for x in trackers if x["id"] == tid), None)
-    if not t or not t.get("ask") or t.get("next") != "owner":
+    # an answer that is there keys revoke and --supersede, not `next: owner`: the answer writes the next move (FM-030), and
+    # a ruling's reads `build` from then on
+    if not t or not t.get("ask"):
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
+        return EXIT_LINT
+    if not t.get("answer") and t.get("next") != "owner":
+        print(f"--answer: {tid} carries an `ask:` and `next: {t.get('next') or '—'}` — an ask waits on the Owner with `next: owner`; the seat that asks sets it", file=sys.stderr)
         return EXIT_LINT
     if t.get("answer") and not (supersede or verdict == "revoke"):
         print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten in place. "
@@ -1417,6 +1429,9 @@ def answer_cmd(words, trackers, supersede=False):
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
+    move = ANSWER_MOVE.get(t.get("ask_kind"))
+    if move:                                                 # FM-030: the move after his — the seat's, or his own hands' for an action
+        lines = set_front("\n".join(lines), "next", move).split("\n")
     if replaced:
         cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
         lines = ship_log_row(lines, f'Answer of {replaced[1]} superseded: *"{cell(replaced[0])}"* ({replaced[2]}) — '
@@ -1445,7 +1460,8 @@ def answer_cmd(words, trackers, supersede=False):
             return EXIT_LINT
     answer_step(tid, 4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
-    print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
+    print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered"
+          + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, "")))
     if r.returncode != 0:
         return EXIT_LINT
     if switched:                                             # pushed: back where he started, so his next --answer does not begin on this one's branch
@@ -1821,7 +1837,7 @@ function draw(){
         <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
         <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
         <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"))}</li>
+        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build")))}</li>
         <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
         <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} answered: ${said}\n  signed, on \`${br}\`, pushed`)}</pre>
         <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
@@ -1935,7 +1951,7 @@ LABELS = {
     "answer.sign.where": "Where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
     "answer.sign.does": "What it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
-    "answer.sign.step.write": "writes the three lines — {0} {1} {2}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
     "answer.sign.step.push": "pushes the branch",
     "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
     "answer.sign.success": "When it worked", "answer.sign.check": "To check",

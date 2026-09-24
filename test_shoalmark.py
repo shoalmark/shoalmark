@@ -2527,6 +2527,58 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.3 (the Auditor seat's check 24): the answer writes the next move — `build` after a ruling, a
+#     determination or a ceremony; `owner` kept for an action, whose act is still his; revoke and supersede still work --
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q, kind: f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "yes"\n'
+    log_ = "## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-20 | Filed. |\n"
+    tracker(root, "AP-095", extra=ask_("Ship the importer first?", "ruling"), title="a ruling", body=log_)
+    tracker(root, "AP-096", extra=ask_("Will you rotate the key this week?", "action"), title="an action", body=log_)
+    tracker(root, "AP-097", extra=ask_("Is the read on production clean?", "determination"), title="a determination", body=log_)
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def land_(tid):                                        # the Owner merges his answer, and origin has it
+        git(root, "merge", "-q", "--no-ff", "-m", f"the Owner merges {tid}", f"answer/{tid.lower()}"); git(root, "push", "-q", "origin", f"{trunk_}:main"); git(root, "fetch", "-q", "origin")
+    front_ = lambda tid: fm.parse_frontmatter((root / f"docs/work-tracker/{tid}-x.md").read_text())[0]
+    said_, diff_ = {}, {}
+    for tid_ in ("AP-095", "AP-096", "AP-097"):
+        said_[tid_] = run(root, "--answer", tid_, "accept")
+        diff_[tid_] = subprocess.run(["git", "-C", str(root), "show", "--format=", f"answer/{tid_.lower()}"], capture_output=True, text=True, env=_ENV).stdout
+        land_(tid_)
+    after_ = {tid_: front_(tid_) for tid_ in said_}
+    check(f"FM-030 · the answer writes the next move in its own commit — a ruling and a determination read `next: build`, the seat's move; an action keeps `next: owner`, the act still his — and the run says which (saw {[a_.get('next') for a_ in after_.values()]})",
+          all(c_ == 0 for c_, _o, _e in said_.values()) and after_["AP-095"].get("next") == "build" and after_["AP-097"].get("next") == "build"
+          and after_["AP-096"].get("next") == "owner" and all(a_.get("answer") == '"accepted"' for a_ in after_.values())
+          and "\n  next: build — the seat's move follows" in said_["AP-095"][1] and "\n  next: owner — an action: the act is still yours" in said_["AP-096"][1]
+          and "+next: build" in diff_["AP-095"] and "-next: owner" in diff_["AP-095"] and '+answer: "accepted' in diff_["AP-095"]
+          and "next:" not in diff_["AP-096"] and '+answer: "accepted' in diff_["AP-096"] and "+next: build" in diff_["AP-097"])
+    code_r, _o, err_r = run(root, "--answer", "AP-095", "revoke", "the audit comes first"); land_("AP-095")
+    code_s, _o, err_s = run_safe(root, "--answer", "AP-096", "accept", "next week", "--supersede"); land_("AP-096")
+    code_n, _o, err_n = run(root, "--answer", "AP-097", "accept", "again")
+    r95_, r96_ = front_("AP-095"), front_("AP-096")
+    check(f"FM-030 · revoke and --supersede key on the answer being there, not on `next: owner` — both work after the move is written, and keep it; an answered ask without either is still refused (saw {err_r.strip()[-160:]!r}, {err_s.strip()[-160:]!r})",
+          code_r == 0 and r95_.get("answer") == '"revoked - the audit comes first"' and r95_.get("next") == "build"
+          and code_s == 0 and r96_.get("answer") == '"accepted - next week"' and r96_.get("next") == "owner"
+          and code_n == fm.EXIT_LINT and "answered already" in err_n and run(root, "--check")[0] == 0)
+    tracker(root, "AP-098", extra='ask: "A question nobody put to him?"\nask-kind: ruling\nnext: build\n', title="not asked", body=log_)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "an ask line with another move")
+    code_a, _o, err_a = run(root, "--answer", "AP-098", "accept"); code_b, _o, err_b = run(root, "--answer", "AP-099", "accept")
+    check(f"FM-030 · an unanswered `ask:` whose move is not `owner` is not the Owner's to answer, and says so; no `ask:` at all still reads *asks the Owner nothing* (saw {err_a.strip()!r})",
+          code_a == fm.EXIT_LINT and "carries an `ask:` and `next: build`" in err_a and code_b == fm.EXIT_LINT and "asks the Owner nothing" in err_b)
+    schema_ = fm.render_schema()
+    check("FM-030 · `--schema`: `next:` says what an answer writes, and `ask-kind:` that an ask whose yes needs the Owner's hands is `action`, whatever else it decides",
+          "`--answer` writes it with the answer: `build` for a ruling, a determination or a ceremony" in schema_ and "`owner` kept for an action" in schema_
+          and "An ask whose yes needs the Owner's hands is `action`, whatever else it decides" in schema_)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
