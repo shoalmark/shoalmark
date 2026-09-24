@@ -347,3 +347,23 @@ keeps the bar.**
 
 **Provenance:** Seat: GtM · Session `6cecddb3` · Model: Claude Opus 5.5 · 2026-09-24 · on the Owner's approval of the
 Principal's recommendation.
+
+---
+
+## The tagline — ruled, 2026-09-24 07:50 CEST, session `0cbdba3f`
+
+**The Owner, in chat:** *"D2 shall then be renamed for the english variant to 'A Pricke on the Wadden flats …'"*
+
+This followed the seat's answer that *withy* is the British counterpart, a plain stick in UK estuaries, and not the
+German Pricke with its twig crown (en.wikipedia, *Withy*; de.wikipedia, *Pricke*).
+
+| | Line |
+|---|---|
+| **DE** | *Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.* |
+| **EN** | ***A Pricke on the Wadden flats keeps the fleet in the channel.*** (the Owner's opening, completed with the rest of D2's English: 12 words, counted in code) |
+
+- ***Pricke* is kept in English as a name.** It matches the mark `d`, it is German-first, and it is the word said
+  aloud in the pitch. D2's *withy* twin above is superseded.
+- **D2's counterfact stands:** it guides rather than warns, and the danger is implied.
+- **This seat does not edit the page.** Applying the line to `docs/de/index.md:3` and `docs/index.md:3`, in place of
+  the tagline that P4 flagged, is the Implementer's slice.
