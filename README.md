@@ -223,7 +223,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
-| `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `labels.yaml`, fonts (§9) |
+| `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `wordmark.svg`, `labels.yaml`, fonts (§9) |
 
 ### Seats
 
@@ -372,13 +372,14 @@ and reads this from stdout:
 
 ## 9. Branding the board
 
-Three optional files, the same names in every place — the board is built from the places in order, **the later one
+Four optional files, the same names in every place — the board is built from the places in order, **the later one
 wins**. Only the git-ignored board reads them: `INDEX.md` and the gate are the same whoever runs them.
 
 | File | Carries |
 |---|---|
 | `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work, **with paths written relative to the `theme.css` they are in** — a font goes in `brand/fonts/`. A theme whose import is missing is left out whole |
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
+| `wordmark.svg` | the mark and the name drawn as one, **inline** in the header in place of the logo and the name — the logo stays the tab's, the name the page's title and the wordmark's accessible name. At most 200 kB; shapes and text only: a script, an `on…` handler, a `<style>`, a reference outside the file refuses it whole, with a warning |
 | `labels.yaml` | every word of the board — flat `key: value` lines. A German board is this file |
 
 | Place | Whose |
@@ -388,12 +389,15 @@ wins**. Only the git-ignored board reads them: `INDEX.md` and the gate are the s
 | `~/.config/shoalmark/` | the person, on their own machine, in every repository |
 
 The name is `name` in `shoalmark.toml`; `tagline` and `footer` are labels. `--brand` says which place gave the
-board its theme, logo and labels; `--brand DIR` writes a commented starter there. A theme that is hard to read gets
+board its theme, logo, wordmark and labels; `--brand DIR` writes a commented starter there. A theme that is hard to read gets
 a warning, never a failure. The four status colours keep their meaning whatever their shade.
 
 **Light and dark:** write the dark colours under `@media (prefers-color-scheme:dark)`, as the starter does. The board's
 `◐` button (auto → light → dark) switches that rule by hand for any theme and remembers the choice in the viewer's
-browser — nothing in the repository changes, and paper stays light.
+browser — nothing in the repository changes, and paper stays light. **A wordmark takes the page's ink** where it is
+drawn in `currentColor` — `fill="currentColor"`, and `stroke="currentColor"` where it strokes — so the mark and the name
+follow light, dark and `◐` in one colour; a fixed colour stays fixed. It keeps the size its `height` gives, else the
+logo's 22 px.
 
 **Another language** is two things: the board's words are `labels.yaml`; the section names the *gate* reads are
 `[headings]` in `shoalmark.toml` — they decide what the gate says, so they belong to the repository, not to a brand.

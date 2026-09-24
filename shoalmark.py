@@ -1502,8 +1502,9 @@ tr.c td:first-child{padding-left:20px}
 #v [data-s]{cursor:pointer;text-decoration:underline}#v .toc{white-space:normal;line-height:1.9;margin:10px 0}
 #v blockquote{margin:12px 0;padding-left:12px;border-left:2px solid var(--line);color:var(--dim)}
 @media(max-width:640px){.x{display:none}}
-/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
-#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
+/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise. A wordmark takes the
+   place of the logo and the name, inline, so its currentColor is the name's ink: the size its height says, else the logo's */
+#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H .wm{display:flex}#H .wm svg{display:block;flex:none}#H .wm svg:not([height]){height:22px;width:auto}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
@@ -1518,7 +1519,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 @media print{#s{display:none}}
 @media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
 </style>__THEMES__
-<div id="B"><div id="H">__LOGO__<b>__NAME__</b><span data-l="tagline"></span><button id="s"></button></div>
+<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>
 <header><input id="q" autofocus>
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
@@ -1769,8 +1770,57 @@ LABELS = {
     "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
 }
-BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "labels.yaml")
-LOGO_MAX = 200_000            # bytes — a logo is inlined into the page; past this it is skipped, with a warning
+BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "wordmark.svg", "labels.yaml")
+LOGO_MAX = 200_000            # bytes — a logo or a wordmark is inlined into the page; past this it is skipped, with a warning
+# What an inlined SVG may hold: shapes, text, and what they point at inside the same file. A logo sits in an <img>, where
+# nothing an SVG carries can run or load; a wordmark sits IN the page, where a <script> would run, an on…= handler fire,
+# a reference load and a <style> restyle the whole board — so an element outside this list refuses the file whole.
+SVG_TAGS = {"svg", "g", "defs", "symbol", "use", "title", "desc", "metadata", "path", "rect", "circle", "ellipse", "line", "polyline",
+            "polygon", "text", "tspan", "textPath", "clipPath", "mask", "linearGradient", "radialGradient", "stop", "pattern"}
+SVG_NS, XLINK_NS, XML_NS = "http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/XML/1998/namespace"
+
+
+def inline_svg(data, prefix="wm-"):
+    """(markup, "") — the SVG written out again from what was read, safe to put in the page — or ("", why it is not).
+    Nothing is stripped that could draw: a script, a handler, a reference outside the file, a <style>, an element not
+    in SVG_TAGS refuses it whole. What an editor adds in its own namespace (Inkscape's, Sketch's) draws nothing and is
+    left out. Every id gets `prefix`, and every `#id` it is referred to by, so no id of the page's is ever shadowed; an
+    underscore is written `&#95;`, so no `__PLACEHOLDER__` of the page's template can be spelled inside it."""
+    import xml.etree.ElementTree as ET
+    if re.search(rb"<!(?:DOCTYPE|ENTITY)|<!\[CDATA\[", data, re.I):
+        return "", "it declares a DOCTYPE, an entity or CDATA"
+    try:
+        top = ET.fromstring(data)
+    except ET.ParseError as e:
+        return "", f"it is not well-formed XML ({e})"
+    split = lambda n: n[1:].partition("}")[::2] if n.startswith("{") else ("", n)
+    far = re.compile(r"(?:url|src|[\w-]*image[\w-]*|cross-fade)\s*\(\s*(?![\"']?#)", re.I)   # url(#x) points inside the file
+    esc = lambda t: html_escape(t).replace("_", "&#95;")
+    def out(e):
+        ns, tag = split(e.tag) if isinstance(e.tag, str) else ("", "")
+        if ns != SVG_NS:
+            return ""
+        if tag not in SVG_TAGS:
+            raise ValueError(f"it holds <{tag}>")
+        attrs = ""
+        for k, v in e.attrib.items():
+            kns, name = split(k)
+            if kns not in ("", XLINK_NS, XML_NS) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9-]*", name):
+                continue                                    # an editor's attribute, or a name no SVG attribute has
+            if name.lower().startswith("on"):
+                raise ValueError(f"it holds a handler, {name}")
+            if name.lower() in ("href", "src") and not v.startswith("#") or far.search(v):
+                raise ValueError(f"it refers outside the file, {name}=\"{v[:60]}\"")
+            v = (prefix + v if name == "id" else "#" + prefix + v[1:] if name.lower() == "href"
+                 else re.sub(r"(url\(\s*[\"']?#)", lambda m: m.group(1) + prefix, v))
+            attrs += f' {"xlink:" if kns == XLINK_NS else "xml:" if kns == XML_NS else ""}{name}="{esc(v)}"'
+        return f"<{tag}{attrs}>{esc(e.text or '')}" + "".join(out(c) + esc(c.tail or "") for c in e) + f"</{tag}>"
+    if split(top.tag) != (SVG_NS, "svg"):
+        return "", "its root is not an <svg> in the SVG namespace"
+    try:
+        return out(top), ""
+    except ValueError as e:
+        return "", str(e)
 
 
 def brand_places():
@@ -1807,8 +1857,9 @@ def contrast(a, b):
 
 
 def brand():
-    """The board's brand, assembled: (themes [(who, css)], logo (who, data-uri) or None, labels, sources, warnings)."""
-    themes, logo, labels, src, warn = [], None, dict(LABELS), {"theme.css": [], "logo": [], "labels.yaml": []}, []
+    """The board's brand, assembled: (themes [(who, css)], logo (who, data-uri) or None, labels, sources, warnings,
+    wordmark (who, inline svg markup) or None)."""
+    themes, logo, wordmark, labels, src, warn = [], None, None, dict(LABELS), {"theme.css": [], "logo": [], "wordmark": [], "labels.yaml": []}, []
     for who, d in brand_places():
         f = d / "theme.css"
         if f.is_file():
@@ -1839,6 +1890,13 @@ def brand():
                 else:
                     logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(f.read_bytes()).decode("ascii"))); src["logo"].append(who)
                 break
+        f = d / "wordmark.svg"
+        if f.is_file():
+            svg, why = ("", f"it is {f.stat().st_size // 1000} kB — over {LOGO_MAX // 1000} kB") if f.stat().st_size > LOGO_MAX else inline_svg(f.read_bytes())
+            if svg:
+                wordmark = (who, svg); src["wordmark"].append(who)
+            else:
+                warn.append(f"{who}'s wordmark.svg is not shown: {why} — the header keeps {'the wordmark before it' if wordmark else 'the logo and the name'}")
         f = d / "labels.yaml"
         if f.is_file():
             given = read_flat(f.read_text(encoding="utf-8"))
@@ -1850,7 +1908,7 @@ def brand():
     if loose:
         warn.append(f"{', '.join(loose)} beside the trackers {'are' if len(loose) > 1 else 'is'} not read — a repository's brand lives in "
                     f"{(TRACKER_DIR / 'brand').relative_to(ROOT).as_posix()}/ (since 0.9.0); move {'them' if len(loose) > 1 else 'it'} there")
-    return themes, logo, labels, src, warn
+    return themes, logo, labels, src, warn, wordmark
 
 
 def brand_report(dest=None):
@@ -1861,14 +1919,14 @@ def brand_report(dest=None):
                                                            + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
             if not (dest / name).exists():
                 put(dest / name, text); print(f"wrote {dest / name}")
-        print("a logo is logo.svg or logo.png beside them; the name is `name` in " + CONFIG_NAME)
+        print("a logo is logo.svg or logo.png beside them, a wordmark wordmark.svg; the name is `name` in " + CONFIG_NAME)
         return EXIT_OK
-    themes, logo, labels, src, warn = brand()
+    themes, logo, labels, src, warn, _wordmark = brand()
     print("the board is built from these places, the later one winning:")
     for who, d in brand_places():
         print(f"  {who:<13} {d}")
     print(f"  name          {CONFIG['name'] or ROOT.name}  ({CONFIG_NAME})")
-    for kind in ("theme.css", "logo", "labels.yaml"):
+    for kind in ("theme.css", "logo", "wordmark", "labels.yaml"):
         print(f"  {kind:<13} {' → '.join(src[kind]) or 'built in'}")
     changed = sorted(k for k in LABELS if labels[k] != LABELS[k])
     print(f"  labels changed: {len(changed)} of {len(LABELS)}")
@@ -1895,6 +1953,10 @@ THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is 
 }}
 /* fonts: name one that is installed, or put a font file beside the trackers and load it:
    @font-face{font-family:"Mine";src:url("mine.woff2")}  body{font-family:"Mine",system-ui,sans-serif} */
+/* a wordmark — the mark and the name drawn as one — is wordmark.svg beside this file. It is inlined in the header in
+   place of the logo and the name: draw it with fill="currentColor" (stroke="currentColor" where it strokes) and it takes
+   --ink in light and dark alike; give its <svg> a height to fix its size, else it is the logo's 22 px. The logo stays
+   the browser tab's. */
 """
 
 
@@ -1996,12 +2058,17 @@ def render_html(trackers):
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD))
-    themes, logo, labels, _src, warnings = brand()
+    themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
     # each place's theme is its OWN stylesheet, in order — `@import` and `@font-face` only work at the top of one
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
-    page = page.replace("__LOGO__", f'<img alt="" src="{logo[1]}">' if logo else "").replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
+    # a wordmark is the mark and the name in one drawing: it takes their place, and the name stays the page's title and
+    # the wordmark's accessible name. The logo stays the tab's.
+    name = html_escape(CONFIG["name"] or ROOT.name)
+    page = page.replace("__HEADMARK__", f'<b class="wm" role="img" aria-label="{name}">{wordmark[1]}</b>' if wordmark
+                        else (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
+    page = page.replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__REG__", json.dumps(board_sessions(), ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
         "__ROWS__", ",\n".join(rows)
@@ -3424,7 +3491,7 @@ def parse_args(argv):
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
              "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
     add("--brand", nargs="?", const="", metavar="DIR",
-        help="why does my board look like this: which places gave it its theme, logo and labels. With DIR: write a commented starter there")
+        help="why does my board look like this: which places gave it its theme, logo, wordmark and labels. With DIR: write a commented starter there")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
     add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy. Only from a release: "

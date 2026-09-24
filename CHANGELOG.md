@@ -2,6 +2,27 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.18.2 — 2026-09-24
+
+**A fourth brand file, `wordmark.svg`: the mark and the name drawn as one** (FM-006), for a brand whose name is part
+of its mark.
+
+- **Where a place has `wordmark.svg`, the header shows it inline**, in place of the logo and the name. The name stays
+  the page's `<title>` and is the wordmark's accessible name (`role="img"`, `aria-label`); the logo, where there is
+  one, stays the browser tab's; the tagline and the footer stay labels. The later place wins, as for the other files,
+  and `--brand` names the place.
+- **Inline, it takes the page's ink:** drawn in `currentColor` it follows the theme's `--ink` in light and dark and
+  through `◐`, the mark and the name in one colour. It keeps the size its `<svg height>` gives, else the logo's 22 px.
+- **Shapes and text only.** A `<script>`, an `on…` handler, a `<style>`, a `<foreignObject>`, an image, a link, a
+  reference outside the file — any element beyond shapes, text, gradients, masks and a `<use>` of its own ids — and
+  the file is not shown, with one warning that says why; the header keeps the logo and the name. Over 200 kB, the
+  same. What an editor adds in its own namespace (Inkscape's, Sketch's) is left out, and every id is prefixed `wm-`,
+  so none shadows one of the page's.
+- *Nothing to do on upgrade: without `wordmark.svg` the header is as it was.* To draw your own: one `<svg>` with a
+  `viewBox`, a `height` in pixels, `fill="currentColor"` (and `stroke="currentColor"` where it strokes); the name as
+  paths (outline the text in your editor), or as `<text>` in a font your `theme.css` loads. A pixel mark shown at a
+  whole multiple of its grid stays sharp. `--brand DIR`'s starter says the same in a comment.
+
 ## 0.18.0 — 2026-09-24
 
 **The session registry is a report, generated from the commit trailers** (FM-032 S2, which is FM-031's S1). It was a
