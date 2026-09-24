@@ -1,6 +1,6 @@
 ---
 id: FM-032
-status: Proposed
+status: In Progress
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
 next: owner
@@ -174,6 +174,7 @@ Each takes effect on the Owner's answer, never on a default.
 
 | Date | Event |
 |---|---|
+| 2026-09-24 11:43 CEST | **S2 built** for 0.18.0 at `3c0754f` (docs `6a14704`, VERSION and CHANGELOG `2fcd15b`) on `fm/032-0-18-0-the-registry-becomes-a-report` — by the Owner's two answers of 2026-09-24 (here *all four now*, on FM-031 *all three rules now, S1 then S2*) it is FM-031's S1 as well, one design. **The report:** `--sessions` reads the `Session:` trailers of the checkout's history (`git log` of HEAD) — per id its seat through `[seats]`, first and last commit, how many commits, and its worktree from a `Worktree:` trailer the hook now appends beside `Session:` (`—` before); the board's strip and the digest read it (the sessions with a commit in the last day). `work-tracker/sessions.md` is deleted; `--check` warns where one is left. **The gate** keeps one rule: a seat's commit carries a `Session:` of the shape `<8 hex>[/<seat>-<n>]` whose seat part is its own; a commit whose history has no `Session:` is not judged (adoption moved from the file to the first trailer). **Removed:** `--session open` and `close` (one line, exit 2), the open-row check, the worktree clash, the removal, drop and re-open judgement, abandoned rows in `--check` and `--triage`. Checks 264 + 148 → 266 + 148. |
 | 2026-09-24 09:48 CEST | Verified READY WITH FINDINGS at `db15a31` (R1–R5, all P3); closed in the text before the ask reaches him because two touch what he answers: R3 — the freeze's number is 8, half of today's 16, carried by *all four now*; R4 — FM-031's S1 is read as this S2, one design; R1 the -15 instance; R2 the parent's hash gone; R5 *a fifth, like for like*. One more pass, the last. |
 | 2026-09-24 09:39 CEST | The Principal sets the proposal — *all four now* — and puts the ask to the Owner (`next: owner`), on his ruling of ≈ 09:19 that the proposal becomes an ask. Main after PR 35 merged in first. Verified next, then the pull request. |
 | 2026-09-24 09:30 CEST | Filed on the Owner's question (≈ 09:12), and on his word at ≈ 09:19 that the Principal's proposal becomes an ask. The evidence is re-derived from git and the forge; the seven passes, the parent project's two docs-only branches (four passes, about 800K tokens, 75 minutes) and the Principal's four catches are marked *reported*. The ask is drafted (`next: review`, four options, trimmed to 298 characters: *the session registry* is now *the registry*, *docs and ledger changes* is now *docs and ledgers*). The proposal is the Principal's. Held against FM-031 (the fan-out; its S1 is refined here into a report), FM-024 (the registry as a gate), FM-027 (ids claimed on the server, moot under S2) and FM-005 (the Owner's decisions). |
