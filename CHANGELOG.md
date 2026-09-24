@@ -27,6 +27,26 @@ re-opened, so every return to a branch cost a new id. The trailer rule stays; th
   where they named the open rows. Labels: `sessions.recent` is new; `sessions.open` and `sessions.abandoned` are
   gone, and a `labels.yaml` that still sets them is told they are not labels.
 
+**The queue in one view, the filing freeze, and an answer that can be taken back** (FM-031 S2, FM-032 S4, and two
+defects of `--answer` found the same day).
+
+- **`--queue`, the open pull requests in one view** (FM-031 S2): read from GitHub with `gh`, `origin` fetched once,
+  ONE action each — `merge` · `closes with PR N` · `close: carried into PR N` · `wait: conflict in <paths>` ·
+  `wait: no verdict on <sha>` · `wait: NOT READY (<verdict>)` — what can be acted on first, oldest first, then a
+  count. A verdict is a commit carrying `Reviewed: <sha>`, its word read from its subject. Without `gh`, offline or
+  with no GitHub `origin`: one line, exit 3. `--owner` and `--standup` end with it where the forge can be read.
+  *Nothing to do, as long as each verdict's subject says READY, READY WITH FINDINGS, READY TO TAG or NOT READY.*
+- **The filing freeze** (FM-032 S4): `freeze_at` in `shoalmark.toml` — at that many open trackers or more, `--new`
+  refuses a filing without `tags: bug`, exit 4; `--new KIND "title" --tags bug,process` writes `tags:` as it files
+  (comma-separated, deduplicated, each from `[tags]`); `--check` says the freeze holds in one line, its exit
+  unchanged; `--schema` lists the key. *Off (0) until you set it.*
+- **`--answer` after an earlier answer**: a local `answer/<id>` merged into `origin`'s default branch is deleted and
+  cut fresh; one not merged is refused, naming `git branch -D answer/<id>`, and nothing unmerged is deleted. After
+  the push it goes back to the branch it started on.
+- **An answer is revoked or superseded, never overwritten:** `--answer <id> revoke "<reason>"`, or
+  `--answer <id> accept|reject "<option>" --supersede`. The answer it replaces moves into the ship log with the
+  commit that wrote it, and the board's tracker view shows the answer and *supersedes <sha>*.
+
 ## 0.17.8 — 2026-09-23
 
 **A vendoring vouches for what it copies** (FM-011). `--vendor` used to skip a missing source file, pin what it found

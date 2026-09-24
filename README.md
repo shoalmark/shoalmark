@@ -72,6 +72,7 @@ Nothing ranked? It says how many trackers wait for a triage pass. No path writte
 
 ```bash
 <cmd> --new "what is wrong, in one sentence"
+<cmd> --new "what is wrong, in one sentence" --tags bug     # the kind of work, written into `tags:` as it is filed
 ```
 
 It prints the closest existing trackers **before** it writes the file. Open the top hits. If one of them already
@@ -90,6 +91,12 @@ hook: "The problem as filed, in two or three sentences — this is the INDEX row
 
 Then the body: `# MSR-014 — title` · `## What is true now` · `## Why` · `## Done when` · `## Ship log`.
 `<cmd> --schema` prints every key, its shape and **who may write it**.
+
+**The filing freeze.** Where `shoalmark.toml` sets `freeze_at`, and that many trackers or more are open, only a product
+defect is filed — a filing that carries `tags: bug`, as `--new "…" --tags bug` writes it. Anything else goes as one line
+into the closest open tracker's body (the ones `--new` prints first), or waits. `--new` refuses the rest, exit 4, with the
+count and the line; `--check` says the freeze holds in one line and exits as it would have. `--tags` takes a
+comma-separated list from `[tags]`, at most three; a tag outside the vocabulary is refused before anything is written.
 
 ## 3. Stop — leave the fix
 
@@ -144,6 +151,9 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `` `answerers = ["x signed"]` asks for a signed answer, and `[seats] …` … is not signed `` | add `signed` to that seat, or remove `answerers` — with `[seats]` it is not read for answers |
 | `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
 | `carries no Session: trailer` · `a session id is eight hex characters` · `names the seat …` | set `seat.session` in your worktree: the harness's id, or `<parent>/<seat>-<n>` for a sub-agent of your own seat (§6 *Sessions*) |
+| `--new: filing freeze — N open, at or above M` | only a product defect is filed now: `--new "…" --tags bug`; add the rest as one line to the closest open tracker, or wait until fewer than `freeze_at` are open |
+| `--answer: X is answered already` | an answer is never overwritten in place: `--answer X revoke "<reason>"` takes it back, `--answer X accept\|reject "<option>" --supersede` replaces it — the old one moves into the ship log |
+| `` `answer/x` exists and is not merged `` | it may hold work: merge it, or `git branch -D answer/x` if it is spent — nothing unmerged is deleted for you |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
 | `… differs from its PIN` | someone edited the vendored tool in place. Never do that: change it upstream, vendor again |
 
@@ -191,13 +201,14 @@ What lives where, by convention — no setting names any of it:
 
 | Path | What |
 |---|---|
-| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the eight section names the tool reads and writes (`state` `why` `done` `log` `asks` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
+| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `freeze_at` (0, off — the filing freeze, §2) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the eight section names the tool reads and writes (`state` `why` `done` `log` `asks` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
 | git · Subversion · Windows | `--install-hook` wires what the system has: git hooks, or on Subversion the TortoiseSVN hook properties and `svn:ignore`. **`svn commit` on the command line runs no hook — run the tool first.** On Windows the command is `python`. CI proves all three systems |
 | what an ask must be | ONE question — one `?`, at the end, at most 300 characters — with `ask-kind:`, `ask-since:` and `ask-proposal:`, and never the same question as another open tracker's. At most five `ask-options:`, 120 characters each. The gate refuses the rest, and the board shows what got in anyway as *N asks sent back — not for you* |
 | drafting an ask | an `ask:` with `next: review` is a **draft**: any seat writes one (the question and its `ask-options:`), it needs no proposal and the Owner never sees it. The Principal rewrites it, orders the options, sets `ask-proposal:`, `ask-since:` and `next: owner` — that is what puts it in front of him |
 | what needs the Owner | `ask:` (one sentence he can answer) · `ask-kind:` ruling · action · determination · ceremony · `ask-since:` — with `next: owner`. The board leads with them; `--owner` is the digest a session ends its last message with; `--standup` is the agenda of his one sitting and `--standup FILE.ics` its calendar invite (`standup = "09:00"` in `shoalmark.toml`) |
+| what to merge | **`--queue`** — the open pull requests, read from GitHub with `gh` (`origin` fetched once), ONE action each, in the order to take them: what he can act on first, then what waits, the oldest first inside each. `merge` — a verdict names its head, or a head that only review addenda follow (commits touching nothing but `<tracker dir>/evidence/reviews/` and `sessions.md`), and `git merge-tree` merges it clean · `closes with PR N` — its head is inside N's · `close: carried into PR N` — every commit of its own is on N's branch, as the commit or as the same patch · `wait: conflict in <paths>` · `wait: no verdict on <sha>` · `wait: NOT READY (<verdict>)`. A last line counts them: *N waiting on you: a merge, b close, c wait*. Without `gh`, offline, or with no GitHub `origin`, it says so in one line, exit 3 — a view fails nothing. `--owner` and `--standup` end with it where the forge can be read, and leave it out where not |
 | what the ask offers | `ask-options:` — the choices as ONE line, `a \| b \| c`; `ask-proposal:` is the one the seat **recommends** — offered first and marked, and where options are named it must be one of them. A proposal alone is a list of one |
-| the Owner's answer | on the board: **accept** or **reject** opens a dialog with the question, the choices and what it holds up — one radio per option, the recommended one first, and *Other:* with a box. OK opens a second screen: the one command, where to run it (the branch the board was built from), what it does, what success looks like, how to check the signature, the signing page for when it fails — and **Done**. **`--answer <id> accept\|reject ["text"]`** cuts `answer/<id>` from the ask's branch, writes the three lines, commits signed, pushes — naming each step on stderr as it starts. A failure after it has written anything undoes all of it — the paths restored, back on the starting branch, an empty `answer/<id>` deleted — and prints what refused it, the answer, and the command that gives it again. `--answered` is what he answered and no seat has acted on |
+| the Owner's answer | on the board: **accept** or **reject** opens a dialog with the question, the choices and what it holds up — one radio per option, the recommended one first, and *Other:* with a box. OK opens a second screen: the one command, where to run it (the branch the board was built from), what it does, what success looks like, how to check the signature, the signing page for when it fails — and **Done**. **`--answer <id> accept\|reject ["text"]`** cuts `answer/<id>` from the ask's branch, writes the three lines, commits signed, pushes — naming each step on stderr as it starts — and goes back to the branch it started on. An `answer/<id>` left from an earlier answer is deleted and cut fresh when it is merged into `origin`'s default branch, and refused, named with `git branch -D answer/<id>`, when it is not: nothing unmerged is deleted for him. An answer is never overwritten in place: **`--answer <id> revoke "<reason>"`** takes it back (`revoked - <reason>`), and **`--answer <id> accept\|reject "<option>" --supersede`** replaces it; either moves the answer it replaces into the ship log — `\| <date> \| Answer of <answered> superseded: *"<answer>"* (<sha>) — revoked: <reason> \|`, or `— replaced by: *"<answer>"*` — and the board shows the answer with *supersedes <sha>*. A failure after it has written anything undoes all of it — the paths restored, back on the starting branch, an empty `answer/<id>` deleted — and prints what refused it, the answer, and the command that gives it again. `--answered` is what he answered and no seat has acted on |
 | acting on an answer | `--clear-ask <id> <next move>` — moves the exchange into the body under `## Asks` (date · question · answer · answered-by, newest last), clears the ask and answer lines, sets the move. Under `[seats]` that is the **`ask`** right's move — the principal's, not the owner's. The gate refuses a commit that drops an answer without that record, and `--answered` reports what was acted on since the last standup, by commit |
 | who may answer | the seats that hold `answer` in `[seats]` (§*Seats*) — `owner = "you@example.org signed"`. Without `[seats]`, the old key: `answerers = ["name"]` or `["name signed"]`, git author names. The gate reads the answer's committer from git or Subversion; under `signed` the commit must verify and the key's identity must be the author's email. Empty = nobody may answer. With `[seats]`, `answerers` is not read for answers — and a `signed` entry beside an unsigned seat that answers for it is refused, not dropped. Setup for a human: the signing page, `docs/signing.md` |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
@@ -307,7 +318,9 @@ the trunk has since merged, the trunk as it stood before that merge — so what 
 not its, and the report does not change when it lands. The verdict is **independent** when its session's root (`a9` of
 `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of them — a Reviewer run as a
 sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
-trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts.
+trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts. `--queue` reads a
+verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
+commit says one of them.
 
 **Seen:** the board's first lines carry the strip — *sessions · 2 in the last day — a9f3c2d1 principal
 (principal-a9) · a9f3c2d1/reviewer-1 reviewer (reviewer-2)* — and *reviews this week · independent n · same session
@@ -390,6 +403,8 @@ Where Chrome or Chromium is installed the board is rendered and read back. `test
 behaviour on a synthetic corpus; `test_shoalmark.py` pins what was built here. A change ships with its check, and
 the check is shown to fail without the change. Every consumer-visible change gets a `CHANGELOG.md` entry —
 `--vendor` prints it to the repository that upgrades. This repository tracks itself: `python3 shoalmark.py --next`.
+How a change here is reviewed, what a miss costs, and how the Owner is spoken to are this repository's house rules — the
+Owner's signed answers of 2026-09-24, in [`AGENTS.md`](AGENTS.md).
 
 ## Licence
 

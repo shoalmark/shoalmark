@@ -3,15 +3,7 @@ id: FM-032
 status: In Progress
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
-next: owner
-ask: "Rule the deregulation: one Reviewer pass for docs and ledgers, findings below P2 fixed forward, no re-pass; the registry a report generated from commit trailers, not a gate; a miss rowed only if it cost you a command or a decision; a filing freeze except product defects until the open count falls?"
-ask-kind: ruling
-ask-since: 2026-09-24
-ask-options: "all four now | the review tier and the freeze now, the registry and the miss rule later | the review tier only | none — keep the loop as it is"
-ask-proposal: "all four now"
-answer: "accepted - all four now"
-answered: 2026-09-24
-answered-by: holgo99
+next: build
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
@@ -19,67 +11,12 @@ hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merg
 
 ## What is true now
 
-**Filed 2026-09-24 09:30 CEST on the Owner's question. Nothing is built. The four measures below are a draft ask
-(`next: review`); the proposal is the Principal's to set.**
-
-**The loop** is what every change pays here: a session row opened, the work, the gate, a Reviewer pass, fixes, a
-re-verification, a merge of `main` whenever it moved, the row closed. It costs the same whatever the change risks.
-The evidence, from git and the forge on 2026-09-24 in the morning, unless marked *reported*:
-
-- **A change with no code pays the full loop.**
-  - In the parent project that vendors this tool, its ledger pull request 807 needed seven Reviewer passes before
-    READY (*reported*). The forge shows that every file it changed sits under its `docs/work-tracker/`, and that 11 of
-    its 29 commits are the Reviewer's: eight on the branch's own work (seven before the last READY), three
-    on a second tracker the branch carried. It merged at 08:50 CEST.
-  - Here, PR 35 (FM-028, a bug filing) changes four files: the tracker, its review, `INDEX.md` and `sessions.md`. It
-    took 11 commits: 6 Implementer, 3 Reviewer verdicts and 2 merges by the Principal.
-- **Two docs-only branches cost four Reviewer passes, about 800K tokens and 75 minutes** (*reported by the parent
-  project's second Principal session*). In the parent project that vendors this tool, two docs-only branches took four
-  Reviewer passes this morning: about 800K sub-agent tokens in total (174K, 211K, 194K, 224K) and about 75 minutes of
-  wall time. The passes found real errors: a false "new fact" in a re-ask, wrong dates, paraphrased Owner lines, a name
-  leak into this repository. They also found about ten P3 wording items that changed nothing the Owner would decide.
-- **The registry conflicts whenever two branches land.** PR 35 merged `main` three times after a verdict on it.
-  Replayed with `git merge-tree` on each merge's two parents:
-
-  | Merge | When, by whom | After | Conflicts in |
-  |---|---|---|---|
-  | `64f7b99` | 08:58, the Implementer, fixing the NOT READY | `30c4f89`, NOT READY | `sessions.md`, `INDEX.md` |
-  | `f8ccf60` | 09:07, the Principal, before the re-verdict | `30c4f89`, NOT READY | `sessions.md` |
-  | `3131e8c` | 09:21, the Principal | `6a9fa8f`, READY TO TAG | `sessions.md`, `INDEX.md` |
-
-  Each was resolved by hand, as a union. The third needed another verdict, `5dcc854` (09:24), the pull request's
-  third, to say that the merge brought only `main`'s files.
-- **A closed row never re-opens, so every return to a branch costs a new id.** The gate refuses a re-open
-  (`shoalmark.py:2626` at `9bde71f`). So a seat that comes back to fix findings or to merge `main` opens a new session:
-  - `8e509911/implementer-12`: PR 35's R1 and R2, and a merge of `main`. Five commits from 08:57 to 09:00: an open,
-    three of work, a close.
-  - `8e509911/implementer-13`: FM-031's R1–R4. Three commits from 08:50 to 08:56: an open, one of work, a close.
-
-  This filing is `-14`. The Principal's own merges (`f8ccf60`, `3131e8c`) ran under its open row and needed none. Its
-  Implementer's one-merge follow-up, after `-14` had closed, would have needed a new id: `-15` was made locally, never
-  pushed, and the merge ran under the Principal's open row instead (*reported by that Implementer*).
-- **A guessed id needed a simulation and a ruling.** The gate keys the rows by id (`now_by_id = {r["id"]: r for r in
-  rows}`, `shoalmark.py:2621`). Two rows under one id therefore read as one row. Once both branches are on `main` and
-  one of the two rows is still open, that reads as a re-open (`:2626`). `8e509911/implementer-6` was guessed on a
-  branch at 07:41 and already named the site slice's session from 01:02. FM-028's ship log, on PR 35's branch, records
-  what that cost:
-  - the Reviewer's R1 (`30c4f89`, P2);
-  - a ruling by the Principal: the registry is append-only, so the duplicate is recorded in its row and the row closed;
-  - a simulation against PR 33's tip `f2cc7bd`: `--session-check` 4 with the row open, 0 with both closed;
-  - an archive ref that spawned a twin pull request, 41.
-- **Filing outruns closing about two to one** (FM-031's record, to 08:53): 11.0 filed a day against 5.3 closed, over
-  2.82 days, with 16 open. FM-011 has shipped since (PR 36), and this filing makes it 16 again.
-  - Of the 15 that were open before this filing (on `main` and on PR 34's and PR 35's branches), 4 carry `tags: bug`.
-    The rest: 7 `research`, 2 `process`, 1 `security`, 1 untagged.
-  - Most of what is filed is about the tool's own process (asks, answers, sessions, seats, plans), not a defect a
-    consumer meets. That is the Principal's reading; the tags are the measure.
-
-**What the rigor caught this morning, before it reached the Owner** (the Principal, *reported*):
-- a misread ask;
-- a filing rate overstated by about a fifth, like for like (FM-031's first 16.4 a day against 13.8 in the same window;
-  11.0 a day over the full window);
-- a NOT READY shown on the wrong pull request by the forge's cross-linking;
-- a registry that breaks `main` when two branches merge (FM-028's ship log).
+**Ruled 2026-09-24 11:07:43 CEST by the Owner's signed answer `ffa63b8` (PR 44): *all four now*.** Built for 0.18.0 on
+this branch, the same day: S2, the registry as a report from the commit trailers (`3c0754f`; it is FM-031's S1 by the two
+answers); S4, the filing freeze at 8 with `--tags` on `--new` (`43e6815`, `66f4b7b`); S1 the review tier and S3 the miss
+threshold written into AGENTS.md as rules (`fbc2697`). The tier and the miss rule apply from the ruling; the first
+pull request under the tier was the parent project's ledger, one pass, P3 fixed forward. The ask is cleared below as
+acted on; the Owner tags the release.
 
 ## Why
 
@@ -170,10 +107,16 @@ Each takes effect on the Owner's answer, never on a default.
 - Two branches landing never conflict on the registry.
 - The open count falls for a week.
 
+## Asks
+
+**2026-09-24** · Rule the deregulation: one Reviewer pass for docs and ledgers, findings below P2 fixed forward, no re-pass; the registry a report generated from commit trailers, not a gate; a miss rowed only if it cost you a command or a decision; a filing freeze except product defects until the open count falls?
+**answered** — accepted - all four now · holgo99
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-24 12:45 CEST | The two 0.18.0 branches merged by the Principal: S2 (`a2956a5`, the registry as a report) with `--queue`, the freeze and `--tags`, the rules in AGENTS.md, `--answer` after an earlier answer and revoke/supersede (`66f4b7b`). Conflicts: the dispatch in `shoalmark.py`, README §5's refusal table, FM-031's ship log, INDEX regenerated, `sessions.md` stays deleted. Gates and both suites green on the merged tree. The ask cleared as acted on, next move `build`: the Owner tags, the parent project vendors. The Reviewer takes the code loop next. |
 | 2026-09-24 11:43 CEST | **S2 built** for 0.18.0 at `3c0754f` (docs `6a14704`, VERSION and CHANGELOG `2fcd15b`) on `fm/032-0-18-0-the-registry-becomes-a-report` — by the Owner's two answers of 2026-09-24 (here *all four now*, on FM-031 *all three rules now, S1 then S2*) it is FM-031's S1 as well, one design. **The report:** `--sessions` reads the `Session:` trailers of the checkout's history (`git log` of HEAD) — per id its seat through `[seats]`, first and last commit, how many commits, and its worktree from a `Worktree:` trailer the hook now appends beside `Session:` (`—` before); the board's strip and the digest read it (the sessions with a commit in the last day). `work-tracker/sessions.md` is deleted; `--check` warns where one is left. **The gate** keeps one rule: a seat's commit carries a `Session:` of the shape `<8 hex>[/<seat>-<n>]` whose seat part is its own; a commit whose history has no `Session:` is not judged (adoption moved from the file to the first trailer). **Removed:** `--session open` and `close` (one line, exit 2), the open-row check, the worktree clash, the removal, drop and re-open judgement, abandoned rows in `--check` and `--triage`. Checks 264 + 148 → 266 + 148. |
 | 2026-09-24 09:48 CEST | Verified READY WITH FINDINGS at `db15a31` (R1–R5, all P3); closed in the text before the ask reaches him because two touch what he answers: R3 — the freeze's number is 8, half of today's 16, carried by *all four now*; R4 — FM-031's S1 is read as this S2, one design; R1 the -15 instance; R2 the parent's hash gone; R5 *a fifth, like for like*. One more pass, the last. |
 | 2026-09-24 09:39 CEST | The Principal sets the proposal — *all four now* — and puts the ask to the Owner (`next: owner`), on his ruling of ≈ 09:19 that the proposal becomes an ask. Main after PR 35 merged in first. Verified next, then the pull request. |

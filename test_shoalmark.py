@@ -1032,6 +1032,8 @@ viewer.from: aus {0}
 viewer.intent.missing: fehlt — der Auftraggeber nennt sie am Eintrag oder am Vorhaben
 viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
+viewer.answer: die Antwort des Auftraggebers
+viewer.supersedes: ersetzt {0}
 viewer.stale: veraltet — älter als {0} Tage, gilt wieder als ungesichtet
 viewer.handover: Übergabe
 viewer.next: nächster Schritt
@@ -1447,12 +1449,12 @@ with tempfile.TemporaryDirectory() as tmp:
                                     "answering AP-070 — 3/4 committing, signed", "answering AP-070 — 4/4 pushing to `origin` …")]
     check("FM-012 · --answer names each step as it starts, in order — reading the trackers · cutting answer/<id> from the branch it is on · committing, signed · pushing — and its last lines are unchanged",
           -1 not in steps_ and steps_ == sorted(steps_) and out.startswith("AP-070 answered: accepted - count one week first\n  signed, on `answer/ap-070`, pushed\n"))
-    sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %an %s"], capture_output=True, text=True, env=_ENV).stdout.strip()
     on = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     remote = subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
+    git(root, "switch", "-q", "answer/ap-070"); sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %an %s"], capture_output=True, text=True, env=_ENV).stdout.strip()
     fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-070")
-    check("--answer accept with a change: cuts answer/<id> from the ask's branch, writes the three lines, commits SIGNED under the answerer, pushes — the ask has left the queue",
-          code == 0 and on == "answer/ap-070" and sig.startswith("G h@x holgo AP-070: accepted - count one week first") and "answer/ap-070" in remote
+    check("--answer accept with a change: cuts answer/<id> from the ask's branch, writes the three lines, commits SIGNED under the answerer, pushes — the ask has left the queue — and goes back to the branch it started on",
+          code == 0 and on == start_ and f"\n  back on `{start_}`" in out and sig.startswith("G h@x holgo AP-070: accepted - count one week first") and "answer/ap-070" in remote
           and t_["answer"] == "accepted - count one week first" and t_["answered_by"] == "holgo" and "AP-070" not in run(root, "--owner")[1] and run(root, "--check")[0] == 0)
     # and the body keeps being written after the answer lands, by a seat that is not the answerer and does not sign:
     # by substring that commit becomes the author of the answer, and the gate refuses the Owner's own signed answer
@@ -1466,7 +1468,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # the answer is ONE front-matter line: a newline in the text closes it, and the fragment after it is read as another
     # key — `status: Shipped` in a rejection silently shipped the tracker, and the answer itself parsed off
     git(root, "switch", "-q", "pd/070"); code, _, err = run(root, "--answer", "AP-072", "reject", "no\nstatus: Shipped\n\nand why")
-    fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-072")
+    git(root, "switch", "-q", "answer/ap-072"); fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-072")
     check("an answer is ONE line: a newline in the text would be read as the next front-matter key — every run of whitespace collapses to one space",
           code == 0 and t_["answer"] == "rejected - no status: Shipped and why" and t_["status"] == "In Progress" and run(root, "--check")[0] == 0)
     # `answered-by:` is `user.name`; the commit's author is what git will actually write, and the environment overrides
@@ -1937,8 +1939,8 @@ with tempfile.TemporaryDirectory() as tmp:
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "a second ask")
     git(root, "switch", "-q", "-c", "answer/ap-301"); git(root, "switch", "-q", "-")
     code, _, err = run(root, "--answer", "AP-301", "accept", "the importer")
-    check("8 · `--answer` refuses an `answer/<id>` that exists and does not carry the ask — it would write the answer where the question is not",
-          code == fm.EXIT_LINT and "its tip does not carry this ask" in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
+    check("8 · `--answer` refuses an `answer/<id>` that exists and is not merged — it may hold work, and nothing unmerged is deleted for him; the refusal names the one command that clears it",
+          code == fm.EXIT_LINT and "`answer/ap-301` exists and is not merged into `origin`" in err and "`git branch -D answer/ap-301`" in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
     git(root, "branch", "-q", "-D", "answer/ap-301")
     t2.write_text(t2.read_text().replace('\nask: "Shall', '\n ask: "Shall'), encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "the ask, indented")      # --answer wants a clean tree; the ask still parses
@@ -2172,6 +2174,167 @@ with tempfile.TemporaryDirectory() as d:
     check("a contract block and a hook written under the old name are replaced, not stranded — the repository's own text is kept",
           code == 0 and "old rules" not in agents and "fathom-mark" not in agents and agents.count(fm.CONTRACT_BEGIN) == 1 and "kept." in agents and agents.startswith("# mine")
           and "fathom" not in hook and "shoalmark.py --print-written" in hook)
+fm.configure(HERE)
+
+# --- FM-031 S2: the queue in one view — every open pull request, ONE action, in the order the Owner takes them -------
+def _no_git_env(f):
+    """a direct call into the tool with the hook's `GIT_*` variables out of the way, as `run` does for main()"""
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+    try:
+        return f()
+    finally:
+        os.environ.update(saved)
+
+
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def commit_(msg, files):
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); git(root, "commit", "-q", "--allow-empty", "-m", msg)
+        return sha()
+    reviews_ = "docs/work-tracker/evidence/reviews/"
+    base0 = commit_("the trunk", {"shared.txt": "one\n", "a.txt": "a\n"})
+    git(root, "checkout", "-q", "-b", "r1"); w1 = commit_("the ready slice", {"a.txt": "a1\n"})
+    v1 = commit_(f"review: the ready slice at {w1[:7]} — READY WITH FINDINGS (R1 P3)\n\nReviewed: {w1[:7]}", {reviews_ + "r.md": "R1\n"})
+    h1 = commit_("session closes", {"docs/work-tracker/sessions.md": "| a | b |\n"})             # an addendum after the verdict
+    git(root, "checkout", "-q", "-b", "r3", base0); c3 = commit_("the carried slice", {"c.txt": "c\n"})
+    git(root, "checkout", "-q", "-b", "r5", base0); git(root, "cherry-pick", "-x", c3); h5 = commit_("more on top", {"e.txt": "e\n"})
+    git(root, "checkout", "-q", "-b", "r4", base0); h4 = commit_("the conflicting slice", {"shared.txt": "four\n"})
+    git(root, "checkout", "-q", "-b", "r6", base0); w6 = commit_("the refused slice", {"f.txt": "f\n"})
+    h6 = commit_(f"review: at {w6[:7]} — NOT READY (R1 P2)\n\nReviewed: {w6}", {reviews_ + "r6.md": "R1\n"})
+    git(root, "checkout", "-q", "-b", "r7", base0); w7 = commit_("the slice worked on after its verdict", {"g.txt": "g\n"})
+    commit_(f"review: at {w7[:7]} — READY TO TAG\n\nReviewed: {w7}", {reviews_ + "r7.md": "ok\n"}); h7 = commit_("a fix after the verdict", {"g.txt": "g2\n"})
+    git(root, "checkout", "-q", "-b", "trunk-now", base0); main_now = commit_("the trunk moved", {"shared.txt": "main\n"})
+    git(root, "update-ref", "refs/remotes/origin/main", main_now)
+    pr = lambda n, branch, head, at: {"number": n, "title": branch, "headRefName": branch, "headRefOid": head, "baseRefName": "main",
+                                      "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T{at}:00Z"}
+    prs = [pr(1, "fm/001-the-ready-slice-with-a-long-name-that-is-cut", h1, "08:00"), pr(2, "fm/002-inside", w1, "07:00"), pr(3, "fm/003-carried", c3, "07:30"),
+           pr(5, "fm/005-carrier", h5, "06:00"), pr(4, "fm/004-conflict", h4, "05:00"), pr(6, "fm/006-refused", h6, "09:00"), pr(7, "fm/007-worked-on", h7, "04:00"),
+           pr(9, "fm/009-twin", h6, "09:30")]
+    fm.configure(root)
+    rows_ = _no_git_env(lambda: fm.queue_actions(prs)) if hasattr(fm, "queue_actions") else []
+    got_ = [(p_["number"], a_) for p_, _k, a_, _d in rows_]
+    check(f"FM-031 S2 · each open pull request gets ONE action — merge on a READY verdict that only addenda follow · closes with the one whose head holds it · carried by patch · a conflict · NOT READY · no verdict on a head worked past its verdict · a twin closes with the older — actionable first, oldest first (saw {got_})",
+          got_ == [(2, "closes with PR 1"), (3, "close: carried into PR 5"), (1, "merge"), (9, "closes with PR 6"),
+                   (7, f"wait: no verdict on {h7[:7]}"), (4, "wait: conflict in shared.txt"), (5, f"wait: no verdict on {h5[:7]}"), (6, f"wait: NOT READY ({h6[:7]})")]
+          and rows_[2][3] == f"verdict {v1[:7]} READY WITH FINDINGS")
+    lines_ = fm.queue_lines(rows_) if hasattr(fm, "queue_lines") else [""]
+    starts_ = {l_.index("fm/") for l_ in lines_[:-1]}
+    check(f"FM-031 S2 · the queue prints one line per pull request, its columns aligned — `PR n  action  branch @ head  verdict` — a long branch cut, and one summary line last (saw {lines_[0]!r}, {lines_[-1]!r})",
+          len(lines_) == len(prs) + 1 and len(starts_) == 1 and lines_[-1] == "8 waiting on you: 1 merge, 3 close, 4 wait"
+          and re.fullmatch(r"PR 1 +merge +" + re.escape(prs[0]["headRefName"][:getattr(fm, "QUEUE_BRANCH_MAX", 32) - 1] + "…") + f" @ {h1[:7]} +verdict {v1[:7]} READY WITH FINDINGS", lines_[2]) is not None
+          and re.fullmatch(rf"PR 2 +closes with PR 1 +fm/002-inside @ {w1[:7]}", lines_[0]) is not None)
+    # the forge is never called here: no `origin`, a local `origin`, a GitHub `origin` and no `gh` — each one line, exit 3
+    calls_ = argv_of(lambda: (run_safe(root, "--queue"), run(root, "--owner")))
+    code, _, err = run_safe(root, "--queue")
+    git(root, "remote", "add", "origin", str(root / "nowhere.git")); code2, _, err2 = run_safe(root, "--queue"); owner_ = run(root, "--owner")[1]
+    git(root, "remote", "set-url", "origin", "git@github.com:someone/somewhere.git")
+    real_which = fm.shutil.which; fm.shutil.which = lambda name, *a, **k: None if name == "gh" else real_which(name, *a, **k)
+    try:
+        calls_ += argv_of(lambda: run(root, "--owner")); code3, _, err3 = run_safe(root, "--queue")
+    finally:
+        fm.shutil.which = real_which
+    check(f"FM-031 S2 · without the forge `--queue` says so in one line and exits 3 — no `origin`, an `origin` that is not GitHub, no `gh` — and `--owner` leaves the section out; `gh` is never called (saw {err.strip()!r}, {err2.strip()!r}, {err3.strip()!r})",
+          (code, code2, code3) == (3, 3, 3) and "`origin` is not set" in err and "not on GitHub" in err2 and "no `gh` on PATH" in err3
+          and all(len(e_.strip().splitlines()) == 1 for e_ in (err, err2, err3)) and "PULL REQUESTS" not in owner_ and not any(c_ and c_[0].endswith("gh") for c_ in calls_)
+          and hasattr(fm, "github_remote") and fm.github_remote("git@github.com:holgo99/shoalmark.git") and fm.github_remote("https://github.com/a/b") and fm.github_remote("git@github-work:a/b.git")
+          and not fm.github_remote("/tmp/github/b.git") and not fm.github_remote("ssh://git@gitlab.com/a/b") and not fm.github_remote(""))
+fm.configure(HERE)
+
+# --- FM-032 S4: the filing freeze — at `freeze_at` open trackers or more, `--new` files only a product defect ----------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("triage_days = 7\n", "triage_days = 7\nfreeze_at = 2\n"))
+    wt_ = root / "docs/work-tracker"
+    tracker(root, "MSR-001"); tracker(root, "MSR-002", status="Shipped"); run(root)
+    code, out, err = run(root, "--new", "a first thing that is not a defect")
+    below_ = code == 0 and (wt_ / "MSR-003-a-first-thing-that-is-not-a-defect.md").exists()
+    (wt_ / "MSR-003-a-first-thing-that-is-not-a-defect.md").unlink(); tracker(root, "MSR-003"); run(root)
+    before_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md"))
+    code, out, err = run(root, "--new", "a second thing that is not a defect")
+    check(f"FM-032 S4 · below the line `--new` files anything; at the line it refuses a filing without `bug` — exit 4, the count, the line, the rule's words — after the closest trackers, and writes nothing (saw {err.strip()!r})",
+          below_ and code == fm.EXIT_LINT and "filing freeze — 2 open, at or above 2" in err
+          and "only product defects are filed; anything else goes as one line into the closest open tracker's body, or waits" in err
+          and "carries no `bug` tag" in err and sorted(p_.name for p_ in wt_.glob("MSR-*.md")) == before_ and ("closest trackers" in out or "Nothing related" in out))
+    code_c, out_c, _ = run(root, "--check")
+    (wt_ / "TEMPLATE.md").write_text(fm.TRACKER_TEMPLATE.replace("considered:\n", "considered:\ntags: bug\n"))
+    code_b, _, _ = run(root, "--new", "the export drops the last row")
+    (wt_ / "TEMPLATE.md").unlink()
+    check(f"FM-032 S4 · `--check` says the freeze holds in one line, its exit unchanged; a filing that carries `tags: bug` passes the freeze (saw {code_c}, {code_b})",
+          code_c == 0 and "filing freeze: 2 open, at or above 2 — only bug filings" in out_c and code_b == 0
+          and "tags: bug" in next(wt_.glob("MSR-004-*.md")).read_text())
+    before_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md"))
+    code_nb, _, err_nb = run_safe(root, "--new", "a process change", "--tags", "process")
+    code_uk, _, err_uk = run_safe(root, "--new", "the importer drops a row", "--tags", "bug,defect")
+    unwritten_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md")) == before_
+    code_tb, _, _ = run_safe(root, "--new", "the importer drops a row", "--tags", "bug, process,bug")
+    tagged_ = next(iter(wt_.glob("MSR-005-*.md")), None)
+    check(f"FM-032 S4 · `--new … --tags bug,process` writes `tags:` into the new tracker, deduplicated — a bug filing passes the freeze; a filing tagged `process` only is refused, and a tag outside [tags] is refused, before anything is written (saw {code_nb}, {code_uk}, {code_tb})",
+          code_nb == fm.EXIT_LINT and "carries no `bug` tag" in err_nb and "--tags bug" in err_nb and code_uk == fm.EXIT_LINT and "defect not in the vocabulary" in err_uk
+          and unwritten_ and code_tb == 0 and tagged_ is not None and fm.parse_frontmatter(tagged_.read_text())[0].get("tags") == "bug, process"
+          and "--tags bug" in fm.render_schema())
+    cfg_.write_text(cfg_.read_text().replace("freeze_at = 2\n", "freeze_at = 0\n")); code0, _, _ = run(root, "--new", "anything at all"); check0 = run(root, "--check")[1]
+    cfg_.write_text(cfg_.read_text().replace("freeze_at = 0\n", "freeze_at = -1\n")); refused_ = not _try(lambda: fm.configure(root))
+    cfg_.write_text(cfg_.read_text().replace("freeze_at = -1\n", ""))
+    check("FM-032 S4 · `freeze_at = 0` is off, whatever is open; a negative number is refused by name; `--schema` documents the key",
+          code0 == 0 and "filing freeze" not in check0 and refused_ and "`freeze_at`" in fm.render_schema() and "only a product defect" in fm.render_schema())
+fm.configure(HERE)
+
+# --- RV-479: a spent `answer/<id>` is cut fresh, an unmerged one is never deleted; the run goes back where it started;
+#     an answer is revoked or superseded, never overwritten in place, and the one it replaces moves into the ship log ---
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+    ask_ = lambda q: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+    ap80 = tracker(root, "AP-080", extra=ask_("Ship the importer first?"), title="the ask",
+                   body="## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-20 | Filed. |\n")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    here_ = lambda: subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    at_ = lambda ref, path="docs/work-tracker/AP-080-x.md": subprocess.run(["git", "-C", str(root), "show", f"{ref}:{path}"], capture_output=True, text=True, env=_ENV).stdout
+    trunk_ = here_()
+    code1, out1, _ = run(root, "--answer", "AP-080", "accept", "the importer")
+    first_ = subprocess.run(["git", "-C", str(root), "rev-parse", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    code2, _, err2 = run(root, "--answer", "AP-080", "accept", "again")
+    check(f"RV-479 · after the push `--answer` goes back to the branch it started on; a second one while `answer/<id>` is not merged is refused — exit 4, the branch named with the one command that clears it — and the branch is kept (saw {err2.strip()[:200]!r})",
+          code1 == 0 and here_() == trunk_ and f"back on `{trunk_}`" in out1 and code2 == fm.EXIT_LINT and "`answer/ap-080` exists and is not merged into `origin/main`" in err2
+          and "`git branch -D answer/ap-080`" in err2 and subprocess.run(["git", "-C", str(root), "rev-parse", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip() == first_
+          and here_() == trunk_)
+    git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges his answer", "answer/ap-080"); git(root, "push", "-q", "origin", f"{trunk_}:main"); git(root, "fetch", "-q", "origin")
+    # he takes it back: revoke, on the tracker that carries the answer — the spent branch is cut fresh, the old answer kept
+    code3, out3, err3 = run(root, "--answer", "AP-080", "revoke", "the importer waits for the audit")
+    after_ = at_("answer/ap-080"); fm_after = fm.parse_frontmatter(after_)[0]
+    row_ = f'| {datetime.date.today().isoformat()} | Answer of {datetime.date.today().isoformat()} superseded: *"accepted - the importer"* ({first_[:7]}) — revoked: the importer waits for the audit |'
+    check(f"RV-479 · a merged `answer/<id>` left from an earlier answer is deleted and cut fresh, said in one line; `revoke \"<reason>\"` writes `revoked - <reason>` and moves the answer it replaces into the ship log, newest on top, with the commit that wrote it (saw {err3.strip()[:160]!r})",
+          code3 == 0 and "`answer/ap-080` was left by an earlier answer and is merged into `origin/main` — deleted, and cut fresh" in err3 and here_() == trunk_
+          and fm_after.get("answer") == '"revoked - the importer waits for the audit"' and after_.count("\nanswer:") == 1 and after_.count("\nanswered:") == 1
+          and after_.split("|---|---|\n")[1].startswith(row_ + "\n| 2026-09-20 | Filed. |"))
+    git(root, "merge", "-q", "--no-ff", "-m", "the revocation merged", "answer/ap-080"); git(root, "push", "-q", "origin", f"{trunk_}:main"); git(root, "fetch", "-q", "origin")
+    revoked_ = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%h", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip()[:7]
+    code4, _, err4 = run(root, "--answer", "AP-080", "reject", "not this quarter")
+    code5, out5, _ = run_safe(root, "--answer", "AP-080", "accept", "the exporter instead", "--supersede")
+    git(root, "switch", "-q", "answer/ap-080"); fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-080"); gate_ = run(root)[0]
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if run(root, "--html-only")[0] == 0 else ""
+    check(f"RV-479 · without `--supersede` an answered ask is refused, naming both forms; `--supersede` replaces the answer, the replaced one in the ship log, and the board's row says which commit it supersedes (saw {t_.get('supersedes')!r}, {revoked_!r})",
+          code4 == fm.EXIT_LINT and "answered already" in err4 and "revoke" in err4 and "--supersede" in err4
+          and code5 == 0 and t_["answer"] == "accepted - the exporter instead" and t_.get("supersedes") == revoked_ and gate_ == 0
+          and f'superseded: *"revoked - the importer waits for the audit"* ({revoked_}) — replaced by: *"accepted - the exporter instead"*' in ap80.read_text()
+          and f'"accepted - the exporter instead", "yes", [], [], "{datetime.date.today().isoformat()}", "holgo", "{revoked_}"]' in page_ and 'l("viewer.supersedes"' in page_)
+    git(root, "switch", "-q", trunk_)
+    tracker(root, "AP-081", extra=ask_("Ship the exporter?"), title="unanswered"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "a second ask")
+    code7, _, err7 = run(root, "--answer", "AP-081", "revoke", "nothing to take back"); code8, _, err8 = run_safe(root, "--answer", "AP-081", "accept", "--supersede")
+    check("RV-479 · `revoke` and `--supersede` on an ask with no answer are refused — there is nothing to replace; a revocation without its reason too",
+          code7 == fm.EXIT_LINT and "carries no answer to revoke" in err7 and code8 == fm.EXIT_LINT and "carries no answer to supersede" in err8
+          and run(root, "--answer", "AP-080", "revoke")[0] == fm.EXIT_LINT)
+    rm_git(root)
 fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
