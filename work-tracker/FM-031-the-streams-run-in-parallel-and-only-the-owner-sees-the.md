@@ -21,8 +21,9 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 
 **Filed 2026-09-24 08:24 CEST on the Owner's question; ruled by his signed answer at 11:08 (`d20bc89`): all three rules
 now, S1 then S2. S2, `--queue`, is built (`90d3d6f`, on `fm/031-0-18-0-the-queue-in-one-view-and-the-freeze`); S1 is
-being built as FM-032's S2 on another branch; the rules are in AGENTS.md. The cap of 2 he revoked in chat the same
-day, and his signed revocation is owed. What is left: S1, then a week of parallel streams read against *Done when*.**
+being built as FM-032's S2 on another branch; the rules are in AGENTS.md. The cap of 2 he revoked at 11:29:05, in chat
+(the coordinating session's transcript); his signed revocation is owed. What is left: S1, then a week of parallel
+streams read against *Done when*.**
 
 The measurements below are read from the record: git, the forge, and `work-tracker/sessions.md` on every remote
 branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.

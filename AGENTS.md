@@ -50,9 +50,10 @@ never on a default; a word in chat changes none of them until he signs it.
   the fixing commit's message says what was wrong: git is its record.
 - **The filing freeze** (FM-032 S4). While 8 or more trackers are open (`freeze_at` in `shoalmark.toml`), only product
   defects are filed — `tags: bug`, something the tool does wrong for the person using it. Anything else goes as one line
-  into the closest open tracker's body (rule 6), or waits. `--new` refuses the rest; `--check` says when the freeze holds.
+  into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
+  and `--check` says when the freeze holds.
 - **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner the same
-  day in chat. His signed revocation is owed through the board (`--answer FM-031 … --supersede`, or `revoke`); until it
+  day at 11:29:05, in chat (the coordinating session's transcript). His signed revocation is owed through the board (`--answer FM-031 … --supersede`, or `revoke`); until it
   is signed no seat counts the cap, and until it is written here nobody reads chat as the rule. `--queue` shows what waits.
 - **One channel** (FM-031). The Owner speaks to the coordinating session. His rulings are recorded once, in the tool's
   ask and answer — never relayed through chat as the record.

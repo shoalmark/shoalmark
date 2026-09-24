@@ -2312,6 +2312,16 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-032 S4 · `--check` says the freeze holds in one line, its exit unchanged; a filing that carries `tags: bug` passes the freeze (saw {code_c}, {code_b})",
           code_c == 0 and "filing freeze: 2 open, at or above 2 — only bug filings" in out_c and code_b == 0
           and "tags: bug" in next(wt_.glob("MSR-004-*.md")).read_text())
+    before_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md"))
+    code_nb, _, err_nb = run_safe(root, "--new", "a process change", "--tags", "process")
+    code_uk, _, err_uk = run_safe(root, "--new", "the importer drops a row", "--tags", "bug,defect")
+    unwritten_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md")) == before_
+    code_tb, _, _ = run_safe(root, "--new", "the importer drops a row", "--tags", "bug, process,bug")
+    tagged_ = next(iter(wt_.glob("MSR-005-*.md")), None)
+    check(f"FM-032 S4 · `--new … --tags bug,process` writes `tags:` into the new tracker, deduplicated — a bug filing passes the freeze; a filing tagged `process` only is refused, and a tag outside [tags] is refused, before anything is written (saw {code_nb}, {code_uk}, {code_tb})",
+          code_nb == fm.EXIT_LINT and "carries no `bug` tag" in err_nb and "--tags bug" in err_nb and code_uk == fm.EXIT_LINT and "defect not in the vocabulary" in err_uk
+          and unwritten_ and code_tb == 0 and tagged_ is not None and fm.parse_frontmatter(tagged_.read_text())[0].get("tags") == "bug, process"
+          and "--tags bug" in fm.render_schema())
     cfg_.write_text(cfg_.read_text().replace("freeze_at = 2\n", "freeze_at = 0\n")); code0, _, _ = run(root, "--new", "anything at all"); check0 = run(root, "--check")[1]
     cfg_.write_text(cfg_.read_text().replace("freeze_at = 0\n", "freeze_at = -1\n")); refused_ = not _try(lambda: fm.configure(root))
     cfg_.write_text(cfg_.read_text().replace("freeze_at = -1\n", ""))

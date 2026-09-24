@@ -72,6 +72,7 @@ Nothing ranked? It says how many trackers wait for a triage pass. No path writte
 
 ```bash
 <cmd> --new "what is wrong, in one sentence"
+<cmd> --new "what is wrong, in one sentence" --tags bug     # the kind of work, written into `tags:` as it is filed
 ```
 
 It prints the closest existing trackers **before** it writes the file. Open the top hits. If one of them already
@@ -92,9 +93,10 @@ Then the body: `# MSR-014 — title` · `## What is true now` · `## Why` · `##
 `<cmd> --schema` prints every key, its shape and **who may write it**.
 
 **The filing freeze.** Where `shoalmark.toml` sets `freeze_at`, and that many trackers or more are open, only a product
-defect is filed — a filing that carries `tags: bug`. Anything else goes as one line into the closest open tracker's body
-(the ones `--new` prints first), or waits. `--new` refuses the rest, exit 4, with the count and the line; `--check` says
-the freeze holds in one line and exits as it would have.
+defect is filed — a filing that carries `tags: bug`, as `--new "…" --tags bug` writes it. Anything else goes as one line
+into the closest open tracker's body (the ones `--new` prints first), or waits. `--new` refuses the rest, exit 4, with the
+count and the line; `--check` says the freeze holds in one line and exits as it would have. `--tags` takes a
+comma-separated list from `[tags]`, at most three; a tag outside the vocabulary is refused before anything is written.
 
 ## 3. Stop — leave the fix
 
@@ -149,7 +151,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `` `answerers = ["x signed"]` asks for a signed answer, and `[seats] …` … is not signed `` | add `signed` to that seat, or remove `answerers` — with `[seats]` it is not read for answers |
 | `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
 | `carries no Session: trailer` · `has no open row` · `is open under session …` | set `seat.session` in your worktree and open your row — `--session open`; one worktree per session (§6 *Sessions*) |
-| `--new: filing freeze — N open, at or above M` | only a product defect is filed now, `tags: bug`; add the rest as one line to the closest open tracker, or wait until fewer than `freeze_at` are open |
+| `--new: filing freeze — N open, at or above M` | only a product defect is filed now: `--new "…" --tags bug`; add the rest as one line to the closest open tracker, or wait until fewer than `freeze_at` are open |
 | `--answer: X is answered already` | an answer is never overwritten in place: `--answer X revoke "<reason>"` takes it back, `--answer X accept\|reject "<option>" --supersede` replaces it — the old one moves into the ship log |
 | `` `answer/x` exists and is not merged `` | it may hold work: merge it, or `git branch -D answer/x` if it is spent — nothing unmerged is deleted for you |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |

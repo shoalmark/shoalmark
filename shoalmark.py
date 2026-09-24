@@ -2341,7 +2341,8 @@ def shape_words(shape):
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
-                  "carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits. `--check` says when it holds"),
+                  "carries `tags: bug`, as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest open "
+                  "tracker's body, or waits. `--check` says when it holds"),
 }
 
 
@@ -3364,6 +3365,8 @@ def parse_args(argv):
         help="file ONE tracker — `--new \"the title\"`, `--new KEY \"the title\"`, or `--new KEY-037 \"the title\"` to take a free id of your choosing: "
              "prints what is related, writes the id with a front matter whose `considered:` is yours to fill; `<tracker dir>/TEMPLATE.md`, if there is one, is the template; "
              "the id prefix is needed only where the configuration names several")
+    add("--tags", metavar="TAG,TAG", help="with --new: the kind of work, as it is filed — `--new KIND \"the title\" --tags bug,process` writes `tags:` into the new tracker; "
+                                           "comma-separated, deduplicated, each from [tags] in the configuration. Under the filing freeze (`freeze_at`) only a `bug` filing is written")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
@@ -3952,7 +3955,7 @@ def filing_freeze(trackers):
     return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT else None
 
 
-def new_tracker(words, trackers):
+def new_tracker(words, trackers, tags_arg=None):
     global WANTED_NUM
     m = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)-(\d+)", words[0]) if len(words) > 1 else None
     WANTED_NUM, words = (int(m.group(2)), [m.group(1), *words[1:]]) if m and m.group(1).upper() in KINDS else (None, words)
@@ -3971,9 +3974,16 @@ def new_tracker(words, trackers):
     template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
     frozen = filing_freeze(trackers)
     tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
+    if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
+        tags = list(dict.fromkeys(x.strip().lstrip("#") for x in tags_arg.split(",") if x.strip()))
+        unknown = [x for x in tags if TAGS and x not in TAGS]
+        if not tags or unknown or len(tags) > MAX_TAGS:
+            print(f"--new: --tags {tags_arg!r} — " + (f"{', '.join(unknown)} not in the vocabulary ({', '.join(sorted(TAGS))}, [tags] in {CONFIG_NAME})" if unknown
+                  else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}") + " — nothing was written", file=sys.stderr)
+            return EXIT_LINT
     if frozen and "bug" not in tags:
         print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
-              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `bug` tag — nothing was written", file=sys.stderr)
+              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `bug` tag — a product defect is filed with `--tags bug`; nothing was written", file=sys.stderr)
         return EXIT_LINT
     # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
@@ -3986,7 +3996,8 @@ def new_tracker(words, trackers):
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    put(path, template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
+    text = template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD)
+    put(path, set_front(text, "tags", ", ".join(tags)) if tags_arg is not None else text)
     print(f"wrote {path.relative_to(ROOT).as_posix()} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
 
@@ -4038,7 +4049,7 @@ def main(argv=None):
         print("REFUSED by the deriver — nothing was written.", file=sys.stderr)
         return refused
     if args.new:
-        return new_tracker(args.new, trackers)
+        return new_tracker(args.new, trackers, args.tags)
     if args.owner:
         code = owner_digest(trackers)
         queue_section()
