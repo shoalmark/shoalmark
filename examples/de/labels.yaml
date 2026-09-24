@@ -66,6 +66,8 @@ viewer.from: aus {0}
 viewer.intent.missing: fehlt — der Auftraggeber nennt sie am Eintrag oder am Vorhaben
 viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
+viewer.answer: die Antwort des Auftraggebers
+viewer.supersedes: ersetzt {0}
 viewer.stale: veraltet — älter als {0} Tage, gilt wieder als ungesichtet
 viewer.handover: Übergabe
 viewer.next: nächster Schritt
@@ -81,8 +83,7 @@ waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
-sessions.open: Sitzungen · {0} offen
-sessions.abandoned: verwaist
+sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}

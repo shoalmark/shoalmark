@@ -35,3 +35,27 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
 - **CI minutes are paid for:** the suites run locally through the pre-commit hook on every commit; CI runs on a ready pull
   request and on a tag, nowhere else. Say when a tag is due; never create one.
 
+## How the loop runs — the Owner's signed answers, 2026-09-24
+
+Ruled by his signed answers to FM-031 (`d20bc89`, 11:08) and FM-032 (`ffa63b8`, 11:07). Each took effect on his answer,
+never on a default; a word in chat changes none of them until he signs it.
+
+- **Two tiers of review** (FM-032 S1). A change that touches only trackers, their evidence and the documentation — no
+  `shoalmark.py`, no test, no configuration, no hook — gets one Reviewer pass: a finding below P2 is fixed forward in the
+  next change, with no re-pass; a P2 or above sends it back. Code keeps the full loop: pass, fix, verify, until READY.
+  The Reviewer reads the tier from `git diff --name-only origin/main...HEAD` and says so in the verdict. A docs change
+  that alters what the gate reads — a front-matter key, `shoalmark.toml` — is code.
+- **A miss is rowed only when it cost the Owner** (FM-032 S3). A seat's own error, found after it was made, gets a row —
+  a ship-log line, a tracker, a pitfall — only if it cost the Owner a command or a decision. Otherwise it is fixed, and
+  the fixing commit's message says what was wrong: git is its record.
+- **The filing freeze** (FM-032 S4). While 8 or more trackers are open (`freeze_at` in `shoalmark.toml`), only product
+  defects are filed — `tags: bug`, something the tool does wrong for the person using it. Anything else goes as one line
+  into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
+  and `--check` says when the freeze holds.
+- **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner's signed
+  answer the same day (`7c97c5b`, PR 46, merged 12:53:18). Not a rule. What waits on him is read from `--queue`,
+  pull requests and pushed branches alike.
+- **One channel** (FM-031). The Owner speaks to the coordinating session. His rulings are recorded once, in the tool's
+  ask and answer — never relayed through chat as the record.
+- **Seats never need the Owner's checkout** (FM-031). He looks at a seat's branch with
+  `git fetch && git switch --detach origin/<branch>`, so his checkout never holds it.

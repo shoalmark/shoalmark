@@ -1,6 +1,7 @@
 name = "shoalmark"
 tracker_dir = "work-tracker"       # the tracker; docs/ is the documentation site
 triage_days = 7
+freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`): at 8 open or more, only bug filings
 
 [seats]            # who sits where — the Owner answers with his key; seats commit unsigned as <seat>@seat
 owner = "holgoijo@gmail.com signed"

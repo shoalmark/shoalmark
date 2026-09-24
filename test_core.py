@@ -340,7 +340,7 @@ check("`--related` takes free words as well as an id",
 # the dashboard shows triage: one date in the front matter, everything else derived
 _tri = gti.render_html([dict(_live[0], triaged="2026-09-20"), _live[1]])
 check("the triage date, the rank and the board section travel in the row — then the ready marks that fail, and last the kind of problem",
-      re.search(r'"2026-09-20", 0, "\w+", \[[^\]]*\], "", "[^"]*", "[^"]*", \[\], \d+, \["", false\], \{\}, \{\}, \["", "", "", \[\], "", "", \[\], \[\]\]\]', _tri) is not None)
+      re.search(r'"2026-09-20", 0, "\w+", \[[^\]]*\], "", "[^"]*", "[^"]*", \[\], \d+, \["", false\], \{\}, \{\}, \["", "", "", \[\], "", "", \[\], \[\], "", "", ""\]\]', _tri) is not None)
 check("untriaged is derived — exactly what the next pass lists: the generator's word, and work in progress judged too long ago — counted, and searchable by its word",
       'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in _tri and '(untriaged(t)?" untriaged "+' in _tri and 'L["count.untriaged"]' in _tri)
 check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourhood, and anything else still matches by substring",
@@ -349,8 +349,8 @@ check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourh
       and '$("q").title=L["search.help"]' in _tri)
 check("FM-020 · the counter names an id searched alone — it is that tracker, open or not, never counted as `open`",
       '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
-check("FM-024 S7 · the board carries the registry — null where there is none — and its strip: the open sessions and the week's verdicts",
-      "REG=null," in _tri and '+(REG?"\\n\\n<b>"+l("sessions.open",REG.open.length)+"</b>"' in _tri and 'l("reviews.week",REG.reviews[0],REG.reviews[1])' in _tri)
+check("FM-024 S7, FM-032 S2 · the board carries the report — null where no commit names a session and no verdict was given — and its strip: the sessions of the last day and the week's verdicts",
+      "REG=null," in _tri and '+(REG?(REG.recent.length?"\\n\\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "' in _tri and 'l("reviews.week",REG.reviews[0],REG.reviews[1])' in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
       'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
@@ -493,7 +493,7 @@ check("a ranked `build` with no kind NEEDS one; the table prints a judged kind p
       and "| owner | *complicated* | — |" in _kd(next="owner") and "| — | — | — |" in _kd()
       and "· next build · kind obvious · NOT" in gti.triage_worksheet([dict(_w1, next="build", problem="obvious"), _w3], "2026-09-20", lambda path: "2026-07-01")[0]
       and "kind" not in _fs.split("| repos fleet-launcher")[1].split("\n")[0]
-      and ', ["complex", false], {}, {}, ["", "", "", [], "", "", [], []]]' in _pg and '" · "+l("viewer.kind")+": "+(t[26][0]?' in _pg)
+      and ', ["complex", false], {}, {}, ["", "", "", [], "", "", [], [], "", "", ""]]' in _pg and '" · "+l("viewer.kind")+": "+(t[26][0]?' in _pg)
 # the schema: FRONT_MATTER is the one list of keys; the gate refuses a key outside it, a value off its shape,
 # and open work without a required key — and the live corpus is green against it (the positive control)
 _sp = lambda _st="Shipped", **fm: gti.schema_problems({"id": "FEAT-91001", "status": _st, "fm": {"id": "FEAT-91001", "status": _st, **fm}})

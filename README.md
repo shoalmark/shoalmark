@@ -36,7 +36,7 @@ them all, a gate on every commit. No server, no database, no dependency beyond P
 | asked to run a triage pass | [§4 Triage](#4-triage--you-judge-the-command-applies) |
 | blocked by the gate | [§5 The gate refused me](#5-the-gate-refused-me) |
 | adding it to a repository | [§6 Install](#6-install-and-upgrade) |
-| a seat starting or ending a session | [§6 Sessions](#sessions) |
+| a seat starting a session, or reading who ran what | [§6 Sessions](#sessions) |
 | making it know about releases, deploys, anything of the repository's own | [§7 The deriver](#7-the-one-seam-a-deriver) |
 | changing shoalmark itself | [§8 Working on shoalmark](#8-working-on-shoalmark) |
 | giving the board a name, a logo, colours, another language | [§9 Branding](#9-branding-the-board) |
@@ -72,6 +72,7 @@ Nothing ranked? It says how many trackers wait for a triage pass. No path writte
 
 ```bash
 <cmd> --new "what is wrong, in one sentence"
+<cmd> --new "what is wrong, in one sentence" --tags bug     # the kind of work, written into `tags:` as it is filed
 ```
 
 It prints the closest existing trackers **before** it writes the file. Open the top hits. If one of them already
@@ -90,6 +91,15 @@ hook: "The problem as filed, in two or three sentences — this is the INDEX row
 
 Then the body: `# MSR-014 — title` · `## What is true now` · `## Why` · `## Done when` · `## Ship log`.
 `<cmd> --schema` prints every key, its shape and **who may write it**.
+
+**The filing freeze.** Where `shoalmark.toml` sets `freeze_at`, and that many trackers or more are open, only a product
+defect is filed — a filing that carries `tags: bug`, as `--new "…" --tags bug` writes it. Anything else goes as one line
+into the closest open tracker's body (the ones `--new` prints first), or waits. `--new` refuses the rest, exit 4, with the
+count and the line; `--check` says the freeze holds in one line and exits as it would have. `--tags` takes a
+comma-separated list from `[tags]`, at most three, case aside; a tag outside the vocabulary is refused before anything
+is written, and `--tags` without `--new` is refused. The tag that passes is `freeze_tag` — `bug` unless the
+configuration names another; where `[tags]` does not carry it, the freeze refuses nothing and `--check` says so in one
+line.
 
 ## 3. Stop — leave the fix
 
@@ -143,7 +153,12 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `--answer: the working tree has changes … Changed: …` | commit or stash what is yours; where it says *a failed earlier `--answer`*, run the one command it prints — it restores only the tool's leftovers — then the answer command it prints |
 | `` `answerers = ["x signed"]` asks for a signed answer, and `[seats] …` … is not signed `` | add `signed` to that seat, or remove `answerers` — with `[seats]` it is not read for answers |
 | `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
-| `carries no Session: trailer` · `has no open row` · `is open under session …` | set `seat.session` in your worktree and open your row — `--session open`; one worktree per session (§6 *Sessions*) |
+| `wait: answer not verified here — <why>` (`--queue`) | the Owner's `answer/*` pull request is signed, and this clone cannot check it — the same cause, the same cure as the next row |
+| `it is signed, but this clone cannot verify: …` | the commit is signed; this clone cannot check it. Set `gpg.ssh.allowedSignersFile` to the repository's signers file (SSH), or import the key (GPG) — the signing page says how. The exit is the same until it verifies |
+| `carries no Session: trailer` · `a session id is eight hex characters` · `names the seat …` | set `seat.session` in your worktree: the harness's id, or `<parent>/<seat>-<n>` for a sub-agent of your own seat (§6 *Sessions*) |
+| `--new: filing freeze — N open, at or above M` | only a product defect is filed now: `--new "…" --tags bug`; add the rest as one line to the closest open tracker, or wait until fewer than `freeze_at` are open |
+| `--answer: X is answered already` | an answer is never overwritten in place: `--answer X revoke "<reason>"` takes it back, `--answer X accept\|reject "<option>" --supersede` replaces it — the old one moves into the ship log |
+| `` `answer/x` exists and is not merged `` | it may hold work: merge it, or `git branch -D answer/x` if it is spent — nothing unmerged is deleted for you |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
 | `… differs from its PIN` | someone edited the vendored tool in place. Never do that: change it upstream, vendor again |
 
@@ -191,18 +206,19 @@ What lives where, by convention — no setting names any of it:
 
 | Path | What |
 |---|---|
-| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the eight section names the tool reads and writes (`state` `why` `done` `log` `asks` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
+| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `freeze_at` (0, off — the filing freeze, §2) · `freeze_tag` (`bug`, the tag that passes it) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the eight section names the tool reads and writes (`state` `why` `done` `log` `asks` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
 | git · Subversion · Windows | `--install-hook` wires what the system has: git hooks, or on Subversion the TortoiseSVN hook properties and `svn:ignore`. **`svn commit` on the command line runs no hook — run the tool first.** On Windows the command is `python`. CI proves all three systems |
 | what an ask must be | ONE question — one `?`, at the end, at most 300 characters — with `ask-kind:`, `ask-since:` and `ask-proposal:`, and never the same question as another open tracker's. At most five `ask-options:`, 120 characters each. The gate refuses the rest, and the board shows what got in anyway as *N asks sent back — not for you* |
 | drafting an ask | an `ask:` with `next: review` is a **draft**: any seat writes one (the question and its `ask-options:`), it needs no proposal and the Owner never sees it. The Principal rewrites it, orders the options, sets `ask-proposal:`, `ask-since:` and `next: owner` — that is what puts it in front of him |
 | what needs the Owner | `ask:` (one sentence he can answer) · `ask-kind:` ruling · action · determination · ceremony · `ask-since:` — with `next: owner`. The board leads with them; `--owner` is the digest a session ends its last message with; `--standup` is the agenda of his one sitting and `--standup FILE.ics` its calendar invite (`standup = "09:00"` in `shoalmark.toml`) |
+| what to merge | **`--queue`** — the open pull requests, read from GitHub with `gh` (`origin` fetched once), ONE action each, in the order to take them: what he can act on first, then what waits, the oldest first inside each. `merge` — a verdict names its head, or a head that only review addenda follow (commits touching nothing but `<tracker dir>/evidence/reviews/` and `sessions.md`), and `git merge-tree` merges it clean · `closes with PR N` — its head is inside N's · `close: carried into PR N` — every commit of its own is on N's branch, as the commit or as the same patch · `wait: conflict in <paths>` · `wait: no verdict on <sha>` · `wait: NOT READY (<verdict>)`. An `answer/*` pull request is the Owner's own answer and needs no verdict: `merge: your answer` when its head's author may answer (the seat matched as the gate matches it, email or name) and the commit verifies, `wait: answer not verified here — <why>` when it is signed and this clone cannot check it, else `wait: unsigned answer`. After the pull requests, each branch on `origin` that none carries — not the default branch, not `answer/*`, not a head a pull request ever had, not one already merged or inside an open pull request or another such branch — as `branch <name> @ <sha>  wait: no pull request — …`, read the same way: `no verdict on <sha>`, `verdict <sha> READY …: open it`, `NOT READY (<sha>)`, `conflict in <paths>`. A head the clone's fetch does not cover is fetched by its ref; one that still is not here reads `not fetched here`, on its line alone. A last line counts them: *N waiting on you: a merge, b close, c wait, n pushed without a pull request*. Without `gh`, offline, or with no GitHub `origin`, it says so in one line, exit 3 — a view fails nothing. `--owner` and `--standup` end with it where the forge can be read, and leave it out where not |
 | what the ask offers | `ask-options:` — the choices as ONE line, `a \| b \| c`; `ask-proposal:` is the one the seat **recommends** — offered first and marked, and where options are named it must be one of them. A proposal alone is a list of one |
-| the Owner's answer | on the board: **accept** or **reject** opens a dialog with the question, the choices and what it holds up — one radio per option, the recommended one first, and *Other:* with a box. OK opens a second screen: the one command, where to run it (the branch the board was built from), what it does, what success looks like, how to check the signature, the signing page for when it fails — and **Done**. **`--answer <id> accept\|reject ["text"]`** cuts `answer/<id>` from the ask's branch, writes the three lines, commits signed, pushes — naming each step on stderr as it starts. A failure after it has written anything undoes all of it — the paths restored, back on the starting branch, an empty `answer/<id>` deleted — and prints what refused it, the answer, and the command that gives it again. `--answered` is what he answered and no seat has acted on |
+| the Owner's answer | on the board: **accept** or **reject** opens a dialog with the question, the choices and what it holds up — one radio per option, the recommended one first, and *Other:* with a box. OK opens a second screen: the one command, where to run it (the branch the board was built from), what it does, what success looks like, how to check the signature, the signing page for when it fails — and **Done**. **`--answer <id> accept\|reject ["text"]`** cuts `answer/<id>` from the ask's branch, writes the three lines, commits signed, pushes — naming each step on stderr as it starts — and goes back to the branch it started on. An `answer/<id>` left from an earlier answer is deleted and cut fresh when it is merged into `origin`'s default branch, and refused, named with `git branch -D answer/<id>`, when it is not: nothing unmerged is deleted for him. An answer is never overwritten in place: **`--answer <id> revoke "<reason>"`** takes it back (`revoked - <reason>`), and **`--answer <id> accept\|reject "<option>" --supersede`** replaces it; either moves the answer it replaces into the ship log — `\| <date> \| Answer of <answered> superseded: *"<answer>"* (<sha>) — revoked: <reason> \|`, or `— replaced by: *"<answer>"*` — and the board shows the answer with *supersedes <sha>*. A failure after it has written anything undoes all of it — the paths restored, back on the starting branch, an empty `answer/<id>` deleted — and prints what refused it, the answer, and the command that gives it again. `--answered` is what he answered and no seat has acted on |
 | acting on an answer | `--clear-ask <id> <next move>` — moves the exchange into the body under `## Asks` (date · question · answer · answered-by, newest last), clears the ask and answer lines, sets the move. Under `[seats]` that is the **`ask`** right's move — the principal's, not the owner's. The gate refuses a commit that drops an answer without that record, and `--answered` reports what was acted on since the last standup, by commit |
 | who may answer | the seats that hold `answer` in `[seats]` (§*Seats*) — `owner = "you@example.org signed"`. Without `[seats]`, the old key: `answerers = ["name"]` or `["name signed"]`, git author names. The gate reads the answer's committer from git or Subversion; under `signed` the commit must verify and the key's identity must be the author's email. Empty = nobody may answer. With `[seats]`, `answerers` is not read for answers — and a `signed` entry beside an unsigned seat that answers for it is refused, not dropped. Setup for a human: the signing page, `docs/signing.md` |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
-| `<tracker dir>/sessions.md` | the registry of seat sessions — one row each: who convened it, for what, in which worktree (§*Sessions*) |
+| `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
@@ -251,11 +267,11 @@ git config --worktree seat.session a9f3c2d1          # the session — the harne
                                                      # a session with no parent and a harness with no id: `<cmd> --session new`
 ```
 
-**The trailer:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` to every
-commit made in that worktree — never typed, and a message that carries one already is left alone. A repository with no
-`seat.session` (the Owner's checkout) gets nothing appended: his signature is his id. Read it back with
-`git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository with its own hook runner adds two
-entries — with lefthook, the session rule on every commit and the trailer:
+**The trailers:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` and
+`Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message
+carries already is left alone. A repository with no `seat.session` (the Owner's checkout) gets nothing appended: his
+signature is his id. Read them back with `git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository
+with its own hook runner adds two entries — with lefthook, the session rule on every commit and the trailers:
 
 ```yaml
 pre-commit:
@@ -268,43 +284,37 @@ prepare-commit-msg:
       run: python3 tools/shoalmark/shoalmark.py --session-trailer {1}
 ```
 
-**The registry:** `<tracker dir>/sessions.md`, one row per session — `Session · Seat · Convened by · Scope · Worktree ·
-Started · Ended`. A session's first commit carries its row:
-
-```bash
-<cmd> --session open a9f3c2d1 principal "the Owner, 2026-09-23 12:21" "the day's findings; 0.17.5" worktrees/principal-2
-<cmd> --session open a9f3c2d1/reviewer-1 reviewer "session a9f3c2d1" "attack the build" worktrees/reviewer-2   # a sub-agent: parent and hand
-<cmd> --session close a9f3c2d1                                     # dates its end; the row stays
-```
-
-Each writes the row and stages the file. A session convened by a session is a sub-agent: when *convened by* carries a
-session id — eight hex characters, or `<id>/<seat>-<n>` — the new id must derive from it (`a9f3c2d1/reviewer-1`), or
-`--session open` refuses; a plain word never names a parent (*"the morning session today"* opens as a top-level
-session). One name for a session: its id. An id is used once; a worktree that an open row holds is refused to a second
-session — *one worktree per session*. The worktree defaults to the checkout's directory name.
-
-**The gate** holds it wherever the registry exists — a repository adopts it by opening its first session, and a commit
-made before its tree had a registry is not judged by it. A commit by a seat `[seats]` names — never the Owner's — must
-carry a `Session:` whose row is open and names the author's seat, in a worktree no earlier open row holds. Exit 4, and
-one of three lines:
+**The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
+per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
+worktree. Nothing is opened, closed or kept in a file, so two branches that land never conflict on it: a session is
+what its commits say, and it ends at its last one. An id seen in two worktrees is named under the table.
 
 ```text
-refused: this commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row (<cmd> --session open)
-refused: Session: q7 has no open row in work-tracker/sessions.md
-refused: worktrees/principal is open under session d8 — one worktree per session
+| Session | Seat | First commit | Last commit | Commits | Worktree |
+|---|---|---|---|---|---|
+| a9f3c2d1 | principal | 2026-09-24 07:28 · 049a9ab | 2026-09-24 11:02 · 5e1f0a2 | 9 | principal-a9 |
+| a9f3c2d1/reviewer-1 | reviewer | 2026-09-24 09:40 · 7c2d8e1 | 2026-09-24 09:52 · 3a7d1e0 | 2 | reviewer-2 |
+```
+
+Until 0.18.0 the registry was `<tracker dir>/sessions.md`, written by `--session open` and `--session close` and read
+by the gate. Both commands are gone — each says so and exits 2 — and `--check` warns in one line where the file is
+left: delete it; history keeps its rows.
+
+**The gate** holds one rule. A commit by a seat `[seats]` names — never the Owner's, never an author outside
+`[seats]` — must carry a `Session:` of the shape `<8 hex>` or `<8 hex>/<seat>-<n>`, and where it names a seat, that is
+the author's seat. Exit 4, and one of three lines:
+
+```text
+refused: this commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: …
+refused: this commit by principal@seat carries `Session: q7` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent
+refused: this commit by principal@seat is the seat principal, and its Session: a9f3c2d1/reviewer-1 names the seat reviewer
 ```
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
-tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's `seat.session`, the trailer its hook
-will write), the commit at HEAD by its trailer, and every commit a merge brings, each against the registry in its own
-tree. **The registry is not the judged seat's to change:** a seat's commit that removes it, drops a row or re-opens an
-ended one is refused, and judged against its parent's registry — only the Owner removes it. A session's own last commit
-may close its row; that commit is still the session's.
-
-**A row nobody closes** — a session that ended without `--session close`: an open row with no commit carrying its id
-for more than a day is *abandoned*. `--check` lists it (a report, not a refusal); the next `--triage` closes it —
-*closed by the pass of <date> — no commit since <time>* — and prints it for the pass's paragraph. Nothing closes
-silently.
+tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's
+`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, and every commit a merge brings,
+each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
+judged, so a repository that never set `seat.session` is not refused when it vendors.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
 reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —
@@ -313,12 +323,15 @@ the trunk has since merged, the trunk as it stood before that merge — so what 
 not its, and the report does not change when it lands. The verdict is **independent** when its session's root (`a9` of
 `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of them — a Reviewer run as a
 sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
-trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts.
+trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts. `--queue` reads a
+verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
+commit says one of them.
 
-**Seen:** the board's first lines carry the strip — *sessions · 3 open — d8 principal (the product items) · a9
-principal (the tool) · a9/implementer-1 implementer (build)*, an abandoned row marked — and *reviews this week ·
-independent n · same session m*; `--owner`, the digest, ends with one line, the open sessions by seat. Five new labels,
-`sessions.*` and `reviews.*` (§9).
+**Seen:** the board's first lines carry the strip — *sessions · 2 in the last day — a9f3c2d1 principal
+(principal-a9) · a9f3c2d1/reviewer-1 reviewer (reviewer-2)* — and *reviews this week · independent n · same session
+m*; `--owner`, the digest, carries one line, the sessions of the last day by seat, each with its worktree, and ends with
+the queue where `gh` reads the forge (*what to merge*, above). Four labels, `sessions.recent`
+and `reviews.*` (§9).
 
 ## 7. The one seam: a deriver
 
@@ -396,6 +409,8 @@ Where Chrome or Chromium is installed the board is rendered and read back. `test
 behaviour on a synthetic corpus; `test_shoalmark.py` pins what was built here. A change ships with its check, and
 the check is shown to fail without the change. Every consumer-visible change gets a `CHANGELOG.md` entry —
 `--vendor` prints it to the repository that upgrades. This repository tracks itself: `python3 shoalmark.py --next`.
+How a change here is reviewed, what a miss costs, and how the Owner is spoken to are this repository's house rules — the
+Owner's signed answers of 2026-09-24, in [`AGENTS.md`](AGENTS.md).
 
 ## Licence
 

@@ -57,9 +57,9 @@ and holds only its own rights: the owner answers; the principal asks, closes and
 implementer builds. The older `answerers = ["yourname signed"]` still works where there is no `[seats]`.
 
 **Sessions.** Beside its seat, every agent's worktree carries `seat.session`, the run it belongs to, and the hook that
-`--install-hook` wrote adds it to every commit as `Session: <id>`. A session opens its row in
-`docs/work-tracker/sessions.md` (who convened it, for what, in which worktree); the gate refuses a seat's commit without
-an open session, and the board lists who is at work on what. Your agents do this. Your own commits carry no session:
+`--install-hook` wrote adds it to every commit as `Session: <id>`, with the worktree beside it. The gate refuses a
+seat's commit without a session of its own seat; `--sessions` prints who ran what, where and when from those lines
+alone, and the board lists who was at work in the last day. Your agents do this. Your own commits carry no session:
 your signature is your id.
 
 ## 5. Write two things only you can

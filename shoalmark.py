@@ -61,6 +61,13 @@ DEFAULTS = {
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
     "triage_days": 7,
+    # THE FILING FREEZE (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a
+    # filing that carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits.
+    # Filing outran closing two to one, and the open count only grew. 0 = off.
+    "freeze_at": 0,
+    # the tag that passes the freeze — a repository's own `[tags]` may have no `bug`; one that names none of its tags
+    # freezes nothing, and `--check` says so
+    "freeze_tag": "bug",
     # who may answer an ask. An answer is three lines in the tracker, committed by the answerer, and the commit is the
     # proof — but git's author is a string anyone can type. So an entry is `"name"` (Subversion, whose server
     # authenticates the committer; or git with NO enforcement, and the gate says so) or `"name signed"` (git: the
@@ -182,6 +189,15 @@ def configure(root=None):
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
+    global FREEZE_AT
+    FREEZE_AT = CONFIG["freeze_at"]
+    if isinstance(FREEZE_AT, bool) or not isinstance(FREEZE_AT, int) or FREEZE_AT < 0:
+        raise SystemExit(f"{CONFIG_NAME}: `freeze_at` is a whole number of open trackers — the filing freeze holds at that count and above; 0 turns it off. Got {FREEZE_AT!r}")
+    global FREEZE_TAG
+    FREEZE_TAG = CONFIG["freeze_tag"]
+    if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
+        raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
+    FREEZE_TAG = FREEZE_TAG.strip()
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
@@ -288,7 +304,9 @@ def front_matter_schema():
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
         "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
-        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue"),
+        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue. "
+                                                                        "Never overwritten in place: `--answer <id> revoke \"<reason>\"` makes it `revoked - <reason>`, and `--answer <id> accept|reject \"<option>\" --supersede` replaces it — "
+                                                                        "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
@@ -587,6 +605,8 @@ def extract(path):
         # the body's `## Asks` section: where an exchange goes when its ask is cleared. Read here because `extract` is
         # the only place the file text is read, and both the gate and `--answered` ask whether the record is there.
         "asks_block": bool(ASKS_HEAD_RE.search(body)),
+        # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
+        "supersedes": superseded(body),
     }
 
 
@@ -759,8 +779,9 @@ def owner_digest(trackers):
     if not q:
         print("NOTHING NEEDS THE OWNER.")
         sent_back(trackers)
-        if sessions_digest():
-            print("\n" + sessions_digest())
+        line = sessions_digest()
+        if line:
+            print("\n" + line)
         return EXIT_OK
     ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
     print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
@@ -769,8 +790,9 @@ def owner_digest(trackers):
         print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
         print("   " + t["ask"])
     sent_back(trackers)
-    if sessions_digest():
-        print("\n" + sessions_digest())
+    line = sessions_digest()
+    if line:
+        print("\n" + line)
     return EXIT_OK
 
 
@@ -819,6 +841,263 @@ def standup(trackers, invite=None):
     return EXIT_OK
 
 
+# a ship-log row `--answer … revoke` or `--supersede` writes: `| <date> | Answer of <answered> superseded: *"<answer>"* (<sha>) — …`
+SUPERSEDED_RE = re.compile(r'\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Answer of [^|]*?superseded: \*".*?"\* \(([0-9a-f]{7,40})\)')
+
+
+# FM-031 S2 — THE QUEUE IN ONE VIEW. The streams run in parallel, and only the Owner saw the whole queue of pull requests:
+# he was the integrator by default. He asked one seat which to merge five times in two hours, and each answer was the
+# forge and `git merge-tree`, read by hand. `--queue` reads the same two and gives every open pull request ONE action, in
+# the order he takes them. A view: it refuses nothing, and where the forge cannot be read it says so in one line.
+QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt"
+QUEUE_BRANCH_MAX = 32      # characters of a branch in a queue line: its id and the start of its slug
+QUEUE_ACTION_MAX = 36      # the action column's width at most; a longer action (many paths in conflict) runs on in its own line
+EXIT_NO_FORGE = 3          # `--queue` could not read the forge — no `gh`, offline, no GitHub remote. Never 4: a view fails no hook
+# a verdict's word, read from its commit's subject (`review: FM-032 at 413451a — READY WITH FINDINGS (…)`); the verdict
+# commit itself is found as `--check` finds it, by its `Reviewed: <sha>` trailer
+VERDICT_WORD_RE = re.compile(r"\b(NOT READY|READY(?: WITH FINDINGS| TO TAG)?)\b")
+
+
+def github_remote(url):
+    """Whether a remote's URL is on GitHub, the one forge `gh` reads: a host with `github` in its name — github.com, an
+    Enterprise host, an ssh alias such as `github-work` — or the host `GH_HOST` names. A local path is no forge."""
+    m = re.match(r"(?:[A-Za-z][A-Za-z0-9+.-]*://)?(?:[^@/]*@)?([^/:]+)", (url or "").strip())
+    host, named = (m.group(1).lower() if m else ""), (os.environ.get("GH_HOST") or "").strip().lower()
+    return bool(host) and ("github" in host or host == named)
+
+
+def forge_prs():
+    """The open pull requests as the forge lists them, with `origin` fetched ONCE — its branches and every pull request's
+    head, so a head pushed from a fork is here too — or (None, the one line that says why not): not git, no `origin` on
+    GitHub, no `gh`, offline, not logged in."""
+    if vcs() != "git":
+        return None, "--queue: not a git repository — the queue is read from GitHub with `gh`"
+    url = (git_out("remote", "get-url", "origin") or "").strip()
+    if not github_remote(url):
+        return None, f"--queue: `origin` is {'not on GitHub (' + url + ')' if url else 'not set'} — the queue is read from GitHub with `gh`"
+    gh = shutil.which("gh")
+    if not gh:
+        return None, "--queue: no `gh` on PATH — the queue is read with GitHub's command line (https://cli.github.com, then `gh auth login`)"
+    env = dict(nested_git_env(), GH_PROMPT_DISABLED="1")
+    try:
+        r = subprocess.run([gh, "pr", "list", "--state", "open", "--limit", "100", "--json", QUEUE_FIELDS], cwd=ROOT, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=30, env=env)
+        prs = json.loads(r.stdout) if r.returncode == 0 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+        return None, f"--queue: `gh pr list` did not answer — offline? ({type(e).__name__})"
+    if prs is None:
+        return None, "--queue: `gh pr list` failed — " + ((r.stderr or "").strip().splitlines() or ["offline, or not logged in (`gh auth status`)"])[0]
+    specs = (git_out("config", "--get-all", "remote.origin.fetch") or "").split() + [f"refs/pull/{p['number']}/head" for p in prs]
+    try:
+        f = subprocess.run(["git", "fetch", "--quiet", "origin", *specs], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=60, env=nested_git_env())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, f"--queue: `git fetch origin` did not answer — offline? ({type(e).__name__})"
+    if f.returncode != 0:
+        return None, "--queue: `git fetch origin` failed — " + ((f.stderr or "").strip().splitlines() or ["offline?"])[-1]
+    return prs, None
+
+
+def pushed_branches(prs):
+    """The branches on `origin` that no pull request carries — what the forge's banner offers the Owner, and nothing else
+    showed him: every head `git ls-remote` names, less the default branch, `answer/*`, an open pull request's branch, a
+    head any pull request ever had (the forge's `refs/pull/N/head`, open or closed), and a head already inside the
+    default branch, an open pull request's head, or another such branch's head (of twins with one head, the first by
+    name stays). A head this clone never fetched — a single-branch clone fetches one — is fetched here, by its ref;
+    one still missing stays, marked, and is read as *not fetched here*. [{name, sha, base, here}], by name."""
+    out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head")
+    if out is None:
+        return []
+    heads, pulled, default = {}, set(), ""
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if sha.startswith("ref: refs/heads/") and ref == "HEAD":
+            default = sha[len("ref: refs/heads/"):]
+        elif ref.startswith("refs/heads/"):
+            heads[ref[len("refs/heads/"):]] = sha
+        elif ref.startswith("refs/pull/"):
+            pulled.add(sha)
+    default = default or next((b for b in ("main", "master") if b in heads), "")
+    if not default:
+        return []
+    inside = lambda a, b: git_out("merge-base", "--is-ancestor", a, b) is not None
+    carried = {p["headRefName"] for p in prs} | {p["headRefOid"] for p in prs} | pulled
+    named = [(name, sha) for name, sha in sorted(heads.items())
+             if name != default and not name.startswith("answer/") and name not in carried and sha not in carried]
+    lacking = set(have_not([sha for _n, sha in named]))
+    if lacking:                                             # the one fetch for heads the configured refspec does not cover
+        git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking])
+    gone = set(have_not(sorted(lacking)))
+    kept = [(name, sha) for name, sha in named if sha in gone
+            or not (inside(sha, f"origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
+    kept = [(name, sha) for name, sha in kept if sha in gone or not any(
+        (other != sha and inside(sha, other)) or (other == sha and o_name < name) for o_name, other in kept if other not in gone)]
+    return [{"name": name, "sha": sha, "base": default, "here": sha not in gone} for name, sha in kept]
+
+
+def have_not(shas):
+    """The commits of these that this clone does not have — one `git cat-file --batch-check` for all of them."""
+    if not shas:
+        return []
+    r = subprocess.run(["git", "cat-file", "--batch-check"], input="".join(f"{s_}^{{commit}}\n" for s_ in shas), cwd=ROOT,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    return [s_ for s_, line in zip(shas, r.stdout.splitlines()) if line.endswith(" missing")]
+
+
+def answer_reading(head):
+    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when its
+    head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits."""
+    name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
+    may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
+    if may and verified_as(head, email or None):
+        return "merge", "merge: your answer", f"signed {head[:7]}"
+    gap = signature_gap(head)
+    return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
+
+
+def queue_actions(prs, branches=()):
+    """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
+    inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
+    verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
+    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict. For a pull
+    request the first rule that holds is the action:
+    - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
+    - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
+      same patch;
+    - `wait: conflict in <paths>` — `git merge-tree --write-tree origin/<base> <head>` does not merge clean;
+    - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
+    - `wait: no verdict on <head>` — no verdict names its head;
+    - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
+    A verdict is a commit among the pull requests' own that carries `Reviewed: <sha>`, as `--check` reads one, with its
+    word in its subject. It names a head that is <sha>, or that only review addenda follow <sha> to — commits touching
+    nothing but `<tracker dir>/evidence/reviews/` and `<tracker dir>/sessions.md`, as a verdict commit itself does."""
+    git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
+                                         encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    reviews, registry = f"{rel}/evidence/reviews/", f"{rel}/sessions.md"
+    head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
+    age = lambda p: (p.get("createdAt") or "", p["number"])
+    memo = {}
+
+    def cached(key, f):
+        if key not in memo:
+            memo[key] = f()
+        return memo[key]
+
+    anc = lambda a, b: cached(("anc", a, b), lambda: git("merge-base", "--is-ancestor", a, b).returncode == 0)
+    siblings = lambda p: sorted((q for q in prs if q is not p and q["baseRefName"] == p["baseRefName"]), key=age)
+    within = {num(p): [q for q in siblings(p) if anc(head(p), head(q)) and (head(p) != head(q) or age(q) < age(p))] for p in prs}
+    outermost = lambda qs: min(qs, key=lambda q: (bool(within[num(q)]), age(q)))
+
+    def own(p):
+        """its own commits — not on its base, merges aside — and each one's patch id"""
+        def read():
+            shas = git("rev-list", "--no-merges", head(p), "^" + base(p)).stdout.split()
+            diff = git("log", "-p", "--no-merges", "--no-color", "--no-ext-diff", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
+            ids = git("patch-id", "--stable", input=diff).stdout if diff else ""
+            return shas, {c: pid for pid, c in (l.split()[:2] for l in ids.splitlines() if len(l.split()) >= 2)}
+        return cached(("own", num(p)), read)
+
+    def holds(q, p):
+        """every commit of p's own is on q's branch — as that commit, or as the same patch"""
+        (mine, my_ids), (theirs, their_ids) = own(p), own(q)
+        theirs, their_ids = set(theirs), set(their_ids.values())
+        return bool(mine) and all(c in theirs or my_ids.get(c) in their_ids for c in mine)
+
+    def conflicts(p):
+        r = git("merge-tree", "--write-tree", "--name-only", "--no-messages", base(p), head(p))
+        if r.returncode in (0, 1):
+            return list(dict.fromkeys(l for l in r.stdout.splitlines()[1:] if l.strip()))
+        # merge-tree could not run — a git older than 2.38, or a head that is not here: the forge's own word stands in
+        return ["(paths unread — the forge says CONFLICTING)"] if p.get("mergeable") == "CONFLICTING" else []
+
+    pushed = [{"number": None, "title": b["name"], "headRefName": b["name"], "headRefOid": b["sha"], "baseRefName": b["base"], "createdAt": ""} for b in branches]
+    absent = set(have_not(sorted({head(p) for p in prs + pushed})))       # one head this clone lacks must not blank every verdict
+    heads = sorted({head(p) for p in prs + pushed} - absent)
+    bases = sorted({"^" + base(p) for p in prs + pushed if git("rev-parse", "--verify", "--quiet", base(p)).returncode == 0})
+    log = git("log", f"--format=%H%x01%s%x01{TRAILERS}%x02", *heads, *bases).stdout if heads else ""
+    verdicts = []                                           # newest first: (verdict, the full sha it reviewed, its word)
+    for rec in log.split("\x02"):
+        sha, _, rest = rec.strip("\n").partition("\x01")
+        subject, _, block = rest.partition("\x01")
+        reviewed, word = trailer_values(block, "Reviewed"), VERDICT_WORD_RE.search(subject)
+        if sha and reviewed and word:
+            full = git("rev-parse", "--verify", "--quiet", reviewed[0] + "^{commit}").stdout.strip()
+            if full:
+                verdicts.append((sha, full, word.group(1)))
+
+    def addenda_only(r, h):
+        """every commit from r to h touches only a review or the registry — and none is a merge, which brings a line's files"""
+        def read():
+            out = git("log", "--format=%x00%P", "--name-only", "--no-renames", f"{r}..{h}")
+            for chunk in out.stdout.split("\x00")[1:]:
+                parents, *paths = chunk.strip("\n").split("\n")
+                if len(parents.split()) > 1 or any(x and not (x.startswith(reviews) or x == registry) for x in paths):
+                    return False
+            return out.returncode == 0
+        return cached(("addenda", r, h), read)
+
+    rows = []
+    for p in prs:
+        carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
+        paths = conflicts(p) if not (within[num(p)] or carried) else []
+        last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p)))), None)
+        if head(p) in absent:
+            rows.append((p, "wait", f"wait: {head(p)[:7]} not fetched here", ""))
+        elif within[num(p)]:
+            rows.append((p, "close", f"closes with PR {num(outermost(within[num(p)]))}", ""))
+        elif carried:
+            rows.append((p, "close", f"close: carried into PR {num(outermost(carried))}", ""))
+        elif paths:
+            rows.append((p, "wait", "wait: conflict in " + ", ".join(paths), ""))
+        elif p["headRefName"].startswith("answer/"):
+            rows.append((p, *answer_reading(head(p))))
+        elif last is None:
+            rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
+        elif last[1] == "NOT READY":
+            rows.append((p, "wait", f"wait: NOT READY ({last[0][:7]})", ""))
+        else:
+            rows.append((p, "merge", "merge", f"verdict {last[0][:7]} {last[1]}"))
+    for b in pushed:
+        paths = conflicts(b) if head(b) not in absent else []
+        last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b)))), None)
+        said = ("not fetched here" if head(b) in absent else "conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
+                else f"NOT READY ({last[0][:7]})" if last[1] == "NOT READY" else f"verdict {last[0][:7]} {last[1]}: open it")
+        rows.append((b, "branch", "wait: no pull request — " + said, ""))
+    return sorted(rows, key=lambda row: (row[1] == "branch", row[1] == "wait", age(row[0]) if row[1] != "branch" else row[0]["headRefName"]))
+
+
+def queue_lines(rows):
+    """The queue as the Owner reads it: one line per pull request, its columns aligned, and the count last."""
+    cut = lambda b: b if len(b) <= QUEUE_BRANCH_MAX else b[:QUEUE_BRANCH_MAX - 1] + "…"
+    cells = [(f"PR {p['number']}", action, f"{cut(p['headRefName'])} @ {p['headRefOid'][:7]}", detail) for p, k, action, detail in rows if k != "branch"]
+    w = [max([len(c[i]) for c in cells] or [0]) for i in range(3)]
+    w[1] = max([len(c[1]) for c in cells if len(c[1]) <= QUEUE_ACTION_MAX] or [0])      # an action past the cap runs on in its own line
+    kinds = collections.Counter(k for _p, k, _a, _d in rows)
+    return ([f"{a:<{w[0]}}  {b:<{w[1]}}  {c:<{w[2]}}  {d}".rstrip() for a, b, c, d in cells]
+            + [f"branch {cut(p['headRefName'])} @ {p['headRefOid'][:7]}  {action}" for p, k, action, _d in rows if k == "branch"]
+            + [f"{len(rows)} waiting on you: {kinds['merge']} merge, {kinds['close']} close, {kinds['wait']} wait, "
+               f"{kinds['branch']} pushed without a pull request"])
+
+
+def queue_cmd():
+    """`--queue`: the open pull requests, one action each, in the order to take them — exit 3 where the forge cannot be read."""
+    prs, why = forge_prs()
+    if prs is None:
+        print(why, file=sys.stderr)
+        return EXIT_NO_FORGE
+    print("\n".join(queue_lines(queue_actions(prs, pushed_branches(prs)))))
+    return EXIT_OK
+
+
+def queue_section():
+    """`--owner` and `--standup` end with the queue where the forge can be read — and say nothing of it where it cannot."""
+    prs, _why = forge_prs()
+    if prs is not None:
+        print("\nPULL REQUESTS — in the order to take them")
+        print("\n".join("  " + line for line in queue_lines(queue_actions(prs, pushed_branches(prs)))))
+
+
 def answer_step(tid, n, text):
     """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
     reads the trackers, and a checkout hook and the pre-commit gate read them again; silent for that long, it was
@@ -826,12 +1105,15 @@ def answer_step(tid, n, text):
     print(f"answering {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
 
 
-def answer_cmd(words, trackers):
+def answer_cmd(words, trackers, supersede=False):
     """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
-    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes.
-    It refuses before touching anything when it cannot end in a verified answer."""
-    if len(words) < 2 or words[1] not in ("accept", "reject"):
-        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change", file=sys.stderr)
+    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes,
+    and goes back to the branch it started on. It refuses before touching anything when it cannot end in a verified answer.
+    An answer he takes back or changes (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
+    the answer it replaces moves into the ship log, with the commit that wrote it."""
+    if len(words) < 2 or words[1] not in ("accept", "reject", "revoke"):
+        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change. "
+              "An answer given already: `--answer <id> revoke \"<reason>\"`, or `--answer <id> accept|reject \"<option>\" --supersede`", file=sys.stderr)
         return EXIT_LINT
     # the answer is ONE front-matter line: every run of whitespace — a newline above all — collapses to one space.
     # A newline would close the line and the next fragment would be read as another key (`status: Shipped` flipped one),
@@ -841,11 +1123,19 @@ def answer_cmd(words, trackers):
     if not t or not t.get("ask") or t.get("next") != "owner":
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
         return EXIT_LINT
-    if t.get("answer"):
-        print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten; a new question is a new ask", file=sys.stderr)
+    if t.get("answer") and not (supersede or verdict == "revoke"):
+        print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten in place. "
+              f"To take it back: `{CMD} --answer {tid} revoke \"<reason>\"`; to change it: `{CMD} --answer {tid} accept|reject \"<option>\" --supersede` — "
+              f"either way the answer it replaces moves into the ship log", file=sys.stderr)
+        return EXIT_LINT
+    if not t.get("answer") and (supersede or verdict == "revoke"):
+        print(f"--answer: {tid} carries no answer to " + ("revoke" if verdict == "revoke" else "supersede") + f" — answer it: `{CMD} --answer {tid} accept|reject`", file=sys.stderr)
         return EXIT_LINT
     if verdict == "reject" and not text:
         print("--answer: a rejection carries its reason, and how the ask should be reworded", file=sys.stderr)
+        return EXIT_LINT
+    if verdict == "revoke" and not text:
+        print("--answer: a revocation carries its reason — the ship log keeps it beside the answer it takes back", file=sys.stderr)
         return EXIT_LINT
     if vcs() != "git":
         print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
@@ -890,10 +1180,12 @@ def answer_cmd(words, trackers):
         print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
               f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
         return EXIT_LINT
-    answer = ("accepted" if verdict == "accept" else "rejected") + (f" - {text}" if text else "")
-    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "")
+    answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
+    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else "")
     branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
     created = switched = False
+    # the answer this one replaces, and the commit that wrote it — read here, on the branch the new one is cut from
+    replaced = (t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed") if t.get("answer") else None
 
     def undo(what, said=""):
         """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
@@ -918,19 +1210,20 @@ def answer_cmd(words, trackers):
 
     if here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
-            # an `answer/<id>` left over from another branch does not carry this ask: switching to it would write the
-            # answer where the question is not, and push a branch the ask's own branch never sees
-            tip = git("show", f"{branch}:{rel}")
-            if tip.returncode or ask_key(parse_frontmatter(tip.stdout)[0].get("ask", "")) != ask_key(t["ask"]):
-                print(f"--answer: `{branch}` exists and its tip does not carry this ask — it was cut from another branch or the ask has changed since. "
-                      f"Delete it (`git branch -D {branch}`) or answer from the branch that carries the ask", file=sys.stderr)
+            # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
+            # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for him
+            trunk = default_trunk(git)
+            if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
+                print(f"--answer: `{branch}` exists and is not merged into `{trunk or 'origin'}` — it may hold work, and nothing is deleted for you. "
+                      f"Clear it with `git branch -D {branch}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
-            answer_step(tid, 2, f"switching to `{branch}` — the checkout hook, where one is installed, rebuilds the board")
-            r = git("switch", branch)
-        else:
-            answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
-            r = git("switch", "-c", branch)                    # from the branch that carries the ask: this one
-            created = r.returncode == 0
+            if git("branch", "-D", branch).returncode != 0:
+                print(f"--answer: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                return EXIT_LINT
+            print(f"--answer: `{branch}` was left by an earlier answer and is merged into `{trunk}` — deleted, and cut fresh", file=sys.stderr)
+        answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
+        r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
+        created = r.returncode == 0
         if r.returncode:
             return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
         switched = True
@@ -940,9 +1233,17 @@ def answer_cmd(words, trackers):
     at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
     if at is None:
         return undo(f"{tid} has no `ask:` line in {t['file']} on `{branch}` — the front matter's question is what the answer is written under")
+    if replaced:                                             # the lines it replaces leave the front matter, and the ship log keeps them
+        end = next((i for i, l in enumerate(lines) if i and l.strip() == "---"), len(lines))
+        lines = [l for i, l in enumerate(lines) if i >= end or not l.startswith(("answer:", "answered:", "answered-by:"))]
+        at = next(i for i, l in enumerate(lines) if l.startswith("ask:"))
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
+    if replaced:
+        cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
+        lines = ship_log_row(lines, f'Answer of {replaced[1]} superseded: *"{cell(replaced[0])}"* ({replaced[2]}) — '
+                                    + (f"revoked: {cell(text)}" if verdict == "revoke" else f'replaced by: *"{cell(answer)}"*'))
     try:
         put(path, "\n".join(lines))
     except OSError as e:
@@ -968,7 +1269,64 @@ def answer_cmd(words, trackers):
     answer_step(tid, 4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
     print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
-    return EXIT_OK if r.returncode == 0 else EXIT_LINT
+    if r.returncode != 0:
+        return EXIT_LINT
+    if switched:                                             # pushed: back where he started, so his next --answer does not begin on this one's branch
+        s_ = git("switch", here) if here else git("switch", "--detach", start)
+        print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
+    return EXIT_OK
+
+
+def default_trunk(git):
+    """`origin`'s default branch as this clone last fetched it — `origin/HEAD`, else `origin/main`, else `origin/master` —
+    or None: what an earlier `answer/<id>` must be merged into before `--answer` deletes it."""
+    head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
+    if head.startswith("refs/remotes/"):
+        return head[len("refs/remotes/"):]
+    return next((r for r in ("origin/main", "origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+
+
+def ship_log_table(lines):
+    """Where a tracker's ship log is: (its heading's line, the table's rule line or None, the last row's line, newest
+    first?) — or None where it has no log. The order is the log's own: oldest first only when its first dated row is
+    older than its last; this repository writes the newest on top."""
+    head_re = re.compile(r"^#{2,3}\s+(ship log|" + re.escape(HEAD["log"]) + r")\s*$", re.I)
+    at = next((i for i, l in enumerate(lines) if head_re.match(l)), None)
+    if at is None:
+        return None
+    end = next((i for i in range(at + 1, len(lines)) if re.match(r"^#{1,3}\s", lines[i])), len(lines))
+    sep = next((i for i in range(at + 1, end) if TABLE_SEP_RE.match(lines[i])), None)
+    last = sep
+    while sep is not None and last + 1 < end and lines[last + 1].lstrip().startswith("|"):
+        last += 1
+    dates = [m.group(1) for m in (re.match(r"\|\s*(\d{4}-\d{2}-\d{2})", lines[i].strip()) for i in range(sep + 1, last + 1)) if m] if sep is not None else []
+    return at, sep, last, not (len(dates) >= 2 and dates[0] < dates[-1])
+
+
+def ship_log_row(lines, event):
+    """A tracker's lines with one ship-log row for today, where the log's own order puts it: first under its header when
+    the newest row is on top, last when it runs oldest first. A tracker with no log gets one."""
+    row, log = f"| {datetime.date.today().isoformat()} | {event} |", ship_log_table(lines)
+    if log is None:
+        while lines and not lines[-1].strip():
+            lines = lines[:-1]
+        return lines + ["", f"## {HEAD['log']}", "", "| Date | Event |", "|---|---|", row, ""]
+    at, sep, last, newest_first = log
+    if sep is None:
+        return lines[:at + 1] + ["", "| Date | Event |", "|---|---|", row] + lines[at + 1:]
+    at_row = sep + 1 if newest_first else last + 1
+    return lines[:at_row] + [row] + lines[at_row:]
+
+
+def superseded(body):
+    """The commit that wrote the answer this tracker's answer replaced — from the newest ship-log row `--answer … revoke`
+    or `--supersede` wrote, read in the log's own order — or ""."""
+    lines = body.split("\n")
+    log = ship_log_table(lines)
+    if not log or log[1] is None:
+        return ""
+    hits = [m.group(2) for m in (SUPERSEDED_RE.match(lines[i].strip()) for i in range(log[1] + 1, log[2] + 1)) if m]
+    return (hits[0] if log[3] else hits[-1]) if hits else ""
 
 
 def changed_paths(git):
@@ -1291,9 +1649,9 @@ function draw(){
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
-    // the registry (FM-024): which sessions are open, for what — and how independent this week's verdicts were
-    +(REG?"\n\n<b>"+l("sessions.open",REG.open.length)+"</b>"+(REG.open.length?" — "+REG.open.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})${r[4]?" · "+l("sessions.abandoned"):""}`).join(" · "):"")
-      +(REG.reviews?"\n"+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"";
+    // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
+    +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
+      +(REG.reviews?(REG.recent.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"";
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -1319,6 +1677,7 @@ function view(id){
   const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
   v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
+${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
@@ -1376,7 +1735,7 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
-    "sessions.open": "sessions · {0} open", "sessions.abandoned": "abandoned",
+    "sessions.recent": "sessions · {0} in the last day",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -1405,6 +1764,7 @@ LABELS = {
     "viewer.no_copy": "no rendered copy of {0} — run {1}",
     "viewer.intent": "intent", "viewer.from": "from {0}", "viewer.intent.missing": "missing — the Owner states it on the tracker or its story",
     "viewer.verdict": "verdict", "viewer.verdict.none": "none yet — no triage pass has judged it",
+    "viewer.answer": "the Owner's answer", "viewer.supersedes": "supersedes {0}",
     "viewer.stale": "stale — older than {0} days, it counts as untriaged again",
     "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
@@ -1625,7 +1985,8 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask)]],
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
+              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", "")]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -2060,10 +2421,22 @@ def shape_words(shape):
     return "one of " + " · ".join(shape.split("|")) if re.fullmatch(r"[A-Za-z| ]+", shape) else f"shape `{shape}`"
 
 
+CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
+    "freeze_at": ("a whole number; `0` = off (the default)",
+                  "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
+                  "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
+                  "open tracker's body, or waits. `--check` says when it holds"),
+    "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
+                   "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
+}
+
+
 def render_schema():
     rows = [f"| `{k}:`{' — required' + (' on open work' if required == 'open' else '') if required else ''} | {shape_words(shape) if shape else 'free text'} | {who} | {says} |"
             for k, (shape, required, who, says) in FRONT_MATTER.items()]
-    return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows)
+    return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows
+                     + ["", f"`{CONFIG_NAME}`, at its top level:", "", "| Key | Value | Says |", "|---|---|---|"]
+                     + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()])
 
 
 def git_user():
@@ -2176,6 +2549,31 @@ def verified_as(commit, email=None):
     return good.strip() == "G" and bool(claimed) and claimed in signer
 
 
+def signature_gap(commit):
+    """Why a SIGNED commit cannot be verified in this clone — the clone's configuration, not the commit — or "": the commit
+    carries no signature, or the check could run. A refusal that said *sign it* to a signed commit blamed the Owner's
+    key for a missing file in the reader's setup: SSH needs `gpg.ssh.allowedSignersFile`, GPG the key in the keyring."""
+    head = (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    if not re.search(r"^gpgsig(-sha256)? ", head, re.M):
+        return ""
+    if "BEGIN SSH SIGNATURE" in head:
+        path = (git_out("config", "--path", "--get", "gpg.ssh.allowedSignersFile") or "").strip()
+        if not path:
+            return "`gpg.ssh.allowedSignersFile` is not set"
+        if not (pathlib.Path(path) if os.path.isabs(path) else ROOT / path).is_file():
+            return f"`gpg.ssh.allowedSignersFile` names {path}, which does not exist"
+    elif "BEGIN PGP SIGNATURE" in head and (git_out("log", "-1", "--format=%G?", commit) or "").strip() == "E":
+        return "the signing key is not in this clone's GPG keyring"
+    return ""
+
+
+def unverified(commit, tail):
+    """The end of a refusal for a commit that does not verify: *cannot verify* and why, where the clone cannot check a
+    signed commit — else the seat's own words (`tail`), which ask for a signature."""
+    gap = signature_gap(commit)
+    return f"it is signed, but this clone cannot verify: {gap} — see {SIGNING_PAGE}" if gap else tail
+
+
 def staged_now():
     """What the commit being made is about to carry — read once. The gate's version-control calls cost real seconds in
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
@@ -2279,8 +2677,8 @@ def seat_problems(t):
         if not commit:
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
         elif not verified_as(commit, email or None):
-            return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — `[seats]` asks this seat to '
-                    f'sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach him']
+            return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — '
+                    + unverified(commit, f'`[seats]` asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach him')]
     return []
 
 
@@ -2429,32 +2827,20 @@ def rights_problems(trackers):
                         print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
                     elif not verified_as(commit, email or None):
                         out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
-                                   f'`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count')
+                                   + unverified(commit, '`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
     return out
 
 
-# --- sessions (FM-024): a seat's commit names its session, and the record knows the session ------------------------
+# --- sessions (FM-024, FM-032): a seat's commit names its session, and the registry is a report of the trailers --------
 # Seat = author: WHO MAY, read by the rights above. Session = which RUN: a `Session: <id>` trailer on every seat commit,
-# appended by the prepare-commit-msg hook from the worktree's `seat.session`, and one row per session in the registry
-# `<tracker dir>/sessions.md` — who convened it, for what, in which worktree. The rules hold where the registry
-# exists: a repository adopts them by opening its first session, and a commit made before its tree had a registry is
-# not judged by them.
-SESSIONS_NAME = "sessions.md"
-SESSION_COLUMNS = ("Session", "Seat", "Convened by", "Scope", "Worktree", "Started", "Ended")
-SESSION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*")      # a9 · 8e509911 · a9/reviewer-1
-SESSION_PARENT_RE = re.compile(r"(?<![\w/.-])([0-9a-f]{8}(?:/[A-Za-z][A-Za-z0-9-]*-\d+)*|[A-Za-z0-9][A-Za-z0-9_.-]*(?:/[A-Za-z][A-Za-z0-9-]*-\d+)+)(?![\w/.-])")
-SESSION_IDLE = 86400          # seconds: an open session with no commit for longer than a day is abandoned — listed, closed by a pass
-SESSIONS_HOME = """\
-# Sessions
-
-One row per session of a seat: who convened it, for what, in which worktree. `--session open` writes a row and
-`--session close` dates its end; the gate refuses a seat's commit whose `Session:` trailer names no open row here, or
-whose worktree is open under another session. An open row with no commit for a day is closed by the next triage pass,
-which says so.
-
-| {head} |
-|{sep}
-"""
+# appended by the prepare-commit-msg hook from the worktree's `seat.session`, with `Worktree: <the checkout's directory>`
+# beside it. The registry is generated from those trailers by `--sessions`, the way INDEX is from the trackers, and is
+# kept in no file: until 0.18.0 it was `<tracker dir>/sessions.md`, written by hand and read by the gate, and it
+# conflicted whenever two branches landed (FM-032 S2, which is FM-031's S1). The gate keeps one rule: a seat's commit
+# carries a `Session:` of the accepted shape whose seat part is its own.
+SESSIONS_NAME = "sessions.md"          # the registry's file until 0.18.0 — `--check` warns where one is left
+SESSION_ID_RE = re.compile(r"[0-9a-f]{8}(?:/([A-Za-z][A-Za-z0-9_-]*)-\d+)?")      # 8e509911 · 8e509911/reviewer-1
+SESSION_RECENT = 86400        # seconds: the board and the digest name the sessions with a commit this recent
 
 
 def git_out(*a, cwd=None):
@@ -2467,101 +2853,83 @@ def sessions_file():
     return TRACKER_DIR / SESSIONS_NAME
 
 
-def parse_sessions(text):
-    """The registry's rows, in order: each a dict of the seven columns, plus `open` (no end written). A cell may carry
-    `|` escaped as `\\|`. Anything that is not a seven-cell table row, or is the header or its rule, is not a row."""
-    rows = []
-    for line in (text or "").splitlines():
-        if not line.lstrip().startswith("|"):
-            continue
-        cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]]
-        if len(cells) != len(SESSION_COLUMNS) or cells[0] in ("Session", "") or set(cells[0]) <= set("-: "):
-            continue
-        row = dict(zip(("id", "seat", "convened", "scope", "worktree", "started", "ended"), cells))
-        row["open"] = row["ended"] in ("", "—", "-")
-        rows.append(row)
-    return rows
+def session_log(since=None):
+    """Every commit of HEAD's history that carries a `Session:`, oldest first — (short sha, commit time, author email,
+    author name, the trailer block). One `git log`; `since` (seconds) keeps it to the recent ones."""
+    log = git_out("log", "--reverse", "-i", "--grep", "^session:", f"--format=%h%x01%ct%x01%ae%x01%an%x01{TRAILERS}%x02",
+                  *([f"--since={int(since)}"] if since else []), "HEAD") or ""
+    out = []
+    for rec in log.split("\x02"):
+        sha, stamp, email, name, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
+        if sha and stamp.strip().isdigit():
+            out.append((sha, int(stamp), email, name, block))
+    return out
 
 
-def render_session_row(r):
+def session_rows(since=None):
+    """THE REGISTRY, generated (FM-032 S2): one row per `Session:` id in HEAD's history — its seat (the author through
+    `[seats]`, else the raw author), its first and last commit (time, short sha), how many commits carry it, and its
+    worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both) — in the order of the
+    first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
+    rows = {}
+    for sha, stamp, email, name, block in session_log(since):
+        sid = (trailer_values(block, "Session") or [""])[0]
+        if not sid:
+            continue
+        r = rows.setdefault(sid, dict(id=sid, seats=[], first=(stamp, sha), last=(stamp, sha), commits=0, worktrees=[]))
+        seat, where = seat_of(name, email) or email or name, (trailer_values(block, "Worktree") or [""])[0]
+        r["seats"] += [seat] if seat not in r["seats"] else []
+        r["worktrees"] += [where] if where and where not in r["worktrees"] else []
+        r["first"] = (stamp, sha) if stamp < r["first"][0] else r["first"]          # oldest first: a tie keeps the earlier
+        r["last"] = (stamp, sha) if stamp >= r["last"][0] else r["last"]            # …and the later one here
+        r["commits"] += 1
+    return sorted(rows.values(), key=lambda r: r["first"][0])
+
+
+def sessions_cmd():
+    """`--sessions`: the registry as Markdown on stdout — generated from the trailers, written nowhere."""
+    if vcs() != "git":
+        print("--sessions: the registry is read from git's commit trailers — this is no git repository", file=sys.stderr)
+        return EXIT_LINT
+    rows = session_rows()
+    when = lambda st: f"{datetime.datetime.fromtimestamp(st[0]).strftime('%Y-%m-%d %H:%M')} · {st[1]}"
     cell = lambda v: (v or "—").replace("|", "\\|").replace("\n", " ")
-    return "| " + " | ".join(cell(r[k]) for k in ("id", "seat", "convened", "scope", "worktree", "started", "ended")) + " |"
-
-
-def write_sessions(rows):
-    """Rewrite the registry with these rows, keeping whatever stands above the table, and stage it."""
-    path = sessions_file()
-    have = path.read_text(encoding="utf-8") if path.exists() else SESSIONS_HOME.format(head=" | ".join(SESSION_COLUMNS), sep="---|" * len(SESSION_COLUMNS))
-    lines = have.rstrip("\n").split("\n")
-    table = [i for i, l in enumerate(lines) if l.lstrip().startswith("|")]
-    head = lines[:table[0] + 2] if table else lines + ["", "| " + " | ".join(SESSION_COLUMNS) + " |", "|" + "---|" * len(SESSION_COLUMNS)]
-    tail = lines[table[-1] + 1:] if table else []
-    path.parent.mkdir(parents=True, exist_ok=True)
-    put(path, "\n".join(head + [render_session_row(r) for r in rows] + tail) + "\n")
-    if vcs() == "git":
-        git_out("add", "--", path.relative_to(ROOT).as_posix())
-
-
-def session_now():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    print("# Sessions\n\nGenerated by `--sessions` from the `Session:` and `Worktree:` trailers of this checkout's history — "
+          f"{len(rows)} session(s), {sum(r['commits'] for r in rows)} commit(s). Nothing is kept in a file.\n")
+    print("| Session | Seat | First commit | Last commit | Commits | Worktree |\n|---|---|---|---|---|---|")
+    for r in rows:
+        print("| " + " | ".join(cell(v) for v in (r["id"], ", ".join(r["seats"]), when(r["first"]), when(r["last"]), str(r["commits"]), ", ".join(r["worktrees"]))) + " |")
+    twice = [r for r in rows if len(r["worktrees"]) > 1]
+    if twice:
+        print("\n" + "\n".join(f"- one id, {len(r['worktrees'])} worktrees: {r['id']} ({', '.join(r['worktrees'])})" for r in twice))
+    return EXIT_OK
 
 
 def session_cmd(words):
-    """`--session new` · `--session open <id> <seat> "<convened by>" "<scope>" [<worktree>]` · `--session close <id>`."""
-    rows = parse_sessions(sessions_file().read_text(encoding="utf-8")) if sessions_file().exists() else []
-    ids = {r["id"] for r in rows}
-    verb, rest = words[0], words[1:]
-    if verb == "new":
+    """`--session new` prints an id no `Session:` in this history carries. `open` and `close` are gone since 0.18.0."""
+    verb = words[0]
+    if verb in ("open", "close"):
+        print("--session open/close are gone since 0.18.0: the registry is a report — run --sessions", file=sys.stderr)
+        return 2                                        # a command that no longer exists, as argparse says of one it never knew
+    if verb == "new" and len(words) == 1:
         import secrets
-        sid = next(s for s in iter(lambda: secrets.token_hex(4), None) if s not in ids)
-        print(sid)
+        ids = {r["id"] for r in session_rows()} if vcs() == "git" else set()
+        print(next(s for s in iter(lambda: secrets.token_hex(4), None) if s not in ids))
         return EXIT_OK
-    if verb == "open" and 4 <= len(rest) <= 5:
-        sid, seat, convened, scope = rest[:4]
-        top = git_out("rev-parse", "--show-toplevel")
-        worktree = rest[4] if len(rest) == 5 else (pathlib.Path(top.strip()).name if top else ROOT.name)
-        hand = sid.rsplit("/", 1)[-1] if "/" in sid else None
-        # convened by a SESSION, not a person: a sub-agent — its id derives from its parent's, or the independence report
-        # cannot see that the two are one run (R3: a sibling's verdict was read as independent of the builder). A parent is
-        # read only from a token in the session-id form — eight hex characters, or `<id>/<seat>-<n>` — never from a plain
-        # word: "the morning session today" names no session (R6)
-        parent = (SESSION_PARENT_RE.search(convened) or [None, None])[1]
-        why = ("is not a session id — letters, digits, `.`, `_`, `-`; a sub-agent's is `<parent>/<seat>-<n>`" if not SESSION_ID_RE.fullmatch(sid)
-               else f"is already in {SESSIONS_NAME} — an id is used once" if sid in ids
-               else f"is convened by session {parent} — a sub-agent's id derives from its parent's: `{parent}/{seat}-<n>`" if parent and not sid.startswith(parent + "/")
-               else f"names the hand `{hand}`, not the seat `{seat}` — a sub-agent's id is `<parent>/{seat}-<n>`" if hand and not re.fullmatch(rf"{re.escape(seat)}-\d+", hand)
-               else f"is for the seat `{seat}`, which `[seats]` does not name" if SEATS and seat not in SEATS else "")
-        clash = next((r for r in rows if r["open"] and r["worktree"] == worktree), None)
-        if why or clash:
-            print(f"--session open: {sid} {why}" if why else f"--session open: {worktree} is open under session {clash['id']} — one worktree per session", file=sys.stderr)
-            return EXIT_LINT
-        rows.append(dict(id=sid, seat=seat, convened=convened, scope=scope, worktree=worktree, started=session_now(), ended="—", open=True))
-        write_sessions(rows)
-        mine = (git_out("config", "--get", "seat.session") or "").strip()
-        print(f"opened session {sid} ({seat}, {scope}) in {worktree} — {sessions_file().relative_to(ROOT).as_posix()} is staged; the session's first commit carries it"
-              + ("" if mine == sid else f"\nthis worktree's commits carry it once: git config --worktree seat.session {sid}"))
-        return EXIT_OK
-    if verb == "close" and len(rest) == 1:
-        row = next((r for r in rows if r["id"] == rest[0]), None)
-        if row is None or not row["open"]:
-            print(f"--session close: {rest[0]} is {'not in ' + SESSIONS_NAME if row is None else 'closed already'}", file=sys.stderr)
-            return EXIT_LINT
-        row["ended"] = session_now()
-        write_sessions(rows)
-        print(f"closed session {row['id']} — {sessions_file().relative_to(ROOT).as_posix()} is staged")
-        return EXIT_OK
-    print('--session: new · open <id> <seat> "<convened by>" "<scope>" [<worktree>] · close <id>', file=sys.stderr)
+    print("--session: new — prints an id no commit carries; the registry is `--sessions`", file=sys.stderr)
     return EXIT_LINT
 
 
 def session_trailer(message_file):
-    """What the prepare-commit-msg hook calls: append `Session: <seat.session>` to the message being written. Nothing
-    when this worktree has no `seat.session` (the Owner's checkout, a person's clone), and nothing when the message
-    carries a `Session:` already — an amend, a rebase, a seat that typed it."""
+    """What the prepare-commit-msg hook calls: append `Session: <seat.session>` and `Worktree: <the checkout's directory>`
+    to the message being written. Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's
+    clone); a trailer the message carries already is left alone — an amend, a rebase, a seat that typed it."""
     sid = (git_out("config", "--get", "seat.session") or "").strip()
     if not sid or not message_file:
         return EXIT_OK
-    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", message_file],
+    top = (git_out("rev-parse", "--show-toplevel") or "").strip()
+    worktree = pathlib.Path(top).name if top else ROOT.name
+    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", "--trailer", f"Worktree: {worktree}", message_file],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if r.returncode:
         print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
@@ -2589,57 +2957,40 @@ def trailers_of(commit, name):
     return trailer_values((git_out("log", "-1", f"--format={TRAILERS}", commit) or "").strip("\n"), name)
 
 
+def history_has_sessions(revs):
+    """Has this history adopted the session rule — does any commit reachable from `revs` carry a `Session:`? A repository
+    adopts the rule with its first trailer, as it adopted it with its first registry row until 0.18.0: a seat's commit
+    made before any is not judged, and a consumer that never set `seat.session` is not refused on vendoring."""
+    return bool(revs) and bool((git_out("log", "-1", "--format=%H", "-i", "--grep", "^session:", *revs) or "").strip())
+
+
 def session_problems():
-    """The gate's three refusals (example e): a seat's commit — not the Owner's — must carry a `Session:` whose row is
-    open and is the author's seat, and whose worktree no earlier open row holds. Judged on every change the rights are
-    judged on (`changes_under_review`): the commit being made reads `seat.session`, the trailer its hook will write; a
-    made commit reads its trailer; each against the registry in its own tree — a tree with none, whose parent had none,
-    is not judged. A change that REMOVES the registry, drops a row or re-opens an ended one is judged against its
-    parent's registry and refused (R1): the registry is the record the gate reads, so a seat never writes its way past
-    it — only the Owner removes it. The commit that closes its own session's row is that session's, still (its last)."""
+    """THE GATE'S ONE RULE (FM-032 S2): a commit by a seat `[seats]` names — never the Owner's, never an author outside
+    `[seats]` — carries a `Session:` of the accepted shape, `<8 hex>` or `<8 hex>/<seat>-<n>`, whose seat part, where it
+    has one, is the author's seat. Judged on every change the rights are judged on (`changes_under_review`): the commit
+    being made reads `seat.session`, the trailer its hook will write; a made commit — HEAD, or one a merge brings — reads
+    its own trailer. A commit with no `Session:` anywhere in its history is not judged (`history_has_sessions`). No row
+    is read: the open and closed rows, the one-worktree rule and the registry's removal went with the file in 0.18.0."""
     if not SEATS or vcs() != "git":
         return []
-    rel, out = sessions_file().relative_to(ROOT).as_posix(), []
-    for bases, _files, name, email, commit, result, label in changes_under_review():
+    out = []
+    for bases, _files, name, email, commit, _result, label in changes_under_review():
         seat = seat_of(name, email)
         if seat in (None, "owner"):
             continue
-        if result is not None:
-            after = git_out("show", f"{result}:{rel}")
-        elif COMMITTING:
-            after = git_out("show", f":{rel}")              # the index: what this commit will carry
-        else:
-            after = sessions_file().read_text(encoding="utf-8") if sessions_file().exists() else None
-        before = git_out("show", f"{bases[0]}:{rel}") if bases else None
-        if after is None and before is None:
-            continue
-        where = label + " — " if label else ""
         sid = (trailers_of(commit, "Session") or [""])[0] if commit else (git_out("config", "--get", "seat.session") or "").strip()
         who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
-        was = parse_sessions(before) if before is not None else []
-        rows = parse_sessions(after) if after is not None else was
-        now_by_id = {r["id"]: r for r in rows}
-        if after is None:
-            out.append(f"{where}refused: {who} removes {rel} — the registry is the Owner's to remove; a session ends with `{CMD} --session close <id>`")
-        else:
-            dropped = [r["id"] for r in was if r["id"] not in now_by_id]
-            reopened = [r["id"] for r in was if not r["open"] and now_by_id.get(r["id"], {}).get("open")]
-            if dropped or reopened:
-                said_ = ([f"drops the row{'s' if len(dropped) > 1 else ''} {', '.join(dropped)}"] if dropped else []) + ([f"re-opens {', '.join(reopened)}, which had ended"] if reopened else [])
-                out.append(f"{where}refused: {who} {'; '.join(said_)} in {rel} — a row once written stays, and an ended session stays ended: open a new one")
-                rows, now_by_id = was, {r["id"]: r for r in was}
-        row = now_by_id.get(sid)
-        closing = row is not None and not row["open"] and any(r["id"] == sid and r["open"] for r in was)     # its last commit
+        shape = SESSION_ID_RE.fullmatch(sid)
         if not sid:
-            out.append(f"{where}refused: {who} carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row ({CMD} --session open)")
-        elif row is None or not (row["open"] or closing):
-            out.append(f"{where}refused: Session: {sid} has no open row in {rel}")
-        elif row["seat"] != seat:
-            out.append(f"{where}refused: Session: {sid} is open for the seat {row['seat']}, and {who} is the seat {seat}")
-        elif row["open"]:
-            first = next(r for r in rows if r["open"] and r["worktree"] == row["worktree"])
-            if first is not row:
-                out.append(f"{where}refused: {row['worktree']} is open under session {first['id']} — one worktree per session")
+            why = f"{who} carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: the harness's session id, its first eight hex characters, or `<parent>/{seat}-<n>` for a sub-agent"
+        elif not shape:
+            why = f"{who} carries `Session: {sid}` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent"
+        elif shape[1] and shape[1] != seat:
+            why = f"{who} is the seat {seat}, and its Session: {sid} names the seat {shape[1]}"
+        else:
+            continue
+        if history_has_sessions(bases):
+            out.append(f"{label + ' — ' if label else ''}refused: {why}")
     return out
 
 
@@ -2653,39 +3004,6 @@ def session_check():
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK
-
-
-def session_stamp(text):
-    """A registry time (`YYYY-MM-DD HH:MM`, or a bare date) as seconds, or None."""
-    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d"):
-        try:
-            return datetime.datetime.strptime((text or "")[:len("2026-01-01 00:00") if fmt.endswith("%M") else 10], fmt).timestamp()
-        except ValueError:
-            pass
-    return None
-
-
-def abandoned_sessions(rows, now=None):
-    """Open rows with no commit carrying their id for longer than SESSION_IDLE — each (row, the last sign of life as
-    `YYYY-MM-DD HH:MM`). One `git log` over the commits since the oldest open row started."""
-    live = [r for r in rows if r["open"]]
-    if not live:
-        return []
-    now = now or datetime.datetime.now().timestamp()
-    since = min((session_stamp(r["started"]) or now) for r in live)
-    last = {}
-    log = git_out("log", f"--since={int(since)}", f"--format=%ct%x01{TRAILERS}%x02", "HEAD") or ""
-    for rec in log.split("\x02"):
-        stamp, _, block = rec.strip("\n").partition("\x01")
-        if stamp.strip().isdigit():
-            for sid in trailer_values(block, "Session"):
-                last[sid] = max(last.get(sid, 0), int(stamp.strip()))
-    out = []
-    for r in live:
-        seen = max(last.get(r["id"], 0), session_stamp(r["started"]) or 0)
-        if now - seen > SESSION_IDLE:
-            out.append((r, datetime.datetime.fromtimestamp(seen).strftime("%Y-%m-%d %H:%M") if seen else "never"))
-    return out
 
 
 def trunk_ref():
@@ -2748,12 +3066,11 @@ def verdict_reports(days=None):
 
 
 def sessions_report():
-    """What `--check` says of the registry, never a refusal: the abandoned rows a pass will close, and this week's
+    """What `--check` says of sessions, never a refusal: a registry file left from before 0.18.0, and this week's
     verdicts by independence."""
-    if not sessions_file().exists() or vcs() != "git":
-        return []
-    lines = [f"session {r['id']} ({r['seat']}, {r['scope']}) has no commit since {seen} — abandoned; the next triage pass closes it"
-             for r, seen in abandoned_sessions(parse_sessions(sessions_file().read_text(encoding="utf-8")))]
+    lines = [f"warning: {sessions_file().relative_to(ROOT).as_posix()} is a report since 0.18.0 — delete it; --sessions prints it"] if sessions_file().exists() else []
+    if vcs() != "git":
+        return lines
     reps = verdict_reports()
     if reps:
         count = collections.Counter(w for *_x, w in reps)
@@ -2765,40 +3082,28 @@ def sessions_report():
 
 
 def board_sessions():
-    """The registry as the board shows it — the open rows (id, seat, scope, worktree, abandoned) and this week's verdicts
-    as [independent, same session, untraced] — or None where there is no registry."""
-    if not sessions_file().exists() or vcs() != "git":
+    """The report as the board shows it — the sessions with a commit in the last day (id, seat, worktree) and this week's
+    verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
+    if vcs() != "git":
         return None
-    rows = parse_sessions(sessions_file().read_text(encoding="utf-8"))
-    gone, reps = {r["id"] for r, _ in abandoned_sessions(rows)}, verdict_reports()
+    recent = session_rows(since=datetime.datetime.now().timestamp() - SESSION_RECENT)
+    reps = verdict_reports()
+    if not recent and not reps:
+        return None
     count = collections.Counter(w for *_x, w in reps)
-    return {"open": [[r["id"], r["seat"], r["scope"], r["worktree"], r["id"] in gone] for r in rows if r["open"]],
+    return {"recent": [[r["id"], ", ".join(r["seats"]), ", ".join(r["worktrees"]) or "—"] for r in recent],
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"]] if reps else None}
 
 
 def sessions_digest():
-    """The digest's one line: the open sessions, by seat — or nothing where there is no registry."""
+    """The digest's one line: the sessions with a commit in the last day, by seat — or nothing where there is none."""
     reg = board_sessions()
-    if reg is None:
+    if not reg or not reg["recent"]:
         return ""
     by = collections.defaultdict(list)
-    for sid, seat, *_x in reg["open"]:
-        by[seat].append(sid)
-    return "SESSIONS OPEN · " + (" · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items()) or "none")
-
-
-def close_abandoned(today):
-    """A triage pass closes every abandoned row — dated, with why — and returns them for its paragraph. Nothing closes
-    silently: the pass prints them, and its paragraph in TRIAGE.md names them."""
-    if not sessions_file().exists() or vcs() != "git":
-        return []
-    rows = parse_sessions(sessions_file().read_text(encoding="utf-8"))
-    gone = abandoned_sessions(rows)
-    for r, seen in gone:
-        r["ended"] = f"closed by the pass of {today} — no commit since {seen}"
-    if gone:
-        write_sessions(rows)
-    return gone
+    for sid, seat, w in reg["recent"]:
+        by[seat].append(sid + (f" in {w}" if w and w != "—" else ""))
+    return "SESSIONS IN THE LAST DAY · " + " · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items())
 
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
@@ -2938,7 +3243,7 @@ def lint(trackers, committing=False):
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
     problems += rights_problems(trackers)
-    problems += session_problems()                   # FM-024: a seat's commit names an open session of its own seat
+    problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
@@ -2970,8 +3275,8 @@ def lint(trackers, committing=False):
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
                     if not verified_as(commit, email if SEATS else None):
                         problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{email if SEATS else who}` — '
-                                        f'{"`[seats]` asks this seat" if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
-                                        f'sign it (`git commit -S`), or it does not count')
+                                        + unverified(commit, f'{"`[seats]` asks this seat" if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
+                                                             f'sign it (`git commit -S`), or it does not count'))
                 elif how == "git":
                     print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
                           f'{"that seat in `[seats]`" if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)
@@ -3077,6 +3382,8 @@ def parse_args(argv):
         help="file ONE tracker — `--new \"the title\"`, `--new KEY \"the title\"`, or `--new KEY-037 \"the title\"` to take a free id of your choosing: "
              "prints what is related, writes the id with a front matter whose `considered:` is yours to fill; `<tracker dir>/TEMPLATE.md`, if there is one, is the template; "
              "the id prefix is needed only where the configuration names several")
+    add("--tags", metavar="TAG,TAG", help="with --new: the kind of work, as it is filed — `--new KIND \"the title\" --tags bug,process` writes `tags:` into the new tracker; "
+                                           "comma-separated, deduplicated, each from [tags] in the configuration. Under the filing freeze (`freeze_at`) only a `bug` filing is written")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
@@ -3085,20 +3392,33 @@ def parse_args(argv):
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
-             "naming each step as it starts. A failure after it wrote anything undoes it all and prints the answer and the command to give it again")
+             "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
+             "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
+             "`--answer <id> accept|reject \"<option>\" --supersede` — the old one moves into the ship log. A failure after it wrote anything undoes it all and "
+             "prints the answer and the command to give it again")
+    add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
+                                                 "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
-    add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
+    add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
+                                            "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
+    add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
+                                            "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
+                                            "merge: your answer · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
+                                            "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count. "
+                                            f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
     add("--session", nargs="+", metavar="WORD",
-        help="a seat's session (FM-024): a sub-agent derives its id from its parent's, `<parent>/<seat>-<n>`; `--session new` prints an id no row carries — for a session with no parent and a harness with no id; "
-             "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`. "
-             "`--session open <id> <seat> \"<convened by>\" \"<scope>\" [<worktree>]` writes its row in <tracker dir>/sessions.md and stages it — "
-             "a sub-agent's id is `<parent>/<seat>-<n>`; `--session close <id>` dates its end")
+        help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
+             "its first eight hex characters; a sub-agent's is its parent's and its hand, `<parent>/<seat>-<n>`. `--session new` prints an id no commit carries, for a session "
+             "with no parent and a harness with no id. `open` and `close` are gone since 0.18.0: the registry is a report, `--sessions`")
+    add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
+                                               "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
-                                                     "a tracker staged or not; reads git and the registry, never the trackers")
+                                                     "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
-                                                            "to a seat's commit — nothing without `seat.session`, nothing when the message carries one already")
+                                                            "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
+                                                            "a trailer the message carries already is left alone")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -3652,7 +3972,23 @@ def next_up(trackers):
 WANTED_NUM = None
 
 
-def new_tracker(words, trackers):
+def filing_freeze(trackers):
+    """FM-032 S4 — (open, the line) while the filing freeze holds: the trackers whose status is open number `freeze_at` or
+    more. None while they do not, where `freeze_at` is 0, and where `[tags]` has no `freeze_tag` — a freeze nothing could
+    pass would refuse even the defect it exists to let through (`freeze_unpassable` says so)."""
+    n = sum(t["status"] in OPEN_STATUSES for t in trackers)
+    return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT and not freeze_unpassable() else None
+
+
+def freeze_unpassable():
+    """The one line `--check` owes a repository whose freeze is set and whose `[tags]` cannot pass it — or ""."""
+    if FREEZE_AT and FREEZE_TAG.lower() not in {k.lower() for k in TAGS}:
+        return (f"filing freeze: off — `freeze_tag` {FREEZE_TAG!r} is not in [tags] ({', '.join(sorted(TAGS)) or 'none'}); "
+                f"add it there, or set `freeze_tag` in {CONFIG_NAME} to the tag a product defect carries")
+    return ""
+
+
+def new_tracker(words, trackers, tags_arg=None):
     global WANTED_NUM
     m = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)-(\d+)", words[0]) if len(words) > 1 else None
     WANTED_NUM, words = (int(m.group(2)), [m.group(1), *words[1:]]) if m and m.group(1).upper() in KINDS else (None, words)
@@ -3667,6 +4003,25 @@ def new_tracker(words, trackers):
           else "Nothing related is filed yet.")
     for score, t in near:
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
+    house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
+    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
+    frozen = filing_freeze(trackers)
+    tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
+    if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
+        vocab = {k.lower(): k for k in TAGS}                # matched as the template's are, case aside; written as [tags] spells it
+        said = [x.strip().lstrip("#") for x in tags_arg.split(",") if x.strip().lstrip("#")]
+        tags = list(dict.fromkeys(vocab.get(x.lower(), x) for x in said))
+        unknown = [x for x in tags if vocab and x.lower() not in vocab]
+        if not tags or unknown or len(tags) > MAX_TAGS:
+            why = ("no tag was given" if not tags else f"{', '.join(unknown)} not in the vocabulary ({', '.join(sorted(TAGS))}, [tags] in {CONFIG_NAME})" if unknown
+                   else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}")
+            print(f"--new: --tags {tags_arg!r} — {why} — nothing was written", file=sys.stderr)
+            return EXIT_LINT
+    if frozen and FREEZE_TAG.lower() not in {x.lower() for x in tags}:
+        print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
+              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `{FREEZE_TAG}` tag — "
+              f"a product defect is filed with `--tags {FREEZE_TAG}`; nothing was written", file=sys.stderr)
+        return EXIT_LINT
     # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
     if WANTED_NUM is not None:
@@ -3678,9 +4033,8 @@ def new_tracker(words, trackers):
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
-    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
-    put(path, template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD))
+    text = template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD)
+    put(path, set_front(text, "tags", ", ".join(tags)) if tags_arg is not None else text)
     print(f"wrote {path.relative_to(ROOT).as_posix()} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
 
@@ -3690,6 +4044,10 @@ def main(argv=None):
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
     args = parse_args(argv)
+    for flag, needs, alone in (("--tags", "--new", args.tags is not None and not args.new), ("--supersede", "--answer", args.supersede and not args.answer)):
+        if alone:                                           # a flag that means nothing alone is refused, never silently ignored
+            print(f"{flag} goes with {needs} — " + ('`--new KIND "the title" --tags bug`' if flag == "--tags" else '`--answer <id> accept|reject "<option>" --supersede`'), file=sys.stderr)
+            return 2
     if args.tsvn_hook:
         # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
         # one this copy of the tool lives in. `start` runs before the commit dialog lists its files, so the INDEX.md
@@ -3714,6 +4072,10 @@ def main(argv=None):
         return session_check()
     if args.session:
         return session_cmd(args.session)
+    if args.sessions:                                       # the registry: a report of the trailers, read from git alone
+        return sessions_cmd()
+    if args.queue:                                          # FM-031 S2: the forge's queue — no tracker is read
+        return queue_cmd()
     if args.answer:
         answer_step(args.answer[0].upper(), 1, "reading the trackers")
     trackers = load_trackers()
@@ -3730,17 +4092,22 @@ def main(argv=None):
         print("REFUSED by the deriver — nothing was written.", file=sys.stderr)
         return refused
     if args.new:
-        return new_tracker(args.new, trackers)
+        return new_tracker(args.new, trackers, args.tags)
     if args.owner:
-        return owner_digest(trackers)
+        code = owner_digest(trackers)
+        queue_section()
+        return code
     if args.answered:
         return answered(trackers)
     if args.answer:
-        return answer_cmd(args.answer, trackers)
+        return answer_cmd(args.answer, trackers, supersede=args.supersede)
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:
-        return standup(trackers, args.standup)
+        code = standup(trackers, args.standup)
+        if not args.standup:                                # the agenda, not the calendar invite
+            queue_section()
+        return code
     if args.next:
         return next_up(trackers)
     if args.html_only:
@@ -3757,8 +4124,6 @@ def main(argv=None):
             print(f"--triage: {home.relative_to(ROOT).as_posix()} names no current path — tiers cannot be judged; the Owner writes it first", file=sys.stderr)
             return EXIT_LINT
         today = datetime.date.today().isoformat()
-        for r, seen in close_abandoned(today):              # FM-024: the pass closes what nobody closed — and says so
-            print(f"closed abandoned session {r['id']} ({r['seat']}, {r['scope']}) — no commit since {seen}. Say so in this pass's paragraph in {home.relative_to(ROOT).as_posix()}.")
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
@@ -3827,6 +4192,11 @@ def main(argv=None):
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
+        frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
+        if frozen:
+            print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
+        elif freeze_unpassable():
+            print(freeze_unpassable(), file=log)
     else:
         put(OUT, body)
         put(HTML_OUT, render_html(trackers))   # git-ignored; never staged

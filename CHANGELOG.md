@@ -2,6 +2,67 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.18.0 — 2026-09-24
+
+**The session registry is a report, generated from the commit trailers** (FM-032 S2, which is FM-031's S1). It was a
+file every seat wrote and the gate read: it conflicted whenever two branches landed, and a row once closed never
+re-opened, so every return to a branch cost a new id. The trailer rule stays; the rows go.
+
+- **Delete `<tracker dir>/sessions.md`** (`git rm`); history keeps its rows. Nothing reads or writes it any more:
+  `--check` warns in one line while it is there, and passes.
+- **`--sessions` is the registry**: one row per `Session:` id in the checkout's history — its seat (the author
+  through `[seats]`), its first and last commit, how many commits carry it, its worktree — Markdown on stdout,
+  written nowhere.
+- **`--session open` and `--session close` are gone**: each prints one line and exits 2. *Drop them from a seat's
+  instructions and from any script.* `--session new` stays and prints an id no commit carries.
+- **The gate keeps one rule**: a seat's commit — never the Owner's, never an author outside `[seats]` — carries a
+  `Session:` of the shape `<8 hex>` or `<8 hex>/<seat>-<n>`, and its seat part is the author's seat. Gone: the open
+  row, one worktree per session, the refusal to remove the registry, drop a row or re-open one, and abandoned rows
+  (`--check` no longer lists them, `--triage` no longer closes them). As before, a commit whose history carries no
+  `Session:` at all is not judged.
+- **A `Worktree:` trailer**, the checkout's directory name, is appended beside `Session:` by the same hook; commits
+  from before carry none, and the report shows `—`. *The hook lines are unchanged: nothing to install again, nothing
+  to change in your own hook runner.*
+- **The board's strip and the digest's line** name the sessions with a commit in the last day, with their worktree,
+  where they named the open rows. Labels: `sessions.recent` is new; `sessions.open` and `sessions.abandoned` are
+  gone, and a `labels.yaml` that still sets them is told they are not labels.
+
+**The queue in one view, the filing freeze, and an answer that can be taken back** (FM-031 S2, FM-032 S4, and two
+defects of `--answer` found the same day).
+
+- **`--queue`, the open pull requests in one view** (FM-031 S2): read from GitHub with `gh`, `origin` fetched once,
+  ONE action each — `merge` · `closes with PR N` · `close: carried into PR N` · `wait: conflict in <paths>` ·
+  `wait: no verdict on <sha>` · `wait: NOT READY (<verdict>)` — what can be acted on first, oldest first, then a
+  count. A verdict is a commit carrying `Reviewed: <sha>`, its word read from its subject. Without `gh`, offline or
+  with no GitHub `origin`: one line, exit 3. `--owner` and `--standup` end with it where the forge can be read.
+  *Nothing to do, as long as each verdict's subject says READY, READY WITH FINDINGS, READY TO TAG or NOT READY.*
+- **The filing freeze** (FM-032 S4): `freeze_at` in `shoalmark.toml` — at that many open trackers or more, `--new`
+  refuses a filing without `tags: bug`, exit 4; `--new KIND "title" --tags bug,process` writes `tags:` as it files
+  (comma-separated, deduplicated, each from `[tags]`, case aside); `--check` says the freeze holds in one line, its
+  exit unchanged; `--schema` lists the key. `freeze_tag` (default `bug`) is the tag that passes it: where your `[tags]`
+  does not carry it, the freeze refuses nothing and `--check` says so in one line. `--tags` without `--new`, and
+  `--supersede` without `--answer`, are refused in one line, exit 2. *Off (0) until you set it; if your `[tags]` has no
+  `bug`, set `freeze_tag` to the tag a product defect carries.*
+- **`--answer` after an earlier answer**: a local `answer/<id>` merged into `origin`'s default branch is deleted and
+  cut fresh; one not merged is refused, naming `git branch -D answer/<id>`, and nothing unmerged is deleted. After
+  the push it goes back to the branch it started on.
+- **An answer is revoked or superseded, never overwritten:** `--answer <id> revoke "<reason>"`, or
+  `--answer <id> accept|reject "<option>" --supersede`. The answer it replaces moves into the ship log with the
+  commit that wrote it, and the board's tracker view shows the answer and *supersedes <sha>*.
+- **`--queue` sees what waits beyond the open pull requests.** Each branch on `origin` that no pull request carries —
+  not the default branch, not `answer/*`, not already merged, not inside an open pull request or another such
+  branch — follows as `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>` · `— verdict <sha> READY …:
+  open it` · `— NOT READY (<sha>)` · `— conflict in <paths>`, and the count line adds *n pushed without a pull
+  request*. A head your clone's fetch does not cover (a single-branch clone) is fetched by its ref; one that still is
+  not there reads `not fetched here` on its own line. An `answer/*` pull request is the Owner's own answer and needs no
+  verdict: `merge: your answer` when its head's author may answer — the seat matched as the gate matches it, email or
+  name — and the commit verifies; `wait: answer not verified here — <why>` when it is signed and your clone cannot
+  check it; `wait: unsigned answer` when not.
+- **A signed commit this clone cannot verify is no longer told to sign.** With `gpg.ssh.allowedSignersFile` unset or
+  missing, or a GPG key not in the keyring, `--check` says *it is signed, but this clone cannot verify: <why> — see
+  the signing page*; an unsigned commit is still asked to sign, and the exit is unchanged. *Nothing to do in a clone
+  that verifies today; in a fresh clone, set `gpg.ssh.allowedSignersFile` as the signing page shows.*
+
 ## 0.17.8 — 2026-09-23
 
 **A vendoring vouches for what it copies** (FM-011). `--vendor` used to skip a missing source file, pin what it found

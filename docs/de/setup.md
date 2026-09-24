@@ -59,10 +59,10 @@ Principal fragt, schließt und sichtet, der Reviewer sichtet, der Implementer ba
 `answerers = ["ihrname signed"]` gilt weiter, wo es kein `[seats]` gibt.
 
 **Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
-und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`. Eine Session trägt sich in
-`docs/work-tracker/sessions.md` ein (wer sie einberufen hat, wofür, in welchem Worktree). Das Gate lehnt den Commit eines
-Sitzes ohne offene Session ab, und die Tafel zeigt, wer woran arbeitet. Das erledigen Ihre Agenten. Ihre eigenen
-Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
+und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
+den Commit eines Sitzes ohne eine Session seines eigenen Sitzes ab; `--sessions` liest allein aus diesen Zeilen ab, wer
+was wann und wo gemacht hat, und die Tafel zeigt, wer am letzten Tag gearbeitet hat. Das erledigen Ihre Agenten.
+Ihre eigenen Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
 
 ## 5. Zwei Dinge schreiben, die nur Sie können
 
