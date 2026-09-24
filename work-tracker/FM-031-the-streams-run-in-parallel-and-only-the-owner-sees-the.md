@@ -3,11 +3,12 @@ id: FM-031
 status: Proposed
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: review
+next: owner
 ask: "Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat's branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?"
 ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later | none — keep the current fan-out"
+ask-proposal: "all three rules now, S1 then S2"
 hook: "In fourteen hours 21 seat sessions opened 22 pull requests, and only the Owner sees the whole queue. At 08:10 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
@@ -32,7 +33,7 @@ branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
   - Every parallel pull request appends its session's row to `work-tracker/sessions.md`, all at the same place. That
     conflicted on #33, #35 and #37.
   - In the parent project that vendors this tool, two pull requests conflicted on its registry the same morning (its
-    #806 and #807; resolved by merging one into the other before the verdict), and earlier on a tracker's ship log.
+    pull requests 806 and 807; resolved by merging one into the other before the verdict), and earlier on a tracker's ship log.
 - **The Owner asked one Implementer session five integration questions in about two hours:**
   - which pull requests to merge;
   - that one of them had a conflict;
@@ -83,7 +84,7 @@ are multiple streams running at the same time doing valuable work — but are th
 
 ## Candidates, cheapest first
 
-None is chosen. The Owner or the Principal rules.
+Nothing is chosen for the Owner: the Principal's reading below names the slices and puts the three rules to him — they bind him — with a proposal; his answer decides, never a default.
 
 1. **The queue in one view.** The tool reads the open pull requests and gives each one action:
    - *merge*: a verdict names its head, and it merges cleanly;
@@ -126,6 +127,7 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-09-24 08:42 CEST | The Principal sets the proposal — *all three rules now, S1 then S2* — and puts the ask to the Owner (`next: owner`); two wording fixes from the Implementer's report ("None is chosen" read against the reading; the parent project's pull-request numbers written without the sign the forge auto-links). Verified next, then the pull request. |
 | 2026-09-24 08:33 CEST | Adopted by the Principal. Candidates 2 and 1 become slices S1 (the registry off the conflict path: one file per session under `work-tracker/sessions/`, the table generated) and S2 (the queue in one view: `--queue`); candidate 3 is deferred. The ask drafted for review (`next: review`): the three house rules — candidates 4, 5 and 6 — and the build order, four options; the proposal is the Principal's to set. The parent project's registry conflict cited by its pull-request numbers only. |
 | 2026-09-24 08:26 CEST | The Owner's second question measured: filing outruns closing 2.07 to 1 (16.4 filed a day against 8.0 closed, since 2026-09-22 11:09); 16 open, and the open count grows about 8 a day. |
 | 2026-09-24 08:24 CEST | Filed on the Owner's question, with tonight's record as the measurement. Held against FM-005 (his decisions: the asks, not the queue of pull requests), FM-023 (a plan's seats and estimates), FM-024 (a commit names its session) and FM-027 (ids claimed on the server). |
