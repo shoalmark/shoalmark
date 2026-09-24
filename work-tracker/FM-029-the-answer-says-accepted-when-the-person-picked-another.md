@@ -12,8 +12,8 @@ hook: "The person picked the third of three options, not the proposal, and the s
 ## What is true now
 
 **Filed 2026-09-24; nothing is built.** Found on 0.17.7 in a consumer repository. The lines below are from 0.17.8
-(`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). Reviewed at `10d5895`, NOT READY (R1–R10, the review file under
-`evidence/reviews/`); this text closes them.
+(`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on an earlier chain of this branch, which was
+replaced before its merge to keep unredacted detail out of the record; it found R1–R16, and this text closes R1–R10.
 
 **What happened.** A ruling offered three options, with the proposal first. The person answered through the board,
 picked the third option under *accept*, and signed. His record reads `answer: "accepted - <the third option>"`. Nothing
@@ -81,4 +81,4 @@ misstates him, and any measure of how often he follows the seat is wrong in the 
 
 | Date | Event |
 |---|---|
-| 2026-09-24 | Filed. Reviewed at `10d5895`: NOT READY, R1–R10 (two of them FM-030's alone); this text closes R1–R4 and R10's share here. |
+| 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-029's share of R1–R10, and R11–R15 stay open. |

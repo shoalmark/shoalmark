@@ -12,8 +12,8 @@ hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner
 ## What is true now
 
 **Filed 2026-09-24; nothing is built.** Found on 0.17.7 in a consumer repository at its morning sitting. The lines below
-are from 0.17.8 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). Reviewed at `10d5895`, NOT READY (R1–R10, the review file
-under `evidence/reviews/`); this text closes them.
+are from 0.17.8 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on an earlier chain of this branch, which was
+replaced before its merge to keep unredacted detail out of the record; it found R1–R16, and this text closes R1–R10.
 
 **What happened.** `--standup` printed *0 item(s) — nothing needs the Owner today* and `--owner` printed *NOTHING NEEDS
 THE OWNER*. Two acts only the person could do were owed that day:
@@ -81,4 +81,4 @@ acts this kind covers are the ones the design reserves for him because they carr
 
 | Date | Event |
 |---|---|
-| 2026-09-24 | Filed. Reviewed at `10d5895`: NOT READY, R1–R10; this text closes R5–R10 and the shares of R4 and R10 that fall here. |
+| 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-030's share of R1–R10, and R11–R15 stay open. |
