@@ -60,6 +60,7 @@ never on a default; a word in chat changes none of them until he signs it.
 - **Seats never need the Owner's checkout** (FM-031). He looks at a seat's branch with
   `git fetch && git switch --detach origin/<branch>`, so his checkout never holds it.
 - **A pass judges before the first build commit** (FM-033) — ruled 2026-09-24 16:29:09 (`65f37a4`). A signed answer
-  authorises the work; it does not judge it ready: a triage pass keeps the tracker before any code is built on it, the same
-  day when the answer says *now*, and a pass that finds it not ready asks the Owner again. Four pieces were built unjudged
-  on 2026-09-24 (FM-033's record); the gate that refuses a build commit on an unjudged tracker builds under FM-033.
+  authorises the work; it does not judge it ready: a triage pass keeps the tracker before any change outside `work-tracker/`
+  is committed under it — code, tests, configuration, hooks and documentation alike — the same day when the answer says
+  *now*, and a pass that finds it not ready asks the Owner again. Four pieces were built unjudged on 2026-09-23 and
+  2026-09-24 (FM-033's record); the gate that refuses such a commit on an unjudged tracker builds under FM-033.
