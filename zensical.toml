@@ -9,6 +9,7 @@ repo_name = "holgo99/shoalmark"
 edit_uri = "edit/main/docs/"
 docs_dir = "docs"
 site_dir = "site"
+extra_css = ["stylesheets/shoalmark.css"]
 use_directory_urls = false   # links are `setup.html`, not `setup/` — the built site opens from the file system too
 
 nav = [
@@ -27,4 +28,25 @@ nav = [
 
 [project.theme]
 language = "en"
+custom_dir = "overrides"   # .icons/shoalmark/pricke.svg: the logo inlined, so it takes the scheme's colour
+favicon = "assets/favicon.svg"
 features = ["content.code.copy", "content.action.edit", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "toc.follow"]
+
+[project.theme.icon]
+logo = "shoalmark/pricke"
+
+[project.theme.font]
+text = "IBM Plex Sans"
+code = "IBM Plex Mono"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to light mode"

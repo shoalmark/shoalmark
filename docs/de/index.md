@@ -1,6 +1,6 @@
 # shoalmark
 
-*Eine Markierung auf der Seekarte, die die Flotte vor dem Auflaufen bewahrt.*
+*Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.*
 
 ## Dein Eigner bremst. Tunen statt tauschen.
 
