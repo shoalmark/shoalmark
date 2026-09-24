@@ -1780,55 +1780,154 @@ BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "wordmark.svg", "labels.yaml
 # grid. The running line ends every page with it: the tool's name and version, not a brand, not a label, in every repository.
 PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"
 LOGO_MAX = 200_000            # bytes — a logo or a wordmark is inlined into the page; past this it is skipped, with a warning
-# What an inlined SVG may hold: shapes, text, and what they point at inside the same file. A logo sits in an <img>, where
-# nothing an SVG carries can run or load; a wordmark sits IN the page, where a <script> would run, an on…= handler fire,
-# a reference load and a <style> restyle the whole board — so an element outside this list refuses the file whole.
-SVG_TAGS = {"svg", "g", "defs", "symbol", "use", "title", "desc", "metadata", "path", "rect", "circle", "ellipse", "line", "polyline",
-            "polygon", "text", "tspan", "textPath", "clipPath", "mask", "linearGradient", "radialGradient", "stop", "pattern"}
+# What an inlined SVG may be. A logo sits in an <img>, where nothing an SVG carries can run or load; a wordmark sits IN
+# the page, where a script would run, a handler fire, a reference load and a style restyle the board — so it is held to a
+# grammar, not screened for bad words, and written out again from what was read (0.18.2; the Reviewer's R1–R5).
+#   the file   at most LOGO_MAX bytes; UTF-8, no byte-order mark, no control character but tab and line ends; no DOCTYPE,
+#              ENTITY or CDATA; an <?xml?> that names an encoding names UTF-8 — all checked before it is parsed
+#   the tree   at most SVG_DEPTH deep; only the elements below (another namespace's are left out, with what they hold);
+#              at most SVG_DRAWN elements once every <use> is expanded; a <use> inside what a <use> draws at most
+#              SVG_USE_DEPTH deep; no cycle; a <use> only of an id the file has
+#   attributes only those the element's row names — no style, no class, no handler, nothing else — and each value whole
+#              in its grammar (SVG_GRAMMAR). Whatever its grammar, no value may hold \ & < http data: javascript. `(`
+#              appears only in transform's functions and in url(#id) — a paint, mask or clip of the file's own id
+_SVG_SHAPE = {"id", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin",
+              "stroke-miterlimit", "opacity", "transform", "clip-path", "clip-rule", "mask", "shape-rendering"}
+_SVG_TEXT = {"x", "y", "dx", "dy", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "letter-spacing", "xml:space"}
+SVG_ATTRS = {
+    "svg": _SVG_SHAPE | {"viewBox", "width", "height", "x", "y", "preserveAspectRatio", "version", "xml:space"},
+    "g": _SVG_SHAPE, "defs": {"id"}, "symbol": _SVG_SHAPE | {"viewBox", "preserveAspectRatio"},
+    "use": _SVG_SHAPE | {"href", "x", "y", "width", "height"}, "title": set(), "desc": set(), "metadata": set(),
+    "path": _SVG_SHAPE | {"d"}, "rect": _SVG_SHAPE | {"x", "y", "width", "height", "rx", "ry"}, "circle": _SVG_SHAPE | {"cx", "cy", "r"},
+    "ellipse": _SVG_SHAPE | {"cx", "cy", "rx", "ry"}, "line": _SVG_SHAPE | {"x1", "y1", "x2", "y2"},
+    "polyline": _SVG_SHAPE | {"points"}, "polygon": _SVG_SHAPE | {"points"}, "text": _SVG_SHAPE | _SVG_TEXT, "tspan": _SVG_SHAPE | _SVG_TEXT,
+    "clipPath": {"id", "transform", "clipPathUnits"}, "mask": {"id", "x", "y", "width", "height", "maskUnits", "maskContentUnits"},
+    "linearGradient": {"id", "x1", "y1", "x2", "y2", "gradientUnits", "gradientTransform", "spreadMethod"},
+    "radialGradient": {"id", "cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform", "spreadMethod"},
+    "stop": {"offset", "stop-color", "stop-opacity"},
+}
+_N = r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
+_L = _N + r"(?:px|%)?"
+_ID = r"[A-Za-z][A-Za-z0-9_-]{0,63}"
+_COLOUR = (r"#[0-9a-fA-F]{3,8}|currentColor|none|black|white|silver|gray|grey|red|maroon|orange|yellow|olive|lime|green|"
+           r"teal|aqua|cyan|blue|navy|fuchsia|magenta|purple|transparent")
+_UNITS = "userSpaceOnUse|objectBoundingBox"
+_TRANSFORM = r"(?:\s*(?:matrix|translate|scale|rotate|skewX|skewY)\s*\([0-9eE .,+-]*\)\s*,?)+\s*"
+SVG_GRAMMAR = {
+    "id": _ID, "href": "#" + _ID, "d": r"[0-9MmZzLlHhVvCcSsQqTtAaEe .,+-]*", "points": r"[0-9eE .,+-]*", "viewBox": r"[0-9eE .,+-]+",
+    "transform": _TRANSFORM, "gradientTransform": _TRANSFORM,
+    "fill": rf"{_COLOUR}|url\(#{_ID}\)", "stroke": rf"{_COLOUR}|url\(#{_ID}\)", "stop-color": _COLOUR,
+    "clip-path": rf"none|url\(#{_ID}\)", "mask": rf"none|url\(#{_ID}\)",
+    "fill-rule": "nonzero|evenodd", "clip-rule": "nonzero|evenodd", "stroke-linecap": "butt|round|square", "stroke-linejoin": "miter|round|bevel",
+    "shape-rendering": "auto|crispEdges|geometricPrecision|optimizeSpeed", "preserveAspectRatio": r"(?:none|x(?:Min|Mid|Max)Y(?:Min|Mid|Max))(?:\s+(?:meet|slice))?",
+    "gradientUnits": _UNITS, "clipPathUnits": _UNITS, "maskUnits": _UNITS, "maskContentUnits": _UNITS, "spreadMethod": "pad|reflect|repeat",
+    "font-family": r"[A-Za-z0-9 ,'-]+", "font-size": _N + r"(?:px|em|%)?", "font-weight": r"normal|bold|[1-9]00", "font-style": "normal|italic|oblique",
+    "text-anchor": "start|middle|end", "letter-spacing": _N + r"(?:px|em)?", "version": r"\d+(?:\.\d+)?", "xml:space": "default|preserve",
+    "opacity": _N + "%?", "fill-opacity": _N + "%?", "stroke-opacity": _N + "%?", "stop-opacity": _N + "%?", "offset": _N + "%?",
+    **{k: _L for k in ("width", "height", "rx", "ry", "cx", "cy", "r", "fx", "fy", "x1", "y1", "x2", "y2", "stroke-width", "stroke-miterlimit")},
+    **{k: rf"{_L}(?:[ ,]+{_L})*" for k in ("x", "y", "dx", "dy")},
+}
+SVG_DEPTH, SVG_DRAWN, SVG_USE_DEPTH = 32, 2000, 3
 SVG_NS, XLINK_NS, XML_NS = "http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/XML/1998/namespace"
 
 
 def inline_svg(data, prefix="wm-"):
     """(markup, "") — the SVG written out again from what was read, safe to put in the page — or ("", why it is not).
-    Nothing is stripped that could draw: a script, a handler, a reference outside the file, a <style>, an element not
-    in SVG_TAGS refuses it whole. What an editor adds in its own namespace (Inkscape's, Sketch's) draws nothing and is
-    left out. Every id gets `prefix`, and every `#id` it is referred to by, so no id of the page's is ever shadowed; an
-    underscore is written `&#95;`, so no `__PLACEHOLDER__` of the page's template can be spelled inside it."""
+    The rules are the comment above SVG_ATTRS; the first one broken refuses the file whole. Every id gets `prefix`, and
+    every `#id` it is referred to by, so no id of the page's is ever shadowed; an underscore is written `&#95;`, so no
+    `__PLACEHOLDER__` of the page's template can be spelled inside it. Nothing here recurses deeper than the caps allow."""
     import xml.etree.ElementTree as ET
-    if re.search(rb"<!(?:DOCTYPE|ENTITY)|<!\[CDATA\[", data, re.I):
+    if len(data) > LOGO_MAX:
+        return "", f"it is {len(data):,} bytes — over {LOGO_MAX:,}"
+    try:
+        if data.startswith((b"\xef\xbb\xbf", b"\xff\xfe", b"\xfe\xff")):
+            raise UnicodeError
+        text = data.decode("utf-8")
+    except UnicodeError:
+        return "", "it is not UTF-8 without a byte-order mark"
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", text):
+        return "", "it holds a control character"
+    if re.search(r"<!(?:DOCTYPE|ENTITY)|<!\[CDATA\[", text, re.I):
         return "", "it declares a DOCTYPE, an entity or CDATA"
+    decl = re.match(r"\s*<\?xml\b[^>]*?\bencoding\s*=\s*[\"']([^\"']*)", text)
+    if decl and decl.group(1).lower().replace("-", "") != "utf8":
+        return "", f"its <?xml?> names the encoding {decl.group(1)[:20]}, not UTF-8"
+
+    class Builder(ET.TreeBuilder):                          # a DOCTYPE the checks above missed still stops the parse
+        def doctype(self, *_):
+            raise ValueError("it declares a DOCTYPE")
     try:
-        top = ET.fromstring(data)
-    except ET.ParseError as e:
-        return "", f"it is not well-formed XML ({e})"
-    split = lambda n: n[1:].partition("}")[::2] if n.startswith("{") else ("", n)
-    far = re.compile(r"(?:url|src|[\w-]*image[\w-]*|cross-fade)\s*\(\s*(?![\"']?#)", re.I)   # url(#x) points inside the file
-    esc = lambda t: html_escape(t).replace("_", "&#95;")
-    def out(e):
-        ns, tag = split(e.tag) if isinstance(e.tag, str) else ("", "")
-        if ns != SVG_NS:
-            return ""
-        if tag not in SVG_TAGS:
-            raise ValueError(f"it holds <{tag}>")
-        attrs = ""
-        for k, v in e.attrib.items():
-            kns, name = split(k)
-            if kns not in ("", XLINK_NS, XML_NS) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9-]*", name):
-                continue                                    # an editor's attribute, or a name no SVG attribute has
-            if name.lower().startswith("on"):
-                raise ValueError(f"it holds a handler, {name}")
-            if name.lower() in ("href", "src") and not v.startswith("#") or far.search(v):
-                raise ValueError(f"it refers outside the file, {name}=\"{v[:60]}\"")
-            v = (prefix + v if name == "id" else "#" + prefix + v[1:] if name.lower() == "href"
-                 else re.sub(r"(url\(\s*[\"']?#)", lambda m: m.group(1) + prefix, v))
-            attrs += f' {"xlink:" if kns == XLINK_NS else "xml:" if kns == XML_NS else ""}{name}="{esc(v)}"'
-        return f"<{tag}{attrs}>{esc(e.text or '')}" + "".join(out(c) + esc(c.tail or "") for c in e) + f"</{tag}>"
-    if split(top.tag) != (SVG_NS, "svg"):
-        return "", "its root is not an <svg> in the SVG namespace"
-    try:
-        return out(top), ""
+        top = ET.fromstring(text.encode("utf-8"), parser=ET.XMLParser(target=Builder(), encoding="utf-8"))
     except ValueError as e:
         return "", str(e)
+    except ET.ParseError as e:
+        return "", f"it is not well-formed XML ({e})"
+    split = lambda n: n[1:].partition("}")[::2] if isinstance(n, str) and n.startswith("{") else ("", n)
+    if split(top.tag) != (SVG_NS, "svg"):
+        return "", "its root is not an <svg> in the SVG namespace"
+    stack = [(top, 1)]
+    while stack:                                            # the depth first, without recursion: 1,000 nested <g> is a refusal
+        e, depth = stack.pop()
+        if depth > SVG_DEPTH:
+            return "", f"it nests deeper than {SVG_DEPTH}"
+        stack.extend((c, depth + 1) for c in e)
+    esc = lambda t: html_escape(t).replace("_", "&#95;")
+    far = re.compile(r"[\\&<]|http|data:|javascript", re.I)
+    out, ids, stack = [], {}, [top]
+    try:
+        while stack:
+            e = stack.pop()
+            if isinstance(e, str):                           # a closing tag and the text after it
+                out.append(e)
+                continue
+            ns, tag = split(e.tag)
+            tail = "" if e is top else esc(e.tail or "")
+            if ns != SVG_NS:
+                out.append(tail)
+                continue
+            if tag not in SVG_ATTRS:
+                raise ValueError(f"it holds <{tag}>")
+            attrs = ""
+            for k, v in e.attrib.items():
+                kns, name = split(k)
+                if kns not in ("", XLINK_NS, XML_NS):
+                    continue                                 # an editor's own attribute (Inkscape's, Sketch's) draws nothing
+                key = "xml:" + name if kns == XML_NS else name
+                if key not in SVG_ATTRS[tag] or kns == XLINK_NS and name != "href":
+                    raise ValueError(f"it holds {'xlink:' if kns == XLINK_NS else ''}{key}= on <{tag}>, which a wordmark may not carry")
+                if far.search(v) or not re.fullmatch(SVG_GRAMMAR[key], v):
+                    raise ValueError(f'its {key}="{v[:40]}" on <{tag}> is not what {key} takes')
+                if key == "id":
+                    ids[v] = e
+                v = (prefix + v if key == "id" else "#" + prefix + v[1:] if key == "href" else re.sub(r"url\(#", "url(#" + prefix, v))
+                attrs += f' {"xlink:" if kns == XLINK_NS else ""}{key}="{esc(v)}"'
+            out.append(f"<{tag}{attrs}>{esc(e.text or '')}")
+            stack.append(f"</{tag}>{tail}")
+            stack.extend(reversed(list(e)))
+
+        def drawn(e, chain):
+            """How many elements `e` draws with every <use> expanded. The chain of <use>d ids is at most SVG_USE_DEPTH long
+            and the tree SVG_DEPTH deep, so this recursion is bounded; and it stops as soon as the count passes the cap."""
+            n = 1
+            for c in e:
+                if split(c.tag)[0] == SVG_NS:
+                    n += drawn(c, chain)
+            if split(e.tag)[1] == "use":
+                ref = (e.get("href") or e.get(f"{{{XLINK_NS}}}href") or "#")[1:]
+                if ref not in ids:
+                    raise ValueError(f"a <use> refers to #{ref[:40]}, which the file does not have")
+                if ref in chain:
+                    raise ValueError("its <use>s form a cycle")
+                if len(chain) >= SVG_USE_DEPTH:
+                    raise ValueError(f"its <use>s nest deeper than {SVG_USE_DEPTH}")
+                n += drawn(ids[ref], chain + (ref,))
+            if n > SVG_DRAWN:
+                raise ValueError(f"it draws over {SVG_DRAWN:,} elements once its <use>s are expanded")
+            return n
+        drawn(top, ())
+    except ValueError as e:
+        return "", str(e)
+    return "".join(out), ""
 
 
 def brand_places():
@@ -1894,13 +1993,13 @@ def brand():
             f = d / name
             if f.is_file():
                 if f.stat().st_size > LOGO_MAX:
-                    warn.append(f"{who}'s {name} is {f.stat().st_size // 1000} kB — over {LOGO_MAX // 1000} kB, not shown")
+                    warn.append(f"{who}'s {name} is {f.stat().st_size:,} bytes — over {LOGO_MAX:,}, not shown")
                 else:
                     logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(f.read_bytes()).decode("ascii"))); src["logo"].append(who)
                 break
         f = d / "wordmark.svg"
         if f.is_file():
-            svg, why = ("", f"it is {f.stat().st_size // 1000} kB — over {LOGO_MAX // 1000} kB") if f.stat().st_size > LOGO_MAX else inline_svg(f.read_bytes())
+            svg, why = ("", f"it is {f.stat().st_size:,} bytes — over {LOGO_MAX:,}") if f.stat().st_size > LOGO_MAX else inline_svg(f.read_bytes())
             if svg:
                 wordmark = (who, svg); src["wordmark"].append(who)
             else:
@@ -1962,9 +2061,14 @@ THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is 
 /* fonts: name one that is installed, or put a font file beside the trackers and load it:
    @font-face{font-family:"Mine";src:url("mine.woff2")}  body{font-family:"Mine",system-ui,sans-serif} */
 /* a wordmark — the mark and the name drawn as one — is wordmark.svg beside this file. It is inlined in the header in
-   place of the logo and the name: draw it with fill="currentColor" (stroke="currentColor" where it strokes) and it takes
-   --ink in light and dark alike; give its <svg> a height to fix its size, else it is the logo's 22 px. The logo stays
-   the browser tab's. */
+   place of the logo and the name; the logo stays the browser tab's. To draw one:
+   - one <svg> with a viewBox, and a height in pixels to fix its size — else it is the logo's 22 px;
+   - fill="currentColor" (stroke="currentColor" where it strokes), so it takes --ink in light and dark alike;
+   - the name as paths (outline the text in your editor), or as <text> in a font this file loads;
+   - a pixel mark at a whole multiple of its grid stays sharp;
+   - UTF-8, shapes, text, gradients, masks and a <use> of its own ids only; colours as #hex, currentColor, none or a
+     plain name; presentation attributes, never style="…" (export "with attributes, not CSS"). Anything else — a script,
+     a handler, a <style>, a class, a reference outside the file — refuses it whole, with a warning. */
 """
 
 

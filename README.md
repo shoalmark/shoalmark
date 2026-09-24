@@ -379,7 +379,7 @@ wins**. Only the git-ignored board reads them: `INDEX.md` and the gate are the s
 |---|---|
 | `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work, **with paths written relative to the `theme.css` they are in** — a font goes in `brand/fonts/`. A theme whose import is missing is left out whole |
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
-| `wordmark.svg` | the mark and the name drawn as one, **inline** in the header in place of the logo and the name — the logo stays the tab's, the name the page's title and the wordmark's accessible name. At most 200 kB; shapes and text only: a script, an `on…` handler, a `<style>`, a reference outside the file refuses it whole, with a warning |
+| `wordmark.svg` | the mark and the name drawn as one, **inline** in the header in place of the logo and the name — the logo stays the tab's, the name the page's title and the wordmark's accessible name. At most 200 kB of UTF-8; shapes, text, gradients, masks and a `<use>` of its own ids, each attribute from a fixed list with a fixed grammar — colours `#hex`, `currentColor`, `none` or a plain name, never `style`. Anything else refuses it whole, with a warning |
 | `labels.yaml` | every word of the board — flat `key: value` lines. A German board is this file |
 
 | Place | Whose |

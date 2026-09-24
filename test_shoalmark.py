@@ -1139,18 +1139,54 @@ with tempfile.TemporaryDirectory() as d:
         check("0.18.2 · without a wordmark nothing changes: the logo, then the name", head(n_page).startswith('<div id="H"><img alt="" src="data:image/svg+xml;base64,') and head(n_page).endswith('"><b>repo</b><span data-l="tagline"></span>')
               and "wordmark      built in" in n_report)
         refused = {why: board_with(repo_wordmark_svg=svg, repo_logo_svg=_SVG) for why, svg in (
-            ("it holds <script>", _SVG), ("it holds a handler, onload", _WORDMARK.replace('height="16"', 'height="16" onload="document.title=1"')),
-            ("it refers outside the file", _WORDMARK.replace('xlink:href="#b"', 'xlink:href="https://example.org/w.svg#b"')),
+            ("it holds <script>", _SVG), ("it holds onload= on <svg>, which a wordmark may not carry", _WORDMARK.replace('height="16"', 'height="16" onload="document.title=1"')),
+            ('its href="https://example.org/w.svg#b" on <use> is not what href takes', _WORDMARK.replace('xlink:href="#b"', 'xlink:href="https://example.org/w.svg#b"')),
             ("it holds <style>", _WORDMARK.replace("<defs>", "<style>body{display:none}</style><defs>")),
             ("it holds <foreignObject>", _WORDMARK.replace("<defs>", '<foreignObject><p xmlns="http://www.w3.org/1999/xhtml">x</p></foreignObject><defs>')))}
         check("0.18.2 · a wordmark holding a script, a handler, an outside reference, a <style> or a foreignObject is refused whole, with a warning that says why — the header keeps the logo and the name",
               all(code_ == 0 and f"repository's wordmark.svg is not shown: {why}" in err_ and "the header keeps the logo and the name" in err_ and 'class="wm"' not in page_
                   and "<b>repo</b>" in page_ and "PWNED" not in page_ for why, (_, page_, _, err_, code_) in refused.items()))
         _, c_page, _, c_err, c_code = board_with(repo_wordmark_svg=_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
-        check("0.18.2 · a wordmark past the size cap is skipped with a warning, never inlined", c_code == 0 and "wordmark.svg is not shown: it is 200 kB — over 200 kB" in c_err and 'class="wm"' not in c_page)
+        check("0.18.2 · a wordmark past the size cap is skipped with a warning that names its bytes, never inlined",
+              c_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in c_err and 'class="wm"' not in c_page)
         _, o_page, o_report, o_err, _ = board_with(org_wordmark_svg=_WORDMARK, repo_wordmark_svg=_SVG)
         check("0.18.2 · a later place's wordmark wins, and one that is refused leaves the earlier one standing",
               "wordmark      organisation" in o_report and 'aria-label="repo"><svg viewBox="0 0 40 16"' in o_page and "the header keeps the wordmark before it" in o_err)
+        # --- 0.18.2, the Reviewer's R1–R5: a wordmark is held to a grammar — one check per refusal, each case the Reviewer's
+        _W = lambda body, root="": (f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"{root}>'
+                                    f'{body}</svg>').encode("utf-8")
+        _fan = ('<defs><g id="l0"><path d="M0 0h1v1h-1Z"/></g>' + "".join(f'<g id="l{i}">' + f'<use href="#l{i - 1}"/>' * 10 + "</g>" for i in range(1, 7))
+                + '</defs><use href="#l6"/>')                  # 1.3 kB, a million instances
+        _chain = '<defs><path id="l0" d="M0 0h1v1h-1Z"/>' + "".join(f'<g id="l{i}"><use href="#l{i - 1}"/></g>' for i in range(1, 6)) + '</defs><use href="#l5"/>'
+        _laughs = ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>'
+                   '<svg xmlns="http://www.w3.org/2000/svg"><text>&b;</text></svg>')
+        for case, svg, why in (
+                ("a CSS escape \\72 in fill", _W('<path d="M0 0" fill="u\\72l(http://127.0.0.1:8765/a)"/>'), 'its fill="u\\72l(http://127.0.0.1:8765/a)" on <path> is not what fill takes'),
+                ("a CSS escape \\r in fill", _W('<path d="M0 0" fill="u\\rl(//127.0.0.1:8765/a)"/>'), 'its fill="u\\rl(//127.0.0.1:8765/a)" on <path> is not what fill takes'),
+                ("a CSS escape \\0072 in stroke", _W('<path d="M0 0" stroke="u\\0072l(//127.0.0.1:8765/a)"/>'), 'its stroke="u\\0072l(//127.0.0.1:8765/a)" on <path> is not what stroke takes'),
+                ("a CSS escape \\u in mask", _W('<path d="M0 0" mask="\\u0075rl(//127.0.0.1:8765/a)"/>'), 'its mask="\\u0075rl(//127.0.0.1:8765/a)" on <path> is not what mask takes'),
+                ("the escape's backslash as &#92;", _W('<path d="M0 0" fill="u&#92;72l(//127.0.0.1:8765/a)"/>'), 'its fill="u\\72l(//127.0.0.1:8765/a)" on <path> is not what fill takes'),
+                ("a style attribute", _W('<path d="M0 0"/>', ' style="background-image:u\\72l(http://127.0.0.1:8765/a)"'), "it holds style= on <svg>, which a wordmark may not carry"),
+                ("an unknown attribute", _W('<path d="M0 0"/>', ' autofocus="" tabindex="0"'), "it holds autofocus= on <svg>, which a wordmark may not carry"),
+                ("a class", _W('<path class="m" d="M0 0"/>'), "it holds class= on <path>, which a wordmark may not carry"),
+                ("xml:base", _W('<path d="M0 0"/>', ' xml:base="http://e.x/"'), "it holds xml:base= on <svg>, which a wordmark may not carry"),
+                ("a UTF-16 file with a DOCTYPE and entities", _laughs.encode("utf-16"), "it is not UTF-8 without a byte-order mark"),
+                ("the same UTF-16, no byte-order mark", _laughs.encode("utf-16-le"), "it holds a control character"),
+                ("a UTF-8 byte-order mark", b"\xef\xbb\xbf" + _W('<path d="M0 0"/>'), "it is not UTF-8 without a byte-order mark"),
+                ("another encoding declared", b'<?xml version="1.0" encoding="ISO-8859-1"?>' + _W('<path d="M0 0"/>'), "its <?xml?> names the encoding ISO-8859-1, not UTF-8"),
+                ("the Reviewer's 1.3 kB <use> fan-out", _W(_fan), "it draws over 2,000 elements once its <use>s are expanded"),
+                ("a <use> chain five deep", _W(_chain), "its <use>s nest deeper than 3"),
+                ("a <use> cycle", _W('<g id="a"><use href="#a"/></g>'), "its <use>s form a cycle"),
+                ("a <use> of an id it does not have", _W('<use href="#nope"/>'), "a <use> refers to #nope, which the file does not have"),
+                ("1,000 nested <g>", _W("<g>" * 1000 + '<path d="M0 0"/>' + "</g>" * 1000), "it nests deeper than 32")):
+            check(f"0.18.2 · R1–R5 · {case} is refused: {why}", fm.inline_svg(svg) == ("", why))
+        _ok = fm.inline_svg(_W('<defs><linearGradient id="g" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#123456"/></linearGradient></defs>'
+                               '<path d="M0 0h1v1h-1Z" fill="url(#g)" transform="translate(1,2) scale(2)"/><path d="M1 1" stroke="navy" stroke-width="1.5px"/>'))[0]
+        check("0.18.2 · what a drawing needs still passes: a gradient by url(#id) of its own, a transform, a named colour",
+              'fill="url(#wm-g)" transform="translate(1,2) scale(2)"' in _ok and '<linearGradient id="wm-g" gradientUnits="userSpaceOnUse">' in _ok and 'stroke="navy"' in _ok)
+        _, d_page, _, d_err, d_code = board_with(repo_wordmark_svg="<svg xmlns=\"http://www.w3.org/2000/svg\">" + "<g>" * 1000 + "</g>" * 1000 + "</svg>", repo_logo_svg=_SVG)
+        check("0.18.2 · R4 · a wordmark nested 1,000 deep is a warning, not a traceback: the build and --print-written exit 0",
+              d_code == 0 and "wordmark.svg is not shown: it nests deeper than 32" in d_err and "<b>repo</b>" in d_page and run(root, "--print-written")[0] == 0)
         # --- 0.18.2: the running line — the tool's mark, name and version, on every page, whatever the brand
         _ver = (HERE / "VERSION").read_text(encoding="utf-8").strip()
         _run = lambda page: (re.search(r'</article>\n(<p id="r" class="m">.*?</p>)\n<dialog', page) or [None, ""])[1]
@@ -1163,7 +1199,7 @@ with tempfile.TemporaryDirectory() as d:
               f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
               and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
         if _CHROME:
-            (wt / "brand/theme.css").write_text(":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n", encoding="utf-8"); run(root)
+            board_with(repo_wordmark_svg=_WORDMARK, repo_theme_css=":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n")
             probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
                      'o.push($("s").dataset.scheme+"="+getComputedStyle(p).stroke+"/"+getComputedStyle(document.querySelector("#H .wm svg")).height)}document.body.dataset.probe=o.join("|")}</script>')
             (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
@@ -1222,8 +1258,9 @@ with tempfile.TemporaryDirectory() as d:
         starter = fm.read_flat((base / "starter/labels.yaml").read_text(encoding="utf-8"))
         check("--brand DIR writes a starter a person can edit: every label in English, and a theme that names the nine variables",
               starter == {k: v for k, v in fm.LABELS.items()} and all(v in (base / "starter/theme.css").read_text() for v in ("--bg", "--ink", "--dim", "--mute", "--line", "--teal", "--coral", "--blue", "--yellow")))
-        check("0.18.2 · the starter's theme names the wordmark in a comment — currentColor, inline, the logo stays the tab's",
-              all(w in (base / "starter/theme.css").read_text() for w in ("wordmark.svg", 'fill="currentColor"', "the browser tab")))
+        check("0.18.2 · the starter's theme states the whole drawing rule in a comment — viewBox and height, currentColor, the name as paths or <text>, the pixel grid, shapes only, never style, the logo stays the tab's (R6)",
+              all(w in (base / "starter/theme.css").read_text() for w in ("wordmark.svg", 'fill="currentColor"', "the browser tab", "viewBox", "the name as paths",
+                                                                           "whole multiple of its grid", 'never style="…"', "refuses it whole")))
     finally:
         shutil.rmtree(org, ignore_errors=True)
         if _xdg is None:
@@ -1250,6 +1287,7 @@ _wsrc = (_rb / "wordmark.svg").read_text(encoding="utf-8")
 check("0.18.2 · this repository's wordmark is the site's mark at the ruled 16 px beside the name, in one ink: inlined, drawn in currentColor only, the mark's path the site's own",
       _src["wordmark"] == ["repository"] and _wm and 'height="16"' in _wm[1] and 'fill="currentColor"' in _wm[1] and not re.search(r'(?:fill|stroke)="(?!currentColor|none)', _wsrc)
       and re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1) in _wsrc)
+check("0.18.2 · R1–R5 · this repository's own wordmark.svg passes the grammar, as the file is", fm.inline_svg((_rb / "wordmark.svg").read_bytes())[1] == "" and _wm and _wm[1] == fm.inline_svg((_rb / "wordmark.svg").read_bytes())[0])
 check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
 
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------

@@ -13,11 +13,15 @@ of its mark.
   and `--brand` names the place.
 - **Inline, it takes the page's ink:** drawn in `currentColor` it follows the theme's `--ink` in light and dark and
   through `◐`, the mark and the name in one colour. It keeps the size its `<svg height>` gives, else the logo's 22 px.
-- **Shapes and text only.** A `<script>`, an `on…` handler, a `<style>`, a `<foreignObject>`, an image, a link, a
-  reference outside the file — any element beyond shapes, text, gradients, masks and a `<use>` of its own ids — and
-  the file is not shown, with one warning that says why; the header keeps the logo and the name. Over 200 kB, the
-  same. What an editor adds in its own namespace (Inkscape's, Sketch's) is left out, and every id is prefixed `wm-`,
-  so none shadows one of the page's.
+- **Shapes and text only, held to a grammar.** The elements are shapes, text, gradients, masks and a `<use>` of the
+  file's own ids; each takes only the attributes its row in the tool names, and each value must match that
+  attribute's grammar whole — colours as `#hex`, `currentColor`, `none` or a plain name, a paint, mask or clip only as
+  `url(#id)` of its own. No `style` attribute, no `class`, no handler. The file is UTF-8 without a byte-order mark and
+  with no DOCTYPE or entity; at most 32 deep and 2,000 elements with its `<use>`s expanded, `<use>`s at most 3 deep
+  and never in a cycle. Anything else — a `<script>`, a `<style>`, an image, a link, a reference outside the file, a
+  CSS escape — and the file is not shown, with one warning that says why; the header keeps the logo and the name.
+  Over 200,000 bytes, the same. What an editor adds in its own namespace (Inkscape's, Sketch's) is left out, and every
+  id is prefixed `wm-`, so none shadows one of the page's. *Export with presentation attributes, not CSS.*
 - *Nothing to do on upgrade: without `wordmark.svg` the header is as it was.* To draw your own: one `<svg>` with a
   `viewBox`, a `height` in pixels, `fill="currentColor"` (and `stroke="currentColor"` where it strokes); the name as
   paths (outline the text in your editor), or as `<text>` in a font your `theme.css` loads. A pixel mark shown at a
