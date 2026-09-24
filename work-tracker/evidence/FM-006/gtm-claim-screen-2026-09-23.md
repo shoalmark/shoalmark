@@ -933,3 +933,9 @@ merges unread in 22 days, and one incident. Only the remedy's measurement is 28 
    investor.
 
 Both corrections are repeated where they bear on new work: `gtm-mark-screen-2026-09-23.md`, Part 1.
+
+---
+
+**Outcome, recorded 2026-09-24 07:35 CEST (session `6cecddb3`):** the Owner ruled the German claim *Dein Eigner
+bremst. Tunen statt tauschen.* (N11, this ledger's third pass), and IBM Plex as the family. See `3f8ab19` and FM-006.
+Nothing above is rewritten.
