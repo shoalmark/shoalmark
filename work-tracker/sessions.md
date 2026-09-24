@@ -34,4 +34,4 @@ which says so.
 | 8e509911/implementer-12 | implementer | session 8e509911 | PR #35: FM-028's R1 (the collided session id) and R2; main merged in | shoalmark-impl-4 | 2026-09-24 08:33 | 2026-09-24 09:00 |
 | 8e509911/implementer-13 | implementer | session 8e509911 | FM-031 NOT READY at 3c72e84: the Reviewer's R1-R4 fixed | shoalmark-impl-3 | 2026-09-24 08:50 | 2026-09-24 08:56 |
 | e8e309df | principal | the Owner, 2026-09-24 | file FM-029 and FM-030 on the replaced chain; its review | shoalmark-principal-2 | 2026-09-24 10:19 | — |
-| e8e309df/reviewer-7 | reviewer | session e8e309df | review the replaced FM-029/FM-030 chain at 97e9acc | shoalmark-review-e8 | 2026-09-24 10:22 | — |
+| e8e309df/reviewer-7 | reviewer | session e8e309df | review the replaced FM-029/FM-030 chain at 97e9acc | shoalmark-review-e8 | 2026-09-24 10:22 | 2026-09-24 10:34 |
