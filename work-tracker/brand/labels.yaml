@@ -1,4 +1,5 @@
 # shoalmark's own board (FM-006, 0.18.2): the chrome stays English; the header carries no tagline — the German claim
 # the Owner ruled on 2026-09-23 speaks to agents, not to the person reading the board (the Owner, 2026-09-24); the footer
-# keeps the line the German start page sets under the name (docs/de/index.md, ruled D2).
-footer: Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.
+# keeps the line the start page sets under the name, in the board's own language, English (docs/index.md; the Owner's
+# ruling of 2026-09-24 07:51; a German board would take docs/de/index.md's D2 line).
+footer: A Pricke on the Wadden flats keeps the fleet in the channel.
