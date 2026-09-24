@@ -173,3 +173,45 @@ recorded*.**
   AGENTS.md may keep the forge's 12:53:19.
 
 **Verdict:** READY WITH FINDINGS. R1–R4 are all P3, fixed forward. The Owner may tag this tip.
+
+## Pass on 3cf3cd6 — the merge of main after the pass, and R3 and R4 (2026-09-24 16:20 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `3cf3cd6` (`3cf3cd69bc60ae2056a815e2da4ec3fa4cfb0795`) is the principal seat's merge, under `8e509911` in
+`shoalmark-principal-3`. It merges `origin/main` `3015b66` (PR 50, the triage pass) into my verdict `c817265`, with R3
+and R4 fixed in the same commit.
+
+**The merge.**
+- `git diff c817265 3cf3cd6 -- shoalmark.py test_shoalmark.py test_core.py` is empty, so no code changed.
+- Of the 14 files it changes, 11 are byte-identical to `3015b66`: eight trackers, `TRIAGE.md`, the pass's worksheet and
+  its review. The other three differ from main only by this branch's own lines:
+  - FM-029: the build and the cleared ask.
+  - FM-031: the 13:05 and 15:17 rows.
+  - `INDEX.md`: FM-029's two rows, now *In Progress*.
+- Replayed, `git merge-tree` conflicts on FM-029 and `INDEX.md` only, as expected. `origin/main` is an ancestor.
+- **FM-029's front matter:** `status: In Progress`, then `triaged: 2026-09-24`, `rank: 1` and `tier: P2` from the pass,
+  and `next: build`. There are no ask keys, and the `## Asks` record is intact, with its `**relation** —` line.
+- **INDEX** is regenerated: `python3 shoalmark.py` writes 32 trackers, and `git status --porcelain` stays empty.
+- `--answered` is unchanged.
+
+**Gates and suites at `3cf3cd6`.**
+- `--check` 0; `--session-check` 0.
+- `test_shoalmark.py` 298 ok and `test_core.py` 148 ok, all green, on Python 3.14 and on 3.9.6.
+
+**Closed.**
+- **R3:**
+  - *What is true now* says the ask is cleared (`ad37f41`), judged #1 P2 by the pass.
+  - A 16:03 row records the clear and the merge.
+  - The first *Done when* line reads *Struck by the ruling of 14:24:00*, and the lines under it keep the relation's
+    readings.
+- **R4:**
+  - FM-031's 12:55 row reads *merged 12:53:18* again, byte for byte as at `37c73d0`.
+  - Against `37c73d0`, FM-031's ship log only gains rows (13:05 and 15:17).
+  - The 15:17 row names both clocks and says that the 12:55 row stands as written.
+  - Note, not a finding: the 15:17 row itself was reworded, but it is this branch's own row and has not reached `main`.
+
+**R5 · P3 · confidence high · The 16:03 row gives the clear's time as 15:38.**
+- `ad37f41`'s author and commit time are both 15:27:58.
+- **Fix:** *15:27*, fixed forward.
+
+**Verdict:** READY WITH FINDINGS. The merge of main after the pass is confirmed; R3 and R4 are closed. R1, R2 and R5
+are P3 and fixed forward. The Owner may tag this tip.
