@@ -3174,7 +3174,33 @@ def unverified(commit, tail):
     """The end of a refusal for a commit that does not verify: *cannot verify* and why, where the clone cannot check a
     signed commit — else the seat's own words (`tail`), which ask for a signature."""
     gap = signature_gap(commit)
-    return f"it is signed, but this clone cannot verify: {gap} — see {SIGNING_PAGE}" if gap else tail
+    return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}" if gap else tail
+
+
+# FM-034 — WHAT IS THE CHECKOUT'S, NOT THE LEDGER'S: a signed commit this clone cannot verify (its signers file, its
+# keyring), a pinned file this checkout has not got. Each is said on stderr, grouped, and never written into the generated
+# INDEX: written there, the INDEX a fresh clone generated differed from the committed one by that line, and `--check` said
+# STALE where no tracker had changed. The drift test is not widened; the finding still fails the run. Recognised by these
+# words, which the two places that write such a finding use and nothing else does.
+CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it")
+
+
+def checkout_finding(problem):
+    return any(m in problem for m in CHECKOUT_MARKS)
+
+
+def checkout_lines(problems):
+    """The checkout's findings as a reader takes them: ONE line per cause — the signers file this clone has not got, not
+    one per answer it could not check — naming what it could not check."""
+    groups = {}
+    for p_ in (p_ for p_ in problems if checkout_finding(p_)):
+        what, sep, why = p_.partition(" — it is signed, but ")
+        if sep:
+            m = re.search(r"`([0-9a-f]{7,40})`", what)
+            groups.setdefault("it is signed, but " + why, []).append(what.split(":")[0] + (f" `{m.group(1)}`" if m else ""))
+        else:
+            groups.setdefault(p_, [])
+    return [f"  checkout: {why}" + (f" — {len(items)} signed commit(s) it could not check: {', '.join(items)}" if items else "") for why, items in groups.items()]
 
 
 def staged_now():
@@ -4290,7 +4316,9 @@ def pin_problems():
         if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
             continue
         want, _, rel = line.partition("  ")
-        if rel and (not (HERE / rel).exists() or digest(HERE / rel) != want):
+        if rel and not (HERE / rel).exists():               # the working tree lacks it — the checkout's finding (FM-034)
+            out.append(f"{here}/{rel}: the PIN names it, and {CHECKOUT_MARKS[1]} — restore it from git, or run --vendor again")
+        elif rel and digest(HERE / rel) != want:
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
@@ -4913,6 +4941,7 @@ def main(argv=None):
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
+    ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     today = datetime.date.today().isoformat()
     counts = ", ".join(f"{sum(t['kind'] == k for t in trackers)} {KIND_LABELS[k].lower()}" for k in KINDS)
     header = (
@@ -4927,8 +4956,8 @@ def main(argv=None):
         + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
         + f"> Generated {today} · {len(trackers)} trackers ({counts})."
     )
-    if problems:
-        header += f"\n>\n> ❌ {len(problems)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in problems)
+    if ledger:
+        header += f"\n>\n> ❌ {len(ledger)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in ledger)
     if unknown:
         header += (f"\n>\n> ⚠️ {len(unknown)} tracker(s) have no machine-readable status — add a\n"
                    f"> front-matter `status:` to fix: {', '.join(sorted(unknown))}.")
@@ -4968,12 +4997,17 @@ def main(argv=None):
             for path in [OUT, *sorted(DERIVED_FILES)]:
                 print(path.relative_to(ROOT).as_posix())
 
-    for p in problems:
+    for p in ledger:
         print(f"  lint: {p}", file=sys.stderr)
+    for line in checkout_lines(problems):
+        print(line, file=sys.stderr)
     # the INDEX is still written when a lint fires: the ❌ banner in its header IS the violation, made visible
     # where the ledger is read. What the non-zero exit stops is the COMMIT.
+    if ledger:
+        print(f"FAILED: {len(ledger)} ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.", file=sys.stderr)
+        return EXIT_LINT
     if problems:
-        print(f"FAILED: {len(problems)} ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.", file=sys.stderr)
+        print("FAILED: this checkout's own finding — the ledger is sound; set the checkout up as the line says.", file=sys.stderr)
         return EXIT_LINT
     return EXIT_DRIFT if drifted else EXIT_OK
 

@@ -2885,6 +2885,59 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-034, 0.18.3 (the Auditor seat's check 20): a fresh clone's `--check` — the checkout's own finding is said once, on
+#     stderr, and never written into INDEX.md; the committed INDEX reads the same in every clone ------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("t@t " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
+        git(root, "config", k_, v_)
+    run(root, "--init", "--key", "msr")
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+    ask_ = lambda q: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+    trs_ = [tracker(root, "MSR-001", extra=ask_("Ship the importer?")), tracker(root, "MSR-002", extra=ask_("Ship the exporter?"))]
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks")
+    signed_ = []
+    for tr_ in trs_:                                       # the Owner's answers, each his own signed commit, the INDEX as the hook stages it
+        tr_.write_text(tr_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: t\n'))
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", f"{tr_.name[:7]}: accepted")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-q", "--amend", "-S", "--no-edit")
+        signed_.append(subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip())
+    ok_code, ok_out, ok_err = run(root, "--check")
+    fresh_ = base / "fresh"; subprocess.run(["git", "clone", "--quiet", str(root), str(fresh_)], check=True, capture_output=True, env=_ENV)
+    git(fresh_, "config", "gpg.ssh.allowedSignersFile", "")      # empty here, whatever the machine's own config says
+    index_ = (fresh_ / "docs/work-tracker/INDEX.md").read_bytes()
+    code_, out_, err_ = run(fresh_, "--check")
+    said_ = [l_ for l_ in err_.splitlines() if "cannot verify" in l_]
+    wcode_, _o, _e = run(fresh_)
+    status_ = subprocess.run(["git", "-C", str(fresh_), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout
+    check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one, byte for byte (saw {err_.strip()!r})",
+          code_ == fm.EXIT_LINT and len(said_) == 1 and "STALE" not in out_ + err_ and "INDEX.md is up to date" in out_
+          and said_[0] == f"  checkout: it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see {fm.SIGNING_PAGE} — 2 signed commit(s) it could not check: MSR-001 `{signed_[0][:10]}`, MSR-002 `{signed_[1][:10]}`"
+          and "FAILED: this checkout's own finding — the ledger is sound" in err_ and "ledger-integrity" not in err_
+          and (fresh_ / "docs/work-tracker/INDEX.md").read_bytes() == index_ and "cannot verify" not in index_.decode("utf-8") and status_ == "")
+    check("FM-034 · the clone with the signers file configured: no finding, exit 0",
+          ok_code == 0 and "cannot verify" not in ok_err and "checkout:" not in ok_err)
+    rm_git(root)
+    shutil.rmtree(fresh_ / ".git", onerror=lambda f, p, e: (os.chmod(p, __import__("stat").S_IWRITE), f(p)))
+fm.configure(HERE)
+# …and a pinned file this checkout has not got is the checkout's finding too — said, never written into the INDEX
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); dest = root / "tools" / "shoalmark"
+    with redirect_stdout(io.StringIO()):
+        fm.vendor(dest, allow_untagged=True)
+    tracker(root, "FEAT-001", status="Proposed")
+    (dest / "LICENSE-MIT").unlink()
+    gone_ = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(root)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    index_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
+    check(f"FM-034 · a pinned file the checkout has not got is said on stderr as the checkout's, and INDEX.md carries no line of it (saw {gone_.stderr.strip()[-200:]!r})",
+          gone_.returncode == fm.EXIT_LINT and "  checkout: tools/shoalmark/LICENSE-MIT: the PIN names it, and this checkout cannot read it" in gone_.stderr
+          and "LICENSE-MIT" not in index_ and "ledger-integrity" not in index_)
+fm.configure(HERE)
+
 # --- FM-029: the answer's relation to the proposal — computed by every reading, the signed line untouched ---------------
 # One word covered three answers: under `accepted` the board's dialog and `--answer` write the proposal, another listed
 # option and changed text alike, and a reader counting how often the Owner took the proposal counted all three. The

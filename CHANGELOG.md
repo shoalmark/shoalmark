@@ -23,6 +23,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker, and the board
   showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`; build on a branch
   `<kind>/<NNN>-…` whose tracker a pass has kept In Progress.*
+- **A fresh clone's `--check` no longer says the INDEX is stale** (FM-034; the Auditor seat's check 20). A finding that
+  is the checkout's, not the ledger's — a signed commit this clone cannot verify (no `gpg.ssh.allowedSignersFile`, a key
+  not in the keyring), a pinned file this checkout has not got — was written into the generated INDEX's header, so the
+  INDEX a clone generated differed from the committed one by that line and `--check` said *STALE* beside the finding.
+  It is now said on stderr only, once per cause — `checkout: it is signed, but this clone cannot verify: … — N signed
+  commit(s) it could not check: …` — and the run still fails; the drift test is not widened. The committed INDEX reads
+  the same in every clone.
 
 ## 0.18.2 — 2026-09-24
 
