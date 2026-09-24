@@ -24,3 +24,4 @@ which says so.
 | 8e509911/implementer-5 | implementer | session 8e509911 | the Pricke drawn to be looked at | shoalmark-impl-2 | 2026-09-23 23:59 | 2026-09-24 00:43 |
 | 6cecddb3 | gtm | the Owner, 2026-09-24 07:35 | the mark screen's outcome recorded; the tagline with the Pricke drafted | shoalmark-gtm | 2026-09-24 07:35 | 2026-09-24 07:36 |
 | 8e509911/implementer-6 | implementer | session 8e509911 | file FM-028 (the clock); FM-011 to Shipped | shoalmark-impl | 2026-09-24 07:41 | — |
+| 8e509911/implementer-12 | implementer | session 8e509911 | PR #35: FM-028's R1 (the collided session id) and R2; main merged in | shoalmark-impl-4 | 2026-09-24 08:33 | — |
