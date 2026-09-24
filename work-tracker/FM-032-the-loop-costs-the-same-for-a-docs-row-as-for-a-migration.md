@@ -3,7 +3,10 @@ id: FM-032
 status: In Progress
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
-next: build
+next: wait
+triaged: 2026-09-24
+rank: 9
+tier: P2
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
