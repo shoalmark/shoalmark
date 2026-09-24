@@ -12,11 +12,11 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 ## What is true now
 
 **Filed 2026-09-24 08:24 CEST on the Owner's question; ruled by his signed answer at 11:08:24 (`d20bc89`): all three
-rules now, S1 then S2 — then the cap of 2 revoked by his own signed edit at 12:5x (`7c97c5b`, PR 46), so two rules stand:
-one channel, and the detached switch. Built for 0.18.0 on one branch: S2, `--queue` (`90d3d6f`, pull requests and
-pushed branches alike); S1 as FM-032's S2, the registry a report from the trailers (`3c0754f`); the rules in AGENTS.md
-(`fbc2697`, the cap paragraph rewritten on the merge of PR 46). What is left: a week of parallel streams read against
-*Done when*.**
+rules now, S1 then S2 — then the cap of 2 revoked by his own signed edit at 12:39:56 (`7c97c5b`, PR 46, merged
+12:53:19), so two rules stand: one channel, and the detached switch. Built for 0.18.0 on one branch: S2, `--queue` —
+the pull requests at `90d3d6f`, the branches pushed without one and the Owner's `answer/*` at `636f56e`; S1 as FM-032's
+S2, the registry a report from the trailers (`3c0754f`); the rules in AGENTS.md (`fbc2697`, the cap paragraph
+rewritten on the merge of PR 46). What is left: a week of parallel streams read against *Done when*.**
 
 The measurements below are read from the record: git, the forge, and `work-tracker/sessions.md` on every remote
 branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
@@ -152,6 +152,7 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-09-24 13:05 CEST | `636f56e`, by the Implementer, from the coordinating session's audit of the merged tree: `--queue` lists each branch on `origin` that no pull request carries, after the pull requests, read as a pull request is — `branch <name> @ <sha>  wait: no pull request — …` — and counts them; an `answer/*` pull request reads `merge: your answer` when the Owner signed its head and it verifies, `wait: unsigned answer` when not (PR 46 read *no verdict*); and `--check` tells a signed commit this clone cannot verify that it cannot, where it said *sign it*. |
 | 2026-09-24 12:55 CEST | The answer of 11:08:24 superseded by the Owner's own signed edit `7c97c5b` (PR 46, merged 12:53:18): it read *"accepted - all three rules now, S1 then S2"* (`d20bc89`); the new one keeps one channel and the detached switch, S1 then S2, and revokes the cap of 2 waiting pull requests. Written by hand, in place, before 0.18.0's `--supersede` existed; rowed here as that command does from now on. The word *accepted* in front of a partial acceptance is FM-029's pattern, typed by hand this time. |
 | 2026-09-24 12:18 CEST | S2 built by the Implementer at `90d3d6f`: `--queue` reads the open pull requests with `gh`, fetches `origin` once, and gives each one action — merge · closes with PR N · close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…) — actionable first, oldest first, and a count; `--owner` and `--standup` end with it where the forge can be read. Replayed at the 08:18 heads still reachable (PR 33, 35–38): PR 33 merge, PR 37 closes with PR 33, PR 35 conflict in `sessions.md`, PR 36 no verdict, as read by hand; PR 38 reads *merge* — its rows reached PR 33 as copied text, not as its commits, which the rule does not see. S1 is being built as FM-032's S2 on the other branch. The three rules written into AGENTS.md; the cap of 2 was revoked by the Owner in chat the same day — his signed revocation is owed (`--answer FM-031 … --supersede`, or `revoke`, built on this branch at `bd7d5ea`), and until it is signed no seat counts the cap. |
 | 2026-09-24 11:43 CEST | **S1 built as FM-032's S2** at `3c0754f` (0.18.0, branch `fm/032-0-18-0-the-registry-becomes-a-report`), by the Owner's two answers of 2026-09-24: not one file per session with a generated table, but no file — `--sessions` generates the registry from the commit trailers and `sessions.md` is deleted, so two branches that land cannot conflict on it. S2, the queue in one view, is another seat's. |
