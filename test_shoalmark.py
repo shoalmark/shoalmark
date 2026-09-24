@@ -2219,6 +2219,74 @@ with tempfile.TemporaryDirectory() as d:
           and "fathom" not in hook and "shoalmark.py --print-written" in hook)
 fm.configure(HERE)
 
+# --- FM-031 S2: the queue in one view — every open pull request, ONE action, in the order the Owner takes them -------
+def _no_git_env(f):
+    """a direct call into the tool with the hook's `GIT_*` variables out of the way, as `run` does for main()"""
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+    try:
+        return f()
+    finally:
+        os.environ.update(saved)
+
+
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def commit_(msg, files):
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); git(root, "commit", "-q", "--allow-empty", "-m", msg)
+        return sha()
+    reviews_ = "docs/work-tracker/evidence/reviews/"
+    base0 = commit_("the trunk", {"shared.txt": "one\n", "a.txt": "a\n"})
+    git(root, "checkout", "-q", "-b", "r1"); w1 = commit_("the ready slice", {"a.txt": "a1\n"})
+    v1 = commit_(f"review: the ready slice at {w1[:7]} — READY WITH FINDINGS (R1 P3)\n\nReviewed: {w1[:7]}", {reviews_ + "r.md": "R1\n"})
+    h1 = commit_("session closes", {"docs/work-tracker/sessions.md": "| a | b |\n"})             # an addendum after the verdict
+    git(root, "checkout", "-q", "-b", "r3", base0); c3 = commit_("the carried slice", {"c.txt": "c\n"})
+    git(root, "checkout", "-q", "-b", "r5", base0); git(root, "cherry-pick", "-x", c3); h5 = commit_("more on top", {"e.txt": "e\n"})
+    git(root, "checkout", "-q", "-b", "r4", base0); h4 = commit_("the conflicting slice", {"shared.txt": "four\n"})
+    git(root, "checkout", "-q", "-b", "r6", base0); w6 = commit_("the refused slice", {"f.txt": "f\n"})
+    h6 = commit_(f"review: at {w6[:7]} — NOT READY (R1 P2)\n\nReviewed: {w6}", {reviews_ + "r6.md": "R1\n"})
+    git(root, "checkout", "-q", "-b", "r7", base0); w7 = commit_("the slice worked on after its verdict", {"g.txt": "g\n"})
+    commit_(f"review: at {w7[:7]} — READY TO TAG\n\nReviewed: {w7}", {reviews_ + "r7.md": "ok\n"}); h7 = commit_("a fix after the verdict", {"g.txt": "g2\n"})
+    git(root, "checkout", "-q", "-b", "trunk-now", base0); main_now = commit_("the trunk moved", {"shared.txt": "main\n"})
+    git(root, "update-ref", "refs/remotes/origin/main", main_now)
+    pr = lambda n, branch, head, at: {"number": n, "title": branch, "headRefName": branch, "headRefOid": head, "baseRefName": "main",
+                                      "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T{at}:00Z"}
+    prs = [pr(1, "fm/001-the-ready-slice-with-a-long-name-that-is-cut", h1, "08:00"), pr(2, "fm/002-inside", w1, "07:00"), pr(3, "fm/003-carried", c3, "07:30"),
+           pr(5, "fm/005-carrier", h5, "06:00"), pr(4, "fm/004-conflict", h4, "05:00"), pr(6, "fm/006-refused", h6, "09:00"), pr(7, "fm/007-worked-on", h7, "04:00"),
+           pr(9, "fm/009-twin", h6, "09:30")]
+    fm.configure(root)
+    rows_ = _no_git_env(lambda: fm.queue_actions(prs)) if hasattr(fm, "queue_actions") else []
+    got_ = [(p_["number"], a_) for p_, _k, a_, _d in rows_]
+    check(f"FM-031 S2 · each open pull request gets ONE action — merge on a READY verdict that only addenda follow · closes with the one whose head holds it · carried by patch · a conflict · NOT READY · no verdict on a head worked past its verdict · a twin closes with the older — actionable first, oldest first (saw {got_})",
+          got_ == [(2, "closes with PR 1"), (3, "close: carried into PR 5"), (1, "merge"), (9, "closes with PR 6"),
+                   (7, f"wait: no verdict on {h7[:7]}"), (4, "wait: conflict in shared.txt"), (5, f"wait: no verdict on {h5[:7]}"), (6, f"wait: NOT READY ({h6[:7]})")]
+          and rows_[2][3] == f"verdict {v1[:7]} READY WITH FINDINGS")
+    lines_ = fm.queue_lines(rows_) if hasattr(fm, "queue_lines") else [""]
+    starts_ = {l_.index("fm/") for l_ in lines_[:-1]}
+    check(f"FM-031 S2 · the queue prints one line per pull request, its columns aligned — `PR n  action  branch @ head  verdict` — a long branch cut, and one summary line last (saw {lines_[0]!r}, {lines_[-1]!r})",
+          len(lines_) == len(prs) + 1 and len(starts_) == 1 and lines_[-1] == "8 waiting on you: 1 merge, 3 close, 4 wait"
+          and re.fullmatch(r"PR 1 +merge +" + re.escape(prs[0]["headRefName"][:getattr(fm, "QUEUE_BRANCH_MAX", 32) - 1] + "…") + f" @ {h1[:7]} +verdict {v1[:7]} READY WITH FINDINGS", lines_[2]) is not None
+          and re.fullmatch(rf"PR 2 +closes with PR 1 +fm/002-inside @ {w1[:7]}", lines_[0]) is not None)
+    # the forge is never called here: no `origin`, a local `origin`, a GitHub `origin` and no `gh` — each one line, exit 3
+    calls_ = argv_of(lambda: (run_safe(root, "--queue"), run(root, "--owner")))
+    code, _, err = run_safe(root, "--queue")
+    git(root, "remote", "add", "origin", str(root / "nowhere.git")); code2, _, err2 = run_safe(root, "--queue"); owner_ = run(root, "--owner")[1]
+    git(root, "remote", "set-url", "origin", "git@github.com:someone/somewhere.git")
+    real_which = fm.shutil.which; fm.shutil.which = lambda name, *a, **k: None if name == "gh" else real_which(name, *a, **k)
+    try:
+        calls_ += argv_of(lambda: run(root, "--owner")); code3, _, err3 = run_safe(root, "--queue")
+    finally:
+        fm.shutil.which = real_which
+    check(f"FM-031 S2 · without the forge `--queue` says so in one line and exits 3 — no `origin`, an `origin` that is not GitHub, no `gh` — and `--owner` leaves the section out; `gh` is never called (saw {err.strip()!r}, {err2.strip()!r}, {err3.strip()!r})",
+          (code, code2, code3) == (3, 3, 3) and "`origin` is not set" in err and "not on GitHub" in err2 and "no `gh` on PATH" in err3
+          and all(len(e_.strip().splitlines()) == 1 for e_ in (err, err2, err3)) and "PULL REQUESTS" not in owner_ and not any(c_ and c_[0].endswith("gh") for c_ in calls_)
+          and hasattr(fm, "github_remote") and fm.github_remote("git@github.com:holgo99/shoalmark.git") and fm.github_remote("https://github.com/a/b") and fm.github_remote("git@github-work:a/b.git")
+          and not fm.github_remote("/tmp/github/b.git") and not fm.github_remote("ssh://git@gitlab.com/a/b") and not fm.github_remote(""))
+fm.configure(HERE)
+
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",

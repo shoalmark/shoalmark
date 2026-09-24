@@ -819,6 +819,186 @@ def standup(trackers, invite=None):
     return EXIT_OK
 
 
+# FM-031 S2 — THE QUEUE IN ONE VIEW. The streams run in parallel, and only the Owner saw the whole queue of pull requests:
+# he was the integrator by default. He asked one seat which to merge five times in two hours, and each answer was the
+# forge and `git merge-tree`, read by hand. `--queue` reads the same two and gives every open pull request ONE action, in
+# the order he takes them. A view: it refuses nothing, and where the forge cannot be read it says so in one line.
+QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt"
+QUEUE_BRANCH_MAX = 32      # characters of a branch in a queue line: its id and the start of its slug
+QUEUE_ACTION_MAX = 36      # the action column's width at most; a longer action (many paths in conflict) runs on in its own line
+EXIT_NO_FORGE = 3          # `--queue` could not read the forge — no `gh`, offline, no GitHub remote. Never 4: a view fails no hook
+# a verdict's word, read from its commit's subject (`review: FM-032 at 413451a — READY WITH FINDINGS (…)`); the verdict
+# commit itself is found as `--check` finds it, by its `Reviewed: <sha>` trailer
+VERDICT_WORD_RE = re.compile(r"\b(NOT READY|READY(?: WITH FINDINGS| TO TAG)?)\b")
+
+
+def github_remote(url):
+    """Whether a remote's URL is on GitHub, the one forge `gh` reads: a host with `github` in its name — github.com, an
+    Enterprise host, an ssh alias such as `github-work` — or the host `GH_HOST` names. A local path is no forge."""
+    m = re.match(r"(?:[A-Za-z][A-Za-z0-9+.-]*://)?(?:[^@/]*@)?([^/:]+)", (url or "").strip())
+    host, named = (m.group(1).lower() if m else ""), (os.environ.get("GH_HOST") or "").strip().lower()
+    return bool(host) and ("github" in host or host == named)
+
+
+def forge_prs():
+    """The open pull requests as the forge lists them, with `origin` fetched ONCE — its branches and every pull request's
+    head, so a head pushed from a fork is here too — or (None, the one line that says why not): not git, no `origin` on
+    GitHub, no `gh`, offline, not logged in."""
+    if vcs() != "git":
+        return None, "--queue: not a git repository — the queue is read from GitHub with `gh`"
+    url = (git_out("remote", "get-url", "origin") or "").strip()
+    if not github_remote(url):
+        return None, f"--queue: `origin` is {'not on GitHub (' + url + ')' if url else 'not set'} — the queue is read from GitHub with `gh`"
+    gh = shutil.which("gh")
+    if not gh:
+        return None, "--queue: no `gh` on PATH — the queue is read with GitHub's command line (https://cli.github.com, then `gh auth login`)"
+    env = dict(nested_git_env(), GH_PROMPT_DISABLED="1")
+    try:
+        r = subprocess.run([gh, "pr", "list", "--state", "open", "--limit", "100", "--json", QUEUE_FIELDS], cwd=ROOT, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=30, env=env)
+        prs = json.loads(r.stdout) if r.returncode == 0 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+        return None, f"--queue: `gh pr list` did not answer — offline? ({type(e).__name__})"
+    if prs is None:
+        return None, "--queue: `gh pr list` failed — " + ((r.stderr or "").strip().splitlines() or ["offline, or not logged in (`gh auth status`)"])[0]
+    specs = (git_out("config", "--get-all", "remote.origin.fetch") or "").split() + [f"refs/pull/{p['number']}/head" for p in prs]
+    try:
+        f = subprocess.run(["git", "fetch", "--quiet", "origin", *specs], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=60, env=nested_git_env())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, f"--queue: `git fetch origin` did not answer — offline? ({type(e).__name__})"
+    if f.returncode != 0:
+        return None, "--queue: `git fetch origin` failed — " + ((f.stderr or "").strip().splitlines() or ["offline?"])[-1]
+    return prs, None
+
+
+def queue_actions(prs):
+    """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
+    inside each, the oldest first. Returns [(pr, kind, action, detail)], `kind` one of merge · close · wait. The first
+    rule that holds is the action:
+    - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
+    - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
+      same patch;
+    - `wait: conflict in <paths>` — `git merge-tree --write-tree origin/<base> <head>` does not merge clean;
+    - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
+    - `wait: no verdict on <head>` — no verdict names its head;
+    - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
+    A verdict is a commit among the pull requests' own that carries `Reviewed: <sha>`, as `--check` reads one, with its
+    word in its subject. It names a head that is <sha>, or that only review addenda follow <sha> to — commits touching
+    nothing but `<tracker dir>/evidence/reviews/` and `<tracker dir>/sessions.md`, as a verdict commit itself does."""
+    git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
+                                         encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    reviews, registry = f"{rel}/evidence/reviews/", f"{rel}/sessions.md"
+    head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
+    age = lambda p: (p.get("createdAt") or "", p["number"])
+    memo = {}
+
+    def cached(key, f):
+        if key not in memo:
+            memo[key] = f()
+        return memo[key]
+
+    anc = lambda a, b: cached(("anc", a, b), lambda: git("merge-base", "--is-ancestor", a, b).returncode == 0)
+    siblings = lambda p: sorted((q for q in prs if q is not p and q["baseRefName"] == p["baseRefName"]), key=age)
+    within = {num(p): [q for q in siblings(p) if anc(head(p), head(q)) and (head(p) != head(q) or age(q) < age(p))] for p in prs}
+    outermost = lambda qs: min(qs, key=lambda q: (bool(within[num(q)]), age(q)))
+
+    def own(p):
+        """its own commits — not on its base, merges aside — and each one's patch id"""
+        def read():
+            shas = git("rev-list", "--no-merges", head(p), "^" + base(p)).stdout.split()
+            diff = git("log", "-p", "--no-merges", "--no-color", "--no-ext-diff", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
+            ids = git("patch-id", "--stable", input=diff).stdout if diff else ""
+            return shas, {c: pid for pid, c in (l.split()[:2] for l in ids.splitlines() if len(l.split()) >= 2)}
+        return cached(("own", num(p)), read)
+
+    def holds(q, p):
+        """every commit of p's own is on q's branch — as that commit, or as the same patch"""
+        (mine, my_ids), (theirs, their_ids) = own(p), own(q)
+        theirs, their_ids = set(theirs), set(their_ids.values())
+        return bool(mine) and all(c in theirs or my_ids.get(c) in their_ids for c in mine)
+
+    def conflicts(p):
+        r = git("merge-tree", "--write-tree", "--name-only", "--no-messages", base(p), head(p))
+        if r.returncode in (0, 1):
+            return list(dict.fromkeys(l for l in r.stdout.splitlines()[1:] if l.strip()))
+        # merge-tree could not run — a git older than 2.38, or a head that is not here: the forge's own word stands in
+        return ["(paths unread — the forge says CONFLICTING)"] if p.get("mergeable") == "CONFLICTING" else []
+
+    heads = sorted({head(p) for p in prs})
+    bases = sorted({"^" + base(p) for p in prs if git("rev-parse", "--verify", "--quiet", base(p)).returncode == 0})
+    log = git("log", f"--format=%H%x01%s%x01{TRAILERS}%x02", *heads, *bases).stdout if heads else ""
+    verdicts = []                                           # newest first: (verdict, the full sha it reviewed, its word)
+    for rec in log.split("\x02"):
+        sha, _, rest = rec.strip("\n").partition("\x01")
+        subject, _, block = rest.partition("\x01")
+        reviewed, word = trailer_values(block, "Reviewed"), VERDICT_WORD_RE.search(subject)
+        if sha and reviewed and word:
+            full = git("rev-parse", "--verify", "--quiet", reviewed[0] + "^{commit}").stdout.strip()
+            if full:
+                verdicts.append((sha, full, word.group(1)))
+
+    def addenda_only(r, h):
+        """every commit from r to h touches only a review or the registry — and none is a merge, which brings a line's files"""
+        def read():
+            out = git("log", "--format=%x00%P", "--name-only", "--no-renames", f"{r}..{h}")
+            for chunk in out.stdout.split("\x00")[1:]:
+                parents, *paths = chunk.strip("\n").split("\n")
+                if len(parents.split()) > 1 or any(x and not (x.startswith(reviews) or x == registry) for x in paths):
+                    return False
+            return out.returncode == 0
+        return cached(("addenda", r, h), read)
+
+    rows = []
+    for p in prs:
+        carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
+        paths = conflicts(p) if not (within[num(p)] or carried) else []
+        last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p)))), None)
+        if within[num(p)]:
+            rows.append((p, "close", f"closes with PR {num(outermost(within[num(p)]))}", ""))
+        elif carried:
+            rows.append((p, "close", f"close: carried into PR {num(outermost(carried))}", ""))
+        elif paths:
+            rows.append((p, "wait", "wait: conflict in " + ", ".join(paths), ""))
+        elif last is None:
+            rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
+        elif last[1] == "NOT READY":
+            rows.append((p, "wait", f"wait: NOT READY ({last[0][:7]})", ""))
+        else:
+            rows.append((p, "merge", "merge", f"verdict {last[0][:7]} {last[1]}"))
+    return sorted(rows, key=lambda row: (row[1] == "wait", age(row[0])))
+
+
+def queue_lines(rows):
+    """The queue as the Owner reads it: one line per pull request, its columns aligned, and the count last."""
+    cut = lambda b: b if len(b) <= QUEUE_BRANCH_MAX else b[:QUEUE_BRANCH_MAX - 1] + "…"
+    cells = [(f"PR {p['number']}", action, f"{cut(p['headRefName'])} @ {p['headRefOid'][:7]}", detail) for p, _k, action, detail in rows]
+    w = [max([len(c[i]) for c in cells] or [0]) for i in range(3)]
+    w[1] = max([len(c[1]) for c in cells if len(c[1]) <= QUEUE_ACTION_MAX] or [0])      # an action past the cap runs on in its own line
+    kinds = collections.Counter(k for _p, k, _a, _d in rows)
+    return ([f"{a:<{w[0]}}  {b:<{w[1]}}  {c:<{w[2]}}  {d}".rstrip() for a, b, c, d in cells]
+            + [f"{len(rows)} waiting on you: {kinds['merge']} merge, {kinds['close']} close, {kinds['wait']} wait"])
+
+
+def queue_cmd():
+    """`--queue`: the open pull requests, one action each, in the order to take them — exit 3 where the forge cannot be read."""
+    prs, why = forge_prs()
+    if prs is None:
+        print(why, file=sys.stderr)
+        return EXIT_NO_FORGE
+    print("\n".join(queue_lines(queue_actions(prs))))
+    return EXIT_OK
+
+
+def queue_section():
+    """`--owner` and `--standup` end with the queue where the forge can be read — and say nothing of it where it cannot."""
+    prs, _why = forge_prs()
+    if prs is not None:
+        print("\nPULL REQUESTS — in the order to take them")
+        print("\n".join("  " + line for line in queue_lines(queue_actions(prs))))
+
+
 def answer_step(tid, n, text):
     """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
     reads the trackers, and a checkout hook and the pre-commit gate read them again; silent for that long, it was
@@ -3089,7 +3269,11 @@ def parse_args(argv):
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
-    add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with")
+    add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
+                                            "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
+    add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
+                                            "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…) — in the order to take them. "
+                                            f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
     add("--session", nargs="+", metavar="WORD",
         help="a seat's session (FM-024): a sub-agent derives its id from its parent's, `<parent>/<seat>-<n>`; `--session new` prints an id no row carries — for a session with no parent and a harness with no id; "
              "the worktree carries it as `git config --worktree seat.session <id>`, beside the seat's `user.email`. "
@@ -3714,6 +3898,8 @@ def main(argv=None):
         return session_check()
     if args.session:
         return session_cmd(args.session)
+    if args.queue:                                          # FM-031 S2: the forge's queue — no tracker is read
+        return queue_cmd()
     if args.answer:
         answer_step(args.answer[0].upper(), 1, "reading the trackers")
     trackers = load_trackers()
@@ -3732,7 +3918,9 @@ def main(argv=None):
     if args.new:
         return new_tracker(args.new, trackers)
     if args.owner:
-        return owner_digest(trackers)
+        code = owner_digest(trackers)
+        queue_section()
+        return code
     if args.answered:
         return answered(trackers)
     if args.answer:
@@ -3740,7 +3928,10 @@ def main(argv=None):
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:
-        return standup(trackers, args.standup)
+        code = standup(trackers, args.standup)
+        if not args.standup:                                # the agenda, not the calendar invite
+            queue_section()
+        return code
     if args.next:
         return next_up(trackers)
     if args.html_only:

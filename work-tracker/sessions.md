@@ -36,3 +36,4 @@ which says so.
 | 8e509911/implementer-14 | implementer | session 8e509911 | file FM-032: the loop costs the same for a docs row as for a migration; the Owner's ask drafted | shoalmark-impl-3 | 2026-09-24 09:29 | 2026-09-24 09:35 |
 | e8e309df | principal | the Owner, 2026-09-24 | file FM-029 and FM-030 on the replaced chain; its review | shoalmark-principal-2 | 2026-09-24 10:19 | — |
 | e8e309df/reviewer-7 | reviewer | session e8e309df | review the replaced FM-029/FM-030 chain at 97e9acc | shoalmark-review-e8 | 2026-09-24 10:22 | 2026-09-24 10:34 |
+| 8e509911/implementer-16 | implementer | session 8e509911 | FM-031 S2 --queue; FM-032 S4 the freeze; the house rules in the docs; 0.18.0 | shoalmark-impl-3 | 2026-09-24 11:15 | — |
