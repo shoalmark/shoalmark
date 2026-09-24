@@ -394,3 +394,45 @@ the Owner. R9 of the pass on 87bac4e is closed in fact by FM-033's filing. R4 an
 
 Not verified: the Auditor seat's session `8b91dba2`. No commit of it is on any ref of this repository. The filing
 says it was *filed word for word* from its draft (sha256 `19d16c62…`), and I did not see the draft.
+
+## The R10 fix, f4e7658 (2026-09-24 17:05 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `f4e7658` (`f4e7658bf4bcbd839ec28ebc7c38821748a135ff`) is one commit by the principal seat, under
+`8e509911`, on this verdict `e455f54`.
+- `git diff e455f54 f4e7658` names FM-031, FM-032 and FM-033, the worksheet's three Verdict/Reason cells, the
+  addendum and INDEX.
+- Net in the front matter: FM-031 loses `rank: 10`, FM-032 goes #9 → #10, FM-033 gains `rank: 9`. Nothing else moves.
+- The commit states its one hand edit: the undo of the pass's own writes on the three trackers, before the command
+  re-applied them.
+- The tier is still docs. Independence: same session, reported.
+
+**The replay.** ✓ In the scratchpad clone at `f4e7658`:
+- I stripped `triaged:`, `tier:` and `rank:` from FM-031, FM-032 and FM-033.
+- I restored `next:` to its pre-pass value: `build`, `build`, `owner`, from `095f1d3` and `86f7595`.
+- Then I ran `--triage`. It applied `FM-033: keep P2 #9 build`, `FM-031: keep P2 wait` and `FM-032: keep P2 #10 wait`.
+- Every tracker and the worksheet came out byte-identical to the branch's. INDEX differs only by that clone's
+  signature lint.
+
+**What I ran.**
+- `--triage`: *Applied nothing*, and the tree is clean after it.
+- `--check` 0 (*17 open*); `--session-check` 0.
+- `python3 shoalmark.py`: 33 trackers, and the tree is clean.
+- `test_shoalmark.py` 0; `test_core.py` 0.
+- `git merge-tree` with `origin/main` (`86f7595`): clean, and main is an ancestor.
+- Ranks 1–10 are each held once. FM-031 has no `rank:` (`next: wait`, `tier: P2`, `triaged:` kept).
+- `--next`: … `#8 FM-024 build · #9 FM-033 · P2 · next: build · #10 FM-032 wait`, then `START WITH: FM-029`.
+
+**R10 ✓ closed for the pass's own ranks.** FM-033 is ranked, before the one wait left ranked, and FM-033 now shows in
+`--next`.
+- What stays outside the pass: FM-029 still holds #1 for work tagged in `v0.18.1`. That is the job of the seat that
+  closes FM-029.
+- The first pass's two waits, #3 and #4, still sit ahead of builds. That was not this sheet's to change.
+
+**R11 ✓ closed.** The addendum reads: *The row was judged by the session whose builds the tracker records: the Owner's
+strike is the independent control (the Auditor's R11).*
+- The rest of the addendum matches the tree: *ranked #9 … FM-032 to #10, FM-031 unranked, both waits … the open count
+  17*.
+- The paragraph still does not name FM-033 as *its own filing* of the violation. The addendum's first words name
+  FM-033, which is enough.
+
+**Verdict on f4e7658: READY.** R10 and R11 are closed. R4 and R8 stand as findings the Owner rules on at the merge.
