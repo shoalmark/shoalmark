@@ -9,6 +9,9 @@ ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again | the signed now is the judgement: --answer writes the judgement fields | --answer prints what a pass would judge, and a pass still runs"
 ask-proposal: "a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again"
+answer: "accepted - a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again"
+answered: 2026-09-24
+answered-by: holgo99
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
 ---
 
