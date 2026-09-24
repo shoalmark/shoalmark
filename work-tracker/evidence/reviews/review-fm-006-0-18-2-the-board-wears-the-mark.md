@@ -604,3 +604,46 @@ not docs.**
 **Verdict:** NOT READY. R12 is P2 and R13 is P3. The board is as the Owner asked: no claim in the header, an English
 footer, no German on the board, and a sound header. But the suite crashes, so this tip must not merge until R12 is
 fixed and a full-loop pass has run.
+
+## Pass on 84cbae1 (2026-09-24 18:41 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** The tip `84cbae1` (`84cbae16292c637e35520dadfceb761a94a8b39a`) of `fm/006-the-tagline-leaves-the-header`:
+one Principal commit (session `8e509911`, 18:31) on my verdict `27e67d2`.
+- `test_shoalmark.py:1322–1323`: the brand check now expects no `tagline` and the English footer, and
+  `_labels["footer"] == _given["footer"]`.
+- FM-006's two rows are timed.
+- **Tier: code** (a test edit). The full loop.
+
+**What I ran, and what came back.**
+- **Suites.** `test_shoalmark.py` is 355 ok and `test_core.py` 148 ok, on 3.14.3 and on `/usr/bin/python3` 3.9.6.
+  All green, no `KeyError`, run one after another. The Chrome checks ran.
+- **The check has teeth.** I evaluated its condition on this repository's brand, then on three mutated copies of
+  `labels.yaml`:
+  - as committed: it passes;
+  - the German tagline re-added: it fails;
+  - the German footer back: it fails;
+  - an unknown key: it fails.
+- **Gates.** `--check` and `--session-check` exit 0. `python3 shoalmark.py` twice leaves `git status --porcelain`
+  empty. `--brand` names `repository`; *labels changed: 1 of 130*.
+- **The board.** `grep -c 'Fahrwasser\|Dein Eigner' work-tracker/index.html` is 0. The footer *A Pricke on the Wadden
+  flats keeps the fleet in the channel.* appears once, and the labels carry `"tagline": ""`.
+  - The header is `<div id="H"><b class="wm" role="img" aria-label="shoalmark"><svg…></b><span
+    data-l="tagline"></span><button id="s"></button></div>`, the empty span hidden by `#H span:empty`. It is
+    unchanged from `891e44b`, where Chrome showed only the wordmark and the switch.
+- **R13.** FM-006's rows read `2026-09-24 18:16 CEST` and `2026-09-24 18:20 CEST`: `19afb66` and `891e44b`, as git
+  has them.
+- **The merge.**
+  - `origin/main` `da2228e` is an ancestor, so the merge is a fast-forward, and `git merge-tree` is clean.
+  - With `fm/033-a-raise-by-sourced-evidence` at `21bd5e8` (18:35, whose base is `fcac7b6` and which does not yet
+    have main's `da2228e`), `git merge-tree --write-tree 84cbae1 21bd5e8` is also clean, exit 0. The two branches
+    touch disjoint files. This branch: the tool, the suites, `CHANGELOG`, `README`, `VERSION`, FM-006, `brand/`,
+    this review. FM-033's: `AGENTS.md`, FM-007, FM-030, FM-033, `INDEX.md`, its review. `INDEX.md` is regenerated
+    by the hook in any case.
+
+| | Grade | Now |
+|---|---|---|
+| R12 · the suite pinned the removed tagline | P2 | **closed**: 355 + 148 green on both Pythons, and the check fails on each of the three regressions |
+| R13 · the rows had no time | P3 | **closed**: 18:16 and 18:20, as git has them |
+
+**Verdict:** READY. R12 and R13 are closed; no new finding. The board is as the Owner asked: no claim in the header,
+the English footer, no German on the board.
