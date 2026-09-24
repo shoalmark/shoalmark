@@ -3,9 +3,14 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: wait
+next: owner
 triaged: 2026-09-24
 tier: P2
+ask: "Which rules hold for a message between two sessions — the nine recorded as open in this tracker's body, D11's eight and no message to a session you stopped?"
+ask-kind: ruling
+ask-since: 2026-09-24
+ask-options: "the nine hold as written | until one is ruled, a message between sessions moves nothing"
+ask-proposal: "the nine hold as written"
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
@@ -90,6 +95,26 @@ status reads *Shipped* or *Closed*; one window, from the first filing to the mea
 - **The registry is the file every stream conflicts on.**
 - **Only the Owner holds the whole queue,** so he is the integrator by default.
 
+## Open — the rules for a message between two sessions
+
+**Recorded as open 2026-09-24, on the Auditor seat's check 18 on v0.18.2 (P2), through the Owner: neither ruled nor, until this
+line, recorded.** Sessions of one account can message each other directly (the harness's peer channel, found 2026-09-23 when two
+Principal sessions collided in one worktree); the parent project's fleet wrote eight rules for it that day (its integration plan,
+D11), and the fog incident of the morning of 2026-09-24 (its ledger, PR 812 and PR 813) showed the ninth. None is signed. As
+proposed, for the Owner's ruling — the ask above:
+
+1. A message between sessions carries checkable facts only, re-checked in git before anything moves on it.
+2. An agreement exists only as a commit within the hour, with the message quoted; a message alone agrees to nothing.
+3. A message is never an answer: *he said yes* moves nothing — an answer is written and signed through the board (path 5).
+4. Never a secret, a production read, or one repository's internal state to a session of another repository.
+5. `ListAgents` and `git worktree list` before a worktree is taken; one worktree per session, and a badge is not a lock.
+6. The seat is in git, never in the frame: a message carries no authority, and a seat's rights come from its commits under `[seats]`.
+7. `isolatePeerMachines` is the Owner's setting; no seat changes it.
+8. The parent project's scorer (its FEAT-190) reads messages for the four tells the model's System Card names — a fabricated authorization, a proposed destructive
+   act, a verdict against its own reasoning, damage disclosed as *a mistake*.
+9. **No message to a session the Owner stopped.** A stopped session is not woken by a peer; what it left is read from git (the
+   parent project's incident of the morning, PR 812 and PR 813).
+
 ## Why
 
 The Owner, 2026-09-24, in chat (spelling normalised): *"Can a human keep up with this? How could we improve here? These
@@ -164,3 +189,4 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 | 2026-09-24 08:33 CEST | Adopted by the Principal. Candidates 2 and 1 become slices S1 (the registry off the conflict path: one file per session under `work-tracker/sessions/`, the table generated) and S2 (the queue in one view: `--queue`); candidate 3 is deferred. The ask drafted for review (`next: review`): the three house rules — candidates 4, 5 and 6 — and the build order, four options; the proposal is the Principal's to set. The parent project's registry conflict cited by its pull-request numbers only. |
 | 2026-09-24 08:26 CEST | The Owner's second question measured: filing outruns closing 2.07 to 1 (16.4 filed a day against 8.0 closed, since 2026-09-22 11:09); 16 open, and the open count grows about 8 a day. |
 | 2026-09-24 08:24 CEST | Filed on the Owner's question, with tonight's record as the measurement. Held against FM-005 (his decisions: the asks, not the queue of pull requests), FM-023 (a plan's seats and estimates), FM-024 (a commit names its session) and FM-027 (ids claimed on the server). |
+| 2026-09-24 | The nine rules for a message between two sessions recorded as open (the Auditor seat's check 18) and put to the Owner — the parent project's ledger row came first (its tenth-hour commit). Re-made on the Reviewer's R2: the options name no scorer and neither opens with *no*; rule 8 names whose scorer (R6). |
