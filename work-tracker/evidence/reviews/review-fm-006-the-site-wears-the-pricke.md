@@ -113,3 +113,17 @@
   agrees with git.
 - **Verdict:** READY WITH FINDINGS. R2 (the provenance footer) and R3 (self-host Plex before publication) stay open as
   FM-006 records them; R4 is a P3.
+
+## The tagline slice at bc50200 (contains 685bbb4) — 2026-09-24 07:58 CEST
+
+- **The diff from `488c098`** touches only `docs/{de/,}index.md:3`, FM-006 and `sessions.md`. The built pages read *Eine
+  Pricke im Watt – sie hält die Flotte im Fahrwasser.* and *A Pricke on the Wadden flats keeps the fleet in the channel.*
+- **The two carried rows** are byte-identical to `916cd26`'s plus the carry note. Their rulings were absent at `488c098`.
+- **R4 is closed:** *07:23 CEST* matches git (07:23:11 +0200). The P4 row (07:48) and the English row (07:51; git
+  07:51:39) mark their quotes *relayed … spelling normalised*.
+- **Sessions:** `implementer-9` was opened in `ee152ef` and is still open. The branch head is now `0f4b5e2`, the merge
+  of `main` (#31, #32). Its `sessions.md` keeps every row of both parents and adds none; `--check` 0 there too.
+- **Gates:** build *No issues found*; `--check` 0; `--session-check` 0; nothing under `site/`.
+- **R5 · P3:** the Plex Mono row's carry note says *the a + d lock was superseded*, which reads as if the typeface ruling
+  were superseded.
+- **Verdict:** READY WITH FINDINGS. R5 is a P3; R2 and R3 stay open as FM-006 records them.
