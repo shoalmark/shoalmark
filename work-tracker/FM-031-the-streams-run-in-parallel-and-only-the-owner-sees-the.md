@@ -3,12 +3,13 @@ id: FM-031
 status: Proposed
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: review
+next: owner
 ask: "Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat's branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?"
 ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later | none — keep the current fan-out"
-hook: "In fourteen hours 21 seat sessions opened 22 pull requests, and only the Owner sees the whole queue. At 08:10 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
+ask-proposal: "all three rules now, S1 then S2"
+hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
 # FM-031 — the streams run in parallel and only the Owner sees the whole queue
@@ -20,8 +21,11 @@ hook: "In fourteen hours 21 seat sessions opened 22 pull requests, and only the 
 The measurements below are read from the record: git, the forge, and `work-tracker/sessions.md` on every remote
 branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
 
-- **21 sessions began:** 9 GtM, 8 Implementer, 2 Principal and 2 Reviewer, across 6 worktrees.
-- **22 pull requests were opened.** 13 were merged, and 6 were open at 08:10.
+- **22 sessions began, under 21 ids:** 9 GtM, 9 Implementer, 2 Principal and 2 Reviewer, across 6 worktrees. The
+  Implementer's nine carry eight ids: `8e509911/implementer-6` named two, the site slice at 01:02 and FM-028 at 07:41
+  (FM-028's R1, the class of FM-027).
+- **22 pull requests were opened.** 13 were merged, and six were open by 08:18: #33 from 07:52, #34–#38 from 08:17 to
+  08:18.
 - **Of the six open ones, at most one could be merged as it stood:**
   - #33 was ready: a Reviewer's verdict names its head, and it merges cleanly.
   - #37's head is an ancestor of #33's head, so #37 is contained in #33.
@@ -32,7 +36,7 @@ branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
   - Every parallel pull request appends its session's row to `work-tracker/sessions.md`, all at the same place. That
     conflicted on #33, #35 and #37.
   - In the parent project that vendors this tool, two pull requests conflicted on its registry the same morning (its
-    #806 and #807; resolved by merging one into the other before the verdict), and earlier on a tracker's ship log.
+    pull requests 806 and 807; resolved by merging one into the other before the verdict), and earlier on a tracker's ship log.
 - **The Owner asked one Implementer session five integration questions in about two hours:**
   - which pull requests to merge;
   - that one of them had a conflict;
@@ -49,20 +53,28 @@ branch. They cover 2026-09-23 18:00 to 2026-09-24 08:20 CEST.
   worked on a detached head instead.
 
 **Filing outruns closing about two to one.** The Owner asked it on 2026-09-24 (spelling normalised): *"How much faster
-are we filing than we are being able to close?"* The measurement is read from `main`'s history: each tracker's first
-commit, and the first commit where its status reads *Shipped* or *Closed*.
+are we filing than we are being able to close?"* **Method:** a filing is the first commit that adds its id under
+`docs/work-tracker/` or `work-tracker/`, on `main` or any remote branch; a close is the first commit on `main` whose
+status reads *Shipped* or *Closed*; one window, from the first filing to the measurement.
 
-- **The record starts 2026-09-22 11:09, 1.9 days ago.**
+- **The record starts 2026-09-21 13:13 (FM-001, `8cbe3a4`); measured to 2026-09-24 08:53 CEST, 2.82 days.** Re-dated
+  on the Reviewer's R1: the first measurement started at 2026-09-22 11:09, `ae1f05e`, the commit that moved the
+  trackers to `work-tracker/`, and so dated five filings (FM-001–FM-005) and two closes (FM-002, FM-003) a day late.
 
   | Day | Filed | Closed | Open at the day's end |
   |---|---|---|---|
-  | 2026-09-22 | 11 | 2 | 9 |
+  | 2026-09-21 | 5 | 2 | 3 |
+  | 2026-09-22 | 6 | 0 | 9 |
   | 2026-09-23 | 16 | 13 | 12 |
+  | 2026-09-24, to 08:53 | 4 | 0 | 16 |
 
-- **Four more are filed on branches but not yet on `main`:** FM-028, FM-029, FM-030 and FM-031. That makes 31 filed
-  against 15 closed, and 16 open.
-- **Rate:** 16.4 filed a day against 8.0 closed, a ratio of 2.07. The open count grows by about 8 a day.
-- **Filing to closing takes 0 to 26 hours** for the 15 that closed. Most take 3 to 8 hours.
+- **Three of the 09-24 filings are on branches, not yet on `main`:** FM-028, FM-029 and FM-030. That makes 31 filed
+  against 15 closed, and 16 open. FM-011's close is on #36's branch, not on `main`, and is not counted.
+- **Rate:** 11.0 filed a day against 5.3 closed, a ratio of 2.07. The open count grows by about 5.7 a day.
+- **The window barely moves the ratio.** From the move (2026-09-22 11:09) to the first measurement (08:26), 1.89 days:
+  26 filed against 13 closed — FM-002 and FM-003 closed on 09-21, before it — 13.8 against 6.9 a day, 2.00 to one.
+- **Filing to closing takes half an hour to 26 hours** for the 15 that closed; 10 of them take between 2.7 and 7.7
+  hours.
 - **The pull requests show the same shape,** from 2026-09-23 18:00 to 2026-09-24 08:20: 22 opened, 13 merged.
 
 **What coordinates today:**
@@ -81,9 +93,18 @@ commit, and the first commit where its status reads *Shipped* or *Closed*.
 The Owner, 2026-09-24, in chat (spelling normalised): *"Can a human keep up with this? How could we improve here? These
 are multiple streams running at the same time doing valuable work — but are they all coordinated?"*
 
+**Why a tracker of its own, not a slice** — held against `considered:` on the Reviewer's R4. FM-024 owns what the
+registry means: a seat's commit names its session, and the gate reads the row. S1 changes only where the rows are
+stored — one file each, the table generated — so the gate reads the same facts and FM-024's *done when* neither moves
+nor gains a line. FM-005 owns the Owner's decisions — the asks, the mandate, the shadow week — and waits on his
+calendar (`next: wait`); S2's object is the queue of open pull requests, read from the forge so that *which do I
+merge* stops being a question at all — a different object. The three house rules bind the Owner's own habits — how
+much waits on him, where he speaks, how he looks at a branch — and belong to neither. The case is weakest for S1: it
+edits the code FM-024 built, and a reader looking for the registry's shape looks there first.
+
 ## Candidates, cheapest first
 
-None is chosen. The Owner or the Principal rules.
+Nothing is chosen for the Owner: the Principal's reading below names the slices and puts the three rules to him — they bind him — with a proposal; his answer decides, never a default.
 
 1. **The queue in one view.** The tool reads the open pull requests and gives each one action:
    - *merge*: a verdict names its head, and it merges cleanly;
@@ -126,6 +147,8 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-09-24 08:53 CEST | The Reviewer's verdict at `3c72e84` — NOT READY (`bda30ae`, R1 P2, R2–R4 P3) — fixed by the Implementer. R1: filings re-dated by id across both paths, one window from the first filing (2026-09-21 13:13): 31 filed against 15 closed in 2.82 days, 11.0 against 5.3 a day, 2.07 to one, open growing about 5.7 a day; the Reviewer's 1.89-day window re-derived as 26 filed against 13 closed (not 15: FM-002 and FM-003 closed before it), 2.00 to one — *about two to one* stands. R2: 22 sessions under 21 ids. R3: six open by 08:18, not at 08:10. R4: why a tracker of its own, in the body under *Why*. |
+| 2026-09-24 08:42 CEST | The Principal sets the proposal — *all three rules now, S1 then S2* — and puts the ask to the Owner (`next: owner`); two wording fixes from the Implementer's report ("None is chosen" read against the reading; the parent project's pull-request numbers written without the sign the forge auto-links). Verified next, then the pull request. |
 | 2026-09-24 08:33 CEST | Adopted by the Principal. Candidates 2 and 1 become slices S1 (the registry off the conflict path: one file per session under `work-tracker/sessions/`, the table generated) and S2 (the queue in one view: `--queue`); candidate 3 is deferred. The ask drafted for review (`next: review`): the three house rules — candidates 4, 5 and 6 — and the build order, four options; the proposal is the Principal's to set. The parent project's registry conflict cited by its pull-request numbers only. |
 | 2026-09-24 08:26 CEST | The Owner's second question measured: filing outruns closing 2.07 to 1 (16.4 filed a day against 8.0 closed, since 2026-09-22 11:09); 16 open, and the open count grows about 8 a day. |
 | 2026-09-24 08:24 CEST | Filed on the Owner's question, with tonight's record as the measurement. Held against FM-005 (his decisions: the asks, not the queue of pull requests), FM-023 (a plan's seats and estimates), FM-024 (a commit names its session) and FM-027 (ids claimed on the server). |
