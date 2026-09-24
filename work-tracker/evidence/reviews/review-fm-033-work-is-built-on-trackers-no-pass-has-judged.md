@@ -149,3 +149,32 @@ make the Owner's signed answer ambiguous or wrong is P2.
 - Fix, the Auditor's: add FM-021 and FM-029 to `considered:`, or leave them out on purpose and say so.
 
 **Verdict:** READY WITH FINDINGS. R1–R4 are P3. The ask at `7c04534` carries no defect.
+
+## Pass on 063e46d (2026-09-24 16:14 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `063e46d` (`063e46d336139a3db7c2e2449fc97d8dc61e2cea`) is one merge by the principal seat, under
+`8e509911`. It merges `origin/main` `3015b66` (PR 50, the second triage pass, 16:02:18) into this verdict's `6e7ca2f`.
+
+**The merge brought only `main`'s files.**
+- `git diff 6e7ca2f 063e46d` changes 14 files. All of them are PR 50's: ten trackers' judgement fields, TRIAGE.md, the
+  pass's worksheet, its review, and INDEX.
+- The FM-033 tracker is unchanged (the diff is empty), and so is this review file.
+- `git diff origin/main 063e46d` names three files: the FM-033 tracker, this review, and INDEX. INDEX differs from
+  `main`'s only by FM-033's row and the count (32 to 33). Every other file of `main` is byte-identical.
+
+**Gates at `063e46d`.**
+- `python3 shoalmark.py` rewrites nothing, and `git status --porcelain` stays empty. `--check` 0, with the freeze at
+  17 open, bug filings only. `--session-check` 0.
+- `test_shoalmark.py` 0 (285 ok, all green); `test_core.py` 0 (148 ok, all green).
+- `--owner` prints *1 NEED THE OWNER*: FM-033 · ruling, with the ask.
+- `git merge-tree --write-tree origin/main 063e46d` is clean and writes the tip's own tree, `5af04ec`. `origin/main`
+  is an ancestor, so the merge is a fast-forward.
+- The commit message carries no pull-request number with the sign.
+
+**R1–R4 stand, P3, to be fixed forward.** What PR 50 changes for R1:
+- The re-made pass is now on `main`. FM-024, FM-031 and FM-032 are judged (P2 #8, #10, #9) and sit under *progress*.
+- So R1's *not on `main` until PR 50 merges* no longer holds.
+- R1's point stands: the FM-024 row still says *marked Shipped in that pass*, and the pass on `main` keeps FM-024 In
+  Progress. The fix is now one clause: *re-made at `87bac4e` (15:19), FM-024 kept open*.
+
+**Verdict:** READY WITH FINDINGS. The merge of `main` is confirmed. R1–R4 are P3.
