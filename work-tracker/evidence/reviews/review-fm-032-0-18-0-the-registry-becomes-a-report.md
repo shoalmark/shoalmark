@@ -267,3 +267,101 @@ the hooks and the wrapper's pass-through are unchanged. Then:
 
 **Verdict:** NOT READY. R1 is P2; R2–R7 are P3. The Owner may not tag this tip: R1's fix and a verification come
 first.
+
+## Pass on c253124 (2026-09-24 14:20 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `f82aa42..c253124` is two commits by the Implementer, under `8e509911/implementer-16` in
+`shoalmark-impl-3`:
+- `1e977bf` fixes R1–R6. It changes `shoalmark.py`, `test_shoalmark.py`, the CHANGELOG and the README.
+- `c253124` fixes R7, in FM-031 only.
+
+The tier is still code, and this is a verification of the fixes, with the whole diff read once more.
+- **Independence:** the same session root, `8e509911`. This is reported, not refused.
+
+**Gates and suites at `c253124`.**
+- `--check` exits 0, with the freeze line unchanged: `16 open, at or above 8 — only bug filings`.
+- `--session-check` exits 0.
+- `python3 shoalmark.py` is idempotent: `git status --porcelain` stays empty.
+- `test_shoalmark.py` is all green, 285 ok. That is 281 plus four new checks: R1, R2 with R3, R4 and R6.
+- `test_core.py` is all green, 148 ok.
+- Both suites are the same on `/usr/bin/python3` 3.9.6.
+
+**Closed.**
+- **R1, closed.** `answer_reading` (`:947`) now finds the seat as the gate does: `holds(seat_of(name, email), "answer")`
+  under `[seats]`, then `verified_as` on the author's email. (`verified_as(head, None)` already fell back to that
+  email.)
+  - **The parent project's two signed answers,** re-run in the same scratch clone with `c253124` copied in, now
+    read `merge: your answer`.
+  - With the signers file unset there, they read `wait: answer not verified here — … not set`.
+  - A principal seat's commit there reads `wait: unsigned answer`.
+  - **Here:** with `owner = "Owner signed"` (by name), PR 9 reads `merge` and PR 10 reads `unsigned`, and the
+    email-keyed run is unchanged. With the owner seat given to another name, PR 9 waits.
+- **R2, closed.** I pushed `fm/019` inside `fm/020`, and `fm/030` as a twin of `fm/021`, to the test remote. Neither
+  has a line of its own, and the count is unchanged.
+  - **Here, for real:** `fm/031` @ `636f56e` has left the queue, which now lists `fm/029` and `fm/032` only. The forge
+    agrees: no open pull request, and four heads, of which `main` is the default and `fm/031` is inside `fm/032`.
+- **R3, closed.** In a transport `--single-branch` clone of the test remote, the queue is now line for line the same as
+  in the full clone:
+  - PR 1 is `merge` and PR 3 is `NOT READY`.
+  - `fm/021` reads *READY: open it*, and `fm/022` is in conflict.
+
+  A pull request whose `headRefOid` no ref has (the forge's head moved after `gh` listed it) reads
+  `wait: eeeeeee not fetched here` on its own line. Every other line keeps its verdict.
+- **R4, closed.** Tested with `[tags]` of research, security and process, and `freeze_at = 1`.
+  - `--check` prints `filing freeze: off — freeze_tag 'bug' is not in [tags] (…); add it there, or set freeze_tag …`,
+    and `--new` files.
+  - With `freeze_tag = "process"`, a filing without `process` exits 4, naming `--tags process`. `--tags PROCESS` is
+    written as `tags: process`.
+  - A `freeze_tag` of `"Process"` also passes.
+  - `freeze_tag` values of `""`, `3` and `"  "` stop the run and name the key.
+  - With `freeze_at = 0` there is no line.
+  - `--schema` has a `freeze_tag` row.
+- **R5, closed.**
+  - The digest names the worktree (`8e509911/implementer-9 in shoalmark-impl-2`).
+  - README §5 has the `wait: answer not verified here` row, and the CHANGELOG names that reading.
+  - `--help --queue` names the `answer/*` readings and the pushed branches. `--help --answer` names the return, the
+    fresh cut, `revoke` and `--supersede`.
+  - README's *Seen* says the digest ends with the queue where `gh` reads the forge.
+- **R6, closed.**
+  - `--tags bug` alone exits 2 with `--tags goes with --new — …`, in one line.
+  - `--supersede` alone, and `--check --supersede`, exit 2 with `--supersede goes with --answer — …`.
+  - `--tags ' , '` says *no tag was given*, and `--tags Bug` passes.
+- **R7, closed.**
+  - FM-031's *What is true now* has 12:39:56 for `7c97c5b`.
+  - It credits the pull requests to `90d3d6f`, and the pushed branches and `answer/*` to `636f56e`.
+  - The new ship-log row is at 13:05, which is `636f56e`'s 13:05:35, and it sits newest first.
+
+**The changed claims, re-run.**
+
+| # | Claim (§0.18.0 at `c253124`) | |
+|---|---|---|
+| 6 | The board's strip and the digest's line name the last day's sessions with their worktree | ✓ |
+| 8 | `--queue`, its six actions, order, count, exit 3; `--owner` and `--standup` end with it | ✓, in a single-branch clone too |
+| 9 | The freeze, `--tags` case aside, `freeze_tag` (default `bug`), off with one `--check` line where `[tags]` lacks it; lone `--tags` and `--supersede` exit 2 | ✓ |
+| 12 | Pushed branches: not inside an open pull request *or another such branch*; the four readings; *not fetched here* on its own line | ✓ |
+| 13 | `answer/*`: `merge: your answer` when the author's seat, matched by email or name, may answer and the commit verifies; `wait: answer not verified here — <why>`; else `wait: unsigned answer` | ✓ (R8: *unsigned* is also said to a signed commit by someone who may not answer) |
+
+**The diff as a whole.** Nothing else changed. `1e977bf` touches only the lines above; `c253124` touches only
+FM-031's paragraph and one row.
+- `pushed_branches` may fetch a second time, but only for heads that the configured refspec does not cover. The
+  CHANGELOG says *fetched by its ref*.
+- **Notes, not findings:**
+  - The `here` key that `pushed_branches` returns is read only by the test. `queue_actions` works out `absent` on its
+    own.
+  - The inside-another-branch filter (`:933`) makes up to n² `merge-base` calls over the unmerged pushed branches.
+    That is two branches here and one in the parent, so it is cheap today.
+
+**R8 · P3 · confidence high · A signed `answer/*` commit by someone who may not answer is called *unsigned*.**
+- `answer_reading` has one wait for two causes. With the owner seat given to another name, the Owner's signed PR 9 read
+  `wait: unsigned answer`.
+- The wait is right, but the word is wrong for a signed commit. An impostor's `answer/*` is the case the Owner most
+  needs named.
+- **Fix:** when `may` is false, say `wait: not an answerer's commit (<author>)`. Keep *unsigned* and *not verified
+  here* for an author who may answer.
+
+**R9 · P3 · confidence high · FM-031 now gives two times for one merge.**
+- R7's fix writes PR 46 *merged 12:53:19* (`:16`). The same tracker's 12:55 row, and AGENTS.md, say *12:53:18*.
+- Both clocks are real: the forge's `mergedAt` is 10:53:19Z, and `ed11081`'s commit time is 12:53:18.
+- **Fix:** use one of them, the commit's, as everywhere else in these files, or say which clock it is.
+
+**Verdict:** READY WITH FINDINGS. R8 and R9 are P3; R1–R7 are closed. The Owner may tag this tip.
