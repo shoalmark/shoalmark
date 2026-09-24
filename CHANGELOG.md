@@ -2,6 +2,31 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.18.0 — 2026-09-24
+
+**The session registry is a report, generated from the commit trailers** (FM-032 S2, which is FM-031's S1). It was a
+file every seat wrote and the gate read: it conflicted whenever two branches landed, and a row once closed never
+re-opened, so every return to a branch cost a new id. The trailer rule stays; the rows go.
+
+- **Delete `<tracker dir>/sessions.md`** (`git rm`); history keeps its rows. Nothing reads or writes it any more:
+  `--check` warns in one line while it is there, and passes.
+- **`--sessions` is the registry**: one row per `Session:` id in the checkout's history — its seat (the author
+  through `[seats]`), its first and last commit, how many commits carry it, its worktree — Markdown on stdout,
+  written nowhere.
+- **`--session open` and `--session close` are gone**: each prints one line and exits 2. *Drop them from a seat's
+  instructions and from any script.* `--session new` stays and prints an id no commit carries.
+- **The gate keeps one rule**: a seat's commit — never the Owner's, never an author outside `[seats]` — carries a
+  `Session:` of the shape `<8 hex>` or `<8 hex>/<seat>-<n>`, and its seat part is the author's seat. Gone: the open
+  row, one worktree per session, the refusal to remove the registry, drop a row or re-open one, and abandoned rows
+  (`--check` no longer lists them, `--triage` no longer closes them). As before, a commit whose history carries no
+  `Session:` at all is not judged.
+- **A `Worktree:` trailer**, the checkout's directory name, is appended beside `Session:` by the same hook; commits
+  from before carry none, and the report shows `—`. *The hook lines are unchanged: nothing to install again, nothing
+  to change in your own hook runner.*
+- **The board's strip and the digest's line** name the sessions with a commit in the last day, with their worktree,
+  where they named the open rows. Labels: `sessions.recent` is new; `sessions.open` and `sessions.abandoned` are
+  gone, and a `labels.yaml` that still sets them is told they are not labels.
+
 ## 0.17.8 — 2026-09-23
 
 **A vendoring vouches for what it copies** (FM-011). `--vendor` used to skip a missing source file, pin what it found
