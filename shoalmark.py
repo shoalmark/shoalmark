@@ -3484,17 +3484,18 @@ def parse_args(argv):
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
              "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
              "`--answer <id> accept|reject \"<option>\" --supersede` — the old one moves into the ship log. A failure after it wrote anything undoes it all and "
-             "prints the answer and the command to give it again")
+             "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
     add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
-    add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange; and what WAS acted on since his last sitting, by commit")
+    add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
+                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries")
     add("--clear-ask", nargs="+", metavar="WORD",
-        help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
+        help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
-                                            "merge: your answer · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
+                                            "merge: your answer · wait: not an answerer (<author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
     add("--session", nargs="+", metavar="WORD",
