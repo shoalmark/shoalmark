@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "the nine hold as written | until one is ruled, a message between sessions moves nothing"
 ask-proposal: "the nine hold as written"
+answer: "accepted - the nine hold as written"
+answered: 2026-09-24
+answered-by: holgo99
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
