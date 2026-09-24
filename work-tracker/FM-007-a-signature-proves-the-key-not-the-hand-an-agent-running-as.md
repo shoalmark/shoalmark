@@ -3,7 +3,7 @@ id: FM-007
 status: Proposed
 considered: FM-005, FM-006
 tags: security
-tier: P2
+tier: P1
 next: owner
 ask: "Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?"
 ask-kind: ruling

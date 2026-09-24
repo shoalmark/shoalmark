@@ -6,7 +6,7 @@ tags: bug
 triaged: 2026-09-24
 rank: 10
 next: build
-tier: P3
+tier: P2
 hook: "A fresh clone without the Owner's allowedSignersFile runs --check and reads two findings where there is one: the missing signers file, and `INDEX.md is STALE`. The index is not stale — the generated header carries the clone's own finding as a ledger-integrity line, so the committed INDEX and the one this clone would write differ by exactly that line."
 ---
 
@@ -31,8 +31,9 @@ generated body; the drift test is not widened to hide anything. The committed IN
 
 ## Why
 
-The Owner's path, line 1: the sitting runs on a tagged release with no failed run. A fresh clone is how every consumer, the
-Auditor's verification and a new seat meet the tool; a `--check` that says STALE on a clean clone is a failed run to each of them.
+The Owner's path, line 1: the sitting runs on a tagged release with no failed run. The sitting itself runs in his checkout, which has
+the signers file, so it sees no failed run — P2, next, not P1. A fresh clone is how every consumer, the Auditor's verification and a new
+seat meet the tool, and to each of them a `--check` that says STALE on a clean clone is a failed run.
 
 ## Done when
 
