@@ -127,3 +127,15 @@
 - **R5 · P3:** the Plex Mono row's carry note says *the a + d lock was superseded*, which reads as if the typeface ruling
   were superseded.
 - **Verdict:** READY WITH FINDINGS. R5 is a P3; R2 and R3 stay open as FM-006 records them.
+
+## PR #33 at 0f4b5e2 (main..0f4b5e2) — 2026-09-24 07:57 CEST
+
+- **The merge** (`0f4b5e2` = `bc50200` + `cdd6e3f`, #32): 23 files differ from a parent, and each equals the other
+  parent's version except `sessions.md`.
+- **`sessions.md`** is exactly the union of both sides: 21 rows, no duplicate, ordered by start time, none edited.
+- **The taglines are unchanged:** *Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.* / *A Pricke on the Wadden
+  flats keeps the fleet in the channel.*
+- **Gates:** build *No issues found*; `--check` 0; `--session-check` 0; nothing under `site/`.
+- **The range covers both slices.** The site slice's verdict (`488c098`, on `a535b61`) stands inside `main..0f4b5e2`,
+  as does the tagline verdict (`166f080`, on `bc50200`). The block above is dated 07:58; `date` said 07:56.
+- **Verdict:** READY WITH FINDINGS. R5 is a P3; R2 and R3 stay open as FM-006 records them.
