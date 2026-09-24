@@ -160,8 +160,8 @@ FM-004 can close without it.**
   `START WITH`. The other conditions of a park hold: P3, a real remainder, nobody on it (no branch or worktree names
   them), and a restart named in the reason (loosely for FM-027, R7).
 - **Also:** all three keep `next: review` while their *Now* opens *nothing is built*.
-- **Fix:** the Owner strikes these rows or lets them stand; he rules by merging. If *a filing alone is not work* is
-  what the seat meant, that is a rule. Under the freeze, it goes as one line into the closest open tracker.
+- **Fix:** carried to the next triage pass, unless a Principal seat puts it to the board as an ask; a merge rules
+  nothing (path line 5). If *a filing alone is not work* is what the seat meant, that is a rule. Under the freeze, it goes as one line into the closest open tracker.
 
 **R5 · P3 · FM-024's closing names the wrong release and no commit.**
 - **What:** the reason and the closing row say *the trailer rule shipped in 0.17.7*. It shipped in 0.17.6: CHANGELOG
@@ -204,8 +204,8 @@ record:
 - R1: FM-024's slice 2, which the path's line 3 needs and README §6 promises.
 - R2: FM-026's candidates and done-condition, which FM-004's *Done when* does not cover.
 
-R3–R7 are P3 and are fixed forward. R5 folds into R1's fix. R3 and R4 are the Owner's to strike or keep when he
-merges.
+R3–R7 are P3 and are fixed forward. R5 folds into R1's fix. What is not fixed is carried to the next triage pass;
+the merge decides nothing about it (path line 5).
 
 What holds:
 - The gates are green, both suites pass, and INDEX is the generated one.
@@ -254,13 +254,13 @@ Not verified:
 - **R2 ✓ closed.** FM-026 is `park P3` and still open, with its candidates and *Done when* in place. FM-004 is main's.
   The reason says why this is no merge.
 - **R3 ✓ closed.** The builds come first (#6, #7, #8), and the waits after them (#9, #10).
-- **R4 · P3 · stands, for the Owner to rule.**
+- **R4 · P3 · stands, carried to the next triage pass.**
   - The rows of FM-023, FM-025, FM-026 and FM-027 still read *keep*. The rule's letter is unchanged: *a row that
     fails the keep test*, *park it, unless it was worked on this week*.
   - The pass now states its ground in the paragraph: the filing itself is the only date, and nobody is on them. It
     holds on git: FM-026 and FM-027 have no commit after 09-23, and FM-023's last is 09-23 15:33.
   - I do not count it as meeting the rule. It reads *worked on* as *worked on since filing*, which the rules do not
-    say. It is now open and checkable, which is what he needs to strike it or let it stand.
+    say. It is now open and checkable, which is what the next pass or an ask needs.
   - Two smaller points:
     - FM-026's and FM-027's reasons name no restart. The rule asks for one: *"the Owner ranks it" counts*.
     - All four still say `next: review` with nothing built.
@@ -278,8 +278,8 @@ Not verified:
 **R8 · P3 · FM-024's reason places slice 2 on the path's line 3, and its tier and rank read as if it did not.**
 - **What:** the scale the command prints is *P1 on the current path* and *harm … after the path's own work, unless it
   blocks it*. FM-024 is P2 and ranked #8, behind FM-030 (#6) and FM-028 (#7), two defects the path does not name.
-- **Fix:** the Owner's to strike when he merges. Or the next pass either makes it P1 and ranks it ahead of those two,
-  or says in the reason why line 3 does not name it.
+- **Fix:** carried to the next triage pass, which either makes it P1 and ranks it ahead of those two, or says in the
+  reason why line 3 does not name it; or a Principal seat puts it to the board as an ask. The merge decides nothing.
 - **Not the pass's to fix:** FM-024's *What is true now* still opens *open for the merge, not merged*, and `--next`
   prints that under #8. A pass writes no note into a tracker. The seat that takes FM-024 up rewrites it first (README
   §3).
@@ -298,6 +298,159 @@ Not verified:
 - The second to land keeps both, and regenerates INDEX.
 
 **Verdict on 87bac4e: READY WITH FINDINGS (R4, R8, R9 P3).** R1, R2, R3, R6 and R7 are closed, and R5 is moot. Under
-the docs tier the P3s are fixed forward. R4 and R8 are the Owner's to strike or keep when he merges.
+the docs tier the P3s are fixed forward. R4 and R8 are carried to the next triage pass; the merge decides nothing
+about them (path line 5).
 
 Not verified: the Owner's word before the pass (chat), and the Auditor's grading (R9).
+
+## The FM-033 row, 81dce10 (2026-09-24 16:50 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** Branch `tracker/triage-2026-09-24-fm-033`, tip `81dce10` (`81dce10fbba0c8da157d3beb8b6dead1e3534985`). It
+is one commit by the principal seat (`Session: 8e509911`) on `origin/main` `86f7595` (PR 54, the Owner's answer to
+FM-033).
+- `git diff --name-only origin/main...HEAD` names FM-033, INDEX, TRIAGE.md (one paragraph changed: the addendum
+  appended) and the worksheet (one row added). **Tier: docs, one pass.** It was reviewed in a fresh worktree,
+  `shoalmark-review-4`.
+- Independence: same session `8e509911`, reported. This matters for R11.
+
+**What I ran.**
+- `--triage`: *0 trackers to judge*, *Applied nothing*, and the tree is clean after it.
+- `--check` 0, with *17 open*; `--session-check` 0.
+- `python3 shoalmark.py`: 33 trackers, and the tree is clean.
+- `test_shoalmark.py` 0 (298 ok, on 0.18.1); `test_core.py` 0 (148 ok).
+- `git merge-tree` with `origin/main`: clean, and `86f7595` is an ancestor.
+- `--next`: ranks #1 … #10 unchanged, each held once, and `START WITH: FM-029`.
+
+**The command wrote exactly the verdict.** ✓
+- FM-033's front matter differs from main's in three lines: `next: owner` → `build`, `triaged: 2026-09-24`,
+  `tier: P2`.
+- It has no `rank:`, and `status: Proposed` stays.
+- `ask*`, `answer:`, `answered:` and `answered-by:` are untouched.
+- Replayed in the scratchpad clone: `--triage` on `86f7595` writes an FM-033 row whose derived cells are identical to
+  the branch's. With the branch's worksheet copied in, it writes FM-033 and the worksheet byte-identical. INDEX
+  differs only by that clone's signature-lint lines.
+- `owner` → `build` is allowed. The ask is answered (`65f37a4`, signed `G`, 16:29:09, the proposal verbatim), and
+  *Now* says *Nothing is built*.
+
+**The reason's facts.** ✓
+- The filing is `35c7664`, 15:31:27, after the re-made pass (`87bac4e`, 15:19). It comes from the Auditor's draft,
+  as *Now* says (session `8b91dba2`).
+- The answer, at 16:29, is the proposal.
+- *Its build is the gate keyed on the build commit and the board's activity view*: FM-033's *Done when*, lines 1–2.
+- *Every rank 1–10 is held today*: true as a count. It is not a constraint (R10).
+- *First of the unranked*: nothing keeps such an order. `--next` prints only the ranked when any are ranked
+  (`next_up`), so FM-033 does not appear in it at all.
+
+**The addendum's numbers.** ✓
+- 16:29, P2, unranked, `next: build`.
+- The open count 17: `OPEN_STATUSES` counts 17 on `86f7595` and 17 on this tip. FM-033's filing made it 17, and the
+  row changes nothing.
+- It also closes the earlier **R9** in fact. *Tracked as its own filing* now exists: FM-033, written by the Auditor
+  seat. The paragraph does not yet name FM-033 as that filing (R11).
+
+**R10 · P3 · confidence high · *All ten ranks held* is not a constraint, and #1 is held by shipped work.**
+- **What:** the command takes a rank from its holder for a verdict that stands, and an unranked verdict drops one
+  (`apply_verdict`: `set_front(text, "rank", … else None)`). Today's sheet is re-applied as a whole.
+  - So FM-033, a build the Owner answered today, could hold #9 or #10.
+  - Those two are held by waits, FM-032 and FM-031. The printed rule is that *what cannot be worked on now … is not
+    ranked ahead of what can*.
+  - FM-029 holds #1 with `next: build` and a *Now* that says *not yet merged*. Its branch merged at 16:25:41 and is
+    tagged `v0.18.1`, so `START WITH` points at shipped work.
+- **Why it matters:** unranked, the cure for the day's violation is invisible in `--next`. It sits below two trackers
+  that cannot move.
+- **Fix:** on today's sheet, FM-033 `keep P2 #9 build`, FM-032 `#10 wait`, FM-031 unranked (or the seat's order),
+  then run `--triage` again. FM-029's #1 is freed by the seat that closes FM-029 against `v0.18.1`, not by a pass.
+  Or carry it to the next triage pass.
+
+**R11 · P3 · confidence medium · The self-judgement is disclosed where the Owner does not read it.** This is the CREDO
+question, graded.
+- **In lane:** a *keep* is triage, and the Principal signs triage. A keep clears nothing: the violation stays open,
+  its record intact, its cure queued. The CREDO's bar, *may not clear its own work*, is not crossed.
+- **Not a control:** *Self-critique is preparation, not clearance*, and *who independently receives the record?*
+  This Reviewer is the same session, and `--check` counts it so. So the only independent receiver is the Owner.
+  His merge rules nothing (path line 5): what he decides is an answer signed through the board.
+  - The disclosure is in the worksheet's Reason and the commit body.
+  - It is not in the TRIAGE.md addendum, which is where he reads a pass.
+  - `--owner` says *NOTHING NEEDS THE OWNER*.
+- **Where the shadow could act:** in the tier and the rank. The one choice with a stated ground is the rank, and it
+  rests on the constraint R10 shows is not one.
+- **Grade:** enough for a keep once the Owner is shown it. Not enough as written.
+- **Fix, forward:** one clause in the addendum, *judged by the session whose builds FM-033 records*; a conflict he sees
+  is put to the board as an ask, not left to the merge. Name FM-033 as the violation's filing in the paragraph, which also completes R9.
+
+**For the merge order, not a finding.**
+- `fm/033-the-auditors-fix-forward` (`645e4d4`, with its verdict `bf5b2cc`) also touches FM-033: `considered:` gains
+  FM-021 and FM-029, and the body changes. It sits on the same `86f7595`.
+- `git merge-tree 81dce10 origin/fm/033-the-auditors-fix-forward` is clean. Merged in the scratchpad clone, FM-033
+  auto-merges to `considered:` (7 ids), `next: build`, `triaged:` and `tier:`. The generator then changes nothing but
+  that clone's own lint lines.
+- **Neither needs a conflict resolution.** The second to land is behind `main` and merges cleanly as it stands. Only
+  a merge rule that demands an up-to-date branch would make it take `origin/main` first, and that merge is also
+  clean.
+- After both land, the worksheet row still says *FM-029 … NOT considered* and *FM-021 … NOT considered*. That was
+  true of the tracker when the pass read it, and the worksheet stays as written.
+
+**Verdict on 81dce10: READY WITH FINDINGS (R10, R11 P3).** Both are fixed forward under the docs tier, or struck by
+the Owner. R9 of the pass on 87bac4e is closed in fact by FM-033's filing. R4 and R8 stand as before.
+
+Not verified: the Auditor seat's session `8b91dba2`. No commit of it is on any ref of this repository. The filing
+says it was *filed word for word* from its draft (sha256 `19d16c62…`), and I did not see the draft.
+
+## The R10 fix, f4e7658 (2026-09-24 17:05 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `f4e7658` (`f4e7658bf4bcbd839ec28ebc7c38821748a135ff`) is one commit by the principal seat, under
+`8e509911`, on this verdict `e455f54`.
+- `git diff e455f54 f4e7658` names FM-031, FM-032 and FM-033, the worksheet's three Verdict/Reason cells, the
+  addendum and INDEX.
+- Net in the front matter: FM-031 loses `rank: 10`, FM-032 goes #9 → #10, FM-033 gains `rank: 9`. Nothing else moves.
+- The commit states its one hand edit: the undo of the pass's own writes on the three trackers, before the command
+  re-applied them.
+- The tier is still docs. Independence: same session, reported.
+
+**The replay.** ✓ In the scratchpad clone at `f4e7658`:
+- I stripped `triaged:`, `tier:` and `rank:` from FM-031, FM-032 and FM-033.
+- I restored `next:` to its pre-pass value: `build`, `build`, `owner`, from `095f1d3` and `86f7595`.
+- Then I ran `--triage`. It applied `FM-033: keep P2 #9 build`, `FM-031: keep P2 wait` and `FM-032: keep P2 #10 wait`.
+- Every tracker and the worksheet came out byte-identical to the branch's. INDEX differs only by that clone's
+  signature lint.
+
+**What I ran.**
+- `--triage`: *Applied nothing*, and the tree is clean after it.
+- `--check` 0 (*17 open*); `--session-check` 0.
+- `python3 shoalmark.py`: 33 trackers, and the tree is clean.
+- `test_shoalmark.py` 0; `test_core.py` 0.
+- `git merge-tree` with `origin/main` (`86f7595`): clean, and main is an ancestor.
+- Ranks 1–10 are each held once. FM-031 has no `rank:` (`next: wait`, `tier: P2`, `triaged:` kept).
+- `--next`: … `#8 FM-024 build · #9 FM-033 · P2 · next: build · #10 FM-032 wait`, then `START WITH: FM-029`.
+
+**R10 ✓ closed for the pass's own ranks.** FM-033 is ranked, before the one wait left ranked, and FM-033 now shows in
+`--next`.
+- What stays outside the pass: FM-029 still holds #1 for work tagged in `v0.18.1`. That is the job of the seat that
+  closes FM-029.
+- The first pass's two waits, #3 and #4, still sit ahead of builds. That was not this sheet's to change.
+
+**R11 ✓ closed.** The addendum reads: *The row was judged by the session whose builds the tracker records: the Owner's
+strike is the independent control (the Auditor's R11).*
+- The rest of the addendum matches the tree: *ranked #9 … FM-032 to #10, FM-031 unranked, both waits … the open count
+  17*.
+- The paragraph still does not name FM-033 as *its own filing* of the violation. The addendum's first words name
+  FM-033, which is enough.
+
+**Verdict on f4e7658: READY.** R10 and R11 are closed. R4 (the four parks on rows that pass the keep test) and R8
+(FM-024 ranked #8 behind two defects while its slice belongs to path line 3) are open findings carried to the next
+triage pass, unless a Principal seat puts one of them to the board as an ask; nothing about them is decided by the
+merge.
+
+## Correction, the verdict line (2026-09-24, Reviewer, session `8e509911/reviewer-1`)
+
+The Auditor pointed it out, through the Owner: path line 5 says no act of the Owner, a merge included, is an answer.
+So a merge rules nothing. Where this file said the Owner rules, strikes or keeps a finding *at the merge* or *by
+merging*, that reading is struck: in the first pass's R4 and verdict, in the 87bac4e pass's R4, R8 and verdict, and
+in the FM-033 row's R10 fix and R11 (its grading and its fix).
+- R4 and R8 are open findings, carried to the next triage pass unless a Principal seat puts one of them to the board
+  as an ask.
+- The same holds for R11's control. The disclosure part stays closed: the addendum names the self-judgement. The
+  addendum's *the Owner's strike is the independent control* rests on the reading struck here. A strike made at the
+  merge decides nothing. His ruling on a conflict would be a signed answer through the board. That clause is carried
+  with R4 and R8.
+No verdict changes: 7d3e632 NOT READY, 87bac4e READY WITH FINDINGS, 81dce10 READY WITH FINDINGS, f4e7658 READY.

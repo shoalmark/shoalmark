@@ -3,7 +3,7 @@ id: FM-033
 status: Proposed
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
-next: owner
+next: build
 ask: "Does a signed answer that says *now* count as the judgement?"
 ask-kind: ruling
 ask-since: 2026-09-24
@@ -12,6 +12,9 @@ ask-proposal: "a pass judges before the first build commit, the same day as a no
 answer: "accepted - a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again"
 answered: 2026-09-24
 answered-by: holgo99
+triaged: 2026-09-24
+rank: 9
+tier: P2
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
 ---
 
