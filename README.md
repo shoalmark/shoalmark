@@ -36,7 +36,7 @@ them all, a gate on every commit. No server, no database, no dependency beyond P
 | asked to run a triage pass | [§4 Triage](#4-triage--you-judge-the-command-applies) |
 | blocked by the gate | [§5 The gate refused me](#5-the-gate-refused-me) |
 | adding it to a repository | [§6 Install](#6-install-and-upgrade) |
-| a seat starting or ending a session | [§6 Sessions](#sessions) |
+| a seat starting a session, or reading who ran what | [§6 Sessions](#sessions) |
 | making it know about releases, deploys, anything of the repository's own | [§7 The deriver](#7-the-one-seam-a-deriver) |
 | changing shoalmark itself | [§8 Working on shoalmark](#8-working-on-shoalmark) |
 | giving the board a name, a logo, colours, another language | [§9 Branding](#9-branding-the-board) |
@@ -143,7 +143,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `--answer: the working tree has changes … Changed: …` | commit or stash what is yours; where it says *a failed earlier `--answer`*, run the one command it prints — it restores only the tool's leftovers — then the answer command it prints |
 | `` `answerers = ["x signed"]` asks for a signed answer, and `[seats] …` … is not signed `` | add `signed` to that seat, or remove `answerers` — with `[seats]` it is not read for answers |
 | `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
-| `carries no Session: trailer` · `has no open row` · `is open under session …` | set `seat.session` in your worktree and open your row — `--session open`; one worktree per session (§6 *Sessions*) |
+| `carries no Session: trailer` · `a session id is eight hex characters` · `names the seat …` | set `seat.session` in your worktree: the harness's id, or `<parent>/<seat>-<n>` for a sub-agent of your own seat (§6 *Sessions*) |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
 | `… differs from its PIN` | someone edited the vendored tool in place. Never do that: change it upstream, vendor again |
 
@@ -202,7 +202,7 @@ What lives where, by convention — no setting names any of it:
 | who may answer | the seats that hold `answer` in `[seats]` (§*Seats*) — `owner = "you@example.org signed"`. Without `[seats]`, the old key: `answerers = ["name"]` or `["name signed"]`, git author names. The gate reads the answer's committer from git or Subversion; under `signed` the commit must verify and the key's identity must be the author's email. Empty = nobody may answer. With `[seats]`, `answerers` is not read for answers — and a `signed` entry beside an unsigned seat that answers for it is refused, not dropped. Setup for a human: the signing page, `docs/signing.md` |
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
-| `<tracker dir>/sessions.md` | the registry of seat sessions — one row each: who convened it, for what, in which worktree (§*Sessions*) |
+| `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
@@ -251,11 +251,11 @@ git config --worktree seat.session a9f3c2d1          # the session — the harne
                                                      # a session with no parent and a harness with no id: `<cmd> --session new`
 ```
 
-**The trailer:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` to every
-commit made in that worktree — never typed, and a message that carries one already is left alone. A repository with no
-`seat.session` (the Owner's checkout) gets nothing appended: his signature is his id. Read it back with
-`git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository with its own hook runner adds two
-entries — with lefthook, the session rule on every commit and the trailer:
+**The trailers:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` and
+`Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message
+carries already is left alone. A repository with no `seat.session` (the Owner's checkout) gets nothing appended: his
+signature is his id. Read them back with `git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository
+with its own hook runner adds two entries — with lefthook, the session rule on every commit and the trailers:
 
 ```yaml
 pre-commit:
@@ -268,43 +268,37 @@ prepare-commit-msg:
       run: python3 tools/shoalmark/shoalmark.py --session-trailer {1}
 ```
 
-**The registry:** `<tracker dir>/sessions.md`, one row per session — `Session · Seat · Convened by · Scope · Worktree ·
-Started · Ended`. A session's first commit carries its row:
-
-```bash
-<cmd> --session open a9f3c2d1 principal "the Owner, 2026-09-23 12:21" "the day's findings; 0.17.5" worktrees/principal-2
-<cmd> --session open a9f3c2d1/reviewer-1 reviewer "session a9f3c2d1" "attack the build" worktrees/reviewer-2   # a sub-agent: parent and hand
-<cmd> --session close a9f3c2d1                                     # dates its end; the row stays
-```
-
-Each writes the row and stages the file. A session convened by a session is a sub-agent: when *convened by* carries a
-session id — eight hex characters, or `<id>/<seat>-<n>` — the new id must derive from it (`a9f3c2d1/reviewer-1`), or
-`--session open` refuses; a plain word never names a parent (*"the morning session today"* opens as a top-level
-session). One name for a session: its id. An id is used once; a worktree that an open row holds is refused to a second
-session — *one worktree per session*. The worktree defaults to the checkout's directory name.
-
-**The gate** holds it wherever the registry exists — a repository adopts it by opening its first session, and a commit
-made before its tree had a registry is not judged by it. A commit by a seat `[seats]` names — never the Owner's — must
-carry a `Session:` whose row is open and names the author's seat, in a worktree no earlier open row holds. Exit 4, and
-one of three lines:
+**The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
+per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
+worktree. Nothing is opened, closed or kept in a file, so two branches that land never conflict on it: a session is
+what its commits say, and it ends at its last one. An id seen in two worktrees is named under the table.
 
 ```text
-refused: this commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` and open the row (<cmd> --session open)
-refused: Session: q7 has no open row in work-tracker/sessions.md
-refused: worktrees/principal is open under session d8 — one worktree per session
+| Session | Seat | First commit | Last commit | Commits | Worktree |
+|---|---|---|---|---|---|
+| a9f3c2d1 | principal | 2026-09-24 07:28 · 049a9ab | 2026-09-24 11:02 · 5e1f0a2 | 9 | principal-a9 |
+| a9f3c2d1/reviewer-1 | reviewer | 2026-09-24 09:40 · 7c2d8e1 | 2026-09-24 09:52 · 3a7d1e0 | 2 | reviewer-2 |
+```
+
+Until 0.18.0 the registry was `<tracker dir>/sessions.md`, written by `--session open` and `--session close` and read
+by the gate. Both commands are gone — each says so and exits 2 — and `--check` warns in one line where the file is
+left: delete it; history keeps its rows.
+
+**The gate** holds one rule. A commit by a seat `[seats]` names — never the Owner's, never an author outside
+`[seats]` — must carry a `Session:` of the shape `<8 hex>` or `<8 hex>/<seat>-<n>`, and where it names a seat, that is
+the author's seat. Exit 4, and one of three lines:
+
+```text
+refused: this commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: …
+refused: this commit by principal@seat carries `Session: q7` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent
+refused: this commit by principal@seat is the seat principal, and its Session: a9f3c2d1/reviewer-1 names the seat reviewer
 ```
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
-tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's `seat.session`, the trailer its hook
-will write), the commit at HEAD by its trailer, and every commit a merge brings, each against the registry in its own
-tree. **The registry is not the judged seat's to change:** a seat's commit that removes it, drops a row or re-opens an
-ended one is refused, and judged against its parent's registry — only the Owner removes it. A session's own last commit
-may close its row; that commit is still the session's.
-
-**A row nobody closes** — a session that ended without `--session close`: an open row with no commit carrying its id
-for more than a day is *abandoned*. `--check` lists it (a report, not a refusal); the next `--triage` closes it —
-*closed by the pass of <date> — no commit since <time>* — and prints it for the pass's paragraph. Nothing closes
-silently.
+tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's
+`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, and every commit a merge brings,
+each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
+judged, so a repository that never set `seat.session` is not refused when it vendors.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
 reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —
@@ -315,10 +309,10 @@ not its, and the report does not change when it lands. The verdict is **independ
 sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
 trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts.
 
-**Seen:** the board's first lines carry the strip — *sessions · 3 open — d8 principal (the product items) · a9
-principal (the tool) · a9/implementer-1 implementer (build)*, an abandoned row marked — and *reviews this week ·
-independent n · same session m*; `--owner`, the digest, ends with one line, the open sessions by seat. Five new labels,
-`sessions.*` and `reviews.*` (§9).
+**Seen:** the board's first lines carry the strip — *sessions · 2 in the last day — a9f3c2d1 principal
+(principal-a9) · a9f3c2d1/reviewer-1 reviewer (reviewer-2)* — and *reviews this week · independent n · same session
+m*; `--owner`, the digest, ends with one line, the sessions of the last day by seat. Four labels, `sessions.recent`
+and `reviews.*` (§9).
 
 ## 7. The one seam: a deriver
 
