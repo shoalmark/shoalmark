@@ -13,6 +13,9 @@ ask-kind: action
 ask-since: 2026-09-24
 ask-options: "a cold Reviewer session you start reviews 0.18.3 | this session's own Reviewer sub-agent, independence reported same-session | 0.18.3 waits until FM-024's slice 2 is built and a same-session verdict is refused"
 ask-proposal: "a cold Reviewer session you start reviews 0.18.3"
+answer: "accepted - a cold Reviewer session you start reviews 0.18.3"
+answered: 2026-09-24
+answered-by: holgo99
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
