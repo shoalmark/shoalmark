@@ -268,3 +268,171 @@ CDATA refusal is bypassed by encoding the file as UTF-16.**
 **Verdict:** NOT READY. R1 is P1; R2 and R3 are P2; R4, R5 and R6 are P3. **The Owner may not tag this tip after the
 merge of main.** First: R1–R3 fixed in `inline_svg()`, each with a test that fails today, and a verification. R4 and
 R5 are best fixed in the same pass, since the attribute allow list and the depth cap are a few lines each.
+
+## Pass on 3f4b4a4 (2026-09-24 17:29 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** The merged tip `3f4b4a4` (`3f4b4a47e541c96a1ea325a78118a66a044fd3f0`) of
+`fm/006-0-18-2-the-board-wears-the-mark`, on my verdict `552d6b4`.
+- The Implementer's three commits, under `8e509911/implementer-17`:
+  - `5622ff0`, the running line;
+  - `a661c1d`, R1–R6;
+  - `6f02499`, FM-006's rows.
+- The Principal's merge of `origin/main` `86f7595` (v0.18.1 and PR 54), under `8e509911`.
+- The same session root as before, reported.
+
+### What I ran
+
+- **Gates.** `--check` and `--session-check` exit 0. `python3 shoalmark.py` twice leaves `git status --porcelain`
+  empty. `--brand` names `repository` for all four files; labels changed: 2 of 130.
+- **Suites.** `test_shoalmark.py` is 336 ok and `test_core.py` 148 ok, on 3.14.3 and on `/usr/bin/python3` 3.9.6.
+  All green, run one after another.
+  - The branch claimed 323 before the merge. The merge brought main's 0.18.1 checks; I did not run `6f02499` alone.
+  - Both Chrome checks ran: the wordmark's ink through `◐` (`light=rgb(1, 2, 3)/16px`, `dark=rgb(253, 252,
+    251)/16px`), and the running line on both screens.
+- **The brand.** `git diff 06d884e 3f4b4a4` is empty for `work-tracker/brand/`, the generator, `pricke.svg`, the
+  favicon and the site's stylesheet, so the first pass's findings stand:
+  - the palettes, fonts, licence and `logo.svg` are as the first pass found them;
+  - the generator, re-run here, rewrites `wordmark.svg` byte for byte;
+  - the new `inline_svg` gives this repository's wordmark the same markup as `06d884e`'s did;
+  - without `wordmark.svg`, the header is still byte-identical to 0.18.0's.
+- **Nothing is fetched by the page.** Before the first `<script>`, the only `src`/`href` to `http(s)` are the running
+  line's two `<a>`. The page has no `<link>` but the data-URI favicon, and no `@import`.
+
+### R1–R6 at `06d884e`
+
+| | Grade then | Now | Evidence |
+|---|---|---|---|
+| R1 · CSS-escaped `url()` fetches | P1 | **closed** | `\` is banned in every value, including `&#92;` and `&#x5c;` once decoded. `style` is not an attribute any element takes. `fill` is only a colour or `url(#id)`. The first pass's attack file now builds with the warning *it holds style= on \<svg>*, and the page holds no `u\72l`. |
+| R2 · `<use>` fan-out freezes the page | P2 | **open (R7)** | The 1.3 kB fan-out is refused. The same fan-out, with each id defined twice, is shown and freezes Chrome. Nested masks go around the count altogether. |
+| R3 · UTF-16 skips the DOCTYPE refusal | P2 | **closed** | UTF-16 with a BOM, UTF-16 without one (*control character*), a UTF-8 BOM, and `<?xml encoding="UTF-16|US-ASCII|latin1">` are all refused before the parse. The parser is forced to UTF-8. A DOCTYPE in any case, an ENTITY and CDATA are refused. |
+| R4 · deep nesting crashes the build | P3 | **closed** | The walk is iterative. Depth 32 passes and 33 is refused. 1,000 nested `<g>` give one warning, and the build and `--print-written` exit 0. |
+| R5 · no attribute allow list | P3 | **closed** | A list per element. `style`, `class`, `autofocus`, `tabindex`, `xml:base`, `xml:lang`, `xlink:title` and `HREF` are refused, and so is `xlink:href` off `<use>`. |
+| R6 · the words | P3 | **closed** | The starter states the whole rule. The size warning names the bytes (*200,001 bytes — over 200,000*; 200,000 exactly passes). FM-006's rows are at git's times: `06d884e` 15:42, `5622ff0` 16:23, `6f02499` 16:49. README §9 is rewritten. |
+
+### The sanitiser, second pass
+
+I called `inline_svg()` from a scratch clone at the tip, and built and opened boards in headless Chrome
+153.0.8010.53.
+
+| Case | Result |
+|---|---|
+| The first pass's cases, all re-run | every attack refused, or dropped with its subtree where it is in another namespace. Shown: `<use>` of its own id, text with escaped markup, a nested `<svg>`, editor namespaces dropped, a PI and a comment dropped, a 192 kB path in 17 ms |
+| `url(#nope)`, an id the file lacks · `url(#H)`, `mask="url(#s)"`, `clip-path="url(#B)"`, the page's ids | shown as `url(#wm-nope)`, `url(#wm-H)`…. Harmless: the page has no `wm-` id, so they resolve to nothing. But the claim is *of its own id* (R9) |
+| `url( #x)` · `url(#x) url(http://…)` · `URL(#x)` · `url('#x')` · `url(#x) red` | refused by the grammar |
+| `&#92;` · `&#x5c;` in a value | decoded to `\`, refused |
+| `&#117;rl(#x)` | decoded to `url(#x)`, shown as `url(#wm-x)`, the same as written |
+| `&#x3c;` in `d` · `A` in `d` · `transform="url(#x)"` | refused |
+| `width="١٢"` · `x="１"` | **shown**: `\d` matches any Unicode digit. The browser ignores the value, so this is harmless (R9) |
+| `<use href="#H">`, the page's id · a `<use>` with no `href` · a dangling `href` | refused: *the file does not have* |
+| self-cycle · mutual cycle · a `<use>` of the root's own id | refused: *a cycle* |
+| a `<use>` chain 5 deep | refused: *deeper than 3* |
+| **a `<use>` chain 7 deep, each id defined twice** (a real group, then an empty decoy) | **shown** — the cap sees the decoys (R7) |
+| **the 6-level × 10 fan-out, each level followed by an empty duplicate id, 1,348 B** | **shown with no warning. Chrome does not render the board in 60 s; 3 levels render in 150 ms (R7)** |
+| **nested masks: `<mask id="mK">` holding 10 `<rect mask="url(#mK-1)">`, 4.5 kB at 7 levels** | **shown. The screenshot takes 10 s at 6 levels and 79 s at 7, against 2 s for the clean board (R7)** |
+| **`<text x="111 111 … 111 !">`, a failing value, 170 B** | **refused, after 186 s. Every number triples the time; 30 numbers (246 B) hang the build (R8)** |
+| **`transform="scale(1)  scale(1) … !"`, 14 functions** | refused, after 1.1 s, and tripling per function (R8) |
+| `width` = 20,000 digits and `!` | refused, after 12.9 s: quadratic. At 200 kB, about 20 minutes (R8) |
+| `<g id="a">` of 1,000 paths and 11,000 `<use href="#a">`, 183 kB | refused after 11.2 s on 3.14 and 16.7 s on 3.9 (R9) |
+| XHTML `<script>` · `<script xmlns="">` · an SVG `<script>` inside a foreign element · a foreign `e:onload` | dropped with their subtree, or left out |
+| `<s:script>` in the SVG namespace | refused |
+| `<title><title>&lt;/title&gt;&lt;img onerror…&gt;</title></title>` · `<desc><svg>` | shown, still escaped. The only names the parser can meet in an integration point are `SVG_ATTRS`' own, and an HTML `title`'s RCDATA holds text only. No way out of `<b class="wm">` |
+| `font-family="'Evil', x"` | shown. It names a font, and fetches nothing unless the theme defines it |
+| NUL · `\x0b` · `\x0c` | refused |
+| DEL (U+007F) and C1 (U+0085) in text | **shown**. The rule says *no control character but tab and line ends*. Harmless (R9) |
+| 200,000 bytes · 200,001 bytes | shown · refused, with the bytes |
+
+### The running line
+
+Chrome probe on the board, on FM-033's view and on FM-007's view:
+- **Where it sits.** `<p id="r" class="m">` is in the page between `</article>` and `<dialog>`, after `#B` and
+  outside `#v`. It shows on the board (`#B` shown, `#v` hidden) and in both tracker views (`#B` hidden, `#v`
+  shown). It sits below the footer and below the view.
+- **The mark.** An inline `<svg>` of 16 × 16, `fill="currentColor"`, `aria-hidden="true"`. Its fill and the text are
+  `rgb(131, 133, 137)`, which is the theme's dark `--mute` `#838589`. The line is 11 px in IBM Plex Mono.
+- **The links.** Two `<a>`, both with `target="_blank"`, `rel="noopener"`, and an `aria-label` (*shoalmark on
+  GitHub*, *release v0.18.2*). The first holds the mark and the name. ` · ` stands between them as plain text. They
+  point to `https://github.com/holgo99/shoalmark` and `…/releases/tag/v0.18.2`.
+- **A vendored copy links its own version.** I ran `--vendor --allow-untagged` from the scratch clone into a
+  consumer, and set the copy's `VERSION` to 0.17.4. `--init` and `--html-only` then give `…/releases/tag/v0.17.4` and
+  `v0.17.4`.
+- **The constants.** `TOOL_PAGE` is at `:52`, beside `SIGNING_PAGE` at `:51`. `PRICKE` equals `pricke.svg`'s `d`.
+- **test_core's positive control works.** The check skips `<a ` only. I planted `<img alt="" src="https://…">`
+  after `__RUNNING__`, then an `<a>` holding `<img\nsrc="https://…">`; in both cases *no external request of any
+  kind* fails. The check's built-in control, an `<img>` that must match, holds.
+
+### The merge
+
+- `3f4b4a4^2` is `origin/main` `86f7595` (v0.18.1 at `1251f84`, then PR 54). `VERSION` is 0.18.2.
+- **The CHANGELOG** runs 0.18.2, then 0.18.1, then 0.18.0. The 0.18.2 section equals the branch's. The 0.18.1 section
+  and everything from 0.18.0 down equal main's, and so does the preface.
+- **The branch's side survives whole.** For `shoalmark.py`, both suites and README, `git diff 86f7595 3f4b4a4` has
+  exactly the lines that `git diff 095f1d3 6f02499` has.
+- **0.18.1's relation is still on the board, next to the running line.** FM-033's view reads *the Owner's answer —
+  accepted - a pass judges … · **accepted the proposal** · 2026-09-24 · holgo99*, and FM-007's reads *… · accepted
+  the proposal*, with `shoalmark · v0.18.2` below. The six `relation.*` labels are in the page.
+
+### Findings, second pass
+
+**R7 · P2 · confidence high (Chrome, reproduced) · R2 is not closed: the expansion cap counts a different graph from
+the one the browser draws.**
+- `ids[v] = e` keeps the **last** element with an id, but the browser resolves `href="#wm-x"` to the **first**.
+- Define every level twice, a real group and then an empty `<g id="lK"/>`. `drawn()` then sees a 1-deep graph that
+  draws a handful of elements, while Chrome draws 10⁶.
+- The R2 fan-out rebuilt this way is 1,348 bytes. It builds with no warning, and Chrome had not rendered the board
+  after 60 s. The same file at 3 levels renders in 150 ms.
+- **The `<use>` depth cap falls the same way:** a 7-deep chain with decoys is shown.
+- **Masks go around the count entirely.** `mask="url(#…)"` is allowed on shapes inside a `<mask>`, so 7 levels of 10
+  (4.5 kB) take 79 s to paint, where the clean board takes 2 s. `drawn()` counts `<use>` only. `clip-path` inside
+  `<clipPath>` has the same shape; I did not time it.
+- The CHANGELOG's *2,000 elements with its `<use>`s expanded, `<use>`s at most 3 deep* does not hold.
+- **Fix:**
+  - refuse a second element with the same id (one line where `ids[v]` is set);
+  - refuse `mask` and `clip-path` on anything inside a `<mask>` or `<clipPath>`, or count each `url(#…)` reference
+    as an expansion in `drawn()` with the same chain and depth caps;
+  - add a test with the decoy fan-out and the mask chain.
+
+**R8 · P2 · confidence high (measured on 3.14 and 3.9) · The value grammar backtracks exponentially: a 246-byte
+wordmark hangs every command that builds the board.**
+- **The numbers.** `_N = [+-]?(?:\d+\.?\d*|\.\d+)…` splits the digit run `111` three ways: `\d+` 1–3, `\d*` the rest.
+  `x`, `y`, `dx` and `dy` repeat `_N`, so a failing value is tried in every combination.
+  - Measured on 3.14: 14 numbers take 2.1 s, and 18 numbers (170 B) take 186 s.
+  - On 3.9, ×3 per number: 0.24 s, 2.05 s, 18.7 s at 12, 14 and 16.
+- **The transforms.** `_TRANSFORM` puts `\s*` both before and after each function. The spaces between two functions
+  can be split between them, so a failing value tries every split: tripling per function.
+- **Long numbers.** A single long number is quadratic: 20,000 digits take 12.9 s.
+- **What hangs.** With `x="111 " × 30 + "!"` (246 bytes) in `work-tracker/brand/`, `--print-written` (the
+  pre-commit hook) and `--brand` were killed at 60 s. So is `python3 shoalmark.py`, and `--html-only`, which the
+  `post-merge` hook runs, so `git pull` hangs in every clone. So does the suite, which reads this repository's brand.
+  `--check` is unaffected.
+- A hang says nothing, where R4's traceback at least named `inline_svg`. So this is worse than R4 was.
+- **Fix, tested here:**
+  - `_N = [+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?`, which is unambiguous, with `[0-9]`, not `\d`;
+  - `_TRANSFORM = \s*F(?:[\s,]*F)*\s*`, with `F` one function;
+  - with these, the 121-character `x`, a 200,000-digit number and 5,000 failing transforms refuse in 0.4 ms, 23 ms
+    and 1.6 ms, and `1 2.5px,3%`, `translate(1,2) scale(2)` and `translate(1,2)scale(2)` still pass;
+  - cap each value's length, for example 1,000 characters except `d` and `points`;
+  - add a test that a failing 300-character `x` and `transform` refuse in under 0.1 s.
+
+**R9 · P3 · confidence high · Smaller gaps between the rule and the code.**
+- **The counter.** `drawn()` checks the cap only after an element's children are summed. Its docstring says *it stops
+  as soon as the count passes the cap*. A 183 kB file of one 1,000-path group and 11,000 `<use>`s of it costs 11 s on
+  3.14 and 17 s on 3.9 per build before it is refused. Fix: pass the running total down and raise the moment it
+  passes the cap.
+- **`url(#id)` of an id the file lacks is shown.** The code comment and the CHANGELOG say *of the file's own id*. It
+  is harmless, since `wm-` matches no id on the page. Fix: check `url(#…)` targets against `ids`, as `<use>` is
+  checked.
+- **Unicode digits pass** (`width="١٢"`), because `\d` is Unicode in a `str` pattern. Harmless. The R8 fix's `[0-9]`
+  closes it.
+- **DEL and the C1 controls pass,** against *no control character but tab and line ends*. Add `\x7f-\x9f` to the
+  class.
+
+### Not verified
+
+- Firefox and Safari; Windows.
+- The `clip-path` chain was not timed.
+- The R8 hang was ended at 60 s and 186 s; the longer times are extrapolated from the growth measured.
+
+**Verdict:** NOT READY. R1, R3, R4, R5 and R6 are closed. R7 (R2 not closed: duplicate ids and nested masks) is P2.
+R8 (the grammar's backtracking hangs the build and the hooks) is P2. R9 is P3. The running line and the merge are
+confirmed. **The Owner may not tag this tip.** First: R7 and R8 fixed, each with a test that fails today, and a
+verification.
