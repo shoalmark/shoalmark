@@ -51,9 +51,10 @@ The evidence, from git and the forge on 2026-09-24 in the morning, unless marked
   - `8e509911/implementer-12`: PR 35's R1 and R2, and a merge of `main`. Five commits from 08:57 to 09:00: an open,
     three of work, a close.
   - `8e509911/implementer-13`: FM-031's R1–R4. Three commits from 08:50 to 08:56: an open, one of work, a close.
-- After this filing's own Implementer row (-14) had closed, a one-merge follow-up would have needed a new id — -15 was made locally and dropped, never pushed; the merge was done under the Principal's open row instead (reported by that Implementer).
 
-  This filing is `-14`. The Principal's own merges (`f8ccf60`, `3131e8c`) ran under its open row and needed none.
+  This filing is `-14`. The Principal's own merges (`f8ccf60`, `3131e8c`) ran under its open row and needed none. Its
+  Implementer's one-merge follow-up, after `-14` had closed, would have needed a new id: `-15` was made locally, never
+  pushed, and the merge ran under the Principal's open row instead (*reported by that Implementer*).
 - **A guessed id needed a simulation and a ruling.** The gate keys the rows by id (`now_by_id = {r["id"]: r for r in
   rows}`, `shoalmark.py:2621`). Two rows under one id therefore read as one row. Once both branches are on `main` and
   one of the two rows is still open, that reads as a re-open (`:2626`). `8e509911/implementer-6` was guessed on a
@@ -72,7 +73,8 @@ The evidence, from git and the forge on 2026-09-24 in the morning, unless marked
 
 **What the rigor caught this morning, before it reached the Owner** (the Principal, *reported*):
 - a misread ask;
-- a filing rate overstated by about a fifth, like for like (FM-031's first 16.4 a day against 13.8 in the same window; 11.0 a day over the full window);
+- a filing rate overstated by about a fifth, like for like (FM-031's first 16.4 a day against 13.8 in the same window;
+  11.0 a day over the full window);
 - a NOT READY shown on the wrong pull request by the forge's cross-linking;
 - a registry that breaks `main` when two branches merge (FM-028's ship log).
 
@@ -90,8 +92,11 @@ where the risk is, in code, and take it off where it is not.
 **Why a tracker of its own** — held against `considered:`:
 - **FM-031** rules on the fan-out: the WIP cap, one channel for the Owner, the detached switch; S1 the registry off the
   conflict path, S2 the queue in one view. This tracker is about what the loop costs per change, not how many changes
-  run at once. FM-031's S1 is refined here: not one file per session with a generated table, but a report generated
-  from the commit trailers, with no gate on open and closed rows (S2 below). For his answer: FM-031's first option says *S1 then S2* — S1 there is read as this tracker's S2, one design whichever ask he answers first; the design is decided here, the order there. The seat builds no per-session files if S2 here is ruled, and builds S2 if FM-031's S1 is ruled.
+  run at once. FM-031's S1 is refined here: not one file per session with a generated table, but a report generated from
+  the commit trailers, with no gate on open and closed rows (S2 below). For his answer: FM-031's first option says *S1
+  then S2*. A ruled FM-031 S1 waits for this ask. If S2 here is ruled, it is FM-031's S1 as well, one design: the design
+  decided here, the order there. If he rules *the registry later* or *none* here, FM-031's S1 is built as FM-031 wrote
+  it, per-session files with a generated table.
 - **FM-024** built the registry as a gate with open and closed rows. This asks to make it a report generated from the
   commit trailers. FM-024's core stays: every seat's commit names its session. What goes is the gate on the row.
 - **FM-027** claims the next free id on the server. That is moot if the registry is a report: a duplicate id stops
@@ -146,9 +151,10 @@ Each takes effect on the Owner's answer, never on a default.
   - Nothing is built: it is a rule in AGENTS.md.
 
 **S4: the filing freeze.**
-- *What changes:* while the open count is at or above **8** — half of today's 16, the number that *all four now* carries; he may name another in his answer — only product defects are filed: `tags:
-  bug`, something the tool does wrong for the person using it. Anything else goes as one line into the closest open
-  tracker's body (AGENTS.md rule 6), or waits.
+- *What changes:* while the open count is at or above **8** — half of the 16 open at filing, the number that *all four
+  now* carries; he may name another in his answer — only product defects are filed: `tags: bug`, something the tool does
+  wrong for the person using it. Anything else goes as one line into the closest open tracker's body (AGENTS.md rule 6),
+  or waits.
 - *Optional code:* `--new` refuses a tracker without `bug` while the count is over the line, and says what the count is.
 - *What it costs:*
   - A real process problem waits, or rides as a line in another tracker. This tracker would not have been filed under
