@@ -13,6 +13,7 @@ answer: "accepted - a pass judges before the first build commit, the same day as
 answered: 2026-09-24
 answered-by: holgo99
 triaged: 2026-09-24
+rank: 9
 tier: P2
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
 ---

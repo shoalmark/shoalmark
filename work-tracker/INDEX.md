@@ -36,8 +36,8 @@
 | 6 | P2 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | Proposed |
 | 7 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
 | 8 | P2 | build | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
-| 9 | P2 | wait | *complex* | intended | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress |
-| 10 | P2 | wait | *complex* | intended | [FM-031](FM-031-the-streams-run-in-parallel-and-only-the-owner-sees-the.md) | In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By… | In Progress |
+| 9 | P2 | build | — | intended, kind | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | Proposed |
+| 10 | P2 | wait | *complex* | intended | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress |
 
 
 ## Work
