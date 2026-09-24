@@ -9,6 +9,9 @@ ask-kind: ruling
 ask-since: 2026-09-24
 ask-options: "a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass | every raise waits for the next pass | a raise re-ranks nothing; the pass reads it when it runs"
 ask-proposal: "a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
+answer: "accepted - a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
+answered: 2026-09-24
+answered-by: holgo99
 triaged: 2026-09-24
 rank: 9
 tier: P2
