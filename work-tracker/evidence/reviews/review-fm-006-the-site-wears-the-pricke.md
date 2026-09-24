@@ -99,3 +99,17 @@
 - Its stake matches the Mono stems.
 - The fonts load, and only the name is in Mono.
 - The palette toggle and the tab icon work, and the gates exit 0.
+
+## Confirmation at a535b61 — 2026-09-24 07:40 CEST
+
+- **R1 is closed:** FM-006 records *"… 16 px will do"* (`6e1ea5b`), and says the ruling supersedes the lock of `a`.
+- **`a3089c5` is one rule and its comment:** `[data-md-color-scheme=slate] .md-header__button.md-logo{color:…100%}`.
+- **The two renders** are 63 KB and 145 KB. PIL shows the mark's ink at 255 and the name's at 255, two grey levels.
+  My own rebuild: dark 255/255 (was 189/255); forced-light 1×/2× byte-identical to `2f1e6c0` (0 px).
+- **Sessions:** the `implementer-8` row was opened in `a3089c5` and closed in `a535b61`; nothing else moved.
+- **Gates:** build *No issues found*; `--check` 0; `--session-check` 0; `site/` untracked. There is no secret gate in
+  this repository; the consumer's detector on the five changed files found 0.
+- **R4 · P3:** `6e1ea5b`'s row carries a date but no time or zone (git: 07:23 +0200). `a3089c5`'s (*07:35 CEST*)
+  agrees with git.
+- **Verdict:** READY WITH FINDINGS. R2 (the provenance footer) and R3 (self-host Plex before publication) stay open as
+  FM-006 records them; R4 is a P3.
