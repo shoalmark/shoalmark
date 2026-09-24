@@ -14,14 +14,18 @@ of its mark.
 - **Inline, it takes the page's ink:** drawn in `currentColor` it follows the theme's `--ink` in light and dark and
   through `◐`, the mark and the name in one colour. It keeps the size its `<svg height>` gives, else the logo's 22 px.
 - **Shapes and text only, held to a grammar.** The elements are shapes, text, gradients, masks and a `<use>` of the
-  file's own ids; each takes only the attributes its row in the tool names, and each value must match that
-  attribute's grammar whole — colours as `#hex`, `currentColor`, `none` or a plain name, a paint, mask or clip only as
-  `url(#id)` of its own. No `style` attribute, no `class`, no handler. The file is UTF-8 without a byte-order mark and
-  with no DOCTYPE or entity; at most 32 deep and 2,000 elements with its `<use>`s expanded, `<use>`s at most 3 deep
-  and never in a cycle. Anything else — a `<script>`, a `<style>`, an image, a link, a reference outside the file, a
-  CSS escape — and the file is not shown, with one warning that says why; the header keeps the logo and the name.
-  Over 200,000 bytes, the same. What an editor adds in its own namespace (Inkscape's, Sketch's) is left out, and every
-  id is prefixed `wm-`, so none shadows one of the page's. *Export with presentation attributes, not CSS.*
+  file's own ids; each takes only the attributes its row in the tool names, and each value is read whole, in one pass,
+  as that attribute's kind — ASCII; colours as `#hex`, `currentColor`, `none` or a plain name; a paint, mask or clip
+  only as `url(#id)` of its own; and numbers written plainly, `-?digits(.digits)?`, one space or one comma between
+  two — stricter than SVG itself: no `.5`, no `1e3`, no `+`, no `1-2`, so a minifier's compact output is refused.
+  No `style` attribute, no `class`, no handler. The file is UTF-8 without a byte-order mark, with no control character,
+  no DOCTYPE or entity; at most 32 deep; every id defined once; every reference — a `<use>`, a mask, a clip, a paint —
+  to an id it has, at most 3 deep, never in a cycle, and at most 2,000 elements painted with every reference followed
+  (a mask used ten times paints ten times). Anything else — a `<script>`, a `<style>`, an image, a link, a reference
+  outside the file, a CSS escape — and the file is not shown, with one warning that says why; the header keeps the
+  logo and the name. Over 200,000 bytes, the same, and checking never takes more than a bounded number of steps. What
+  an editor adds in its own namespace (Inkscape's, Sketch's) is left out, and every id is prefixed `wm-`, so none
+  shadows one of the page's. *Export with presentation attributes, not CSS, and without minifying the numbers.*
 - *Nothing to do on upgrade: without `wordmark.svg` the header is as it was.* To draw your own: one `<svg>` with a
   `viewBox`, a `height` in pixels, `fill="currentColor"` (and `stroke="currentColor"` where it strokes); the name as
   paths (outline the text in your editor), or as `<text>` in a font your `theme.css` loads. A pixel mark shown at a

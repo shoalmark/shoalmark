@@ -1868,15 +1868,23 @@ PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v
 LOGO_MAX = 200_000            # bytes — a logo or a wordmark is inlined into the page; past this it is skipped, with a warning
 # What an inlined SVG may be. A logo sits in an <img>, where nothing an SVG carries can run or load; a wordmark sits IN
 # the page, where a script would run, a handler fire, a reference load and a style restyle the board — so it is held to a
-# grammar, not screened for bad words, and written out again from what was read (0.18.2; the Reviewer's R1–R5).
-#   the file   at most LOGO_MAX bytes; UTF-8, no byte-order mark, no control character but tab and line ends; no DOCTYPE,
-#              ENTITY or CDATA; an <?xml?> that names an encoding names UTF-8 — all checked before it is parsed
+# grammar, not screened for bad words, and written out again from what was read (0.18.2; the Reviewer's R1–R9).
+#   the file   at most LOGO_MAX bytes; UTF-8, no byte-order mark, no control character (C0 but tab and line ends, DEL,
+#              C1); no DOCTYPE, ENTITY or CDATA; an <?xml?> that names an encoding names UTF-8 — all before the parse
 #   the tree   at most SVG_DEPTH deep; only the elements below (another namespace's are left out, with what they hold);
-#              at most SVG_DRAWN elements once every <use> is expanded; a <use> inside what a <use> draws at most
-#              SVG_USE_DEPTH deep; no cycle; a <use> only of an id the file has
-#   attributes only those the element's row names — no style, no class, no handler, nothing else — and each value whole
-#              in its grammar (SVG_GRAMMAR). Whatever its grammar, no value may hold \ & < http data: javascript. `(`
-#              appears only in transform's functions and in url(#id) — a paint, mask or clip of the file's own id
+#              every id defined once; every reference — a <use>'s href, a url(#id) in fill, stroke, mask or clip-path —
+#              to an id the file has, followed at most SVG_REF_DEPTH deep, never in a cycle, and at most SVG_DRAWN
+#              elements painted with every reference followed (a mask used n times paints n times)
+#   attributes only those the element's row names — no style, no class, no handler, nothing else — each value ASCII,
+#              without \ & < http data: javascript, and whole in its kind, read by one pass of a scanner, never a regex:
+#                number   -?[0-9]+(.[0-9]+)?   — no +, no exponent, no .5; a length adds px or % (a font size em)
+#                list     numbers, one space or one comma between two (x, y, dx, dy, points; viewBox exactly four)
+#                path     path letters and numbers; one space or one comma between two numbers, at most one around a
+#                         letter; nothing before the first, nothing after the last
+#                transform  name(list) — matrix translate scale rotate skewX skewY — one space or comma between two
+#                paint    #hex (3, 4, 6, 8) · currentColor · none · a plain colour name · url(#id); mask, clip: none · url(#id)
+#              at most SVG_VALUE characters a value (a path's and points' at most SVG_TOKENS tokens), and SVG_BUDGET steps
+#              for the whole file — every token read and every element visited is a step; past it, the file is refused
 _SVG_SHAPE = {"id", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin",
               "stroke-miterlimit", "opacity", "transform", "clip-path", "clip-rule", "mask", "shape-rendering"}
 _SVG_TEXT = {"x", "y", "dx", "dy", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "letter-spacing", "xml:space"}
@@ -1892,36 +1900,137 @@ SVG_ATTRS = {
     "radialGradient": {"id", "cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform", "spreadMethod"},
     "stop": {"offset", "stop-color", "stop-opacity"},
 }
-_N = r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
-_L = _N + r"(?:px|%)?"
-_ID = r"[A-Za-z][A-Za-z0-9_-]{0,63}"
-_COLOUR = (r"#[0-9a-fA-F]{3,8}|currentColor|none|black|white|silver|gray|grey|red|maroon|orange|yellow|olive|lime|green|"
-           r"teal|aqua|cyan|blue|navy|fuchsia|magenta|purple|transparent")
-_UNITS = "userSpaceOnUse|objectBoundingBox"
-_TRANSFORM = r"(?:\s*(?:matrix|translate|scale|rotate|skewX|skewY)\s*\([0-9eE .,+-]*\)\s*,?)+\s*"
-SVG_GRAMMAR = {
-    "id": _ID, "href": "#" + _ID, "d": r"[0-9MmZzLlHhVvCcSsQqTtAaEe .,+-]*", "points": r"[0-9eE .,+-]*", "viewBox": r"[0-9eE .,+-]+",
-    "transform": _TRANSFORM, "gradientTransform": _TRANSFORM,
-    "fill": rf"{_COLOUR}|url\(#{_ID}\)", "stroke": rf"{_COLOUR}|url\(#{_ID}\)", "stop-color": _COLOUR,
-    "clip-path": rf"none|url\(#{_ID}\)", "mask": rf"none|url\(#{_ID}\)",
-    "fill-rule": "nonzero|evenodd", "clip-rule": "nonzero|evenodd", "stroke-linecap": "butt|round|square", "stroke-linejoin": "miter|round|bevel",
-    "shape-rendering": "auto|crispEdges|geometricPrecision|optimizeSpeed", "preserveAspectRatio": r"(?:none|x(?:Min|Mid|Max)Y(?:Min|Mid|Max))(?:\s+(?:meet|slice))?",
-    "gradientUnits": _UNITS, "clipPathUnits": _UNITS, "maskUnits": _UNITS, "maskContentUnits": _UNITS, "spreadMethod": "pad|reflect|repeat",
-    "font-family": r"[A-Za-z0-9 ,'-]+", "font-size": _N + r"(?:px|em|%)?", "font-weight": r"normal|bold|[1-9]00", "font-style": "normal|italic|oblique",
-    "text-anchor": "start|middle|end", "letter-spacing": _N + r"(?:px|em)?", "version": r"\d+(?:\.\d+)?", "xml:space": "default|preserve",
-    "opacity": _N + "%?", "fill-opacity": _N + "%?", "stroke-opacity": _N + "%?", "stop-opacity": _N + "%?", "offset": _N + "%?",
-    **{k: _L for k in ("width", "height", "rx", "ry", "cx", "cy", "r", "fx", "fy", "x1", "y1", "x2", "y2", "stroke-width", "stroke-miterlimit")},
-    **{k: rf"{_L}(?:[ ,]+{_L})*" for k in ("x", "y", "dx", "dy")},
-}
-SVG_DEPTH, SVG_DRAWN, SVG_USE_DEPTH = 32, 2000, 3
+SVG_DEPTH, SVG_DRAWN, SVG_REF_DEPTH = 32, 2000, 3
+SVG_VALUE, SVG_TOKENS, SVG_BUDGET = 1000, 20_000, 200_000
 SVG_NS, XLINK_NS, XML_NS = "http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/XML/1998/namespace"
+_SVG_COLOURS = {"currentColor", "none", "black", "white", "silver", "gray", "grey", "red", "maroon", "orange", "yellow", "olive", "lime",
+                "green", "teal", "aqua", "cyan", "blue", "navy", "fuchsia", "magenta", "purple", "transparent"}
+_SVG_ENUMS = {
+    "fill-rule": {"nonzero", "evenodd"}, "clip-rule": {"nonzero", "evenodd"}, "stroke-linecap": {"butt", "round", "square"},
+    "stroke-linejoin": {"miter", "round", "bevel"}, "shape-rendering": {"auto", "crispEdges", "geometricPrecision", "optimizeSpeed"},
+    "gradientUnits": {"userSpaceOnUse", "objectBoundingBox"}, "clipPathUnits": {"userSpaceOnUse", "objectBoundingBox"},
+    "maskUnits": {"userSpaceOnUse", "objectBoundingBox"}, "maskContentUnits": {"userSpaceOnUse", "objectBoundingBox"},
+    "spreadMethod": {"pad", "reflect", "repeat"}, "font-weight": {"normal", "bold", *(f"{n}00" for n in range(1, 10))},
+    "font-style": {"normal", "italic", "oblique"}, "text-anchor": {"start", "middle", "end"}, "xml:space": {"default", "preserve"},
+    "preserveAspectRatio": {"none", *(f"x{a}Y{b}{m}" for a in ("Min", "Mid", "Max") for b in ("Min", "Mid", "Max") for m in ("", " meet", " slice"))},
+}
+_SVG_NUMBERS = {  # attribute: (units a number may carry, at most how many numbers — 0 is any, up to SVG_TOKENS)
+    **{k: (("", "px", "%"), 1) for k in ("width", "height", "rx", "ry", "cx", "cy", "r", "fx", "fy", "x1", "y1", "x2", "y2", "stroke-width", "stroke-miterlimit")},
+    **{k: (("", "%"), 1) for k in ("opacity", "fill-opacity", "stroke-opacity", "stop-opacity", "offset")},
+    **{k: (("", "px", "%"), 0) for k in ("x", "y", "dx", "dy")},
+    "font-size": (("", "px", "em", "%"), 1), "letter-spacing": (("", "px", "em"), 1), "version": (("",), 1), "points": (("",), 0), "viewBox": (("",), 4),
+}
+_SVG_PATH_LETTERS, _SVG_TRANSFORMS = set("MmZzLlHhVvCcSsQqTtAa"), ("matrix(", "translate(", "scale(", "rotate(", "skewX(", "skewY(")
+
+
+def _svg_number(v, i):
+    """The end of the number -?[0-9]+(.[0-9]+)? that starts at i, or -1. One step a character, never back."""
+    n = len(v)
+    if i < n and v[i] == "-":
+        i += 1
+    j = i
+    while i < n and "0" <= v[i] <= "9":
+        i += 1
+    if i == j:
+        return -1
+    if i < n and v[i] == ".":
+        i += 1; j = i
+        while i < n and "0" <= v[i] <= "9":
+            i += 1
+        if i == j:
+            return -1
+    return i
+
+
+def _svg_value(key, v):
+    """How many tokens `v` is, read whole as `key`'s kind in one pass — or -1 at the first character that does not fit.
+    The kinds are the comment above SVG_ATTRS; nothing here backtracks, so a value costs its length and no more."""
+    n = len(v)
+    is_id = lambda t: 0 < len(t) <= 64 and t[0].isalpha() and all(c.isalnum() or c in "_-" for c in t)
+    ref = lambda t: t.startswith("url(#") and t.endswith(")") and is_id(t[5:-1])
+    if key == "id":
+        return 1 if is_id(v) else -1
+    if key == "href":
+        return 1 if v[:1] == "#" and is_id(v[1:]) else -1
+    if key in ("fill", "stroke", "stop-color"):
+        hexa = v[:1] == "#" and len(v) in (4, 5, 7, 9) and all(c in "0123456789abcdefABCDEF" for c in v[1:])
+        return 1 if hexa or v in _SVG_COLOURS or key != "stop-color" and ref(v) else -1
+    if key in ("mask", "clip-path"):
+        return 1 if v == "none" or ref(v) else -1
+    if key in _SVG_ENUMS:
+        return 1 if v in _SVG_ENUMS[key] else -1
+    if key == "font-family":
+        return 1 if v and all(c.isalnum() or c in " ,'-" for c in v) else -1
+    if key in _SVG_NUMBERS:                                 # numbers, each with a unit it may carry, one separator between two
+        units, most = _SVG_NUMBERS[key]
+        i, count = 0, 0
+        while True:
+            i = _svg_number(v, i)
+            if i < 0:
+                return -1
+            i += next((len(u) for u in units if u and v.startswith(u, i)), 0)
+            count += 1
+            if count > (most or SVG_TOKENS):
+                return -1
+            if i == n:
+                return count if most in (0, 1) or count == most else -1
+            if v[i] not in " ,":
+                return -1
+            i += 1
+    if key == "d":                                          # letters and numbers; a separator only between two tokens, at most one
+        i, count, last = 0, 0, ""                           # last: "" nothing yet · L a letter · N a number · S a separator
+        while i < n:
+            c = v[i]
+            if c in _SVG_PATH_LETTERS:
+                i, last = i + 1, "L"
+            elif c in " ,":
+                if last in ("", "S"):
+                    return -1
+                i, last = i + 1, "S"
+            else:
+                if last == "N":
+                    return -1                               # two numbers need a separator: no 1-2, no .5.5
+                i, last = _svg_number(v, i), "N"
+                if i < 0:
+                    return -1
+            count += 1
+            if count > SVG_TOKENS:
+                return -1
+        return count if last != "S" else -1
+    if key in ("transform", "gradientTransform"):          # name(numbers), one separator or none between two
+        i, count = 0, 0
+        while True:
+            name = next((f for f in _SVG_TRANSFORMS if v.startswith(f, i)), None)
+            if not name:
+                return -1
+            i += len(name)
+            while True:
+                i = _svg_number(v, i)
+                if i < 0:
+                    return -1
+                count += 1
+                if count > SVG_TOKENS:
+                    return -1
+                if i < n and v[i] in " ," and i + 1 < n and v[i + 1] != ")":
+                    i += 1
+                    continue
+                break
+            if i >= n or v[i] != ")":
+                return -1
+            i += 1
+            if i == n:
+                return count
+            if v[i] in " ,":
+                i += 1
+    return -1
 
 
 def inline_svg(data, prefix="wm-"):
     """(markup, "") — the SVG written out again from what was read, safe to put in the page — or ("", why it is not).
     The rules are the comment above SVG_ATTRS; the first one broken refuses the file whole. Every id gets `prefix`, and
     every `#id` it is referred to by, so no id of the page's is ever shadowed; an underscore is written `&#95;`, so no
-    `__PLACEHOLDER__` of the page's template can be spelled inside it. Nothing here recurses deeper than the caps allow."""
+    `__PLACEHOLDER__` of the page's template can be spelled inside it. No step recurses, and none backtracks: the whole
+    file costs at most SVG_BUDGET steps, and the count of what it paints stops the moment it passes SVG_DRAWN."""
     import xml.etree.ElementTree as ET
     if len(data) > LOGO_MAX:
         return "", f"it is {len(data):,} bytes — over {LOGO_MAX:,}"
@@ -1931,11 +2040,11 @@ def inline_svg(data, prefix="wm-"):
         text = data.decode("utf-8")
     except UnicodeError:
         return "", "it is not UTF-8 without a byte-order mark"
-    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", text):
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", text):
         return "", "it holds a control character"
     if re.search(r"<!(?:DOCTYPE|ENTITY)|<!\[CDATA\[", text, re.I):
         return "", "it declares a DOCTYPE, an entity or CDATA"
-    decl = re.match(r"\s*<\?xml\b[^>]*?\bencoding\s*=\s*[\"']([^\"']*)", text)
+    decl = re.match(r"\s*<\?xml\b[^>]*?\bencoding\s*=\s*[\"']([^\"']*)", text[:200])
     if decl and decl.group(1).lower().replace("-", "") != "utf8":
         return "", f"its <?xml?> names the encoding {decl.group(1)[:20]}, not UTF-8"
 
@@ -1951,21 +2060,28 @@ def inline_svg(data, prefix="wm-"):
     split = lambda n: n[1:].partition("}")[::2] if isinstance(n, str) and n.startswith("{") else ("", n)
     if split(top.tag) != (SVG_NS, "svg"):
         return "", "its root is not an <svg> in the SVG namespace"
-    stack = [(top, 1)]
-    while stack:                                            # the depth first, without recursion: 1,000 nested <g> is a refusal
-        e, depth = stack.pop()
-        if depth > SVG_DEPTH:
-            return "", f"it nests deeper than {SVG_DEPTH}"
-        stack.extend((c, depth + 1) for c in e)
+    steps = [0]
+
+    def spend(k):
+        steps[0] += k
+        if steps[0] > SVG_BUDGET:
+            raise ValueError(f"it takes over {SVG_BUDGET:,} steps to check")
     esc = lambda t: html_escape(t).replace("_", "&#95;")
-    far = re.compile(r"[\\&<]|http|data:|javascript", re.I)
-    out, ids, stack = [], {}, [top]
     try:
+        stack = [(top, 1)]
+        while stack:                                        # the depth first, without recursion: 1,000 nested <g> is a refusal
+            e, depth = stack.pop()
+            spend(1)
+            if depth > SVG_DEPTH:
+                raise ValueError(f"it nests deeper than {SVG_DEPTH}")
+            stack.extend((c, depth + 1) for c in e)
+        out, ids, edges, stack = [], {}, [], [top]
         while stack:
             e = stack.pop()
             if isinstance(e, str):                           # a closing tag and the text after it
                 out.append(e)
                 continue
+            spend(1)
             ns, tag = split(e.tag)
             tail = "" if e is top else esc(e.tail or "")
             if ns != SVG_NS:
@@ -1973,7 +2089,7 @@ def inline_svg(data, prefix="wm-"):
                 continue
             if tag not in SVG_ATTRS:
                 raise ValueError(f"it holds <{tag}>")
-            attrs = ""
+            attrs, refs = "", []
             for k, v in e.attrib.items():
                 kns, name = split(k)
                 if kns not in ("", XLINK_NS, XML_NS):
@@ -1981,36 +2097,49 @@ def inline_svg(data, prefix="wm-"):
                 key = "xml:" + name if kns == XML_NS else name
                 if key not in SVG_ATTRS[tag] or kns == XLINK_NS and name != "href":
                     raise ValueError(f"it holds {'xlink:' if kns == XLINK_NS else ''}{key}= on <{tag}>, which a wordmark may not carry")
-                if far.search(v) or not re.fullmatch(SVG_GRAMMAR[key], v):
+                low = v.lower()
+                bad = (not v.isascii() or any(c in v for c in "\\&<") or "http" in low or "data:" in low or "javascript" in low
+                       or len(v) > SVG_VALUE and key not in ("d", "points"))
+                tokens = -1 if bad else _svg_value(key, v)
+                if tokens < 0:
                     raise ValueError(f'its {key}="{v[:40]}" on <{tag}> is not what {key} takes')
+                spend(tokens)
                 if key == "id":
+                    if v in ids:
+                        raise ValueError(f"the id {v} is defined twice")
                     ids[v] = e
-                v = (prefix + v if key == "id" else "#" + prefix + v[1:] if key == "href" else re.sub(r"url\(#", "url(#" + prefix, v))
+                    v = prefix + v
+                elif key == "href":
+                    refs.append(v[1:]); v = "#" + prefix + v[1:]
+                elif v.startswith("url(#"):
+                    refs.append(v[5:-1]); v = "url(#" + prefix + v[5:]
                 attrs += f' {"xlink:" if kns == XLINK_NS else ""}{key}="{esc(v)}"'
+            if refs:
+                edges.append((e, refs))
             out.append(f"<{tag}{attrs}>{esc(e.text or '')}")
             stack.append(f"</{tag}>{tail}")
             stack.extend(reversed(list(e)))
-
-        def drawn(e, chain):
-            """How many elements `e` draws with every <use> expanded. The chain of <use>d ids is at most SVG_USE_DEPTH long
-            and the tree SVG_DEPTH deep, so this recursion is bounded; and it stops as soon as the count passes the cap."""
-            n = 1
-            for c in e:
-                if split(c.tag)[0] == SVG_NS:
-                    n += drawn(c, chain)
-            if split(e.tag)[1] == "use":
-                ref = (e.get("href") or e.get(f"{{{XLINK_NS}}}href") or "#")[1:]
-                if ref not in ids:
-                    raise ValueError(f"a <use> refers to #{ref[:40]}, which the file does not have")
-                if ref in chain:
-                    raise ValueError("its <use>s form a cycle")
-                if len(chain) >= SVG_USE_DEPTH:
-                    raise ValueError(f"its <use>s nest deeper than {SVG_USE_DEPTH}")
-                n += drawn(ids[ref], chain + (ref,))
-            if n > SVG_DRAWN:
-                raise ValueError(f"it draws over {SVG_DRAWN:,} elements once its <use>s are expanded")
-            return n
-        drawn(top, ())
+        refers = {}
+        for e, refs in edges:
+            for r in refs:
+                spend(1)
+                if r not in ids:
+                    raise ValueError(f"it refers to #{r[:40]}, which the file does not have")
+            refers[e] = refs
+        painted, stack = 0, [(top, ())]                     # what the browser paints: every element, and at every reference
+        while stack:                                        # the whole of what it refers to — counted as it goes, never after
+            e, chain = stack.pop()
+            painted += 1
+            spend(1)
+            if painted > SVG_DRAWN:
+                raise ValueError(f"it paints over {SVG_DRAWN:,} elements once its references are followed")
+            stack.extend((c, chain) for c in e if split(c.tag)[0] == SVG_NS)
+            for r in refers.get(e, ()):
+                if r in chain:
+                    raise ValueError("its references form a cycle")
+                if len(chain) >= SVG_REF_DEPTH:
+                    raise ValueError(f"its references nest deeper than {SVG_REF_DEPTH}")
+                stack.append((ids[r], chain + (r,)))
     except ValueError as e:
         return "", str(e)
     return "".join(out), ""
@@ -2153,8 +2282,9 @@ THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is 
    - the name as paths (outline the text in your editor), or as <text> in a font this file loads;
    - a pixel mark at a whole multiple of its grid stays sharp;
    - UTF-8, shapes, text, gradients, masks and a <use> of its own ids only; colours as #hex, currentColor, none or a
-     plain name; presentation attributes, never style="…" (export "with attributes, not CSS"). Anything else — a script,
-     a handler, a <style>, a class, a reference outside the file — refuses it whole, with a warning. */
+     plain name; numbers as -?digits(.digits)?, one space or comma between two (no .5, 1e3, 1-2: do not minify them);
+     every id once; presentation attributes, never style="…" (export "with attributes, not CSS"). Anything else — a
+     script, a handler, a <style>, a class, a reference outside the file — refuses it whole, with a warning. */
 """
 
 
