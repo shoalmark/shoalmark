@@ -144,3 +144,6 @@ FM-032 tracker. INDEX is unchanged, and `--check` agrees.
   waits for this ask.
 
 **Verdict:** READY WITH FINDINGS. R6 and R7 are P3. R1, R2, R3 and R5 are closed, and R4 is closed in part.
+
+**Correction to R6 (2026-09-24 09:52 CEST).** The unwrapped new body lines are 54, 75, 94 and 149, not *54, 94 and 153*. I wrote the
+numbers before I measured them. The verdict is unchanged.
