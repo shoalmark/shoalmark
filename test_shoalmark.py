@@ -1151,6 +1151,17 @@ with tempfile.TemporaryDirectory() as d:
         _, o_page, o_report, o_err, _ = board_with(org_wordmark_svg=_WORDMARK, repo_wordmark_svg=_SVG)
         check("0.18.2 · a later place's wordmark wins, and one that is refused leaves the earlier one standing",
               "wordmark      organisation" in o_report and 'aria-label="repo"><svg viewBox="0 0 40 16"' in o_page and "the header keeps the wordmark before it" in o_err)
+        # --- 0.18.2: the running line — the tool's mark, name and version, on every page, whatever the brand
+        _ver = (HERE / "VERSION").read_text(encoding="utf-8").strip()
+        _run = lambda page: (re.search(r'</article>\n(<p id="r" class="m">.*?</p>)\n<dialog', page) or [None, ""])[1]
+        _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
+        check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a wordmark, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
+              all(_links(_run(pg)) == [("https://github.com/holgo99/shoalmark", "shoalmark on GitHub"), (f"https://github.com/holgo99/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
+                  and _run(pg).endswith(f'shoalmark</a> · <a href="https://github.com/holgo99/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
+                  for pg in (plain_page, h_page, de_page, w_page, n_page)))
+        check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark",
+              f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
+              and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
         if _CHROME:
             (wt / "brand/theme.css").write_text(":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n", encoding="utf-8"); run(root)
             probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
@@ -1160,6 +1171,14 @@ with tempfile.TemporaryDirectory() as d:
             seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
             check(f"0.18.2 · in a browser the wordmark's stroke is the theme's ink, light and dark, through the ◐ switch, at the height it declares (saw: {seen})",
                   "light=rgb(1, 2, 3)/16px" in seen and "dark=rgb(253, 252, 251)/16px" in seen)
+            shown = []
+            for frag in ("", "#=MSR-001"):                   # the board, then a tracker's view: every screen a viewer can be on
+                probe = '<script>document.body.dataset.probe=[$("B").hidden,$("v").hidden,$("r").offsetHeight>0,$("r").textContent].join("|")</script>'
+                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+                pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+                shown.append((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
+            check(f"0.18.2 · in a browser the running line is shown on the board and on a tracker's view (saw: {shown})",
+                  shown == [f"false|true|true|shoalmark · v{_ver}", f"true|false|true|shoalmark · v{_ver}"])
             (wt / "probe.html").unlink()
         _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
         check("C6 · an unreadable theme is a warning that names the two colours and whose file it is — never a failure", c_code == 0 and "person's theme.css: text #888888 on ground #777777" in c_err and "below 4.5:1" in c_err)
@@ -1193,6 +1212,11 @@ with tempfile.TemporaryDirectory() as d:
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
         check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" in cpage)
+        (dest / "VERSION").write_text("0.0.1-vendored\n", encoding="utf-8")
+        r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client"), "--html-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
+        check("0.18.2 · a vendored copy's running line names the version IT runs — its own VERSION, its own release page",
+              r.returncode == 0 and '<a href="https://github.com/holgo99/shoalmark/releases/tag/v0.0.1-vendored" target="_blank" rel="noopener" aria-label="release v0.0.1-vendored">v0.0.1-vendored</a></p>'
+              in (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8"))
         with redirect_stdout(io.StringIO()):
             fm.brand_report(str(base / "starter"))
         starter = fm.read_flat((base / "starter/labels.yaml").read_text(encoding="utf-8"))

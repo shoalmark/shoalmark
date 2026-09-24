@@ -49,6 +49,7 @@ MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinn
 # how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
 # second screen (a repository with its own page overrides the label `answer.sign.url`)
 SIGNING_PAGE = "https://holgo99.github.io/shoalmark/signing/"
+TOOL_PAGE = "https://github.com/holgo99/shoalmark"          # the running line's links: the tool, and its release at VERSION
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty
@@ -1515,6 +1516,9 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
 #dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
+/* the running line: the tool's, on every screen, below the footer — its mark at 16 px, the smallest size its 16-unit grid
+   stays sharp at, and the name linking to the tool; the version to its release. Muted like any link here: underlined on hover */
+#r{display:flex;gap:.6em;align-items:center;margin:20px 0 0;color:var(--mute);font-size:11px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
 @media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
@@ -1527,6 +1531,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table>
 <p id="f" class="m" data-l="footer"></p></div>
 <article id="v" hidden></article>
+__RUNNING__
 <dialog id="dlg"></dialog>
 <script>__MARKED__</script>
 <script>
@@ -1771,6 +1776,9 @@ LABELS = {
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
 }
 BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "wordmark.svg", "labels.yaml")
+# The tool's own mark, the Pricke (FM-006) — the site's `overrides/.icons/shoalmark/pricke.svg`, one path on a 16-unit
+# grid. The running line ends every page with it: the tool's name and version, not a brand, not a label, in every repository.
+PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"
 LOGO_MAX = 200_000            # bytes — a logo or a wordmark is inlined into the page; past this it is skipped, with a warning
 # What an inlined SVG may hold: shapes, text, and what they point at inside the same file. A logo sits in an <img>, where
 # nothing an SVG carries can run or load; a wordmark sits IN the page, where a <script> would run, an on…= handler fire,
@@ -2069,6 +2077,12 @@ def render_html(trackers):
     page = page.replace("__HEADMARK__", f'<b class="wm" role="img" aria-label="{name}">{wordmark[1]}</b>' if wordmark
                         else (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
     page = page.replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
+    # the running line: outside the board and the tracker view, so every screen shows it — the copy's own VERSION
+    v = html_escape(__version__)
+    page = page.replace("__RUNNING__", f'<p id="r" class="m"><a href="{TOOL_PAGE}" target="_blank" rel="noopener" aria-label="shoalmark on GitHub">'
+                        '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
+                        f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
+                        f'aria-label="release v{v}">v{v}</a></p>')
     page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__REG__", json.dumps(board_sessions(), ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
         "__ROWS__", ",\n".join(rows)

@@ -22,6 +22,12 @@ of its mark.
   `viewBox`, a `height` in pixels, `fill="currentColor"` (and `stroke="currentColor"` where it strokes); the name as
   paths (outline the text in your editor), or as `<text>` in a font your `theme.css` loads. A pixel mark shown at a
   whole multiple of its grid stays sharp. `--brand DIR`'s starter says the same in a comment.
+- **Every page names the tool and the version it runs: `<mark> shoalmark · v0.18.2`** — one small line at the bottom
+  left, below the footer, in the muted ink, on the board and in a tracker's view alike: the Pricke at 16 px, the
+  smallest size its 16-unit grid stays sharp at, and the name in the mono at 11 px, linking to the tool's repository;
+  then the version from the copy's own `VERSION`, linking to that release's page — a vendored copy names the version
+  it was vendored at. Both open in a new tab. It is the tool's line, in every repository, brand or none: not a label,
+  never translated. *Nothing to do.*
 
 **shoalmark's own board wears the site's brand**, from `work-tracker/brand/`: the Pricke beside the name in IBM Plex
 Mono as the wordmark, the site's tab icon as the logo, the site's light and dark palettes, IBM Plex from files beside

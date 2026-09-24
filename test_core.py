@@ -294,7 +294,9 @@ _vf = (gti.VIEW_DIR / f'{_live[0]["id"]}.js').read_text()
 check("one data file per tracker — `V(id, markdown)` without the front matter — and a stray file is removed",
       _vf.startswith(f'V("{_live[0]["id"]}",') and '\nid: ' not in _vf[:200] and sorted(f.name for f in gti.VIEW_DIR.iterdir()) == sorted(f'{t["id"]}.js' for t in _live[:2]))
 gti.VIEW_DIR = _vd
-check("no external request of any kind", not re.search(r'(?:src|href)="https?://|@import|<link', _html.split("<script>")[0]))
+# a link is not a request — the running line's two (0.18.2) load nothing until clicked; what the page fetches by itself is
+check("no external request of any kind", not re.search(r'<(?!a )[^>]*\b(?:src|href)="https?://|@import|<link', _html.split("<script>")[0])
+      and re.search(r'<(?!a )[^>]*\b(?:src|href)="https?://', '<img alt="" src="https://example.org/x.png">'))
 _evil = dict(_live[0], hook_full='x</script><script>alert(1)</script>', title="<b>t</b>")
 check("a hook cannot close a script block (two blocks: the vendored renderer, then the page)", gti.render_html([_evil]).count("</script>") == 2)
 _kid = dict(_live[0], epic=_live[1]["id"])

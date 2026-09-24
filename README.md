@@ -397,7 +397,8 @@ a warning, never a failure. The four status colours keep their meaning whatever 
 browser — nothing in the repository changes, and paper stays light. **A wordmark takes the page's ink** where it is
 drawn in `currentColor` — `fill="currentColor"`, and `stroke="currentColor"` where it strokes — so the mark and the name
 follow light, dark and `◐` in one colour; a fixed colour stays fixed. It keeps the size its `height` gives, else the
-logo's 22 px.
+logo's 22 px. **Every page ends in the tool's own line** — its mark, `shoalmark` linking to the tool, and `v<VERSION>`
+of the copy that built it linking to that release — in `--mute`, below the footer: not a brand file and not a label.
 
 **Another language** is two things: the board's words are `labels.yaml`; the section names the *gate* reads are
 `[headings]` in `shoalmark.toml` — they decide what the gate says, so they belong to the repository, not to a brand.
