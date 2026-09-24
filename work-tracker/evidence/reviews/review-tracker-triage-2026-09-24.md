@@ -220,3 +220,84 @@ Not verified:
 - *today's cold Principal session read the record on its own* (FM-025).
 - *rowed in the parent project's ledger*: no commit on any ref of the parent carried such a row by 14:57.
 - Whether the Owner has run `--queue` against FM-031's first *Done when* line.
+
+## Pass on 87bac4e (2026-09-24 15:35 CEST, Reviewer, session `8e509911/reviewer-1`)
+
+**Scope.** `87bac4e` (`87bac4ead0ae39c835b8e1d9114d482b746072e0`) is one commit by the principal seat, under
+`8e509911`, on this verdict `b3d9002`.
+- Against `origin/main`, it touches the ten trackers (front matter only), INDEX, TRIAGE.md (two lines added) and the
+  worksheet. FM-004 is byte-identical to main's again.
+- This review file is unchanged by it.
+- The tier is still docs. The commit message carries no pull-request number with the sign.
+- Independence: same session `8e509911`, reported.
+
+**What I ran at `87bac4e`.**
+- `--triage`: *Applied nothing — no new filled rows*, and `git status --porcelain` is empty after it.
+- `--check` 0; its freeze line reads *16 open*. `--session-check` 0.
+- `python3 shoalmark.py`: 32 trackers, and the tree is still clean.
+- `test_shoalmark.py` 0 (285 ok); `test_core.py` 0 (148 ok).
+- `git merge-tree` with `origin/main`: clean.
+- `--next`: `#1 FM-029 build · #2 FM-007 owner · #3 FM-018 wait · #4 FM-005 wait · #5 FM-006 build · #6 FM-030 build ·
+  #7 FM-028 build · #8 FM-024 build · #9 FM-032 wait · #10 FM-031 wait`, then `START WITH: FM-029`.
+- Ranks 1–10, each held once.
+- `OPEN_STATUSES` on the tip: 16.
+
+**The command applied exactly the worksheet.** ✓
+- The scratchpad clone was reset to `095f1d3`. The branch's worksheet was copied in and `--triage` run. Every
+  tracker came out byte-identical to the branch's, and so did the worksheet.
+- INDEX differs only by the clone's own signature-lint lines: that clone has no `allowedSignersFile`.
+- No hand edit of anything the command writes, and no body edit at all.
+
+**The findings of the first pass.**
+- **R1 ✓ closed.** FM-024 is `keep P2 #8 build` and still `In Progress`. Its reason names slice 2, README §6's later
+  slice and the path's line 3, and it says *0.17.6*. See R8 for the tier.
+- **R2 ✓ closed.** FM-026 is `park P3` and still open, with its candidates and *Done when* in place. FM-004 is main's.
+  The reason says why this is no merge.
+- **R3 ✓ closed.** The builds come first (#6, #7, #8), and the waits after them (#9, #10).
+- **R4 · P3 · stands, for the Owner to rule.**
+  - The rows of FM-023, FM-025, FM-026 and FM-027 still read *keep*. The rule's letter is unchanged: *a row that
+    fails the keep test*, *park it, unless it was worked on this week*.
+  - The pass now states its ground in the paragraph: the filing itself is the only date, and nobody is on them. It
+    holds on git: FM-026 and FM-027 have no commit after 09-23, and FM-023's last is 09-23 15:33.
+  - I do not count it as meeting the rule. It reads *worked on* as *worked on since filing*, which the rules do not
+    say. It is now open and checkable, which is what he needs to strike it or let it stand.
+  - Two smaller points:
+    - FM-026's and FM-027's reasons name no restart. The rule asks for one: *"the Owner ranks it" counts*.
+    - All four still say `next: review` with nothing built.
+- **R5 ✓ moot.** There is no Shipped status and no closing row.
+- **R6 ✓ closed in the paragraph.**
+  - *Three built on (FM-024, FM-031, FM-032) and three asked about (FM-029, FM-031, FM-032)*: my count.
+  - *Fourteen minutes after 0.18.0 was tagged*: git bounds it at 14:35:25 → 14:49:42. The tag is lightweight, so
+    fourteen is the most it can be.
+  - *Nothing closed, the open count stays at 16*. All other numbers are right: 10 judged; 6 kept at P2 with the ranks
+    above; 4 parked at P3.
+  - One new claim fails (R9).
+- **R7 ✓ closed.** FM-027's reason names no ids of the parent project. It states its own case: `--new` guessing the
+  next number on a branch.
+
+**R8 · P3 · FM-024's reason places slice 2 on the path's line 3, and its tier and rank read as if it did not.**
+- **What:** the scale the command prints is *P1 on the current path* and *harm … after the path's own work, unless it
+  blocks it*. FM-024 is P2 and ranked #8, behind FM-030 (#6) and FM-028 (#7), two defects the path does not name.
+- **Fix:** the Owner's to strike when he merges. Or the next pass either makes it P1 and ranks it ahead of those two,
+  or says in the reason why line 3 does not name it.
+- **Not the pass's to fix:** FM-024's *What is true now* still opens *open for the merge, not merged*, and `--next`
+  prints that under #8. A pass writes no note into a tracker. The seat that takes FM-024 up rewrites it first (README
+  §3).
+
+**R9 · P3 · The paragraph cites a filing that does not exist.**
+- **What:** it says *graded by the Auditor seat and tracked as its own filing*. No Auditor commit and no new tracker
+  is on any ref of shoalmark or of the parent project by 15:28 (read-only `git log --all`). Under the freeze (16
+  open ≥ 8), `--new` would also refuse a filing without `tags: bug`.
+- **Fix, forward:** name the filing's id and repository once it exists, or write *to be filed*. If it is filed here,
+  the count reads 17.
+
+**For the merge order, not a finding.**
+- This branch merges cleanly onto `main`.
+- The 0.18.1 branch (`fm/029-0-18-1-the-relation-computed`, `ad37f41`) conflicts with it in FM-029's front matter and
+  INDEX. That branch sets `In Progress` and clears the ask, and this one adds `triaged:`, `rank:` and `tier:` there.
+- The second to land keeps both, and regenerates INDEX.
+
+**Verdict on 87bac4e: READY WITH FINDINGS (R4, R8, R9 P3).** R1, R2, R3, R6 and R7 are closed, and R5 is moot. Under
+the docs tier the P3s are fixed forward. R4 and R8 are the Owner's to strike or keep when he merges.
+
+Not verified: the Owner's word before the pass (chat), and the Auditor's grading (R9).
