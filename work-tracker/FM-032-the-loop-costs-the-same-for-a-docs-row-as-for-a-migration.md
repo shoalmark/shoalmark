@@ -26,7 +26,7 @@ The evidence, from git and the forge on 2026-09-24 in the morning, unless marked
 - **A change with no code pays the full loop.**
   - In the parent project that vendors this tool, its ledger pull request 807 needed seven Reviewer passes before
     READY (*reported*). The forge shows that every file it changed sits under its `docs/work-tracker/`, and that 11 of
-    its 29 commits are the Reviewer's: eight on the branch's own work (seven before the last READY, `d1953e85`), three
+    its 29 commits are the Reviewer's: eight on the branch's own work (seven before the last READY), three
     on a second tracker the branch carried. It merged at 08:50 CEST.
   - Here, PR 35 (FM-028, a bug filing) changes four files: the tracker, its review, `INDEX.md` and `sessions.md`. It
     took 11 commits: 6 Implementer, 3 Reviewer verdicts and 2 merges by the Principal.
@@ -51,6 +51,7 @@ The evidence, from git and the forge on 2026-09-24 in the morning, unless marked
   - `8e509911/implementer-12`: PR 35's R1 and R2, and a merge of `main`. Five commits from 08:57 to 09:00: an open,
     three of work, a close.
   - `8e509911/implementer-13`: FM-031's R1–R4. Three commits from 08:50 to 08:56: an open, one of work, a close.
+- After this filing's own Implementer row (-14) had closed, a one-merge follow-up would have needed a new id — -15 was made locally and dropped, never pushed; the merge was done under the Principal's open row instead (reported by that Implementer).
 
   This filing is `-14`. The Principal's own merges (`f8ccf60`, `3131e8c`) ran under its open row and needed none.
 - **A guessed id needed a simulation and a ruling.** The gate keys the rows by id (`now_by_id = {r["id"]: r for r in
@@ -71,7 +72,7 @@ The evidence, from git and the forge on 2026-09-24 in the morning, unless marked
 
 **What the rigor caught this morning, before it reached the Owner** (the Principal, *reported*):
 - a misread ask;
-- a filing rate inflated by a third (FM-031's first 16.4 a day, re-derived as 11.0);
+- a filing rate overstated by about a fifth, like for like (FM-031's first 16.4 a day against 13.8 in the same window; 11.0 a day over the full window);
 - a NOT READY shown on the wrong pull request by the forge's cross-linking;
 - a registry that breaks `main` when two branches merge (FM-028's ship log).
 
@@ -90,7 +91,7 @@ where the risk is, in code, and take it off where it is not.
 - **FM-031** rules on the fan-out: the WIP cap, one channel for the Owner, the detached switch; S1 the registry off the
   conflict path, S2 the queue in one view. This tracker is about what the loop costs per change, not how many changes
   run at once. FM-031's S1 is refined here: not one file per session with a generated table, but a report generated
-  from the commit trailers, with no gate on open and closed rows (S2 below). If both are ruled, they are one build.
+  from the commit trailers, with no gate on open and closed rows (S2 below). For his answer: FM-031's first option says *S1 then S2* — S1 there is read as this tracker's S2, one design whichever ask he answers first; the design is decided here, the order there. The seat builds no per-session files if S2 here is ruled, and builds S2 if FM-031's S1 is ruled.
 - **FM-024** built the registry as a gate with open and closed rows. This asks to make it a report generated from the
   commit trailers. FM-024's core stays: every seat's commit names its session. What goes is the gate on the row.
 - **FM-027** claims the next free id on the server. That is moot if the registry is a report: a duplicate id stops
@@ -145,7 +146,7 @@ Each takes effect on the Owner's answer, never on a default.
   - Nothing is built: it is a rule in AGENTS.md.
 
 **S4: the filing freeze.**
-- *What changes:* while the open count is at or above a number the Owner sets, only product defects are filed: `tags:
+- *What changes:* while the open count is at or above **8** — half of today's 16, the number that *all four now* carries; he may name another in his answer — only product defects are filed: `tags:
   bug`, something the tool does wrong for the person using it. Anything else goes as one line into the closest open
   tracker's body (AGENTS.md rule 6), or waits.
 - *Optional code:* `--new` refuses a tracker without `bug` while the count is over the line, and says what the count is.
@@ -164,5 +165,6 @@ Each takes effect on the Owner's answer, never on a default.
 
 | Date | Event |
 |---|---|
+| 2026-09-24 09:48 CEST | Verified READY WITH FINDINGS at `db15a31` (R1–R5, all P3); closed in the text before the ask reaches him because two touch what he answers: R3 — the freeze's number is 8, half of today's 16, carried by *all four now*; R4 — FM-031's S1 is read as this S2, one design; R1 the -15 instance; R2 the parent's hash gone; R5 *a fifth, like for like*. One more pass, the last. |
 | 2026-09-24 09:39 CEST | The Principal sets the proposal — *all four now* — and puts the ask to the Owner (`next: owner`), on his ruling of ≈ 09:19 that the proposal becomes an ask. Main after PR 35 merged in first. Verified next, then the pull request. |
 | 2026-09-24 09:30 CEST | Filed on the Owner's question (≈ 09:12), and on his word at ≈ 09:19 that the Principal's proposal becomes an ask. The evidence is re-derived from git and the forge; the seven passes, the parent project's two docs-only branches (four passes, about 800K tokens, 75 minutes) and the Principal's four catches are marked *reported*. The ask is drafted (`next: review`, four options, trimmed to 298 characters: *the session registry* is now *the registry*, *docs and ledger changes* is now *docs and ledgers*). The proposal is the Principal's. Held against FM-031 (the fan-out; its S1 is refined here into a report), FM-024 (the registry as a gate), FM-027 (ids claimed on the server, moot under S2) and FM-005 (the Owner's decisions). |
