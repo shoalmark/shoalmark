@@ -3,7 +3,7 @@ id: FM-029
 status: Proposed
 considered: FM-008, FM-013, FM-014, FM-017, FM-018, FM-030
 tags: bug
-next: owner
+next: build
 ask: "Rule the answer's word for 0.18.1: the board and every reading print the answer's relation to the proposal (accepted it · accepted with a change · chose option N · rejected · revoked), the signed line unchanged; or new verbs you type (changed, chose) beside accept, reject and revoke; or both?"
 ask-kind: ruling
 ask-since: 2026-09-24
@@ -12,6 +12,9 @@ ask-options: "both — the relation computed for every answer, the verbs changed
 answer: "accepted - the relation only — no new verbs"
 answered: 2026-09-24
 answered-by: holgo99
+triaged: 2026-09-24
+rank: 1
+tier: P2
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
 

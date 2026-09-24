@@ -4,7 +4,10 @@ status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: review
+next: build
+triaged: 2026-09-24
+rank: 8
+tier: P2
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 

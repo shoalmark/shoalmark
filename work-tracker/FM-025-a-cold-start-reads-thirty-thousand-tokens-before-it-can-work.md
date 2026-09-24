@@ -1,10 +1,12 @@
 ---
 id: FM-025
-status: Proposed
+status: Parked
 considered: FM-005, FM-006, FM-023
 tags: research
 kind-of-problem: complicated
 next: review
+triaged: 2026-09-24
+tier: P3
 hook: "A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; the tool could print the brief it needs in two thousand"
 ---
 
