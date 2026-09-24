@@ -68,6 +68,12 @@ viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
 viewer.answer: die Antwort des Auftraggebers
 viewer.supersedes: ersetzt {0}
+relation.proposal: den Vorschlag angenommen
+relation.changed: mit einer Änderung angenommen
+relation.option: Option {0} gewählt
+relation.rejected: abgelehnt
+relation.revoked: zurückgenommen
+relation.unknown: Bezug zum Vorschlag nicht bestimmbar
 viewer.stale: veraltet — älter als {0} Tage, gilt wieder als ungesichtet
 viewer.handover: Übergabe
 viewer.next: nächster Schritt

@@ -304,7 +304,11 @@ def front_matter_schema():
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
         "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
-        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted — <his change>`, or `rejected — <why, and how to reword the ask>`. Written by him, never by the seat that asked; an answered ask leaves his queue. "
+        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted - <the option he chose, or his change>`, or `rejected - <why, and how to reword the ask>` "
+                                                                        "(a hand's ` — ` reads as ` - `). Written by him, never by the seat that asked; an answered ask leaves his queue. "
+                                                                        "The word is the button's and stays as signed: every reading — the board's tracker view, `--answered`, the record `--clear-ask` writes — "
+                                                                        "computes the answer's relation to `ask-proposal:` and `ask-options:` and prints it beside it: accepted the proposal · chose option N · "
+                                                                        "accepted with a change · rejected · revoked · relation not computable, where there is no proposal to compare it with. "
                                                                         "Never overwritten in place: `--answer <id> revoke \"<reason>\"` makes it `revoked - <reason>`, and `--answer <id> accept|reject \"<option>\" --supersede` replaces it — "
                                                                         "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
@@ -605,6 +609,8 @@ def extract(path):
         # the body's `## Asks` section: where an exchange goes when its ask is cleared. Read here because `extract` is
         # the only place the file text is read, and both the gate and `--answered` ask whether the record is there.
         "asks_block": bool(ASKS_HEAD_RE.search(body)),
+        # the relation the newest of those records carries (FM-029) — what `--answered` says an acted-on answer was
+        "asks_relation": recorded_relation(body),
         # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
         "supersedes": superseded(body),
     }
@@ -758,18 +764,87 @@ def sent_back(trackers, log=None):
     return bad
 
 
+# FM-029 — THE ANSWER'S RELATION TO THE PROPOSAL, computed where the answer is read. The signed line keeps the button's
+# word: under `accepted` the board and `--answer` write the proposal, another listed option and changed text alike, and a
+# reader counting how often the Owner took the seat's proposal counted every one of them as agreement. The line is never
+# rewritten; every reading names the relation beside it — the Owner's ruling of 2026-09-24: the relation only, no new verbs.
+RELATION_TEXT = {"proposal": "accepted the proposal", "changed": "accepted with a change", "option": "chose option {0}",
+                 "rejected": "rejected", "revoked": "revoked", "unknown": "relation not computable"}
+RELATION_QUOTE = 40        # characters of an option or a reason the relation quotes — its first words, cut between two
+# the answer's word and its text: ` - ` as `--answer` and the board write it, ` — ` as the schema once told a hand to
+ANSWER_WORD_RE = re.compile(r"(accepted|rejected|revoked)(?:\s+[-—]\s+(.+))?", re.I | re.S)
+
+
+def answer_norm(text):
+    """What `--answer` does to the text it writes, and the board's dialog to the option it picks: trimmed, every run of
+    whitespace one space, `"` written as `'`. Applied to BOTH sides of a comparison — a plain equality test read the
+    proposal itself as changed text whenever it held a double quote or a double space."""
+    return " ".join(str(text or "").replace('"', "'").split())
+
+
+def first_words(text, limit=RELATION_QUOTE):
+    """The opening of an option or a reason, cut between two words — what the relation quotes of it."""
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:—-") + "…"
+
+
+def answer_relation(t):
+    """What the answer did with the proposal, read from `answer:` against `ask-proposal:` and `ask-options:` — the
+    answer's own normalisation on both sides — as (kind, n, words), or None where there is no answer:
+    - `proposal` — `accepted`, bare, or with the proposal's text;
+    - `option`, n — the text is option n of `ask-options:` (its place there, from 1) and not the proposal; words: its opening;
+    - `changed` — accepted, and the text is neither the proposal nor any option;
+    - `rejected` · `revoked` — words: the reason's opening;
+    - `unknown` — nothing to compare it with (an accepted answer on an ask with no proposal, or none and no options), or a
+      word that is none of the three. Never a guess.
+    The signed line is not touched: the relation is computed each time it is read."""
+    answer = answer_norm(t.get("answer"))
+    if not answer:
+        return None
+    m = ANSWER_WORD_RE.fullmatch(answer)
+    if not m:
+        return ("unknown", 0, "")
+    word, text = m.group(1).lower(), (m.group(2) or "").strip()
+    if word != "accepted":
+        return (word, 0, first_words(text))
+    proposal, options = answer_norm(t.get("ask_proposal")), [answer_norm(o) for o in t.get("ask_options") or []]
+    if proposal and text in ("", proposal):
+        return ("proposal", 0, "")
+    if text and text in options:
+        return ("option", options.index(text) + 1, first_words(text))
+    return ("changed", 0, "") if text and (proposal or options) else ("unknown", 0, "")
+
+
+def relation_text(rel):
+    """The relation as a reader reads it — `chose option 3: the verbs only` — or "" where there is no answer."""
+    return RELATION_TEXT[rel[0]].format(rel[1]) + (f": {rel[2]}" if rel[2] else "") if rel else ""
+
+
+def recorded_relation(body):
+    """The relation the newest record under `## Asks` carries — `--clear-ask` writes it from 0.18.1 on — or, for a record
+    written before, *relation not computable*: the proposal and the options left with the ask, and are guessed at by no one."""
+    at = ASKS_HEAD_RE.search(body)
+    if not at:
+        return ""
+    rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
+    records = [p for p in re.split(r"\n\s*\n", body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())]) if p.strip()]
+    if not records or "**answered**" not in records[-1]:
+        return ""
+    m = re.search(r"^\*\*relation\*\* — (.+)$", records[-1], re.M)
+    return m.group(1).strip() if m else RELATION_TEXT["unknown"]
+
+
 def answered(trackers):
     """`--answered`: what the Owner answered and nobody has acted on yet — the seat's side of the exchange; and,
     since his last sitting, what WAS acted on, named by the commit that cleared the ask."""
     rows = sorted((t for t in trackers if t.get("answer") and t["status"] in OPEN_STATUSES), key=lambda t: t.get("answered", ""))
     print(f"{len(rows)} ANSWERED, NOT YET ACTED ON" if rows else "NOTHING ANSWERED IS WAITING FOR A SEAT.")
     for t in rows:
-        print(f"\n{t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   → act on it, then `{CMD} --clear-ask {t['id']} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes")
+        print(f"\n{t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   relation: {relation_text(answer_relation(t))}\n   → act on it, then `{CMD} --clear-ask {t['id']} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes")
     acted = acted_on(trackers)
     if acted:
         print(f"\nACTED ON SINCE THE LAST STANDUP — {len(acted)}")
         for t, commit in acted:
-            print(f"  {t['id']} — acted on in `{commit}`")
+            print(f"  {t['id']} — acted on in `{commit}`" + (f" · {t['asks_relation']}" if t.get("asks_relation") else ""))
     return EXIT_OK
 
 
@@ -946,10 +1021,14 @@ def have_not(shas):
 
 def answer_reading(head):
     """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when its
-    head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits."""
+    head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an
+    author who may not answer, named, whatever the commit's signature (R8 — a signed commit by someone else read
+    *unsigned*, and the impostor is the case the Owner most needs named); else on the signature."""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
     may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
-    if may and verified_as(head, email or None):
+    if not may:
+        return "wait", f"wait: not an answerer ({email or name or 'no author'})", ""
+    if verified_as(head, email or None):
         return "merge", "merge: your answer", f"signed {head[:7]}"
     gap = signature_gap(head)
     return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
@@ -1356,16 +1435,20 @@ def dirty_refusal(git, dirty):
         now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
         was_ = (parse_frontmatter(git("show", f"HEAD:{p_}").stdout)[0].get("answer") or "").strip()
         if now_ and now_ != was_:
-            left.append((p_, "-".join(name.split("-")[:2]), now_.strip('"')))
+            left.append((p_, "-".join(name.split("-")[:2]), now_.strip('"'), was_))
     if not left:
         return said + " — commit or stash them first"
     generated = {pathlib.Path(os.path.relpath(f, top)).as_posix() for f in [OUT, *DERIVED_FILES]}
     mine = [p_ for p_ in dirty if p_ in {l_[0] for l_ in left} | generated]
     theirs = [p_ for p_ in dirty if p_ not in mine]
-    for p_, tid, ans in left:
-        m = re.fullmatch(r"(accepted|rejected)(?:\s+-\s+(.*))?", ans)
+    for p_, tid, ans, had in left:
+        # the three words `--answer` writes, and the verb that writes each; an answer that replaced one the file had
+        # committed was a `--supersede` — or a `revoke`, which needs none — and is given again the same way
+        m = re.fullmatch(r"(accepted|rejected|revoked)(?:\s+-\s+(.*))?", ans)
+        verb = {"accepted": "accept", "rejected": "reject", "revoked": "revoke"}[m.group(1)] if m else ""
         said += (f"\n  {tid} carries an answer that was never committed — {ans!r}. It looks like an earlier `--answer` that failed half-way"
-                 + (f"; to give it again: {CMD} --answer {tid} {m.group(1)[:-2]}" + (f' "{m.group(2)}"' if m.group(2) else "") if m else ""))
+                 + (f"; to give it again: {CMD} --answer {tid} {verb}" + (f' "{m.group(2)}"' if m.group(2) else "")
+                    + (" --supersede" if had and verb != "revoke" else "") if m else ""))
     said += (f"\n  undo what it left with ONE command:\n    git{'' if top == ROOT else ' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}"
              + (f"\n  the rest is not the tool's — commit or stash it: {', '.join(theirs)}" if theirs else ""))
     return said
@@ -1529,7 +1612,8 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <dialog id="dlg"></dialog>
 <script>__MARKED__</script>
 <script>
-// row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move]]
+// row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
+//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -1677,7 +1761,7 @@ function view(id){
   const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
   v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
-${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
+${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(r=>r.length?` · <i>${l("relation."+r[0],r[1])}${r[2]?": "+esc(r[2]):""}</i>`:"")(t[29][11])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
@@ -1765,6 +1849,8 @@ LABELS = {
     "viewer.intent": "intent", "viewer.from": "from {0}", "viewer.intent.missing": "missing — the Owner states it on the tracker or its story",
     "viewer.verdict": "verdict", "viewer.verdict.none": "none yet — no triage pass has judged it",
     "viewer.answer": "the Owner's answer", "viewer.supersedes": "supersedes {0}",
+    # the answer's relation to the proposal (FM-029), beside the answer — the word the Owner signed stays as it is
+    **{"relation." + k: v for k, v in RELATION_TEXT.items()},
     "viewer.stale": "stale — older than {0} days, it counts as untriaged again",
     "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
@@ -1986,7 +2072,7 @@ def render_html(trackers):
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
-              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", "")]],
+              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])]],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -3140,7 +3226,7 @@ def record_problems(t):
 
 def clear_ask(words, trackers):
     """`--clear-ask <id> <next move>` — the seat has acted on the answer: the exchange moves into the body under
-    `## Asks` (date · question · answer · answered-by, newest last), the ask and answer lines leave the front matter,
+    `## Asks` (date · question · answer · answered-by, and the answer's relation to the proposal, newest last), the ask and answer lines leave the front matter,
     and `next:` becomes the move that follows. Done by hand, the answer is usually just deleted; the gate refuses that."""
     if len(words) != 2 or words[1].lower() not in MOVES:
         print(f"--clear-ask <id> <next move> — the move that follows: {' · '.join(MOVES)}", file=sys.stderr)
@@ -3161,8 +3247,11 @@ def clear_ask(words, trackers):
     kept = [f"next: {move}" if l.startswith("next:") else l for l in kept]
     if not any(l.startswith("next:") for l in kept):
         kept.insert(len(kept) - 1, f"next: {move}")       # `head` ends on the closing `---`; the move goes above it
+    # the relation goes with the record (FM-029): the proposal and the options leave with the ask, and a record without
+    # it could never say again whether the answer was the proposal
     block = (f'**{t.get("answered") or datetime.date.today().isoformat()}** · {t["ask"]}\n'
-             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n' if t.get("answer") else "**withdrawn** — no answer was given\n"))
+             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' if t.get("answer")
+                else "**withdrawn** — no answer was given\n"))
     at = ASKS_HEAD_RE.search(body)
     if at:                                                # newest last: at the end of the section that is there
         rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
