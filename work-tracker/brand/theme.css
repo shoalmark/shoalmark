@@ -1,0 +1,25 @@
+/* shoalmark's own board wears the site's brand (FM-006, 0.18.2): the palettes of docs/ — Zensical's default and slate
+   schemes, which docs/stylesheets/shoalmark.css leaves as they are — flattened onto their ground as hex, and the site's
+   fonts, IBM Plex Sans for the text and IBM Plex Mono for the board's mono, from files beside this one: nothing is fetched
+   from a font service. The fonts are IBM's own Latin-1 cuts (@ibm/plex-sans and @ibm/plex-mono 1.1.0), unmodified, under
+   the SIL Open Font License in fonts/LICENSE.txt; a character outside Latin-1 falls back to the system's face.
+   The site has no status colours: the tool's four keep their shades and their meaning — blue in progress · teal shipped
+   · yellow parked · coral blocked — and read at 4.7:1 or more on both grounds. */
+@font-face{font-family:"IBM Plex Sans";font-weight:400;src:url("fonts/IBMPlexSans-Regular-Latin1.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-style:italic;font-weight:400;src:url("fonts/IBMPlexSans-Italic-Latin1.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:600;src:url("fonts/IBMPlexSans-SemiBold-Latin1.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2")}
+body,#dlg textarea{font-family:"IBM Plex Sans",system-ui,sans-serif}
+.m,input,th,button,#v code,#dlg pre,#dlg code{font-family:"IBM Plex Mono",ui-monospace,monospace}
+/* light — the site's default scheme: ink is its text (black at 87 %), dim and mute its one secondary ink (55 %) —
+   the site has two readable inks, not three — and the rule its tables' (12 %) */
+:root{
+  --bg:#ffffff; --ink:#212121; --dim:#737373; --mute:#737373; --line:rgba(0,0,0,.12);
+}
+/* dark — the site's slate scheme: the ground hsl(225 15% 5%), the text hsl(225 15% 90%) at 82 %, the secondary at 56 %,
+   the rule hsl(225 15% 95%) at 12 %. Slate paints the header's name and the headings white: so does the board, and the
+   wordmark, drawn in currentColor, takes the name's white — the mark and the name one ink (the GtM's finding) */
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0b0c0f; --ink:#bbbdc2; --dim:#838589; --mute:#838589; --line:rgba(240,241,244,.12)}
+  #H b,.g b,#v h1,#v h2,#v h3,#v h4{color:#fff}
+}

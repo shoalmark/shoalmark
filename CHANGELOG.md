@@ -23,6 +23,10 @@ of its mark.
   paths (outline the text in your editor), or as `<text>` in a font your `theme.css` loads. A pixel mark shown at a
   whole multiple of its grid stays sharp. `--brand DIR`'s starter says the same in a comment.
 
+**shoalmark's own board wears the site's brand**, from `work-tracker/brand/`: the Pricke beside the name in IBM Plex
+Mono as the wordmark, the site's tab icon as the logo, the site's light and dark palettes, IBM Plex from files beside
+the theme, and the German claim as the tagline. It is this repository's place: `--vendor` never copies it.
+
 ## 0.18.0 — 2026-09-24
 
 **The session registry is a report, generated from the commit trailers** (FM-032 S2, which is FM-031's S1). It was a

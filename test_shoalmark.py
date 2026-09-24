@@ -1208,6 +1208,26 @@ with tempfile.TemporaryDirectory() as d:
             os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
 
+# --- 0.18.2 (FM-006): this repository's own board wears the site's brand — its brand files, held to their sources ------
+_rb, _xdg = HERE / "work-tracker/brand", os.environ.get("XDG_CONFIG_HOME")
+with tempfile.TemporaryDirectory() as _nowhere:
+    os.environ["XDG_CONFIG_HOME"] = _nowhere                 # the person's own place stays out of it
+    try:
+        fm.configure(HERE); _themes, _logo, _labels, _src, _warn, _wm = fm.brand()
+    finally:
+        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
+_given, _css = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8")), (_rb / "theme.css").read_text(encoding="utf-8")
+check("0.18.2 · this repository's labels.yaml is valid — every key a label — and its tagline is the German claim the Owner ruled, with a footer",
+      set(_given) <= set(fm.LABELS) and _given["tagline"] == "Dein Eigner bremst. Tunen statt tauschen." and _given.get("footer") and _labels["tagline"] == _given["tagline"])
+check("0.18.2 · this repository's theme.css loads as its own stylesheet with no warning — ink on ground set for light and dark and readable in both — and every font it names is on disk, with its licence",
+      _src["theme.css"] == ["repository"] and not _warn and len(re.findall(r"--bg\s*:\s*#[0-9a-f]{6}", _css)) == len(re.findall(r"--ink\s*:\s*#[0-9a-f]{6}", _css)) == 2
+      and "prefers-color-scheme:dark" in _css and all((_rb / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', _css)) and "SIL Open Font License" in (_rb / "fonts/LICENSE.txt").read_text(encoding="utf-8"))
+_wsrc = (_rb / "wordmark.svg").read_text(encoding="utf-8")
+check("0.18.2 · this repository's wordmark is the site's mark at the ruled 16 px beside the name, in one ink: inlined, drawn in currentColor only, the mark's path the site's own",
+      _src["wordmark"] == ["repository"] and _wm and 'height="16"' in _wm[1] and 'fill="currentColor"' in _wm[1] and not re.search(r'(?:fill|stroke)="(?!currentColor|none)', _wsrc)
+      and re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1) in _wsrc)
+check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
+
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
