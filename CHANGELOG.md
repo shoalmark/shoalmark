@@ -58,8 +58,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   on <sha>` and the count. A check, not a change.
 - **The tool's rule 4** (FM-033; the Auditor seat's AU-7 and AU-21): `--triage`'s printed rules and README §4 read *the
   pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees with is re-made by
-  the seat on his word, or ruled by his signed answer — a merge rules nothing (path 5)*. They said the Owner rules by
-  merging and can strike any row.
+  the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is written and signed, and a
+  merge is not one*. They said the Owner rules by merging and can strike any row.
 
 *Nothing to do on upgrade: one new configuration key, `judged_before_build`, off by default.*
 

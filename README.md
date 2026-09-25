@@ -138,7 +138,8 @@ own re-run.
 
 Never write a note into a tracker during a pass; the reason lives in the worksheet. Never touch the current path.
 The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees with is
-re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing (path 5).
+re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is written and
+signed, and a merge is not one.
 
 ## 5. The gate refused me
 
