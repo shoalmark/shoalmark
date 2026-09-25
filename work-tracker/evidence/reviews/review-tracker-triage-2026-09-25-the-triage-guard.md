@@ -268,4 +268,69 @@ Not verifiable here:
 - The Owner's own words behind the relay beyond what AU-13 states. I read the Auditor seat's correction, not his line.
 - The probe on `b336a53`; it was never pushed.
 
+## Verified again on f2f03f5
+
+**Scope.** `f2f03f5` (`f2f03f5da89d357ec230db76a8ef5d36190df530`), two commits on this verdict's `886a4b7`, both by the
+principal seat (`Session: 8e509911`):
+- `4cdbfcf` 19:37:29 merges `origin/main` `63fabb6`. Its parents are `886a4b7` and `63fabb6` ✓, and it is a merge, not a
+  rebase.
+- `f2f03f5` 19:38:01 fixes R3 and R6.
+
+Same tier, docs, one pass; same session, reported. Verified by 19:51 CEST.
+
+| run | result |
+|---|---|
+| `git show --remerge-diff 4cdbfcf` | FM-006 is resolved to PR 77's front matter with `triaged: 2026-09-25` and `rank: 6`, and `next: owner` stays. INDEX.md takes the pass's board, with FM-006 as `owner`. The merge also changes the sheet's FM-006 row, a file with no conflict, to `keep P2 #6 owner`; its Reason names the R1 correction, and the merge's subject says so |
+| `git diff 63fabb6 f2f03f5` on every `FM-0*.md` | the pass's `rank:` and `triaged:` lines, and FM-037, and nothing else; FM-030 keeps main's 0.18.4 line (`1429785`) with `rank: 2` |
+| a scratchpad clone at `f2f03f5`, signers file set, `--triage`, run twice | *0 trackers to judge*; *Applied nothing — no new filled rows* both times; the tree clean |
+| that clone, `--owner` | *1 NEED THE OWNER*: FM-006, action, *When and how does shoalmark go public?* ✓ R1 |
+| that clone, `python3 shoalmark.py` | the tree clean, so INDEX.md is byte-identical to the regenerator's output; the same in this worktree |
+| `--next` | #1 FM-037 … #6 FM-006 `owner` … #10 FM-033; each rank held once; `START WITH: FM-037` |
+| sha256 of TRIAGE.md's head, *The intent* and *The current path*, at `63fabb6` and `f2f03f5` | identical (`2f8d9d60…`, `74ff308a…`, `a100dbd4…`); *Passes* differs by the one paragraph |
+| FM-037 lines 27–39 against the paste | still byte-identical |
+| `--check` | exit 0; *INDEX.md is up to date — 37 trackers*; *judged before build: on*; *filing freeze: 21 open …* |
+| `--session-check` | exit 0 |
+| both suites, as the hook runs them | exit 0 on 3.14.3 and 3.9.6: 399 ok and 148 ok |
+| `git diff --name-only origin/main...HEAD` | 15 paths, all under `work-tracker/` (this review is the fifteenth) |
+| `git merge-tree --write-tree origin/main HEAD` | exit 0, clean; `63fabb6` is an ancestor of the tip |
+
+**The findings on 511451a:**
+- **R1 ✓ closed.** FM-006 keeps his ask at `next: owner`, rank 6. The sheet row says `owner`, so the next `--triage`
+  run leaves it alone, and `--owner` lists the ask.
+- **R3 ✓ closed, with one new slip (R8).** The paragraph now reads:
+  - *The ranked trackers moved down one and FM-034 left the ranks*;
+  - *its verdict of 13:36*;
+  - *FM-034 out of the ranks*;
+  - *the two sections above `## Passes` are untouched — the very thing FM-037 will enforce*.
+- **R6 ✓ closed for FM-014.** FM-037's `considered:` gains FM-014. The Why's list says *FM-014 (the rights gate — the
+  seat rights this guard reads)*. `--check` accepts the change under the triage right. The hand-row marking is not
+  fixed, and is carried to the next hand row.
+- **Carried, not fixed here (P3):**
+  - R2 goes on FM-037's build branch as its first commit: the Auditor seat's own correcting row, AU-13.
+  - R4, R5 and R7 go to the next pass and to the build brief:
+    - FM-034 marked `fix`, Shipped;
+    - the five re-dated rows, and FM-024's stale `owner`;
+    - `ae1f05e` against clauses 1 and 7, and line 3 after the build.
+
+**R8 · P3 · confidence high · The paragraph points the wrong way.**
+- The new sentence says *This paragraph, like the three above it, is a seat's*.
+- *Passes* is newest first, and this paragraph is the first under the heading (line 29). The other three paragraphs of
+  2026-09-25 are below it (lines 31, 33, 35), and nothing above it is a pass paragraph.
+- **Fix, forward:** *below it*, at the next touch of this file by a seat.
+
+**The merge's own change, not a finding.**
+- `4cdbfcf` edits the worksheet, a file that had no conflict. Under FM-019 that is the merger's own change, and the
+  merge's subject names it.
+- The replay above shows it is the only content the merge adds beyond its two parents' resolutions.
+
+## Verdict on f2f03f5 — READY WITH FINDINGS (R8 P3; R2, R4, R5, R7 carried P3), 90%
+
+- R1, the only P2, is closed: the merge is clean against `origin/main`, and his go-public ask stands on `--owner`
+  after a fresh `--triage`.
+- INDEX.md is the regenerator's own output.
+- The Owner's two sections are byte-identical to main.
+- Every gate is green.
+- R3 and R6 are fixed. R8 is new and P3. R2 goes on the build branch; R4, R5 and R7 go to the next pass and the build
+  brief.
+
 *the Owner lands this by merging; a merge rules nothing.*
