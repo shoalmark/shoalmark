@@ -4494,8 +4494,10 @@ def done_cmd(words, trackers):
         return EXIT_LINT
     now, today = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), datetime.date.today().isoformat()
     what, _answer, _answered, due, _window = act
-    # an action's yes left `next: owner` — the promise was his hands (ANSWER_MOVE); the act done, the seat's move follows
-    fields = {"done": f'"{now} · {where}"', **({"next": "build"} if t.get("next") == "owner" else {})}
+    # an action's yes left `next: owner` — the promise was his hands (ANSWER_MOVE); the act done, the seat's move follows.
+    # ONLY there: a `due:` beside a question he has not answered keeps `next: owner` — the question is still his, and
+    # moving it would take it off his list unanswered (the pass's R1 on 52cfcc7)
+    fields = {"done": f'"{now} · {where}"', **({"next": "build"} if t.get("next") == "owner" and act[1] else {})}
     return owner_change(tid, t, dict(
         flag="--done", verb="recording", noun="record", right="the result of the Owner's act is an `answer` change", check=lambda: "",
         write=lambda lines, me, branch: (act_record(lines, fields,

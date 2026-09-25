@@ -21,6 +21,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   where the result is, or the new time — and OK gives one command on the answer's second screen, titled *Sign your act*:
   `--done <id> "<where the result is>"` writes `done:` (the time, and where the result is), hands an action's move
   back to the seat (`next: build`), and records the act under a new `## Acts` section; the act leaves his list.
+  Only where his accepted action answer left `next: owner` does `--done` move it: a `due:` beside a question he has not
+  answered keeps `next: owner`, and the question stays on his list (the pass's R1).
   `--due <id> <time>` writes the new `due:` and records the old one there, newest last; on a done act it is a new act.
   Both are the Owner's own change, made as `--answer` makes his answer — `answer/<id>`, signed where his seat is
   `signed`, pushed, undone on failure — and refused from a seat without the `answer` right. The dialog's time is the

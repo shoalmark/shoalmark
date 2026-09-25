@@ -3024,6 +3024,20 @@ with tempfile.TemporaryDirectory() as tmp:
           code_o == code_x == fm.EXIT_LINT and "it carries your commit(s) — " in err_o and "AP-421: due " in err_o
           and "AP-421's act is open there: `git switch answer/ap-421`, then " in err_o and '--done AP-421 "evidence/AP-421/key.md"`' in err_o and "git branch -D" not in err_o
           and "nothing of yours is on it — clear it with `git branch -D answer/ap-423`" in err_x and here_() == start_)
+    # R1 (the pass on 52cfcc7): `--done` hands the move to the seat only where his ACCEPTED action answer left `next: owner` —
+    # a `due:` beside a ruling he has not answered keeps it, and the question stays on his queue and his board
+    tracker(root, "AP-426", extra=f'next: owner\nask: "Does the launcher ship before the site?"\nask-kind: ruling\nask-since: {since_}\n'
+                                  f'ask-proposal: "the launcher"\ndue: {at_(-10)}\n', title="a read beside an open ruling")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-426: asked, and a read scheduled", "-S", "--author=holgo <holgoijo@x>")
+    code_r1, out_r1, err_r1 = run(root, "--done", "AP-426", "evidence/AP-426/read.md")
+    git(root, "switch", "-q", "answer/ap-426"); run(root, "--html-only"); fm.configure(root)
+    t426_ = next(t_ for t_ in fm.load_trackers() if t_["id"] == "AP-426")
+    owner_r1_, page_r1_ = run(root, "--owner")[1], (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    git(root, "switch", "-q", start_)
+    check(f"FM-030 · C · R1 · `--done` on a `due:` beside a ruling he has not answered records the act and leaves `next: owner`: the question stays on his queue and his board (saw {out_r1.strip()!r} · {err_r1.strip()[-160:]!r})",
+          code_r1 == 0 and t426_.get("next") == "owner" and t426_.get("done", "").endswith("evidence/AP-426/read.md") and not fm.act_of(t426_)
+          and "Does the launcher ship before the site?" in owner_r1_ and "AP-426" in [q_[0]["id"] for q_ in fm.owner_queue([t426_])]
+          and "next: build" not in out_r1 and '"Does the launcher ship before the site?"' in page_r1_)
     check("FM-030 · C · `--schema` says what `--done` does to the move: `next: build` where his answer left `next: owner`",
           "`--done` sets `next: build` — the act done, the seat's move is next" in fm.render_schema())
     if _browser("owe"):
