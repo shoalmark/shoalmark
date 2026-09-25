@@ -126,3 +126,115 @@ Noted, not graded (the parent's record): the clause says *re-made with the board
 keeps the act on his board.
 
 The Owner lands this by merging; a merge rules nothing (path 5).
+
+## Verified again on 7557ed1
+
+**Scope.** `7557ed1` (`7557ed1bfd2a10ba15201e960371aa89a613a7f5`), read 2026-09-25 18:58 CEST by the Reviewer, session
+`8e509911/reviewer-10`. It holds eight commits by the Implementer seat (`8e509911/implementer-24`, 17:45–18:23) on the
+verdict above (`9555d2c`): seven on FM-006 and one on FM-030. On top is one merge of `origin/main` (`b336a53`, PR 78).
+**Tier: docs, one pass.** A defect in the ask's text is P2, and so is a wrong count written as verified. The rest is P3.
+**Independence:** same session. This pass is 8e509911's own sub-agent. Reported.
+
+**What I ran.**
+- **The two filed pastes.** Each runs from after its opening line (`**Through the Owner at 17:23:39 …**` or
+  `**… 17:37:17 …**`) to the next blank line, and includes its own heading line.
+  - The addendum as filed: sha256 `281f74bbe32c32f73ef993846f95f147b7f4be492ed251b97a081c3ea7932309`, 1382 bytes.
+  - The correction as filed: sha256 `a0b8244dbb6b1382d910df2dba91848db8cc8f53d34152d29b4a6d0d2f78ff01`, 1084 bytes.
+  - `cmp` finds both byte-identical to the paste files the brief names, and both hashes equal the brief's ✓. Each opening
+    line occurs once.
+- **The ask.**
+  - `ask:` is unchanged since `9555d2c`: one `?`, at the end. `ask-kind: action`, `ask-since: 2026-09-25` and
+    `next: owner` are unchanged too.
+  - `ask-options:` is the addendum's three options, byte for byte against item 3's quotes. They are 119, 118 and 7
+    characters, all distinct, and open with *this*, *a* and *not*. `ask-proposal:` is option 1, byte for byte ✓.
+  - No option carries an *if*. The condition *if either may not be public, the second* stands in the body's proposal
+    paragraph and in the ship-log row, each time as the Auditor seat's counsel ✓.
+- **The fourth gate.** Item 4 of the gates list is the addendum's clause in italics, *the port evidence deleted or moved,
+  as ruled on 09-22*, with its gloss in brackets ✓.
+  - His answer is quoted as *should consider this now* [normalised]. The pasted *Should consider this then now* appears
+    only inside the filed addendum ✓.
+  - *row 36* appears only inside the filed paste ✓.
+- **The citation, against the brief.** The Principal's message said *row 3*. `83dc05d` changed it to *row 10* and gave
+  its reason. I checked read-only, with `git show` of the ledger at its registry path on the parent's `main`:
+  - the ledger numbers its rows in one count across its tables;
+  - line 36 is the 2026-09-22 ruling. It is row 10 in that count, and row 3 within its own table;
+  - the go-public ask is line 73, row 47 in the same count.
+  - So *row 10* is the number that belongs beside this file's *row 47*, and the line number holds either way ✓.
+- **What is true now** names the act ✓: the six files under `work-tracker/evidence/FM-001/port/` are still on main,
+  deleting or moving them is this tracker's act, and nothing is deleted before his answer. `git ls-tree` lists the six at
+  `7557ed1` and at `origin/main` (`b336a53`) ✓.
+- **The count, reproduced at `9555d2c`.** Not at the tip: this file's own newer versions add to the count there.
+  - Method: I listed every object of `git rev-list --all --objects` (91 refs and the 15 worktrees' HEADs) and typed them
+    with `git cat-file --batch-check`. I read each blob with `git cat-file --batch` and searched it for the parent's name
+    in any case. I ran it again with the forge's 78 pull heads from `git ls-remote` added by id. All were present
+    locally, none was fetched as a ref, and they added no hit.
+  - Today 35 blobs name the parent across all refs. 28 are reachable from `9555d2c`. The other 7 are exactly the seven
+    FM-006 versions from the branch's eight commits; `1429785` left FM-006 unchanged.
+  - Against `9555d2c`: 28 = 8 at the tip + 20 older. The 20 sit at 7 paths: 5 at the tip, and 2 are FM-002's pre-move
+    `docs/work-tracker/` paths. 3 files (FM-020, FM-022, review-fix-0.17.5) name it only in older versions.
+  - Against `8b267b4`: 8 at its tip, 18 older, and the branch's 2 FM-006 versions. 3 of the 6 port files do not carry the
+    name.
+  - Every number the file writes ✓.
+  - The Implementer's scope (77 pull heads, no merge ref for PR 77) was the forge's state before PR 78 opened at 18:00:02
+    and before this merge. At this pass there are 78 pull heads and a merge ref, and the count at `9555d2c` is the same.
+- **The control, and the tip count.** At `9555d2c`, `git grep -i -l` for the name lists 8 files, and they are the paths of
+  the 8 tip blobs found ✓. At `origin/main` (`b336a53`) it lists 8 files, and at `7557ed1` the same 8 paths. The struck
+  *7 of their paths only in history* appears only inside the filed pastes, at FM-006's lines 113 and 120 ✓.
+- **FM-030:** one line, `**For 0.18.4:**`, under its second widening. Nothing else in the file changed ✓.
+- **No parent state beyond the registry path and row and line numbers** ✓.
+  - The diff `9555d2c..d60c8bc` names no local path and no person, and quotes no tracker body.
+  - Its only parent id outside the registry path is inside the filed addendum.
+  - `scripts/gen-tracker-index.py` is named to say what the port files hold. It already appears in four files at
+    `9555d2c`: the port files and FM-001's notes.
+- **The ship-log row** is at the top, dated 2026-09-25, and no row below it changed ✓. It carries both hashes, the fourth
+  gate with its citation, the act, the count as found, 119/118/7, the condition as counsel, FM-030's line, and row 47 as
+  owed.
+- **The merge `7557ed1`.**
+  - Its parents are `d60c8bc` (the branch, with `9555d2c` as an ancestor) and `b336a53` (PR 78's merge). The base is
+    `8b267b4`.
+  - Redone in memory with `git merge-tree`, it conflicts in `work-tracker/INDEX.md` only.
+  - The four paths the branch changed are byte-identical to `d60c8bc`'s. The six paths main changed are byte-identical
+    to `b336a53`'s. The merge touches no other path.
+  - `python3 shoalmark.py` rewrites `INDEX.md` byte-identically (sha256 `21e38595…`), with FM-006's row from the branch
+    and FM-035's from main ✓.
+  - The merge's message said *to be verified*. This pass is that verification.
+- **Gates.**
+  - `--check` 0: *INDEX.md is up to date — 36 trackers*, the freeze at 20 open, no ask problem.
+  - `--session-check` 0.
+  - `test_shoalmark.py` 0 (399 ok) and `test_core.py` 0 (148 ok), on 3.14.3 and on 3.9.6.
+  - `git diff --name-only origin/main...HEAD` lists FM-006, FM-030, INDEX.md and this file. All are under
+    `work-tracker/`: PR 77's three files plus FM-030 ✓.
+  - `git merge-tree` against `origin/main` is clean, and its tree is the tip's own ✓.
+
+**R4 ✓ closed.** The options are declarative, and the condition is no longer in their text.
+
+**R5 · P3 · confidence 60% (the numbers are exact; whether to write them is the question) · The struck clause holds on
+another reading, and that number is not written.**
+- Across the history, the 28 versions sit at 18 distinct paths. 7 of those paths are absent from the tip, all under the
+  pre-move `docs/work-tracker/` tree:
+  - FM-001's three port files that carry the name, with `shoalmark.toml` also under its earlier name `fathom-mark.toml`;
+  - FM-001's seam note;
+  - FM-002's two files.
+- So *7 of their paths only in history* is true when read by path. The correction reads it by version: the older
+  versions sit at 7 paths, 5 of them still at the tip. On that reading the clause is wrong. Both readings give 7.
+- The Implementer's brief asked for the path reading: *the distinct paths of those blobs, and which of them are absent
+  from `origin/main`'s tree*.
+- Nothing false is written. The file gives the correction's numbers, each reproduced, and keeps the struck clause
+  inside the paste. But it records the Auditor seat's own clause as wrong and never says that, read by path, it is 7 of
+  18.
+- The substance does not change. *As it is* publishes the parent's traces either way, and the 7 old paths are more of
+  them.
+- **Fix forward, or leave:**
+  - either one clause beside the count, as the seat's own number and without re-asserting the struck clause: *the 28
+    versions sit at 18 paths, 7 of them only in history, all pre-move*;
+  - or the Auditor seat's reading, through the Owner.
+  - The filed paste stays as it is.
+
+**Verdict on 7557ed1: READY WITH FINDINGS (R5 P3).**
+- The filed pastes equal the pastes.
+- The ask meets every rule and matches the addendum.
+- Every number written was reproduced at `9555d2c`.
+- The merge of main carries only the two sides' own work and a regenerated index.
+- Tier: docs, one pass. Independence: same session, 8e509911's own sub-agent. Reported.
+
+The Owner lands this by merging; a merge rules nothing.
