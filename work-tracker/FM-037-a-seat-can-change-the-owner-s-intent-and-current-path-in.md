@@ -1,6 +1,6 @@
 ---
 id: FM-037
-status: Proposed
+status: In Progress
 considered: FM-008, FM-033, FM-007, FM-019, FM-022
 tags: bug
 triaged: 2026-09-25
@@ -53,4 +53,5 @@ sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as en
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | In Progress — 0.18.4 builds it on its own branch after this pass lands; the status set here, on the pass branch, before the first build commit (the Auditor seat's AU-20). |
 | 2026-09-25 | Filed at the Owner's word (*stop a seat from editing your TRIAGE.md — let's fix this first*), through the Auditor seat at 18:58:54; the filing text is the paste word for word, its hash above. Judged the same day: P1, rank 1, build (the pass of 2026-09-25, the triage guard). |
