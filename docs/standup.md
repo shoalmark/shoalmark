@@ -10,7 +10,8 @@ python3 tools/shoalmark/shoalmark.py --standup
 
 It prints the agenda of one sitting, by kind — **rulings** first (answer; a provisional answer is an answer), then what
 only **your hands** can do, in the order that frees the most work, then what **evidence could settle** without you,
-then **buttons**. Each item is one question, with how long it has waited and what it holds up.
+then **buttons**. Each item is one question, with how long it has waited and what it holds up. After the questions come
+**your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet.
 
 ## The invite
 

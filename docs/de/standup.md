@@ -11,7 +11,8 @@ python3 tools/shoalmark/shoalmark.py --standup
 Er gibt die Tagesordnung eines Standups aus, nach Art geordnet: zuerst **Entscheidungen** (antworten Sie; eine
 vorläufige Antwort ist eine Antwort), dann was nur **Ihre Hände** tun können, in der Reihenfolge, die am meisten
 Arbeit freigibt, dann was **Belege klären** könnten, ohne Sie, dann **Knöpfe**. Jeder Punkt ist eine Frage, mit der
-Wartezeit und dem, was sie aufhält.
+Wartezeit und dem, was sie aufhält. Nach den Fragen kommen **Ihre Handlungen, mit ihrer Zeit** — versäumte und
+überfällige zuerst, dann was fällig wird, dann was noch keinen Termin hat.
 
 ## Die Einladung
 

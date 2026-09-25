@@ -37,6 +37,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `$XDG_STATE_HOME/shoalmark/notified.json` (`~/.local/state/shoalmark/`, `%LOCALAPPDATA%\shoalmark\` on Windows),
   never in the repository; a notice that could not be posted is tried again. The README has a cron and a launchd
   line; the tool installs nothing. *Nothing to do on upgrade; schedule `--notify` if you want it.*
+- **`--standup` and `--owner` list the acts** (FM-030's first line: *`--standup` lists due and overdue acts, not
+  just asks*). After the asks, *ACTS — yours, with their time*: missed and overdue first, then what falls due, soonest
+  first, then what has no date yet — an accepted action with no `due:`, such as FM-007's hardware key, promised after
+  the scoring — each with its `due:`, what it is and the promise it came from, in the board's words. With no question
+  and acts owed, neither says nothing needs him: `--owner` leads with *NO QUESTION FOR THE OWNER · N ACT(S) OWED*, and
+  the standup's head counts the acts. *Nothing to do on upgrade.*
 
 ## 0.18.3 — 2026-09-24
 

@@ -2937,6 +2937,44 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.4 E: `--standup` and `--owner` list the acts after the asks — due, overdue, missed, no date yet — each
+#     with its `due:` and what it is (FM-030's first line; FM-007's key, promised after the scoring, is *no date yet*)
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    (root / "shoalmark.toml").write_text('name = "e"\nanswerers = ["holgo"]\nstandup = "09:00"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ruling_ = tracker(root, "AP-440", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "the launcher"\n', title="a ruling")
+    tracker(root, "AP-441", extra=f'next: owner\nask: "Will you set up the hardware key?"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes"\n'
+                                  f'answer: "accepted - after the scoring"\nanswered: {since_}\nanswered-by: holgo\n', title="the key")
+    tracker(root, "AP-442", extra=f"next: run\ndue: {at_(-10)}\n", title="the read at seven")
+    tracker(root, "AP-443", extra=f"next: run\ndue: {at_(-120)}\nwindow: 30\n", title="the read at five")
+    tracker(root, "AP-444", extra=f"next: run\ndue: {at_(24 * 60)}\n", title="the read tomorrow")
+    tracker(root, "AP-445", extra=f'next: run\ndue: {at_(-10)}\ndone: "{at_(-5)} · evidence/AP-445/read.md"\n', title="done")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "asks and acts", "--author=holgo <h@x>")
+    want_ = ["ACTS — yours, with their time",
+             f"  AP-443 — the read at five · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result",
+             f"  AP-442 — the read at seven · overdue — due {at_(-10).replace('T', ' ')}",
+             f"  AP-444 — the read tomorrow · due {at_(24 * 60).replace('T', ' ')}",
+             f"  AP-441 — Will you set up the hardware key? · no date yet · promised {since_}: accepted - after the scoring"]
+    code_s, out_s, _e = run(root, "--standup")
+    code_o, out_o, _e = run(root, "--owner")
+    block_ = lambda out: next((b_.strip("\n").split("\n") for b_ in out.split("\n\n") if b_.startswith("ACTS —")), [])
+    check(f"FM-030 · E · `--standup` lists the acts after the asks: missed and overdue first, then what falls due, then what has no date yet — FM-007's key, promised after the scoring — each with its `due:` and what it is; a done act is not there (saw {out_s!r})",
+          code_s == 0 and "· 1 item(s) · 4 act(s)" in out_s.split("\n")[0] and out_s.index("RULINGS") < out_s.index("ACTS — yours") and block_(out_s) == want_ and "AP-445" not in out_s)
+    check(f"FM-030 · E · `--owner` says the same after its asks (saw {out_o!r})",
+          code_o == 0 and out_o.startswith("1 NEED THE OWNER") and out_o.index("Shall the launcher ship first?") < out_o.index("ACTS — yours") and block_(out_o) == want_)
+    ruling_.unlink()
+    code_s, out_s, _e = run(root, "--standup")
+    code_o, out_o, _e = run(root, "--owner")
+    check(f"FM-030 · E · with no question and acts owed, neither says nothing needs him: the digest leads with the acts (saw {out_o.split(chr(10))[0]!r} · {out_s.split(chr(10))[0]!r})",
+          code_s == code_o == 0 and out_o.startswith("NO QUESTION FOR THE OWNER · 4 ACT(S) OWED, WITH THEIR TIME") and "NOTHING NEEDS" not in out_o
+          and "· 0 item(s) · 4 act(s)" in out_s.split("\n")[0] and "nothing needs the Owner today" not in out_s and block_(out_o) == block_(out_s) == want_)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()

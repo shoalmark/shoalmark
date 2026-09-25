@@ -1062,22 +1062,35 @@ def answered(trackers):
     return EXIT_OK
 
 
+ACTS_TITLE = "ACTS — yours, with their time"
+
+
+def acts_lines(trackers, now=None):
+    """FM-030 E — the acts owed to the Owner, as `--standup` and `--owner` list them after the asks: missed and overdue
+    first, then what falls due, soonest first, then what has no date yet — each with its `due:` and what it is, in the
+    board's words, and the promise it came from. [] where he owes none."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    order = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}
+    acts = sorted(((t, a) for t, a in ((t, act_of(t)) for t in trackers) if a),
+                  key=lambda p: (order[act_state(p[1], now)], parse_due(p[1][3]) or now, p[0]["id"]))
+    return [f"  {t['id']} — {a[0]} · {act_words(a, now)}" + (f" · promised {a[2]}: {a[1]}" if a[1] else "") for t, a in acts]
+
+
 def owner_digest(trackers):
-    """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened."""
-    q = owner_queue(trackers)
+    """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened. After the
+    asks, the acts he owes, with their time (FM-030)."""
+    q, acts = owner_queue(trackers), acts_lines(trackers)
     if not q:
-        print("NOTHING NEEDS THE OWNER.")
-        sent_back(trackers)
-        line = sessions_digest()
-        if line:
-            print("\n" + line)
-        return EXIT_OK
-    ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
-    print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
-          + (f" · {line}" if line else ""))
-    for t, a, hs in q:
-        print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
-        print("   " + t["ask"])
+        print("NOTHING NEEDS THE OWNER." if not acts else f"NO QUESTION FOR THE OWNER · {len(acts)} ACT(S) OWED, WITH THEIR TIME")
+    else:
+        ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
+        print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
+              + (f" · {line}" if line else ""))
+        for t, a, hs in q:
+            print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
+            print("   " + t["ask"])
+    if acts:
+        print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
     sent_back(trackers)
     line = sessions_digest()
     if line:
@@ -1116,16 +1129,18 @@ def standup(trackers, invite=None):
         pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
-    q = owner_queue(trackers)
+    q, acts = owner_queue(trackers), acts_lines(trackers)
     line = bottleneck(q)
-    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + ("" if q else " — nothing needs the Owner today.")
-          + (f"\n{line}" if line else ""))
+    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + (f" · {len(acts)} act(s)" if acts else "")
+          + ("" if q or acts else " — nothing needs the Owner today.") + (f"\n{line}" if line else ""))
     for kind, title in STANDUP_ORDER:
         rows = sorted((r for r in q if (r[0].get("ask_kind") or "") == kind), key=lambda r: (-len(r[2]), -(r[1] if r[1] is not None else -1), r[0]["id"]))
         if rows:
             print(f"\n{title}")
         for n, (t, a, hs) in enumerate(rows, 1):
             print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+    if acts:                                                # FM-030: after the asks, what he owes, with its time
+        print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
     sent_back(trackers)
     return EXIT_OK
 
