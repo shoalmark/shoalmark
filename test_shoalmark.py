@@ -3732,6 +3732,18 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-037 · the Owner is read from the default branch's `[seats]`, never the branch's: a branch that makes a seat the Owner is still refused; where the default branch names no Owner nothing is guarded, and `--check` says so (saw {g_none_!r})",
           len(g_self_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_self_[0][0]
           and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's `[seats]` gives no seat `answer`: name his (`owner = \"<email> signed\"`)"))
+    # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
+    git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
+    c_ao_, g_ao_ = made37_("ap/037-author-only", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
+    c_aw_, g_aw_ = made37_("ap/037-author-owner", "AP-037: his line, his name", text37_("lose a loan", "lose a page"), OWNER_)
+    check(f"FM-037 · clause 5 · with the Owner's seat not `signed`, a seat's change is refused on its author and the refusal says it proves the author only; his own unsigned change passes on his name, and `--check` says the same of the whole guard (saw {g_ao_[0]!r}, {g_aw_[1]!r})",
+          g_ao_[0] == [f'refused: commit {c_ao_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): the author only — mark the owner\'s seat signed to prove the key — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
+          and g_aw_ == ([], "the Owner's two sections: guarded (the author only — mark the owner's seat signed to prove the key) — 1 commit(s) on `ap/037-author-owner` since origin/main, 1 change them, each his own commit"))
+    svn37_ = base / "svn"; (svn37_ / ".svn").mkdir(parents=True); (svn37_ / "shoalmark.toml").write_text(cfg37_.replace(" signed", ""), encoding="utf-8")
+    fm.configure(svn37_); g_svn_ = _no_git_env(fm.triage_guard)
+    check(f"FM-037 · clause 5 · under Subversion the guard says, in one line, that it is out of scope — the working copy carries no signature (saw {g_svn_!r})",
+          g_svn_ == ([], "the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so nothing here can tell his commit from a seat's"))
     rm_git(root)
 fm.configure(HERE)
 

@@ -4357,6 +4357,10 @@ GUARD_WHY = "only the Owner changes his intent and his current path (FM-037)"
 GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can "
              "answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`")
 GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)"
+# what it can prove where his seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
+GUARD_AUTHOR_ONLY = "the author only — mark the owner's seat signed to prove the key"
+GUARD_SVN = ("the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so "
+             "nothing here can tell his commit from a seat's")
 _GUARD = None
 
 
@@ -4519,7 +4523,13 @@ def guard_verdicts(changed, owners):
     return verdicts
 
 
-def guard_lines(verdicts):
+def guard_proof(owners):
+    """What a refusal can say it proved: the Owner's signed commit — or, where a seat that is his asks for no signature, the
+    author only, and how to prove the key (clause 5)."""
+    return "not the Owner's signed commit" if all(m == "signed" for m in owners.values()) else GUARD_AUTHOR_ONLY
+
+
+def guard_lines(verdicts, owners):
     """The refusals of `guard_verdicts` as `--check` prints them — a checkout's own finding (signed, this clone cannot check
     it) worded as FM-034 groups it, never written into INDEX.md."""
     out = []
@@ -4528,7 +4538,7 @@ def guard_lines(verdicts):
         if verdict == "checkout":
             out.append(f'{home}: commit `{c[:10]}` "{first_words(subject, 60)}" {did} — it is signed, but {CHECKOUT_MARKS[0]}: {why} — see {SIGNING_PAGE}')
         elif verdict == "refused":
-            out.append(f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did} — {why}: not the Owner\'s signed commit — {GUARD_WHY}. '
+            out.append(f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did} — {why}: {guard_proof(owners)} — {GUARD_WHY}. '
                        f'The way through: {GUARD_WAY}')
     return out
 
@@ -4552,7 +4562,7 @@ def triage_pending(subject):
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
     views = triage_views(["", *parents], env)                  # "" — the index: what this commit carries
     what = section_changes(views[""], [views[p] for p in parents])
-    refused = guard_lines(guard_verdicts(guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []))[1], owners)) if heads else []
+    refused = guard_lines(guard_verdicts(guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []))[1], owners), owners) if heads else []
     notes = []
     if what:
         name, email = pending_author()
@@ -4560,10 +4570,10 @@ def triage_pending(subject):
         this = f'this commit "{first_words(subject, 60)}"' if subject else "this commit"
         if mode is None:
             refused.append(f'refused: {this} {did_words(what)} — its author `{email or name or "nobody git can name"}` is not the Owner '
-                           f'({" · ".join(f"`{w}`" for w in owners)}): not the Owner\'s signed commit — {GUARD_WHY}. The way through: {GUARD_WAY}')
+                           f'({" · ".join(f"`{w}`" for w in owners)}): {guard_proof(owners)} — {GUARD_WHY}. The way through: {GUARD_WAY}')
         else:
             notes.append(f"note: {this} {did_words(what)}, under the Owner's name — "
-                         + ("its signature is judged on the commit, by `--check` on the branch" if mode == "signed" else "his name is all that is judged"))
+                         + ("its signature is judged on the commit, by `--check` on the branch" if mode == "signed" else GUARD_AUTHOR_ONLY))
     return refused, notes
 
 
@@ -4601,7 +4611,7 @@ def triage_guard():
     if _GUARD is not None:
         return _GUARD
     if vcs() != "git":
-        _GUARD = ([], "the Owner's two sections: this is no git repository — nothing is judged")
+        _GUARD = ([], GUARD_SVN if vcs() == "svn" else "the Owner's two sections: this is no git repository — nothing is judged")
         return _GUARD
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
@@ -4614,8 +4624,9 @@ def triage_guard():
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk)
     verdicts = guard_verdicts(changed, owners)
-    refused = guard_lines(verdicts)
-    _GUARD = (refused, f"the Owner's two sections: guarded — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+    refused = guard_lines(verdicts, owners)
+    proof = "" if all(m == "signed" for m in owners.values()) else f" ({GUARD_AUTHOR_ONLY})"
+    _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
                        + (f"{len(changed)} change them, {len(refused)} refused" if refused else f"{len(changed)} change them, each his own commit" if changed
                           else "none changes them"))
     return _GUARD
