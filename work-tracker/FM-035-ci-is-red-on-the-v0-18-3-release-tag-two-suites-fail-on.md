@@ -3,6 +3,10 @@ id: FM-035
 status: Proposed
 considered: FM-028, FM-011, FM-006
 tags: bug
+triaged: 2026-09-25
+rank: 6
+next: build
+tier: P1
 hook: "The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:02 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 and 3.12 fail two checks of test_shoalmark.py — the wordmark past the size cap, and RV-479's merged answer branch cut fresh; macos 3.12 dies in a traceback at test_shoalmark.py:1529 in the brand checks. The Owner's path, line 1: the sitting runs on a tagged release with no failed command — a red tag is one."
 ---
 
