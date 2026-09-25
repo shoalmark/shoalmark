@@ -17,6 +17,15 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   the triage freshness. INDEX.md lists them in a table with their time as written: no due, overdue or missed, so no
   minute passing changes a committed file. The board has six new labels, `acts.*`; `examples/de/labels.yaml` carries
   the German.
+- **Done and Reschedule on each act, as copied commands** (FM-030). Two buttons on the act's row open a small dialog —
+  where the result is, or the new time — and OK gives one command on the answer's second screen:
+  `--done <id> "<where the result is>"` writes `done:` (the time, and where the result is), hands an action's move
+  back to the seat (`next: build`), and records the act under a new `## Acts` section; the act leaves his list.
+  `--due <id> <time>` writes the new `due:` and records the old one there, newest last; on a done act it is a new act.
+  Both are the Owner's own change, made as `--answer` makes his answer — `answer/<id>`, signed where his seat is
+  `signed`, pushed, undone on failure — and refused from a seat without the `answer` right. The dialog's time is the
+  browser's, sent with its zone. `[headings]` gains `acts` (German `Handlungen`); seven new labels. *Nothing to do on
+  upgrade.*
 
 ## 0.18.3 — 2026-09-24
 

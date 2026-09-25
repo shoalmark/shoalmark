@@ -95,6 +95,13 @@ acts.due: fällig {0}
 acts.overdue: überfällig — fällig {0}
 acts.missed: "versäumt — fällig {0}, und {1} Minuten ohne Ergebnis verstrichen"
 acts.nodate: noch kein Termin
+acts.done: erledigt
+acts.reschedule: verschieben
+act.done.title: Erledigt — wo ist das Ergebnis?
+act.done.hint: ein Pfad im Repository, oder wo das Ergebnis liegt
+act.due.title: Verschieben — auf wann?
+act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
+act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
