@@ -1,7 +1,7 @@
 ---
 id: FM-037
 status: In Progress
-considered: FM-008, FM-033, FM-007, FM-019, FM-022
+considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
 rank: 1
@@ -41,7 +41,7 @@ Then the site page on FM-006 can say "only you change it" as enforced by the too
 The finding is the Auditor seat's AU-12; the filing is the Principal's, at the Owner's word (*let's fix this first*), read as: before
 the 0.18.4 release is cut, this guard is in it. Held against FM-008 (the ask reaches the Owner only through the gate — the same class of
 enforcement, for asks), FM-033 (the judged-before-build gate — the walker this guard joins), FM-007 (the tier-0 limit the message must
-state), FM-019 (a merge is never judged as the merger's own change — the merge clause here), FM-022 (the intent lines' form — untouched).
+state), FM-019 (a merge is never judged as the merger's own change — the merge clause here), FM-022 (the intent lines' form — untouched), FM-014 (the rights gate — the seat rights this guard reads).
 
 ## Done when
 
