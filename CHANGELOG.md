@@ -4,6 +4,75 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased — 0.18.4
 
+- **An act owed to the Owner has a time** (FM-030; his line 6: *what the Owner owes is on their board with one button*).
+  New front-matter keys: `due:` — an ISO time with its zone, `2026-09-26T07:30:00+02:00`, written by the seat that
+  schedules the act (with the action ask, or when its time is set); `window:` — minutes after it in which the act can
+  still be done, 60 where absent; `done:` — its result, written by the Owner's `--done`. `--clear-ask` leaves `due:`:
+  the answer to an action ask is a promise, and the act is still owed. The gate refuses a time that is not a real one
+  or has no zone. *Nothing to do on upgrade.*
+- **The acts owed to the Owner are on his board with their time** (FM-030). An act is owed where an action ask was
+  accepted — his answer a promise of his hands — or a `due:` is set, until `done:` is written; closed work owes none.
+  His board lists them after the questions, under *your acts, with their time*: *no date yet*, *due*, *overdue* after
+  its time, *missed* once `window:` minutes have passed with no result — by the page's clock, its second rule beside
+  the triage freshness. INDEX.md lists them in a table with their time as written: no due, overdue or missed, so no
+  minute passing changes a committed file. The board has six new labels, `acts.*`; `examples/de/labels.yaml` carries
+  the German.
+- **Done and Reschedule on each act, as copied commands** (FM-030). Two buttons on the act's row open a small dialog —
+  where the result is, or the new time — and OK gives one command on the answer's second screen, titled *Sign your act*:
+  `--done <id> "<where the result is>"` writes `done:` (the time, and where the result is), hands an action's move
+  back to the seat (`next: build`), and records the act under a new `## Acts` section; the act leaves his list.
+  Only where his accepted action answer left `next: owner` does `--done` move it: a `due:` beside a question he has not
+  answered keeps `next: owner`, and the question stays on his list (the pass's R1).
+  `--due <id> <time>` writes the new `due:` and records the old one there, newest last; on a done act it is a new act.
+  Both are the Owner's own change, made as `--answer` makes his answer — `answer/<id>`, signed where his seat is
+  `signed`, pushed, undone on failure — and refused from a seat without the `answer` right. The dialog's time is the
+  browser's, sent with its zone. An unmerged `answer/<id>` is never cleared over his commits: where the act is open on
+  it, the refusal names the command on that branch; otherwise merge it first; `git branch -D` is named only where
+  nothing of his is on it — for `--answer` too, so RV-479's check changed with it: it had expected `git branch -D`
+  over his own unmerged answer. `[headings]` gains `acts` (German `Handlungen`); eight new labels. *Nothing to do on
+  upgrade.*
+- **An invite and a notification per act** (FM-030; his word, 2026-09-25: *Better than only invites would be invites +
+  notifications*). `--invite <id>` writes `<tracker dir>/evidence/<id>/<id>-act.ics`, RFC 5545 as the standup's invite
+  is: the act's `due:` in UTC, a DURATION of its `window:`, an alarm 30 minutes before, CRLF, folded at 75 octets, the
+  same bytes for the same act; its SEQUENCE counts the act's records, so the file written after a `--due` replaces the
+  event. `--notify` posts one system notification per act due within 30 minutes, overdue or missed — `osascript`,
+  `notify-send`, PowerShell's toast, else a printed line — once per act per state, remembered in
+  `$XDG_STATE_HOME/shoalmark/notified.json` (`~/.local/state/shoalmark/`, `%LOCALAPPDATA%\shoalmark\` on Windows),
+  never in the repository; a notice that could not be posted is tried again. The README has a cron and a launchd
+  line; the tool installs nothing. *Nothing to do on upgrade; schedule `--notify` if you want it.*
+- **`--standup` and `--owner` list the acts** (FM-030's first line: *`--standup` lists due and overdue acts, not
+  just asks*). After the asks, *ACTS — yours, with their time*: missed and overdue first, then what falls due, soonest
+  first, then what has no date yet — an accepted action with no `due:`, such as FM-007's hardware key, promised after
+  the scoring — each with its `due:`, what it is and the promise it came from, in the board's words. With no question
+  and acts owed, neither says nothing needs him: `--owner` leads with *NO QUESTION FOR THE OWNER · N ACT(S) OWED*, and
+  the standup's head counts the acts. *Nothing to do on upgrade.*
+- **A sheet's newest row wins** (FM-036). Two filled rows for one tracker on one sheet — a same-day re-judgement,
+  the raise rule's normal case — were both applied in order, so on 2026-09-25 FM-030's rank read 1, then 3, then 1,
+  each run printing *Applied 1*. `apply_worksheet` now applies the LAST filled row in the file; the earlier is left
+  as it is, the record of the first judgement, claims no rank, and each run names it: *superseded on this sheet by
+  the later row*. The second run applies nothing. `--triage` prints the rule, *ONE TRACKER, TWO ROWS*. *Nothing to do
+  on upgrade; a seat that struck the earlier row may leave it in from now on.*
+- **The record names the answer's signing commit** (FM-029; the Auditor seat's AU-29). `--clear-ask`'s record
+  under `## Asks` gains `**signed** — <sha> · <G|N|U>`: the commit that wrote the `answer:` line and what git says of
+  its signature where the record is written (`%G?` — G good, U good from a key not trusted here, N none). An answer
+  not yet committed says `not committed · N`; under Subversion there is no line. The key's tier is not printed yet
+  (FM-007). *Nothing to do on upgrade; records written before keep what they have.*
+- **The pass's R3–R6 on FM-030's build** (the Reviewer's inline pass on `52cfcc7`). R3: `--done` where the act is on an
+  unmerged `answer/<id>` names that branch and his commits on it, as `--due` does, instead of *owes the Owner no act*.
+  R4: the dialogs' copied command single-quotes what he typed — `--answer <id> accept '<text>'`, `--done <id>
+  '<where>'`, a `'` written `'\''` — so a backtick or a `$` in it is inert; in `"…"` a shell ran and expanded them
+  into what he signs. R5: an hour of 24 is refused in `due:` and `done:` on every Python; 3.14 read `T24:00` as the
+  next midnight and 3.9 refused it, so the gate's word depended on the interpreter. R6: `--notify` exits 1 when a
+  notice could not be posted and says *nothing remembered* when nothing is; the README's cron line names Linux's
+  session bus for `notify-send` and keeps its output in a log, and the launchd plist keeps its output too.
+- **`--queue` reads a head that is the verdict commit itself** (FM-031; seen in the parent project on the pinned 0.18.3,
+  2026-09-25 18:25:56). PR 851's head was the Reviewer's verdict (`Reviewed:` its parent, READY), its file
+  `evidence/PD-400/review-….md`; the project's review gate read the head as covered — *1 commit past the reviewed tip,
+  all the verdict's own review files* — and `--queue` said *wait: no verdict*: it counted review addenda only under
+  `evidence/reviews/`. Both fixes: the verdict commit's own `review*.md` counts wherever it sits under
+  `<tracker dir>/evidence/`, as the gate reads it; and the review folder is `[paths] reviews` in `shoalmark.toml`
+  (`evidence/reviews/` by default, a glob such as `evidence/*/` allowed), for the addenda after a verdict. *Nothing to
+  do on upgrade; a repository that files reviews beside each tracker's evidence may set `reviews = "evidence/*/"`.*
 - **macOS: a browser check that hangs fails; one that cannot run here is skipped by name** (FM-035, the v0.18.3 tag's
   CI on macos-latest 3.12). What is known: the log shows the suite dying at `subprocess.TimeoutExpired`, 60 s into the
   answer dialog's check, on the page where OK opens the second screen — which copies the command at once. What is
@@ -21,6 +90,11 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   RV-479 check read `git show`'s blob in the locale's encoding — cp1252 on Windows — and the em dash in the ship-log
   row it compares came out as three other characters. The tool names UTF-8 on every read; the test now does too. No
   change to the tool.
+- **`--queue` also prints the last day's merged and closed pull requests** (FM-030, widened; the Auditor seat, through
+  the Owner, 2026-09-25 18:25:16). After the queue, *MERGED OR CLOSED IN THE LAST 24 HOURS*: each pull request `gh pr list
+  --state merged` and `--state closed` return with a merge or close time in the last day, newest first, with its time in
+  UTC and its branch — so a seat's *still open* line is checked against the forge in the same turn. *Nothing to do on
+  upgrade.*
 
 ## 0.18.3 — 2026-09-24
 

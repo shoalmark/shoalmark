@@ -28,6 +28,7 @@ import argparse
 import base64
 import datetime
 import difflib
+import fnmatch
 import hashlib
 import collections
 import itertools
@@ -36,6 +37,7 @@ import math
 import os
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -102,7 +104,10 @@ DEFAULTS = {
     # repository's language. They are here and not in a brand's labels.yaml because the gate depends on them: what
     # the gate says is a function of the repository alone. The English ones are always understood as well.
     "headings": {"state": "What is true now", "why": "Why", "done": "Done when", "log": "Ship log",
-                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks", "raised": "Raised"},
+                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks", "raised": "Raised", "acts": "Acts"},
+    # where, under the tracker directory, the Reviewer's files sit — what `--queue` counts as review addenda after a verdict
+    # (FM-031). A folder, or a glob of folders: a consumer that files reviews beside each tracker's evidence names `evidence/*/`
+    "paths": {"reviews": "evidence/reviews/"},
 }
 
 
@@ -206,7 +211,7 @@ def configure(root=None):
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
@@ -236,6 +241,8 @@ def configure(root=None):
     ASKS_HEAD_RE = re.compile(r"^#{2,3}\s+(asks|" + re.escape(HEAD["asks"]) + r")\s*$", re.I | re.M)
     # …and the one a raise is written under (FM-033's second answer): one sourced line per raise
     RAISED_HEAD_RE = re.compile(r"^#{2,3}\s+(raised|" + re.escape(HEAD["raised"]) + r")\s*$", re.I | re.M)
+    # …and the one an act's record is kept under (FM-030): done, scheduled, rescheduled — newest last
+    ACTS_HEAD_RE = re.compile(r"^#{2,3}\s+(acts|" + re.escape(HEAD["acts"]) + r")\s*$", re.I | re.M)
     KINDS = tuple(KIND_LABELS)
     if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
         raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
@@ -294,6 +301,12 @@ KIND_OF_MOVE = {"script": "obvious", "review": "complicated", "owner": "complica
 # 84 trackers had no front matter at all, and a triage pass could not apply a verdict to the 6 open ones.
 OPEN_STATUSES = ("In Progress", "Parked", "Proposed", "Reserved", "?")
 _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling awaited`, in a few words and without a comma
+# FM-030 — WHEN AN ACT OWED TO THE OWNER FALLS DUE: an ISO time with its zone, seconds optional, `Z` for UTC. The zone is not
+# optional — a time without one is a different hour on every machine that reads it — and `parse_due` refuses one that has
+# none; the shape itself carries no `|`, so the schema's table prints it whole.
+DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"     # hour 24 refused (R5)
+WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
+NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an act, and its invite's alarm rings (FM-030 D)
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
 # these are the same sentences, held by the gate instead (FM-008). They are deliberately generous: an ask that trips
 # one of them is not borderline, it is a paragraph, a second question, or a question already asked.
@@ -331,6 +344,13 @@ def front_matter_schema():
                                                                         "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
+        "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; the Owner's `--due` moves it",
+                            "when the Owner's act falls due (FM-030): an ISO time with its zone, `2026-09-26T07:30:00+02:00`. Until `done:` is written the act is on his "
+                            "board — due, overdue, missed — and in INDEX.md with this time. `--clear-ask` leaves it: the answer is a promise, the act is still owed"),
+        "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
+        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
+                            "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
+                            "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -623,6 +643,9 @@ def extract(path, text=None):
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
         **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
         "answered": (fm.get("answered") or "").strip(),
+        # an act owed to the Owner (FM-030): when it falls due, its window, its result
+        "due": (fm.get("due") or "").strip(), "window": (fm.get("window") or "").strip(),
+        "done": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("done") or "").strip()),
         # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
         # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
         "answered_by": (lambda v: git_user() if v in ("", "<you>") and (fm.get("answer") or "").strip() else v)((fm.get("answered-by") or "").strip()),
@@ -1044,22 +1067,35 @@ def answered(trackers):
     return EXIT_OK
 
 
+ACTS_TITLE = "ACTS — yours, with their time"
+
+
+def acts_lines(trackers, now=None):
+    """FM-030 E — the acts owed to the Owner, as `--standup` and `--owner` list them after the asks: missed and overdue
+    first, then what falls due, soonest first, then what has no date yet — each with its `due:` and what it is, in the
+    board's words, and the promise it came from. [] where he owes none."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    order = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}
+    acts = sorted(((t, a) for t, a in ((t, act_of(t)) for t in trackers) if a),
+                  key=lambda p: (order[act_state(p[1], now)], parse_due(p[1][3]) or now, p[0]["id"]))
+    return [f"  {t['id']} — {a[0]} · {act_words(a, now)}" + (f" · promised {a[2]}: {a[1]}" if a[1] else "") for t, a in acts]
+
+
 def owner_digest(trackers):
-    """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened."""
-    q = owner_queue(trackers)
+    """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened. After the
+    asks, the acts he owes, with their time (FM-030)."""
+    q, acts = owner_queue(trackers), acts_lines(trackers)
     if not q:
-        print("NOTHING NEEDS THE OWNER.")
-        sent_back(trackers)
-        line = sessions_digest()
-        if line:
-            print("\n" + line)
-        return EXIT_OK
-    ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
-    print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
-          + (f" · {line}" if line else ""))
-    for t, a, hs in q:
-        print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
-        print("   " + t["ask"])
+        print("NOTHING NEEDS THE OWNER." if not acts else f"NO QUESTION FOR THE OWNER · {len(acts)} ACT(S) OWED, WITH THEIR TIME")
+    else:
+        ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
+        print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
+              + (f" · {line}" if line else ""))
+        for t, a, hs in q:
+            print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
+            print("   " + t["ask"])
+    if acts:
+        print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
     sent_back(trackers)
     line = sessions_digest()
     if line:
@@ -1098,16 +1134,18 @@ def standup(trackers, invite=None):
         pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
-    q = owner_queue(trackers)
+    q, acts = owner_queue(trackers), acts_lines(trackers)
     line = bottleneck(q)
-    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + ("" if q else " — nothing needs the Owner today.")
-          + (f"\n{line}" if line else ""))
+    print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + (f" · {len(acts)} act(s)" if acts else "")
+          + ("" if q or acts else " — nothing needs the Owner today.") + (f"\n{line}" if line else ""))
     for kind, title in STANDUP_ORDER:
         rows = sorted((r for r in q if (r[0].get("ask_kind") or "") == kind), key=lambda r: (-len(r[2]), -(r[1] if r[1] is not None else -1), r[0]["id"]))
         if rows:
             print(f"\n{title}")
         for n, (t, a, hs) in enumerate(rows, 1):
             print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+    if acts:                                                # FM-030: after the asks, what he owes, with its time
+        print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
     sent_back(trackers)
     return EXIT_OK
 
@@ -1245,11 +1283,17 @@ def queue_actions(prs, branches=()):
     - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
     A verdict is a commit among the pull requests' own that carries `Reviewed: <sha>`, as `--check` reads one, with its
     word in its subject. It names a head that is <sha>, or that only review addenda follow <sha> to — commits touching
-    nothing but `<tracker dir>/evidence/reviews/` and `<tracker dir>/sessions.md`, as a verdict commit itself does."""
+    nothing but the review folder (`[paths] reviews`, `evidence/reviews/` by default, a glob allowed) and
+    `<tracker dir>/sessions.md` — and the verdict commit itself, whose own review file counts wherever it sits under
+    `<tracker dir>/evidence/` (`review*.md`), as the parent project's review gate reads it: a head that IS the verdict,
+    `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    reviews, registry = f"{rel}/evidence/reviews/", f"{rel}/sessions.md"
+    registry = f"{rel}/sessions.md"
+    folder = str({**DEFAULTS["paths"], **(CONFIG.get("paths") or {})}["reviews"]).strip().strip("/") + "/*"
+    in_folder = lambda x: x.startswith(rel + "/") and fnmatch.fnmatchcase(x[len(rel) + 1:], folder)
+    own_review = re.compile(r"^" + re.escape(rel) + r"/evidence/(?:.+/)?review[^/]*\.md$")     # the verdict's own file, anywhere
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
@@ -1301,22 +1345,24 @@ def queue_actions(prs, branches=()):
             if full:
                 verdicts.append((sha, full, word.group(1)))
 
-    def addenda_only(r, h):
-        """every commit from r to h touches only a review or the registry — and none is a merge, which brings a line's files"""
+    def addenda_only(r, h, v):
+        """every commit from r to h touches only the review folder or the registry — the verdict `v` its own review file
+        anywhere under evidence/ too — and none is a merge, which brings a line's files"""
         def read():
-            out = git("log", "--format=%x00%P", "--name-only", "--no-renames", f"{r}..{h}")
+            out = git("log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}")
             for chunk in out.stdout.split("\x00")[1:]:
-                parents, *paths = chunk.strip("\n").split("\n")
-                if len(parents.split()) > 1 or any(x and not (x.startswith(reviews) or x == registry) for x in paths):
+                shas, *paths = chunk.strip("\n").split("\n")
+                sha, *parents = shas.split()
+                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (sha == v and own_review.match(x))) for x in paths):
                     return False
             return out.returncode == 0
-        return cached(("addenda", r, h), read)
+        return cached(("addenda", r, h, v), read)
 
     rows = []
     for p in prs:
         carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
         paths = conflicts(p) if not (within[num(p)] or carried) else []
-        last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p)))), None)
+        last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p), v))), None)
         if head(p) in absent:
             rows.append((p, "wait", f"wait: {head(p)[:7]} not fetched here", ""))
         elif within[num(p)]:
@@ -1335,7 +1381,7 @@ def queue_actions(prs, branches=()):
             rows.append((p, "merge", "merge", f"verdict {last[0][:7]} {last[1]}"))
     for b in pushed:
         paths = conflicts(b) if head(b) not in absent else []
-        last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b)))), None)
+        last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b), v))), None)
         said = ("not fetched here" if head(b) in absent else "conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
                 else f"NOT READY ({last[0][:7]})" if last[1] == "NOT READY" else f"verdict {last[0][:7]} {last[1]}: open it")
         rows.append((b, "branch", "wait: no pull request — " + said, ""))
@@ -1355,6 +1401,24 @@ def queue_lines(rows):
                f"{kinds['branch']} pushed without a pull request"])
 
 
+def forge_closed(hours=24):
+    """FM-030, widened (the Auditor seat, through the Owner, 2026-09-25): the pull requests the forge merged or closed in
+    the last `hours`, so a seat's *still open* line is checked against the forge in the same turn — `gh pr list --state
+    merged` and `--state closed`, one pull request once, merged where it has a merge time. [(number, merged|closed, time,
+    branch)], newest first; [] where the forge does not answer."""
+    since, seen = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours), {}
+    for state in ("merged", "closed"):
+        try:
+            r = subprocess.run([shutil.which("gh") or "gh", "pr", "list", "--state", state, "--limit", "50", "--json", "number,headRefName,closedAt,mergedAt"],
+                               cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+                               env=dict(nested_git_env(), GH_PROMPT_DISABLED="1"))
+            seen.update({p["number"]: p for p in (json.loads(r.stdout) if r.returncode == 0 else []) if p["number"] not in seen})
+        except (OSError, ValueError, subprocess.TimeoutExpired, KeyError, TypeError):
+            continue
+    rows = [(n, "merged" if p.get("mergedAt") else "closed", parse_due(p.get("mergedAt") or p.get("closedAt")), p.get("headRefName", "")) for n, p in seen.items()]
+    return sorted(((n, s_, at, b) for n, s_, at, b in rows if at and at >= since), key=lambda row: row[2], reverse=True)
+
+
 def queue_cmd():
     """`--queue`: the open pull requests, one action each, in the order to take them — exit 3 where the forge cannot be read."""
     prs, why = forge_prs()
@@ -1362,6 +1426,9 @@ def queue_cmd():
         print(why, file=sys.stderr)
         return EXIT_NO_FORGE
     print("\n".join(queue_lines(queue_actions(prs, pushed_branches(prs)))))
+    closed = forge_closed()
+    print(f"\nMERGED OR CLOSED IN THE LAST 24 HOURS — {len(closed) or 'none'}" + "".join(
+        f"\n  PR {n}  {state:<6}  {at.strftime('%Y-%m-%d %H:%M')} UTC  {branch}" for n, state, at, branch in closed))
     return EXIT_OK
 
 
@@ -1373,11 +1440,12 @@ def queue_section():
         print("\n".join("  " + line for line in queue_lines(queue_actions(prs, pushed_branches(prs)))))
 
 
-def answer_step(tid, n, text):
+def answer_step(tid, n, text, verb="answering"):
     """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
     reads the trackers, and a checkout hook and the pre-commit gate read them again; silent for that long, it was
-    stopped by an Owner who took it for hung (FM-012). What it prints at the end is unchanged."""
-    print(f"answering {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
+    stopped by an Owner who took it for hung (FM-012). What it prints at the end is unchanged. `--done` and `--due` say
+    theirs the same way, with their own word."""
+    print(f"{verb} {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
 
 
 def answer_cmd(words, trackers, supersede=False):
@@ -1420,8 +1488,244 @@ def answer_cmd(words, trackers, supersede=False):
     if vcs() != "git":
         print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
+    path = TRACKER_DIR / t["file"]
+    answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
+    move = ANSWER_MOVE.get(t.get("ask_kind"))
+    replaced = []                                            # the answer this one replaces, and its commit — read on the branch it is cut from
+
+    def check_ask():
+        # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
+        # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal.
+        # Asked before the branch is cut — nothing is touched for an answer that cannot be written
+        if not any(l.startswith("ask:") for l in path.read_text(encoding="utf-8").split("\n")):
+            return (f"{tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
+                    f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer")
+        if t.get("answer"):
+            replaced.append((t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed"))
+        return ""
+
+    def write(lines, me, branch):
+        at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
+        if at is None:
+            return None, f"{tid} has no `ask:` line in {t['file']} on `{branch}` — the front matter's question is what the answer is written under"
+        if replaced:                                         # the lines it replaces leave the front matter, and the ship log keeps them
+            end_ = next((i for i, l in enumerate(lines) if i and l.strip() == "---"), len(lines))
+            lines = [l for i, l in enumerate(lines) if i >= end_ or not l.startswith(("answer:", "answered:", "answered-by:"))]
+            at = next(i for i, l in enumerate(lines) if l.startswith("ask:"))
+        while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
+            at += 1
+        lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
+        if move:                                             # FM-030: the move after his — the seat's, or his own hands' for an action
+            lines = set_front("\n".join(lines), "next", move).split("\n")
+        if replaced:
+            cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
+            lines = ship_log_row(lines, f'Answer of {replaced[0][1]} superseded: *"{cell(replaced[0][0])}"* ({replaced[0][2]}) — '
+                                        + (f"revoked: {cell(text)}" if verdict == "revoke" else f'replaced by: *"{cell(answer)}"*'))
+        return lines, ""
+
+    return owner_change(tid, t, dict(
+        flag="--answer", verb="answering", noun="answer", right="an answer is an `answer` change", check=check_ask, write=write,
+        subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
+        again=f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else ""),
+        said=lambda branch, pushed: (f"{tid} answered: {answer}\n  signed, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
+                                     + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, "")))))
+
+
+def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
+    """What an unmerged `answer/<id>` asks of the Owner, read from what is on it. Its own commits — those not in `trunk`,
+    or with no trunk, on no other branch — that are HIS (his name or his email) are never deleted for him: where the
+    tracker's act is open there, `--done`/`--due` are run on it; otherwise it is merged first. `git branch -D` is named
+    only where nothing of his is on it (FM-030 C, as ruled)."""
+    span = [branch, "--not", trunk] if trunk else [branch, "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
+    own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
+    his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
+    if not his:
+        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {branch}`, "
+                f"then `{how['again']}`")
+    said = "; ".join(f"`{sha}` {subject[:60]}" for sha, subject in his[:3]) + (f"; and {len(his) - 3} more" if len(his) > 3 else "")
+    if how["flag"] in ("--done", "--due"):
+        there = git("show", f"{branch}:{rel}")
+        t_ = extract(ROOT / rel, there.stdout) if there.returncode == 0 else None
+        if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
+            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {branch}`, then "
+                    f"`{how['again']}` — it commits on top, and nothing of yours is deleted")
+    return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
+            f"or `git switch {branch}` and run it there")
+
+
+def ics_text(value):
+    """RFC 5545 3.3.11: a TEXT value, its backslash, semicolon, comma and line breaks escaped."""
+    return value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r\n", "\\n").replace("\n", "\\n")
+
+
+def ics_fold(line):
+    """RFC 5545 3.1: a content line longer than 75 octets, folded — CRLF and one space — never inside a UTF-8 character."""
+    parts, cur, size = [], "", 0
+    for ch in line:
+        n = len(ch.encode("utf-8"))
+        if size + n > (74 if parts else 75):              # a continuation's leading space is one of its 75 octets
+            parts.append(cur)
+            cur, size = "", 0
+        cur, size = cur + ch, size + n
+    return "\r\n ".join(parts + [cur])
+
+
+ACT_RECORD_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2}\*\* · ", re.M)     # one record under `## Acts`: done, scheduled, rescheduled
+
+
+def invite_cmd(tid, trackers):
+    """`--invite <id>` (FM-030 D; his word: *invites + notifications*) — one calendar file for the act a tracker owes the
+    Owner, beside its evidence: `<tracker dir>/evidence/<id>/<id>-act.ics`. RFC 5545, as the standup's invite is, but at
+    the act's own instant, in UTC: DTSTART its `due:`, a DURATION of its `window:`, an alarm NOTIFY_AHEAD minutes before.
+    The UID is the act's and SEQUENCE counts its records under `## Acts`, so the file written after a `--due` replaces
+    the event when it is imported again. Deterministic: the same act writes the same bytes. The file is the Owner's to
+    import, and to commit or not; nothing else is written."""
+    tid = tid.upper()
+    t = next((x for x in trackers if x["id"] == tid), None)
+    act = act_of(t) if t else None
+    if not act:
+        print(f"--invite: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`", file=sys.stderr)
+        return EXIT_LINT
+    when = parse_due(act[3])
+    if not when:
+        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {tid} <time>` first", file=sys.stderr)
+        return EXIT_LINT
+    what, answer, answered, due, window = act
+    body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))[1]
+    at = ACTS_HEAD_RE.search(body)
+    records = re.split(r"^#{1,3}\s", body[at.end():], maxsplit=1, flags=re.M)[0] if at else ""
+    sequence = len(ACT_RECORD_RE.findall(records))
+    utc = lambda d: d.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    name = CONFIG["name"] or ROOT.name
+    said = ((f"Promised {answered}: {answer}. " if answer else "") + f"Owed to you, due {due}; it can still be done {window} minutes after. "
+            f'Done: {CMD} --done {tid} "<where the result is>" — moved: {CMD} --due {tid} <time>')
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT",
+             f"UID:act-{tid.lower()}-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", "DTSTAMP:20000101T000000Z",
+             f"SEQUENCE:{sequence}", f"DTSTART:{utc(when)}", f"DURATION:PT{window}M",
+             "SUMMARY:" + ics_text(f"{name} — {tid}: {what}"), "DESCRIPTION:" + ics_text(said),
+             "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + ics_text(f"{tid}: {what}"), f"TRIGGER:-PT{NOTIFY_AHEAD}M", "END:VALARM",
+             "END:VEVENT", "END:VCALENDAR"]
+    out = TRACKER_DIR / "evidence" / tid / f"{tid}-act.ics"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(("\r\n".join(ics_fold(l) for l in lines) + "\r\n").encode("utf-8"))      # CRLF, on every system
+    print(f"wrote {out.relative_to(ROOT).as_posix()} — {tid} due {due} ({utc(when)} UTC), {window} minutes, a reminder "
+          f"{NOTIFY_AHEAD} minutes before; import it into your calendar")
+    return EXIT_OK
+
+
+def state_dir():
+    """The tool's own state — never committed, never in the repository: `$XDG_STATE_HOME/shoalmark`, else
+    `%LOCALAPPDATA%/shoalmark` on Windows, else `~/.local/state/shoalmark`. None where there is no home at all."""
+    try:
+        base = (os.environ.get("XDG_STATE_HOME") or (os.environ.get("LOCALAPPDATA") if sys.platform == "win32" else "")
+                or pathlib.Path.home() / ".local" / "state")
+    except (RuntimeError, KeyError):
+        return None
+    return pathlib.Path(base) / "shoalmark"
+
+
+def notify_argv(title, body, platform=None, which=None):
+    """The command that posts one system notification on `platform`, or None where none is present: macOS `osascript`,
+    Linux `notify-send`, Windows PowerShell's toast. Pure — what it WOULD run — so a test reads every platform's."""
+    platform, which = platform or sys.platform, which or shutil.which
+    if platform == "darwin" and which("osascript"):
+        q = lambda v: '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        return ["osascript", "-e", f"display notification {q(body)} with title {q(title)}"]
+    if platform.startswith("linux") and which("notify-send"):
+        return ["notify-send", "--app-name=shoalmark", "--", title, body]
+    if platform == "win32" and which("powershell"):
+        q = lambda v: "'" + v.replace("'", "''") + "'"
+        app = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe"     # PowerShell's own AppUserModelID
+        return ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; "
+                "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+                f"$t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode({q(title)})) > $null; "
+                f"$t.Item(1).AppendChild($x.CreateTextNode({q(body)})) > $null; "
+                f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier({q(app)}).Show([Windows.UI.Notifications.ToastNotification]::new($x))"]
+    return None
+
+
+def post_notice(title, body):
+    """Post one notification: `posted`; `printed` where this system has no notifier — the printed line is the notice; or
+    `NOT posted — why`, which is not remembered, so the next run tries again."""
+    argv = notify_argv(title, body)
+    if not argv:
+        return "printed — no notifier here"
+    try:
+        r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"NOT posted — {type(e).__name__}"
+    return "posted" if r.returncode == 0 else "NOT posted — " + ((r.stderr or r.stdout or "").strip().splitlines() or [f"exit {r.returncode}"])[-1][:120]
+
+
+def notify_cmd(trackers):
+    """`--notify` (FM-030 D; his word: *invites + notifications*) — one system notification for every act with a `due:`
+    that falls due within NOTIFY_AHEAD minutes, is overdue, or was missed: ONE per act per state. What was posted is
+    remembered in `state_dir()/notified.json`, per repository, keyed on the act, its `due:` and the state — a `--due` that
+    moves it posts again, and nothing else does; a notice that could not be posted is not remembered. Meant to be
+    scheduled by the person — the README has a launchd and a cron line; the tool installs nothing. It reads the
+    trackers and writes nothing in the repository. Exit 1 when a notice could not be posted — a schedule's log shows it."""
+    now, name = datetime.datetime.now(datetime.timezone.utc), CONFIG["name"] or ROOT.name
+    store = state_dir()
+    path = store / "notified.json" if store else None
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8")) if path and path.is_file() else {}
+        seen = seen if isinstance(seen, dict) else {}
+    except (OSError, ValueError):
+        seen = {}
+    had, keep, lines, before, later, failed = set(seen.get(str(ROOT)) or []), set(), [], 0, 0, 0
+    for t in sorted(trackers, key=lambda t: (t["kind"], t["num"])):
+        act = act_of(t)
+        when = parse_due(act[3]) if act else None
+        if not when:
+            continue
+        state = act_state(act, now)
+        if state == "due" and now < when - datetime.timedelta(minutes=NOTIFY_AHEAD):
+            later += 1
+            continue
+        mark = f"{t['id']} {act[3]} {state}"
+        if mark in had:
+            keep.add(mark)
+            before += 1
+            continue
+        said = f"due in {max(1, math.ceil((when - now).total_seconds() / 60))} min" if state == "due" else state
+        how = post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}")
+        lines.append(f"  {t['id']} — {said} · {act[0]} · {act_words(act, now)} — {how}")
+        if how.startswith("NOT"):
+            failed += 1
+        else:
+            keep.add(mark)
+    where = "NOT remembered — there is no home for the tool's state; the next run posts again"
+    if path:
+        seen = {k: v for k, v in seen.items() if k != str(ROOT)}
+        if keep:
+            seen[str(ROOT)] = sorted(keep)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            put(path, json.dumps(seen, indent=1, ensure_ascii=False) + "\n")
+            where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
+        except OSError as e:
+            where = f"NOT remembered — {path}: {e.strerror or e}; the next run posts again"
+    print(f"--notify: {len(lines) - failed} posted · {before} posted before · {later} not yet within {NOTIFY_AHEAD} minutes"
+          + (f" · {failed} NOT posted" if failed else "") + f" — {where}")
+    for l in lines:
+        print(l)
+    return 1 if failed else EXIT_OK                         # a notice that could not be posted is a failure a schedule must see (R6)
+
+
+def owner_change(tid, t, how):
+    """THE OWNER'S OWN CHANGE ON A TRACKER, the one flow `--answer`, `--done` and `--due` share: who may make it — the
+    seats that hold `answer`, or `answerers` — is asked first; then `answer/<id>` is cut from the branch that carries the
+    tracker (a spent one deleted and cut fresh, an unmerged one refused), `how["write"]` writes the lines, and the commit
+    is made SIGNED where his seat is `signed`, verified, pushed, and he is put back on the branch he started on. A failure
+    after anything was written undoes all of it and prints what he gave with the command that gives it again (FM-017).
+    `how`: flag · verb (the steps' word) · noun · right (why it is an `answer` change) · check() → why not, before anything
+    is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(branch,
+    ", pushed" or why not) → what it prints."""
+    flag, noun = how["flag"], how["noun"]
+    step = lambda n, text: answer_step(tid, n, text, how["verb"])
     for p_ in answerers_problems():                           # a signature the configuration asks for and `[seats]` drops (FM-015)
-        print(f"--answer: {p_}", file=sys.stderr)
+        print(f"{flag}: {p_}", file=sys.stderr)
         return EXIT_LINT
     # who may answer is asked in ONE place, `may_answer()`: with `[seats]`, the seats that hold `answer`, matched on
     # the identity git will actually write; with none, `answerers`, which always meant the author's name
@@ -1429,10 +1733,10 @@ def answer_cmd(words, trackers, supersede=False):
     pend_name, pend_email = pending_author()                 # who git will actually author as — the seat is matched on that
     seat = seat_of(pend_name or me, pend_email) if SEATS else None
     if SEATS and not holds(seat, "answer"):
-        print("--answer: " + no_seat(pend_name or me, pend_email, "answer", "an answer is an `answer` change"), file=sys.stderr)
+        print(f"{flag}: " + no_seat(pend_name or me, pend_email, "answer", how["right"]), file=sys.stderr)
         return EXIT_LINT
     if not SEATS and me not in allowed:
-        print(f"--answer: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
+        print(f"{flag}: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
         return EXIT_LINT
     signed = (SEATS[seat][1] if SEATS else allowed.get(me)) == "signed"
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -1441,38 +1745,31 @@ def answer_cmd(words, trackers, supersede=False):
         print(dirty_refusal(git, dirty), file=sys.stderr)
         return EXIT_LINT
     if signed and not git("config", "user.signingkey").stdout.strip():
-        print(f'--answer: `{"[seats]" if SEATS else "answerers"}` asks for a signed answer and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
+        print(f'{flag}: `{"[seats]" if SEATS else "answerers"}` asks for a signed {noun} and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
         return EXIT_LINT
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
     # from an account that did not give it. Asked before anything is touched.
     author = git("var", "GIT_AUTHOR_IDENT").stdout.partition(" <")[0].strip()
     if author != me:
-        print(f"--answer: git would author this commit as `{author}`, not `{me}` — the environment (GIT_AUTHOR_NAME) overrides `user.name`; "
-              f"unset it, or the answer is filed from an account that did not give it", file=sys.stderr)
+        print(f"{flag}: git would author this commit as `{author}`, not `{me}` — the environment (GIT_AUTHOR_NAME) overrides `user.name`; "
+              f"unset it, or the {noun} is filed from an account that did not give it", file=sys.stderr)
         return EXIT_LINT
     path = TRACKER_DIR / t["file"]
     rel = path.relative_to(ROOT).as_posix()
-    # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
-    # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal.
-    # Asked before the branch is cut — nothing is touched for an answer that cannot be written
-    if not any(l.startswith("ask:") for l in path.read_text(encoding="utf-8").split("\n")):
-        print(f"--answer: {tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
-              f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer", file=sys.stderr)
+    why = how["check"]()
+    if why:
+        print(f"{flag}: {why}", file=sys.stderr)
         return EXIT_LINT
-    answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
-    again = f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else "")
     branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
     created = switched = False
-    # the answer this one replaces, and the commit that wrote it — read here, on the branch the new one is cut from
-    replaced = (t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed") if t.get("answer") else None
 
     def undo(what, said=""):
         """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
         change (refused above otherwise), so every tracked path that differs now is its own — the tracker it wrote, the
         INDEX.md a hook regenerated — and is restored. Then it goes back to the branch it started on, and an
         `answer/<id>` it cut and never committed to is deleted. Left behind, those made the Owner's next `--answer`, on
-        another ask, refuse as a dirty tree without saying why. His answer is printed with the command that gives it
+        another ask, refuse as a dirty tree without saying why. What he gave is printed with the command that gives it
         again: a refusal never costs him the words."""
         restored = changed_paths(git)
         if restored:
@@ -1483,9 +1780,9 @@ def answer_cmd(words, trackers, supersede=False):
             back = f"back on `{here or start[:10]}`" if s_.returncode == 0 else f"could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}"
             if created and s_.returncode == 0 and git("rev-parse", "--verify", "-q", branch).stdout.strip() == start and git("branch", "-D", branch).returncode == 0:
                 gone = f"`{branch}` deleted — it carried no commit"
-        print(f"--answer: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
+        print(f"{flag}: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
         print("  undone: " + " · ".join(x for x in (f"restored {', '.join(restored)}" if restored else "", back, gone) if x) if restored or back else "  nothing was changed", file=sys.stderr)
-        print(f"  your answer, not lost: {answer}\n  to give it again: {again}", file=sys.stderr)
+        print(f"  {how['kept'][0]}, not lost: {how['kept'][1]}\n  to give it again: {how['again']}", file=sys.stderr)
         return EXIT_LINT
 
     if here != branch:
@@ -1494,68 +1791,51 @@ def answer_cmd(words, trackers, supersede=False):
             # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for him
             trunk = default_trunk(git)
             if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
-                print(f"--answer: `{branch}` exists and is not merged into `{trunk or 'origin'}` — it may hold work, and nothing is deleted for you. "
-                      f"Clear it with `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` exists and is not merged into `{trunk or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
                 return EXIT_LINT
             if git("branch", "-D", branch).returncode != 0:
-                print(f"--answer: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
-            print(f"--answer: `{branch}` was left by an earlier answer and is merged into `{trunk}` — deleted, and cut fresh", file=sys.stderr)
-        answer_step(tid, 2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
+            print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{trunk}` — deleted, and cut fresh", file=sys.stderr)
+        step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
         r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
         created = r.returncode == 0
         if r.returncode:
             return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
         switched = True
     else:
-        answer_step(tid, 2, f"on `{branch}` already")
-    lines = path.read_text(encoding="utf-8").split("\n")
-    at = next((i for i, l in enumerate(lines) if l.startswith("ask:")), None)
-    if at is None:
-        return undo(f"{tid} has no `ask:` line in {t['file']} on `{branch}` — the front matter's question is what the answer is written under")
-    if replaced:                                             # the lines it replaces leave the front matter, and the ship log keeps them
-        end = next((i for i, l in enumerate(lines) if i and l.strip() == "---"), len(lines))
-        lines = [l for i, l in enumerate(lines) if i >= end or not l.startswith(("answer:", "answered:", "answered-by:"))]
-        at = next(i for i, l in enumerate(lines) if l.startswith("ask:"))
-    while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
-        at += 1
-    lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
-    move = ANSWER_MOVE.get(t.get("ask_kind"))
-    if move:                                                 # FM-030: the move after his — the seat's, or his own hands' for an action
-        lines = set_front("\n".join(lines), "next", move).split("\n")
-    if replaced:
-        cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
-        lines = ship_log_row(lines, f'Answer of {replaced[1]} superseded: *"{cell(replaced[0])}"* ({replaced[2]}) — '
-                                    + (f"revoked: {cell(text)}" if verdict == "revoke" else f'replaced by: *"{cell(answer)}"*'))
+        step(2, f"on `{branch}` already")
+    lines, why = how["write"](path.read_text(encoding="utf-8").split("\n"), me, branch)
+    if why:
+        return undo(why)
     try:
         put(path, "\n".join(lines))
     except OSError as e:
         return undo(f"could not write {rel} — {e}")
     if git("add", "--", rel).returncode:
         return undo(f"could not stage {rel}")
-    answer_step(tid, 3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
-                else "committing — the pre-commit gate runs")
-    r = git("commit", *(["-S"] if signed else []), "-m", f"{tid}: {answer[:60]}")
+    step(3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
+         else "committing — the pre-commit gate runs")
+    r = git("commit", *(["-S"] if signed else []), "-m", how["subject"])
     if r.returncode:
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
         return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
     if signed:
-        # the gate's own rule, asked here so the answer is never pushed under one the gate will refuse: a good signature
+        # the gate's own rule, asked here so the change is never pushed under one the gate will refuse: a good signature
         # (`%G?`) AND the principal the key is trusted for (`%GS`) being the author's email — a trusted key still says
         # nothing about whose name is on the commit
         good, signer, email = (git("log", "-1", "--format=%G?%n%GS%n%ae").stdout.split("\n") + ["", "", ""])[:3]
         if good.strip() != "G" or email.strip() not in signer:
-            print(f"--answer: committed, but the signature does not verify as `{me}` — `git commit --amend -S`, or check the signers file; "
-                  f"NOT pushed, and the gate would refuse this answer", file=sys.stderr)
+            print(f"{flag}: committed, but the signature does not verify as `{me}` — `git commit --amend -S`, or check the signers file; "
+                  f"NOT pushed, and the gate would refuse this {noun}", file=sys.stderr)
             return EXIT_LINT
-    answer_step(tid, 4, "pushing to `origin`")
+    step(4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
-    print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered"
-          + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, "")))
+    print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}"))
     if r.returncode != 0:
         return EXIT_LINT
-    if switched:                                             # pushed: back where he started, so his next --answer does not begin on this one's branch
+    if switched:                                             # pushed: back where he started, so his next command does not begin on this one's branch
         s_ = git("switch", here) if here else git("switch", "--detach", start)
         print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
     return EXIT_OK
@@ -1756,6 +2036,14 @@ def render_triage(trackers):
                 f"| [{t['id']}]({t['file']}) | {t['hook']} | {status_cell(t)} |" for t in ranked]
     else:
         out.append("*Nothing is ranked yet — no triage pass has run.*")
+    acts = [(t, a) for t, a in ((t, act_of(t)) for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))) if a]
+    if acts:                                        # FM-030: the acts owed to the Owner, with their time as written — no clock here
+        cell = lambda v: str(v).replace("|", "\\|")
+        out += ["", "### Acts owed to the Owner — with their time\n",
+                "> Due, overdue or missed is the board's to say: it has a clock, and this file has none. `done:` takes an act off.\n",
+                "| ID | Act | Promised | Due | Window |", "|----|-----|----------|-----|--------|"]
+        out += [f"| [{t['id']}]({t['file']}) | {cell(what)} | {cell(f'{answered}: {answer}') if answer else '—'} | {due.replace('T', ' ') if due else 'no date yet'} | {window} min |"
+                for t, (what, answer, answered, due, window) in acts]
     out.append("")
     return "\n".join(out)
 
@@ -1846,7 +2134,8 @@ __RUNNING__
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
-//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029]]
+//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
+//        [the act owed to the Owner: what, his answer, its date, due, window in minutes — FM-030; empty where none is owed]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -1874,6 +2163,10 @@ LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
 fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
+// the page's SECOND clock rule (FM-030), beside the first: an act owed to the Owner is due until its time, overdue after
+// it, missed once `window:` minutes have passed with no result — read from `due:` and `window:` alone. The files carry the
+// time as written; only the page knows what time it is now.
+actstate=a=>!a[3]?"nodate":(now=>now<Date.parse(a[3])?"due":now<Date.parse(a[3])+a[4]*6e4?"overdue":"missed")(Date.now()),
 // has a pass run? ONE answer for every line that asks: the newest date a pass left on a tracker, or else the date of the
 // newest pass TRIAGE.md records. `progress` holds only what a pass kept — until a first pass it is empty by rule and says so (FM-021)
 PASSED=LAST||(HOME.last.match(/\d{4}-\d\d-\d\d/)||[""])[0],
@@ -1920,6 +2213,8 @@ function draw(){
     // Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
     // abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
     // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.
+    // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
+    const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
     const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
       const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
       // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
@@ -1939,21 +2234,21 @@ function draw(){
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
         // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
         const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
-        const line=`${cmd} --answer ${id} ${kind}${chosen?` "${chosen}"`:""}`;
+        const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
         sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
       d.showModal()};
     // THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
     // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step
     // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done
     // (Esc too: it is the dialog's own). It says *Copied* only when the clipboard said so: from a file there may be none.
-    const sign=(d,id,line,said)=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
-      d.innerHTML=`<form method="dialog" class="sign"><h3>${l("answer.sign.title")} · <a href="#=${id}">${id}</a></h3>
+    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
+      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>
         <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
         <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
         <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build")))}</li>
+        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## __ACTS_HEAD__"))}</li>
         <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
-        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} answered: ${said}\n  signed, on \`${br}\`, pushed`)}</pre>
+        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  signed, on \`${br}\`, pushed`)}</pre>
         <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
         <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}</a>`)}</p>
         <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
@@ -1961,10 +2256,32 @@ function draw(){
         .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);
       d.querySelector(".copy").onclick=copy;copy();d.querySelector(".go").focus()};
     window.ACT=act;
+    // FM-030: an act owed to the Owner has two buttons — done · reschedule. Each asks one thing — where the result is, or the
+    // new time — and OK gives ONE command, `--done <id> "<where>"` or `--due <id> <time with its zone>`, on the same second
+    // screen as an answer: a browser cannot sign; the terminal does.
+    const owe=(t,kind)=>{const d=$("dlg"),id=t[0],a=t[30],cmd="__CMD__";
+      d.innerHTML=`<form method="dialog"><h3>${l(kind=="done"?"act.done.title":"act.due.title")} · <a href="#=${id}">${id}</a></h3>
+        <p class="dq">${esc(a[0])}</p><p class="m ddim">${a[3]?l("acts.due",a[3].replace("T"," ")):l("acts.nodate")}</p>
+        ${kind=="done"?`<textarea name="text" rows="2" placeholder="${l("act.done.hint")}" required></textarea>`:`<input name="when" type="datetime-local" required>`}
+        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+      const f=d.querySelector("form");
+      f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();
+        if(kind=="done"){const w=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");return sign(d,id,`${cmd} --done ${id} ${sq(w)}`,`done: ${w}`,"done")}
+        // the time the Owner picks is his machine's; the command carries its zone, so it means the same hour everywhere
+        const v=f.when.value,dt=new Date(v),o=-dt.getTimezoneOffset(),z=(o<0?"-":"+")+String(Math.floor(Math.abs(o)/60)).padStart(2,"0")+":"+String(Math.abs(o)%60).padStart(2,"0");
+        const iso=(v.length==16?v+":00":v)+z;sign(d,id,`${cmd} --due ${id} ${iso}`,`due: ${iso}`,"due")};
+      d.showModal()};
+    window.OWE=owe;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+    // FM-030: what he owes, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
+    +(acts=>acts.length?"\n\n<b class=\""+(acts.some(t=>actstate(t[30])!="due"&&actstate(t[30])!="nodate")?"hot":"")+"\">"+l("acts.title")+": "+acts.length+"</b>\n"+acts.map(t=>{
+      const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
+      return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
+        +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`
+        +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`}).join("\n"):"")(T.filter(t=>t[30].length))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
     +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
@@ -2052,13 +2369,18 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
+    "acts.title": "your acts, with their time", "acts.promised": "promised {0}: {1}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
+    "acts.missed": "missed — due {0}, and {1} minutes passed with no result", "acts.nodate": "no date yet",
+    "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "Done — where is the result?", "act.done.hint": "a path in the repository, or where the result is",
+    "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
+    "act.sign.step.due": "writes the new {0}, and the old one into the record under {1}",
     "sessions.recent": "sessions · {0} in the last day",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "OK — give me the command", "answer.abort": "abort",
     # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
-    "answer.sign.title": "Sign your answer",
+    "answer.sign.title": "Sign your answer", "act.sign.title": "Sign your act",
     "answer.sign.intro": "Your decision is made. A browser cannot sign it — your terminal does, with your key. Run this command:",
     "answer.sign.copy": "Copy again", "answer.sign.copied": "Copied.",
     "answer.sign.nocopy": "Not copied — this page has no clipboard here (a board opened from a file often has none). Select the command and copy it.",
@@ -2631,7 +2953,8 @@ def render_html(trackers):
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
-              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])]],
+              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
+             list(act_of(t) or [])],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -2640,7 +2963,8 @@ def render_html(trackers):
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
-            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD))
+            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD)
+            .replace("__ACTS_HEAD__", json.dumps(HEAD["acts"], ensure_ascii=False)[1:-1]))
     themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
@@ -2804,6 +3128,9 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
   2. RUN THIS COMMAND AGAIN — every ten rows or so, and at the end. It APPLIES what you filled (`triaged:`,
      `status: Parked`, `epic:`, `tier:`, `rank:`, `next:`), refreshes INDEX.md and the board, keeps your rows, and lists what is left.
      Do not make those edits by hand. The reason lives in the worksheet.
+     ONE TRACKER, TWO ROWS: a same-day re-judgement — a raise — is a second filled row for the tracker, below the first.
+     The LAST filled row in the file is applied; the earlier is left as it is, the record of the first judgement, and
+     each run names it: superseded on this sheet by the later row. Never strike the earlier row to make one apply.
   3. The pass is RESUMABLE: whatever carries a `triaged:` date is done. Stop when you must; the next run continues.
   4. The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees
      with is re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is
@@ -3011,12 +3338,21 @@ def apply_verdict(text, verdict, today, ids):
     return text, hand, ""
 
 
-def apply_worksheet(sheet, sheet_is_todays, trackers, today):
+def apply_worksheet(sheet, sheet_is_todays, trackers, today, superseded=None):
     """Apply every filled row of a worksheet. Idempotent; an older sheet only reaches trackers no pass has dated.
     Every verdict is validated BEFORE anything is written: a rank is taken from its holder only by a verdict
-    that stands, one rank names one row, and what was freed is logged."""
+    that stands, one rank names one row, and what was freed is logged. FM-036: two filled rows for one tracker — a
+    same-day re-judgement, the raise rule's normal case — apply the LAST in the file; the earlier is left as it is,
+    the record of the first judgement, and named in `superseded` where a list is given. Both applied in order, the
+    tracker flipped between them on every run, and *Applied nothing* never came."""
     by_id, log, errors, plan, ranks = {t["id"]: t for t in trackers}, [], [], [], {}
-    for tid, verdict, _line, error in sheet_rows(sheet):
+    rows = list(sheet_rows(sheet))
+    last = {row[0]: i for i, row in enumerate(rows) if row[0]}
+    for i, (tid, verdict, _line, error) in enumerate(rows):
+        if tid and last[tid] != i:                          # the newest filled row for this tracker is further down
+            if superseded is not None:
+                superseded.append(f"{tid}: `{verdict or '(unreadable)'}` — superseded on this sheet by the later row, `{rows[last[tid]][1] or '(unreadable)'}`")
+            continue
         t = by_id.get(tid)
         if error:
             errors.append(f"{tid or 'worksheet'}: {error}")
@@ -3074,11 +3410,58 @@ def schema_problems(t):
         shape, _required, _who, says = FRONT_MATTER[key]
         if shape and value and not re.fullmatch(shape, value, re.I):
             out.append(f'{t["id"]}: `{key}:` is {says} — {shape_words(shape)} — got {value!r}')
+        elif key in ("due", "done") and value and not parse_due(value.strip('"').split(" · ")[0]):
+            out.append(f'{t["id"]}: `{key}:` names no real time — {value!r}: a date and an hour that exist, with the zone')
     is_open = t.get("status") in OPEN_STATUSES
     out += [f'{t["id"]}: {"open work" if required == "open" else "every tracker"} states `{key}:` — {says}'
             for key, (_s, required, _w, says) in FRONT_MATTER.items()
             if (required == "all" or (required == "open" and is_open)) and not t["fm"].get(key)]
     return out
+
+
+def parse_due(text):
+    """An act's time as an aware datetime — `due:`, and the time `done:` opens with — or None where it names no real time
+    (`2026-13-01T07:30+02:00`), or no zone. `Z` is UTC; Python 3.9 reads `+00:00` only."""
+    text = (text or "").strip()
+    if not re.fullmatch(DUE_SHAPE, text) or "Z" in text[:-1]:     # one zone: `Z`, at the end, or an offset — never both
+        return None
+    try:
+        when = datetime.datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
+    except ValueError:
+        return None
+    return when if when.tzinfo is not None else None
+
+
+def act_of(t):
+    """FM-030 — the act a tracker owes the Owner, while it is owed: (what, his answer, its date, due, window) or None. An
+    accepted action ask is one — its answer is a promise of his hands, the act still his — and so is any `due:`, which the
+    seat that schedules an act writes. `done:` closes it; closed work owes nothing. `window:` is minutes, 60 where absent."""
+    if t.get("status") not in OPEN_STATUSES or t.get("done"):
+        return None
+    word = ANSWER_WORD_RE.fullmatch(answer_norm(t.get("answer")))
+    promised = t.get("ask_kind") == "action" and bool(word) and word.group(1).lower() == "accepted"
+    if not (promised or t.get("due")):
+        return None
+    window = int(t["window"]) if str(t.get("window") or "").isdigit() else WINDOW_DEFAULT
+    return ((t.get("ask") if promised else "") or t.get("title") or t["id"], t.get("answer", "") if promised else "",
+            t.get("answered", "") if promised else "", t.get("due", ""), window)
+
+
+def act_state(act, now=None):
+    """An act's state by the clock — the page's second rule (`actstate`), read in Python for `--standup`, `--owner` and
+    `--notify`: `nodate` · `due` before its time · `overdue` after it · `missed` once `window:` minutes have passed."""
+    when = parse_due(act[3])
+    if not when:
+        return "nodate"
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    return "due" if now < when else "overdue" if now < when + datetime.timedelta(minutes=act[4]) else "missed"
+
+
+def act_words(act, now=None):
+    """The act's state in the board's own words — its `acts.*` labels, as the built-in English has them."""
+    state, when = act_state(act, now), act[3].replace("T", " ")
+    return (LABELS["acts.nodate"] if state == "nodate" else LABELS["acts.missed"].format(when, act[4]) if state == "missed"
+            else LABELS["acts." + state].format(when))
 
 
 def shape_words(shape):
@@ -3087,6 +3470,10 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
+    "[paths] reviews": ("a folder under the tracker directory, or a glob of folders; `evidence/reviews/` (the default)",
+                        "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
+                        "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
+                        "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
@@ -4082,21 +4469,120 @@ def clear_ask(words, trackers):
     # the relation goes with the record (FM-029): the proposal and the options leave with the ask, and a record without
     # it could never say again whether the answer was the proposal
     block = (f'**{t.get("answered") or datetime.date.today().isoformat()}** · {t["ask"]}\n'
-             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' if t.get("answer")
+             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' + signed_line(path) if t.get("answer")
                 else "**withdrawn** — no answer was given\n"))
-    at = ASKS_HEAD_RE.search(body)
-    if at:                                                # newest last: at the end of the section that is there
-        rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
-        cut = at.end() + (rest.start() if rest else len(body) - at.end())
-        body = body[:cut].rstrip("\n") + "\n\n" + block + "\n" + body[cut:]
-    else:
-        log = re.search(r"^#{2,3}\s+(%s)\s*$" % re.escape(HEAD["log"]), body, re.I | re.M)
-        section = f'## {HEAD["asks"]}\n\n{block}\n'
-        body = (body[: log.start()] + section + body[log.start():]) if log else body.rstrip("\n") + f"\n\n{section}"
+    body = append_record(body, ASKS_HEAD_RE, HEAD["asks"], block)
     put(path, "\n".join(kept) + body)
     print(f'{tid}: the exchange is in the body under `## {HEAD["asks"]}`, the ask is cleared, `next: {move}`.\n'
           f'  commit {path.relative_to(ROOT).as_posix()} — the gate refuses an answer removed without its record')
     return EXIT_OK
+
+
+def signed_line(path):
+    """FM-029, the Auditor seat's AU-29 — the record names the commit that signed the answer: `**signed** — <sha> · <G|N|U>`,
+    the commit that wrote the `answer:` line and what git says of its signature here (`%G?`: G good, U good from a key
+    not trusted here, N none; B, E, X, Y, R as git has them). The tier is not printed yet (FM-007). Under Subversion the
+    server authenticated the committer and there is no signature to name: no line. An answer not yet committed:
+    `not committed · N`."""
+    if vcs() != "git":
+        return ""
+    commit = line_author(path, "answer:")[3]
+    if not commit:
+        return "**signed** — not committed · N\n"
+    said = (git_out("log", "-1", "--format=%G?", commit) or "").strip() or "N"
+    return f"**signed** — {commit[:7]} · {said}\n"
+
+
+def append_record(body, head_re, word, block):
+    """The body with `block` at the end of the section `head_re` finds — newest last — or, where there is none, a new
+    `## <word>` above the ship log, at the end without one. `## Asks` (`--clear-ask`) and `## Acts` (`--done`, `--due`)."""
+    at = head_re.search(body)
+    if at:
+        rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
+        cut = at.end() + (rest.start() if rest else len(body) - at.end())
+        return body[:cut].rstrip("\n") + "\n\n" + block + "\n" + body[cut:]
+    log = re.search(r"^#{2,3}\s+(%s)\s*$" % re.escape(HEAD["log"]), body, re.I | re.M)
+    section = f'## {word}\n\n{block}\n'
+    return (body[: log.start()] + section + body[log.start():]) if log else body.rstrip("\n") + f"\n\n{section}"
+
+
+def act_record(lines, fields, block):
+    """A tracker's lines with front-matter `fields` set (None drops one) and `block` recorded under `## Acts`."""
+    text = "\n".join(lines)
+    for key, value in fields.items():
+        text = set_front(text, key, value)
+    _fm, body = parse_frontmatter(text)
+    return (text[: len(text) - len(body)] + append_record(body, ACTS_HEAD_RE, HEAD["acts"], block)).split("\n")
+
+
+def done_cmd(words, trackers):
+    """`--done <id> "<where the result is>"` — the Owner's act is done: `done:` gets the time and where its result is, the
+    act leaves his list, and its record goes under `## Acts`. His own change, made as `--answer` makes his answer: on
+    `answer/<id>`, signed where his seat is `signed`, pushed (`owner_change`). The seats that hold `answer` may run it."""
+    tid, where = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
+    t = next((x for x in trackers if x["id"] == tid), None)
+    act = act_of(t) if t else None
+    if not act and t and vcs() == "git":                    # R3: his answer — the act — may be on `answer/<id>`, not merged yet
+        git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
+        if git("rev-parse", "--verify", "-q", branch).returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0):
+            there = git("show", f"{branch}:{rel}")
+            if there.returncode == 0 and act_of(extract(ROOT / rel, there.stdout)):
+                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{trunk or 'origin'}` — " + unmerged_advice(
+                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
+                return EXIT_LINT
+    if not act:
+        print(f"--done: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`; "
+              + (f"`done:` is written already ({t.get('done')})" if t and t.get("done") else "there is nothing to record"), file=sys.stderr)
+        return EXIT_LINT
+    if not where:
+        print("--done: say where the result is — a path in the repository, or a pointer to it; the record keeps it", file=sys.stderr)
+        return EXIT_LINT
+    if vcs() != "git":
+        print("--done: this is a git command; under Subversion, write `done:` and its record under `## Acts`, and `svn commit` — the server signs for you", file=sys.stderr)
+        return EXIT_LINT
+    now, today = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), datetime.date.today().isoformat()
+    what, _answer, _answered, due, _window = act
+    # an action's yes left `next: owner` — the promise was his hands (ANSWER_MOVE); the act done, the seat's move follows.
+    # ONLY there: a `due:` beside a question he has not answered keeps `next: owner` — the question is still his, and
+    # moving it would take it off his list unanswered (the pass's R1 on 52cfcc7)
+    fields = {"done": f'"{now} · {where}"', **({"next": "build"} if t.get("next") == "owner" and act[1] else {})}
+    return owner_change(tid, t, dict(
+        flag="--done", verb="recording", noun="record", right="the result of the Owner's act is an `answer` change", check=lambda: "",
+        write=lambda lines, me, branch: (act_record(lines, fields,
+                                                    f"**{today}** · done — {where} · {what}" + (f" · due {due}" if due else "") + f" · {me}"), ""),
+        subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {tid} "{where}"',
+        said=lambda branch, pushed: f"{tid} done: {where}\n  signed, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
+                                     + ("\n  next: build — the seat's move follows" if "next" in fields else "")))
+
+
+def due_cmd(words, trackers):
+    """`--due <id> <time>` — the Owner's act moves: `due:` gets the new time, the old one goes into the record under
+    `## Acts`. On a tracker whose act was done, it is a new act: `done:` leaves the front matter, its record stays. His
+    own change, made as `--answer` makes his answer (`owner_change`); the seats that hold `answer` may run it."""
+    tid, when = words[0].upper(), words[1].strip() if len(words) > 1 else ""
+    t = next((x for x in trackers if x["id"] == tid), None)
+    if not t:
+        print(f"--due: no tracker {tid}", file=sys.stderr)
+        return EXIT_LINT
+    if t["status"] not in OPEN_STATUSES:
+        print(f"--due: {tid} is {t['status']} — closed work owes no act", file=sys.stderr)
+        return EXIT_LINT
+    if not parse_due(when):
+        print(f"--due: {when!r} is not a time with its zone — `2026-09-26T07:30:00+02:00`, or `2026-09-26T05:30Z` for UTC", file=sys.stderr)
+        return EXIT_LINT
+    if vcs() != "git":
+        print("--due: this is a git command; under Subversion, write `due:` and its record under `## Acts`, and `svn commit` — the server signs for you", file=sys.stderr)
+        return EXIT_LINT
+    today, act = datetime.date.today().isoformat(), act_of(t)
+    what, old = (act[0] if act else t.get("title") or tid), ("" if t.get("done") else t.get("due", ""))
+    return owner_change(tid, t, dict(
+        flag="--due", verb="rescheduling", noun="record", right="the time of the Owner's act is an `answer` change", check=lambda: "",
+        write=lambda lines, me, branch: (act_record(lines, {"due": when, "done": None},
+                                                    f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}")
+                                                    + f" · {what} · {me}"), ""),
+        subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {tid} {when}",
+        said=lambda branch, pushed: f"{tid} due: {when}\n  signed, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
 
 
 def acted_on(trackers):
@@ -4320,6 +4806,18 @@ def parse_args(argv):
              "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
     add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
+    add("--invite", metavar="ID", help="an act owed to the Owner as a calendar file (FM-030): `<tracker dir>/evidence/<id>/<id>-act.ics` — its `due:` in "
+                                       "UTC, a DURATION of its `window:`, a reminder 30 minutes before; RFC 5545. Import it; after a `--due`, write it again")
+    add("--notify", action="store_true", help="one system notification per act owed to the Owner that falls due within 30 minutes, is overdue or was "
+                                              "missed (FM-030) — once per act per state, remembered outside the repository: $XDG_STATE_HOME/shoalmark/"
+                                              "notified.json, else ~/.local/state/shoalmark on macOS and Linux, %%LOCALAPPDATA%%/shoalmark on Windows. "
+                                              "Schedule it yourself: the README has a launchd and a cron line")
+    add("--done", nargs=2, metavar=("ID", "WHERE"), help="the Owner's act is done (FM-030): `--done <id> \"<where the result is>\"` writes `done:` — the time and "
+                                                        "where its result is — and its record under `## Acts`; the act leaves his list. Made as --answer makes his answer: on "
+                                                        "`answer/<id>`, signed where his seat is `signed`, pushed. The board's *done* button copies it")
+    add("--due", nargs=2, metavar=("ID", "TIME"), help="the Owner's act moves (FM-030): `--due <id> 2026-09-26T07:30:00+02:00` writes the new `due:` and records the "
+                                                       "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes his answer. The board's "
+                                                       "*reschedule* button copies it")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
                                                "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries — "
                                                "for a record written before 0.18.1, the one the commit that wrote its answer gives")
@@ -4330,7 +4828,8 @@ def parse_args(argv):
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
                                             "merge: your answer · wait: not an answerer (<author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
-                                            "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count. "
+                                            "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
+                                            "merged or closed in the last 24 hours, with their times. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
     add("--session", nargs="+", metavar="WORD",
         help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
@@ -5010,10 +5509,13 @@ def main(argv=None):
         return queue_cmd()
     if args.answer:
         answer_step(args.answer[0].upper(), 1, "reading the trackers")
+    for words, verb in ((args.done, "recording"), (args.due, "rescheduling")):
+        if words:
+            answer_step(words[0].upper(), 1, "reading the trackers", verb)
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
-    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related) else "read"
+    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
     refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
@@ -5025,6 +5527,10 @@ def main(argv=None):
         return refused
     if args.new:
         return new_tracker(args.new, trackers, args.tags)
+    if args.invite:
+        return invite_cmd(args.invite, trackers)
+    if args.notify:
+        return notify_cmd(trackers)
     if args.owner:
         code = owner_digest(trackers)
         queue_section()
@@ -5033,6 +5539,10 @@ def main(argv=None):
         return answered(trackers)
     if args.answer:
         return answer_cmd(args.answer, trackers, supersede=args.supersede)
+    if args.done:
+        return done_cmd(args.done, trackers)
+    if args.due:
+        return due_cmd(args.due, trackers)
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:
@@ -5059,7 +5569,8 @@ def main(argv=None):
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
-        applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today) if sheets else ([], [])
+        superseded = []
+        applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today, superseded) if sheets else ([], [])
         trackers = load_trackers()
         run_deriver(trackers, "write", args.derive_flag)
         earlier = out.read_text(encoding="utf-8") if out.exists() else ""
@@ -5068,6 +5579,8 @@ def main(argv=None):
         print(TRIAGE_RULES.format(path=out.relative_to(ROOT).as_posix(), left=left, home=home.relative_to(ROOT).as_posix(), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
                                   intent=triage_home()["intent"] or "  (none is written — the Owner writes it in the triage home)"))
         print("\n".join([f"Applied {len(applied)}:"] + [f"  {l}" for l in applied] if applied else ["Applied nothing — no new filled rows."]))
+        if superseded:                                      # FM-036: said on every run, applied on none — the earlier row is the record
+            print("\n".join(["Superseded on this sheet by the later row — left as it is, the record of the earlier judgement:"] + [f"  {l}" for l in superseded]))
         if errors:
             print("\n".join(["NOT applied — fix the Verdict cell and run again:"] + [f"  {e}" for e in errors]), file=sys.stderr)
         refreshed = main(["--root", str(ROOT)]) if applied else EXIT_OK   # INDEX.md and the board print what was applied — refresh them
