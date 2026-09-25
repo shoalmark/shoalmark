@@ -5,7 +5,7 @@ considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: build
 triaged: 2026-09-25
-rank: 3
+rank: 1
 tier: P1
 hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day. For an action ask the answer is a promise, not the act, and the tool drops the ask the moment the promise is signed. The rules it ships even steer the second kind away from him."
 ---
@@ -71,6 +71,8 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 
 - 2026-09-25 · Auditor (8b91dba2), through the Owner · two acts owed to the Owner have no button on his board: FM-007's hardware key (answered 09-22) and path 3's exception (FM-032, answered 2026-09-24 21:32:35, 97fa87a); --owner prints NOTHING NEEDS THE OWNER · undermines: FM-032's answer ("until FM-007's hardware key" has no route to happen), TRIAGE.md path 1
 
+- 2026-09-25 · Auditor (8b91dba2), through the Owner · a consumer's P0 production read, owed by the Owner's hands at a fixed hour on two consecutive days, was missed both times: it was named only in chat and a run sheet, --standup and --owner showed no item (next: run), no calendar invite was written, and the next day's standup did not notice · undermines: TRIAGE.md path 6, path 1
+
 ## Done when
 
 - **An accepted action ask stays on `--standup`** under *YOUR HANDS*, marked **promised**, until a seat clears it.
@@ -104,3 +106,6 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-24 | In Progress — 0.18.3 builds its second widening — `next:` after an answer (the Auditor seat's check 24); the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
 | 2026-09-24 | A line under the freeze for 0.18.4, the answer flow's: `--answer` cuts the commit subject at 60 characters, so PR 61's subject reads *…FM-007's hardware ke* while the signed `answer:` line is whole (the Reviewer's observation on the answer branches, 21:4x); a subject is cut between words, with an ellipsis, or not at all. |
 | 2026-09-25 | **Raised** by the Auditor seat through the Owner (07:06:48), the line above word for word from his paste: two acts owed to him have no button — FM-007's key, FM-032's path 3 — and `--owner` prints NOTHING NEEDS THE OWNER; it names FM-032's answer and path 1 as undermined, so this tracker is re-judged the same day (his raise rule, `9e48ee8`). |
+| 2026-09-25 | **Raised a second time** by the Auditor seat through the Owner (13:31:26), the line above word for word from his paste: a consumer's P0 production read owed by the Owner's hands at a fixed hour on two consecutive days was missed both times — named only in chat and a run sheet, no board item (`next: run`), no invite, the next day's standup silent; it names path 6 and path 1, so this tracker is re-judged the same day: #1. The Auditor's product line: a due time on every act owed to the Owner; the board renders due and overdue; *Done* (result attached) and *Reschedule*; an `.ics` per act; a *missed* flag when a window passes with no result; `--standup` lists due and overdue acts — first in 0.18.4. |
+| 2026-09-25 | The Owner's word at 13:33:29 on the product line above (spelling as given): *Better than only invites would be invites + notifications.* — a line under the freeze for 0.18.4's build of this tracker: every act owed to him gets its invite (`.ics`, with an alarm before the window) **and** a notification when it falls due and when its window passes with no result — a `--notify` the person schedules (launchd or cron) that reads the acts' due times from the board's data and posts a system notification; the `.ics` alarm is the first notification, on every device his calendar reaches. |
+| 2026-09-25 | Correcting the rows above (the pass's Reviewer, R7, R8, R11 and R15): the product line in the 13:33:29 row — an `.ics` with an alarm per act and a scheduled `--notify` — is the seat's design on the Owner's word, not his words; the raise row read 13:31:26 from the start; the word's row first read 13:3x and was corrected in place while unmerged to 13:33:29, the record's time of his message. |
