@@ -2975,6 +2975,50 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-036, 0.18.4 F: two filled rows for one tracker on one sheet — the newest wins. Today's case: FM-030 judged
+#     `keep P1 #3 build` in the morning pass and `keep P1 #1 build` on the raise; every run flipped the rank between them
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); wt_ = root / "docs/work-tracker"
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    (root / "shoalmark.toml").write_text('name = "f"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    wt_.mkdir(parents=True)
+    (wt_ / "TRIAGE.md").write_text("# Triage\n\n## The intent\n\n- **for** people who build with agents\n\n## The current path\n\n1. What the Owner owes is on his board.\n\n"
+                                   "## Passes\n\nNewest first.\n", encoding="utf-8")
+    tracker(root, "AP-030", extra="next: build\ntier: P1\n", title="the acts owed to him")
+    tracker(root, "AP-031", extra="next: build\ntier: P2\n", title="another")
+    run(root)
+    code_0, _o, _e = run(root, "--triage")
+    today_ = datetime.date.today().isoformat()
+    sheet_path_ = wt_ / "evidence/triage" / f"triage-{today_}.md"
+    sheet_ = sheet_path_.read_text(encoding="utf-8")
+    row_ = next(l for l in sheet_.splitlines() if l.startswith("| [AP-030]"))
+    morning_ = row_[: -len(" | | |")] + " | keep P1 #3 build | the morning pass |"
+    raised_ = row_[: -len(" | | |")] + " | keep P1 #1 build | re-judged the same day, on the raise |"
+    sheet_path_.write_text(sheet_.replace(row_, morning_ + "\n" + raised_), encoding="utf-8")
+    ranks_, outs_ = [], []
+    for _ in range(3):
+        code_, out_, err_ = run(root, "--triage")
+        fm.configure(root)
+        ranks_.append(str(next(t for t in fm.load_trackers() if t["id"] == "AP-030").get("rank")))
+        outs_.append(out_)
+    kept_ = sheet_path_.read_text(encoding="utf-8")
+    check(f"FM-036 · F · two filled rows for one tracker on one sheet: the LAST is applied — rank 1 — and the tree is stable across runs; the second run applies nothing (saw ranks {ranks_})",
+          code_0 == 0 and ranks_ == ["1", "1", "1"] and "Applied 1:" in outs_[0] and "AP-030: keep P1 #1 build" in outs_[0]
+          and all("Applied nothing — no new filled rows." in o_ for o_ in outs_[1:]))
+    check(f"FM-036 · F · the earlier row is left on the sheet as it is — the record of the first judgement — and each run names it, superseded on this sheet by the later row (saw {outs_[1][outs_[1].find('Superseded'):][:200]!r})",
+          morning_ in kept_ and raised_ in kept_ and kept_.index(morning_) < kept_.index(raised_)
+          and all("Superseded on this sheet by the later row — left as it is, the record of the earlier judgement:\n  AP-030: `keep P1 #3 build` — superseded on this sheet by the later row, `keep P1 #1 build`" in o_ for o_ in outs_))
+    check("FM-036 · F · `--triage` prints the rule: one tracker, two rows — the last filled row is applied, the earlier left as the record",
+          "ONE TRACKER, TWO ROWS" in outs_[0] and "The LAST filled row in the file is applied; the earlier is left as it is" in outs_[0])
+    tk_ = [dict(id="AP-030", file="AP-030-x.md", rank=1, triaged="", status="In Progress")]
+    sup_ = []
+    l_, e_ = fm.apply_worksheet("| Tracker | Tier | Verdict | Reason |\n|---|---|---|---|\n| [AP-030](AP-030-x.md) — t | P1 | keep P1 #1 build | r |\n"
+                                "| [AP-030](AP-030-x.md) — t | P1 | keep P1 #2 build | r |\n| [AP-031](AP-031-x.md) — t | P2 | keep P2 #2 build | r |\n", True, tk_ + [dict(tk_[0], id="AP-031", file="AP-031-x.md", rank=0)], today_, sup_)
+    check(f"FM-036 · F · a superseded row claims no rank: the later row of one tracker and another tracker's row may not both hold #2 (saw {e_})",
+          e_ == ["AP-031: `keep P2 #2 build` — #2 is already claimed by AP-030 on this sheet; a rank names one tracker"] and sup_ == ["AP-030: `keep P1 #1 build` — superseded on this sheet by the later row, `keep P1 #2 build`"])
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()

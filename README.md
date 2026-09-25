@@ -134,7 +134,9 @@ after the tracker's `triaged:` and naming a signed rule it undermines — `path 
 of a tracker he answered — it puts an open tracker under *triage* and on the next worksheet, marked RAISED, with the raise
 in its Now cell: *a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next
 pass* (the Owner's answer, FM-033). A day decides: a raise written after the same day's pass is re-judged by that seat's
-own re-run.
+own re-run. **One tracker, two rows**: the re-judgement is a second filled row below the first, and the LAST filled row
+in the file is applied; the earlier is left as it is — the record of the first judgement — and every run names it,
+*superseded on this sheet by the later row* (FM-036). Never strike it to make the other apply.
 
 Never write a note into a tracker during a pass; the reason lives in the worksheet. Never touch the current path.
 The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees with is

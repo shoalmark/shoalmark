@@ -43,6 +43,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   the scoring — each with its `due:`, what it is and the promise it came from, in the board's words. With no question
   and acts owed, neither says nothing needs him: `--owner` leads with *NO QUESTION FOR THE OWNER · N ACT(S) OWED*, and
   the standup's head counts the acts. *Nothing to do on upgrade.*
+- **A sheet's newest row wins** (FM-036). Two filled rows for one tracker on one sheet — a same-day re-judgement,
+  the raise rule's normal case — were both applied in order, so on 2026-09-25 FM-030's rank read 1, then 3, then 1,
+  each run printing *Applied 1*. `apply_worksheet` now applies the LAST filled row in the file; the earlier is left
+  as it is, the record of the first judgement, claims no rank, and each run names it: *superseded on this sheet by
+  the later row*. The second run applies nothing. `--triage` prints the rule, *ONE TRACKER, TWO ROWS*. *Nothing to do
+  on upgrade; a seat that struck the earlier row may leave it in from now on.*
 
 ## 0.18.3 — 2026-09-24
 

@@ -3077,6 +3077,9 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
   2. RUN THIS COMMAND AGAIN — every ten rows or so, and at the end. It APPLIES what you filled (`triaged:`,
      `status: Parked`, `epic:`, `tier:`, `rank:`, `next:`), refreshes INDEX.md and the board, keeps your rows, and lists what is left.
      Do not make those edits by hand. The reason lives in the worksheet.
+     ONE TRACKER, TWO ROWS: a same-day re-judgement — a raise — is a second filled row for the tracker, below the first.
+     The LAST filled row in the file is applied; the earlier is left as it is, the record of the first judgement, and
+     each run names it: superseded on this sheet by the later row. Never strike the earlier row to make one apply.
   3. The pass is RESUMABLE: whatever carries a `triaged:` date is done. Stop when you must; the next run continues.
   4. The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees
      with is re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is
@@ -3284,12 +3287,21 @@ def apply_verdict(text, verdict, today, ids):
     return text, hand, ""
 
 
-def apply_worksheet(sheet, sheet_is_todays, trackers, today):
+def apply_worksheet(sheet, sheet_is_todays, trackers, today, superseded=None):
     """Apply every filled row of a worksheet. Idempotent; an older sheet only reaches trackers no pass has dated.
     Every verdict is validated BEFORE anything is written: a rank is taken from its holder only by a verdict
-    that stands, one rank names one row, and what was freed is logged."""
+    that stands, one rank names one row, and what was freed is logged. FM-036: two filled rows for one tracker — a
+    same-day re-judgement, the raise rule's normal case — apply the LAST in the file; the earlier is left as it is,
+    the record of the first judgement, and named in `superseded` where a list is given. Both applied in order, the
+    tracker flipped between them on every run, and *Applied nothing* never came."""
     by_id, log, errors, plan, ranks = {t["id"]: t for t in trackers}, [], [], [], {}
-    for tid, verdict, _line, error in sheet_rows(sheet):
+    rows = list(sheet_rows(sheet))
+    last = {row[0]: i for i, row in enumerate(rows) if row[0]}
+    for i, (tid, verdict, _line, error) in enumerate(rows):
+        if tid and last[tid] != i:                          # the newest filled row for this tracker is further down
+            if superseded is not None:
+                superseded.append(f"{tid}: `{verdict or '(unreadable)'}` — superseded on this sheet by the later row, `{rows[last[tid]][1] or '(unreadable)'}`")
+            continue
         t = by_id.get(tid)
         if error:
             errors.append(f"{tid or 'worksheet'}: {error}")
@@ -5475,7 +5487,8 @@ def main(argv=None):
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
-        applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today) if sheets else ([], [])
+        superseded = []
+        applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today, superseded) if sheets else ([], [])
         trackers = load_trackers()
         run_deriver(trackers, "write", args.derive_flag)
         earlier = out.read_text(encoding="utf-8") if out.exists() else ""
@@ -5484,6 +5497,8 @@ def main(argv=None):
         print(TRIAGE_RULES.format(path=out.relative_to(ROOT).as_posix(), left=left, home=home.relative_to(ROOT).as_posix(), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
                                   intent=triage_home()["intent"] or "  (none is written — the Owner writes it in the triage home)"))
         print("\n".join([f"Applied {len(applied)}:"] + [f"  {l}" for l in applied] if applied else ["Applied nothing — no new filled rows."]))
+        if superseded:                                      # FM-036: said on every run, applied on none — the earlier row is the record
+            print("\n".join(["Superseded on this sheet by the later row — left as it is, the record of the earlier judgement:"] + [f"  {l}" for l in superseded]))
         if errors:
             print("\n".join(["NOT applied — fix the Verdict cell and run again:"] + [f"  {e}" for e in errors]), file=sys.stderr)
         refreshed = main(["--root", str(ROOT)]) if applied else EXIT_OK   # INDEX.md and the board print what was applied — refresh them
