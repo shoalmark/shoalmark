@@ -11,10 +11,12 @@ kann – ein Satz pro Frage, einmal am Tag –, und macht aus seiner Antwort ein
 shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.
 
 **Ihre Agenten handeln auf Ihr Wort hin — und es gilt nur Ihr signiertes Wort.** Im Beleg zählt eine Antwort nur als
-Commit, signiert mit einem Schlüssel, dem Sie vertrauen; eine unsignierte lehnt das Gate ab. Ein Klick, ein Merge oder
-eine Zeile im Chat ist keine Antwort. Wie stark diese Signatur ist, wählen Sie — [vier Stufen](signing.md), vom
-Schlüssel, den alles unter Ihrem Konto benutzen kann, bis zu einem, der Ihre Berührung braucht —, und jede Signatur
-nennt den Schlüssel, der sie erzeugt hat.
+Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihr
+Sitz als `signed` markiert ist, wie es die [Einrichtungsseite](setup.md) tut. Unter Subversion zählt sie nur als
+Commit, den der Server als Ihren authentifiziert hat. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort.
+Wie stark diese Signatur ist, wählen Sie — [vier Stufen](signing.md), vom Schlüssel, den alles unter Ihrem Konto
+benutzen kann, bis zu einem, der Ihre Berührung braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt
+hat.
 
 ## Gemessen, nicht versprochen
 
@@ -26,8 +28,10 @@ Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 
 *Gezählt am 25. September 2026 mit `gh` aus den Pull Requests 1–69 von holgo99/shoalmark: nur gemergte, ohne die
 eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
-`work-tracker/evidence/reviews/` anlegt, vor dem Öffnen des Pull Requests datiert ist. Die Regel ist die signierte
-Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ.*
+`work-tracker/evidence/reviews/` anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
+Requests datiert ist. Das Datum eines Commits sagt, wann er entstand, nicht wann er gepusht wurde: Die
+Push-Ereignisse der Forge bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet
+sie nicht mehr. Die Regel ist die signierte Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ.*
 
 Was shoalmark dazu ausgibt, jeden Tag:
 
