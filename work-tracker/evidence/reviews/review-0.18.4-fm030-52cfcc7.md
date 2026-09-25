@@ -176,3 +176,73 @@ that the build was told to wait for. The code tier's full loop applies: the Prin
 re-briefs, and a pass on the new tip follows.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Verified again on 647da17
+
+Reviewed `647da1708554b1bdde28fcd03dd6e32d97566e51`. Six commits follow this verdict (`d973752`):
+- `041aa65` merges origin/main `b336a53`.
+- `e96ba09` is R2, `8805de0` is R1, and `59f01b8` is R3–R6.
+- `657a0c9` (FM-031) is `--queue` on a verdict-commit head, with `[paths] reviews`.
+- `647da17` (FM-030) is `--queue`'s list of the last 24 hours' merged and closed pull requests.
+
+The same seat and worktree, detached at the tip. I rebuilt the scratch repository with the tip's tool and ran each fix.
+
+**The gate and the hooks are untouched.** I compared the tip's `shoalmark.py` with origin/main `63fabb6`, byte for byte.
+These are identical: `commit_msg_check`, `install_hook`, `install_hook_svn`, `session_check`, `session_trailer`,
+`judge_commits`, `build_judgement`, `commit_list`, `message_subject`, `checkout_lines`, `checkout_finding`, the `--check`
+block of `main`, and every `judged_before_build` line. `lefthook.yml`, `scripts/` and `.github/` are not in
+`git diff origin/main...HEAD`. The gate-side change is still only item A's: `FRONT_MATTER`'s three keys, `DUE_SHAPE`, and
+`schema_problems`'s due/done rule. `[paths] reviews` is read by `queue_actions` alone.
+
+- **R1 — closed.** AP-426 is an unanswered ruling with a `due:`. `--done` exits 0, writes `done:` and keeps
+  `next: owner`. On `answer/ap-426`, `--owner` still lists the question and `--check` is 0. AP-425, an unanswered
+  action with a `due:`, also keeps `next: owner`. AP-420, an accepted action, still gets `next: build`.
+- **R2 — closed.** B's and C's rendered checks are under `_browser("acts")` and `_browser("owe")` and run through
+  `_chrome_run`. The only direct Chrome calls left are in the helper and its probe. `_owe` stubs
+  `navigator.clipboard`, and both suites end *skipped here: 0 checks*.
+- **R3 — closed.** AP-424 was answered with `--answer accept`, which left `answer/ap-424` unmerged. `--done` from
+  `main` now names that branch, his commit `753289e` and `git switch answer/ap-424`, and exits 4. Its again-line is
+  `shlex.quote`d. Pasted into bash and zsh, it prints the text back verbatim. Run on the branch, it made a `G` commit
+  with that text in `done:`.
+- **R4 — closed.** I rendered both dialogs in Chrome, typed a `'`, a backtick and a `$`, and pressed OK. The copied
+  commands are `--done AP-421 'it'\''s the report in `docs/x.md`, cost $HOME'` and
+  `--answer AP-426 reject 'it'\''s `rm -rf x`, and $HOME'`. bash and zsh both print the argument back as typed.
+- **R5 — closed.** `parse_due` gives the same result on 3.14.3 and 3.9.6 for twelve edge times. In the scratch clone,
+  `due: …T24:00+02:00` makes `--check` exit 4 on both interpreters; `T23:59` passes on both. R8 below is a neighbour.
+- **R6 — the tool closed; its README line is new work, R7.** With a notifier that fails, `--notify` exits 1, says
+  *nothing remembered*, and leaves the state file as `{}`. A working stub run twice posts 3, then 0, and exits 0 both
+  times. The launchd plist, now logging to `~/Library/Logs`, passes `plutil -lint`.
+- **FM-031 — `--queue` on a verdict-commit head.** I built a scratch forge: a bare origin behind an ssh alias
+  `github-fake` (a stand-in `ssh` runs git locally) and a stub `gh` on `PATH`. The tracker directory is
+  `docs/work-tracker`, as the parent project has it. The results:
+  - PR 1's head is the verdict commit, `Reviewed:` its parent, touching only
+    `docs/work-tracker/evidence/PD-400/review-feat-190-the-slice.md`. It reads `merge · verdict 51d9f65 READY`.
+  - PR 2's verdict commit also changes code. It reads `wait: no verdict on 4a733f0`.
+  - Positive control: origin/main's tool on the same forge reads `wait: no verdict` for both.
+- **`--queue`'s merged and closed list.** The same forge printed *MERGED OR CLOSED IN THE LAST 24 HOURS — 2*:
+  PR 78 *merged* 2 hours ago, listed once though both stub calls return it, then PR 76 *closed* 5 hours ago. PR 70,
+  merged 30 hours ago, is left out. `gh` was asked `--state open`, `merged` and `closed`, in that order.
+- **The rest.**
+  - Both suites are green on 3.14.3 and on `/usr/bin/python3` 3.9.6: 438 `ok` and 148 `ok`, *skipped here: 0 checks*.
+  - `--check` exits 0: *16 commit(s) … every build commit under a judged In Progress tracker*. Every subject names
+    FM-029, FM-030, FM-031 or FM-036, or is a review or a merge. `--session-check` exits 0.
+  - The CHANGELOG has one `## Unreleased — 0.18.4`, holding both lists and the new bullets. `VERSION` reads 0.18.3.
+  - `git merge-tree --write-tree origin/main HEAD` against `63fabb6` is **clean** (tree `89222cb`). A scratch merge
+    of the two leaves INDEX.md up to date, and `--check` there exits 0.
+- **A note, not a finding:** the CI fix's R3, local hooks hiding skipped checks, stays open as a 0.18.4 line.
+
+**R7 · P3 · confidence high — the cron line never runs on a machine where `--notify` has not run.** The line appends
+to `"$HOME/.local/state/shoalmark/notify.log"`, but only the tool creates that folder. The shell opens the redirect
+before the command runs, so on a fresh home it fails and the tool never starts. I reproduced it under `env -i` with an
+empty `HOME`, `/bin/sh` and the README's line: *No such file or directory*, exit 1, nothing posted, no folder made. With
+the folder made first, the same line posts 3. Fix: start the line with `mkdir -p "$HOME/.local/state/shoalmark" &&`.
+
+**R8 · P3 · confidence high — an offset's minutes are not bounded.** `DUE_SHAPE` allows `[+-]\d{2}:\d{2}`, and
+`fromisoformat` normalises what it is given: `+05:99` reads as `+06:39` and `+00:60` as `+01:00`, on both interpreters.
+`due: 2026-09-26T07:30+05:99` passes `--check`. Fix: `(?:[+-](?:[01]\d|2[0-3]):[0-5]\d)` in `DUE_SHAPE`, with a test.
+
+**Unproven here:** `notify-send` under cron on Linux, including whether the named session bus is enough, and
+PowerShell's toast on Windows. I read their argv only. I did not install the launchd agent. I did not inspect the
+sealed directory of session `8b91dba2`.
+
+**Verdict: READY WITH FINDINGS — R7, R8 P3; R1–R6 closed on 647da17. The Owner lands this by merging; a merge rules nothing.**
