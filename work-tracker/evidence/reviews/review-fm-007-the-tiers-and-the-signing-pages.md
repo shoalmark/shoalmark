@@ -1,4 +1,4 @@
-# Review — FM-007's tiers and the site's signing pages, at b38d321 (2026-09-25 08:50 CEST, Reviewer, session `8e509911/reviewer-7`)
+# Review — FM-007's tiers and the site's signing pages, at b38d321 (2026-09-25 08:47 CEST, Reviewer, session `8e509911/reviewer-7`)
 
 - **Branch:** `fm/007-the-tiers-of-a-signature-and-the-site`, tip `b38d321` (`b38d321d306d71bb1f2f990c5c7c17f75bee2a40`).
   Six commits on `6e98d73` (PR 67's merge, 07:36:53). The fork point is **not** `origin/main` `7f492a5`: PR 68 landed
