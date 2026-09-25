@@ -3714,6 +3714,16 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-037 · the hook · a merge being made that brings a seat's unsigned change to the intent is refused, the carried commit named as `--check` names it (saw {merged37_.stderr.strip()[-200:]!r})",
           merged37_.returncode != 0 and merging37_ and f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent`' in merged37_.stderr)
     git(root, "switch", "-q", "main"); (root / ".git/hooks/commit-msg").unlink(); (root / ".git/hooks/pre-commit").unlink()
+    # `--queue` reads the same walk on each pull request's head against its base (clause 4)
+    prs37_ = [{"number": n_, "title": b_, "headRefName": b_, "headRefOid": sha37_(b_), "baseRefName": "main", "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN",
+               "createdAt": f"2026-09-25T0{n_}:00:00Z"} for n_, b_ in ((1, "ap/037-intent"), (2, "ap/037-signed"), (3, "ap/037-passes"))]
+    fm.configure(root)
+    q37_ = _no_git_env(lambda: fm.queue_actions(prs37_, [{"name": "ap/037-path", "sha": sha37_("ap/037-path"), "base": "main", "here": True}]))
+    said37_ = {r_[0]["headRefName"]: (r_[2], r_[3]) for r_ in q37_}
+    check(f"FM-037 · clause 4 · `--queue` reads a pull request whose branch carries a seat's unsigned change to the two sections as `wait: TRIAGE.md changed unsigned`, the commit beside it; one carrying only the Owner's signed commit, or a `## Passes` edit, is read as before; a branch pushed without one says the same (saw {said37_})",
+          said37_["ap/037-intent"] == ("wait: TRIAGE.md changed unsigned", c_int_[:7])
+          and said37_["ap/037-signed"][0] == f"wait: no verdict on {c_sig_[:7]}" and said37_["ap/037-passes"][0] == f"wait: no verdict on {c_pass_[:7]}"
+          and said37_["ap/037-path"][0] == f"wait: no pull request — TRIAGE.md changed unsigned ({c_path_[:7]})")
     # the Owner is the DEFAULT branch's: a branch that names itself the Owner still judges nothing of its own
     c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")

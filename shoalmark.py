@@ -1270,6 +1270,22 @@ def answer_reading(head):
     return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
 
 
+def triage_reading(head, base):
+    """FM-037 in `--queue`: (`wait: TRIAGE.md changed unsigned`, the commit) where a commit of the head's own — not on `base`
+    — changes the Owner's two sections and is not his signed commit, the walk and the judgement `--check` makes on the
+    branch; (`wait: TRIAGE.md change not verified here — <why>`, the commit) where it is signed and this clone cannot check
+    it; None where no commit changes them unsigned, and where `base` names no Owner."""
+    owners = owners_at(base)
+    if not owners:
+        return None
+    verdicts = guard_verdicts(guard_walk(head, "^" + base)[1], owners)
+    refused = [v for v in verdicts if v[4] == "refused"]
+    if refused:
+        return "wait: TRIAGE.md changed unsigned", refused[0][0][:7]
+    gaps = [v for v in verdicts if v[4] == "checkout"]
+    return (f"wait: TRIAGE.md change not verified here — {gaps[0][5]}", gaps[0][0][:7]) if gaps else None
+
+
 def queue_actions(prs, branches=()):
     """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
     inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
@@ -1280,6 +1296,8 @@ def queue_actions(prs, branches=()):
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
     - `wait: conflict in <paths>` — `git merge-tree --write-tree origin/<base> <head>` does not merge clean;
+    - `wait: TRIAGE.md changed unsigned` — a commit of its own changes the Owner's intent or current path and is not his
+      signed commit (FM-037, `triage_reading`: the walk `--check` makes on the branch);
     - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
     - `wait: no verdict on <head>` — no verdict names its head;
     - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
@@ -1373,6 +1391,8 @@ def queue_actions(prs, branches=()):
             rows.append((p, "close", f"close: carried into PR {num(outermost(carried))}", ""))
         elif paths:
             rows.append((p, "wait", "wait: conflict in " + ", ".join(paths), ""))
+        elif (guarded := triage_reading(head(p), base(p))):
+            rows.append((p, "wait", *guarded))
         elif p["headRefName"].startswith("answer/"):
             rows.append((p, *answer_reading(head(p))))
         elif last is None:
@@ -1386,6 +1406,8 @@ def queue_actions(prs, branches=()):
         last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b), v))), None)
         said = ("not fetched here" if head(b) in absent else "conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
                 else f"NOT READY ({last[0][:7]})" if last[1] == "NOT READY" else f"verdict {last[0][:7]} {last[1]}: open it")
+        guarded = triage_reading(head(b), base(b)) if head(b) not in absent and not paths else None
+        said = guarded[0][len("wait: "):] + f" ({guarded[1]})" if guarded else said
         rows.append((b, "branch", "wait: no pull request — " + said, ""))
     return sorted(rows, key=lambda row: (row[1] == "branch", row[1] == "wait", age(row[0]) if row[1] != "branch" else row[0]["headRefName"]))
 
@@ -5115,7 +5137,7 @@ def parse_args(argv):
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
-                                            "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
+                                            "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
                                             "merge: your answer · wait: not an answerer (<author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
                                             "merged or closed in the last 24 hours, with their times. "
