@@ -5,7 +5,7 @@ considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
 rank: 1
-next: build
+next: review
 tier: P1
 hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through"
 ---
@@ -14,11 +14,21 @@ hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and t
 
 ## What is true now
 
-**Filed 2026-09-25 at the Owner's word; nothing is built.** A seat can commit a change to the text under `## The intent` or
-`## The current path` in `work-tracker/TRIAGE.md` — unsigned, under any identity — and `--check` and `--session-check` exit 0. Every
-real change to those two sections on shoalmark's main is the Owner's signed commit (6 with `%G?` G, `45198d5` … `ad9bf67`; `ae1f05e`
-is a move with no text change). The gate judges *what* is built against judged trackers (FM-033); it does not yet judge *who* may
-change the Owner's own two sections. The site's claim that only the Owner changes them is, until this is built, a written rule (FM-006).
+**Built on `fm/037-only-the-owner-changes-his-intent-and-his-path` for 0.18.4; in review — the Owner's cold session (the
+gate: critical under path line 3), then the Auditor seat against its plan sealed at 18:57:38.** On a branch, `--check`
+refuses a commit that changes the text under `## The intent` or `## The current path` as a pass reads it — each commit
+under its own `shoalmark.toml`, byte for byte: a heading renamed or removed, `TRIAGE.md` deleted or moved away,
+`tracker_dir` re-pointed — unless it is the Owner's signed commit (`%G?` G, `%GS` = the author's email = the seat holding
+`answer` in the default branch's `[seats]`); a merge only for a text no parent had. The refusal names the commit, the
+section and the way through, and its last line is the limit (FM-007). The commit-msg hook refuses a seat's such commit
+before it is made (it proves the author; `--check` the signature); `--queue` reads `wait: TRIAGE.md changed unsigned`;
+an unsigned owner seat proves the author only and says so; Subversion is out of scope, in one line. R7's reading — a
+move of the whole tracker with its key, the text unchanged, is no change, so `ae1f05e` is accepted on its text — is in
+the design commit and README §5. The real history (main to `0d60d55`): the six signed commits accepted, `ae1f05e` no
+change, the root `a680fdf` the one other change (unsigned, before signing existed). **Left:** the review; then FM-006's
+page may say *only you change it*, with its tier-0 limit. Unproven: the real-history test's SSH verification on the
+Windows runners (CI runs on the ready pull request). A defect seen on the way, not fixed here: `verified_as`, the answer
+gate's signature test, accepts a signer principal that merely *contains* the claimed email; this guard compares exactly.
 
 ## Why
 
@@ -53,6 +63,7 @@ sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as en
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | Built on its branch for 0.18.4, one commit per clause: the check and what is no change (1, 3), the refusal's way through and its limit (2, 6), the commit-msg hook, `--queue`'s word (4), the author-only fallback and Subversion out of scope (5), the real history (7); main merged after PR 79. R7's reading stated in the design commit and README §5. `next: review` — the Owner's cold session. |
 | 2026-09-25 | Correcting the filing's attribution: the Owner's own words, at 18:55:33 to the Auditor seat, were `stop a seat from editing your TRIAGE.md` - let's fix this first then (spelling normalised). The part in backticks quotes the Auditor seat's line of the minute before; the relay of 18:58:54 wrote the two as one, as the Owner's word. His order stands as filed. |
 | 2026-09-25 | In Progress — 0.18.4 builds it on its own branch after this pass lands; the status set here, on the pass branch, before the first build commit (the Auditor seat's AU-20). |
 | 2026-09-25 | Filed at the Owner's word (*stop a seat from editing your TRIAGE.md — let's fix this first*), through the Auditor seat at 18:58:54; the filing text is the paste word for word, its hash above. Judged the same day: P1, rank 1, build (the pass of 2026-09-25, the triage guard). |
