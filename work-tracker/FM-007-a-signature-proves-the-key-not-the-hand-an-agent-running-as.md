@@ -71,6 +71,15 @@ The site contradicts this today: docs/signing.md (and docs/de/signing.md), Route
 
 The Owner's own state, 2026-09-25: tier 0 (S1). FM-007 was answered "after the scoring, once the key is delivered". Until then his signed answers prove "a process on his account", and FM-032's review pass stays in force.
 
+*Addendum, filed word for word from the Owner's paste of 2026-09-25 08:13:57 (*paste it after the main block, so FM-007 and the site get both*); sha256 of the addendum as filed, with one trailing newline: 438890dcf1575d86c0d8061fce9d7edf4a50dc2b5c2190ccce21bde59d0ab49d; the Auditor seat stated `ea32e5d4…` for its copy and matches it against its own record.*
+
+Tiers, addendum (the Auditor seat, session 8b91dba2, 2026-09-25): a phone passkey, and the Mac's Secure Enclave.
+- A passkey on a phone: not an option for signing today (70%). OpenSSH signs through libfido2 over USB/NFC and cannot reach a phone's passkey, which is made for website sign-in. If it could, it would rank below tier 3, because synced passkeys live on every device of the account instead of one.
+- Tier 3 without buying, on a Mac with a Secure Enclave and Touch ID (Apple Silicon, or Intel with a T2; the Owner's MacBookPro16,1 has both): a signing key generated inside the Secure Enclave, with Touch ID at each signature (e.g. the open-source Secretive agent) (75%). The key cannot be exported. Each signature needs his finger, and each use is announced.
+  - Limits: P-256 ECDSA only, which the forge accepts. Bound to one Mac, so a second signer must be registered.
+  - The tool cannot tell it from a software ECDSA key by its type, so the tier must be declared beside the key in allowed_signers.
+  - Verify that no approval is cached between signatures.
+
 ## Raised
 
 *One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts. The Auditor seat's
@@ -93,6 +102,7 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | **Tiers, addendum** filed word for word (the Owner's paste of 08:13:57): a phone passkey is no signing option today; a Mac's Secure Enclave with Touch ID gives a tier 3 without buying — P-256 only, bound to one Mac, the tier declared beside the key in `allowed_signers`. The site pages take both blocks. |
 | 2026-09-25 | In Progress — the seat's work under this tracker is the record and the site's signing pages (the tiers), set here in a tracker-only commit before the first documentation commit (the FM-033 rule); the key itself stays his act, after the scoring. |
 | 2026-09-25 | **The tiers of a signature** filed word for word from the Auditor seat's text, through the Owner (paste 07:59:21): four tiers, what each stops, what each requires, what the tool should say, and where the site contradicts it today. The site pages `docs/signing.md` and `docs/de/signing.md` are rewritten under this tracker on his word (the GtM seat, its five points). |
 | 2026-09-25 | A line under the freeze for 0.18.4, this tracker's: the tool says the tier, not a bare *verified* — from the key type in `allowed_signers` (`sk-…` is a hardware key) the board and the answer's record say *signed with a software key — anything on the owner's account can produce it* or *signed with a hardware key — needs the owner's touch*. |
