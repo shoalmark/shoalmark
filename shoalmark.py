@@ -226,6 +226,8 @@ def configure(root=None):
     COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
     global _BUILD
     _BUILD = None                                       # FM-033's judgement of this run, read once
+    global _GUARD
+    _GUARD = None                                       # FM-037's, the same
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -3735,12 +3737,13 @@ def commit_list(*revs):
     return got
 
 
-def cat_blobs(specs):
-    """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there."""
+def cat_blobs(specs, env=None):
+    """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there. `env`:
+    the hook's own, where `:<path>` must read the index git hands it (FM-037)."""
     if not specs:
         return {}
     r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
-                       capture_output=True, env=nested_git_env())
+                       capture_output=True, env=env or nested_git_env())
     got, data, i = {}, r.stdout, 0
     for spec in specs:
         nl = data.find(b"\n", i)
@@ -3922,6 +3925,228 @@ def commit_msg_check(message_file):
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK
+
+
+# FM-037 — ONLY THE OWNER CHANGES HIS INTENT AND HIS CURRENT PATH (his word of 2026-09-25, through the Auditor seat's AU-12:
+# a seat's unsigned commit rewrote a line of his path, and every gate passed it). The two sections of TRIAGE.md a pass reads
+# as his — `## The intent` and `## The current path`, by the repository's names or the English ones — are judged by what
+# the tool READS: each commit is read under its OWN `shoalmark.toml` (its `tracker_dir` names the file, its `[headings]` the
+# two names), a section is its heading line and everything under it up to the next `## `, byte for byte, and that text is
+# compared with what the commit's parent reads — a merge's with what each of its parents reads. Renaming or removing a
+# heading, deleting TRIAGE.md, moving it away from its name or out from under the tracker directory, pointing `tracker_dir`
+# elsewhere: after each the tool reads other words or none, and each is a change. A move of the whole tracker together with
+# its key, the two sections byte-identical before and after — `ae1f05e`, FM-002's move out of `docs/work-tracker/` — is not:
+# every word of his reads as it did (the pass's R7; the reading is stated in the README). Whitespace counts: the text is
+# printed as written, and a comparison with no normaliser has nothing a seat could learn to slip past. `## Passes` and all
+# outside the two stay open to seats; the scaffold `--init` writes, where no section was, is accepted. A change is refused
+# unless it is the Owner's signed commit: `%G?` G, the signer principal (`%GS`) the author's email, the author the Owner.
+# The Owner is read from the default branch's `shoalmark.toml`, never the branch's own: a branch that named a seat the Owner,
+# or took `signed` off his seat, and then changed his words, would otherwise judge itself.
+GUARDED = ("intent", "path")
+GUARD_WHY = "only the Owner changes his intent and his current path (FM-037)"
+_GUARD = None
+
+
+def guarded_sections(text, heads):
+    """{"intent": the section as a pass reads it — its heading line and all under it up to the next `## `, byte for byte — or
+    None, "path": …} of one TRIAGE.md (`text` None: no file). `heads` names them as that revision's `[headings]` does; the
+    English names are read as well and the first heading found is the one read, as `triage_home` reads them."""
+    out = {}
+    for k in GUARDED:
+        m = re.search(rf"^## (?:{re.escape(heads[k])}|{re.escape(DEFAULTS['headings'][k])})[ \t]*\n.*?(?=^## |\Z)", text, re.S | re.M) if text is not None else None
+        out[k] = m.group(0) if m else None
+    return out
+
+
+def triage_views(revs, env=None):
+    """{rev: (its `tracker_dir`, its TRIAGE.md from the repository's root, whether that file is there, its two sections, its
+    `[headings]`)} — each revision read under its OWN `shoalmark.toml`; "" is the index, what a commit being made stages
+    (`env` carries the hook's `GIT_INDEX_FILE`). A configuration that cannot be read counts as none: the defaults. Two
+    `git cat-file --batch` calls for all of them."""
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+    at = lambda rev, path: f"{rev}:{path}"
+    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env)
+    where = {}
+    for r in revs:
+        try:
+            cfg = read_config(configs.get(at(r, prefix + CONFIG_NAME)) or "")
+        except SystemExit:
+            cfg = {}
+        tdir = str(cfg.get("tracker_dir") or DEFAULTS["tracker_dir"])
+        heads = {**DEFAULTS["headings"], **(cfg["headings"] if isinstance(cfg.get("headings"), dict) else {})}
+        home = "/".join(x for x in (prefix + tdir + "/TRIAGE.md").replace("\\", "/").split("/") if x not in ("", "."))
+        where[r] = (tdir, home, heads)
+    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h) in where.items()}), env)
+    return {r: (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads)
+            for r, (tdir, home, heads) in where.items()}
+
+
+def section_changes(now, before):
+    """[(key, what it did, the heading, the rest of the phrase)] — what one commit does to each of the two sections, `now` and
+    `before` read by `triage_views`:
+    nothing where its text is its parent's — for a merge, ANY parent's: the text a merge carries was judged on the commit
+    that made it, and only a text no parent had is the merge's own (FM-019). A root commit has no parent: it had none. The
+    scaffold `--init` writes, where no parent had the section, is not a change (clause 3)."""
+    tdir, home, there, secs, heads = now
+    out = []
+    for k in GUARDED:
+        had = [b[3][k] for b in before] or [None]
+        if secs[k] in had:
+            continue
+        if all(h is None for h in had) and secs[k] == guarded_sections(TRIAGE_HOME.format(cmd=CMD, **heads), heads)[k]:
+            continue
+        b_dir, b_home, b_there, b_secs, _h = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads)
+        name = f"`{(b_secs[k] or secs[k] or '## ' + heads[k]).split(chr(10), 1)[0].rstrip()}`"
+        if len(before) > 1:
+            out.append((k, "brings a text under", name, f"in {home} that no parent had"))
+        elif b_secs[k] is None:
+            out.append((k, "writes", name, f"in {home}, where there was none"))
+        elif b_dir != tdir:
+            out.append((k, f"points the tracker directory elsewhere (`{b_dir}` → `{tdir}`), and the tool reads", name, "otherwise" if secs[k] is not None else "nowhere"))
+        elif not there:
+            out.append((k, f"deletes or moves {b_home}, and", name, "with it"))
+        elif secs[k] is None:
+            out.append((k, "renames or removes the heading", name, f"in {home}"))
+        else:
+            out.append((k, "changes the text under", name, f"in {home}"))
+    return out
+
+
+def did_words(what):
+    """What a commit did to the sections, in one phrase: `changes the text under `## The intent` and `## The current path`
+    in work-tracker/TRIAGE.md` — the headings that one thing happened to, named together."""
+    said = {}
+    for _k, verb, name, tail in what:
+        said.setdefault((verb, tail), []).append(name)
+    return "; ".join(f"{verb} {' and '.join(names)} {tail}" for (verb, tail), names in said.items())
+
+
+def guard_walk(*revs):
+    """FM-037's walk of `git log <revs>` — merges INCLUDED, each read against every parent: (how many commits it read,
+    [(commit, subject, TRIAGE.md's path at it, what `section_changes` says of it)] for each that changes one of the two)."""
+    out = git_out("log", "--format=%x00%H %P%x01%s", *revs) or ""
+    commits = []
+    for rec in out.split("\x00")[1:]:
+        shas, _, subject = rec.partition("\x01")
+        c, *ps = shas.split()
+        commits.append((c, ps, subject.strip()))
+    views = triage_views(sorted({c for c, _p, _s in commits} | {p for _c, ps, _s in commits for p in ps})) if commits else {}
+    changed = [(c, subject, views[c][1], section_changes(views[c], [views[p] for p in ps])) for c, ps, subject in commits]
+    return len(commits), [row for row in changed if row[3]]
+
+
+def owners_of(cfg):
+    """`may_answer()` for a configuration read from a revision — {identity: "signed" | ""}: each seat of its `[seats]` that
+    holds `answer` (the built-in `owner`, or a name its `[rights]` gives it), or with no `[seats]` its `answerers`."""
+    seats, rights, out = cfg.get("seats") or {}, cfg.get("rights") if isinstance(cfg.get("rights"), dict) else {}, {}
+    if isinstance(seats, dict) and seats:
+        for name, value in seats.items():
+            who, _, mode = str(value).strip().rpartition(" ")
+            words = rights.get(name, BUILTIN_RIGHTS.get(name, ()))
+            if "answer" in ([words] if isinstance(words, str) else words):
+                out[who if mode == "signed" else str(value).strip()] = "signed" if mode == "signed" else ""
+        return {w: m for w, m in out.items() if w}
+    for a in (cfg.get("answerers") or []):
+        name, _, mode = str(a).strip().rpartition(" ")
+        out[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
+    return {w: m for w, m in out.items() if w}
+
+
+def owners_at(rev):
+    """The Owner as `rev`'s `shoalmark.toml` names him — the default branch's, so a branch never names its own Owner — or
+    this checkout's where `rev` is None or carries no configuration."""
+    if not rev:
+        return may_answer()
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+    text = cat_blobs([f"{rev}:{prefix}{CONFIG_NAME}"]).get(f"{rev}:{prefix}{CONFIG_NAME}")
+    if text is None:
+        return may_answer()
+    try:
+        return owners_of(read_config(text))
+    except SystemExit:
+        return {}
+
+
+def signer_is(signer, email):
+    """The signer principal IS the email: an SSH principal equal to it, or a GPG user id carrying it as `<email>` — never a
+    principal that merely contains it."""
+    s, e = (signer or "").strip().lower(), (email or "").strip().lower()
+    return bool(e) and (s == e or f"<{e}>" in s)
+
+
+def guard_verdicts(changed, owners):
+    """[(commit, subject, home, what, verdict, why)] for each commit of `guard_walk` that changes a section — `verdict`:
+    `signed` (the Owner's signed commit), `author` (the Owner's, where his seat asks for no signature: the author is all
+    it proves), `checkout` (signed, and this clone cannot check it — `why` the cause) or `refused` (`why` the reason).
+    One `git log --no-walk` reads every author and signature."""
+    shas = [c for c, _s, _h, _w in changed]
+    out = git_out("log", "--no-walk=unsorted", "--format=%x00%H%x01%an%x01%ae%x01%G?%x01%GS", *shas) if shas else ""
+    sigs = {}
+    for rec in (out or "").split("\x00")[1:]:
+        c, name, email, good, signer = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
+        sigs[c] = (name, email, good.strip(), signer)
+    verdicts = []
+    for c, subject, home, what in changed:
+        name, email, good, signer = sigs.get(c, ("", "", "", ""))
+        mode = next((m for who, m in owners.items() if who in (email, name)), None)
+        if mode is None:
+            verdict, why = "refused", f"its author `{email or name or 'nobody git can name'}` is not the Owner ({' · '.join(f'`{w}`' for w in owners)})"
+        elif mode != "signed":
+            verdict, why = "author", ""
+        elif good == "G" and signer_is(signer, email):
+            verdict, why = "signed", ""
+        elif good == "G":
+            verdict, why = "refused", f"signed as `{signer}`, not as its author `{email}`"
+        elif signature_gap(c):
+            verdict, why = "checkout", signature_gap(c)
+        else:
+            verdict, why = "refused", ("the Owner's email, unsigned — a git author is a string anyone can type" if good == "N"
+                                       else f"the Owner's email, and its signature does not verify (`%G?` {good})")
+        verdicts.append((c, subject, home, what, verdict, why))
+    return verdicts
+
+
+def guard_lines(verdicts):
+    """The refusals of `guard_verdicts` as `--check` prints them — a checkout's own finding (signed, this clone cannot check
+    it) worded as FM-034 groups it, never written into INDEX.md."""
+    out = []
+    for c, subject, home, what, verdict, why in verdicts:
+        did = did_words(what)
+        if verdict == "checkout":
+            out.append(f'{home}: commit `{c[:10]}` "{first_words(subject, 60)}" {did} — it is signed, but {CHECKOUT_MARKS[0]}: {why} — see {SIGNING_PAGE}')
+        elif verdict == "refused":
+            out.append(f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did} — {why}: not the Owner\'s signed commit — {GUARD_WHY}')
+    return out
+
+
+def triage_guard():
+    """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
+    merges walked and judged by the text they bring. Read once per run; the pre-commit run judges nothing here (the
+    commit-msg hook judges the commit being made)."""
+    global _GUARD
+    if COMMITTING:
+        return [], ""
+    if _GUARD is not None:
+        return _GUARD
+    if vcs() != "git":
+        _GUARD = ([], "the Owner's two sections: this is no git repository — nothing is judged")
+        return _GUARD
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk, branch = default_trunk(git), built_on()
+    if not trunk:
+        _GUARD = ([], "the Owner's two sections: no `origin` default branch to measure from — nothing is judged")
+        return _GUARD
+    owners = owners_at(trunk)
+    if not owners:
+        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s `[seats]` gives no seat `answer`: name his (`owner = \"<email> signed\"`)")
+        return _GUARD
+    n, changed = guard_walk("HEAD", "^" + trunk)
+    verdicts = guard_verdicts(changed, owners)
+    refused = guard_lines(verdicts)
+    _GUARD = (refused, f"the Owner's two sections: guarded — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+                       + (f"{len(changed)} change them, {len(refused)} refused" if refused else f"{len(changed)} change them, each his own commit" if changed
+                          else "none changes them"))
+    return _GUARD
 
 
 def trunk_ref():
@@ -4166,6 +4391,7 @@ def lint(trackers, committing=False):
     problems += rights_problems(trackers)
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
+    problems += triage_guard()[0]                    # FM-037: only the Owner changes his intent and his current path
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
@@ -5126,6 +5352,7 @@ def main(argv=None):
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
+        print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
             print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
