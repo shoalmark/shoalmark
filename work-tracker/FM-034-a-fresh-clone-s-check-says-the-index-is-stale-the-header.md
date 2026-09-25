@@ -3,8 +3,7 @@ id: FM-034
 status: In Progress
 considered: FM-024, FM-019, FM-011
 tags: bug
-triaged: 2026-09-24
-rank: 10
+triaged: 2026-09-25
 next: build
 tier: P2
 hook: "A fresh clone without the Owner's allowedSignersFile runs --check and reads two findings where there is one: the missing signers file, and `INDEX.md is STALE`. The index is not stale — the generated header carries the clone's own finding as a ledger-integrity line, so the committed INDEX and the one this clone would write differ by exactly that line."

@@ -12,8 +12,8 @@ ask-proposal: "a raise naming a signed rule re-judges the tracker the same day; 
 answer: "accepted - a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
 answered: 2026-09-24
 answered-by: holgo99
-triaged: 2026-09-24
-rank: 9
+triaged: 2026-09-25
+rank: 10
 tier: P2
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
 ---

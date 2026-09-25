@@ -5,8 +5,8 @@ considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
 next: owner
-triaged: 2026-09-24
-rank: 8
+triaged: 2026-09-25
+rank: 9
 tier: P2
 ask: "Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict?"
 ask-kind: action
