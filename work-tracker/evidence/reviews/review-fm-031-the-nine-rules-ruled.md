@@ -172,3 +172,56 @@ Auditor seat's record and which I did not open.
 `37c7c54`. This is a same-session pass.
 
 *the Owner lands this by merging; a merge rules nothing (path 5).*
+
+## R4 and R5, 9c776c2 (2026-09-25 07:12 CEST, Reviewer, session `8e509911/reviewer-5`)
+
+**Scope.** `9c776c2` (`9c776c2baaf3f6ce13ec8c1874f498c49cbe8c9c`) is one commit by the Principal seat, under
+`8e509911`, 07:04:40, on this verdict's `d3514b0`. `git diff d3514b0 9c776c2 --name-only` names two files:
+- `AGENTS.md`: the nine-rule bullet.
+- FM-031: row 14 edited, and row 15 appended.
+
+**R4 · closed.**
+- The bullet now reads *The nine, in the words FM-031's body records them:* and then a numbered list.
+- Against the body's list (`FM-031:99–109`) it matches line for line: 11 lines each, 1,210 bytes, byte-identical once
+  the leading spaces are stripped. There are no trailing spaces, and the line breaks inside rules 8 and 9 are the
+  body's own.
+- The list starts at *1.* under the bullet's two-space indent, so it may interrupt the paragraph as a nested list. The
+  continuation lines of rules 8 and 9 are lazy continuations, so it renders as the body does.
+
+**R5 · half closed.**
+- FM-031's row 14 now reads *through the Owner (06:52:21)* where it had *06:4x*. The row is on this branch only:
+  `main` has 11 rows, all kept. So an edit in place is allowed.
+- I checked the source in the coordinating session's own transcript, read by its exact path; the Auditor seat's
+  sealed record was not touched. I printed the first 90 characters of each of the Owner's messages from 06:50 to 07:09,
+  and checked two messages for the ids. At 06:52:21 an Owner message relays the findings on PR 64, AU-28 and AU-29 both.
+- FM-029's row still reads *2026-09-25 06:5x CEST*. FM-029 is not in this commit.
+
+**R6 · P3 · 95% · Row 15 says both times were replaced. One was.** Row 15 reads: *R5: the two approximated times
+replaced by the transcript's — the Auditor's AU-28 relayed 06:52:21, the Owner's word at the sitting 07:00:34*.
+- *07:00:34* appears nowhere else in the tree.
+- It is not the time of FM-029's line. The transcript's 07:00:34 message names neither AU-28 nor AU-29, and it came six
+  minutes after `37c7c54` (06:54:13) wrote that line.
+- AU-29 was relayed at 06:52:21, with AU-28.
+
+Fix: FM-029's row gets *06:52:21* (relayed) or *06:54:13* (the line's commit), and row 15 says which. Row 15 is
+unmerged, so it can be corrected in place before the merge. After the merge, only an appended row can correct it.
+
+**The rest, at `9c776c2`.**
+- **The FM-033 rule.** The commit is under FM-031. At its parent `d3514b0`, FM-031 is *In Progress*,
+  `triaged: 2026-09-24`, `tier: P2`. FM-031's body outside the log is unchanged.
+- **The gates.**
+  - `--check` 0 and `--session-check` 0.
+  - `python3 shoalmark.py` and `--print-written` leave `git status --porcelain` empty.
+  - `git merge-tree --write-tree origin/main HEAD` writes `7bb719d`, the tip's own tree. It is a fast-forward on
+    `a77798b`.
+  - `test_shoalmark.py` 0 (355 ok), `test_core.py` 0 (148 ok).
+- **Carried, fixed forward:** R1, R2, R3's half on *What is true now*, R5's FM-029 half, and R6.
+
+**Verdict — READY WITH FINDINGS (P3), 90%.** R4 is closed, so there is no P2. R6 is a false line in a row that is not
+yet merged, and it is cheapest fixed before the merge. By the tier it is P3. I hold that grade at 80%: once merged, the
+row can only be corrected by another row.
+
+**Independence.** I am a sub-agent (`8e509911/reviewer-5`) of session `8e509911`, whose Principal seat made
+`9c776c2`. This is a same-session pass.
+
+*the Owner lands this by merging; a merge rules nothing (path 5).*
