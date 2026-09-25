@@ -2,6 +2,77 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.18.3 — 2026-09-24
+
+**Every reading prints the relation, an answer writes the next move, and no build commit comes before a judgement**
+(FM-029, FM-030, FM-031, FM-033, FM-034 — the Auditor seat's checks on v0.18.2).
+
+- **A record `--clear-ask` wrote before 0.18.1 prints its relation too** (FM-029; the Auditor seat's check 9). Such a
+  record has no `**relation** —` line, and `--answered` read it as *relation not computable* — FM-031's and FM-032's
+  among them. The commit that wrote the answer still holds `ask-proposal:` and `ask-options:`. A record is matched to
+  it by its answer AND its question: a commit whose diff adds that `answer:` line, read back, whose `ask:` is the
+  question on the record's `**<date>** · <question>` line — its lines then go through the reader a live answer goes
+  through. Where one text answered two questions, each record gets its own commit; where no commit, or more than one,
+  holds both — one question answered twice word for word, as FM-007's was on 09-22 — *relation not computable*, never
+  a guess. `--answered`'s acted-on lines and the board's tracker view print it and name that commit — *accepted with a
+  change, read from the answer's commit `7c97c5b`* — the view under every such record, an older one's too when a newer
+  record follows it, and the file is not touched. Where no commit in the checkout wrote
+  that answer (a hand-written record, a shallow clone), *relation not computable*, as before. It costs one `git log` for
+  all such records and one `git show` for each one found, spent where the relation is printed, never on a load.
+- **An answer writes the next move** (FM-030; the Auditor seat's check 24). `--answer` wrote the three lines and left
+  `next: owner` — the Owner's move after his move was made. It now writes `next:` in the same commit: `build` for a
+  ruling, a determination or a ceremony, the seat's move (`run` stays for something built that waits for its run);
+  `next: owner` kept for an action, whose yes is a promise of his own hands, not the act. `revoke` and `--supersede` key
+  on the answer being there, so they work after the move is written. `--schema` says what an answer writes, and that an
+  ask whose yes needs the Owner's hands is `action`, whatever else it decides; the board's second screen names the move.
+- **A fresh clone's `--check` no longer says the INDEX is stale** (FM-034; the Auditor seat's check 20). A finding that
+  is the checkout's, not the ledger's — a signed commit this clone cannot verify (no `gpg.ssh.allowedSignersFile`, a key
+  not in the keyring), a pinned file this checkout has not got — was written into the generated INDEX's header, so the
+  INDEX a clone generated differed from the committed one by that line and `--check` said *STALE* beside the finding.
+  It is now said on stderr only, once per cause — `checkout: it is signed, but this clone cannot verify: … — N signed
+  commit(s) it could not check: …`, each commit counted and named once — and the run still fails; the drift test is not widened. In every clone the
+  committed INDEX and the one it generates are the same under `drift_normalize` — the `Generated` date aside, which a
+  clone generating it on another day writes anew — and `--check` reads them so.
+- **The 0.18.0 bullet on revoke and supersede names its authority** (FM-031; the Auditor seat's check 14): the Owner's
+  word of 2026-09-24 that revoking or changing a given answer needs a path the person can choose, and his signed
+  revocation of the cap (PR 46, `7c97c5b`) in FM-031's ship log.
+- **A raise naming a signed rule re-judges the tracker the same day** (FM-033, the Owner's second answer; the Auditor
+  seat's AU-16). A raise is one line under a tracker's `## Raised` (`raised` in `[headings]`):
+  `- <date> · <who> · <fact> · <source> · undermines: <what>`, read by its date and its `undermines:` token. Dated after
+  the tracker's `triaged:` and naming a line of the current path (`path 5`) or a tracker's signed answer (`FM-033's
+  answer`), it makes an open tracker owed a pass: under *triage* on the board and in INDEX.md, and on the next worksheet
+  however fresh its judgement, marked RAISED with the raise in its Now cell. Any other raise waits for the next pass. A
+  day decides: a raise written after the same day's pass is re-judged by the seat's own re-run that day, as this
+  evening's was. `--triage` prints the rule in the Owner's words.
+- **No build commit before a judgement** (FM-033; the Auditor seat's check 26). With `judged_before_build = true` in
+  `shoalmark.toml` — off by default, on in this repository — a commit that changes a path outside the tracker directory
+  names a tracker, the ids in its subject or else its branch `<kind>/<NNN>-…`, that at the commit's parent carries
+  `triaged:`, is not Parked and is `In Progress`; a commit that names none is refused too. At commit time the
+  commit-msg hook (`--commit-msg`, which `--install-hook` writes; with lefthook, a `commit-msg` entry) judges the commit
+  being made once its message exists — its subject's ids, else its branch, as the history is judged — and refuses it
+  before it is made, with the line `--check` prints of it. It reads the message before git's cleanup, so it judges every
+  subject git could keep: the first line left once comment lines are stripped (`core.commentChar`) — none left is
+  *names no tracker* — and, where git keeps comment lines (`-m`, `--cleanup=verbatim`), the literal first line too, so
+  `-m '# FM-007: …'` is judged as FM-007's. `--check` judges each commit of the branch since `origin`'s default branch —
+  a merge by the commits it carries, never as the merger's own change — and says in one line whether the gate is on.
+  **The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's
+  head before merge. A bypass of the hook alone, which `--check` catches, is P3** (the Principal's ruling: git's
+  `--no-verify` skips any hook by design). On the default branch nothing is judged; on a detached HEAD the subject must name the
+  tracker. Judged at their own parents, the four builds of FM-033's table and the fifth are each refused. What FM-033
+  also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker, and the board
+  showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`, then `--install-hook`
+  again for the `commit-msg` hook (or add the `commit-msg` entry to your own hook runner, §6); build on a branch
+  `<kind>/<NNN>-…` whose tracker a pass has kept In Progress, and name the tracker in the subject.*
+- **The suite runs `--queue` itself on a branch pushed without a pull request** (FM-031; the Auditor seat's check 8):
+  `gh` stubbed, `origin` a local bare repository, it reads `branch <name> @ <sha>  wait: no pull request — no verdict
+  on <sha>` and the count. A check, not a change.
+- **The tool's rule 4** (FM-033; the Auditor seat's AU-7 and AU-21): `--triage`'s printed rules and README §4 read *the
+  pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees with is re-made by
+  the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is written and signed, and a
+  merge is not one*. They said the Owner rules by merging and can strike any row.
+
+*Nothing to do on upgrade: one new configuration key, `judged_before_build`, off by default.*
+
 ## 0.18.2 — 2026-09-24
 
 **A fourth brand file, `wordmark.svg`: the mark and the name drawn as one** (FM-006), for a brand whose name is part
@@ -115,6 +186,9 @@ defects of `--answer` found the same day).
 - **An answer is revoked or superseded, never overwritten:** `--answer <id> revoke "<reason>"`, or
   `--answer <id> accept|reject "<option>" --supersede`. The answer it replaces moves into the ship log with the
   commit that wrote it, and the board's tracker view shows the answer and *supersedes <sha>*.
+  Built on the Owner's word of 2026-09-24 that revoking or changing a given answer needs a path the person can
+  choose; FM-031's ship log records his signed revocation of the cap (PR 46, `7c97c5b`), written by hand before
+  0.18.0's `--supersede` existed.
 - **`--queue` sees what waits beyond the open pull requests.** Each branch on `origin` that no pull request carries —
   not the default branch, not `answer/*`, not already merged, not inside an open pull request or another such
   branch — follows as `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>` · `— verdict <sha> READY …:

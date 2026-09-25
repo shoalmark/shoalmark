@@ -15,6 +15,7 @@ log = "Verlauf"
 intent = "Die Absicht"
 path = "Der aktuelle Weg"
 passes = "Durchgänge"
+raised = "Einwände"
 
 [tags]               # ein geschlossenes Vokabular; die Namen tippt ein Agent
 bug = "etwas, das funktioniert hat oder funktionieren sollte, und es nicht tut"

@@ -1364,7 +1364,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (wt / "TRIAGE.md").write_text(home.replace("1.\n", "1. MSR-001 zuerst, dann der Rest.\n").replace("*None yet.*", "**2026-09-21 — der erste Durchgang.** Alles gesichtet."), encoding="utf-8")
     for f_ in (made, wt / "TRIAGE.md"):                     # German whatever the templates wrote — this check is about READING
         x = f_.read_text(encoding="utf-8")
-        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge", "asks": "Fragen"}[en] + "\n")
+        for en, de in fm.DEFAULTS["headings"].items(): x = x.replace(f"## {de}\n", "## " + {"state": "Was jetzt gilt", "why": "Warum", "done": "Fertig, wenn", "log": "Verlauf", "intent": "Die Absicht", "path": "Der aktuelle Weg", "passes": "Durchgänge", "asks": "Fragen", "raised": "Einwände"}[en] + "\n")
         f_.write_text(x, encoding="utf-8")
     home = (wt / "TRIAGE.md").read_text(encoding="utf-8").replace("1. MSR-001 zuerst, dann der Rest.\n", "1.\n")
     fm.configure(root); now = made.read_text(encoding="utf-8"); th = fm.triage_home()
@@ -2527,6 +2527,110 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.3 (the Auditor seat's check 24): the answer writes the next move — `build` after a ruling, a
+#     determination or a ceremony; `owner` kept for an action, whose act is still his; revoke and supersede still work --
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "s"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q, kind: f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "yes"\n'
+    log_ = "## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-20 | Filed. |\n"
+    tracker(root, "AP-095", extra=ask_("Ship the importer first?", "ruling"), title="a ruling", body=log_)
+    tracker(root, "AP-096", extra=ask_("Will you rotate the key this week?", "action"), title="an action", body=log_)
+    tracker(root, "AP-097", extra=ask_("Is the read on production clean?", "determination"), title="a determination", body=log_)
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def land_(tid):                                        # the Owner merges his answer, and origin has it
+        git(root, "merge", "-q", "--no-ff", "-m", f"the Owner merges {tid}", f"answer/{tid.lower()}"); git(root, "push", "-q", "origin", f"{trunk_}:main"); git(root, "fetch", "-q", "origin")
+    front_ = lambda tid: fm.parse_frontmatter((root / f"docs/work-tracker/{tid}-x.md").read_text())[0]
+    said_, diff_ = {}, {}
+    for tid_ in ("AP-095", "AP-096", "AP-097"):
+        said_[tid_] = run(root, "--answer", tid_, "accept")
+        diff_[tid_] = subprocess.run(["git", "-C", str(root), "show", "--format=", f"answer/{tid_.lower()}"], capture_output=True, text=True, env=_ENV).stdout
+        land_(tid_)
+    after_ = {tid_: front_(tid_) for tid_ in said_}
+    check(f"FM-030 · the answer writes the next move in its own commit — a ruling and a determination read `next: build`, the seat's move; an action keeps `next: owner`, the act still his — and the run says which (saw {[a_.get('next') for a_ in after_.values()]})",
+          all(c_ == 0 for c_, _o, _e in said_.values()) and after_["AP-095"].get("next") == "build" and after_["AP-097"].get("next") == "build"
+          and after_["AP-096"].get("next") == "owner" and all(a_.get("answer") == '"accepted"' for a_ in after_.values())
+          and "\n  next: build — the seat's move follows" in said_["AP-095"][1] and "\n  next: owner — an action: the act is still yours" in said_["AP-096"][1]
+          and "+next: build" in diff_["AP-095"] and "-next: owner" in diff_["AP-095"] and '+answer: "accepted' in diff_["AP-095"]
+          and "next:" not in diff_["AP-096"] and '+answer: "accepted' in diff_["AP-096"] and "+next: build" in diff_["AP-097"])
+    code_r, _o, err_r = run(root, "--answer", "AP-095", "revoke", "the audit comes first"); land_("AP-095")
+    code_s, _o, err_s = run_safe(root, "--answer", "AP-096", "accept", "next week", "--supersede"); land_("AP-096")
+    code_n, _o, err_n = run(root, "--answer", "AP-097", "accept", "again")
+    r95_, r96_ = front_("AP-095"), front_("AP-096")
+    check(f"FM-030 · revoke and --supersede key on the answer being there, not on `next: owner` — both work after the move is written, and keep it; an answered ask without either is still refused (saw {err_r.strip()[-160:]!r}, {err_s.strip()[-160:]!r})",
+          code_r == 0 and r95_.get("answer") == '"revoked - the audit comes first"' and r95_.get("next") == "build"
+          and code_s == 0 and r96_.get("answer") == '"accepted - next week"' and r96_.get("next") == "owner"
+          and code_n == fm.EXIT_LINT and "answered already" in err_n and run(root, "--check")[0] == 0)
+    tracker(root, "AP-098", extra='ask: "A question nobody put to him?"\nask-kind: ruling\nnext: build\n', title="not asked", body=log_)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "an ask line with another move")
+    code_a, _o, err_a = run(root, "--answer", "AP-098", "accept"); code_b, _o, err_b = run(root, "--answer", "AP-099", "accept")
+    check(f"FM-030 · an unanswered `ask:` whose move is not `owner` is not the Owner's to answer, and says so; no `ask:` at all still reads *asks the Owner nothing* (saw {err_a.strip()!r})",
+          code_a == fm.EXIT_LINT and "carries an `ask:` and `next: build`" in err_a and code_b == fm.EXIT_LINT and "asks the Owner nothing" in err_b)
+    schema_ = fm.render_schema()
+    check("FM-030 · `--schema`: `next:` says what an answer writes, and `ask-kind:` that an ask whose yes needs the Owner's hands is `action`, whatever else it decides",
+          "`--answer` writes it with the answer: `build` for a ruling, a determination or a ceremony" in schema_ and "`owner` kept for an action" in schema_
+          and "An ask whose yes needs the Owner's hands is `action`, whatever else it decides" in schema_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-033's second answer, 0.18.3 (AU-16): a raise naming a signed rule re-judges the tracker the same day ---------------
+# A raise is a line under `## Raised`, dated, naming what it undermines. Dated after the tracker's judgement and naming a
+# line of the current path or a signed answer, it puts the tracker under triage and on the next worksheet, marked RAISED.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    git(root, "init", "-q")
+    (root / "shoalmark.toml").write_text('name = "r"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    d_ = lambda n: (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
+    wt_ = root / "docs/work-tracker"; wt_.mkdir(parents=True)
+    (wt_ / "TRIAGE.md").write_text("# Triage\n\n## The intent\n\n- **for** people who build with agents\n\n## The current path\n\n1. The sitting runs on a tagged release.\n"
+                                   "2. What a sitting finds is filed that day.\n3. A review's evidence is checked, not asked.\n4. Trust is earned first.\n"
+                                   "5. An answer is written and signed through the board.\n\n## Passes\n\nNewest first.\n", encoding="utf-8")
+    raise_ = lambda day, what: f"## Raised\n\n- {day} · Auditor (8b91dba2), through the Owner · the key signs without a touch — ssh-add -l · undermines: {what}\n\n"
+    judged_ = lambda day, status="Proposed": f"triaged: {day}\ntier: P2\n"
+    body_ = lambda raised: "## What is true now\n\n**One thing is left.**\n\n" + raised + "## Done when\n\nit is.\n"
+    tracker(root, "AP-210", status="Proposed", extra="next: build\n" + judged_(d_(3)), title="answered",      # his answer, cleared into the record
+            body=body_(f"## Asks\n\n**{d_(3)}** · Which key signs?\n**answered** — accepted - a hardware key · holgo\n**relation** — accepted the proposal\n\n"))
+    tracker(root, "AP-201", status="Proposed", extra=judged_(d_(1)), title="FM-007's shape", body=body_(raise_(d_(0), "TRIAGE.md path 5, AP-210's answer")))
+    tracker(root, "AP-202", status="Proposed", extra=judged_(d_(1)), title="no signed rule", body=body_(raise_(d_(0), "the shadow week")))
+    tracker(root, "AP-203", status="Proposed", extra=judged_(d_(1)), title="raised before", body=body_(raise_(d_(2), "path 5")))
+    tracker(root, "AP-204", status="Proposed", extra=judged_(d_(0)), title="the same day", body=body_(raise_(d_(0), "path 5")))
+    tracker(root, "AP-205", status="Proposed", extra=judged_(d_(1)), title="no such rule", body=body_(raise_(d_(0), "path 9, AP-299's answer")))
+    tracker(root, "AP-206", status="Shipped", extra=judged_(d_(1)), title="done", body=body_(raise_(d_(0), "path 5")))
+    tracker(root, "AP-207", status="In Progress", extra=judged_(d_(1)), title="the token mid-line",
+            body=body_(f"## Raised\n\n- {d_(0)} · undermines: path 1 · Auditor · the release was\n  not tagged · git tag -l\n\n"))
+    run(root)
+    fm.configure(root); by_ = {t["id"]: t for t in fm.load_trackers()}
+    boards_ = {k: fm.board(t) for k, t in by_.items()}
+    index_ = (wt_ / "INDEX.md").read_text(encoding="utf-8")
+    check(f"FM-033 · a raise dated after the judgement that names a signed rule — a line of the current path, a tracker's answer — makes the tracker owed a pass and puts it under triage, INDEX.md too (saw {boards_})",
+          fm.owed_a_pass(by_["AP-201"]) and boards_["AP-201"] == "triage" and re.search(r"^\| \[AP-201\].*\| triage \|", index_, re.M) is not None
+          and [r_["undermines"] for r_ in by_["AP-201"]["raises"]] == [["TRIAGE.md path 5", "AP-210's answer"]])
+    check("FM-033 · and nothing else does: a raise naming no signed rule, one dated before the judgement, one on the judgement's own day (a day decides), a path line or an answer that is not there, a raise on done work",
+          all(not fm.owed_a_pass(by_[k]) for k in ("AP-202", "AP-203", "AP-204", "AP-205")) and boards_["AP-202"] == boards_["AP-203"] == boards_["AP-204"] == boards_["AP-205"] == "backlog"
+          and boards_["AP-206"] == "done" and not by_["AP-206"]["raised"])
+    check("FM-033 · the raise line is keyed on its date and its `undermines:` token wherever it sits — never on a count of fields — and a wrapped bullet is read whole",
+          boards_["AP-207"] == "triage" and by_["AP-207"]["raises"][0]["undermines"] == ["path 1"] and by_["AP-207"]["raises"][0]["line"].endswith("not tagged · git tag -l"))
+    code_, out_, _ = run(root, "--triage")
+    sheet_ = (wt_ / "evidence/triage" / f"triage-{d_(0)}.md").read_text(encoding="utf-8")
+    row_ = next((l for l in sheet_.splitlines() if l.startswith("| [AP-201]")), "")
+    check(f"FM-033 · `--triage` lists the raised tracker, judged yesterday, with RAISED in its keep-test cell and the raise in its Now cell — and prints the rule in the Owner's words (saw {row_[:220]!r})",
+          code_ == 0 and "· RAISED |" in row_ and f"| {d_(0)} · Auditor (8b91dba2), through the Owner · the key signs without a touch — ssh-add -l · undermines: TRIAGE.md path 5, AP-210's answer |" in row_
+          and not any(l.startswith(f"| [{k}]") for l in sheet_.splitlines() for k in ("AP-202", "AP-203", "AP-204", "AP-205", "AP-206"))
+          and "a raise naming a signed rule re-judges the tracker the same day; any" in out_ and "other raise waits for the next pass" in out_)
+    (wt_ / "evidence/triage" / f"triage-{d_(0)}.md").write_text(sheet_.replace(row_, row_[: -len(" | | |")] + " | keep P2 | re-judged on the raise |") if row_.endswith(" | | |") else sheet_, encoding="utf-8")
+    code2_, _o, err2_ = run(root, "--triage")
+    fm.configure(root); t201_ = next(t for t in fm.load_trackers() if t["id"] == "AP-201")
+    check(f"FM-033 · the pass that re-judges it dates it today, and the raise no longer re-opens it (saw {t201_.get('triaged')!r}, {err2_.strip()[-160:]!r})",
+          code2_ == 0 and t201_.get("triaged") == d_(0) and not t201_["raised"] and fm.board(t201_) == "backlog")
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
@@ -2579,6 +2683,211 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-031, 0.18.3 (the Auditor seat's check 8): `--queue` ITSELF, `gh` stubbed — a branch pushed without a pull request --
+# The check above reads that case through `pushed_branches` and `queue_actions`; this one runs `--queue` as the Owner does.
+# `gh pr list` is answered by a stub (no pull request open); `origin` is a local bare repository the scratch clone pushed to,
+# which the forge's URL check is told is GitHub; git runs for real — the fetch, `ls-remote`, the verdicts — and no real
+# remote is touched.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir(); bare_ = base / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare_)], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    git(root, "remote", "add", "origin", str(bare_)); run(root, "--init", "--key", "msr")
+    (root / "shared.txt").write_text("one\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk"); git(root, "branch", "-q", "-M", "main")
+    subprocess.run(["git", "--git-dir", str(bare_), "symbolic-ref", "HEAD", "refs/heads/main"], check=True, env=_ENV)
+    git(root, "checkout", "-q", "-b", "fm/002-pushed"); (root / "w.txt").write_text("w\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "work pushed, no pull request opened")
+    pushed_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "checkout", "-q", "main"); git(root, "push", "-q", "origin", "main", "fm/002-pushed")
+    asked_, real_run, real_which, real_forge = [], subprocess.run, fm.shutil.which, fm.github_remote
+    def gh_stub_(*a, **k):
+        if a and list(a[0])[:1] == ["gh-stub"]:                  # the forge: no pull request is open
+            asked_.append(list(a[0]))
+            return subprocess.CompletedProcess(a[0], 0, "[]", "")
+        return real_run(*a, **k)
+    subprocess.run, fm.shutil.which = gh_stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which(name, *a, **k))
+    fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge(url)
+    try:
+        code_, out_, err_ = run_safe(root, "--queue")
+    finally:
+        subprocess.run, fm.shutil.which, fm.github_remote = real_run, real_which, real_forge
+    check(f"FM-031 · `--queue` itself, `gh` stubbed and `origin` a local bare repository: a branch pushed without a pull request reads `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>`, and the count names it (saw {out_!r}, {err_!r})",
+          code_ == 0 and out_.splitlines() == [f"branch fm/002-pushed @ {pushed_[:7]}  wait: no pull request — no verdict on {pushed_[:7]}",
+                                               "1 waiting on you: 0 merge, 0 close, 0 wait, 1 pushed without a pull request"]
+          and [c_[1:3] for c_ in asked_] == [["pr", "list"]])
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-033, 0.18.3 (the Auditor seat's check 26, AU-14): no build commit before a judgement ---------------------------
+# The Owner's rule: a pass judges before the first build commit. A commit that changes a path outside the tracker directory
+# names a tracker — the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's PARENT carries
+# `triaged:`, is not Parked and is In Progress. Keyed on the work, not on the status: a status gate would have missed three
+# of the four builds FM-033 rows.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "g"\njudged_before_build = true\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    day_ = datetime.date.today().isoformat()
+    tracker(root, "AP-001", status="Proposed", title="unjudged")
+    tracker(root, "AP-002", status="Parked", extra=f"triaged: {day_}\ntier: P3\n", title="judged, parked")
+    tracker(root, "AP-003", status="Proposed", extra=f"triaged: {day_}\ntier: P2\n", title="judged, proposed")
+    tracker(root, "AP-004", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="judged, in progress")
+    (root / "src.txt").write_text("one\n")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk"); git(root, "branch", "-q", "-M", "main")
+    git(root, "push", "-q", "-u", "origin", "main"); git(root, "remote", "set-head", "origin", "main")
+    sha_ = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def build_(branch, subject, files, frm="main"):        # a branch cut from `frm`, one commit on it — made without the hook
+        git(root, "switch", "-q", "-c", branch, frm)
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); git(root, "commit", "-qm", subject)
+        return sha_()
+    def judged_(branch=None):                              # `--check`'s judgement on the branch checked out, read afresh
+        if branch:
+            git(root, "switch", "-q", branch)
+        fm.configure(root)
+        return _no_git_env(fm.build_judgement)
+    def hooked_(branch, subject, files, frm="main"):       # the installed hooks on a real `git commit` — then --check on that commit
+        git(root, "switch", "-q", "-c", branch, frm) if branch else git(root, "switch", "-q", "--detach", frm)
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); before_ = sha_()
+        r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", subject], capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=_ENV)
+        made_ = sha_() != before_
+        if not made_:
+            git(root, "commit", "-qm", subject)                # the same commit, made without the hooks: what --check then says of it
+        said_ = judged_()[0]
+        git(root, "switch", "-q", "--detach", "main")
+        return made_, [l_.strip() for l_ in r_.stderr.splitlines() if l_.strip().startswith("refused:")], said_
+    c1_ = build_("ap/001-build", "the importer", {"src.txt": "two\n"}); r1_ = judged_()
+    c2_ = build_("ap/002-build", "the importer", {"src.txt": "two\n"}); r2_ = judged_()
+    c3_ = build_("ap/003-build", "the importer", {"src.txt": "two\n"}); r3_ = judged_()
+    c4_ = build_("ap/004-build", "the importer", {"src.txt": "two\n"}); r4_ = judged_()
+    check(f"FM-033 · `--check` refuses a build commit under an unjudged tracker, a judged Parked one and a judged Proposed one — naming the commit, the tracker and what was missing — and passes it under a judged In Progress one (saw {r1_[0]!r})",
+          len(r1_[0]) == 1 and r1_[0][0].startswith(f'refused: commit {c1_[:7]} "the importer" changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed) — a pass judges before the first build commit (FM-033)')
+          and len(r2_[0]) == 1 and "AP-002: Parked" in r2_[0][0] and len(r3_[0]) == 1 and "AP-003: not In Progress (Proposed)" in r3_[0][0]
+          and r4_[0] == [] and r4_[1] == "judged before build: on — 1 commit(s) on `ap/004-build` since origin/main, every build commit under a judged In Progress tracker")
+    git(root, "switch", "-q", "ap/001-build")
+    code_, out_, err_ = run(root, "--check")
+    check(f"FM-033 · end to end: `--check` exits 4 on the refusal and says the gate is on in one line (saw {err_.strip()[-200:]!r})",
+          code_ == fm.EXIT_LINT and f"refused: commit {c1_[:7]}" in err_ and "judged before build: on — 1 commit(s) on `ap/001-build` since origin/main, 1 refused" in out_)
+    t1_ = build_("ap/001-notes", "AP-001: a note", {"docs/work-tracker/AP-001-x.md": (root / "docs/work-tracker/AP-001-x.md").read_text() + "\nA note.\n"}); rt_ = judged_()
+    cn_ = build_("docs/tidy", "tidy the readme", {"README.md": "tidy\n"}); rn_ = judged_()
+    cs_ = build_("docs/tidy-2", "AP-004: tidy the readme", {"README.md": "tidy\n"}); rs_ = judged_()
+    cw_ = build_("ap/004-wrong", "AP-001: the importer, under another tracker's branch", {"src.txt": "three\n"}); rw_ = judged_()
+    check(f"FM-033 · a commit that touches only the tracker directory is not judged; one that names no tracker is refused as such; the subject's ids decide before the branch's (C1) — a judged one passes on any branch, an unjudged one is refused on a judged branch (saw {rn_[0]!r})",
+          rt_[0] == [] and len(rn_[0]) == 1 and f"refused: commit {cn_[:7]} \"tidy the readme\" changes README.md outside docs/work-tracker/ — names no tracker: no AP-N in its subject, and its branch `docs/tidy` names none" in rn_[0][0]
+          and rs_[0] == [] and len(rw_[0]) == 1 and "AP-001: not judged" in rw_[0][0])
+    git(root, "switch", "-q", "--detach", "ap/004-build"); rd_ = judged_()
+    git(root, "switch", "-q", "--detach", "docs/tidy-2"); rd2_ = judged_()
+    check(f"FM-033 · on a detached HEAD the subject must name the tracker (C3): a subject without an id is `names no tracker`, one with a judged id passes (saw {rd_[0]!r})",
+          len(rd_[0]) == 1 and "names no tracker" in rd_[0][0] and rd2_[0] == [] and "on a detached HEAD since origin/main" in rd2_[1])
+    # a merge: its own change is never the merger's; the commits it carries are judged, at their own parents
+    side_ = build_("side/import", "AP-001: the importer on the side", {"side.txt": "s\n"})
+    git(root, "switch", "-q", "ap/004-build"); git(root, "merge", "-q", "--no-ff", "-m", "merge the side", "side/import")
+    rm_ = judged_()
+    git(root, "switch", "-q", "-c", "ap/004-merge-now", "ap/004-build~1"); git(root, "merge", "-q", "--no-ff", "--no-commit", "side/import")
+    (root / "merge-msg").write_text("Merge side/import\n"); codem_, _o, errm_ = run(root, "--commit-msg", str(root / "merge-msg"))
+    git(root, "merge", "--abort"); (root / "merge-msg").unlink(); git(root, "switch", "-q", "main")
+    check(f"FM-033 · a merge commit is skipped and every commit it carries is judged — by `--check`, and at commit time on a merge being made (saw {rm_[0]!r}, {errm_.strip()[-160:]!r})",
+          len(rm_[0]) == 1 and rm_[0][0].startswith(f'refused: commit {side_[:7]} "AP-001: the importer on the side"') and "merge the side" not in " ".join(rm_[0])
+          and codem_ == fm.EXIT_LINT and f"refused: commit {side_[:7]}" in errm_)
+    # main moves under a commit nobody judged; a judged branch that merges main carries none of it into its range
+    git(root, "switch", "-q", "main"); (root / "main.txt").write_text("m\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves")
+    git(root, "push", "-q", "origin", "main"); git(root, "fetch", "-q", "origin")
+    git(root, "switch", "-q", "-c", "ap/004-uptodate", "ap/004-build~1"); git(root, "merge", "-q", "--no-ff", "-m", "main merged in", "origin/main")
+    ru_ = judged_(); git(root, "switch", "-q", "main"); rmain_ = judged_()
+    check("FM-033 · a merge of `origin`'s default branch brings none of its commits into the judged range; on the default branch itself nothing is judged",
+          ru_[0] == [] and rmain_[0] == [] and rmain_[1] == "judged before build: on — `main` is the default branch: nothing on it is judged")
+    # AT COMMIT TIME (the cold review's R1): the installed commit-msg hook judges the commit being made with its SUBJECT, as the
+    # history is judged — its ids, else its branch — and refuses it before it is made, with the line --check prints of it made.
+    # The pre-commit stage has no message: judged there by its branch, `FM-007: …` on a judged branch passed the hook, and failed --check.
+    run(root, "--install-hook"); git(root, "switch", "-q", "--detach", "main")
+    note_ = (root / "docs/work-tracker/AP-001-x.md").read_text() + "\nA note at commit time.\n"
+    table_ = [("ap/004-probe", "AP-001: gate probe"),                 # the Reviewer's probe: a judged branch, an unready tracker in the subject
+              ("ap/001-probe", "AP-004: gate probe, the inverse"),    # an unjudged branch, a judged tracker in the subject
+              ("ap/001-hook", "the importer"), ("ap/002-hook", "the importer"), ("ap/003-hook", "the importer"), ("ap/004-hook", "the importer"),
+              ("docs/hook", "the importer"), ("docs/hook-2", "AP-004: the importer"), (None, "the importer, detached"), (None, "AP-004: detached")]
+    seen_ = {}
+    for n_, (branch_, subject_) in enumerate(table_):
+        seen_[(branch_, subject_)] = hooked_(branch_, subject_, {"src.txt": f"hook {n_}\n"})
+    seen_["notes"] = hooked_("ap/001-hook-notes", "AP-001: a note", {"docs/work-tracker/AP-001-x.md": note_})
+    tail_ = lambda l_: l_.split(" changes ", 1)[1] if " changes " in l_ else l_
+    agree_ = all(made_ == (not said_) and [tail_(l_) for l_ in hook_] == [tail_(l_) for l_ in said_] and all(l_.startswith("refused: this commit \"") for l_ in hook_)
+                 for made_, hook_, said_ in seen_.values())
+    verdicts_ = {k_: v_[0] for k_, v_ in seen_.items()}
+    check(f"FM-033 · R1 · the commit-msg hook judges the commit being made with its subject and refuses it before it is made: the Reviewer's probe — a judged branch, an unready tracker in the subject — is refused, no commit made; the inverse passes (saw {seen_[('ap/004-probe', 'AP-001: gate probe')][1]!r})",
+          verdicts_[("ap/004-probe", "AP-001: gate probe")] is False and verdicts_[("ap/001-probe", "AP-004: gate probe, the inverse")] is True
+          and seen_[("ap/004-probe", "AP-001: gate probe")][1] == ['refused: this commit "AP-001: gate probe" changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed) — ' + fm.BUILD_WHY])
+    check(f"FM-033 · R1 · the hook and --check agree on every case of the table — refused or made, and the same reasons — Parked, Proposed, unjudged, no tracker named, a detached HEAD, the subject before the branch, a tracker-only commit (saw {verdicts_})",
+          agree_ and [verdicts_[(b_, s_)] for b_, s_ in table_[2:]] == [False, False, False, True, False, True, False, True] and verdicts_["notes"] is True)
+    # a subject that starts with `#` (the cold second pass's R1): `-m` keeps it, an editor strips it — the hook judges what git keeps
+    def commented_(branch, *args):                         # through the installed hooks; then --check on the same commit, made without them
+        git(root, "switch", "-q", "-c", branch, "main"); (root / "src.txt").write_text(branch + "\n"); git(root, "add", "-A"); before_ = sha_()
+        r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        made_ = sha_() != before_
+        if not made_:
+            subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-q", *args], check=True, capture_output=True, env=_ENV)
+        said_ = judged_()[0]; git(root, "switch", "-q", "--detach", "main")
+        return made_, [l_.strip() for l_ in r_.stderr.splitlines() if l_.strip().startswith("refused:")], said_
+    hash_ = commented_("ap/004-hash", "-m", "# AP-001: comment subject probe")          # the Reviewer's exact case
+    verb_ = commented_("ap/004-verbatim", "--cleanup=verbatim", "-m", "# AP-001: comment subject probe")
+    two_ = commented_("ap/004-two", "-m", "# AP-001: hidden", "-m", "AP-004: shown")
+    none_ = commented_("ap/004-none", "-m", "# nothing but a comment")
+    check(f"FM-033 · R1 (second pass) · a subject that starts with `#`: `-m` and `--cleanup=verbatim` keep it, and the hook judges it — refused before it is made, with the reason --check gives it; a `#` line above a named subject too (saw {hash_[1]!r})",
+          all(not r_[0] and r_[1] and [l_.split(" changes ", 1)[1] for l_ in r_[1]] == [l_.split(" changes ", 1)[1] for l_ in r_[2]] for r_ in (hash_, verb_, two_))
+          and "AP-001: not judged, not In Progress (Proposed)" in hash_[1][0] and hash_[1][0].startswith('refused: this commit "# AP-001: comment subject probe"'))
+    check(f"FM-033 · R1 (second pass) · a message whose every line is a comment keeps no subject once stripped: refused as naming no tracker — the hook is best-effort and errs this way (saw {none_[1]!r})",
+          not none_[0] and len(none_[1]) == 1 and "names no tracker: every line of its message is a comment, which git strips" in none_[1][0]
+          and fm.message_subject("; a\nFM-7: x\n", ";") == "FM-7: x" and fm.literal_subject("\n# FM-7: x\nmore\n") == "# FM-7: x")
+    git(root, "switch", "-q", "main"); (root / "src.txt").write_text("on main\n"); git(root, "add", "-A")
+    main_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", "the trunk, by hand"], capture_output=True, text=True, env=_ENV)
+    git(root, "reset", "-q", "--hard", "origin/main")      # main as origin has it: the checks below measure from it
+    git(root, "switch", "-q", "-c", "ap/004-merge-hook", "ap/004-build~1")
+    merged_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "--no-edit", "side/import"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    merging_ = (root / ".git/MERGE_HEAD").exists(); git(root, "merge", "--abort") if merging_ else None
+    empty_ = run(root, "--commit-msg", str(root / "no-such-message"))[0]; (root / "blank-msg").write_text("# only a comment\n\n")
+    blank_ = run(root, "--commit-msg", str(root / "blank-msg"))[0]; (root / "blank-msg").unlink()
+    check(f"FM-033 · R1 · on the default branch the hook judges nothing; a merge the hook refuses is not made, its carried commit named; an empty message is git's to refuse (saw {merged_.stderr.strip()[-160:]!r})",
+          main_.returncode == 0 and merged_.returncode != 0 and merging_ and f"refused: commit {side_[:7]}" in merged_.stderr
+          and empty_ == fm.EXIT_LINT and blank_ == 0 and fm.message_subject("# c\n\n  FM-7: x \nbody\n") == "FM-7: x"
+          and fm.message_subject("# ------------------------ >8 ------------------------\nFM-7: x\n") == "")
+    git(root, "switch", "-q", "main")
+    # the tracker made In Progress and judged in the SAME commit as the build: the parent is what counts
+    git(root, "switch", "-q", "-c", "ap/001-all-at-once", "main")
+    tracker(root, "AP-001", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="unjudged"); (root / "src.txt").write_text("at once\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "AP-001: judged and built at once"); ra_ = judged_()
+    tracker(root, "AP-001", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="unjudged", body="## What is true now\n\n**Built.**\n\n## Done when\n\nit is.\n")
+    (root / "src.txt").write_text("after\n"); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-001: the next build commit"); ra2_ = judged_()
+    check(f"FM-033 · a tracker set In Progress and judged in the same commit as its first build is refused — the judgement is read at the commit's parent — and the next build commit passes (saw {ra_[0]!r})",
+          len(ra_[0]) == 1 and "AP-001: not judged" in ra_[0][0] and len(ra2_[0]) == 1 and "judged and built at once" in ra2_[0][0])
+    # off: silent
+    git(root, "switch", "-q", "ap/001-build"); (root / "shoalmark.toml").write_text('name = "g"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    ro_ = judged_(); codeo_, _o, erro_ = run(root, "--session-check"); (root / "shoalmark.toml").write_text('name = "g"\njudged_before_build = 1\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    try:
+        fm.configure(root); bad_ = ""
+    except SystemExit as e:
+        bad_ = str(e)
+    git(root, "checkout", "-q", "--", "shoalmark.toml")
+    check(f"FM-033 · the key off (the default), nothing is judged and `--check` says so; the key is `true` or `false`, and `--schema` prints it (saw {bad_!r})",
+          ro_ == ([], "judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on") and codeo_ == 0
+          and "`judged_before_build` is true or false" in bad_ and "| `judged_before_build` | `true` or `false` (the default) |" in fm.render_schema())
+    rm_git(root)
+fm.configure(HERE)
+# FM-033's five, judged at their own parents in this repository's history — by their subjects, their branches not being in
+# the record. CI checks out the whole history for this (`fetch-depth: 0`); the seat that built them was not this one.
+_five = ["89e0586", "3c0754f", "90d3d6f", "bd7d5ea", "4dfb999"]
+_judged5 = _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_five), ""))
+check(f"FM-033 · the four builds of FM-033's table and the fifth are each refused, judged at their own parents: FM-024 not judged, FM-032, FM-031 and FM-029 not judged and Proposed, and bd7d5ea names no tracker (saw {[l_[:60] for l_ in _judged5]})",
+      len(_judged5) == 5 and all(any(l_.startswith(f"refused: commit {c_}") for l_ in _judged5) for c_ in _five)
+      and any(l_.startswith("refused: commit 89e0586") and "FM-024: not judged —" in l_ for l_ in _judged5)
+      and all(any(l_.startswith(f"refused: commit {c_}") and f"{t_}: not judged, not In Progress (Proposed)" in l_ for l_ in _judged5)
+              for c_, t_ in (("3c0754f", "FM-032"), ("90d3d6f", "FM-031"), ("4dfb999", "FM-029")))
+      and any(l_.startswith("refused: commit bd7d5ea") and "names no tracker" in l_ for l_ in _judged5))
+_own = ["cba97b6", "b9f8a29", "6f54242", "3c3e02f", "172a2ad", "f44e7f9"]
+check("FM-033 · and 0.18.3's own build commits pass the same judgement — each under FM-029, FM-030, FM-031 or FM-033, judged and In Progress at its parent",
+      _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_own), "")) == [] and len(fm.commit_list("--no-walk", *_own)) == len(_own))
+
 # --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone
 #     cannot verify is said to be that — never "sign it" ---------------------------------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
@@ -2624,6 +2933,74 @@ with tempfile.TemporaryDirectory() as tmp:
     check("RV · an answer committed with no signature at all is still asked to be signed",
           code2_ == fm.EXIT_LINT and "sign it (`git commit -S`)" in err2_ and "cannot verify" not in err2_)
     rm_git(root)
+fm.configure(HERE)
+
+# --- FM-034, 0.18.3 (the Auditor seat's check 20): a fresh clone's `--check` — the checkout's own finding is said once, on
+#     stderr, and never written into INDEX.md; the committed INDEX and the one any clone generates are the same under
+#     `drift_normalize` — the `Generated` date aside, which a clone generating it the next day writes anew (the cold R2) ----
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("t@t " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
+        git(root, "config", k_, v_)
+    run(root, "--init", "--key", "msr")
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+    ask_ = lambda q: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+    trs_ = [tracker(root, "MSR-001", extra=ask_("Ship the importer?")), tracker(root, "MSR-002", extra=ask_("Ship the exporter?"))]
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks")
+    signed_ = []
+    for tr_ in trs_:                                       # the Owner's answers, each his own signed commit, the INDEX as the hook stages it
+        tr_.write_text(tr_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: t\n'))
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", f"{tr_.name[:7]}: accepted")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-q", "--amend", "-S", "--no-edit")
+        signed_.append(subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip())
+    ok_code, ok_out, ok_err = run(root, "--check")
+    fresh_ = base / "fresh"; subprocess.run(["git", "clone", "--quiet", str(root), str(fresh_)], check=True, capture_output=True, env=_ENV)
+    git(fresh_, "config", "gpg.ssh.allowedSignersFile", "")      # empty here, whatever the machine's own config says
+    index_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
+    code_, out_, err_ = run(fresh_, "--check")
+    said_ = [l_ for l_ in err_.splitlines() if "cannot verify" in l_]
+    wcode_, _o, _e = run(fresh_)
+    status_ = subprocess.run(["git", "-C", str(fresh_), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout
+    tomorrow_ = re.sub(r"Generated \d{4}-\d{2}-\d{2}", "Generated 2999-01-01", index_)     # the same INDEX, generated another day
+    generated_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
+    (fresh_ / "docs/work-tracker/INDEX.md").write_text(tomorrow_, encoding="utf-8"); later_ = run(fresh_, "--check")[1]
+    check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one under `drift_normalize` — the date aside, so on another day too — and `--check` reads it so (saw {err_.strip()!r})",
+          code_ == fm.EXIT_LINT and len(said_) == 1 and "STALE" not in out_ + err_ and "INDEX.md is up to date" in out_
+          and said_[0] == f"  checkout: it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see {fm.SIGNING_PAGE} — 2 signed commit(s) it could not check: MSR-001 `{signed_[0][:10]}`, MSR-002 `{signed_[1][:10]}`"
+          and "FAILED: this checkout's own finding — the ledger is sound" in err_ and "ledger-integrity" not in err_
+          and fm.drift_normalize(generated_) == fm.drift_normalize(index_) and "INDEX.md is up to date" in later_
+          and fm.drift_normalize(tomorrow_) == fm.drift_normalize(index_) and tomorrow_ != index_
+          and "cannot verify" not in index_ and status_ in ("", " M docs/work-tracker/INDEX.md\n"))
+    check("FM-034 · the clone with the signers file configured: no finding, exit 0",
+          ok_code == 0 and "cannot verify" not in ok_err and "checkout:" not in ok_err)
+    rm_git(root)
+    shutil.rmtree(fresh_ / ".git", onerror=lambda f, p, e: (os.chmod(p, __import__("stat").S_IWRITE), f(p)))
+fm.configure(HERE)
+# …and each commit once (the cold second pass's R4): on a merge, the answer rule and the rights rule both ask of one answer's
+# commit, and the line counted 8 signed commits where 5 were meant
+_gap = "it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see " + fm.SIGNING_PAGE
+_twice = [f"FM-007: the answer's commit `1034602c96` does not verify as `o@x` — {_gap}",
+          f"in `1034602c96` (o@x), which the merge brings — FM-007: the commit `1034602c96` making a `answer` change does not verify as the seat `owner` — {_gap}",
+          f"FM-024: the answer's commit `64f843ef3a` does not verify as `o@x` — {_gap}",
+          f"FM-024: the commit `64f843ef3a` making a `answer` change does not verify as the seat `owner` — {_gap}"]
+check(f"FM-034 · R4 · the checkout line counts each commit it could not check once, and names it once (saw {fm.checkout_lines(_twice)!r})",
+      fm.checkout_lines(_twice) == [f"  checkout: {_gap} — 2 signed commit(s) it could not check: FM-007 `1034602c96`, FM-024 `64f843ef3a`"])
+# …and a pinned file this checkout has not got is the checkout's finding too — said, never written into the INDEX
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); dest = root / "tools" / "shoalmark"
+    with redirect_stdout(io.StringIO()):
+        fm.vendor(dest, allow_untagged=True)
+    tracker(root, "FEAT-001", status="Proposed")
+    (dest / "LICENSE-MIT").unlink()
+    gone_ = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(root)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    index_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
+    check(f"FM-034 · a pinned file the checkout has not got is said on stderr as the checkout's, and INDEX.md carries no line of it (saw {gone_.stderr.strip()[-200:]!r})",
+          gone_.returncode == fm.EXIT_LINT and "  checkout: tools/shoalmark/LICENSE-MIT: the PIN names it, and this checkout cannot read it" in gone_.stderr
+          and "LICENSE-MIT" not in index_ and "ledger-integrity" not in index_)
 fm.configure(HERE)
 
 # --- FM-029: the answer's relation to the proposal — computed by every reading, the signed line untouched ---------------
@@ -2718,9 +3095,179 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 old_record_ = "# X-1 — t\n\n## Asks\n\n**2026-09-20** · Ship it?\n**answered** — accepted - ship it, S1 first · holgo\n\n## Ship log\n"
 new_record_ = old_record_.replace("· holgo\n", "· holgo\n**relation** — accepted with a change\n")
-check("FM-029 · a record `--clear-ask` wrote before 0.18.1 is read as it is — *relation not computable*: its proposal is gone, and nothing guesses it; a withdrawn one has no relation",
+withdrawn_ = "## Asks\n\n**2026-09-20** · Ship it?\n**withdrawn** — no answer was given\n"
+check("FM-029 · read from the body alone, a record `--clear-ask` wrote before 0.18.1 says *relation not computable* — its proposal left with the ask, and the body guesses nothing; its answer is what the readings find the answer's commit by (below); a withdrawn one has no relation",
       fm.recorded_relation(old_record_) == "relation not computable" and fm.recorded_relation(new_record_) == "accepted with a change"
-      and fm.recorded_relation("## Asks\n\n**2026-09-20** · Ship it?\n**withdrawn** — no answer was given\n") == "" and fm.recorded_relation("# no asks\n") == "")
+      and fm.recorded_relation(withdrawn_) == "" and fm.recorded_relation("# no asks\n") == ""
+      and fm.unrelated_answer(old_record_) == "accepted - ship it, S1 first" and fm.unrelated_answer(new_record_) == ""
+      and fm.unrelated_answer(withdrawn_) == "" and fm.unrelated_answer("# no asks\n") == "")
+
+# --- FM-029, 0.18.3 (the Auditor seat's check 9): a record written before 0.18.1 prints the relation of its answer's commit -
+# FM-031 and FM-032 on main were cleared by a tool that wrote no `**relation** —` line, and `--answered` printed *relation not
+# computable* for both. The commit that wrote the answer still holds the proposal and the options: every reading reads them
+# there — found by the answer's text, never guessed — and where no commit wrote that answer, it still says not computable.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    today_ = datetime.date.today().isoformat()
+    q31_, q32_ = "Rule the three house rules and the build order?", "Rule the deregulation?"
+    ask31_ = (f'next: owner\nask: "{q31_}"\nask-kind: ruling\nask-since: 2026-09-23\n'
+              'ask-options: "all three rules now, S1 then S2 | the rules now, build nothing yet | S1 only, rules later"\nask-proposal: "all three rules now, S1 then S2"\n')
+    ask32_ = f'next: owner\nask: "{q32_}"\nask-kind: ruling\nask-since: 2026-09-23\nask-options: "all four now | the review tier only | none"\nask-proposal: "all four now"\n'
+    said_ = lambda a: f'answer: "{a}"\nanswered: {today_}\nanswered-by: holgo\n'
+    changed_ = "accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked"
+    # the clear as a tool before 0.18.1 made it: the ask lines gone, the exchange under `## Asks` with no relation line
+    cleared_ = lambda tid, q, a, relation="": tracker(root, tid, extra="next: build\n", body=f"## Asks\n\n**{today_}** · {q}\n**answered** — {a} · holgo\n{relation}\n## Ship log\n")
+    f310_ = tracker(root, "AP-310", extra=ask31_); tracker(root, "AP-311", extra=ask32_); tracker(root, "AP-312", extra=ask32_); tracker(root, "AP-313", extra=ask31_)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the asks")
+    # FM-031's history: the proposal answered first, then rewritten with changed text — the record holds the NEWER answer
+    tracker(root, "AP-310", extra=ask31_ + said_("accepted - all three rules now, S1 then S2")); git(root, "commit", "-qam", "AP-310: accepted - the proposal")
+    tracker(root, "AP-310", extra=ask31_ + said_(changed_)); tracker(root, "AP-311", extra=ask32_ + said_("accepted - all four now")); tracker(root, "AP-313", extra=ask31_ + said_(changed_))
+    git(root, "commit", "-qam", "the answers")
+    answer_sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    cleared_("AP-310", q31_, changed_); cleared_("AP-311", q32_, "accepted - all four now")
+    cleared_("AP-312", q32_, "accepted - all four now, the freeze at 8")                   # an answer no commit ever wrote
+    cleared_("AP-313", q31_, changed_, "**relation** — accepted with a change\n")        # a record from 0.18.1 on: its own line
+    git(root, "commit", "-qam", "the asks acted on, cleared as a tool before 0.18.1 cleared them")
+    fm.configure(root)
+    load_calls_ = argv_of(fm.load_trackers)
+    by_ = {t["id"]: t for t in fm.load_trackers()}
+    batch_calls_ = argv_of(lambda: fm.recover_relations(list(by_.values())))
+    got_ = {k: fm.record_relation(by_[k]) for k in ("AP-310", "AP-311", "AP-312", "AP-313")}
+    t313_ = next(t for t in fm.load_trackers() if t["id"] == "AP-313"); line_calls_ = argv_of(lambda: fm.record_relation(t313_))
+    check(f"FM-029 · 0.18.3 · a record written before 0.18.1 prints the relation of the commit that wrote its answer: FM-031's shape — the proposal answered, then changed text — reads *accepted with a change* from the NEWER answer's commit; FM-032's shape *accepted the proposal*; an answer no commit wrote *relation not computable*; a record with its line, that line (saw {got_})",
+          got_["AP-310"][0] == "accepted with a change" and len(got_["AP-310"][1]) >= 7 and answer_sha_.startswith(got_["AP-310"][1])
+          and got_["AP-311"][0] == "accepted the proposal" and answer_sha_.startswith(got_["AP-311"][1]) and len(got_["AP-311"][1]) >= 7
+          and got_["AP-312"] == ("relation not computable", "") and got_["AP-313"] == ("accepted with a change", "")
+          and "**relation**" not in f310_.read_text())
+    check("FM-029 · 0.18.3 · its cost: a load spends no git call on it; a reading spends ONE `git log` for all the records that lack the line, and one `git show` per record whose commit was found — and a record that carries its line calls no git at all",
+          not any(fm.line_regex("answer:") in c for c in load_calls_)
+          and [c for c in batch_calls_ if "log" in c and fm.line_regex("answer:") in c] == [c for c in batch_calls_ if "log" in c] and len([c for c in batch_calls_ if "log" in c]) == 1
+          and len([c for c in batch_calls_ if "show" in c]) == 2 and len(batch_calls_) == 3 and line_calls_ == [])
+    _, said_out_, _ = run(root, "--answered")
+    acted_ = dict(re.findall(r"^  (AP-31\d) — acted on in `[0-9a-f]+` · (.*)$", said_out_, re.M))
+    check(f"FM-029 · 0.18.3 · `--answered` prints it on each acted-on line and names the answer's commit it was read from (saw {acted_})",
+          acted_.get("AP-310") == f"accepted with a change, read from the answer's commit `{got_['AP-310'][1]}`"
+          and acted_.get("AP-311") == f"accepted the proposal, read from the answer's commit `{got_['AP-311'][1]}`"
+          and acted_.get("AP-312") == "relation not computable" and acted_.get("AP-313") == "accepted with a change")
+    run(root, "--html-only")
+    import json
+    view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
+    check("FM-029 · 0.18.3 · the board's tracker view prints it under the record's `**answered** —`, where a record from 0.18.1 on carries its own line, and names the commit — the file itself is not touched",
+          f"**answered** — {changed_} · holgo\n**relation** — accepted with a change · read from the answer's commit `{got_['AP-310'][1]}`\n\n## Ship log" in view_("AP-310")
+          and f"**answered** — accepted - all four now · holgo\n**relation** — accepted the proposal · read from the answer's commit `{got_['AP-311'][1]}`\n" in view_("AP-311")
+          and "**answered** — accepted - all four now, the freeze at 8 · holgo\n**relation** — relation not computable\n" in view_("AP-312")
+          and view_("AP-313") == fm.parse_frontmatter((root / "docs/work-tracker/AP-313-x.md").read_text())[1] and view_("AP-313").count("**relation**") == 1
+          and "**relation**" not in f310_.read_text())
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-029, 0.18.3 (the cold second pass's R2): EVERY record without its relation line prints the recovered one, not the
+#     newest alone — FM-031's older answer lost its relation once a newer exchange, recorded with its line, came after it ---
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    day_ = datetime.date.today().isoformat()
+    ask_ = lambda q, proposal, options: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: 2026-09-23\nask-options: "{options}"\nask-proposal: "{proposal}"\n'
+    said_ = lambda a: f'answer: "{a}"\nanswered: {day_}\nanswered-by: holgo\n'
+    rec_ = lambda q, a, line="": f"**{day_}** · {q}\n**answered** — {a} · holgo\n{line}"
+    q1_, q2_ = "Ship the importer first?", "Which week does the exporter take?"
+    a1_, a2_ = "accepted - the importer, and the audit first", "accepted - next week"
+    shas_ = {}
+    for tid_ in ("AP-320", "AP-321"):                     # AP-320: two records without the line · AP-321: the old one, then one with it (FM-031's shape)
+        tracker(root, tid_, extra=ask_(q1_, "the importer", "the importer | the exporter")); git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid_}: asked")
+        tracker(root, tid_, extra=ask_(q1_, "the importer", "the importer | the exporter") + said_(a1_)); git(root, "commit", "-qam", f"{tid_}: answered")
+        shas_[(tid_, 1)] = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        tracker(root, tid_, extra=ask_(q2_, "next week", "this week | next week"), body=f"## Asks\n\n{rec_(q1_, a1_)}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid_}: cleared before 0.18.1, and asked again")
+        tracker(root, tid_, extra=ask_(q2_, "next week", "this week | next week") + said_(a2_), body=f"## Asks\n\n{rec_(q1_, a1_)}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid_}: answered again")
+        shas_[(tid_, 2)] = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        second_ = rec_(q2_, a2_, "**relation** — accepted the proposal\n" if tid_ == "AP-321" else "")
+        tracker(root, tid_, extra="next: build\n", body=f"## Asks\n\n{rec_(q1_, a1_)}\n{second_}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid_}: cleared")
+    fm.configure(root)
+    by_ = {t["id"]: t for t in fm.load_trackers()}
+    calls_ = argv_of(lambda: fm.recover_relations(list(by_.values())))
+    run(root, "--html-only")
+    import json
+    view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
+    v320_, v321_ = view_("AP-320"), view_("AP-321")
+    line_ = lambda a, rel, sha: f"**answered** — {a} · holgo\n**relation** — {rel} · read from the answer's commit `{sha}`"
+    s1_ = lambda tid: by_[tid]["asks_recovered_all"][(fm.answer_norm(q1_), fm.answer_norm(a1_))][1]
+    check(f"FM-029 · R2 · every record under `## Asks` without its relation line prints the recovered one in the board's tracker view — two old records, each from its own answer's commit (saw {by_['AP-320'].get('asks_recovered_all')})",
+          line_(a1_, "accepted with a change", s1_("AP-320")) in v320_ and shas_[("AP-320", 1)].startswith(s1_("AP-320"))
+          and line_(a2_, "accepted the proposal", by_["AP-320"]["asks_recovered"][1]) in v320_ and shas_[("AP-320", 2)].startswith(by_["AP-320"]["asks_recovered"][1])
+          and v320_.count("**relation** —") == 2)
+    check("FM-029 · R2 · FM-031's shape — an old record, then one with its line: the old one prints its recovered relation, the newer keeps its own, nothing doubled; the newest-only reading (`--answered`) says the newest's",
+          line_(a1_, "accepted with a change", s1_("AP-321")) in v321_ and v321_.count("**relation** —") == 2
+          and f"**answered** — {a2_} · holgo\n**relation** — accepted the proposal\n" in v321_ and fm.record_relation(by_["AP-321"]) == ("accepted the proposal", ""))
+    check("FM-029 · R2 · still one `git log` for every file, and one `git show` per record whose answer's commit is found — three here",
+          len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 3 and len(calls_) == 4)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-029, 0.18.3 (the cold third pass's R1): the same answer text closing two exchanges — each record is matched to ITS
+#     answer's commit by its question; where the question cannot tell them apart, *relation not computable*, never a guess --
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    day_ = datetime.date.today().isoformat()
+    ask_ = lambda q, proposal: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: 2026-09-22\nask-proposal: "{proposal}"\n'
+    said_ = lambda a: f'answer: "{a}"\nanswered: {day_}\nanswered-by: holgo\n'
+    rec_ = lambda q, a: f"**{day_}** · {q}\n**answered** — {a} · holgo\n"
+    head_ = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def two_(tid, q1, p1, q2, p2):                         # two exchanges answered `accepted - yes`, each cleared as a tool before 0.18.1 cleared it
+        shas = []
+        tracker(root, tid, extra=ask_(q1, p1)); git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid}: asked")
+        tracker(root, tid, extra=ask_(q1, p1) + said_("accepted - yes")); git(root, "commit", "-qam", f"{tid}: accepted - yes"); shas.append(head_())
+        tracker(root, tid, extra=ask_(q2, p2), body=f"## Asks\n\n{rec_(q1, 'accepted - yes')}\n## Ship log\n"); git(root, "commit", "-qam", f"{tid}: cleared, asked again")
+        tracker(root, tid, extra=ask_(q2, p2) + said_("accepted - yes"), body=f"## Asks\n\n{rec_(q1, 'accepted - yes')}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid}: accepted - yes, again"); shas.append(head_())
+        tracker(root, tid, extra="next: build\n", body=f"## Asks\n\n{rec_(q1, 'accepted - yes')}\n{rec_(q2, 'accepted - yes')}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid}: cleared")
+        return shas
+    sa_ = two_("AP-330", "Ship the importer?", "yes", "Ship the exporter this week?", "no")        # the Reviewer's case: two questions
+    sb_ = two_("AP-331", "Ship the importer?", "yes", "Ship the importer?", "yes")                 # the same question, twice, the same answer
+    fm.configure(root)
+    by_ = {t["id"]: t for t in fm.load_trackers()}
+    calls_ = argv_of(lambda: fm.recover_relations(list(by_.values())))
+    run(root, "--html-only")
+    import json
+    view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
+    got_ = by_["AP-330"]["asks_recovered_all"]
+    k_ = lambda q: (fm.answer_norm(q), fm.answer_norm("accepted - yes"))
+    check(f"FM-029 · R1 (third pass) · one answer text closing two exchanges: each record is matched to its own answer's commit by its question — the first *accepted the proposal*, the second *accepted with a change*, each naming its own commit (saw {got_})",
+          got_[k_("Ship the importer?")][0] == "accepted the proposal" and sa_[0].startswith(got_[k_("Ship the importer?")][1]) and len(got_[k_("Ship the importer?")][1]) >= 7
+          and got_[k_("Ship the exporter this week?")][0] == "accepted with a change" and sa_[1].startswith(got_[k_("Ship the exporter this week?")][1])
+          and f"**answered** — accepted - yes · holgo\n**relation** — accepted the proposal · read from the answer's commit `{got_[k_('Ship the importer?')][1]}`" in view_("AP-330")
+          and f"**answered** — accepted - yes · holgo\n**relation** — accepted with a change · read from the answer's commit `{got_[k_('Ship the exporter this week?')][1]}`" in view_("AP-330"))
+    check(f"FM-029 · R1 (third pass) · the same answer to the same question, twice: the question cannot tell the commits apart — *relation not computable* under both records, no commit named (saw {by_['AP-331']['asks_recovered_all']})",
+          by_["AP-331"]["asks_recovered_all"] == {k_("Ship the importer?"): ("relation not computable", "")}
+          and view_("AP-331").count("**relation** — relation not computable\n") == 2 and "read from the answer's commit" not in view_("AP-331")
+          and len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 4)
+    rm_git(root)
+fm.configure(HERE)
+# …and FM-007 in this repository: answered twice, word for word, on 09-22 — `63e72b4` at 16:48 and `7521116` at 19:36, the same
+# question. Its record, read without its relation line, is not computable: which of the two is its answer, nothing can say.
+_f007 = next(p_ for p_ in (HERE / "work-tracker").glob("FM-007-*.md"))
+_q007 = "Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?"
+_a007 = "accepted - a hardware key that needs a touch"
+_writers = subprocess.run(["git", "-C", str(HERE), "log", "--full-history", "--format=%h", "-G", "^answer: \"" + _a007, "--", _f007.relative_to(HERE).as_posix()],
+                          capture_output=True, text=True, env=_ENV).stdout.split()
+_t007 = {"id": "FM-007", "file": _f007.name, "asks_answers": [(fm.answer_norm(_q007), fm.answer_norm(_a007))], "asks_key": (fm.answer_norm(_q007), fm.answer_norm(_a007))}
+_no_git_env(lambda: fm.recover_relations([_t007]))
+check(f"FM-029 · R1 (third pass) · FM-007's real double answer in this repository's history — 63e72b4 and 7521116, one question, one text — reads *relation not computable*, never the newer one's (saw {_writers}, {_t007['asks_recovered_all']})",
+      {"63e72b4", "7521116"} <= {w_[:7] for w_ in _writers} and _t007["asks_recovered"] == ("relation not computable", ""))
 
 # --- FM-029: the half-written answer's *give it again* knows all three words, and a superseding answer's flag ----------
 with tempfile.TemporaryDirectory() as tmp:

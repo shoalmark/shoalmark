@@ -69,6 +69,10 @@ DEFAULTS = {
     # the tag that passes the freeze — a repository's own `[tags]` may have no `bug`; one that names none of its tags
     # freezes nothing, and `--check` says so
     "freeze_tag": "bug",
+    # A PASS JUDGES BEFORE THE FIRST BUILD COMMIT (FM-033, the Owner's rule of 2026-09-24): a commit that changes a path
+    # outside the tracker directory names a tracker that, at the commit's parent, a pass has kept `In Progress`. Off by
+    # default: a repository that vendors the tool may carry no `triaged:` yet.
+    "judged_before_build": False,
     # who may answer an ask. An answer is three lines in the tracker, committed by the answerer, and the commit is the
     # proof — but git's author is a string anyone can type. So an entry is `"name"` (Subversion, whose server
     # authenticates the committer; or git with NO enforcement, and the gate says so) or `"name signed"` (git: the
@@ -98,7 +102,7 @@ DEFAULTS = {
     # repository's language. They are here and not in a brand's labels.yaml because the gate depends on them: what
     # the gate says is a function of the repository alone. The English ones are always understood as well.
     "headings": {"state": "What is true now", "why": "Why", "done": "Done when", "log": "Ship log",
-                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks"},
+                 "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks", "raised": "Raised"},
 }
 
 
@@ -199,7 +203,10 @@ def configure(root=None):
     if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
         raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
     FREEZE_TAG = FREEZE_TAG.strip()
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    if not isinstance(CONFIG["judged_before_build"], bool):
+        raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
+                         f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
@@ -217,6 +224,8 @@ def configure(root=None):
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
     COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
+    global _BUILD
+    _BUILD = None                                       # FM-033's judgement of this run, read once
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -225,6 +234,8 @@ def configure(root=None):
     DONE_RE = re.compile(_DONE_WORDS + "|" + re.escape(HEAD["done"]), re.I)
     # the body section an exchange is moved into when its ask is cleared — the repository's own word, English always
     ASKS_HEAD_RE = re.compile(r"^#{2,3}\s+(asks|" + re.escape(HEAD["asks"]) + r")\s*$", re.I | re.M)
+    # …and the one a raise is written under (FM-033's second answer): one sourced line per raise
+    RAISED_HEAD_RE = re.compile(r"^#{2,3}\s+(raised|" + re.escape(HEAD["raised"]) + r")\s*$", re.I | re.M)
     KINDS = tuple(KIND_LABELS)
     if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
         raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
@@ -261,6 +272,11 @@ RANK_MAX = 10
 # What a ranked verdict names instead is the NEXT MOVE — who or what moves the tracker next. It is EXTRACTED
 # from what the tracker says is left, not judged: the words are moves, in the order the rules test them.
 MOVES = ("review", "run", "wait", "owner", "script", "build")
+# FM-030 — the move an answer writes with itself, by the ask's kind. A ruling, a determination or a ceremony is decided by
+# the answer, and the seat's move follows: `build`, the move the rules give unbuilt work (`run` is for something BUILT that
+# waits for its run); `--clear-ask <id> <move>` sets the real one when the answer is acted on. An action's yes is a promise
+# of the Owner's own hands, not the act: `next: owner` stays. An ask of no known kind keeps the move it had.
+ANSWER_MOVE = {"ruling": "build", "determination": "build", "ceremony": "build", "action": "owner"}
 MOVE_RE = re.compile(r"\b(%s)\b" % "|".join(MOVES), re.I)
 # `kind-of-problem:` — the second try at that word, built on what took the first
 # one out. A cold pass never judges it: it is left, like `next:`, by a seat that has the tracker OPEN. And it is
@@ -301,7 +317,8 @@ def front_matter_schema():
                             "what this open work waits on — tracker ids, and `Owner` or `Owner — <the ruling awaited>`. *Blocked* is derived from it and clears itself; it orders nothing"),
         "considered":      (rf"none|{_IDS}(?:\s*,\s*{_IDS})*", False, "the filing seat", "the existing trackers this filing was held against — listed means LOOKED AT, not merged — or none. Triage at intake: run `--related` first; the gate refuses a new tracker without this line"),
         "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence he can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
-        "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk"),
+        "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk. "
+                                                                        "An ask whose yes needs the Owner's hands is `action`, whatever else it decides"),
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
         "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
@@ -318,7 +335,8 @@ def front_matter_schema():
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
         "rank":            (r"\d+", False, "a triage pass", "working order, 1–%d — the first item to work on next" % RANK_MAX),
-        "next":            ("|".join(MOVES), False, "the seat that ends work; a pass only where none was left", "the next move — who or what moves it next"),
+        "next":            ("|".join(MOVES), False, "the seat that ends work; `--answer`, with the answer; a pass only where none was left", "the next move — who or what moves it next. `--answer` writes it with the answer: `build` for a ruling, a determination or a ceremony — the seat's move follows; "
+                                                                                                         "`owner` kept for an action, whose act is still the Owner's"),
         "kind-of-problem": ("|".join(PROBLEM_KINDS), False, "a seat with the tracker open — never a pass from a row",
                             "the kind of problem that is LEFT: a script does it · found by reading · found only by running · harm now"),
     }
@@ -496,8 +514,24 @@ def norm_dash(v):
     return v if v and v not in {"-", "--", "—", "n/a", "none"} else "—"
 
 
-def extract(path):
-    text = path.read_text(encoding="utf-8")
+def answer_fields(fm):
+    """The lines an answer's relation is read from — `ask-proposal:`, `ask-options:`, `answer:`, and the `ask:` a record is
+    matched on — as the loader reads them: the outer quotes off, the options split. ONE reader, for a tracker as it is and
+    for the revision its answer's commit left (`recover_relations`, FM-029)."""
+    unquote = lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v
+    return {
+        "ask": unquote((fm.get("ask") or "").strip()),
+        "ask_proposal": unquote((fm.get("ask-proposal") or "").strip()),
+        # the choices as ONE line — `a | b | c`. Split here so the board and the gate read the same list
+        "ask_options": [o.strip() for o in unquote((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
+        "answer": unquote((fm.get("answer") or "").strip()),
+    }
+
+
+def extract(path, text=None):
+    """One tracker as the loader reads it — from its file, or from `text`: the file as a revision had it (FM-033's gate reads
+    the named tracker at a commit's parent through this one reader)."""
+    text = path.read_text(encoding="utf-8") if text is None else text
     fm, body = parse_frontmatter(text)
     tracker_id = path.name.split("-")[0] + "-" + path.name.split("-")[1]
 
@@ -586,12 +620,8 @@ def extract(path):
         # marks are derived from the file, never typed (see `ready_needs`).
         "fm": fm,
         "next": (fm.get("next") or "").strip().lower(),
-        "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
-        "ask_proposal": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-proposal") or "").strip()),
-        # the choices as ONE line — `a | b | c`. Split here so the board and the gate read the same list
-        "ask_options": [o.strip() for o in (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
-        "answer": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("answer") or "").strip()),
+        **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
         "answered": (fm.get("answered") or "").strip(),
         # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
         # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
@@ -612,9 +642,43 @@ def extract(path):
         "asks_block": bool(ASKS_HEAD_RE.search(body)),
         # the relation the newest of those records carries (FM-029) — what `--answered` says an acted-on answer was
         "asks_relation": recorded_relation(body),
+        # …and, where that record carries none (written before 0.18.1), its answer: what `recover_relations` looks up in
+        # git when the relation is printed — never here, where every load passes (FM-012)
+        "asks_answer": unrelated_answer(body),
+        # …and every record's that carries none, the newest's among them — each read back from its own answer's commit
+        "asks_answers": unrelated_records(body),
+        "asks_key": record_key(body[slice(*newest_record(body))]),
         # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
         "supersedes": superseded(body),
+        # the lines under `## Raised` — read here, the one place the body is read; which of them re-open the tracker to a
+        # pass is decided by `mark_raised`, which sees the path and every answer
+        "raises": raise_lines(body),
     }
+
+
+def raise_lines(body):
+    """The raises under the body's `## Raised` — one bullet each, `- <date> · <who> · <fact> · <source> · undermines: <what>`
+    — as {date, line, undermines: [what it names]}. Keyed on the date that opens the bullet and on the `undermines:` token
+    wherever it sits, never on a count of fields: FM-007's line joins its fact and its source with a dash. A bullet wrapped
+    onto indented lines is read whole."""
+    at = RAISED_HEAD_RE.search(body)
+    if not at:
+        return []
+    rest = re.search(r"^#{1,3}\s+", body[at.end():], re.M)
+    bullets = []
+    for line in body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())].splitlines():
+        if re.match(r"\s*[-*]\s", line):
+            bullets.append(line.strip()[1:].strip())
+        elif bullets and line.strip() and line[:1].isspace():
+            bullets[-1] += " " + line.strip()
+        elif not line.strip() and bullets:
+            bullets.append(None)                            # a blank line ends a bullet; nothing more is joined to it
+    out = []
+    for b in filter(None, bullets):
+        m, u = re.match(r"(\d{4}-\d{2}-\d{2})\b", b), re.search(r"\bundermines:\s*([^·]+)", b, re.I)
+        if m:
+            out.append({"date": m.group(1), "line": b, "undermines": [w.strip() for w in u.group(1).split(",") if w.strip()] if u else []})
+    return out
 
 
 def is_new_filing(t):
@@ -624,11 +688,11 @@ def is_new_filing(t):
 
 
 def owed_a_pass(t):
-    """The ONE definition of what a triage pass reads, clock aside: `In Progress` work, and a new filing. The
-    worksheet and the board both ask it, so the Owner's page never says *84 to triage* while the command says
-    *0 trackers to judge*. Older `Proposed`, `Reserved` and `Parked` work is backlog: the current
+    """The ONE definition of what a triage pass reads, clock aside: `In Progress` work, a new filing, and a tracker a raise
+    re-opened (`mark_raised`). The worksheet and the board both ask it, so the Owner's page never says *84 to triage*
+    while the command says *0 trackers to judge*. Older `Proposed`, `Reserved` and `Parked` work is backlog: the current
     path restarts it, not a clock."""
-    return t["status"] == "In Progress" or is_new_filing(t)
+    return t["status"] == "In Progress" or is_new_filing(t) or bool(t.get("raised"))
 
 
 def board(t):
@@ -637,7 +701,7 @@ def board(t):
     judgement older than TRIAGE_DAYS counts as `triage` again — lives in the page and in the worksheet."""
     if t["status"] not in ("In Progress", "Parked", "Proposed", "Reserved", "?"):
         return "done"
-    if not t.get("triaged") and owed_a_pass(t):
+    if t.get("raised") or (not t.get("triaged") and owed_a_pass(t)):     # a raise on a signed rule re-judges it (FM-033)
         return "triage"
     return "progress" if t["status"] == "In Progress" else "backlog"
 
@@ -820,18 +884,147 @@ def relation_text(rel):
     return RELATION_TEXT[rel[0]].format(rel[1]) + (f": {rel[2]}" if rel[2] else "") if rel else ""
 
 
-def recorded_relation(body):
-    """The relation the newest record under `## Asks` carries — `--clear-ask` writes it from 0.18.1 on — or, for a record
-    written before, *relation not computable*: the proposal and the options left with the ask, and are guessed at by no one."""
+RELATION_LINE_RE = re.compile(r"^\*\*relation\*\* — (.+)$", re.M)     # the line `--clear-ask` writes under `**answered** —`
+
+
+def record_spans(body):
+    """Where each record under the body's `## Asks` stands — one paragraph each, as `--clear-ask` writes them, oldest first —
+    as [(start, end)] in `body`."""
     at = ASKS_HEAD_RE.search(body)
     if not at:
-        return ""
+        return []
     rest = re.search(r"^#{2,3}\s+", body[at.end():], re.M)
-    records = [p for p in re.split(r"\n\s*\n", body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())]) if p.strip()]
-    if not records or "**answered**" not in records[-1]:
+    section = body[at.end(): at.end() + (rest.start() if rest else len(body) - at.end())]
+    return [(at.end() + m.start(), at.end() + m.start() + len(m.group(0).rstrip()))
+            for m in re.finditer(r"(?:^[^\n]*\S[^\n]*(?:\n|$))+", section, re.M)]
+
+
+def newest_record(body):
+    """Where the newest record under the body's `## Asks` stands — the section's last paragraph — as (start, end) in
+    `body`; (0, 0) where there is none."""
+    spans = record_spans(body)
+    return spans[-1] if spans else (0, 0)
+
+
+def record_answer(record):
+    """The answer of one record under `## Asks` when it has no `**relation** —` line — a record `--clear-ask` wrote before
+    0.18.1 — else "": the text the commit that wrote it is found by. Its line is `**answered** — <answer> · <answered-by>`."""
+    m = None if RELATION_LINE_RE.search(record) else re.search(r"^\*\*answered\*\* — (.+)$", record, re.M)
+    if not m:
         return ""
-    m = re.search(r"^\*\*relation\*\* — (.+)$", records[-1], re.M)
+    answer, sep, _by = m.group(1).strip().rpartition(" · ")
+    return answer if sep else m.group(1).strip()
+
+
+def recorded_relation(body):
+    """The relation the newest record under `## Asks` carries — `--clear-ask` writes it from 0.18.1 on — or, for a record
+    written before, *relation not computable*: the proposal and the options left with the ask, and the file cannot say it.
+    Where it is printed, `record_relation` recovers it from the answer's own commit; read from the body alone, it is this."""
+    start, end = newest_record(body)
+    if "**answered**" not in body[start:end]:
+        return ""
+    m = RELATION_LINE_RE.search(body[start:end])
     return m.group(1).strip() if m else RELATION_TEXT["unknown"]
+
+
+def unrelated_answer(body):
+    """The answer of the NEWEST record under `## Asks` when it has no `**relation** —` line, else "" — what `--answered`'s
+    acted-on line prints the relation of."""
+    start, end = newest_record(body)
+    return record_answer(body[start:end])
+
+
+def record_key(record):
+    """What one record under `## Asks` without its `**relation** —` line is matched on — its question, from its
+    `**<date>** · <question>` line, and its answer, each with the answer's normalisation — or None."""
+    answer = record_answer(record)
+    if not answer:
+        return None
+    m = re.match(r"\s*\*\*[^*\n]+\*\* · (.+)$", record, re.M)
+    return (answer_norm(m.group(1)) if m else "", answer_norm(answer))
+
+
+def unrelated_records(body):
+    """EVERY record under `## Asks` that has no `**relation** —` line, oldest first, each (question, answer) once — what
+    the board's tracker view prints a recovered relation under (the cold second pass's R2: FM-031's older record)."""
+    return list(dict.fromkeys(k for k in (record_key(body[s_:e_]) for s_, e_ in record_spans(body)) if k))
+
+
+def recover_relations(trackers):
+    """FM-029, the Owner's scope — every reading prints the relation — for a record `--clear-ask` wrote before 0.18.1: it
+    has no `**relation** —` line, and the proposal and the options left the file with the ask. The commit that wrote the
+    answer still holds them. Found, never guessed: the commits whose diff adds an `answer:` line equal to the record's
+    answer (the answer's own normalisation on both sides), each read back with `git show`; the ONE whose revision holds
+    that `answer:` under that record's question (`ask:` against the record's `**<date>** · <question>` line) is the
+    answer's commit, and its lines go through `answer_fields` and `answer_relation`, the reader a live answer goes
+    through. The same answer text can close two exchanges — FM-007 was answered twice, word for word, on 09-22 — and
+    the newest commit with the text gave an older record the newer answer's relation and commit (the cold third pass's
+    R1): the question decides, and where no commit, or more than one, holds both, *relation not computable* — never a
+    guess. Under Subversion, not computable too. Every record without the line, not only the newest (the second pass's
+    R2). Sets `t["asks_recovered_all"]` = {(question, answer): (relation, the commit's short sha)} and
+    `t["asks_recovered"]` = the newest record's.
+
+    Cost, and why it is spent only here: one `git log` for ALL the records asked about at once, and one `git show` per
+    commit that wrote a record's answer text — one per record, but for text reused. `extract` never calls it — every
+    load, the pre-commit hook's included, would pay; FM-012 measured one git call per tracker at 504 calls and 15.2 s of a 16.8 s load. It runs where the relation is
+    printed (`--answered`'s acted-on lines, the board's tracker view), and only for a record that lacks the line. The one
+    `git log` is not one per record because each walks the whole history: 0.4 s a file on a 3,755-commit repository."""
+    need = {}
+    for t in trackers:
+        if (t.get("asks_answers") or t.get("asks_key")) and "asks_recovered_all" not in t:
+            wanted = list(dict.fromkeys(k for k in (t.get("asks_answers") or []) + [t.get("asks_key")] if k))
+            t["asks_recovered_all"] = {k: (RELATION_TEXT["unknown"], "") for k in wanted}
+            need[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
+    try:
+        if not need or vcs() != "git":
+            return
+        recover_from_log(need)
+    finally:
+        for t in need.values():
+            t["asks_recovered"] = t["asks_recovered_all"].get(t.get("asks_key"), (RELATION_TEXT["unknown"], ""))
+
+
+def recover_from_log(need):
+    """`recover_relations`' git work: {path relative to ROOT: tracker} — one `git log` for all of them, one `git show` per
+    commit that wrote a wanted answer's text."""
+    git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                                    errors="replace", env=nested_git_env())
+    # `-G ^answer:` anchored as `line_regex` anchors it; `--full-history` as `acted_on` has it — an answer written on a
+    # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
+    # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `git show <sha>:./<path>` reads them;
+    # `-U0`: only the lines that changed
+    log = git("log", "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+              "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
+    found = {rel: {a: [] for _q, a in t["asks_recovered_all"]} for rel, t in need.items()}      # per answer text, newest first
+    for chunk in log.stdout.split("\x00")[1:]:
+        head, _, diff = chunk.partition("\n")
+        rel = None
+        for line in diff.splitlines():
+            if line.startswith("diff --git "):            # `a/<path> b/<path>`: one path twice (no renames); quoted, it is none of these
+                both = line[len("diff --git a/"):] if line.startswith("diff --git a/") else ""
+                rel = both[: (len(both) - len(" b/")) // 2] if both else None
+            elif line.startswith("+answer:") and rel in need:
+                said = answer_norm(answer_fields({"answer": line[len("+answer:"):]})["answer"])
+                if said in found[rel] and head not in found[rel][said]:
+                    found[rel][said].append(head)
+    for rel, by_answer in found.items():
+        revisions = {head: answer_fields(parse_frontmatter(git("show", f"{head.partition(' ')[0]}:./{rel}").stdout)[0])
+                     for head in dict.fromkeys(h for heads in by_answer.values() for h in heads)}
+        for question, said in need[rel]["asks_recovered_all"]:
+            holds = [(head, fields) for head, fields in revisions.items() if head in by_answer[said]
+                     and answer_norm(fields["answer"]) == said and answer_norm(fields["ask"]) == question]
+            if len(holds) == 1:                               # one exchange: its own commit — none, or two, and nothing is said
+                need[rel]["asks_recovered_all"][(question, said)] = (relation_text(answer_relation(holds[0][1])), holds[0][0].partition(" ")[2])
+
+
+def record_relation(t):
+    """What every reading prints for the newest record under `## Asks`: the relation its `**relation** —` line says, or —
+    for a record without one — the one `recover_relations` reads from the answer's commit, else *relation not computable*;
+    as (relation, the answer's commit where it was recovered, else ""). "" for no record, or a withdrawn one. A record
+    that carries its line costs no git call."""
+    if t.get("asks_answer") and "asks_recovered" not in t:
+        recover_relations([t])
+    return t.get("asks_recovered", (RELATION_TEXT["unknown"], "")) if t.get("asks_answer") else (t.get("asks_relation", ""), "")
 
 
 def answered(trackers):
@@ -844,8 +1037,10 @@ def answered(trackers):
     acted = acted_on(trackers)
     if acted:
         print(f"\nACTED ON SINCE THE LAST STANDUP — {len(acted)}")
+        recover_relations([t for t, _ in acted])           # a record without its relation line: one `git log` for all of them
         for t, commit in acted:
-            print(f"  {t['id']} — acted on in `{commit}`" + (f" · {t['asks_relation']}" if t.get("asks_relation") else ""))
+            said, source = record_relation(t)
+            print(f"  {t['id']} — acted on in `{commit}`" + (f" · {said}" if said else "") + (f", read from the answer's commit `{source}`" if source else ""))
     return EXIT_OK
 
 
@@ -1200,8 +1395,13 @@ def answer_cmd(words, trackers, supersede=False):
     # and the tracker's body is where a long answer belongs.
     tid, verdict, text = words[0].upper(), words[1], " ".join(" ".join(words[2:]).split())
     t = next((x for x in trackers if x["id"] == tid), None)
-    if not t or not t.get("ask") or t.get("next") != "owner":
+    # an answer that is there keys revoke and --supersede, not `next: owner`: the answer writes the next move (FM-030), and
+    # a ruling's reads `build` from then on
+    if not t or not t.get("ask"):
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
+        return EXIT_LINT
+    if not t.get("answer") and t.get("next") != "owner":
+        print(f"--answer: {tid} carries an `ask:` and `next: {t.get('next') or '—'}` — an ask waits on the Owner with `next: owner`; the seat that asks sets it", file=sys.stderr)
         return EXIT_LINT
     if t.get("answer") and not (supersede or verdict == "revoke"):
         print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten in place. "
@@ -1320,6 +1520,9 @@ def answer_cmd(words, trackers, supersede=False):
     while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
         at += 1
     lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
+    move = ANSWER_MOVE.get(t.get("ask_kind"))
+    if move:                                                 # FM-030: the move after his — the seat's, or his own hands' for an action
+        lines = set_front("\n".join(lines), "next", move).split("\n")
     if replaced:
         cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
         lines = ship_log_row(lines, f'Answer of {replaced[1]} superseded: *"{cell(replaced[0])}"* ({replaced[2]}) — '
@@ -1348,7 +1551,8 @@ def answer_cmd(words, trackers, supersede=False):
             return EXIT_LINT
     answer_step(tid, 4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
-    print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered")
+    print(f"{tid} answered: {answer}\n  signed, on `{branch}`" + (", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}") + f"\n  it has left your queue; the seat sees it under --answered"
+          + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, "")))
     if r.returncode != 0:
         return EXIT_LINT
     if switched:                                             # pushed: back where he started, so his next --answer does not begin on this one's branch
@@ -1509,6 +1713,29 @@ def mark_blocked(trackers):
     by_id = {t["id"]: t for t in trackers}
     for t in trackers:
         t["blocked_now"] = blocked_now(t, by_id)
+    return trackers
+
+
+def mark_raised(trackers):
+    """THE RAISE RULE — the Owner's answer to FM-033 (`9e48ee8`): *a raise naming a signed rule re-judges the tracker the
+    same day; any other raise waits for the next pass.* `t["raised"]` is the raises of an OPEN tracker that are dated
+    after its `triaged:` (any date, where it carries none) and whose `undermines:` names a signed rule: a line of the
+    current path in TRIAGE.md (`path 5`, `TRIAGE.md path 5` — a number the path has), or a tracker's signed answer
+    (`FM-033's answer` — a tracker with an answer that is not revoked, or an answered record under `## Asks`). Such a
+    tracker is owed a pass and sits under *triage*. Clock-free: every input is a committed file, and a day decides — a raise
+    written after the same day's pass is re-judged by that seat's own re-run, not by this rule. A done tracker's raise
+    changes nothing here."""
+    lines = {int(n) for n in re.findall(r"^\s*(\d+)\.\s", triage_home()["path"], re.M)}
+    answered = {t["id"] for t in trackers if (t.get("answer") and (answer_relation(t) or ("",))[0] != "revoked") or t.get("asks_relation")}
+    def signed(what):
+        m = re.fullmatch(r"(?:TRIAGE\.md\s+)?path\s+(\d+)", what, re.I)
+        if m:
+            return int(m.group(1)) in lines
+        m = re.fullmatch(rf"({_IDS})['’]s answer", what)
+        return bool(m) and m.group(1) in answered
+    for t in trackers:
+        t["raised"] = [r for r in t.get("raises") or [] if t["status"] in OPEN_STATUSES and r["date"] > (t.get("triaged") or "")
+                       and any(signed(w) for w in r["undermines"])]
     return trackers
 
 
@@ -1724,7 +1951,7 @@ function draw(){
         <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
         <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
         <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"))}</li>
+        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build")))}</li>
         <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
         <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} answered: ${said}\n  signed, on \`${br}\`, pushed`)}</pre>
         <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
@@ -1838,7 +2065,7 @@ LABELS = {
     "answer.sign.where": "Where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
     "answer.sign.does": "What it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
-    "answer.sign.step.write": "writes the three lines — {0} {1} {2}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
     "answer.sign.step.push": "pushes the branch",
     "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
     "answer.sign.success": "When it worked", "answer.sign.check": "To check",
@@ -2319,11 +2546,24 @@ def owners_intent(text):
 
 
 def write_views(trackers):
-    """One `view/<ID>.js` per tracker — `V(id, markdown)`. Rewritten only when changed; strays removed."""
+    """One `view/<ID>.js` per tracker — `V(id, markdown)`. Rewritten only when changed; strays removed. The markdown is
+    the file's body, and one line more under each record under `## Asks` that has no `**relation** —` line, every one of
+    them, not the newest alone: the relation `recover_relations` read from that answer's commit, under `**answered** —`
+    where a record from 0.18.1 on carries its own, naming that commit — or *relation not computable* (FM-029: every
+    reading prints the relation)."""
     VIEW_DIR.mkdir(exist_ok=True)
     keep = set()
+    recover_relations(trackers)
     for t in trackers:
         _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
+        if t.get("asks_answers"):
+            for start, end in reversed(record_spans(body)):   # from the end, so each cut leaves the earlier spans where they were
+                key = record_key(body[start:end])
+                line = re.search(r"^\*\*answered\*\* — .*$", body[start:end], re.M) if key else None
+                if line:
+                    said, source = (t.get("asks_recovered_all") or {}).get(key, (RELATION_TEXT["unknown"], ""))
+                    cut = start + line.end()
+                    body = body[:cut] + f"\n**relation** — {said}" + (f" · read from the answer's commit `{source}`" if source else "") + body[cut:]
         out, text = VIEW_DIR / f'{t["id"]}.js', f'V({json.dumps(t["id"])},{json.dumps(body, ensure_ascii=False)})\n'
         keep.add(out.name)
         if not out.exists() or out.read_text(encoding="utf-8") != text:
@@ -2534,6 +2774,11 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
              is that reader, whatever the row's status. Its Closest cell holds what the filing says it was held
              against (`considered:`) beside the three trackers the machine finds closest, done ones included.
              OPEN every one marked NOT considered. The same work: `merge ID`. Otherwise judge the row like any other.
+     RAISED: a row marked RAISED carries a raise — a line under the tracker's `## Raised` — dated after its last
+             judgement and naming a signed rule it undermines: a line of the current path, or a tracker's signed
+             answer. The Owner's rule (FM-033): a raise naming a signed rule re-judges the tracker the same day; any
+             other raise waits for the next pass. Its Now cell is the raise: judge the row again, whatever its keep
+             test says.
      THE ROW carries two cells you do not fill. NOW is the opening of the tracker's *What is true now* — what
              is left; judge from it before the Hook, which only tells the problem as it was filed. FACTS are
              DERIVED: the repos whose commits name the tracker · the tokens it costs to read · the ready marks
@@ -2545,7 +2790,9 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
      `status: Parked`, `epic:`, `tier:`, `rank:`, `next:`), refreshes INDEX.md and the board, keeps your rows, and lists what is left.
      Do not make those edits by hand. The reason lives in the worksheet.
   3. The pass is RESUMABLE: whatever carries a `triaged:` date is done. Stop when you must; the next run continues.
-  4. The Owner rules by merging the pull request, and can strike any row first.
+  4. The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees
+     with is re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is
+     written and signed, and a merge is not one.
   5. This worksheet is the pass's one evidence file, and one paragraph
      under *Passes* in {home} says what the pass changed — never touch its *current path*; that is the
      Owner's.
@@ -2623,8 +2870,8 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
     day = lambda d: datetime.date.fromisoformat(d) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) else datetime.date.min
     fresh = lambda d: (datetime.date.fromisoformat(today) - day(d)).days <= TRIAGE_DAYS    # one window: the keep test, and the life of a judgement
     is_new = is_new_filing
-    todo = [t for t in trackers if t["id"] not in done
-            and owed_a_pass(t) and not fresh(t.get("triaged") or "")]
+    todo = [t for t in trackers if t["id"] not in done         # a raise re-judges it however fresh its judgement (FM-033)
+            and (t.get("raised") or (owed_a_pass(t) and not fresh(t.get("triaged") or "")))]
     open_now = [t for t in trackers if t["status"] in ("Proposed", "In Progress", "Parked", "Reserved")]
     rows = []
     for t in todo:
@@ -2646,7 +2893,7 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
         lines[-2:-2] = ["**Intent — the Owner's words; a row inherits its Story's.** Judge what is left against what the work is *for*.", ""] + [
             f"- **{c}** — {by_id[c]['intent']}" for c in carriers if c in by_id] + [""]
     for _d, t, last, near in rows:
-        test = ("keep" if fresh(last) else "FAILS") + (" · NEW FILING" if is_new(t) else "")
+        test = ("keep" if fresh(last) else "FAILS") + (" · NEW FILING" if is_new(t) else "") + (" · RAISED" if t.get("raised") else "")
         title = t["title"].replace("|", "\\|")
         title = title if len(title) <= 70 else title[:67] + "…"
         if is_new(t):
@@ -2661,6 +2908,8 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
         facts = (f'repos {", ".join(repos.get(t["id"], [])) or "—"} · reads {t.get("reads", 0) / 1000:.1f}k'
                  + (f' · next {t["next"]}' if t.get("next") else "") + (f' · kind {t["problem"]}' if t.get("problem") else "") + (f' · NOT {", ".join(fails)}' if fails else ""))
         now = (t.get("state") or "").replace("|", "\\|")                       # what is left — a seat fathoms this, not the hook
+        if t.get("raised"):                                                   # …and for a raised row, the raise it is re-judged on
+            now = max(t["raised"], key=lambda r: r["date"])["line"].replace("|", "\\|")
         now = (now if len(now) <= NOW_MAX else now[:NOW_MAX - 1].rstrip() + "…") or "—"
         lines.append(f'| [{t["id"]}](../../{t["file"]}) — {title} | {t["tier"]} | {t.get("epic", "—")} | {last} · {test} | {closest} | {hook} | {now} | {facts} | | |')
     return "\n".join(lines + judged) + "\n", len(rows)
@@ -2829,6 +3078,12 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                   "open tracker's body, or waits. `--check` says when it holds"),
     "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
                    "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
+    "judged_before_build": ("`true` or `false` (the default)",
+                            "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
+                            "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
+                            "`In Progress`; else it is refused, and so is one that names none. The commit-msg hook (`--commit-msg`) judges the commit being made, with its subject, before it is made; "
+                            "`--check` judges each commit of the branch since `origin`'s default branch, a merge by the commits it carries; on the default "
+                            "branch nothing is judged. `--check` says whether it is on"),
 }
 
 
@@ -2972,7 +3227,34 @@ def unverified(commit, tail):
     """The end of a refusal for a commit that does not verify: *cannot verify* and why, where the clone cannot check a
     signed commit — else the seat's own words (`tail`), which ask for a signature."""
     gap = signature_gap(commit)
-    return f"it is signed, but this clone cannot verify: {gap} — see {SIGNING_PAGE}" if gap else tail
+    return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}" if gap else tail
+
+
+# FM-034 — WHAT IS THE CHECKOUT'S, NOT THE LEDGER'S: a signed commit this clone cannot verify (its signers file, its
+# keyring), a pinned file this checkout has not got. Each is said on stderr, grouped, and never written into the generated
+# INDEX: written there, the INDEX a fresh clone generated differed from the committed one by that line, and `--check` said
+# STALE where no tracker had changed. The drift test is not widened; the finding still fails the run. Recognised by these
+# words, which the two places that write such a finding use and nothing else does.
+CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it")
+
+
+def checkout_finding(problem):
+    return any(m in problem for m in CHECKOUT_MARKS)
+
+
+def checkout_lines(problems):
+    """The checkout's findings as a reader takes them: ONE line per cause — the signers file this clone has not got, not
+    one per answer it could not check — naming what it could not check, each commit once: two rules can ask of one
+    answer's commit, and the count said 8 where 5 commits were meant (the cold second pass's R4)."""
+    groups = {}
+    for p_ in (p_ for p_ in problems if checkout_finding(p_)):
+        what, sep, why = p_.partition(" — it is signed, but ")
+        if sep:
+            m = re.search(r"`([0-9a-f]{7,40})`", what)
+            groups.setdefault("it is signed, but " + why, {}).setdefault(m.group(1) if m else what, what.split(":")[0] + (f" `{m.group(1)}`" if m else ""))
+        else:
+            groups.setdefault(p_, {})
+    return [f"  checkout: {why}" + (f" — {len(items)} signed commit(s) it could not check: {', '.join(items.values())}" if items else "") for why, items in groups.items()]
 
 
 def staged_now():
@@ -3398,10 +3680,230 @@ def session_problems():
 def session_check():
     """`--session-check`: the session rule on the commit being made, and nothing else — cheap enough for every commit.
     The full gate runs only when a tracker, the configuration or the tool is staged; without this, a seat's code-only
-    commit would be judged by no automatic run at all (R4)."""
+    commit would be judged by no automatic run at all (R4). FM-033's judgement needs the commit's subject, which the
+    pre-commit stage has not got: it is the commit-msg hook's (`--commit-msg`)."""
     global COMMITTING
     COMMITTING = True
     problems = session_problems()
+    for p_ in problems:
+        print(f"  {p_}", file=sys.stderr)
+    return EXIT_LINT if problems else EXIT_OK
+
+
+BUILD_WHY = "a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker"
+
+
+def branch_tracker(name):
+    """The tracker a branch names: `fm/029-…` → FM-029 — the kind in lower case, a slash, the number, then a dash or the end
+    (the house shape `<kind>/<NNN>-<slug>`). None for any other name, and for a detached HEAD."""
+    m = re.match(r"(%s)/(\d+)(?:-|$)" % "|".join(KINDS), name or "", re.I)
+    return f"{m.group(1).upper()}-{m.group(2)}" if m else None
+
+
+def named_trackers(subject, branch):
+    """The trackers a commit is built under: the ids its subject names when it names any, else its branch's (C1 of the
+    0.18.3 design, ruled 2026-09-24) — a commit `FM-030: …` on a branch named for FM-029 is FM-030's work."""
+    if subject is None:                                    # a message that keeps no subject line: nothing names a tracker
+        return []
+    ids = list(dict.fromkeys(re.findall(rf"(?<![A-Za-z0-9])({_IDS})(?!\d)", subject or "")))
+    return ids or [b for b in [branch_tracker(branch)] if b]
+
+
+def commit_list(*revs):
+    """[(commit, its first parent, the paths it changes relative to ROOT, its subject)] of `git log --no-merges <revs>`,
+    newest first — one call for all of them."""
+    out = git_out("log", "--no-merges", "--relative", "--name-only", "--format=%x00%H%x00%P%x00%s", *revs) or ""
+    records, got = out.split("\x00")[1:], []
+    for i in range(0, len(records) - 2, 3):
+        subject, _, files = records[i + 2].partition("\n")
+        got.append((records[i], (records[i + 1].split() or [""])[0], set(files.split("\n")) - {""}, subject.strip()))
+    return got
+
+
+def cat_blobs(specs):
+    """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there."""
+    if not specs:
+        return {}
+    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
+                       capture_output=True, env=nested_git_env())
+    got, data, i = {}, r.stdout, 0
+    for spec in specs:
+        nl = data.find(b"\n", i)
+        if nl < 0:
+            break
+        head, i = data[i:nl].decode("utf-8", "replace"), nl + 1
+        if head.endswith((" missing", " ambiguous")):
+            got[spec] = None
+            continue
+        size = int(head.rsplit(" ", 1)[1])
+        got[spec], i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
+    return got
+
+
+def judge_commits(commits, branch):
+    """FM-033's gate over made or pending commits — [(commit or "", the parent it is judged at, paths, subject)] — as refusal
+    lines. A commit that changes no path outside the tracker directory is not judged. One that does names its trackers
+    (`named_trackers`), and at its parent at least one of them carries `triaged:`, is not Parked and is `In Progress`, read
+    through `extract` from the parent's own file: one `git ls-tree` per parent and one `git cat-file --batch` for all."""
+    rel = TRACKER_DIR.resolve().relative_to(ROOT).as_posix().rstrip("/") + "/"
+    work = []
+    for commit, parent, files, subject in commits:
+        outside = sorted(f for f in files if f and not f.startswith(rel))       # `staged_now` keeps git's last empty line
+        if outside:
+            work.append((commit, parent, outside, subject, named_trackers(subject, branch)))
+    key = lambda tid: (tid.split("-")[0].upper(), int(tid.split("-")[1]))
+    names = {}
+    for parent in sorted({w[1] for w in work if w[4]}):
+        listed = (git_out("ls-tree", "--full-name", "--name-only", parent, "--", rel) or "").split("\n")
+        names[parent] = {}
+        for full in listed:
+            m = re.match(r"(%s)-(\d+)-" % "|".join(KINDS), full.rsplit("/", 1)[-1])
+            if m:
+                names[parent][(m.group(1), int(m.group(2)))] = full
+    wanted = {f"{parent}:{names[parent][key(tid)]}" for _c, parent, _o, _s, ids in work for tid in ids if key(tid) in names.get(parent, {})}
+    texts = cat_blobs(sorted(wanted))
+    out = []
+    for commit, parent, outside, subject, ids in work:
+        reasons = []
+        for tid in ids:
+            full = names.get(parent, {}).get(key(tid))
+            text = texts.get(f"{parent}:{full}") if full else None
+            t = extract(pathlib.Path(full), text=text) if text is not None else None
+            if t is None:
+                reasons.append(f"{tid}: not at its parent")
+            elif t["status"] == "Parked":
+                reasons.append(f"{tid}: Parked")
+            elif not t.get("triaged"):
+                reasons.append(f"{tid}: not judged" + ("" if t["status"] == "In Progress" else f", not In Progress ({t['status']})"))
+            elif t["status"] != "In Progress":
+                reasons.append(f"{tid}: not In Progress ({t['status']})")
+            else:
+                reasons = []
+                break
+        else:
+            if not ids and subject is None:
+                reasons = ["names no tracker: every line of its message is a comment, which git strips — no subject is left to name one"]
+            elif not ids:
+                reasons = [f"names no tracker: no {'/'.join(KINDS)}-N in its subject, and "
+                           + (f"its branch `{branch}` names none (`<kind>/<NNN>-…`)" if branch else "a detached HEAD names none")]
+        if reasons:
+            who = (f'commit {commit[:7]} "{first_words(subject, 60)}"' if commit
+                   else "this commit, with no subject," if subject is None else f'this commit "{first_words(subject, 60)}"')
+            more = f" (+{len(outside) - 1} more)" if len(outside) > 1 else ""
+            out.append(f"refused: {who} changes {outside[0]}{more} outside {rel} — {'; '.join(reasons)} — {BUILD_WHY}")
+    return out
+
+
+_BUILD = None
+
+
+def build_judgement(subject=None):
+    """(refusals, the one line `--check` says) — FM-033's gate, where `judged_before_build` is on. At commit time it runs
+    where the subject is known — the commit-msg hook, `--commit-msg`, `subject` its message's first line — and judges the
+    commit being made at HEAD exactly as the history is judged: the subject's ids, else the branch (a merge: each commit it
+    brings, the trunk's aside, at its own parent by its own subject; its own change never). The pre-commit run, which has
+    no message yet, judges nothing here: judged by its branch alone, `FM-007: …` on a branch named for FM-029 passed the
+    hook and failed `--check` (the cold review's R1). Any other run judges each commit of `merge-base(origin's default,
+    HEAD)..HEAD`, merges walked, not judged. On the default branch nothing is judged. Read once per run."""
+    global _BUILD
+    if COMMITTING and not subject:
+        return [], ""                                      # the commit-msg stage judges it, with its subject (`pending_judgement`)
+    if _BUILD is not None:
+        return _BUILD
+    if not CONFIG.get("judged_before_build"):
+        _BUILD = ([], f"judged before build: off — `judged_before_build = true` in {CONFIG_NAME} turns it on")
+        return _BUILD
+    if vcs() != "git":
+        _BUILD = ([], "judged before build: on — this is no git repository: nothing is judged")
+        return _BUILD
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk, branch = default_trunk(git), built_on()
+    if trunk and branch == trunk.split("/", 1)[1]:
+        _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
+        return _BUILD
+    if COMMITTING:
+        _BUILD = (pending_judgement(subject, git, trunk, branch), "")
+        return _BUILD
+    if not trunk:
+        _BUILD = ([], "judged before build: on — no `origin` default branch to measure from: nothing is judged")
+        return _BUILD
+    base = git("merge-base", trunk, "HEAD").stdout.strip()
+    commits = commit_list(f"{base}..HEAD") if base else []
+    refused = judge_commits(commits, branch)
+    _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+                       + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker"))
+    return _BUILD
+
+
+def build_problems():
+    return build_judgement()[0]
+
+
+def pending_judgement(subject, git, trunk, branch):
+    """The commit being made, at HEAD, with `subject` — None where its message keeps no subject line — as refusal lines; a
+    merge being made: each commit it brings, the trunk's aside, by its own subject."""
+    heads = merge_heads()
+    if heads:
+        return judge_commits(commit_list(*heads, "--not", "HEAD", *([trunk] if trunk else [])), branch)
+    if git("rev-parse", "--verify", "-q", "HEAD").returncode != 0:
+        return []                                          # a first commit has no parent to be judged at
+    # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
+    env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
+    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=env).stdout
+    return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
+
+
+def message_subject(text, comment="#"):
+    """A commit message's subject as git keeps it when it strips comments — an edited message, `--cleanup=strip`: its
+    first line that is not blank and does not start with the comment character (`core.commentChar`), above the scissors
+    line an editor commit carries. "" where none is left."""
+    for line in text.split(f"{comment} ------------------------ >8 ------------------------")[0].splitlines():
+        if line.strip() and not line.startswith(comment):
+            return line.strip()
+    return ""
+
+
+def literal_subject(text):
+    """A commit message's subject as git keeps it when it does NOT strip comments — `-m`/`-F` (whitespace cleanup), or
+    `--cleanup=verbatim`: its first line that is not blank, a `#` at its start kept."""
+    return next((line.strip() for line in text.splitlines() if line.strip()), "")
+
+
+def commit_msg_check(message_file):
+    """`--commit-msg <file>`: what the commit-msg hook runs — FM-033's judgement on the commit being made, with its subject,
+    before the commit is made: the same refusal `--check` prints of it once made. BEST-EFFORT, the Principal's ruling: git's
+    `--no-verify` skips any hook by design, so the gate is `--check` on the branch.
+
+    The hook sees the message BEFORE git's cleanup, and cannot always know which cleanup git will apply: an edited message
+    is stripped of its comment lines, `-m` keeps them (the cold second pass's R1: `-m '# FM-007: …'` passed a hook that
+    skipped every `#` line, and `--check` refused the commit git made with that subject). So it judges every subject git
+    could keep: the first line left once comment lines are stripped (`core.commentChar`, `#` by default) — and none left
+    is *names no tracker* — and, where git keeps comment lines (no editor, the hook's `GIT_EDITOR=:`; or `commit.cleanup`
+    `whitespace` or `verbatim`), the literal first line too. The commit is refused if any of them is."""
+    global COMMITTING
+    COMMITTING = True
+    try:
+        text = pathlib.Path(message_file).read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        print(f"--commit-msg: cannot read {message_file} — {e}", file=sys.stderr)
+        return EXIT_LINT
+    if not CONFIG.get("judged_before_build") or vcs() != "git":
+        return EXIT_OK
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk, branch = default_trunk(git), built_on()
+    if trunk and branch == trunk.split("/", 1)[1]:
+        return EXIT_OK                                     # on the default branch nothing is judged
+    comment = ((git_out("config", "--get", "core.commentChar") or "#").strip() or "#")[:1]
+    comment = "#" if comment == "a" else comment          # `auto`: git picks one the message does not use; `#` is its first choice
+    keeps = os.environ.get("GIT_EDITOR") == ":" or (git_out("config", "--get", "commit.cleanup") or "").strip() in ("whitespace", "verbatim")
+    stripped, literal = message_subject(text, comment), literal_subject(text)
+    subjects = list(dict.fromkeys([stripped or None] + ([literal] if keeps and literal and literal != stripped else [])))
+    problems = []
+    for subject in subjects:
+        problems += [p_ for p_ in pending_judgement(subject, git, trunk, branch) if p_ not in problems]
+    if stripped == "" and len(problems) > 1:              # the precise refusal of the literal subject says it; the empty one adds nothing
+        problems = [p_ for p_ in problems if "no subject is left" not in p_]
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK
@@ -3648,6 +4150,7 @@ def lint(trackers, committing=False):
     problems += answerers_problems()
     problems += rights_problems(trackers)
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
+    problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
@@ -3803,7 +4306,8 @@ def parse_args(argv):
     add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
-                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries")
+                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries — "
+                                               "for a record written before 0.18.1, the one the commit that wrote its answer gives")
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
@@ -3821,6 +4325,9 @@ def parse_args(argv):
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
                                                      "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
+    add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
+                                                      "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
+                                                      "and refused before it is made, with the line `--check` prints of it")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
@@ -3918,7 +4425,7 @@ def run_deriver(trackers, mode="write", flags=()):
 
 
 def load_trackers():
-    return mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)])
+    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)]))
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
@@ -3938,7 +4445,9 @@ def pin_problems():
         if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
             continue
         want, _, rel = line.partition("  ")
-        if rel and (not (HERE / rel).exists() or digest(HERE / rel) != want):
+        if rel and not (HERE / rel).exists():               # the working tree lacks it — the checkout's finding (FM-034)
+            out.append(f"{here}/{rel}: the PIN names it, and {CHECKOUT_MARKS[1]} — restore it from git, or run --vendor again")
+        elif rel and digest(HERE / rel) != want:
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
@@ -4200,12 +4709,13 @@ if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)
 fi
 """,
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
+    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033)\n{cmd} --commit-msg \"$1\"\n",
     "post-merge": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
     "post-checkout": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"'}     # the one line a hook that is not ours needs
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
@@ -4475,6 +4985,8 @@ def main(argv=None):
         return session_trailer(args.session_trailer[0])
     if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
         return session_check()
+    if args.commit_msg:                                     # …and this, once the message exists: no build commit before a judgement (FM-033)
+        return commit_msg_check(args.commit_msg[0])
     if args.session:
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone
@@ -4561,6 +5073,7 @@ def main(argv=None):
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
+    ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     today = datetime.date.today().isoformat()
     counts = ", ".join(f"{sum(t['kind'] == k for t in trackers)} {KIND_LABELS[k].lower()}" for k in KINDS)
     header = (
@@ -4575,8 +5088,8 @@ def main(argv=None):
         + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
         + f"> Generated {today} · {len(trackers)} trackers ({counts})."
     )
-    if problems:
-        header += f"\n>\n> ❌ {len(problems)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in problems)
+    if ledger:
+        header += f"\n>\n> ❌ {len(ledger)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in ledger)
     if unknown:
         header += (f"\n>\n> ⚠️ {len(unknown)} tracker(s) have no machine-readable status — add a\n"
                    f"> front-matter `status:` to fix: {', '.join(sorted(unknown))}.")
@@ -4597,6 +5110,7 @@ def main(argv=None):
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
+        print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
             print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
@@ -4615,12 +5129,17 @@ def main(argv=None):
             for path in [OUT, *sorted(DERIVED_FILES)]:
                 print(path.relative_to(ROOT).as_posix())
 
-    for p in problems:
+    for p in ledger:
         print(f"  lint: {p}", file=sys.stderr)
+    for line in checkout_lines(problems):
+        print(line, file=sys.stderr)
     # the INDEX is still written when a lint fires: the ❌ banner in its header IS the violation, made visible
     # where the ledger is read. What the non-zero exit stops is the COMMIT.
+    if ledger:
+        print(f"FAILED: {len(ledger)} ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.", file=sys.stderr)
+        return EXIT_LINT
     if problems:
-        print(f"FAILED: {len(problems)} ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.", file=sys.stderr)
+        print("FAILED: this checkout's own finding — the ledger is sound; set the checkout up as the line says.", file=sys.stderr)
         return EXIT_LINT
     return EXIT_DRIFT if drifted else EXIT_OK
 

@@ -47,3 +47,4 @@ seat meet the tool, and to each of them a `--check` that says STALE on a clean c
 |---|---|
 | 2026-09-24 | Filed, from the Auditor seat's check 20 as the Owner pasted it; `--related` held it against FM-024, FM-019 and FM-011 — none owns the INDEX header. |
 | 2026-09-24 | In Progress — 0.18.3 builds it; the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
+| 2026-09-24 | The *Why* paragraph was re-worded by hand in the pass's re-make (c5696c5): the sitting's own checkout has the signers file, so P2, not P1 — said here because the commit did not say it. |
