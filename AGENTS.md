@@ -37,7 +37,7 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
 
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
-Ruled by his signed answers to FM-031 (`d20bc89`, 11:08), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on his answer,
+Ruled by his signed answers to FM-031 (`d20bc89`, 11:08, and `eef0c2e`, 21:29), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on his answer,
 never on a default; a word in chat changes none of them until he signs it.
 
 - **Two tiers of review** (FM-032 S1). A change that touches only trackers, their evidence and the documentation — no
@@ -59,6 +59,15 @@ never on a default; a word in chat changes none of them until he signs it.
   ask and answer — never relayed through chat as the record.
 - **Seats never need the Owner's checkout** (FM-031). He looks at a seat's branch with
   `git fetch && git switch --detach origin/<branch>`, so his checkout never holds it.
+- **Messages between sessions — nine rules** (FM-031) — ruled 2026-09-24 21:29:12 (`eef0c2e`, PR 62): *the nine hold as
+  written*. Sessions of one account can message each other directly; a message (1) carries checkable facts only, re-checked in
+  git before anything moves on it; (2) agrees to nothing — an agreement exists only as a commit within the hour quoting it; (3) is
+  never an answer — an answer is written and signed through the board (path 5); (4) carries no secret, no production read and
+  no other repository's internal state; (5) comes after `ListAgents` and `git worktree list` where a worktree is taken — one
+  worktree per session, and a badge is not a lock; (6) carries no authority — the seat is in git, never in the frame; (7) never
+  changes `isolatePeerMachines`, the Owner's setting; (8) is read by the parent project's scorer for the four tells its System
+  Card names; and (9) **never goes to a session the Owner stopped** — what it left is read from git. The nine, as ruled, stand
+  in FM-031's body.
 - **A pass judges before the first build commit** (FM-033) — ruled 2026-09-24 16:29:09 (`65f37a4`). A signed answer
   authorises the work; it does not judge it ready: a triage pass keeps the tracker before any change outside `work-tracker/`
   is committed under it — code, tests, configuration, hooks and documentation alike — the same day when the answer says
