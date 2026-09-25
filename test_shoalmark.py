@@ -3137,6 +3137,54 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-029, 0.18.3 (the cold second pass's R2): EVERY record without its relation line prints the recovered one, not the
+#     newest alone — FM-031's older answer lost its relation once a newer exchange, recorded with its line, came after it ---
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    day_ = datetime.date.today().isoformat()
+    ask_ = lambda q, proposal, options: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: 2026-09-23\nask-options: "{options}"\nask-proposal: "{proposal}"\n'
+    said_ = lambda a: f'answer: "{a}"\nanswered: {day_}\nanswered-by: holgo\n'
+    rec_ = lambda q, a, line="": f"**{day_}** · {q}\n**answered** — {a} · holgo\n{line}"
+    q1_, q2_ = "Ship the importer first?", "Which week does the exporter take?"
+    a1_, a2_ = "accepted - the importer, and the audit first", "accepted - next week"
+    shas_ = {}
+    for tid_ in ("AP-320", "AP-321"):                     # AP-320: two records without the line · AP-321: the old one, then one with it (FM-031's shape)
+        tracker(root, tid_, extra=ask_(q1_, "the importer", "the importer | the exporter")); git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid_}: asked")
+        tracker(root, tid_, extra=ask_(q1_, "the importer", "the importer | the exporter") + said_(a1_)); git(root, "commit", "-qam", f"{tid_}: answered")
+        shas_[(tid_, 1)] = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        tracker(root, tid_, extra=ask_(q2_, "next week", "this week | next week"), body=f"## Asks\n\n{rec_(q1_, a1_)}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid_}: cleared before 0.18.1, and asked again")
+        tracker(root, tid_, extra=ask_(q2_, "next week", "this week | next week") + said_(a2_), body=f"## Asks\n\n{rec_(q1_, a1_)}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid_}: answered again")
+        shas_[(tid_, 2)] = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        second_ = rec_(q2_, a2_, "**relation** — accepted the proposal\n" if tid_ == "AP-321" else "")
+        tracker(root, tid_, extra="next: build\n", body=f"## Asks\n\n{rec_(q1_, a1_)}\n{second_}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid_}: cleared")
+    fm.configure(root)
+    by_ = {t["id"]: t for t in fm.load_trackers()}
+    calls_ = argv_of(lambda: fm.recover_relations(list(by_.values())))
+    run(root, "--html-only")
+    import json
+    view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
+    v320_, v321_ = view_("AP-320"), view_("AP-321")
+    line_ = lambda a, rel, sha: f"**answered** — {a} · holgo\n**relation** — {rel} · read from the answer's commit `{sha}`"
+    s1_ = lambda tid: by_[tid]["asks_recovered_all"][fm.answer_norm(a1_)][1]
+    check(f"FM-029 · R2 · every record under `## Asks` without its relation line prints the recovered one in the board's tracker view — two old records, each from its own answer's commit (saw {by_['AP-320'].get('asks_recovered_all')})",
+          line_(a1_, "accepted with a change", s1_("AP-320")) in v320_ and shas_[("AP-320", 1)].startswith(s1_("AP-320"))
+          and line_(a2_, "accepted the proposal", by_["AP-320"]["asks_recovered"][1]) in v320_ and shas_[("AP-320", 2)].startswith(by_["AP-320"]["asks_recovered"][1])
+          and v320_.count("**relation** —") == 2)
+    check("FM-029 · R2 · FM-031's shape — an old record, then one with its line: the old one prints its recovered relation, the newer keeps its own, nothing doubled; the newest-only reading (`--answered`) says the newest's",
+          line_(a1_, "accepted with a change", s1_("AP-321")) in v321_ and v321_.count("**relation** —") == 2
+          and f"**answered** — {a2_} · holgo\n**relation** — accepted the proposal\n" in v321_ and fm.record_relation(by_["AP-321"]) == ("accepted the proposal", ""))
+    check("FM-029 · R2 · still one `git log` for every file, and one `git show` per record whose answer's commit is found — three here",
+          len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 3 and len(calls_) == 4)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-029: the half-written answer's *give it again* knows all three words, and a superseding answer's flag ----------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()

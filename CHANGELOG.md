@@ -12,7 +12,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   among them. The commit that wrote the answer still holds `ask-proposal:` and `ask-options:`: the newest commit whose
   diff adds that `answer:` line, its revision read back and put through the reader a live answer goes through, never a
   guess. `--answered`'s acted-on lines and the board's tracker view print it and name that commit — *accepted with a
-  change, read from the answer's commit `7c97c5b`* — and the file is not touched. Where no commit in the checkout wrote
+  change, read from the answer's commit `7c97c5b`* — the view under every such record, an older one's too when a newer
+  record follows it, and the file is not touched. Where no commit in the checkout wrote
   that answer (a hand-written record, a shallow clone), *relation not computable*, as before. It costs one `git log` for
   all such records and one `git show` for each one found, spent where the relation is printed, never on a load.
 - **An answer writes the next move** (FM-030; the Auditor seat's check 24). `--answer` wrote the three lines and left
