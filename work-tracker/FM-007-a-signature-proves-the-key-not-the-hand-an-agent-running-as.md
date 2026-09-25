@@ -5,16 +5,13 @@ considered: FM-005, FM-006
 tags: security
 tier: P1
 next: owner
-ask: "Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?"
-ask-kind: ruling
-ask-since: 2026-09-22
-ask-options: "a hardware key that needs a touch | a signing key on a machine no agent runs on | a hook that refuses a signed commit carrying a seat co-author line"
-ask-proposal: "a hardware key that needs a touch"
-answer: "accepted - a hardware key that needs a touch"
-answered: 2026-09-22
-answered-by: holgo99
 triaged: 2026-09-24
 rank: 2
+ask: "Which day this week do you set up the hardware key that needs a touch — your answer of 09-22 — so that the key signing your answers stops being a software key in the shared agent?"
+ask-kind: action
+ask-since: 2026-09-25
+ask-options: "today, 2026-09-25, after the sitting | 2026-09-26 | 2026-09-27 or later, before the week's scoring on 09-29"
+ask-proposal: "today, 2026-09-25, after the sitting"
 hook: "The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not which hand: an agent running as the Owner on his machine, with his key loaded, signs as him — and with commit.gpgsign true set, every agent commit did, until it was caught. Nothing in git, the forge or the tool can tell the difference. Named by the Owner: a doorway for any rogue agent."
 ---
 
@@ -58,9 +55,16 @@ proposal of 2026-09-24 (its draft, sha256 `39690e54…`), applied under the free
 The Owner's answers are signed by something an agent on his machine cannot operate (1 or 2, recorded here with what
 was chosen), the tripwire (3) is in the tool with a mutation witness, and the signing page says all three.
 
+## Asks
+
+**2026-09-22** · Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?
+**answered** — accepted - a hardware key that needs a touch · holgo99
+**relation** — accepted the proposal
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | The day of the key asked on the board, kind action: his answer of 09-22 stands in the record as his promise and the act is open; the ask slot held that exchange, so the board and `--owner` showed him nothing to answer and FM-007 sat under *backlog* — found by him at the sitting of 09-25 (07:00:34); the parent project's ledger row (row 43) came first. |
 | 2026-09-24 | **Raised** by the Auditor seat through the Owner, the line above word for word from its draft; the day of the hardware key put to him in the parent project's ledger (kind B, before the sitting of 09-25). Rank #2 stands; the act is his. |
 | 2026-09-22 | Filed from the Owner's finding; `commit.gpgsign` unset the same day, on his word. |
