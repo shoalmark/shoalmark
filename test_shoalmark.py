@@ -3747,6 +3747,34 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
+# walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged
+# against the Owner main's `[seats]` names, verified with the repository's own signers file whatever this clone's setting
+_main37, _g37 = "0d60d552b3c6322cc463d5caf427a7df1fea9a00", ["45198d5", "c755d31", "8d14b6b", "7dd6ba6", "fe36cc0", "ad9bf67"]
+_have37 = subprocess.run(["git", "-C", str(HERE), "cat-file", "--batch-check"], input="".join(f"{c_}^{{commit}}\n" for c_ in [_main37, "ae1f05e", "a680fdf", *_g37]),
+                         capture_output=True, text=True, env=_ENV)
+if _have37.returncode != 0 or "missing" in _have37.stdout or not (HERE / "work-tracker/allowed_signers").is_file():
+    SKIPS.append(("FM-037 · the real history", 1, "this clone does not hold main's history to 0d60d55 (a shallow or partial clone)"))
+    print(f"  skip  FM-037 · the real history — this clone does not hold main's history to 0d60d55; 1 check(s) did not run")
+else:
+    def _real37():
+        os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="gpg.ssh.allowedSignersFile", GIT_CONFIG_VALUE_0=str(HERE / "work-tracker/allowed_signers"))
+        try:
+            n_, changed_ = fm.guard_walk(_main37)
+            return n_, changed_, fm.guard_verdicts(changed_, fm.owners_at(_main37))
+        finally:
+            for k_ in ("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"):
+                os.environ.pop(k_, None)
+    fm.configure(HERE)
+    _n37, _changed37, _v37 = _no_git_env(_real37)
+    _by37 = {c_[:7]: (v_, w_) for c_, _s, _h, _w, v_, w_ in _v37}
+    _all37 = subprocess.run(["git", "-C", str(HERE), "rev-list", _main37], capture_output=True, text=True, env=_ENV).stdout.split()
+    check(f"FM-037 · clause 7 · the real history: walked commit by commit, main to 0d60d55 changes the two sections in exactly the six signed commits 45198d5 … ad9bf67, each accepted as the Owner's (`%G?` G, the signer his email), and in the root commit that wrote the file before signing existed; ae1f05e, the tracker moved with its key, changes nothing (saw {_n37} commits, {_by37})",
+          _n37 == len(_all37) and any(c_.startswith("ae1f05e") for c_ in _all37) and "ae1f05e" not in _by37
+          and all(_by37.get(c_) == ("signed", "") for c_ in _g37) and set(_by37) == set(_g37) | {"a680fdf"}
+          and _by37["a680fdf"] == ("refused", "the Owner's email, unsigned — a git author is a string anyone can type"))
+fm.configure(HERE)
+
 # --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone
 #     cannot verify is said to be that — never "sign it" ---------------------------------------------------------------
 with tempfile.TemporaryDirectory() as tmp:
