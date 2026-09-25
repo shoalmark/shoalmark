@@ -4,8 +4,9 @@ status: In Progress
 considered: FM-004, FM-001
 tags: research
 next: wait
-triaged: 2026-09-23
+triaged: 2026-09-25
 tier: P1
+rank: 4
 hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal three agents named the Owner's unanswered questions as their top brake. Blocking and stamping have one root: a human asked for many small decisions mid-flight. The direction: sign once, then the road is clear."
 ---
 

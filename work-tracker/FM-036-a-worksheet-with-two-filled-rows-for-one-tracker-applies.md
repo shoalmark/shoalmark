@@ -1,10 +1,10 @@
 ---
 id: FM-036
 status: Proposed
-considered: FM-033, FM-028, FM-027
+considered: FM-030, FM-032, FM-019, FM-028, FM-027
 tags: bug
 triaged: 2026-09-25
-rank: 4
+rank: 3
 next: build
 tier: P2
 hook: "On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-day re-judgement's `keep P1 #1 build` on a raise — and `apply_worksheet` applied both in order on every run: the rank read 1, then 3, then 1, each run printing *Applied 1*. A re-judgement the same day has no home on the sheet: the newest filled row for a tracker must win, or a second one be refused."
@@ -23,7 +23,7 @@ on it; the seat struck the morning's row from the table and kept its text under 
 **What is left.** One of two: the newest filled row for a tracker wins (the sheet read bottom-up per tracker, the earlier row kept
 as the record it is), or a second filled row for one tracker is refused by name. The first keeps a same-day re-judgement on the
 day's sheet, which the raise rule needs. Until built, a seat keeps one filled row per tracker on a sheet and quotes the superseded
-row's text under the table.
+row's verdict and reason in the pass's paragraph in TRIAGE.md — the command regenerates the sheet, so nothing under its table survives.
 
 ## Why
 
@@ -39,4 +39,4 @@ by replay, and the raise rule makes a second same-day judgement of one tracker t
 
 | Date | Event |
 |---|---|
-| 2026-09-25 | Filed, from the Reviewer's R1 on the seat's same-day pass; `--related` held it against FM-033 (the pass before the build), FM-028 (the suite's clock) and FM-027 (ids claimed on a branch). |
+| 2026-09-25 | Filed, from the Reviewer's R1 on the seat's same-day pass; `--related` listed FM-032, FM-019, FM-028 and FM-027 first; held against those and against FM-030, whose re-judgement is the case (the first version named FM-033, which `--related` does not list — the Reviewer's R12). |
