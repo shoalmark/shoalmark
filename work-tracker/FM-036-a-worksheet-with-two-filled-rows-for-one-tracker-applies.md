@@ -1,6 +1,6 @@
 ---
 id: FM-036
-status: Proposed
+status: In Progress
 considered: FM-030, FM-027, FM-003, FM-019, FM-009, FM-015
 tags: bug
 triaged: 2026-09-25
@@ -40,3 +40,4 @@ by replay, and the raise rule makes a second same-day judgement of one tracker t
 | Date | Event |
 |---|---|
 | 2026-09-25 | Filed, from the Reviewer's R1 on the seat's same-day pass; `--related` listed, in its order, FM-027, FM-003, FM-019, FM-009, FM-015; held against those and against FM-030, whose re-judgement is the case (the first version named FM-033, which `--related` does not list — the Reviewer's R12; the order as the tool prints it — R16). |
+| 2026-09-25 | In Progress — 0.18.4's second build, with FM-030, on `fm/030-the-acts-owed-to-him-on-his-board`; the status set before its first build commit, as the FM-033 rule asks. |
