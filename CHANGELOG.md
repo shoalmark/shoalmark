@@ -4,12 +4,15 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased — 0.18.4
 
-- **macOS: the browser checks cannot kill the suite** (FM-035, the v0.18.3 tag's CI on macos-latest 3.12). The answer
-  dialog's check pressed OK in headless Chrome, and the second screen copies the command at once: the runner's real
-  clipboard never answered, the run went past its 60 s, and the suite died at `subprocess.TimeoutExpired`. The check
-  now stubs the clipboard, as the second screen's own checks did. Every headless Chrome run goes through one helper:
-  a run past 60 s is tried once more, then its block is skipped by name with the reason, and the end of the run names
-  what was skipped — never a traceback, never a silent pass. A test-only change.
+- **macOS: a browser check that hangs fails; one that cannot run here is skipped by name** (FM-035, the v0.18.3 tag's
+  CI on macos-latest 3.12). What is known: the log shows the suite dying at `subprocess.TimeoutExpired`, 60 s into the
+  answer dialog's check, on the page where OK opens the second screen — which copies the command at once. What is
+  inferred: the pasteboard is the one unstubbed call on that path; the check now stubs it, as the second screen's own
+  checks did. The hang itself was not reproduced here. Every headless Chrome run now goes through one helper: Chrome
+  absent or unable to start — its control run on a blank page failing — skips the block by name, with the reason and
+  its number of checks; Chrome present and a page not returning within 60 s, twice, FAILS the check and the suite
+  exits 1. The run always ends with `skipped here: N checks`, zero or not, and says a run with skips is not a full
+  pass. A test-only change.
 - **Windows: a brand SVG's line ends are counted as committed** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and
   3.12). The size cap counted `wordmark.svg` and `logo.svg` as the checkout wrote them: a Windows checkout
   (`core.autocrlf`) writes `\r\n`, one byte more per line, and a file near the cap was refused there and shown

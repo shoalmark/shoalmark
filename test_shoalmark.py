@@ -378,45 +378,124 @@ _CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []    
 _CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome") if os.path.exists(c)), None)
 
 
-class _ChromeSlow(Exception):
-    """Headless Chrome ran past its budget twice — the block that needed it skips BY NAME, with the reason (FM-035)."""
+# FM-035 and its cold review's R1: a browser check that CANNOT run here and one that does not come back are two things.
+# Chrome absent or unable to start — no binary, a launch error, no display — is a platform gap: the block skips by name,
+# with the reason and the number of its checks, and the run's end says so. Chrome that started here (its control run on
+# a blank page passed) and then does not return a page within the budget, twice, is a FAILURE — the page, or the check,
+# is broken — and the suite exits 1. A hang is never a skip.
+_BLOCKS = {       # each browser block: its name, as a skip or a failure reads it
+    "strip": "FM-024 S7 · the board's strip, rendered — its one check then reads the digest alone",
+    "hang": "FM-035 · a page that never comes back fails the suite",
+    "board": "the board, rendered in a browser",
+    "search": "FM-020 · a whole id searched, rendered",
+    "progress": "FM-021 · the empty progress section, rendered",
+    "cell": "the board's cell shows the display form, rendered",
+    "german": "C4 · the German board, rendered",
+    "wordmark": "0.18.2 · the wordmark, rendered in a browser",
+    "queue": "the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions",
+    "dialog": "the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command",
+    "second": "FM-013 · the second screen, rendered",
+}
+
+
+class _ChromeFailed(Exception):
+    """Headless Chrome started here and did not return a page within its budget, twice: the check FAILS."""
+
+
+def _chrome_probe(chrome):
+    """"" where `chrome` starts here and renders a blank page within 60 s — the healthy control — else why it cannot:
+    none installed, a launch error, no display. Only this makes a browser check a platform gap."""
+    if not chrome:
+        return "no Chrome or Chromium is installed here"
+    try:
+        r = subprocess.run([chrome, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--dump-dom", "about:blank"],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    except OSError as e:
+        return f"Chrome could not start here: {e}"
+    except subprocess.TimeoutExpired:
+        return "Chrome started and did not render a blank page within 60 s here"
+    if r.returncode != 0 or "<html" not in r.stdout:
+        return f"Chrome could not start here: exit {r.returncode}" + (f" — {r.stderr.strip().splitlines()[-1][:160]}" if r.stderr.strip() else "")
+    return ""
+
+
+_PROBED = {}
+
+
+def _browser(key):
+    """Whether the browser block `key` runs: only where Chrome passed its control run here. Where it cannot, the block is
+    skipped by name — with the reason and how many of its checks did not run — never a silent pass."""
+    if _CHROME not in _PROBED:
+        _PROBED[_CHROME] = _chrome_probe(_CHROME)
+    if _PROBED[_CHROME]:
+        skip(key, _PROBED[_CHROME])
+    return not _PROBED[_CHROME]
 
 
 def _chrome_run(args, timeout=60):
-    """Headless Chrome with `args` (its flags, then the page), as `subprocess.run` returns it. A run past `timeout` is
-    tried once more, then raises `_ChromeSlow`: the check skips by name and says why — never a traceback. FM-035: on the
-    v0.18.3 tag's macOS runner the answer dialog's run went past 60 s and the suite died at `TimeoutExpired`; on this
-    machine one did too, under the hook, on another dialog run. (A profile of its own per run made every run hang here.)"""
+    """Headless Chrome, which passed its control here, on one page: `subprocess.run`'s result. Past `timeout` it is tried
+    once more, then raises `_ChromeFailed`, which the block's `_hung` turns into a FAIL naming the page and the budget.
+    (FM-035: on the v0.18.3 tag's macOS runner the answer dialog's run went past 60 s and the suite died in a
+    traceback. A profile of its own per run, tried, made every run hang here.)"""
     for _attempt in (1, 2):
         try:
             return subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args],
                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
         except subprocess.TimeoutExpired:
             continue
-    raise _ChromeSlow(f"headless Chrome ran past {timeout} s twice on this machine")
+    raise _ChromeFailed(f"headless Chrome did not return {args[-1].rsplit('/', 1)[-1]} within {timeout} s, tried twice")
+
+
+def _hung(key, e):
+    """A browser block whose page did not come back: a FAIL, by the block's name, with the page and the budget."""
+    check(f"{_BLOCKS[key]} — {e}", False)
+
+
+def _checks_in(key):
+    """How many checks the browser block `key` holds — counted in this file's own text, so the number cannot rot."""
+    src = (HERE / "test_shoalmark.py").read_text(encoding="utf-8").split("\n")
+    at = next((i for i, l in enumerate(src) if f'_browser("{key}")' in l and "def " not in l), None)
+    if at is None:
+        return 0
+    ind, n, j = len(src[at]) - len(src[at].lstrip()), 0, at + 1
+    while j < len(src) and (not src[j].strip() or len(src[j]) - len(src[j].lstrip()) > ind):
+        n += len(re.findall(r"(?<![\w.])check\(", src[j])) if not src[j].lstrip().startswith("#") else 0
+        j += 1
+    return n
 
 
 SKIPS = []
 
 
-def skip(name, why):
-    """A check that could not run here says so by name — counted, and named again at the end; never a silent pass."""
-    print(f"  skip  {name} — {why}")
-    SKIPS.append(name)
+def skip(key, why):
+    """A browser block that could not run here says so by name, with the reason and how many checks it holds."""
+    SKIPS.append((_BLOCKS.get(key, key), _checks_in(key), why))
+    print(f"  skip  {_BLOCKS.get(key, key)} — {why}; {SKIPS[-1][1]} check(s) did not run")
 
 
+def skipped_line():
+    """The run's last word on skips, zero or not — so a run with skips is never read as a full pass."""
+    if not SKIPS:
+        return "skipped here: 0 checks — every check ran"
+    return (f"skipped here: {sum(n for _b, n, _w in SKIPS)} check(s) in {len(SKIPS)} block(s) did not run — this is NOT a full pass: "
+            + "; ".join(f"{b} ({n}): {w}" for b, n, w in SKIPS))
+
+
+# the helpers themselves: a timed-out run is tried once more and then FAILS; a Chrome that is not there, or cannot start, skips
 _tries, _real_run = [], subprocess.run
 subprocess.run = lambda *a, **k: (_tries.append(a[0]), (_ for _ in ()).throw(subprocess.TimeoutExpired(a[0], k.get("timeout"))))[1]
 try:
     try:
-        _chrome_run(["--dump-dom", "about:blank"], timeout=1); _slow = ""
-    except _ChromeSlow as e_:
+        _chrome_run(["--dump-dom", "file:///x/page.html"], timeout=1); _slow = ""
+    except _ChromeFailed as e_:
         _slow = str(e_)
 finally:
     subprocess.run = _real_run
-check("FM-035 · a headless Chrome run past its budget is tried once more, then raises for its block to skip by name — never a traceback",
-      _slow == "headless Chrome ran past 1 s twice on this machine" and len(_tries) == 2)
-
+check("FM-035 · a headless Chrome run past its budget is tried once more, then raises a FAILURE naming the page and the budget — a hang is never a skip",
+      _slow == "headless Chrome did not return page.html within 1 s, tried twice" and len(_tries) == 2)
+check("FM-035 · Chrome not installed, or unable to start, is a platform gap: the control run says why, and only that skips",
+      _chrome_probe(None) == "no Chrome or Chromium is installed here" and _chrome_probe(str(HERE / "no-such-chrome")).startswith("Chrome could not start here:"))
+# --- end of the browser helpers
 
 
 def run_safe(root, *argv, git_env=None):
@@ -631,17 +710,17 @@ with tempfile.TemporaryDirectory() as d:
 
     # --- FM-024 S7, FM-032 S2: the board's strip and the digest's line — who committed in the last day; how independent the week was
     digest_ = run_safe(root, "--owner")[1]
-    strip_ = ""
-    if _CHROME:
+    strip_ = None
+    if _browser("strip"):
         try:
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
             strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<p id="p"[^>]*>([\s\S]*?)</p>', pdom) or [None, ""])[1]))
-        except _ChromeSlow as e_:
+        except _ChromeFailed as e_:
             strip_ = None
-            skip("FM-024 S7 · the board's strip, rendered", e_)
+            _hung("strip", e_)
     check(f"FM-024 S7 · the board's strip names the sessions with a commit in the last day, with seat and worktree, and counts the week's verdicts; the digest's line groups them by seat (saw {(strip_ or '')[-200:]!r} · {digest_.strip()[-80:]!r})",
-          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (not _CHROME or strip_ is None or (
+          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (strip_ is None or (
               "sessions · 4 in the last day — a9 t@t (—) · a9/implementer-1 t@t (—) · a9/reviewer-1 t@t (—) · k3 t@t (—)" in strip_
               and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
 fm.configure(HERE)
@@ -726,7 +805,7 @@ with tempfile.TemporaryDirectory() as d:
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
-if _CHROME:
+if _browser("board"):
     try:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve()
@@ -742,14 +821,41 @@ if _CHROME:
                   and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
             check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
                   "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
-    except _ChromeSlow as e_:
-        skip('the board, rendered in a browser', e_)
+    except _ChromeFailed as e_:
+        _hung("board", e_)
         fm.configure(HERE)
-else:
-    print("  skip  no browser found — the board was not rendered")
+
+# --- FM-035, its cold review's R1: the block above, run as the suite runs it — with a page that never comes back, and with
+#     no Chrome at all. The first must FAIL the run; the second skips by name and says so at the end, exit 0 ------------
+_src = (HERE / "test_shoalmark.py").read_text(encoding="utf-8")
+_parts = ("__file__ = " + repr(str(HERE / "test_shoalmark.py")) + "\n" + _src[:_src.index("# --- a fresh repository: init, file, gate")]
+          + _src[_src.index("# the browser that renders the board"):_src.index("# --- end of the browser helpers")].replace("def _chrome_run(args, timeout=60):", "def _chrome_run(args, timeout=5):"))
+_board_block = _src[_src.index("# --- the board, seen:"):_src.index("# --- FM-035, its cold review's R1:")]
+_hang_page = """
+_real_test_run = run
+def run(root, *a, **k):
+    got = _real_test_run(root, *a, **k)
+    page = root / "docs/work-tracker/index.html"
+    if page.exists():
+        page.write_text("<script>while(true){}</script>" + page.read_text(encoding="utf-8"), encoding="utf-8")
+    return got
+"""
+_end = "\nprint(skipped_line())\nsys.exit(1 if FAILS else 0)\n"
+_block_run = lambda mutation: subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + _end], capture_output=True, text=True,
+                                             encoding="utf-8", errors="replace", env=_ENV, timeout=300)
+_none = _block_run("\n_CHROME = None\n")
+check(f"FM-035 · no Chrome here: the board block is skipped by name with the reason and its two checks, the run's end says this is not a full pass, and it exits 0 (saw {_none.stdout.strip()[-260:]!r})",
+      _none.returncode == 0 and "  skip  the board, rendered in a browser — no Chrome or Chromium is installed here; 2 check(s) did not run" in _none.stdout
+      and "skipped here: 2 check(s) in 1 block(s) did not run — this is NOT a full pass: the board, rendered in a browser (2): no Chrome or Chromium is installed here" in _none.stdout)
+if _browser("hang"):
+    _hang, _healthy = _block_run(_hang_page), _block_run("")
+    check(f"FM-035 · Chrome here and a page that never comes back — an infinite loop in the board: the block FAILS by name, the budget and the retry named, nothing skipped, the run exits 1; the same block on the healthy page passes (saw {_hang.stdout.strip()[-260:]!r})",
+          _healthy.returncode == 0 and _healthy.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _healthy.stdout
+          and _hang.returncode == 1 and "  FAIL  the board, rendered in a browser — headless Chrome did not return index.html within 5 s, tried twice" in _hang.stdout
+          and "skipped here: 0 checks — every check ran" in _hang.stdout and "  skip  " not in _hang.stdout)
 
 # --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
-if _CHROME:
+if _browser("search"):
     try:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve()
@@ -793,12 +899,12 @@ if _CHROME:
             want = {"en": fm.LABELS.get("search.help"), "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("search.help")}
             check(f"R12 · the search placeholder fits the box at its 200 px minimum, in English and in German, measured in Chrome with the box's font; the whole help is the box's title (saw need/min: { {k: (v.get('need'), v.get('min')) for k, v in fits.items()} })",
                   len(fits) == 2 and all(v.get("min") == 200 and v.get("need") and v["need"] <= v["min"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
-    except _ChromeSlow as e_:
-        skip('FM-020 · a whole id searched, rendered', e_)
+    except _ChromeFailed as e_:
+        _hung("search", e_)
         fm.configure(HERE)
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
-if _CHROME:
+if _browser("progress"):
     try:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve()
@@ -827,8 +933,8 @@ if _CHROME:
                   passed == "kept by triage — by rank, then tier")
             check(f"R4 · in that state the triaged line agrees — it names the pass TRIAGE.md records, never 'no triage pass has run yet' (saw: {progress_line.triaged!r})",
                   progress_line.triaged.startswith("judged 2026-09-20 — each also sits in its own section") and "no triage pass" not in progress_line.triaged)
-    except _ChromeSlow as e_:
-        skip('FM-021 · the empty progress section, rendered', e_)
+    except _ChromeFailed as e_:
+        _hung("progress", e_)
         fm.configure(HERE)
 
 # --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
@@ -965,14 +1071,14 @@ with tempfile.TemporaryDirectory() as d:
     finally:
         del os.environ["SHOALMARK_CMD"]
     check("a repository that wraps the tool is named by its own command in every message", code == fm.EXIT_DRIFT and "Run: python3 scripts/tracker.py" in err)
-    if _CHROME:
+    if _browser("cell"):
         try:
             run(root)
             body = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
             shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
             check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
-        except _ChromeSlow as e_:
-            skip("the board's cell shows the display form, rendered", e_)
+        except _ChromeFailed as e_:
+            _hung("cell", e_)
 fm.configure(HERE)
 
 # --- FM-002: a board anyone can brand — three files, four places, the nearest to the viewer wins -------------
@@ -1164,7 +1270,7 @@ with tempfile.TemporaryDirectory() as d:
         _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
         check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
               set(fm.LABELS) - set(_shipped_de) <= {"footer", "tagline"} and not set(_shipped_de) - set(fm.LABELS))
-        if _CHROME:
+        if _browser("german"):
             try:
                 dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout
                 text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
@@ -1186,8 +1292,8 @@ with tempfile.TemporaryDirectory() as d:
                 check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
                       "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
                 (wt / "probe.html").unlink(); (wt / "brand/theme.css").unlink()
-            except _ChromeSlow as e_:
-                skip('C4 · the German board, rendered', e_)
+            except _ChromeFailed as e_:
+                _hung("german", e_)
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
@@ -1312,7 +1418,7 @@ with tempfile.TemporaryDirectory() as d:
         check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark",
               f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
               and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
-        if _CHROME:
+        if _browser("wordmark"):
             try:
                 board_with(repo_wordmark_svg=_WORDMARK, repo_theme_css=":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n")
                 probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
@@ -1331,8 +1437,8 @@ with tempfile.TemporaryDirectory() as d:
                 check(f"0.18.2 · in a browser the running line is shown on the board and on a tracker's view (saw: {shown})",
                       shown == [f"false|true|true|shoalmark · v{_ver}", f"true|false|true|shoalmark · v{_ver}"])
                 (wt / "probe.html").unlink()
-            except _ChromeSlow as e_:
-                skip('0.18.2 · the wordmark, rendered in a browser', e_)
+            except _ChromeFailed as e_:
+                _hung("wordmark", e_)
         _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
         check("C6 · an unreadable theme is a warning that names the two colours and whose file it is — never a failure", c_code == 0 and "person's theme.css: text #888888 on ground #777777" in c_err and "below 4.5:1" in c_err)
         check("C6 · contrast is the WCAG ratio", round(fm.contrast("#000000", "#ffffff")) == 21 and fm.contrast("#777777", "#888888") < 1.5)
@@ -1551,7 +1657,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     tracker(root, "AP-020", extra="next: owner\n", title="buried in the body")      # back for the board: what a malformed ask looks like to the Owner
     run(root); page = (root / "docs/work-tracker/index.html").read_text()
-    if _CHROME:
+    if _browser("queue"):
         try:
             dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
             shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
@@ -1567,8 +1673,8 @@ with tempfile.TemporaryDirectory() as tmp:
             # and an ask with no kind, no age and holding nothing left a dangling separator behind the id
             check("the dialog's head separates the id from its marks the way the rest of the line is separated, and carries none when there are no marks",
                   '<a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
-        except _ChromeSlow as e_:
-            skip("the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions", e_)
+        except _ChromeFailed as e_:
+            _hung("queue", e_)
 fm.configure(HERE)
 
 # --- FM-007: an ask offers CHOICES — one radio each, the recommended one first, Other last -------------------------
@@ -1583,14 +1689,15 @@ with tempfile.TemporaryDirectory() as tmp:
     check("an ask may name its choices: `ask-options:` is one line, and a proposal that is one of them passes the gate", code == 0)
     check("a DRAFT — an `ask:` with `next: review` — needs no recommendation and never enters the Owner's queue: the Principal turns it into an ask",
           "AP-082" not in run(root, "--owner")[1] and "AP-082" not in run(root, "--standup")[1] and [t_["id"] for t_, _a, _h in fm.owner_queue(fm.load_trackers())] == ["AP-080", "AP-081"])
-    if _CHROME:
+    if _browser("dialog"):
         try:
             page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
             def _rows(tid, then=""):
                 """the dialog's radio rows, in order, as the Owner reads them — opened in the browser, not inferred."""
                 p_ = root / "docs/work-tracker" / f"dlg-{tid}.html"
-                # the clipboard stubbed: OK's second screen copies the command at once, and on the macOS runner the real pasteboard
-                # never answered headless Chrome — the run went past its 60 s (FM-035); the FM-013 checks below stub it the same way
+                # the clipboard stubbed (FM-035): OK's second screen copies the command at once. The macOS runner's log shows the 60 s
+                # timeout on this page; the pasteboard is the one unstubbed call on that path, and the stub removes it — the FM-013
+                # checks below stub it the same way. The hang itself was not reproduced here: the cause is inferred, not shown
                 p_.write_text(page + '<script>Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});</script>'
                               + f'<script>setTimeout(()=>{{ACT(T.find(x=>x[0]=="{tid}"),"accept");{then}}},50)</script>', encoding="utf-8")
                 d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", p_.as_uri()]).stdout
@@ -1611,8 +1718,8 @@ with tempfile.TemporaryDirectory() as tmp:
             _, b83 = _rows("AP-080", _pick)
             check("OK gives one command carrying the chosen option VERBATIM — not an index, not the recommendation",
                   '--answer AP-080 accept "c"' in re.sub(r"<[^>]+>", "", b83))
-        except _ChromeSlow as e_:
-            skip("the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command", e_)
+        except _ChromeFailed as e_:
+            _hung("dialog", e_)
     (root / "docs/work-tracker/AP-080-x.md").write_text((root / "docs/work-tracker/AP-080-x.md").read_text(encoding="utf-8").replace('ask-proposal: "b"', 'ask-proposal: "z"'), encoding="utf-8")
     code, _, err = run(root)
     check("a recommendation that is not one of the options is refused — the Owner is never shown a recommendation he cannot pick",
@@ -1635,7 +1742,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and 'value="done"' in menus_[0] and 'l("answer.done")' in menus_[0] and all(f'"{k}"' in page for k in fm.LABELS if k.startswith("answer.sign.")))
     check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
           '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
-    if _CHROME:
+    if _browser("second"):
         try:
             def _sign(clip):
                 """OK pressed in the browser, the second screen read as rendered — with the clipboard there, or with none."""
@@ -1664,8 +1771,8 @@ with tempfile.TemporaryDirectory() as tmp:
             _n0, _n1, none_ = _sign("none")
             check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
                   yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
-        except _ChromeSlow as e_:
-            skip('FM-013 · the second screen, rendered', e_)
+        except _ChromeFailed as e_:
+            _hung("second", e_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -3385,8 +3492,7 @@ check("the version is the `VERSION` file and nothing else — one source of trut
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 print()
-if SKIPS:
-    print(f"skipped here: {len(SKIPS)} — {', '.join(SKIPS)}")
+print(skipped_line())
 if FAILS:
     print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")
     sys.exit(1)
