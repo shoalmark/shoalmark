@@ -307,8 +307,9 @@ OPEN_STATUSES = ("In Progress", "Parked", "Proposed", "Reserved", "?")
 _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling awaited`, in a few words and without a comma
 # FM-030 — WHEN AN ACT OWED TO THE OWNER FALLS DUE: an ISO time with its zone, seconds optional, `Z` for UTC. The zone is not
 # optional — a time without one is a different hour on every machine that reads it — and `parse_due` refuses one that has
-# none; the shape itself carries no `|`, so the schema's table prints it whole.
-DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"     # hour 24 refused (R5)
+# none. A zone's minutes are bounded here, not by `fromisoformat`, which reads `+05:99` as `+06:39` on 3.9 and 3.14
+# alike (the pass's R8); its hours are refused there from 24 up.
+DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:[0-5]\d)?"     # hour 24 refused (R5); a zone's minutes 00–59 (R8)
 WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
 NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an act, and its invite's alarm rings (FM-030 D)
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;

@@ -2889,7 +2889,8 @@ with tempfile.TemporaryDirectory() as tmp:
     good_ = tracker(root, "AP-400", extra=act_ + "due: 2026-09-26T07:30:00+02:00\nwindow: 90\n", title="a read at seven")
     tracker(root, "AP-401", extra="next: run\ndue: 2026-09-26T05:30Z\n", title="UTC, no seconds")
     code_ok, _o, err_ok = run(root)
-    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00", "2026-09-26T24:00+02:00")}
+    r8_ = ("2026-09-26T07:30+05:99", "2026-09-26T07:30-00:60")      # the pass's R8: a zone's minutes past 59
+    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00", "2026-09-26T24:00+02:00", *r8_)}
     for v in bad_:
         tracker(root, "AP-402", extra=f"next: build\ndue: {v}\n", title="a bad time")
         code_, _o, err_ = run(root)
@@ -2903,6 +2904,11 @@ with tempfile.TemporaryDirectory() as tmp:
           and "names no real time" in bad_["2026-13-01T07:30+02:00"][1] and "names no real time" in bad_["2026-09-26T07:30"][1]
           and code_w == fm.EXIT_LINT and "AP-402: `window:`" in err_w and "AP-402: `done:`" in err_w
           and fm.parse_due("2026-09-26T24:00+02:00") is None and fm.parse_due("2026-09-26T23:59+02:00") is not None)      # R5: hour 24, refused on every Python
+    check(f"FM-030 · the pass's R8 · a zone's minutes are 00–59: `+05:99` and `-00:60` are refused by the gate and by `parse_due` on every Python — "
+          f"`fromisoformat` reads them as `+06:39` and `-01:00` — and `+05:59`, `-00:30` pass (saw {[bad_[v][1].strip()[-90:] for v in r8_]})",
+          all(bad_[v][0] == fm.EXIT_LINT and "AP-402: `due:`" in bad_[v][1] for v in r8_) and all(fm.parse_due(v) is None for v in r8_)
+          and fm.parse_due("2026-09-26T07:30+05:59") == datetime.datetime(2026, 9, 26, 1, 31, tzinfo=datetime.timezone.utc)
+          and fm.parse_due("2026-09-26T07:30-00:30") is not None)
     tracker(root, "AP-402", extra="next: build\n", title="fixed")
     good_.write_text(good_.read_text().replace('ask-proposal: "yes, at seven"\n', f'ask-proposal: "yes, at seven"\nanswer: "accepted"\nanswered: {since_}\nanswered-by: holgo\n'))
     git(root, "add", "-A"); git(root, "commit", "-qm", "an act owed, answered")

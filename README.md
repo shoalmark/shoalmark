@@ -276,10 +276,10 @@ What lives where, by convention — no setting names any of it:
 
 `--notify` is meant to run every few minutes, on the Owner's own machine; nothing installs it. It exits 1 when a notice
 could not be posted, so keep what it says in a log. With cron on Linux — cron gives `notify-send` no session bus, so the
-line names it:
+line names it; and the shell opens the log before the tool runs, so the line makes the log's folder first:
 
 ```
-*/5 * * * * cd /path/to/repo && DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus python3 shoalmark.py --notify >> "$HOME/.local/state/shoalmark/notify.log" 2>&1
+*/5 * * * * mkdir -p "$HOME/.local/state/shoalmark" && cd /path/to/repo && DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus python3 shoalmark.py --notify >> "$HOME/.local/state/shoalmark/notify.log" 2>&1
 ```
 
 With launchd on macOS, `~/Library/LaunchAgents/app.shoalmark.notify.plist`, then `launchctl load` it:
