@@ -343,7 +343,8 @@ def front_matter_schema():
                             "board — due, overdue, missed — and in INDEX.md with this time. `--clear-ask` leaves it: the answer is a promise, the act is still owed"),
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
         "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
-                            "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`"),
+                            "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
+                            "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -1480,6 +1481,28 @@ def answer_cmd(words, trackers, supersede=False):
                                      + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, "")))))
 
 
+def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
+    """What an unmerged `answer/<id>` asks of the Owner, read from what is on it. Its own commits — those not in `trunk`,
+    or with no trunk, on no other branch — that are HIS (his name or his email) are never deleted for him: where the
+    tracker's act is open there, `--done`/`--due` are run on it; otherwise it is merged first. `git branch -D` is named
+    only where nothing of his is on it (FM-030 C, as ruled)."""
+    span = [branch, "--not", trunk] if trunk else [branch, "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
+    own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
+    his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
+    if not his:
+        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {branch}`, "
+                f"then `{how['again']}`")
+    said = "; ".join(f"`{sha}` {subject[:60]}" for sha, subject in his[:3]) + (f"; and {len(his) - 3} more" if len(his) > 3 else "")
+    if how["flag"] in ("--done", "--due"):
+        there = git("show", f"{branch}:{rel}")
+        t_ = extract(ROOT / rel, there.stdout) if there.returncode == 0 else None
+        if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
+            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {branch}`, then "
+                    f"`{how['again']}` — it commits on top, and nothing of yours is deleted")
+    return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
+            f"or `git switch {branch}` and run it there")
+
+
 def owner_change(tid, t, how):
     """THE OWNER'S OWN CHANGE ON A TRACKER, the one flow `--answer`, `--done` and `--due` share: who may make it — the
     seats that hold `answer`, or `answerers` — is asked first; then `answer/<id>` is cut from the branch that carries the
@@ -1558,8 +1581,7 @@ def owner_change(tid, t, how):
             # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for him
             trunk = default_trunk(git)
             if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
-                print(f"{flag}: `{branch}` exists and is not merged into `{trunk or 'origin'}` — it may hold work, and nothing is deleted for you. "
-                      f"Clear it with `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` exists and is not merged into `{trunk or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
                 return EXIT_LINT
             if git("branch", "-D", branch).returncode != 0:
                 print(f"{flag}: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
@@ -2008,7 +2030,7 @@ function draw(){
     // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done
     // (Esc too: it is the dialog's own). It says *Copied* only when the clipboard said so: from a file there may be none.
     const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
-      d.innerHTML=`<form method="dialog" class="sign"><h3>${l("answer.sign.title")} · <a href="#=${id}">${id}</a></h3>
+      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>
         <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
         <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
         <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
@@ -2146,7 +2168,7 @@ LABELS = {
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "OK — give me the command", "answer.abort": "abort",
     # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
-    "answer.sign.title": "Sign your answer",
+    "answer.sign.title": "Sign your answer", "act.sign.title": "Sign your act",
     "answer.sign.intro": "Your decision is made. A browser cannot sign it — your terminal does, with your key. Run this command:",
     "answer.sign.copy": "Copy again", "answer.sign.copied": "Copied.",
     "answer.sign.nocopy": "Not copied — this page has no clipboard here (a board opened from a file often has none). Select the command and copy it.",

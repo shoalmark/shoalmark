@@ -948,6 +948,7 @@ acts.reschedule: verschieben
 act.done.title: Erledigt — wo ist das Ergebnis?
 act.done.hint: ein Pfad im Repository, oder wo das Ergebnis liegt
 act.due.title: Verschieben — auf wann?
+act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
 sessions.recent: Sitzungen · {0} am letzten Tag
@@ -2507,9 +2508,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code1, out1, _ = run(root, "--answer", "AP-080", "accept", "the importer")
     first_ = subprocess.run(["git", "-C", str(root), "rev-parse", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip()
     code2, _, err2 = run(root, "--answer", "AP-080", "accept", "again")
-    check(f"RV-479 · after the push `--answer` goes back to the branch it started on; a second one while `answer/<id>` is not merged is refused — exit 4, the branch named with the one command that clears it — and the branch is kept (saw {err2.strip()[:200]!r})",
+    check(f"RV-479 · after the push `--answer` goes back to the branch it started on; a second one while `answer/<id>` is not merged is refused — exit 4, naming his commit on it and never `git branch -D` over his answer (FM-030 C, as ruled) — and the branch is kept (saw {err2.strip()[:200]!r})",
           code1 == 0 and here_() == trunk_ and f"back on `{trunk_}`" in out1 and code2 == fm.EXIT_LINT and "`answer/ap-080` exists and is not merged into `origin/main`" in err2
-          and "`git branch -D answer/ap-080`" in err2 and subprocess.run(["git", "-C", str(root), "rev-parse", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip() == first_
+          and f"it carries your commit(s) — `{first_[:7]}` AP-080: accepted - the importer" in err2 and "git branch -D" not in err2 and "merge it first" in err2 and subprocess.run(["git", "-C", str(root), "rev-parse", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip() == first_
           and here_() == trunk_)
     git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges his answer", "answer/ap-080"); git(root, "push", "-q", "origin", f"{trunk_}:main"); git(root, "fetch", "-q", "origin")
     # he takes it back: revoke, on the tracker that carries the answer — the spent branch is cut fresh, the old answer kept
@@ -2811,6 +2812,21 @@ with tempfile.TemporaryDirectory() as tmp:
           all(f'"{k}"' in page_ for k in ("acts.done", "acts.reschedule", "act.done.title", "act.due.title", "act.sign.step.done", "act.sign.step.due"))
           and 'c("## Acts")' in page_ and "window.OWE=owe" in page_
           and all(k in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")) for k in fm.LABELS if k.startswith(("acts.", "act."))))
+    # an unmerged `answer/<id>` (as ruled): his commits on it are never deleted for him — where the act is open there, the
+    # refusal names the command on that branch; `git branch -D` only where nothing of his is on it
+    git(root, "switch", "-q", start_)
+    tracker(root, "AP-423", extra=f"next: run\ndue: {at_(90)}\n", title="a read later")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-423 scheduled", "--author=impl <implementer@seat>")
+    git(root, "switch", "-q", "-c", "answer/ap-423"); (root / "notes.txt").write_text("a seat's note\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a seat's note", "--author=impl <implementer@seat>"); git(root, "switch", "-q", start_)
+    code_o, _o, err_o = run(root, "--done", "AP-421", "evidence/AP-421/key.md")
+    code_x, _o, err_x = run(root, "--done", "AP-423", "evidence/AP-423/read.md")
+    check(f"FM-030 · C · an unmerged `answer/<id>` that carries his commits is never cleared for him: where the act is open there, the refusal names `--done` on that branch; `git branch -D` only where nothing of his is on it (saw {err_o.strip()[-220:]!r} · {err_x.strip()[-160:]!r})",
+          code_o == code_x == fm.EXIT_LINT and "it carries your commit(s) — " in err_o and "AP-421: due " in err_o
+          and "AP-421's act is open there: `git switch answer/ap-421`, then " in err_o and '--done AP-421 "evidence/AP-421/key.md"`' in err_o and "git branch -D" not in err_o
+          and "nothing of yours is on it — clear it with `git branch -D answer/ap-423`" in err_x and here_() == start_)
+    check("FM-030 · C · `--schema` says what `--done` does to the move: `next: build` where his answer left `next: owner`",
+          "`--done` sets `next: build` — the act done, the seat's move is next" in fm.render_schema())
     if _CHROME:
         def _owe(tid, kind, fill):
             """the act's button pressed in the browser, the field filled, OK pressed — the second screen read as rendered."""
@@ -2831,7 +2847,8 @@ with tempfile.TemporaryDirectory() as tmp:
               "your acts, with their time: 2 AP-420 Will you read production at seven?" in rows_ and f"AP-421 Will you set up the key? · promised {since_}: accepted - this week · no date yet done reschedule" in rows_
               and '--done AP-421 "evidence/AP-421/key.md"' in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
               and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
-              and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_)
+              and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
+              and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
     rm_git(root)
 fm.configure(HERE)
 

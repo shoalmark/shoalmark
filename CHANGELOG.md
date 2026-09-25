@@ -18,13 +18,15 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   minute passing changes a committed file. The board has six new labels, `acts.*`; `examples/de/labels.yaml` carries
   the German.
 - **Done and Reschedule on each act, as copied commands** (FM-030). Two buttons on the act's row open a small dialog —
-  where the result is, or the new time — and OK gives one command on the answer's second screen:
+  where the result is, or the new time — and OK gives one command on the answer's second screen, titled *Sign your act*:
   `--done <id> "<where the result is>"` writes `done:` (the time, and where the result is), hands an action's move
   back to the seat (`next: build`), and records the act under a new `## Acts` section; the act leaves his list.
   `--due <id> <time>` writes the new `due:` and records the old one there, newest last; on a done act it is a new act.
   Both are the Owner's own change, made as `--answer` makes his answer — `answer/<id>`, signed where his seat is
   `signed`, pushed, undone on failure — and refused from a seat without the `answer` right. The dialog's time is the
-  browser's, sent with its zone. `[headings]` gains `acts` (German `Handlungen`); seven new labels. *Nothing to do on
+  browser's, sent with its zone. An unmerged `answer/<id>` is never cleared over his commits: where the act is open on
+  it, the refusal names the command on that branch; otherwise merge it first; `git branch -D` is named only where
+  nothing of his is on it — for `--answer` too. `[headings]` gains `acts` (German `Handlungen`); seven new labels. *Nothing to do on
   upgrade.*
 
 ## 0.18.3 — 2026-09-24

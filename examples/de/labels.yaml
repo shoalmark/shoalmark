@@ -100,6 +100,7 @@ acts.reschedule: verschieben
 act.done.title: Erledigt — wo ist das Ergebnis?
 act.done.hint: ein Pfad im Repository, oder wo das Ergebnis liegt
 act.due.title: Verschieben — auf wann?
+act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
 sessions.recent: Sitzungen · {0} am letzten Tag
