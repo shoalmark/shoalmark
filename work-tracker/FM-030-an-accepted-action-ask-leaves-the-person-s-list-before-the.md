@@ -64,6 +64,13 @@ The digest is what a session's last message leads with, and the standup is the p
 you* on a morning his hands are due tells him the opposite of the truth. If he believes the tool, the act slips, and the
 acts this kind covers are the ones the design reserves for him because they carry risk.
 
+## Raised
+
+*One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts. The Auditor seat's
+line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
+
+- 2026-09-25 · Auditor (8b91dba2), through the Owner · two acts owed to the Owner have no button on his board: FM-007's hardware key (answered 09-22) and path 3's exception (FM-032, answered 2026-09-24 21:32:35, 97fa87a); --owner prints NOTHING NEEDS THE OWNER · undermines: FM-032's answer ("until FM-007's hardware key" has no route to happen), TRIAGE.md path 1
+
 ## Done when
 
 - **An accepted action ask stays on `--standup`** under *YOUR HANDS*, marked **promised**, until a seat clears it.
@@ -95,3 +102,4 @@ acts this kind covers are the ones the design reserves for him because they carr
 | 2026-09-24 | Filed. A first review on an earlier chain found R1–R16; the chain was replaced before its merge to redact (R16); this text closes FM-030's share of R1–R10, and R11–R15 stay open. |
 | 2026-09-24 | Widened a second time, on the Auditor seat's check 24: `next: owner` after an answer; 0.18.3 builds this line (ruling · determination · ceremony → `next: build`; action stays `owner`). |
 | 2026-09-24 | In Progress — 0.18.3 builds its second widening — `next:` after an answer (the Auditor seat's check 24); the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
+| 2026-09-25 | **Raised** by the Auditor seat through the Owner (07:06:48), the line above word for word from his paste: two acts owed to him have no button — FM-007's key, FM-032's path 3 — and `--owner` prints NOTHING NEEDS THE OWNER; it names FM-032's answer and path 1 as undermined, so this tracker is re-judged the same day (his raise rule, `9e48ee8`). |
