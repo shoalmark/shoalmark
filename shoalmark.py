@@ -301,6 +301,7 @@ _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling aw
 # none; the shape itself carries no `|`, so the schema's table prints it whole.
 DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"
 WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
+NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an act, and its invite's alarm rings (FM-030 D)
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
 # these are the same sentences, held by the gate instead (FM-008). They are deliberately generous: an ask that trips
 # one of them is not borderline, it is a paragraph, a second question, or a question already asked.
@@ -1501,6 +1502,166 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
                     f"`{how['again']}` — it commits on top, and nothing of yours is deleted")
     return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
             f"or `git switch {branch}` and run it there")
+
+
+def ics_text(value):
+    """RFC 5545 3.3.11: a TEXT value, its backslash, semicolon, comma and line breaks escaped."""
+    return value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r\n", "\\n").replace("\n", "\\n")
+
+
+def ics_fold(line):
+    """RFC 5545 3.1: a content line longer than 75 octets, folded — CRLF and one space — never inside a UTF-8 character."""
+    parts, cur, size = [], "", 0
+    for ch in line:
+        n = len(ch.encode("utf-8"))
+        if size + n > (74 if parts else 75):              # a continuation's leading space is one of its 75 octets
+            parts.append(cur)
+            cur, size = "", 0
+        cur, size = cur + ch, size + n
+    return "\r\n ".join(parts + [cur])
+
+
+ACT_RECORD_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2}\*\* · ", re.M)     # one record under `## Acts`: done, scheduled, rescheduled
+
+
+def invite_cmd(tid, trackers):
+    """`--invite <id>` (FM-030 D; his word: *invites + notifications*) — one calendar file for the act a tracker owes the
+    Owner, beside its evidence: `<tracker dir>/evidence/<id>/<id>-act.ics`. RFC 5545, as the standup's invite is, but at
+    the act's own instant, in UTC: DTSTART its `due:`, a DURATION of its `window:`, an alarm NOTIFY_AHEAD minutes before.
+    The UID is the act's and SEQUENCE counts its records under `## Acts`, so the file written after a `--due` replaces
+    the event when it is imported again. Deterministic: the same act writes the same bytes. The file is the Owner's to
+    import, and to commit or not; nothing else is written."""
+    tid = tid.upper()
+    t = next((x for x in trackers if x["id"] == tid), None)
+    act = act_of(t) if t else None
+    if not act:
+        print(f"--invite: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`", file=sys.stderr)
+        return EXIT_LINT
+    when = parse_due(act[3])
+    if not when:
+        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {tid} <time>` first", file=sys.stderr)
+        return EXIT_LINT
+    what, answer, answered, due, window = act
+    body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))[1]
+    at = ACTS_HEAD_RE.search(body)
+    records = re.split(r"^#{1,3}\s", body[at.end():], maxsplit=1, flags=re.M)[0] if at else ""
+    sequence = len(ACT_RECORD_RE.findall(records))
+    utc = lambda d: d.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    name = CONFIG["name"] or ROOT.name
+    said = ((f"Promised {answered}: {answer}. " if answer else "") + f"Owed to you, due {due}; it can still be done {window} minutes after. "
+            f'Done: {CMD} --done {tid} "<where the result is>" — moved: {CMD} --due {tid} <time>')
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT",
+             f"UID:act-{tid.lower()}-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", "DTSTAMP:20000101T000000Z",
+             f"SEQUENCE:{sequence}", f"DTSTART:{utc(when)}", f"DURATION:PT{window}M",
+             "SUMMARY:" + ics_text(f"{name} — {tid}: {what}"), "DESCRIPTION:" + ics_text(said),
+             "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + ics_text(f"{tid}: {what}"), f"TRIGGER:-PT{NOTIFY_AHEAD}M", "END:VALARM",
+             "END:VEVENT", "END:VCALENDAR"]
+    out = TRACKER_DIR / "evidence" / tid / f"{tid}-act.ics"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(("\r\n".join(ics_fold(l) for l in lines) + "\r\n").encode("utf-8"))      # CRLF, on every system
+    print(f"wrote {out.relative_to(ROOT).as_posix()} — {tid} due {due} ({utc(when)} UTC), {window} minutes, a reminder "
+          f"{NOTIFY_AHEAD} minutes before; import it into your calendar")
+    return EXIT_OK
+
+
+def state_dir():
+    """The tool's own state — never committed, never in the repository: `$XDG_STATE_HOME/shoalmark`, else
+    `%LOCALAPPDATA%/shoalmark` on Windows, else `~/.local/state/shoalmark`. None where there is no home at all."""
+    try:
+        base = (os.environ.get("XDG_STATE_HOME") or (os.environ.get("LOCALAPPDATA") if sys.platform == "win32" else "")
+                or pathlib.Path.home() / ".local" / "state")
+    except (RuntimeError, KeyError):
+        return None
+    return pathlib.Path(base) / "shoalmark"
+
+
+def notify_argv(title, body, platform=None, which=None):
+    """The command that posts one system notification on `platform`, or None where none is present: macOS `osascript`,
+    Linux `notify-send`, Windows PowerShell's toast. Pure — what it WOULD run — so a test reads every platform's."""
+    platform, which = platform or sys.platform, which or shutil.which
+    if platform == "darwin" and which("osascript"):
+        q = lambda v: '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        return ["osascript", "-e", f"display notification {q(body)} with title {q(title)}"]
+    if platform.startswith("linux") and which("notify-send"):
+        return ["notify-send", "--app-name=shoalmark", "--", title, body]
+    if platform == "win32" and which("powershell"):
+        q = lambda v: "'" + v.replace("'", "''") + "'"
+        app = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe"     # PowerShell's own AppUserModelID
+        return ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; "
+                "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+                f"$t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode({q(title)})) > $null; "
+                f"$t.Item(1).AppendChild($x.CreateTextNode({q(body)})) > $null; "
+                f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier({q(app)}).Show([Windows.UI.Notifications.ToastNotification]::new($x))"]
+    return None
+
+
+def post_notice(title, body):
+    """Post one notification: `posted`; `printed` where this system has no notifier — the printed line is the notice; or
+    `NOT posted — why`, which is not remembered, so the next run tries again."""
+    argv = notify_argv(title, body)
+    if not argv:
+        return "printed — no notifier here"
+    try:
+        r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"NOT posted — {type(e).__name__}"
+    return "posted" if r.returncode == 0 else "NOT posted — " + ((r.stderr or r.stdout or "").strip().splitlines() or [f"exit {r.returncode}"])[-1][:120]
+
+
+def notify_cmd(trackers):
+    """`--notify` (FM-030 D; his word: *invites + notifications*) — one system notification for every act with a `due:`
+    that falls due within NOTIFY_AHEAD minutes, is overdue, or was missed: ONE per act per state. What was posted is
+    remembered in `state_dir()/notified.json`, per repository, keyed on the act, its `due:` and the state — a `--due` that
+    moves it posts again, and nothing else does; a notice that could not be posted is not remembered. Meant to be
+    scheduled by the person — the README has a launchd and a cron line; the tool installs nothing. It reads the
+    trackers and writes nothing in the repository."""
+    now, name = datetime.datetime.now(datetime.timezone.utc), CONFIG["name"] or ROOT.name
+    store = state_dir()
+    path = store / "notified.json" if store else None
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8")) if path and path.is_file() else {}
+        seen = seen if isinstance(seen, dict) else {}
+    except (OSError, ValueError):
+        seen = {}
+    had, keep, lines, before, later, failed = set(seen.get(str(ROOT)) or []), set(), [], 0, 0, 0
+    for t in sorted(trackers, key=lambda t: (t["kind"], t["num"])):
+        act = act_of(t)
+        when = parse_due(act[3]) if act else None
+        if not when:
+            continue
+        state = act_state(act, now)
+        if state == "due" and now < when - datetime.timedelta(minutes=NOTIFY_AHEAD):
+            later += 1
+            continue
+        mark = f"{t['id']} {act[3]} {state}"
+        if mark in had:
+            keep.add(mark)
+            before += 1
+            continue
+        said = f"due in {max(1, math.ceil((when - now).total_seconds() / 60))} min" if state == "due" else state
+        how = post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}")
+        lines.append(f"  {t['id']} — {said} · {act[0]} · {act_words(act, now)} — {how}")
+        if how.startswith("NOT"):
+            failed += 1
+        else:
+            keep.add(mark)
+    where = "NOT remembered — there is no home for the tool's state; the next run posts again"
+    if path:
+        seen = {k: v for k, v in seen.items() if k != str(ROOT)}
+        if keep:
+            seen[str(ROOT)] = sorted(keep)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            put(path, json.dumps(seen, indent=1, ensure_ascii=False) + "\n")
+            where = f"remembered in {path}"
+        except OSError as e:
+            where = f"NOT remembered — {path}: {e.strerror or e}; the next run posts again"
+    print(f"--notify: {len(lines) - failed} posted · {before} posted before · {later} not yet within {NOTIFY_AHEAD} minutes"
+          + (f" · {failed} NOT posted" if failed else "") + f" — {where}")
+    for l in lines:
+        print(l)
+    return EXIT_OK
 
 
 def owner_change(tid, t, how):
@@ -3208,6 +3369,23 @@ def act_of(t):
             t.get("answered", "") if promised else "", t.get("due", ""), window)
 
 
+def act_state(act, now=None):
+    """An act's state by the clock — the page's second rule (`actstate`), read in Python for `--standup`, `--owner` and
+    `--notify`: `nodate` · `due` before its time · `overdue` after it · `missed` once `window:` minutes have passed."""
+    when = parse_due(act[3])
+    if not when:
+        return "nodate"
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    return "due" if now < when else "overdue" if now < when + datetime.timedelta(minutes=act[4]) else "missed"
+
+
+def act_words(act, now=None):
+    """The act's state in the board's own words — its `acts.*` labels, as the built-in English has them."""
+    state, when = act_state(act, now), act[3].replace("T", " ")
+    return (LABELS["acts.nodate"] if state == "nodate" else LABELS["acts.missed"].format(when, act[4]) if state == "missed"
+            else LABELS["acts." + state].format(when))
+
+
 def shape_words(shape):
     """A shape for a reader: an enumeration as its words, else the expression itself."""
     return "one of " + " · ".join(shape.split("|")) if re.fullmatch(r"[A-Za-z| ]+", shape) else f"shape `{shape}`"
@@ -4520,6 +4698,12 @@ def parse_args(argv):
              "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
     add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
+    add("--invite", metavar="ID", help="an act owed to the Owner as a calendar file (FM-030): `<tracker dir>/evidence/<id>/<id>-act.ics` — its `due:` in "
+                                       "UTC, a DURATION of its `window:`, a reminder 30 minutes before; RFC 5545. Import it; after a `--due`, write it again")
+    add("--notify", action="store_true", help="one system notification per act owed to the Owner that falls due within 30 minutes, is overdue or was "
+                                              "missed (FM-030) — once per act per state, remembered outside the repository: $XDG_STATE_HOME/shoalmark/"
+                                              "notified.json, else ~/.local/state/shoalmark on macOS and Linux, %%LOCALAPPDATA%%/shoalmark on Windows. "
+                                              "Schedule it yourself: the README has a launchd and a cron line")
     add("--done", nargs=2, metavar=("ID", "WHERE"), help="the Owner's act is done (FM-030): `--done <id> \"<where the result is>\"` writes `done:` — the time and "
                                                         "where its result is — and its record under `## Acts`; the act leaves his list. Made as --answer makes his answer: on "
                                                         "`answer/<id>`, signed where his seat is `signed`, pushed. The board's *done* button copies it")
@@ -5222,7 +5406,7 @@ def main(argv=None):
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
-    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related) else "read"
+    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
     refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
@@ -5234,6 +5418,10 @@ def main(argv=None):
         return refused
     if args.new:
         return new_tracker(args.new, trackers, args.tags)
+    if args.invite:
+        return invite_cmd(args.invite, trackers)
+    if args.notify:
+        return notify_cmd(trackers)
     if args.owner:
         code = owner_digest(trackers)
         queue_section()

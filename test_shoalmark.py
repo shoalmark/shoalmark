@@ -7,6 +7,7 @@ in-process with an argv list, so a non-zero exit is observable without a subproc
 import hashlib
 import importlib.util
 import io
+import json
 import os
 import re
 import subprocess
@@ -2849,6 +2850,90 @@ with tempfile.TemporaryDirectory() as tmp:
               and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
               and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
               and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.4 D: an invite and a notification per act — his word, *invites + notifications*. `--invite <id>` is an
+#     RFC 5545 file beside the tracker's evidence; `--notify` posts once per act per state, remembered outside the repository
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    (root / "shoalmark.toml").write_text('name = "d"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    utc_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    long_ = "the read of production, with a comma; and a semicolon — long enough to fold across the seventy-five octets RFC 5545 allows a line"
+    tracker(root, "AP-430", extra=f"next: run\ndue: {at_(10)}\nwindow: 45\n", title=long_)
+    tracker(root, "AP-431", extra=f"next: run\ndue: {at_(-10)}\n", title="overdue")
+    tracker(root, "AP-432", extra=f"next: run\ndue: {at_(-120)}\nwindow: 30\n", title="missed")
+    tracker(root, "AP-433", extra=f"next: run\ndue: {at_(300)}\n", title="later", body="## What is true now\n\n**One thing is left.**\n\n## Acts\n\n"
+            f"**{since_}** · scheduled — due {at_(200)} · later · holgo\n\n**{since_}** · rescheduled — was due {at_(200)}, now due {at_(300)} · later · holgo\n\n## Done when\n\nit is.\n")
+    tracker(root, "AP-434", extra=f'next: owner\nask: "Will you set up the key?"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes"\n'
+                                  f'answer: "accepted - after the scoring"\nanswered: {since_}\nanswered-by: holgo\n', title="no date yet")
+    tracker(root, "AP-435", extra=f'next: run\ndue: {at_(-10)}\ndone: "{at_(-5)} · evidence/AP-435/read.md"\n', title="done")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>")
+    code_, out_, err_ = run(root, "--invite", "ap-430")
+    ics_ = root / "docs/work-tracker/evidence/AP-430/AP-430-act.ics"
+    raw_ = ics_.read_bytes() if ics_.exists() else b""
+    lines_ = raw_.decode("utf-8").replace("\r\n ", "").split("\r\n")
+    code2_, _o, _e = run(root, "--invite", "AP-430")
+    check(f"FM-030 · D · `--invite <id>` writes one RFC 5545 file beside the tracker's evidence and prints its path: the act's time in UTC, a DURATION of its window, an alarm 30 minutes before, CRLF, every line at most 75 octets, its text escaped — and the same bytes on a second run (saw {out_.strip()!r} · {err_.strip()[-120:]!r})",
+          code_ == code2_ == 0 and out_.startswith("wrote docs/work-tracker/evidence/AP-430/AP-430-act.ics — AP-430 due ")
+          and lines_[:4] == ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT"] and lines_[-3:] == ["END:VEVENT", "END:VCALENDAR", ""]
+          and f"DTSTART:{utc_(10)}" in lines_ and "DURATION:PT45M" in lines_ and "SEQUENCE:0" in lines_
+          and lines_[lines_.index("BEGIN:VALARM"):lines_.index("END:VALARM") + 1] == ["BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + fm.ics_text("AP-430: " + long_), "TRIGGER:-PT30M", "END:VALARM"]
+          and "SUMMARY:d — AP-430: the read of production\\, with a comma\\; and a semicolon — long enough to fold across the seventy-five octets RFC 5545 allows a line" in lines_
+          and b"\n" not in raw_.replace(b"\r\n", b"") and all(len(l_) <= 75 for l_ in raw_.split(b"\r\n")) and b"\r\n " in raw_
+          and next(l_ for l_ in lines_ if l_.startswith("UID:")).startswith("UID:act-ap-430-") and ics_.read_bytes() == raw_)
+    run(root, "--invite", "AP-433")
+    seq_ = (root / "docs/work-tracker/evidence/AP-433/AP-433-act.ics").read_bytes().decode("utf-8")
+    code_n, _o, err_n = run(root, "--invite", "AP-434")
+    code_d, _o, err_d = run(root, "--invite", "AP-435")
+    check(f"FM-030 · D · a moved act's invite carries a higher SEQUENCE — its records under `## Acts` — so importing it again replaces the event; an act with no `due:` yet and one that is done have none (saw {err_n.strip()!r})",
+          "SEQUENCE:2\r\n" in seq_ and f"DTSTART:{utc_(300)}\r\n" in seq_ and code_n == code_d == fm.EXIT_LINT
+          and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and "--due AP-434 <time>" in err_n and "AP-435 owes the Owner no act" in err_d)
+    check("FM-030 · D · the notifier is the system's own, each where present: macOS `osascript`, Linux `notify-send`, Windows PowerShell's toast — its text quoted for that shell — and none where there is none",
+          fm.notify_argv('t "one"', 'b \\ "two"', "darwin", lambda n: "/usr/bin/" + n) == ["osascript", "-e", 'display notification "b \\\\ \\"two\\"" with title "t \\"one\\""']
+          and fm.notify_argv("t", "-b", "linux", lambda n: "/usr/bin/" + n) == ["notify-send", "--app-name=shoalmark", "--", "t", "-b"]
+          and (lambda a_: a_[:4] == ["powershell", "-NoProfile", "-NonInteractive", "-Command"] and "CreateTextNode('it''s')" in a_[4] and "ToastText02" in a_[4])(fm.notify_argv("it's", "b", "win32", lambda n: "C:\\" + n))
+          and fm.notify_argv("t", "b", "darwin", lambda n: None) is None and fm.notify_argv("t", "b", "sunos5", lambda n: "/x") is None)
+    posted_, real_post_, state_was_ = [], fm.post_notice, os.environ.get("XDG_STATE_HOME")
+    fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
+    os.environ["XDG_STATE_HOME"] = str(base / "state")
+    try:
+        code_1, out_1, _e = run(root, "--notify")
+        first_ = [t_ for t_, _b in posted_]
+        stored_ = json.loads((base / "state/shoalmark/notified.json").read_text(encoding="utf-8"))
+        code_2, out_2, _e = run(root, "--notify")
+        second_ = len(posted_)
+        clean_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", "docs/work-tracker/*.md", "shoalmark.toml"], capture_output=True, text=True, env=_ENV).stdout
+        check(f"FM-030 · D · `--notify` posts one notification for each act due within 30 minutes, overdue or missed — not a later one, not one with no date, not a done one — and says what it posted and where it remembers it (saw {out_1.strip()!r} · {first_})",
+              code_1 == 0 and [t_.split(" — ")[0] for t_ in first_] == ["d · AP-430", "d · AP-431", "d · AP-432"]
+              and first_[0].startswith("d · AP-430 — due in ") and first_[1] == "d · AP-431 — overdue" and first_[2] == "d · AP-432 — missed"
+              and posted_[2][1] == f"missed · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result"
+              and out_1.startswith(f"--notify: 3 posted · 0 posted before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}")
+              and "  AP-431 — overdue · overdue · overdue — due " in out_1 and sorted(stored_[str(root)]) == sorted([f"AP-430 {at_(10)} due", f"AP-431 {at_(-10)} overdue", f"AP-432 {at_(-120)} missed"]))
+        check(f"FM-030 · D · …and ONE per act per state: a second run posts nothing, and nothing in the repository is written — the memory is the tool's own, outside it (saw {out_2.strip()!r})",
+              code_2 == 0 and second_ == 3 and out_2.strip() == f"--notify: 0 posted · 3 posted before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}"
+              and clean_ == "" and not (root / ".shoalmark").exists())
+        t431_ = root / "docs/work-tracker/AP-431-x.md"
+        t431_.write_text(t431_.read_text(encoding="utf-8").replace(f"due: {at_(-10)}", f"due: {at_(20)}"), encoding="utf-8")
+        tracker(root, "AP-436", extra=f"next: run\ndue: {at_(-5)}\n", title="a notifier that fails")
+        fm.post_notice = lambda title, body: (posted_.append((title, body)), "NOT posted — no display" if "AP-436" in title else "posted")[1]
+        code_3, out_3, _e = run(root, "--notify")
+        fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
+        code_4, out_4, _e = run(root, "--notify")
+        check(f"FM-030 · D · an act moved by a new `due:` is a new notification; one that could not be posted is not remembered, and the next run posts it (saw {out_3.strip()!r} · {out_4.strip()!r})",
+              code_3 == code_4 == 0 and [t_ for t_, _b in posted_[3:5]] == ["d · AP-431 — due in 20 min", "d · AP-436 — overdue"]
+              and "1 posted · 2 posted before · 1 not yet within 30 minutes · 1 NOT posted" in out_3 and "AP-436 — overdue · a notifier that fails" in out_3 and out_3.rstrip().endswith("NOT posted — no display")
+              and [t_ for t_, _b in posted_[5:]] == ["d · AP-436 — overdue"] and "1 posted · 3 posted before" in out_4)
+    finally:
+        fm.post_notice = real_post_
+        if state_was_ is None:
+            os.environ.pop("XDG_STATE_HOME", None)
+        else:
+            os.environ["XDG_STATE_HOME"] = state_was_
     rm_git(root)
 fm.configure(HERE)
 

@@ -39,6 +39,21 @@ mitgeben, beim Ablehnen sagen Sie, warum. OK gibt Ihnen einen Befehl — `python
 AP-007 accept` —, der die Antwort schreibt, mit Ihrem Schlüssel signiert und pusht. Die Antwort ist Ihr eigener
 Commit: [Ihre Antwort ist Ihr Commit](signing.md).
 
+## Ihre Handlungen, mit ihrer Zeit
+
+Manche Antworten sind Zusagen: *ja, ich lese die Produktion um sieben*. Was folgt, ist eine Handlung, die nur Sie tun
+können, und sie hat eine Zeit — `due:` im Arbeitspaket, und ein Fenster danach (`window:`, 60 Minuten, wenn nichts
+anderes dasteht). Die Tafel listet Ihre Handlungen unter den Fragen, jede **fällig**, **überfällig** nach ihrer Zeit
+oder **versäumt**, wenn ihr Fenster ohne Ergebnis verstrichen ist. Jede trägt zwei Knöpfe: **erledigt** fragt, wo das
+Ergebnis liegt, und gibt Ihnen `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`;
+**verschieben** fragt nach der neuen Zeit und gibt Ihnen `--due AP-007 <Zeit>`. Beides wird signiert und gepusht wie
+eine Antwort.
+
+Zwei Erinnerungen, wenn Sie wollen. `--invite AP-007` schreibt die Handlung als Kalenderdatei — ihre Zeit, ihr
+Fenster, eine Erinnerung 30 Minuten vorher — neben die Belege des Arbeitspakets; importieren Sie sie. `--notify`
+zeigt eine Systembenachrichtigung für jede Handlung, die in 30 Minuten fällig, überfällig oder versäumt ist, jede
+einmal; planen Sie den Aufruf selbst ein (das README hat eine cron- und eine launchd-Zeile).
+
 ## Welches Review unabhängig war
 
 Bevor Arbeit bei Ihnen zum Mergen ankommt, prüft sie ein Reviewer, und sein Urteils-Commit nennt den Stand, den er

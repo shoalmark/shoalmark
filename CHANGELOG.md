@@ -26,8 +26,17 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `signed`, pushed, undone on failure — and refused from a seat without the `answer` right. The dialog's time is the
   browser's, sent with its zone. An unmerged `answer/<id>` is never cleared over his commits: where the act is open on
   it, the refusal names the command on that branch; otherwise merge it first; `git branch -D` is named only where
-  nothing of his is on it — for `--answer` too. `[headings]` gains `acts` (German `Handlungen`); seven new labels. *Nothing to do on
-  upgrade.*
+  nothing of his is on it — for `--answer` too. `[headings]` gains `acts` (German `Handlungen`); eight new labels.
+  *Nothing to do on upgrade.*
+- **An invite and a notification per act** (FM-030; his word, 2026-09-25: *Better than only invites would be invites +
+  notifications*). `--invite <id>` writes `<tracker dir>/evidence/<id>/<id>-act.ics`, RFC 5545 as the standup's invite
+  is: the act's `due:` in UTC, a DURATION of its `window:`, an alarm 30 minutes before, CRLF, folded at 75 octets, the
+  same bytes for the same act; its SEQUENCE counts the act's records, so the file written after a `--due` replaces the
+  event. `--notify` posts one system notification per act due within 30 minutes, overdue or missed — `osascript`,
+  `notify-send`, PowerShell's toast, else a printed line — once per act per state, remembered in
+  `$XDG_STATE_HOME/shoalmark/notified.json` (`~/.local/state/shoalmark/`, `%LOCALAPPDATA%\shoalmark\` on Windows),
+  never in the repository; a notice that could not be posted is tried again. The README has a cron and a launchd
+  line; the tool installs nothing. *Nothing to do on upgrade; schedule `--notify` if you want it.*
 
 ## 0.18.3 — 2026-09-24
 
