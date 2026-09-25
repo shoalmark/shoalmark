@@ -49,6 +49,11 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   as it is, the record of the first judgement, claims no rank, and each run names it: *superseded on this sheet by
   the later row*. The second run applies nothing. `--triage` prints the rule, *ONE TRACKER, TWO ROWS*. *Nothing to do
   on upgrade; a seat that struck the earlier row may leave it in from now on.*
+- **The record names the answer's signing commit** (FM-029; the Auditor seat's AU-29). `--clear-ask`'s record
+  under `## Asks` gains `**signed** — <sha> · <G|N|U>`: the commit that wrote the `answer:` line and what git says of
+  its signature where the record is written (`%G?` — G good, U good from a key not trusted here, N none). An answer
+  not yet committed says `not committed · N`; under Subversion there is no line. The key's tier is not printed yet
+  (FM-007). *Nothing to do on upgrade; records written before keep what they have.*
 
 ## 0.18.3 — 2026-09-24
 

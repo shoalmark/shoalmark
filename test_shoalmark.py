@@ -3019,6 +3019,43 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-029, 0.18.4 G: the record `--clear-ask` writes names the commit that signed the answer — `**signed** — <sha> ·
+#     <G|N|U>` (the Auditor seat's AU-29); the tier is not printed yet
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                   ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "g"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q: (f'next: build\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+                      f'answer: "accepted - yes"\nanswered: {since_}\nanswered-by: holgo\n')
+    tracker(root, "AP-450", extra=ask_("Ship the launcher first?"), title="signed")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-450: accepted - yes", "-S", "--author=holgo <h@x>")
+    signed_sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    tracker(root, "AP-451", extra=ask_("Ship the importer first?"), title="unsigned")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-451: accepted - yes", "--author=holgo <h@x>")
+    plain_sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    tracker(root, "AP-452", extra=ask_("Ship the docs first?"), title="not committed")
+    records_ = {}
+    for tid_ in ("AP-450", "AP-451", "AP-452"):
+        code_, _o, err_ = run(root, "--clear-ask", tid_, "build")
+        text_ = (root / f"docs/work-tracker/{tid_}-x.md").read_text(encoding="utf-8")
+        records_[tid_] = (code_, text_.split("## Asks")[1] if "## Asks" in text_ else err_)
+    check(f"FM-029 · G · `--clear-ask`'s record names the commit that signed the answer and what git says of its signature — G for a good one, N for none; an answer not yet committed says so (saw {records_})",
+          all(c_ == 0 for c_, _r in records_.values())
+          and f"**relation** — accepted the proposal\n**signed** — {signed_sha_} · G\n" in records_["AP-450"][1]
+          and f"**signed** — {plain_sha_} · N\n" in records_["AP-451"][1] and "**signed** — not committed · N\n" in records_["AP-452"][1])
+    git(root, "add", "-A"); code_, _o, err_ = run(root, "--print-written")
+    code_a, out_a, _e = run(root, "--answered")
+    check(f"FM-029 · G · the new line reads as part of the record: the gate passes the cleared asks and `--answered` still reads each relation from its `**relation** —` line (saw {err_.strip()[-200:]!r})",
+          code_ == 0 and code_a == 0 and "nowhere in the body" not in err_ and out_a.count("· accepted the proposal") == 2 and "signed" not in out_a)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()

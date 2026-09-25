@@ -4414,13 +4414,28 @@ def clear_ask(words, trackers):
     # the relation goes with the record (FM-029): the proposal and the options leave with the ask, and a record without
     # it could never say again whether the answer was the proposal
     block = (f'**{t.get("answered") or datetime.date.today().isoformat()}** · {t["ask"]}\n'
-             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' if t.get("answer")
+             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' + signed_line(path) if t.get("answer")
                 else "**withdrawn** — no answer was given\n"))
     body = append_record(body, ASKS_HEAD_RE, HEAD["asks"], block)
     put(path, "\n".join(kept) + body)
     print(f'{tid}: the exchange is in the body under `## {HEAD["asks"]}`, the ask is cleared, `next: {move}`.\n'
           f'  commit {path.relative_to(ROOT).as_posix()} — the gate refuses an answer removed without its record')
     return EXIT_OK
+
+
+def signed_line(path):
+    """FM-029, the Auditor seat's AU-29 — the record names the commit that signed the answer: `**signed** — <sha> · <G|N|U>`,
+    the commit that wrote the `answer:` line and what git says of its signature here (`%G?`: G good, U good from a key
+    not trusted here, N none; B, E, X, Y, R as git has them). The tier is not printed yet (FM-007). Under Subversion the
+    server authenticated the committer and there is no signature to name: no line. An answer not yet committed:
+    `not committed · N`."""
+    if vcs() != "git":
+        return ""
+    commit = line_author(path, "answer:")[3]
+    if not commit:
+        return "**signed** — not committed · N\n"
+    said = (git_out("log", "-1", "--format=%G?", commit) or "").strip() or "N"
+    return f"**signed** — {commit[:7]} · {said}\n"
 
 
 def append_record(body, head_re, word, block):
