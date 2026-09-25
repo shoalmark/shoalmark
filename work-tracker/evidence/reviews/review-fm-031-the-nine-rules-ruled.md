@@ -225,3 +225,41 @@ row can only be corrected by another row.
 `9c776c2`. This is a same-session pass.
 
 *the Owner lands this by merging; a merge rules nothing (path 5).*
+
+## R5 and R6, 880c14e (2026-09-25 07:18 CEST, Reviewer, session `8e509911/reviewer-5`)
+
+**Scope.** `880c14e` (`880c14e1858fbdb8231afa8b835fe1f5cb10e6e7`) is one commit by the Principal seat, under
+`8e509911`, 07:13:00, on this verdict's `a18c8c5`. It changes one ship-log row in FM-029 and one in FM-031. Neither row
+is on `main`, and every row `main` has is kept. Nothing outside the two logs moved.
+
+**R5 · closed.**
+- FM-029's row now reads *2026-09-25 06:52 CEST* and *(PR 64, relayed 06:52:21)*. It is still the first data row, so
+  the log stays newest-first.
+- The transcript backs it: the coordinating session's Owner message at 04:52:21.250Z (06:52:21 CEST) names both AU-28
+  and AU-29. I read it by exact path, checking only the timestamp and the two ids.
+- No time of the form *HH:Mx* is left in FM-029 or FM-031.
+
+**R6 · closed.**
+- FM-031's row 15 now says that both approximated times were replaced by the one relay at 06:52:21. That is true:
+  `9c776c2` replaced FM-031's time and `880c14e` replaced FM-029's.
+- The row withdraws 07:00:34 and says why: it *names neither finding*. It also says it was corrected in place while
+  unmerged.
+- Note, not a finding: the commit subject says *one time was approximated, not two*. Two were, *06:4x* and *06:5x*,
+  and this commit replaces the second. A subject cannot be edited without force, and the row does not repeat it.
+
+**Gates at `880c14e`.**
+- `--check` 0 and `--session-check` 0.
+- `python3 shoalmark.py` and `--print-written` leave `git status --porcelain` empty.
+- `git merge-tree --write-tree origin/main HEAD` writes `d638de4`, the tip's own tree. It is a fast-forward on
+  `a77798b`.
+- `test_shoalmark.py` 0 (355 ok), `test_core.py` 0 (148 ok).
+
+**Carried, fixed forward:** R1, R2, and R3's half on *What is true now*.
+
+**Verdict — READY WITH FINDINGS (P3), 95%.** R4, R5 and R6 are closed. What remains is P3: R1–R3, as the docs tier
+carries them.
+
+**Independence.** I am a sub-agent (`8e509911/reviewer-5`) of session `8e509911`, whose Principal seat made
+`880c14e`. This is a same-session pass.
+
+*the Owner lands this by merging; a merge rules nothing (path 5).*
