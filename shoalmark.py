@@ -3028,7 +3028,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
     "judged_before_build": ("`true` or `false` (the default)",
                             "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
                             "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
-                            "`In Progress`; else it is refused, and so is one that names none. The pre-commit hook judges the commit being made by its branch; "
+                            "`In Progress`; else it is refused, and so is one that names none. The commit-msg hook (`--commit-msg`) judges the commit being made, with its subject, before it is made; "
                             "`--check` judges each commit of the branch since `origin`'s default branch, a merge by the commits it carries; on the default "
                             "branch nothing is judged. `--check` says whether it is on"),
 }
@@ -3624,13 +3624,13 @@ def session_problems():
 
 
 def session_check():
-    """`--session-check`: the session rule on the commit being made — and, where `judged_before_build` is on, the judgement
-    rule (FM-033) — and nothing else: cheap enough for every commit. The full gate runs only when a tracker, the
-    configuration or the tool is staged; without this, a seat's code-only commit would be judged by no automatic run at
-    all (R4)."""
+    """`--session-check`: the session rule on the commit being made, and nothing else — cheap enough for every commit.
+    The full gate runs only when a tracker, the configuration or the tool is staged; without this, a seat's code-only
+    commit would be judged by no automatic run at all (R4). FM-033's judgement needs the commit's subject, which the
+    pre-commit stage has not got: it is the commit-msg hook's (`--commit-msg`)."""
     global COMMITTING
     COMMITTING = True
-    problems = session_problems() + build_problems()
+    problems = session_problems()
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK
@@ -3726,10 +3726,10 @@ def judge_commits(commits, branch):
                 break
         else:
             if not ids:
-                reasons = [f"names no tracker: no {'/'.join(KINDS)}-N in its subject, and its branch names none (`<kind>/<NNN>-…`)" if commit
-                           else f"names no tracker: its branch {f'`{branch}`' if branch else '— a detached HEAD —'} is no `<kind>/<NNN>-…`"]
+                reasons = [f"names no tracker: no {'/'.join(KINDS)}-N in its subject, and "
+                           + (f"its branch `{branch}` names none (`<kind>/<NNN>-…`)" if branch else "a detached HEAD names none")]
         if reasons:
-            who = f'commit {commit[:7]} "{first_words(subject, 60)}"' if commit else "this commit"
+            who = f'commit {commit[:7]} "{first_words(subject, 60)}"' if commit else f'this commit "{first_words(subject, 60)}"'
             more = f" (+{len(outside) - 1} more)" if len(outside) > 1 else ""
             out.append(f"refused: {who} changes {outside[0]}{more} outside {rel} — {'; '.join(reasons)} — {BUILD_WHY}")
     return out
@@ -3738,12 +3738,17 @@ def judge_commits(commits, branch):
 _BUILD = None
 
 
-def build_judgement():
-    """(refusals, the one line `--check` says) — FM-033's gate, where `judged_before_build` is on. The pre-commit run judges
-    the commit being made at HEAD by its branch (a merge: each commit it brings, the trunk's aside, at its own parent by its
-    own subject; its own change never); any other run judges each commit of `merge-base(origin's default, HEAD)..HEAD`,
-    merges walked, not judged. On the default branch nothing is judged. Read once per run."""
+def build_judgement(subject=None):
+    """(refusals, the one line `--check` says) — FM-033's gate, where `judged_before_build` is on. At commit time it runs
+    where the subject is known — the commit-msg hook, `--commit-msg`, `subject` its message's first line — and judges the
+    commit being made at HEAD exactly as the history is judged: the subject's ids, else the branch (a merge: each commit it
+    brings, the trunk's aside, at its own parent by its own subject; its own change never). The pre-commit run, which has
+    no message yet, judges nothing here: judged by its branch alone, `FM-007: …` on a branch named for FM-029 passed the
+    hook and failed `--check` (the cold review's R1). Any other run judges each commit of `merge-base(origin's default,
+    HEAD)..HEAD`, merges walked, not judged. On the default branch nothing is judged. Read once per run."""
     global _BUILD
+    if COMMITTING and subject is None:
+        return [], ""                                      # the commit-msg stage judges it, with its subject
     if _BUILD is not None:
         return _BUILD
     if not CONFIG.get("judged_before_build"):
@@ -3762,7 +3767,11 @@ def build_judgement():
         if heads:
             commits = commit_list(*heads, "--not", "HEAD", *([trunk] if trunk else []))
         elif git("rev-parse", "--verify", "-q", "HEAD").returncode == 0:
-            commits = [("", "HEAD", set(staged_now()), "")]
+            # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
+            env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
+            staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True,
+                                    encoding="utf-8", errors="replace", env=env).stdout
+            commits = [("", "HEAD", set(staged.split("\n")) - {""}, subject)]
         else:
             commits = []                                   # a first commit has no parent to be judged at
         _BUILD = (judge_commits(commits, branch), "")
@@ -3780,6 +3789,32 @@ def build_judgement():
 
 def build_problems():
     return build_judgement()[0]
+
+
+def message_subject(text):
+    """A commit message's subject as git will record it: its first line that is not blank and not a comment, above the
+    scissors line an editor commit carries."""
+    for line in text.split("# ------------------------ >8 ------------------------")[0].splitlines():
+        if line.strip() and not line.startswith("#"):
+            return line.strip()
+    return ""
+
+
+def commit_msg_check(message_file):
+    """`--commit-msg <file>`: what the commit-msg hook runs — FM-033's judgement on the commit being made, with the subject
+    its message gives, before the commit is made: the same refusal `--check` prints of it once made. An empty message is
+    git's to refuse."""
+    global COMMITTING
+    COMMITTING = True
+    try:
+        subject = message_subject(pathlib.Path(message_file).read_text(encoding="utf-8", errors="replace"))
+    except OSError as e:
+        print(f"--commit-msg: cannot read {message_file} — {e}", file=sys.stderr)
+        return EXIT_LINT
+    problems = build_judgement(subject)[0] if subject else []
+    for p_ in problems:
+        print(f"  {p_}", file=sys.stderr)
+    return EXIT_LINT if problems else EXIT_OK
 
 
 def trunk_ref():
@@ -4197,8 +4232,10 @@ def parse_args(argv):
     add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
-                                                     "a tracker staged or not: a seat's commit carries a `Session:` of its own seat; where `judged_before_build` is on, a commit that changes "
-                                                     "a path outside the tracker directory is under its branch's tracker, judged and In Progress at HEAD (FM-033). Reads git, never the working tree's trackers")
+                                                     "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
+    add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
+                                                      "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
+                                                      "and refused before it is made, with the line `--check` prints of it")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
@@ -4580,12 +4617,13 @@ if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)
 fi
 """,
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
+    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033)\n{cmd} --commit-msg \"$1\"\n",
     "post-merge": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
     "post-checkout": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"'}     # the one line a hook that is not ours needs
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
@@ -4855,6 +4893,8 @@ def main(argv=None):
         return session_trailer(args.session_trailer[0])
     if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
         return session_check()
+    if args.commit_msg:                                     # …and this, once the message exists: no build commit before a judgement (FM-033)
+        return commit_msg_check(args.commit_msg[0])
     if args.session:
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone

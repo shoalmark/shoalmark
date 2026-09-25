@@ -42,14 +42,17 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **No build commit before a judgement** (FM-033; the Auditor seat's check 26). With `judged_before_build = true` in
   `shoalmark.toml` — off by default, on in this repository — a commit that changes a path outside the tracker directory
   names a tracker, the ids in its subject or else its branch `<kind>/<NNN>-…`, that at the commit's parent carries
-  `triaged:`, is not Parked and is `In Progress`; a commit that names none is refused too. The pre-commit hook
-  (`--session-check`) judges the commit being made by its branch, at HEAD; `--check` judges each commit of the branch
+  `triaged:`, is not Parked and is `In Progress`; a commit that names none is refused too. At commit time the
+  commit-msg hook (`--commit-msg`, which `--install-hook` writes; with lefthook, a `commit-msg` entry) judges the commit
+  being made once its message exists — its subject's ids, else its branch, as the history is judged — and refuses it
+  before it is made, with the line `--check` prints of it; `--check` judges each commit of the branch
   since `origin`'s default branch — a merge by the commits it carries, never as the merger's own change — and says in
   one line whether the gate is on. On the default branch nothing is judged; on a detached HEAD the subject must name the
   tracker. Judged at their own parents, the four builds of FM-033's table and the fifth are each refused. What FM-033
   also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker, and the board
-  showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`; build on a branch
-  `<kind>/<NNN>-…` whose tracker a pass has kept In Progress.*
+  showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`, then `--install-hook`
+  again for the `commit-msg` hook (or add the `commit-msg` entry to your own hook runner, §6); build on a branch
+  `<kind>/<NNN>-…` whose tracker a pass has kept In Progress, and name the tracker in the subject.*
 - **The suite runs `--queue` itself on a branch pushed without a pull request** (FM-031; the Auditor seat's check 8):
   `gh` stubbed, `origin` a local bare repository, it reads `branch <name> @ <sha>  wait: no pull request — no verdict
   on <sha>` and the count. A check, not a change.

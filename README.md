@@ -281,7 +281,8 @@ git config --worktree seat.session a9f3c2d1          # the session — the harne
 `Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message
 carries already is left alone. A repository with no `seat.session` (the Owner's checkout) gets nothing appended: his
 signature is his id. Read them back with `git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository
-with its own hook runner adds two entries — with lefthook, the session rule on every commit and the trailers:
+with its own hook runner adds three entries — with lefthook, the session rule on every commit, the trailers, and the
+judgement of the commit with its message:
 
 ```yaml
 pre-commit:
@@ -292,6 +293,10 @@ prepare-commit-msg:
   commands:
     session:
       run: python3 tools/shoalmark/shoalmark.py --session-trailer {1}
+commit-msg:
+  commands:
+    judged:                      # where `judged_before_build` is on: the commit judged with its subject (FM-033)
+      run: python3 tools/shoalmark/shoalmark.py --commit-msg {1}
 ```
 
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row

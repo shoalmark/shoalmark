@@ -12,6 +12,10 @@ prepare-commit-msg:
   commands:
     session:
       run: python3 shoalmark.py --session-trailer {1}
+commit-msg:
+  commands:
+    judged:
+      run: python3 shoalmark.py --commit-msg {1}
 post-merge:
   commands:
     tracker-board:

@@ -2746,14 +2746,19 @@ with tempfile.TemporaryDirectory() as tmp:
             git(root, "switch", "-q", branch)
         fm.configure(root)
         return _no_git_env(fm.build_judgement)
-    def staged_(branch, files, frm="main"):                # the hook's judgement of a commit being made on `branch`
-        git(root, "switch", "-q", "-c", branch, frm)
+    def hooked_(branch, subject, files, frm="main"):       # the installed hooks on a real `git commit` — then --check on that commit
+        git(root, "switch", "-q", "-c", branch, frm) if branch else git(root, "switch", "-q", "--detach", frm)
         for name, text in files.items():
-            (root / name).write_text(text)
-        git(root, "add", "-A")
-        code_, _o, err_ = run(root, "--session-check")
-        git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
-        return code_, err_
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); before_ = sha_()
+        r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", subject], capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=_ENV)
+        made_ = sha_() != before_
+        if not made_:
+            git(root, "commit", "-qm", subject)                # the same commit, made without the hooks: what --check then says of it
+        said_ = judged_()[0]
+        git(root, "switch", "-q", "--detach", "main")
+        return made_, [l_.strip() for l_ in r_.stderr.splitlines() if l_.strip().startswith("refused:")], said_
     c1_ = build_("ap/001-build", "the importer", {"src.txt": "two\n"}); r1_ = judged_()
     c2_ = build_("ap/002-build", "the importer", {"src.txt": "two\n"}); r2_ = judged_()
     c3_ = build_("ap/003-build", "the importer", {"src.txt": "two\n"}); r3_ = judged_()
@@ -2771,7 +2776,7 @@ with tempfile.TemporaryDirectory() as tmp:
     cs_ = build_("docs/tidy-2", "AP-004: tidy the readme", {"README.md": "tidy\n"}); rs_ = judged_()
     cw_ = build_("ap/004-wrong", "AP-001: the importer, under another tracker's branch", {"src.txt": "three\n"}); rw_ = judged_()
     check(f"FM-033 · a commit that touches only the tracker directory is not judged; one that names no tracker is refused as such; the subject's ids decide before the branch's (C1) — a judged one passes on any branch, an unjudged one is refused on a judged branch (saw {rn_[0]!r})",
-          rt_[0] == [] and len(rn_[0]) == 1 and f"refused: commit {cn_[:7]} \"tidy the readme\" changes README.md outside docs/work-tracker/ — names no tracker: no AP-N in its subject, and its branch names none" in rn_[0][0]
+          rt_[0] == [] and len(rn_[0]) == 1 and f"refused: commit {cn_[:7]} \"tidy the readme\" changes README.md outside docs/work-tracker/ — names no tracker: no AP-N in its subject, and its branch `docs/tidy` names none" in rn_[0][0]
           and rs_[0] == [] and len(rw_[0]) == 1 and "AP-001: not judged" in rw_[0][0])
     git(root, "switch", "-q", "--detach", "ap/004-build"); rd_ = judged_()
     git(root, "switch", "-q", "--detach", "docs/tidy-2"); rd2_ = judged_()
@@ -2782,8 +2787,9 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "ap/004-build"); git(root, "merge", "-q", "--no-ff", "-m", "merge the side", "side/import")
     rm_ = judged_()
     git(root, "switch", "-q", "-c", "ap/004-merge-now", "ap/004-build~1"); git(root, "merge", "-q", "--no-ff", "--no-commit", "side/import")
-    codem_, _o, errm_ = run(root, "--session-check"); git(root, "merge", "--abort"); git(root, "switch", "-q", "main")
-    check(f"FM-033 · a merge commit is skipped and every commit it carries is judged — by `--check`, and by the hook on a merge being made (saw {rm_[0]!r}, {errm_.strip()[-160:]!r})",
+    (root / "merge-msg").write_text("Merge side/import\n"); codem_, _o, errm_ = run(root, "--commit-msg", str(root / "merge-msg"))
+    git(root, "merge", "--abort"); (root / "merge-msg").unlink(); git(root, "switch", "-q", "main")
+    check(f"FM-033 · a merge commit is skipped and every commit it carries is judged — by `--check`, and at commit time on a merge being made (saw {rm_[0]!r}, {errm_.strip()[-160:]!r})",
           len(rm_[0]) == 1 and rm_[0][0].startswith(f'refused: commit {side_[:7]} "AP-001: the importer on the side"') and "merge the side" not in " ".join(rm_[0])
           and codem_ == fm.EXIT_LINT and f"refused: commit {side_[:7]}" in errm_)
     # main moves under a commit nobody judged; a judged branch that merges main carries none of it into its range
@@ -2793,16 +2799,41 @@ with tempfile.TemporaryDirectory() as tmp:
     ru_ = judged_(); git(root, "switch", "-q", "main"); rmain_ = judged_()
     check("FM-033 · a merge of `origin`'s default branch brings none of its commits into the judged range; on the default branch itself nothing is judged",
           ru_[0] == [] and rmain_[0] == [] and rmain_[1] == "judged before build: on — `main` is the default branch: nothing on it is judged")
-    # the hook: the commit being made, by its branch, at HEAD
-    h1_ = staged_("ap/001-hook", {"src.txt": "hook\n"}); h4_ = staged_("ap/004-hook", {"src.txt": "hook\n"})
-    hn_ = staged_("docs/hook", {"src.txt": "hook\n"}); ht_ = staged_("ap/001-hook-notes", {"docs/work-tracker/AP-001-x.md": "---\nid: AP-001\n---\n\n# AP-001 — t\n"})
-    git(root, "switch", "-q", "--detach", "main"); (root / "src.txt").write_text("detached\n"); git(root, "add", "-A")
-    hd_ = run(root, "--session-check"); git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
-    (root / "src.txt").write_text("on main\n"); git(root, "add", "-A"); hm_ = run(root, "--session-check"); git(root, "reset", "-q", "--hard")
-    check(f"FM-033 · the pre-commit hook judges the commit being made by its branch, at HEAD: an unjudged tracker's branch is refused, a judged one passes, a branch that names none and a detached HEAD are refused with the reason, a tracker-only commit and a commit on the default branch pass (saw {h1_[1].strip()!r}, {hn_[1].strip()!r})",
-          h1_[0] == fm.EXIT_LINT and "refused: this commit changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed)" in h1_[1]
-          and h4_[0] == 0 and hn_[0] == fm.EXIT_LINT and "names no tracker: its branch `docs/hook` is no `<kind>/<NNN>-…`" in hn_[1]
-          and ht_[0] == 0 and hd_[0] == fm.EXIT_LINT and "names no tracker: its branch — a detached HEAD — is no" in hd_[2] and hm_[0] == 0)
+    # AT COMMIT TIME (the cold review's R1): the installed commit-msg hook judges the commit being made with its SUBJECT, as the
+    # history is judged — its ids, else its branch — and refuses it before it is made, with the line --check prints of it made.
+    # The pre-commit stage has no message: judged there by its branch, `FM-007: …` on a judged branch passed the hook, and failed --check.
+    run(root, "--install-hook"); git(root, "switch", "-q", "--detach", "main")
+    note_ = (root / "docs/work-tracker/AP-001-x.md").read_text() + "\nA note at commit time.\n"
+    table_ = [("ap/004-probe", "AP-001: gate probe"),                 # the Reviewer's probe: a judged branch, an unready tracker in the subject
+              ("ap/001-probe", "AP-004: gate probe, the inverse"),    # an unjudged branch, a judged tracker in the subject
+              ("ap/001-hook", "the importer"), ("ap/002-hook", "the importer"), ("ap/003-hook", "the importer"), ("ap/004-hook", "the importer"),
+              ("docs/hook", "the importer"), ("docs/hook-2", "AP-004: the importer"), (None, "the importer, detached"), (None, "AP-004: detached")]
+    seen_ = {}
+    for n_, (branch_, subject_) in enumerate(table_):
+        seen_[(branch_, subject_)] = hooked_(branch_, subject_, {"src.txt": f"hook {n_}\n"})
+    seen_["notes"] = hooked_("ap/001-hook-notes", "AP-001: a note", {"docs/work-tracker/AP-001-x.md": note_})
+    tail_ = lambda l_: l_.split(" changes ", 1)[1] if " changes " in l_ else l_
+    agree_ = all(made_ == (not said_) and [tail_(l_) for l_ in hook_] == [tail_(l_) for l_ in said_] and all(l_.startswith("refused: this commit \"") for l_ in hook_)
+                 for made_, hook_, said_ in seen_.values())
+    verdicts_ = {k_: v_[0] for k_, v_ in seen_.items()}
+    check(f"FM-033 · R1 · the commit-msg hook judges the commit being made with its subject and refuses it before it is made: the Reviewer's probe — a judged branch, an unready tracker in the subject — is refused, no commit made; the inverse passes (saw {seen_[('ap/004-probe', 'AP-001: gate probe')][1]!r})",
+          verdicts_[("ap/004-probe", "AP-001: gate probe")] is False and verdicts_[("ap/001-probe", "AP-004: gate probe, the inverse")] is True
+          and seen_[("ap/004-probe", "AP-001: gate probe")][1] == ['refused: this commit "AP-001: gate probe" changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed) — ' + fm.BUILD_WHY])
+    check(f"FM-033 · R1 · the hook and --check agree on every case of the table — refused or made, and the same reasons — Parked, Proposed, unjudged, no tracker named, a detached HEAD, the subject before the branch, a tracker-only commit (saw {verdicts_})",
+          agree_ and [verdicts_[(b_, s_)] for b_, s_ in table_[2:]] == [False, False, False, True, False, True, False, True] and verdicts_["notes"] is True)
+    git(root, "switch", "-q", "main"); (root / "src.txt").write_text("on main\n"); git(root, "add", "-A")
+    main_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", "the trunk, by hand"], capture_output=True, text=True, env=_ENV)
+    git(root, "reset", "-q", "--hard", "origin/main")      # main as origin has it: the checks below measure from it
+    git(root, "switch", "-q", "-c", "ap/004-merge-hook", "ap/004-build~1")
+    merged_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "--no-edit", "side/import"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    merging_ = (root / ".git/MERGE_HEAD").exists(); git(root, "merge", "--abort") if merging_ else None
+    empty_ = run(root, "--commit-msg", str(root / "no-such-message"))[0]; (root / "blank-msg").write_text("# only a comment\n\n")
+    blank_ = run(root, "--commit-msg", str(root / "blank-msg"))[0]; (root / "blank-msg").unlink()
+    check(f"FM-033 · R1 · on the default branch the hook judges nothing; a merge the hook refuses is not made, its carried commit named; an empty message is git's to refuse (saw {merged_.stderr.strip()[-160:]!r})",
+          main_.returncode == 0 and merged_.returncode != 0 and merging_ and f"refused: commit {side_[:7]}" in merged_.stderr
+          and empty_ == fm.EXIT_LINT and blank_ == 0 and fm.message_subject("# c\n\n  FM-7: x \nbody\n") == "FM-7: x"
+          and fm.message_subject("# ------------------------ >8 ------------------------\nFM-7: x\n") == "")
+    git(root, "switch", "-q", "main")
     # the tracker made In Progress and judged in the SAME commit as the build: the parent is what counts
     git(root, "switch", "-q", "-c", "ap/001-all-at-once", "main")
     tracker(root, "AP-001", status="In Progress", extra=f"triaged: {day_}\ntier: P2\n", title="unjudged"); (root / "src.txt").write_text("at once\n")
