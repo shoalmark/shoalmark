@@ -246,3 +246,32 @@ PowerShell's toast on Windows. I read their argv only. I did not install the lau
 sealed directory of session `8b91dba2`.
 
 **Verdict: READY WITH FINDINGS — R7, R8 P3; R1–R6 closed on 647da17. The Owner lands this by merging; a merge rules nothing.**
+
+## Verified again on 6270118 — the merge of main
+
+Reviewed `6270118cb6723cf5b02a68ff020f2616de922dcd`, the Principal's merge of origin/main into the branch. Its parents
+are `a112fbd` (this verdict on `647da17`) and `2f2cb82` (PR 80, the FM-037 pass). Only the merge was checked; the
+substance keeps the verdict on `647da17`.
+
+- **The branch's own lines.** `git diff origin/main...HEAD --stat` matches `63fabb6...a112fbd`: 13 files, 1567+ and
+  135−, the same file by file. The changed lines of 12 of the 13 files hash identically. The one exception is the
+  generated INDEX.md, in one row pair: FM-036's rank cell reads `4` where it read `3`. That rank is PR 80's pass on
+  main (FM-036 `rank: 4` on both sides); the Acts table and every other added line are the same.
+- **What the merge brings.** The merge brings `b336a53..2f2cb82` and nothing else: every path is under `work-tracker/`,
+  and `shoalmark.py`, the tests, the README and the CHANGELOG are `a112fbd`'s.
+- **INDEX.md.** In a scratch clone at `6270118`, `python3 shoalmark.py` rewrites INDEX.md byte for byte, on 3.14.3 and
+  on 3.9.6 (`git diff` empty, `cmp` equal).
+- **A redo.** Merging `2f2cb82` into `a112fbd` conflicts in `work-tracker/INDEX.md` only. FM-030 and FM-036 merge
+  cleanly. With INDEX.md regenerated, the redo's tree is `6270118`'s tree exactly.
+- **The gate and the hooks are untouched.** These are byte-identical to origin/main `2f2cb82`: `commit_msg_check`,
+  `install_hook`, `install_hook_svn`, `session_check`, `session_trailer`, `judge_commits`, `build_judgement`,
+  `commit_list`, `message_subject`, `checkout_lines`, `checkout_finding`, the `--check` block of `main`, and every
+  `judged_before_build` line. `lefthook.yml`, `scripts/` and `.github/` are not in the diff.
+- **The rest.** Both suites are green on 3.14.3 and on `/usr/bin/python3` 3.9.6: 438 `ok` and 148 `ok`, *skipped here:
+  0 checks*, no FAIL. `--check` exits 0: INDEX.md up to date, *17 commit(s) … every build commit under a judged In
+  Progress tracker*. `--session-check` exits 0. `git merge-tree --write-tree origin/main HEAD` is **clean** (tree
+  `e7715a4`).
+
+R7 and R8 stand as written on `647da17`: the merge touches neither.
+
+**Verdict: READY WITH FINDINGS — R7, R8 P3; the merge of main verified on 6270118. The Owner lands this by merging; a merge rules nothing.**
