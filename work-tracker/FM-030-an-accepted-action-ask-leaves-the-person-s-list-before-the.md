@@ -58,6 +58,8 @@ accepted *action* asks only; FM-007 is the case it would still miss.
 
 **Widened 2026-09-24 a second time, on the Auditor seat's check 24 on v0.18.2 (P3), through the Owner:** after `--answer` the front matter still reads `next: owner` — the record says the Owner's move after his move is made (FM-033 read so from 18:59 until the evening pass re-applied its verdict). For a ruling, a determination or a ceremony the seat's move follows, and 0.18.3 writes `next: build` with the answer — the move the rules give unbuilt work, as this evening's pass gave FM-033 (the Reviewer's R5); for an action ask — one whose *yes* needs the Owner's hands — `next: owner` stays, because the act is still his (this tracker's own line: the answer is a promise, not the act), and `--schema` says that an ask whose yes needs his hands is `action`, whatever else it decides (the Auditor's AU-12 and AU-22). `revoke` and `--supersede` key on the answer's presence, not on `next: owner`.
 
+**For 0.18.4:** *the move after an answer follows the picked option, not the kind alone* — the Auditor seat, through the Owner, 17:23:39 on 2026-09-25: an action ask answered "not yet" must not read as the act begun.
+
 ## Why
 
 The digest is what a session's last message leads with, and the standup is the person's one sitting. *Nothing needs
