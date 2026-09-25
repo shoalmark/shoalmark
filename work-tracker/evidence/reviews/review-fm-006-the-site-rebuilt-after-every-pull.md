@@ -39,3 +39,27 @@ row's command for now fails, and the hook it files for 0.18.4 is neither silent 
     the site was not rebuilt — instead of *silent*.
 
 **Not this diff.** Line 1 of `docs.yml` on main still says *on every push to main*; its `on:` and line 4 say a tag only.
+
+## The second pass — at a141f47 (2026-09-25 09:47 CEST, Reviewer, session `8e509911/reviewer-8`)
+
+**READY.** `a141f47` is one commit by the Principal seat after this verdict (`945e950`). It rewrites FM-006's new row
+in place — 1 line in, 1 out, nothing else. That row is still unmerged: it came in at `9428c98`, and `origin/main` is
+`ea630c1`. **Tier: docs, one pass** — the branch still touches FM-006, FM-007 and this file only.
+
+**R1 closed.**
+- **The hook.** The 0.18.4 line now says what R1 asked. The hook builds the site where it finds a builder: `zensical`
+  on the PATH, or else `uvx zensical`. Where it finds neither, it says in one line that the site was not rebuilt —
+  never an error. *Silent* is gone.
+- **The command for now.** It is `uvx zensical build`. In a scratch copy of `a141f47` it exits 0 in 0.38 s with *No
+  issues found*, and builds `site/signing.html` and `site/de/signing.html`. `command -v zensical` still finds nothing.
+- **The row's gloss.** *`uvx zensical build` is* reads as *works*, and it does.
+- **`docs.yml`.** The row notes that its first-line comment still says *on every push to main* — true, and a second
+  line for 0.18.4.
+- **The rest of the row.** The quote, the site facts, the newest-first place and FM-007's row are unchanged.
+
+**Gates.** `--check` 0, `--session-check` 0, the generator leaves the tree clean. `test_shoalmark.py` 355 ok and
+`test_core.py` 148 ok, on 3.14.3 and 3.9.6. `merge-tree` is clean against `origin/main` and against PR 65's new tip
+`5cc5625`.
+
+**For the 0.18.4 pass, not a finding.** The first `uvx` run fetches an unpinned `zensical` inside a hook, as `docs.yml`'s
+`pip install` does. The line does not say what a builder that fails does.
