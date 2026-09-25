@@ -112,3 +112,64 @@ Not verified:
 - Whether the Windows failures are the tool's or the checks'.
 
 The Owner lands this by merging; a merge rules nothing (path 5).
+
+## Pass on c8939e3 (2026-09-25 12:37 CEST, Reviewer, session `8e509911/reviewer-6`)
+
+**Scope.** `c8939e3` (`c8939e389b11b742a3f294f4574bfea00ef255e0`): one commit by the principal seat (`Session:
+8e509911`, 12:30:44) on the verdict above (`6613207`). It changes FM-035, INDEX, TRIAGE.md and the worksheet; this file
+is untouched. **Tier: docs, one pass.** **Independence:** same session, reported.
+
+**What I ran.**
+- **Replay:** scratchpad copies of `840dabe` and of `6613207`, each with the tip's worksheet, then `--triage`. Both print
+  *Applied 1: FM-035: keep P2 #6 build* and leave the worksheet equal to the tip's.
+  - `triaged:`, `rank:`, `next:`, `tier:` and `status:` equal the tip's, so `tier: P1 → P2` is the command's.
+  - The rest of FM-035's diff is the filing seat's own text, edited by hand: `considered:`, `hook:`, the body and the
+    ship-log row.
+  - The row's eight derived cells keep what the tool generated at `840dabe`. They are not hand-edited, as they should not
+    be.
+- **At the tip:**
+  - `--triage` *Applied nothing*, exit 0, the tree clean.
+  - `--check` 0 (*19 open*), `--session-check` 0, the generator leaves no diff.
+  - `merge-tree` against `origin/main` is clean. `test_shoalmark.py` 0 (394 ok), `test_core.py` 0 (148 ok).
+  - `--next`: … #5 FM-006 P2 · #6 FM-035 P2 · #7 FM-028 P2 …, each rank once.
+
+**The findings of the first pass.**
+- **R1 ✓ closed.**
+  - The Why quotes line 1 whole: *… and no failed command in the sitting*. The hook no longer paraphrases it.
+  - The Reason judges the tier against the whole line: *the sitting's commands ran green here, so a red CI is not that
+    command; P2, next*. It cites FM-034's precedent, and grounds *next and not someday* in FM-003's user on Windows.
+  - The tier moved through the worksheet and the command.
+  - The Reason does not argue P1 by harm today either way. Whether the Windows failures are the tool's or the checks'
+    is still unread; the build settles it.
+- **R2 ✓ closed.** The table, the hook and the Now name the answer-dialog check, `subprocess.TimeoutExpired` and the
+  60 s, as the log has them. The guesses are gone.
+- **R3 ✓ closed.** `considered:` names FM-003 first, and the ship-log row gives why: the matrix's prior art.
+- **R4 in part.** The Now reads 12:11:44 and 09:57–10:03 UTC. The hook and the paragraph do not (R6).
+- **R5 replaced** by the release-order sentence (R7).
+- The paragraph under *Passes* is corrected in place while unmerged, and says what its first version got wrong: *said
+  P1 on a cut quotation, the Reviewer's R1* ✓. The current path is untouched, and path 5 is kept.
+
+**R6 · P3 · confidence high · Two times left from R4.**
+- The hook still reads *09:57–10:02 UTC*, and INDEX prints it in both tables.
+- The paragraph still reads *the Owner's word of 12:1x*.
+- **Fix forward:** 10:03 in the hook, and 12:11:44 in the paragraph.
+
+**R7 · P3 · confidence medium · The release order rests on an unsourced wait, and it sits in *Done when*.**
+- *FM-030's slice waits on its design*: FM-030 records no such wait. Its move is `build`, and its *Done when* leaves the
+  form of `--clear-ask`'s new field to the builder.
+- *Done when* now carries *the fix ships in 0.18.4 before FM-030's slice*. That ties this tracker's done to another
+  tracker's timing: if FM-030's slice lands first, the line can never be met.
+- **Fix forward:** keep the order in the Now or the Reason, not in *Done when*. Source the design wait, or drop it.
+
+**R8 · P3 · confidence high · The ship-log row is rewritten in place, and still credits `--related` with the seat's
+picks.**
+- AGENTS.md: *only the ship log is append-only*. The filing row was replaced, where a correcting row belongs.
+  - The row never reached `main`: this is the evening pass's R10, graded the same.
+- It still says *`--related` held it against … FM-028 …, FM-011*. FM-011 is not among the eight `--related FM-035`
+  prints; FM-028 is sixth. The seat chose them.
+- **Fix forward:** none to this text. A correcting row next time.
+
+**Verdict on c8939e3: READY WITH FINDINGS (R6, R7, R8 P3).** R1, R2 and R3 are closed. R4 is closed in part, and R5 is
+replaced. The P3s are fixed forward under the docs tier.
+
+The Owner lands this by merging; a merge rules nothing (path 5).
