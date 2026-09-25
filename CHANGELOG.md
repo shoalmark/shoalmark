@@ -55,6 +55,23 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   its signature where the record is written (`%G?` — G good, U good from a key not trusted here, N none). An answer
   not yet committed says `not committed · N`; under Subversion there is no line. The key's tier is not printed yet
   (FM-007). *Nothing to do on upgrade; records written before keep what they have.*
+- **macOS: a browser check that hangs fails; one that cannot run here is skipped by name** (FM-035, the v0.18.3 tag's
+  CI on macos-latest 3.12). What is known: the log shows the suite dying at `subprocess.TimeoutExpired`, 60 s into the
+  answer dialog's check, on the page where OK opens the second screen — which copies the command at once. What is
+  inferred: the pasteboard is the one unstubbed call on that path; the check now stubs it, as the second screen's own
+  checks did. The hang itself was not reproduced here. Every headless Chrome run now goes through one helper: Chrome
+  absent or unable to start — its control run on a blank page failing — skips the block by name, with the reason and
+  its number of checks; Chrome present and a page not returning within 60 s, twice, FAILS the check and the suite
+  exits 1. The run always ends with `skipped here: N checks`, zero or not, and says a run with skips is not a full
+  pass. A test-only change.
+- **Windows: a brand SVG's line ends are counted as committed** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and
+  3.12). The size cap counted `wordmark.svg` and `logo.svg` as the checkout wrote them: a Windows checkout
+  (`core.autocrlf`) writes `\r\n`, one byte more per line, and a file near the cap was refused there and shown
+  everywhere else. An SVG is now read, counted and inlined with `\r\n` as `\n`; a PNG as it is.
+- **Windows: the suite reads git's output as UTF-8** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and 3.12). The
+  RV-479 check read `git show`'s blob in the locale's encoding — cp1252 on Windows — and the em dash in the ship-log
+  row it compares came out as three other characters. The tool names UTF-8 on every read; the test now does too. No
+  change to the tool.
 
 ## 0.18.3 — 2026-09-24
 
