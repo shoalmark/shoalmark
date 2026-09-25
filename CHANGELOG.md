@@ -20,8 +20,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   so; Subversion is out of scope, in one line. (6) The refusal's last line, and `docs/signing.md`: a commit signed with
   his key passes; at tier 0 any process on his account holds that key (FM-007). (7) A synthetic test for each, and one
   that walks this repository's main to 0d60d55: the six signed commits `45198d5` … `ad9bf67` accepted, `ae1f05e` no
-  change. *On upgrade:* where the default branch's `[seats]` names the Owner, a seat's change to his two sections fails
-  `--check`; with no seat holding `answer` there, `--check` says it is not guarded.
+  change. The Auditor seat's AU-19: every signature — this guard's, the answer gate's, `--queue`'s — is verified against
+  the default branch's copy of the signers file `gpg.ssh.allowedSignersFile` names, never a branch's own, and a change
+  to that file (or `<tracker dir>/allowed_signers`) is refused unless it is his signed commit: a branch could vouch for
+  itself. AU-20: a scaffold of any version the readers know is accepted where there was none. *On upgrade:* where the
+  default branch's `[seats]` names the Owner, a seat's change to his two sections or his signers file fails `--check`;
+  with no seat holding `answer` there, `--check` says it is not guarded; a first signers file lands on the default
+  branch by his own hand.
 - **An act owed to the Owner has a time** (FM-030; his line 6: *what the Owner owes is on their board with one button*).
   New front-matter keys: `due:` — an ISO time with its zone, `2026-09-26T07:30:00+02:00`, written by the seat that
   schedules the act (with the action ask, or when its time is set); `window:` — minutes after it in which the act can

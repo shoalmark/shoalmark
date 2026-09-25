@@ -25,7 +25,10 @@ before it is made (it proves the author; `--check` the signature); `--queue` rea
 an unsigned owner seat proves the author only and says so; Subversion is out of scope, in one line. R7's reading — a
 move of the whole tracker with its key, the text unchanged, is no change, so `ae1f05e` is accepted on its text — is in
 the design commit and README §5. The real history (main to `0d60d55`): the six signed commits accepted, `ae1f05e` no
-change, the root `a680fdf` the one other change (unsigned, before signing existed). **Left:** the review; then FM-006's
+change; the root `a680fdf` wrote 0.1.0's bare scaffold, accepted as a scaffold (the Auditor seat's AU-20). **AU-19:**
+the signers file is kept like the two sections, and every signature — this guard's, the answer gate's, `--queue`'s — is
+verified against the default branch's copy of it, never a branch's own. `--clear-ask`'s record line (`signed — <sha> ·
+G`) still reports what this clone's own configuration says; it refuses nothing. **Left:** the review; then FM-006's
 page may say *only you change it*, with its tier-0 limit. Unproven: the real-history test's SSH verification on the
 Windows runners (CI runs on the ready pull request). A defect seen on the way, not fixed here: `verified_as`, the answer
 gate's signature test, accepts a signer principal that merely *contains* the claimed email; this guard compares exactly.
@@ -63,6 +66,7 @@ sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as en
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | The Auditor seat's pass on `0be4f20`: NOT READY on AU-19 (P2 — a branch that appends its own key under the Owner's email to the signers file vouched for itself where the clone verifies against the checkout's own file) and AU-20 (P3 — the history test refused the root's 0.1.0 scaffold). Both fixed in one commit: signatures verified against the default branch's signers file, the file kept like the two sections, any known scaffold accepted. |
 | 2026-09-25 | Built on its branch for 0.18.4, one commit per clause: the check and what is no change (1, 3), the refusal's way through and its limit (2, 6), the commit-msg hook, `--queue`'s word (4), the author-only fallback and Subversion out of scope (5), the real history (7); main merged after PR 79. R7's reading stated in the design commit and README §5. `next: review` — the Owner's cold session. |
 | 2026-09-25 | Correcting the filing's attribution: the Owner's own words, at 18:55:33 to the Auditor seat, were `stop a seat from editing your TRIAGE.md` - let's fix this first then (spelling normalised). The part in backticks quotes the Auditor seat's line of the minute before; the relay of 18:58:54 wrote the two as one, as the Owner's word. His order stands as filed. |
 | 2026-09-25 | In Progress — 0.18.4 builds it on its own branch after this pass lands; the status set here, on the pass branch, before the first build commit (the Auditor seat's AU-20). |

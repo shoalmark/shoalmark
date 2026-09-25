@@ -151,8 +151,10 @@ step says *both*.
 
     Tier 3: both signers, one line each. A security key's line reads `you@example.org sk-ssh-ed25519@openssh.com AAAA…`
     — the `sk-` marks a hardware key for anyone who reads the file. A Secure Enclave key's reads
-    `ecdsa-sha2-nistp256`, with its comment line above it. A public key is public; committing it is fine. A seat that
-    edits this file shows in the diff.
+    `ecdsa-sha2-nistp256`, with its comment line above it. A public key is public; committing it is fine. Only your
+    signed commit changes this file: the gate refuses a seat's change to it, and it checks every signature against the
+    default branch's copy, never a branch's own. So commit its first version on the default branch yourself, signed — a
+    branch cannot prove a key the default branch does not hold.
 
 3. **Add it on the forge, as a signing key.** On GitHub: *Settings → SSH and GPG keys → New SSH key*, key type
    **Signing Key** ([GitHub's steps](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -223,7 +225,9 @@ counts), renames or removes their headings, deletes `TRIAGE.md` or moves it away
 `tracker_dir` somewhere else; the commit hook refuses a seat's such commit before it is made, and `--queue` reads its
 pull request *wait: TRIAGE.md changed unsigned*. Your commit passes when `git log -1 --format='%G? %GS %ae'` prints `G`
 and your email twice — the check under *Check it*. A seat that wants either section changed asks you, with an `ask:`;
-you make the change yourself, signed. `## Passes` stays open to the seats that record a pass.
+you make the change yourself, signed. `## Passes` stays open to the seats that record a pass. The signers file is
+guarded the same way, and a signature is checked against the default branch's copy of it: a branch that adds its own
+key under your email proves nothing.
 
 **What it cannot tell.** A commit signed with your key passes; at tier 0 any process on your account holds that key
 (FM-007) — the tiers above are what make the key yours alone. Where your seat in `[seats]` is not marked `signed`, the

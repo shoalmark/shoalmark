@@ -172,6 +172,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `--answer: X is answered already` | an answer is never overwritten in place: `--answer X revoke "<reason>"` takes it back, `--answer X accept\|reject "<option>" --supersede` replaces it — the old one moves into the ship log |
 | `` `answer/x` exists and is not merged `` | the refusal says what is on it. Your commits: merge it first — or, where it names the act open there, `git switch answer/x` and run `--done`/`--due` on it. Nothing of yours: `git branch -D answer/x`, the one case it names. Nothing unmerged is deleted for you |
 | `` refused: commit … changes the text under `## The intent` `` · `## The current path` · `renames or removes the heading` · `deletes or moves …/TRIAGE.md` · `points the tracker directory elsewhere` · `brings a text … that no parent had` (FM-037) | the two sections are the Owner's, and only his signed commit changes them. Every commit of the branch is judged, so a revert does not clear it — the revert changes the text too: carry the work onto a fresh branch without that commit (never force a pushed one), and put the change to him as an ask — `ask:` in its tracker, one sentence, `ask-kind: ruling`, `ask-since:`, `next: owner`. He commits it himself, signed. Below the table |
+| `changes the signers file …` (FM-037, AU-19) | the keys his signature is verified against are his too: a seat proposes a key as an ask, and he commits it, signed |
 | `wait: TRIAGE.md changed unsigned` (`--queue`) | a commit on that branch changes his intent or current path and is not his signed commit — the refusal above, read on the pull request: do not merge it |
 | `names no tracker` · `not judged` · `Parked` · `not In Progress` (`judged_before_build`) | a commit that changes a path outside the tracker directory is built under a tracker a pass has kept `In Progress` — at the commit's parent. Name it: the id in the subject, or a branch `<kind>/<NNN>-…`; ask for the pass if it is not judged. Never write `triaged:` by hand, and never build first and judge after |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
@@ -188,8 +189,14 @@ directory whose `TRIAGE.md` reads otherwise or not at all; a merge's change is o
 carries having been judged on the commit that made it. A change is refused, exit 4, unless it is **the Owner's signed
 commit**: `%G?` `G`, the signer principal (`%GS`) the author's email, and the author the seat holding `answer` in the
 **default branch's** `[seats]` — never the branch's own, so a branch that names a seat the Owner, or drops `signed` from
-his, does not judge itself. `## Passes` and the rest of the file stay open to seats; the scaffold `--init` writes, where
-there was none, is accepted. *The reading of a move* (the pass's R7): the guard judges what the tool reads, so a move of
+his, does not judge itself. **Nor its keys** (the Auditor seat's AU-19): a signature is verified against the *default
+branch's* copy of the signers file `gpg.ssh.allowedSignersFile` names, where that file sits in a checkout of this
+repository — never the branch's own — so a branch that appends its own key under his email vouches for nothing; the
+answer gate and `--queue` verify the same way. The signers file itself — that one, and `<tracker dir>/allowed_signers` —
+is kept like the two sections: a change to it is refused unless it is his signed commit. Its first version therefore
+lands on the default branch by his own hand: a branch cannot prove a key the default branch does not hold. `## Passes`
+and the rest of the file stay open to seats; a scaffold where there was none is accepted — any whose words the readers
+know (`--init`'s, the German one, 0.1.0's bare lines: AU-20). *The reading of a move* (the pass's R7): the guard judges what the tool reads, so a move of
 the whole tracker together with its key that leaves both sections byte-identical is no change — `ae1f05e`, the tracker's
 move out of `docs/`, is accepted on its text, not by its date; refusing every move and exempting that one by date was
 the alternative, not taken, because it keys a hole to a calendar and refuses a move that leaves every word of his as he

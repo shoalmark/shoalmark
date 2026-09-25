@@ -3644,7 +3644,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and len(g_del_[0]) == 1 and f"commit {c_del_[:7]}" in g_del_[0][0] and "deletes or moves docs/work-tracker/TRIAGE.md, and `## The intent` and `## The current path` with it" in g_del_[0][0]
           and len(g_mv_[0]) == 1 and "deletes or moves docs/work-tracker/TRIAGE.md" in g_mv_[0][0]
           and len(g_dir_[0]) == 1 and "points the tracker directory elsewhere (`docs/work-tracker` → `elsewhere`), and the tool reads `## The intent` and `## The current path` nowhere" in g_dir_[0][0]
-          and g_int_[1] == "the Owner's two sections: guarded — 1 commit(s) on `ap/037-intent` since origin/main, 1 change them, 1 refused")
+          and g_int_[1] == "the Owner's two sections: guarded — 1 commit(s) on `ap/037-intent` since origin/main, 1 change them or his signers file, 1 refused")
     git(root, "switch", "-q", "ap/037-intent"); code37_, out37_, err37_ = run(root, "--check")
     check(f"FM-037 · clause 1 · end to end: `--check` exits 4 on the refusal, and says in one line that the two sections are guarded (saw {err37_.strip()[-240:]!r})",
           code37_ == fm.EXIT_LINT and f"lint: refused: commit {c_int_[:7]}" in err37_ and "the Owner's two sections: guarded — 1 commit(s) on `ap/037-intent`" in out37_)
@@ -3663,7 +3663,7 @@ with tempfile.TemporaryDirectory() as tmp:
     c_sc_, g_sc_ = made37_("ap/037-scaffold", "AP-037: the tracker set up", lambda: run(root, "--init"), SEAT_, frm="bare")
     c_own_, g_own_ = made37_("ap/037-own-intent", "AP-037: an intent of the seat's own", lambda: (run(root, "--init"), home_.write_text(filled_)), SEAT_, frm="bare")
     check(f"FM-037 · clause 3 · `## Passes` stays open to seats; the scaffold `--init` writes, where there was none, is accepted — an intent of the seat's own there is not; and the R7 reading: the whole tracker moved with `tracker_dir`, its sections byte-identical, is no change (ae1f05e's shape) (saw {g_own_[0]!r})",
-          g_pass_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-passes` since origin/main, none changes them")
+          g_pass_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-passes` since origin/main, none changes them or his signers file")
           and g_all_[0] == [] and g_sc_[0] == [] and len(g_own_[0]) == 1
           and f'refused: commit {c_own_[:7]} "AP-037: an intent of the seat\'s own" writes `## The intent` and `## The current path` in docs/work-tracker/TRIAGE.md, where there was none — its author `implementer@seat`' in g_own_[0][0])
     # the Owner's signed commit; his email on a commit he did not sign; his key on a seat's commit; a seat's key on his email
@@ -3672,7 +3672,7 @@ with tempfile.TemporaryDirectory() as tmp:
     c_ok_seat_, g_ok_seat_ = made37_("ap/037-his-key", "AP-037: his key, a seat's name", text37_("lose a loan", "lose a shelf"), "-S", SEAT_)
     c_sk_, g_sk_ = made37_("ap/037-seat-key", "AP-037: a seat's key, his name", text37_("lose a loan", "lose a member"), "-S", OWNER_, pre=("-c", "user.signingkey=" + str(skey_)))
     check(f"FM-037 · clause 1 · the Owner's signed commit passes — `%G?` G, the signer the author's email, the author the Owner; his email unsigned is refused, his key on a seat's commit is refused, a seat's key on his email is refused (saw {g_forge_[0]!r}, {g_sk_[0]!r})",
-          g_sig_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-signed` since origin/main, 1 change them, each his own commit")
+          g_sig_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-signed` since origin/main, 1 change them or his signers file, each his own commit")
           and len(g_forge_[0]) == 1 and "— the Owner's email, unsigned — a git author is a string anyone can type: not the Owner's signed commit" in g_forge_[0][0]
           and len(g_ok_seat_[0]) == 1 and "its author `implementer@seat` is not the Owner" in g_ok_seat_[0][0]
           and len(g_sk_[0]) == 1 and f'refused: commit {c_sk_[:7]} "AP-037: a seat\'s key, his name" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — signed as `implementer@seat`, not as its author `h@x`' in g_sk_[0][0])
@@ -3685,7 +3685,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "merge", "-q", "--no-ff", "--no-commit", "ap/037-signed"); text37_("nothing unsigned.", "nothing unsigned, bar the seat's.")()
     git(root, "add", "-A"); git(root, "commit", "-q", "-m", "merge the Owner's line in, resolved by hand", SEAT_); c_mo_, g_mo_ = sha37_(), guard37_()
     check(f"FM-037 · clause 1 · a merge that carries an ancestor's signed change is accepted — the signed commit judged on its own; a merge that brings a text no parent had is refused as its own (saw {g_mo_[0]!r})",
-          g_mc_ == ([], "the Owner's two sections: guarded — 3 commit(s) on `ap/037-merge-carries` since origin/main, 1 change them, each his own commit")
+          g_mc_ == ([], "the Owner's two sections: guarded — 3 commit(s) on `ap/037-merge-carries` since origin/main, 1 change them or his signers file, each his own commit")
           and g_mo_[0] == [f'refused: commit {c_mo_[:7]} "merge the Owner\'s line in, resolved by hand" brings a text under `## The current path` in docs/work-tracker/TRIAGE.md that no parent had — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}'])
     # AT COMMIT TIME: the commit-msg hook reads what the commit stages against HEAD. It sees the author, not the signature —
     # git signs after the hooks — so a seat's change is refused before it is made, the Owner's passes on his name with a
@@ -3745,11 +3745,38 @@ with tempfile.TemporaryDirectory() as tmp:
     c_aw_, g_aw_ = made37_("ap/037-author-owner", "AP-037: his line, his name", text37_("lose a loan", "lose a page"), OWNER_)
     check(f"FM-037 · clause 5 · with the Owner's seat not `signed`, a seat's change is refused on its author and the refusal says it proves the author only; his own unsigned change passes on his name, and `--check` says the same of the whole guard (saw {g_ao_[0]!r}, {g_aw_[1]!r})",
           g_ao_[0] == [f'refused: commit {c_ao_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): the author only — mark the owner\'s seat signed to prove the key — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
-          and g_aw_ == ([], "the Owner's two sections: guarded (the author only — mark the owner's seat signed to prove the key) — 1 commit(s) on `ap/037-author-owner` since origin/main, 1 change them, each his own commit"))
+          and g_aw_ == ([], "the Owner's two sections: guarded (the author only — mark the owner's seat signed to prove the key) — 1 commit(s) on `ap/037-author-owner` since origin/main, 1 change them or his signers file, each his own commit"))
     svn37_ = base / "svn"; (svn37_ / ".svn").mkdir(parents=True); (svn37_ / "shoalmark.toml").write_text(cfg37_.replace(" signed", ""), encoding="utf-8")
     fm.configure(svn37_); g_svn_ = _no_git_env(fm.triage_guard)
     check(f"FM-037 · clause 5 · under Subversion the guard says, in one line, that it is out of scope — the working copy carries no signature (saw {g_svn_!r})",
           g_svn_ == ([], "the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so nothing here can tell his commit from a seat's"))
+    # AU-19 (the Auditor seat) · the branch cannot vouch for itself: with the signers file in the repository and the clone
+    # pointed at the checkout's own copy (the signing page's setup), what verifies is the DEFAULT branch's copy — for this
+    # guard and for the answer gate alike — and the file is kept like the two sections: only the Owner's signed commit changes it
+    fm.configure(root); signers37_ = root / "docs/work-tracker/allowed_signers"; day37_ = datetime.date.today().isoformat()
+    git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_)
+    signers37_.write_text("h@x " + okey_.with_suffix(".pub").read_text())
+    ask37_ = tracker(root, "AP-050", extra=f'next: owner\nask: "Ship it?"\nask-kind: ruling\nask-since: {day37_}\nask-proposal: "yes"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", "the Owner's signers file, in the repository", OWNER_); git(root, "push", "-q", "origin", "main")
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+    vouch37_ = lambda: signers37_.write_text(signers37_.read_text() + "h@x " + skey_.with_suffix(".pub").read_text())
+    c_v1_, g_v1_ = made37_("ap/037-vouch", "AP-037: a key for the Owner", vouch37_, SEAT_)
+    text37_("2. Nothing merges unreviewed.", "2. The seat's key merges.")(); run(root); git(root, "add", "-A")
+    git(root, "-c", "user.signingkey=" + str(skey_), "commit", "-q", "-S", "-m", "AP-037: the path, signed as him", OWNER_); c_v2_, g_v_ = sha37_(), guard37_()
+    g37_ = lambda c_: next((l_ for l_ in g_v_[0] if f"commit {c_[:7]}" in l_), "")
+    git(root, "switch", "-q", "-c", "answer/ap-050", "main"); vouch37_()
+    ask37_.write_text(ask37_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted"\nanswered: {day37_}\nanswered-by: holgo\n'))
+    run(root); git(root, "add", "-A"); git(root, "-c", "user.signingkey=" + str(skey_), "commit", "-q", "-S", "-m", "AP-050: accepted", OWNER_)
+    code_v_, _o, err_v_ = run(root, "--check")
+    check(f"FM-037 · AU-19 · a branch that appends its own key under the Owner's email to the repository's signers file, then signs as him with it, vouches for nothing: the path change it signs is refused, and so is the answer it signs — both verified against the default branch's signers file; the seat's change to the file is refused on its own (saw {g_v_[0]!r}, {err_v_.strip()[-300:]!r})",
+          len(g_v_[0]) == 2 and g37_(c_v1_) == f'refused: commit {c_v1_[:7]} "AP-037: a key for the Owner" changes the signers file `docs/work-tracker/allowed_signers` — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY_KEYS}. The way through: {fm.GUARD_WAY}'
+          and g37_(c_v2_).startswith(f'refused: commit {c_v2_[:7]} "AP-037: the path, signed as him" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — the Owner\'s email, and its signature does not verify (`%G?` ')
+          and code_v_ == fm.EXIT_LINT and "AP-050: the answer's commit" in err_v_ and "does not verify as `h@x`" in err_v_)
+    add37_ = lambda: signers37_.write_text(signers37_.read_text() + "gtm@seat " + skey_.with_suffix(".pub").read_text())
+    c_k_, g_k_ = made37_("ap/037-owner-keys", "AP-037: the Owner names a key", add37_, "-S", OWNER_)
+    c_ko_, g_ko_ = made37_("ap/037-owner-path", "AP-037: his line, his key", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), "-S", OWNER_)
+    check(f"FM-037 · AU-19 · the Owner's real key still verifies against the default branch's file: his signed change to the signers file is accepted, and his signed change to the path (saw {g_k_!r})",
+          g_k_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-keys` since origin/main, 1 change them or his signers file, each his own commit") and g_ko_[0] == [])
     rm_git(root)
 fm.configure(HERE)
 
@@ -3775,10 +3802,9 @@ else:
     _n37, _changed37, _v37 = _no_git_env(_real37)
     _by37 = {c_[:7]: (v_, w_) for c_, _s, _h, _w, v_, w_ in _v37}
     _all37 = subprocess.run(["git", "-C", str(HERE), "rev-list", _main37], capture_output=True, text=True, env=_ENV).stdout.split()
-    check(f"FM-037 · clause 7 · the real history: walked commit by commit, main to 0d60d55 changes the two sections in exactly the six signed commits 45198d5 … ad9bf67, each accepted as the Owner's (`%G?` G, the signer his email), and in the root commit that wrote the file before signing existed; ae1f05e, the tracker moved with its key, changes nothing (saw {_n37} commits, {_by37})",
-          _n37 == len(_all37) and any(c_.startswith("ae1f05e") for c_ in _all37) and "ae1f05e" not in _by37
-          and all(_by37.get(c_) == ("signed", "") for c_ in _g37) and set(_by37) == set(_g37) | {"a680fdf"}
-          and _by37["a680fdf"] == ("refused", "the Owner's email, unsigned — a git author is a string anyone can type"))
+    check(f"FM-037 · clause 7 · the real history: walked commit by commit, main to 0d60d55 changes the two sections in exactly the six signed commits 45198d5 … ad9bf67, each accepted as the Owner's (`%G?` G, the signer his email); ae1f05e, the tracker moved with its key, changes nothing, and the root a680fdf wrote 0.1.0's bare scaffold — a scaffold where there was none (AU-20) (saw {_n37} commits, {_by37})",
+          _n37 == len(_all37) and any(c_.startswith("ae1f05e") for c_ in _all37) and any(c_.startswith("a680fdf") for c_ in _all37)
+          and all(_by37.get(c_) == ("signed", "") for c_ in _g37) and set(_by37) == set(_g37))
 fm.configure(HERE)
 
 # --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone

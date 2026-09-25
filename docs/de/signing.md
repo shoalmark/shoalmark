@@ -165,8 +165,10 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
     Stufe 3: beide Signierer, je eine Zeile. Die Zeile eines Sicherheitsschlüssels lautet
     `sie@example.org sk-ssh-ed25519@openssh.com AAAA…` — das `sk-` zeigt jedem, der die Datei liest, einen
     Hardware-Schlüssel an. Die eines Secure-Enclave-Schlüssels lautet `ecdsa-sha2-nistp256`, mit ihrer Kommentarzeile
-    darüber. Ein öffentlicher Schlüssel ist öffentlich; ihn einzuchecken ist in Ordnung. Ein Agent, der diese Datei
-    ändert, ist im Diff zu sehen.
+    darüber. Ein öffentlicher Schlüssel ist öffentlich; ihn einzuchecken ist in Ordnung. Nur Ihr signierter Commit
+    ändert diese Datei: Das Werkzeug lehnt die Änderung eines Agenten ab und prüft jede Signatur gegen die Fassung auf
+    dem Standard-Branch, nie gegen die eines Branches. Committen Sie ihre erste Fassung darum selbst auf dem
+    Standard-Branch, signiert — ein Branch kann keinen Schlüssel beweisen, den der Standard-Branch nicht führt.
 
 3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,
    Typ **Signing Key** ([die Schritte bei GitHub](https://docs.github.com/de/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -243,7 +245,8 @@ solchen Commit eines Agenten ab, bevor er entsteht, und `--queue` liest seinen P
 unsigned*. Ihr Commit geht durch, wenn `git log -1 --format='%G? %GS %ae'` `G` und zweimal Ihre E-Mail ausgibt — die
 Probe unter *Prüfen*. Ein Agent, der einen der beiden Abschnitte geändert haben will, fragt Sie mit einem `ask:`; die
 Änderung machen Sie selbst, signiert. Der Abschnitt der Durchgänge (`## Passes`) bleibt offen für die Agenten, die eine
-Sichtung festhalten.
+Sichtung festhalten. Die Signierer-Datei ist ebenso geschützt, und eine Signatur wird gegen deren Fassung auf dem
+Standard-Branch geprüft: Ein Branch, der seinen eigenen Schlüssel unter Ihrer E-Mail einträgt, beweist nichts.
 
 **Was es nicht unterscheiden kann.** Ein Commit, der mit Ihrem Schlüssel signiert ist, geht durch; auf Stufe 0 hat jeder
 Prozess unter Ihrem Konto diesen Schlüssel (FM-007) — erst die Stufen oben machen ihn allein zu Ihrem. Wo Ihr Sitz in
