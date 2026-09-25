@@ -242,3 +242,136 @@ Not verified:
 - A merge-tree against `origin/fm/035-ci-green-on-every-platform`: the branch is not on origin.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Pass on 05b68a4 (2026-09-25 14:59 CEST, Reviewer, session `8e509911/reviewer-11`)
+
+**Scope.** The tip is `05b68a4` (`05b68a4aae2e5ef91aa6dfd9cd2e9d3570132933`), three commits after the verdict above
+(`3e025e8`), all by the principal seat (`Session: 8e509911`):
+- `9498419` 14:44:02 re-makes the pass on R1–R8;
+- `069651d` 14:46:05 files FM-036 (`tags: bug`, under the freeze);
+- `05b68a4` 14:47:16 judges FM-036 `keep P2 #4 build` and frees FM-005's #4.
+
+The paths are FM-005, FM-030, FM-036, INDEX, TRIAGE.md and the worksheet, all under `work-tracker/`. **Tier: docs, one
+pass.** **Independence:** this seat and the branch share a session (`8e509911`); reported.
+
+**What I ran at `05b68a4`.**
+- **`--triage` on a clean clone, three times:** each run exits 0 with *0 trackers to judge* and *Applied nothing*, and the
+  tree is clean after each ✓.
+- **Replays:**
+  - On `bd81954` with `9498419`'s sheet: *Applied 3* (FM-029, FM-007, FM-030 `keep P1 #1 build`). FM-007, FM-029, INDEX
+    and the sheet are byte-identical to `9498419`. FM-030's front matter also matches; the only difference is two
+    ship-log rows the command does not write. TRIAGE.md differs by its paragraph alone ✓.
+  - On `069651d` with the tip's sheet: *Applied 2: FM-005: rank #4 freed — FM-036 holds it now · FM-036: keep P2 #4
+    build*. Everything matches the tip except TRIAGE.md's paragraph ✓.
+  - FM-036's row, generated on `069651d`: its eight derived cells equal the tip's ✓.
+- **`--next`:** #1 FM-030 · #2 FM-029 · #4 FM-036 · #5 FM-006 · #6 FM-035 · … #10. Each rank is held once, and #3 is empty.
+- **Gates:**
+  - `--check` 0 (*83 verdict(s)*; *filing freeze: 20 open*) and `--session-check` 0;
+  - the generator leaves the tree clean;
+  - both suites are green: `test_shoalmark.py` 394 ok, `test_core.py` 148 ok;
+  - `git merge-tree` against `origin/main` is clean (tree `8cee1b3`).
+- **`origin/fm/035-ci-green-on-every-platform`** (`b730c29`, its own latest verdict NOT READY) **conflicts in
+  TRIAGE.md and INDEX.md**:
+  - TRIAGE.md: that branch rewrites FM-035's paragraph (*12:1x* → 12:11:44), which sits directly under this branch's new
+    paragraph.
+  - INDEX.md: FM-035's rows change next to FM-036's new #4 row.
+  - When the CI branch lands first, the resolution here is mechanical: keep both paragraphs, newest first, and let the
+    generator write INDEX.
+- **`--related FM-036`:** FM-032 7.1 · FM-030 6.0 · FM-019 4.7 · FM-027 4.0 · FM-016 3.7 · FM-028 3.4 · FM-001 3.3 ·
+  FM-014 3.1. On `9498419`, before the filing, the title search found nothing above 0.6. At the tip, it ranks FM-036
+  itself first (13.6).
+- **Text written under the table:** a line added there is gone after one `--triage` run. `triage_worksheet` writes only
+  the header, the generated rows and the filled rows.
+
+**R1–R8.**
+- **R1 closed on the board:** FM-030 holds `rank: 1` in its front matter and in INDEX; the sheet has one filled row per
+  tracker; runs converge. How the row was made is R9.
+- **R2 closed in form:** there is a not-P0 line. Its ground is R10.
+- **R3 closed:** FM-007's Reason weighs line 6. The act sits on no list until FM-030 (#1) is built, and a rank would say a
+  seat's work is next. That is the seat's judgement, reasoned, and it stands. See R13 for FM-005.
+- **R4 open (P3):** FM-007's Reason now says the tier line is FM-007's, and FM-029's Reason drops it. But FM-029's Now cell
+  still reads *…and the tier said beside a signature*, and the paragraph still reads *AU-29 and the tier line remain*.
+- **R5 closed** in the paragraph and in FM-030's Reason (*main runs 0.18.3 … its strict rule*). The FM-030 row's own
+  cells still say otherwise (R9).
+- **R6 closed for FM-029 and FM-007:** each cell is marked, and the marks match the cells. Only the title, still the file
+  slug, is unmarked. **Not closed for FM-030** (R9).
+- **R7 closed:** the correcting row names the notification design as the seat's.
+- **R8 closed in part:** *13:3x* is gone, and the quotation reads *their board*, though still without line 6's second
+  clause. The correcting row has errors of its own (R11).
+
+**R9 · P2 · confidence 80 % · FM-030's one row is the morning's row with this pass's verdict pasted on. The raise it
+judges is not on the sheet, its cells contradict their own marks, and the morning's merged verdict is gone from the file,
+under a claim of preservation the command makes impossible.**
+- The row's first eight cells are byte-identical to the morning row on `origin/main`: Tier *P2*, Now the **first** raise
+  (07:06:48), and Facts *0.18.3 build E, which lists a raised tracker, is in review, not on main*. Its Verdict and Reason
+  are this pass's.
+- The row judged at 13:36, the one carrying the second raise (13:31:26), was removed. That second raise line is now
+  nowhere on the sheet.
+- The Reason's marks, one by one, describe a different row:
+  - *Tier (P1, the morning's)*: the cell reads P2;
+  - *Now (the raise line, verbatim)*: the cell holds the other raise;
+  - *Facts (the seat's)*: the cell says 0.18.3 is not on main, which the Reason itself contradicts.
+- The morning pass's Verdict (`keep #3 P1 build`) and its Reason are gone from the file. The morning's paragraph still
+  names that file as its worksheet.
+- The paragraph and FM-036 both say the morning row's *text* is *kept under the table*. No text is under the table, at
+  the tip or in `9498419`, and `--triage` deletes any on its next run (shown above).
+- **Why P2:** this is the pass's own record of what it judged, and it now shows another raise, another tier and a false
+  fact under its verdict. The claim that the displaced record was preserved is false, and the tool cannot make it true.
+- **Fix:**
+  - Make the one FM-030 row the second-raise row (`d2de1f7`'s first FM-030 row, cells unchanged) carrying the re-made
+    Verdict and Reason; its marks then match its cells.
+  - Say in the paragraph that the morning row was removed from the sheet, and where its verdict stands: the morning's
+    paragraph, and the sheet at `f34de1e` in git.
+  - Correct FM-036's *kept its text under it* and its interim rule, since the command drops text under the table.
+  - Then two runs of `--triage` on a clean checkout: *Applied nothing* both times.
+
+**R10 · P3 · confidence high · The not-P0 ground is the consumer's schedule, which this record should not hold and does
+not source.**
+- FM-030's Reason grounds *not P0* on the days the consumer's reads were re-planned to and on how long the consumer's
+  data stands. This review does not repeat them.
+- The days and the retention are the consumer's production detail. The raise line was redacted precisely to keep such
+  detail out: it says only *at a fixed hour on two consecutive days*. Nothing in shoalmark sources these facts.
+- **Fix, forward (or with R9):** give the ground without the consumer's days, for example *the missed reads are
+  re-planned in the consumer's own record; the harm is recoverable*, and point to where that record can be checked.
+
+**R11 · P3 · confidence high · The correcting row in FM-030 misstates both of its corrections.**
+- *the row first timed 13:3x was corrected in place …, now 13:31:26*: that row is the Owner's word, and it reads
+  **13:33:29**.
+- *the raise row's* his board *is the path's* their board: no ship-log row says *his board*. The misquotation was in the
+  worksheet's Reason, which is fixed.
+  - The only *his board* in FM-030 is the first raise's line (07:06:48), which is the Auditor's text word for word and is
+    not a misquotation.
+- **Fix, forward:** a correcting row with 13:33:29, which places the *their board* fix in the worksheet's Reason.
+
+**R12 · P3 · confidence high · FM-036's filing credits `--related` with the seat's choices and does not open the three
+it marks.**
+- The ship log says *`--related` held it against FM-033 (…), FM-028 (…) and FM-027 (…)*.
+  - `--related FM-036` does not list FM-033 among its eight; FM-028 is sixth and FM-027 fourth.
+  - Before the filing, the title search found nothing above 0.6.
+  - The three were the seat's choice. This is FM-035's R3/R8 again.
+- The sheet marks the machine's three closest, FM-032 (7), FM-030 (6) and FM-019 (5), as NOT considered. The printed rule
+  is *OPEN every one marked NOT considered*, and the Reason names none of them. FM-030 is the case FM-036 was found on.
+- The hook's backticked *`keep P1 #3 build`* was `keep #3 P1 build`.
+- *What is true now* repeats R9's claim that the text was kept under the table. Its interim rule, *quotes the superseded
+  row's text under the table*, does not survive one run of the command.
+- **Fix, forward:** `considered:` names what was opened (FM-030 at least), and the Reason says why FM-032 and FM-019 are
+  not the same work. A correcting row says who chose the three. The interim rule says where a superseded row lives.
+
+**R13 · P3 · confidence 60 % · FM-036 took #4, not the free #3, and FM-005 lost its rank.**
+- #3 was empty after R1's fix. Taking #4 unranked FM-005 (P1, `wait`) without need.
+- With FM-007, two P1s are now off `--next`.
+- The rule cited, *a wait ranks after the builds*, ranks it after, not off.
+- Against this finding: FM-018's unranking this morning stood.
+- The paragraph also folds FM-036's pass into the re-make's. The page's rule is *one paragraph per pass*.
+- **Fix, forward:** FM-036 at #3 or FM-005 ranked after the builds, or a Reason that says why neither; and a paragraph of
+  FM-036's own.
+
+**Verdict on 05b68a4: NOT READY — R9 is P2.**
+- R1 is closed on the board: FM-030 is #1, and runs converge.
+- R2, R3, R5, R7 and R8 are closed, R2 and R8 in part: R2's ground is R10, and R8's correcting row is R11. R4 remains
+  open as a P3.
+- R10–R13 are P3, fixed forward or with R9.
+- Every gate is green, and merge-tree against `origin/main` is clean. Against the CI branch, TRIAGE.md and INDEX.md
+  conflict mechanically.
+
+The Owner lands this by merging; a merge rules nothing.
