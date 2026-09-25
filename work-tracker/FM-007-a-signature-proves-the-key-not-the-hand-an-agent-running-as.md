@@ -5,8 +5,7 @@ considered: FM-005, FM-006
 tags: security
 tier: P1
 next: owner
-triaged: 2026-09-24
-rank: 2
+triaged: 2026-09-25
 ask: "Which day this week do you set up the hardware key that needs a touch — your answer of 09-22 — so that the key signing your answers stops being a software key in the shared agent?"
 ask-kind: action
 ask-since: 2026-09-25

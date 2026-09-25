@@ -4,8 +4,8 @@ status: In Progress
 considered: FM-008, FM-013, FM-014, FM-017, FM-018, FM-030
 tags: bug
 next: build
-triaged: 2026-09-24
-rank: 1
+triaged: 2026-09-25
+rank: 2
 tier: P2
 hook: "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`. Read alone, the word says he agreed with the seat, and a fleet that counts how often the person takes the proposal counts this answer the wrong way."
 ---
