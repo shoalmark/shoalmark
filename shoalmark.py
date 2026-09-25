@@ -3944,6 +3944,10 @@ def commit_msg_check(message_file):
 # or took `signed` off his seat, and then changed his words, would otherwise judge itself.
 GUARDED = ("intent", "path")
 GUARD_WHY = "only the Owner changes his intent and his current path (FM-037)"
+# the way through, as the tool already asks a seat to put a question in front of him (`--new`, the contract's `ask:` rule)
+GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can "
+             "answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`")
+GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)"
 _GUARD = None
 
 
@@ -4115,8 +4119,15 @@ def guard_lines(verdicts):
         if verdict == "checkout":
             out.append(f'{home}: commit `{c[:10]}` "{first_words(subject, 60)}" {did} — it is signed, but {CHECKOUT_MARKS[0]}: {why} — see {SIGNING_PAGE}')
         elif verdict == "refused":
-            out.append(f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did} — {why}: not the Owner\'s signed commit — {GUARD_WHY}')
+            out.append(f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did} — {why}: not the Owner\'s signed commit — {GUARD_WHY}. '
+                       f'The way through: {GUARD_WAY}')
     return out
+
+
+def guard_footer(problems):
+    """The refusal's last line, under every line the run printed (clause 6): what a signature proves — the key, not the hand.
+    Said once, where the guard said anything."""
+    return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems for p_ in (_GUARD or ([], ""))[0]) else []
 
 
 def triage_guard():
@@ -5374,6 +5385,8 @@ def main(argv=None):
     for p in ledger:
         print(f"  lint: {p}", file=sys.stderr)
     for line in checkout_lines(problems):
+        print(line, file=sys.stderr)
+    for line in guard_footer(problems):                     # FM-037: the refusal's last line is its limit
         print(line, file=sys.stderr)
     # the INDEX is still written when a lint fires: the ❌ banner in its header IS the violation, made visible
     # where the ledger is read. What the non-zero exit stops is the COMMIT.

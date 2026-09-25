@@ -3124,7 +3124,7 @@ with tempfile.TemporaryDirectory() as tmp:
     c_mv_, g_mv_ = made37_("ap/037-move", "AP-037: TRIAGE.md, filed away", lambda: home_.rename(home_.with_name("TRIAGE-old.md")), SEAT_)
     c_dir_, g_dir_ = made37_("ap/037-redir", "AP-037: the tracker, elsewhere", text37_('[kinds]', 'tracker_dir = "elsewhere"\n[kinds]', root / "shoalmark.toml"), SEAT_)
     check(f"FM-037 · clause 1 · a seat's unsigned commit is refused where it changes the text under the intent, or the path, renames a heading, deletes TRIAGE.md, moves it, or points the tracker directory elsewhere — each naming the commit, its subject and the section (saw {g_int_[0]!r})",
-          g_int_[0] == [f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}']
+          g_int_[0] == [f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
           and len(g_path_[0]) == 1 and g_path_[0][0].startswith(f'refused: commit {c_path_[:7]} "AP-037: a line of the path" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — ')
           and len(g_head_[0]) == 1 and "renames or removes the heading `## The intent` in docs/work-tracker/TRIAGE.md" in g_head_[0][0]
           and len(g_del_[0]) == 1 and f"commit {c_del_[:7]}" in g_del_[0][0] and "deletes or moves docs/work-tracker/TRIAGE.md, and `## The intent` and `## The current path` with it" in g_del_[0][0]
@@ -3134,6 +3134,12 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "ap/037-intent"); code37_, out37_, err37_ = run(root, "--check")
     check(f"FM-037 · clause 1 · end to end: `--check` exits 4 on the refusal, and says in one line that the two sections are guarded (saw {err37_.strip()[-240:]!r})",
           code37_ == fm.EXIT_LINT and f"lint: refused: commit {c_int_[:7]}" in err37_ and "the Owner's two sections: guarded — 1 commit(s) on `ap/037-intent`" in out37_)
+    lines37_ = [l_ for l_ in err37_.splitlines() if l_.strip()]
+    check(f"FM-037 · clauses 2 and 6 · the refusal names the commit (7 characters, its subject), the section and the way through — the Owner commits it signed; a seat proposes the change as an ask, in the form the tool asks for one — and its last line is its limit: a commit signed with the Owner's key passes, at tier 0 any process on his account holds that key (saw {lines37_[-3:]!r})",
+          f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent`' in err37_
+          and "The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`" in err37_
+          and lines37_[-2] == "  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)"
+          and lines37_[-1].startswith("FAILED: ") and sum(l_.startswith("  the limit: ") for l_ in lines37_) == 1)
     # what is NOT a change: `## Passes`, the whole tracker moved with its key, the scaffold where there was none
     c_pass_, g_pass_ = made37_("ap/037-passes", "AP-037: a pass recorded", text37_("*None yet.*", "**2026-09-25 — a pass.** Worksheet: none."), SEAT_)
     def moved37_():
@@ -3166,7 +3172,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "add", "-A"); git(root, "commit", "-q", "-m", "merge the Owner's line in, resolved by hand", SEAT_); c_mo_, g_mo_ = sha37_(), guard37_()
     check(f"FM-037 · clause 1 · a merge that carries an ancestor's signed change is accepted — the signed commit judged on its own; a merge that brings a text no parent had is refused as its own (saw {g_mo_[0]!r})",
           g_mc_ == ([], "the Owner's two sections: guarded — 3 commit(s) on `ap/037-merge-carries` since origin/main, 1 change them, each his own commit")
-          and g_mo_[0] == [f'refused: commit {c_mo_[:7]} "merge the Owner\'s line in, resolved by hand" brings a text under `## The current path` in docs/work-tracker/TRIAGE.md that no parent had — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}'])
+          and g_mo_[0] == [f'refused: commit {c_mo_[:7]} "merge the Owner\'s line in, resolved by hand" brings a text under `## The current path` in docs/work-tracker/TRIAGE.md that no parent had — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}'])
     # the Owner is the DEFAULT branch's: a branch that names itself the Owner still judges nothing of its own
     c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")
