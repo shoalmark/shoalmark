@@ -11,9 +11,11 @@ sentence per question, once a day, and make his answer one command.
 questions and puts them to you once a day.
 
 **Your agents move on your word — and only your signed word counts.** In the record, an answer counts only as a commit
-signed by a key you trust; the gate refuses an unsigned one. A click, a merge or a line in chat is not an answer. How
-strong that signature is, you choose — [four tiers](signing.md), from a key anything on your account can use to one
-that needs your touch — and every signature names the key that made it.
+signed by a key you trust, and the gate refuses an unsigned one: on git, once your seat is marked `signed`, as
+[the set-up page](setup.md) does it. Under Subversion, it counts only as a commit the server authenticated as you. A
+click, a merge or a line in chat is not an answer. How strong that signature is, you choose — [four tiers](signing.md),
+from a key anything on your account can use to one that needs your touch — and every signature names the key that
+made it.
 
 ## Measured, not promised
 
@@ -24,8 +26,11 @@ In shoalmark's own repository, which runs on shoalmark:
 - **After it, to 25 September 2026:** 12 of 15.
 
 *Counted on 25 September 2026 with `gh` from pull requests 1–69 of holgo99/shoalmark: merged ones only, without the
-owner's own answer branches (`answer/…`). One counts when a commit adding a file under `work-tracker/evidence/reviews/`
-is dated before the pull request was opened. The rule is the owner's signed answer of 24 September 2026, 11:07 CEST.*
+owner's own answer branches (`answer/…`). One counts when a commit adding or changing a file under
+`work-tracker/evidence/reviews/`, merge commits excluded, is dated before the pull request was opened. A commit's date
+is when it was made, not when it was pushed: the forge's push events confirm the counted pull requests from
+24 September 2026, 05:18 UTC on, and it no longer lists older ones. The rule is the owner's signed answer of
+24 September 2026, 11:07 CEST.*
 
 What shoalmark prints for it, every day:
 
