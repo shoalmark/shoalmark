@@ -10,6 +10,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   still be done, 60 where absent; `done:` — its result, written by the Owner's `--done`. `--clear-ask` leaves `due:`:
   the answer to an action ask is a promise, and the act is still owed. The gate refuses a time that is not a real one
   or has no zone. *Nothing to do on upgrade.*
+- **The acts owed to the Owner are on his board with their time** (FM-030). An act is owed where an action ask was
+  accepted — his answer a promise of his hands — or a `due:` is set, until `done:` is written; closed work owes none.
+  His board lists them after the questions, under *your acts, with their time*: *no date yet*, *due*, *overdue* after
+  its time, *missed* once `window:` minutes have passed with no result — by the page's clock, its second rule beside
+  the triage freshness. INDEX.md lists them in a table with their time as written: no due, overdue or missed, so no
+  minute passing changes a committed file. The board has six new labels, `acts.*`; `examples/de/labels.yaml` carries
+  the German.
 
 ## 0.18.3 — 2026-09-24
 

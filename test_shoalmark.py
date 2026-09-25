@@ -937,6 +937,12 @@ waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
+acts.title: Ihre Handlungen, mit ihrer Zeit
+acts.promised: "zugesagt {0}: {1}"
+acts.due: fällig {0}
+acts.overdue: überfällig — fällig {0}
+acts.missed: "versäumt — fällig {0}, und {1} Minuten ohne Ergebnis verstrichen"
+acts.nodate: noch kein Termin
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
@@ -2566,7 +2572,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · revoke and --supersede key on the answer being there, not on `next: owner` — both work after the move is written, and keep it; an answered ask without either is still refused (saw {err_r.strip()[-160:]!r}, {err_s.strip()[-160:]!r})",
           code_r == 0 and r95_.get("answer") == '"revoked - the audit comes first"' and r95_.get("next") == "build"
           and code_s == 0 and r96_.get("answer") == '"accepted - next week"' and r96_.get("next") == "owner"
-          and code_n == fm.EXIT_LINT and "answered already" in err_n and run(root, "--check")[0] == 0)
+          and code_n == fm.EXIT_LINT and "answered already" in err_n and run(root)[0] == 0 and run(root, "--check")[0] == 0)      # INDEX.md lists the accepted action (FM-030 B): regenerated, as the hook does
     tracker(root, "AP-098", extra='ask: "A question nobody put to him?"\nask-kind: ruling\nnext: build\n', title="not asked", body=log_)
     git(root, "add", "-A"); git(root, "commit", "-qm", "an ask line with another move")
     code_a, _o, err_a = run(root, "--answer", "AP-098", "accept"); code_b, _o, err_b = run(root, "--answer", "AP-099", "accept")
@@ -2663,6 +2669,57 @@ with tempfile.TemporaryDirectory() as tmp:
     check("FM-030 · A · `--clear-ask` leaves `due:` and `window:`: the answer was a promise, the act is still owed; `--schema` says who writes each and what it means",
           code_c == 0 and front_.get("due") == "2026-09-26T07:30:00+02:00" and front_.get("window") == "90" and "answer" not in front_
           and all(f"| `{k}:` |" in schema_ for k in ("due", "window", "done")) and "the Owner's `--due` moves it" in schema_ and "the Owner's `--done`" in schema_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.4 B: the acts owed to the Owner are on his board with their time — due, overdue, missed — and in INDEX.md
+#     as written, with no clock -------------------------------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    git(root, "init", "-q")
+    (root / "shoalmark.toml").write_text('name = "b"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q, kind, answer: (f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "yes"\n'
+                                   + (f'answer: "{answer}"\nanswered: {since_}\nanswered-by: holgo\n' if answer else ""))
+    tracker(root, "AP-410", extra=ask_("Will you set up the key this week?", "action", "accepted - after the scoring"), title="promised, no date")
+    tracker(root, "AP-411", extra=f"next: run\ndue: {at_(24 * 60)}\n", title="a read tomorrow")
+    tracker(root, "AP-412", extra=f"next: run\ndue: {at_(-10)}\nwindow: 60\n", title="a read ten minutes ago")
+    tracker(root, "AP-413", extra=f"next: run\ndue: {at_(-120)}\nwindow: 30\n", title="a read two hours ago")
+    tracker(root, "AP-414", extra=ask_("Will you rotate the token?", "action", "rejected - not this quarter"), title="refused")
+    tracker(root, "AP-415", extra=ask_("Which week?", "ruling", "accepted"), title="a ruling")
+    tracker(root, "AP-416", extra=f'next: run\ndue: {at_(-120)}\ndone: "{at_(-100)} · evidence/AP-416/read.md"\n', title="done")
+    tracker(root, "AP-417", status="Shipped", extra=f"due: {at_(-120)}\n", title="shipped")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>")
+    code_, _o, err_ = run(root)
+    fm.configure(root); by_ = {t["id"]: t for t in fm.load_trackers()}
+    acts_ = {k: fm.act_of(t) for k, t in by_.items()}
+    check(f"FM-030 · B · an act is owed where an action ask was accepted or a `due:` is set — not after a rejection, not for a ruling, not once `done:` is written, not on closed work (saw {sorted(k for k, a in acts_.items() if a)})",
+          code_ == 0 and sorted(k for k, a in acts_.items() if a) == ["AP-410", "AP-411", "AP-412", "AP-413"]
+          and acts_["AP-410"] == ("Will you set up the key this week?", "accepted - after the scoring", since_, "", 60) and acts_["AP-413"][4] == 30)
+    index_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
+    run(root); again_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
+    check("FM-030 · B · INDEX.md lists the acts with their time as written — no due, overdue or missed, which need a clock — so a minute passing changes nothing committed",
+          "### Acts owed to the Owner — with their time" in index_ and f"| [AP-412](AP-412-x.md) | a read ten minutes ago | — | {at_(-10).replace('T', ' ')} | 60 min |" in index_
+          and f"| [AP-410](AP-410-x.md) | Will you set up the key this week? | {since_}: accepted - after the scoring | no date yet | 60 min |" in index_
+          and "AP-414" not in (table_ := index_.split("### Acts owed")[1].split("\n## ")[0]) and not re.search(r"^\|.*\b(overdue|missed)\b", table_, re.M)
+          and fm.drift_normalize(again_) == fm.drift_normalize(index_))
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    check("FM-030 · B · the page carries each act in its row and the second clock rule beside the first, in the words of its labels — English built in, German in the table the tool ships",
+          f'["Will you set up the key this week?", "accepted - after the scoring", "{since_}", "", 60]]' in page_ and "actstate=a=>" in page_
+          and '"acts.missed": "missed — due {0}, and {1} minutes passed with no result"' in page_
+          and "acts.missed" in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")))
+    if _CHROME:
+        dom_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+        shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+        acts_shown_ = shown_[shown_.find("your acts"):shown_.find(" id tier status ")]
+        check(f"FM-030 · B · rendered, his board lists his acts after the questions: no date yet, due, overdue, missed — each by the clock, each with its time (saw {shown_[shown_.find('your acts'):][:420]!r})",
+              "your acts, with their time: 4" in shown_ and "AP-410 Will you set up the key this week? · promised " + since_ + ": accepted - after the scoring · no date yet" in shown_
+              and f"AP-411 a read tomorrow · due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago · overdue — due {at_(-10).replace('T', ' ')}" in shown_
+              and f"AP-413 a read two hours ago · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
+              and "AP-414" not in acts_shown_ and "AP-415" not in acts_shown_ and "AP-416" not in acts_shown_ and "AP-417" not in acts_shown_)
     rm_git(root)
 fm.configure(HERE)
 

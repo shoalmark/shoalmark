@@ -1770,6 +1770,14 @@ def render_triage(trackers):
                 f"| [{t['id']}]({t['file']}) | {t['hook']} | {status_cell(t)} |" for t in ranked]
     else:
         out.append("*Nothing is ranked yet — no triage pass has run.*")
+    acts = [(t, a) for t, a in ((t, act_of(t)) for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))) if a]
+    if acts:                                        # FM-030: the acts owed to the Owner, with their time as written — no clock here
+        cell = lambda v: str(v).replace("|", "\\|")
+        out += ["", "### Acts owed to the Owner — with their time\n",
+                "> Due, overdue or missed is the board's to say: it has a clock, and this file has none. `done:` takes an act off.\n",
+                "| ID | Act | Promised | Due | Window |", "|----|-----|----------|-----|--------|"]
+        out += [f"| [{t['id']}]({t['file']}) | {cell(what)} | {cell(f'{answered}: {answer}') if answer else '—'} | {due.replace('T', ' ') if due else 'no date yet'} | {window} min |"
+                for t, (what, answer, answered, due, window) in acts]
     out.append("")
     return "\n".join(out)
 
@@ -1860,7 +1868,8 @@ __RUNNING__
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
-//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029]]
+//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
+//        [the act owed to the Owner: what, his answer, its date, due, window in minutes — FM-030; empty where none is owed]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -1888,6 +1897,10 @@ LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
 fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
+// the page's SECOND clock rule (FM-030), beside the first: an act owed to the Owner is due until its time, overdue after
+// it, missed once `window:` minutes have passed with no result — read from `due:` and `window:` alone. The files carry the
+// time as written; only the page knows what time it is now.
+actstate=a=>!a[3]?"nodate":(now=>now<Date.parse(a[3])?"due":now<Date.parse(a[3])+a[4]*6e4?"overdue":"missed")(Date.now()),
 // has a pass run? ONE answer for every line that asks: the newest date a pass left on a tracker, or else the date of the
 // newest pass TRIAGE.md records. `progress` holds only what a pass kept — until a first pass it is empty by rule and says so (FM-021)
 PASSED=LAST||(HOME.last.match(/\d{4}-\d\d-\d\d/)||[""])[0],
@@ -1979,6 +1992,11 @@ function draw(){
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+    // FM-030: what he owes, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
+    +(acts=>acts.length?"\n\n<b class=\""+(acts.some(t=>actstate(t[30])!="due"&&actstate(t[30])!="nodate")?"hot":"")+"\">"+l("acts.title")+": "+acts.length+"</b>\n"+acts.map(t=>{
+      const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
+      return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
+        +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`}).join("\n"):"")(T.filter(t=>t[30].length))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
     +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
@@ -2066,6 +2084,8 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
+    "acts.title": "your acts, with their time", "acts.promised": "promised {0}: {1}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
+    "acts.missed": "missed — due {0}, and {1} minutes passed with no result", "acts.nodate": "no date yet",
     "sessions.recent": "sessions · {0} in the last day",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
@@ -2630,7 +2650,8 @@ def render_html(trackers):
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
-              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])]],
+              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
+             list(act_of(t) or [])],
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -3093,6 +3114,21 @@ def parse_due(text):
     except ValueError:
         return None
     return when if when.tzinfo is not None else None
+
+
+def act_of(t):
+    """FM-030 — the act a tracker owes the Owner, while it is owed: (what, his answer, its date, due, window) or None. An
+    accepted action ask is one — its answer is a promise of his hands, the act still his — and so is any `due:`, which the
+    seat that schedules an act writes. `done:` closes it; closed work owes nothing. `window:` is minutes, 60 where absent."""
+    if t.get("status") not in OPEN_STATUSES or t.get("done"):
+        return None
+    word = ANSWER_WORD_RE.fullmatch(answer_norm(t.get("answer")))
+    promised = t.get("ask_kind") == "action" and bool(word) and word.group(1).lower() == "accepted"
+    if not (promised or t.get("due")):
+        return None
+    window = int(t["window"]) if str(t.get("window") or "").isdigit() else WINDOW_DEFAULT
+    return ((t.get("ask") if promised else "") or t.get("title") or t["id"], t.get("answer", "") if promised else "",
+            t.get("answered", "") if promised else "", t.get("due", ""), window)
 
 
 def shape_words(shape):
