@@ -10,8 +10,8 @@ tier: P2
 ask: "When and how does shoalmark go public?"
 ask-kind: action
 ask-since: 2026-09-25
-ask-options: "this repository as it is, if its client names may be public — the first tag after the scoring, the three gates held | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet"
-ask-proposal: "this repository as it is, if its client names may be public — the first tag after the scoring, the three gates held"
+ask-options: "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | a snapshot as a new repository, client names and the parent's traces removed, this one the private archive, same gates | not yet"
+ask-proposal: "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held"
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
 
@@ -85,7 +85,7 @@ Verdict: yes, add the authority point. Keep it to what the tool enforces today, 
 
 ## Going public — the Auditor seat's counsel, and the four gates
 
-**Through the Owner at 16:26:24 on 2026-09-25, as pasted, revising its ask of 16:22:12:** *Ask on the board (ruling): "When and how does shoalmark go public?" options: "this repository, as it is, at the first tag after the 09-29 scoring with CI green on all three platforms, the signing tier stated or the hardware key live, and a gitleaks scan clean | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet" · proposal: the first, if the client names may be public (the Auditor's counsel, 2026-09-25).* The ask above carries it — kind `action`: a yes switches the repository's visibility or creates a new one on his account, his hands (`--schema`: an ask whose yes needs the Owner's hands is `action`; the first version said `ruling`, the Reviewer's R1). An option is at most 120 characters on the board, so the first option names *the three gates*; they are here in the counsel's words, and the seat's gloss stands apart in brackets:
+**Through the Owner at 16:26:24 on 2026-09-25, as pasted, revising its ask of 16:22:12:** *Ask on the board (ruling): "When and how does shoalmark go public?" options: "this repository, as it is, at the first tag after the 09-29 scoring with CI green on all three platforms, the signing tier stated or the hardware key live, and a gitleaks scan clean | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet" · proposal: the first, if the client names may be public (the Auditor's counsel, 2026-09-25).* The ask above carries it, its options re-made declarative on the addendum below (17:23:39) — kind `action`: a yes switches the repository's visibility or creates a new one on his account, his hands (`--schema`: an ask whose yes needs the Owner's hands is `action`; the first version said `ruling`, the Reviewer's R1). An option is at most 120 characters on the board, so the options name the gates without listing them (*gates held*, *same gates*); they are here in the counsel's words, the fourth in its addendum's, and the seat's gloss stands apart in brackets:
 
 1. *CI green on all three platforms* [on the tag that goes public; red on `v0.18.3`: FM-035, its fix in review].
 2. *the signing tier stated or the hardware key live* [the tier on the site's signing page, FM-007; his answer: the key after the scoring, once delivered].
@@ -105,7 +105,7 @@ Verdict: yes, add the authority point. Keep it to what the tool enforces today, 
 
 No number differs. The count is of `9555d2c`: each new version of this file adds one, because the file names the parent itself (the Auditor seat's assessment above, its *9 of 13* paragraph, and the correction below).
 
-The proposal is the Auditor seat's counsel, disclosed as such: *the first, if the client names may be public*. The board shows only the ask, the proposal and the title, so the condition stands inside the first option's text, where he reads it before he signs; if the names may not be public, the second option is the counsel. The earlier ask of 16:22:12 (five gates, a license among them) was replaced by this one before it reached the board.
+The proposal is the Auditor seat's counsel, disclosed as such: *the first — the Auditor seat's counsel; if either may not be public, the second* (its addendum's item 3, below; *either* is the client names or the parent's traces). Since 17:23:39 the options are declarative, in the Auditor seat's wording (the Reviewer's R4 on `1dea28b`): each says what it makes public or removes, so his pick decides the condition and no option carries an *if*; the condition stands here and in the ship log, not in an option's text. Until then it stood inside the first option (*this repository as it is, if its client names may be public — …*), because the board shows only the ask, the proposal and the title. The earlier ask of 16:22:12 (five gates, a license among them) was replaced by this one before it reached the board.
 
 **Through the Owner at 17:23:39 on 2026-09-25, as pasted — the Auditor seat's addendum to its counsel, against its own miss:**
 FM-006, before PR 77 merges — the Auditor seat's addendum to its go-public counsel, against its own miss:
