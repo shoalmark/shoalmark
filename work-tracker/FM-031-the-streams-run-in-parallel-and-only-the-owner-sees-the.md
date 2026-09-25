@@ -3,17 +3,9 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: owner
+next: wait
 triaged: 2026-09-24
 tier: P2
-ask: "Which rules hold for a message between two sessions — the nine recorded as open in this tracker's body, D11's eight and no message to a session you stopped?"
-ask-kind: ruling
-ask-since: 2026-09-24
-ask-options: "the nine hold as written | until one is ruled, a message between sessions moves nothing"
-ask-proposal: "the nine hold as written"
-answer: "accepted - the nine hold as written"
-answered: 2026-09-24
-answered-by: holgo99
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
 ---
 
@@ -98,13 +90,11 @@ status reads *Shipped* or *Closed*; one window, from the first filing to the mea
 - **The registry is the file every stream conflicts on.**
 - **Only the Owner holds the whole queue,** so he is the integrator by default.
 
-## Open — the rules for a message between two sessions
+## Ruled — the rules for a message between two sessions
 
-**Recorded as open 2026-09-24, on the Auditor seat's check 18 on v0.18.2 (P2), through the Owner: neither ruled nor, until this
-line, recorded.** Sessions of one account can message each other directly (the harness's peer channel, found 2026-09-23 when two
+**Ruled 2026-09-24 21:29:12 by the Owner's signed answer `eef0c2e` (PR 62): *the nine hold as written* — the proposal, the first of two.** Recorded as open the same evening at 19:53 on the Auditor seat's check 18 on v0.18.2 (P2), through the Owner; until then neither ruled nor recorded. Sessions of one account can message each other directly (the harness's peer channel, found 2026-09-23 when two
 Principal sessions collided in one worktree); the parent project's fleet wrote eight rules for it that day (its integration plan,
-D11), and the fog incident of the morning of 2026-09-24 (its ledger, PR 812 and PR 813) showed the ninth. None is signed. As
-proposed, for the Owner's ruling — the ask above:
+D11), and the fog incident of the morning of 2026-09-24 (its ledger, PR 812 and PR 813) showed the ninth. Signed as written, the nine:
 
 1. A message between sessions carries checkable facts only, re-checked in git before anything moves on it.
 2. An agreement exists only as a commit within the hour, with the message quoted; a message alone agrees to nothing.
@@ -178,6 +168,10 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 **2026-09-24** · Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat's branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?
 **answered** — accepted - one channel and the detached switch now, S1 then S2; the cap of 2 waiting pull requests revoked 2026-09-24 · holgo99
 
+**2026-09-24** · Which rules hold for a message between two sessions — the nine recorded as open in this tracker's body, D11's eight and no message to a session you stopped?
+**answered** — accepted - the nine hold as written · holgo99
+**relation** — accepted the proposal
+
 ## Ship log
 
 | Date | Event |
@@ -193,3 +187,7 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 | 2026-09-24 08:26 CEST | The Owner's second question measured: filing outruns closing 2.07 to 1 (16.4 filed a day against 8.0 closed, since 2026-09-22 11:09); 16 open, and the open count grows about 8 a day. |
 | 2026-09-24 08:24 CEST | Filed on the Owner's question, with tonight's record as the measurement. Held against FM-005 (his decisions: the asks, not the queue of pull requests), FM-023 (a plan's seats and estimates), FM-024 (a commit names its session) and FM-027 (ids claimed on the server). |
 | 2026-09-24 | The nine rules for a message between two sessions recorded as open (the Auditor seat's check 18) and put to the Owner — the parent project's ledger row came first (its tenth-hour commit). Re-made on the Reviewer's R2: the options name no scorer and neither opens with *no*; rule 8 names whose scorer (R6). |
+| 2026-09-24 | Answered 21:29:12 (`eef0c2e`, PR 62, one Reviewer docs pass on the answer branch under his FM-032 answer): *the nine hold as written* — the proposal. The exchange cleared as acted on: the nine stand in the body as ruled; `next: wait` for the week of parallel streams. |
+| 2026-09-24 | Found the same evening, a line under the freeze for 0.18.4 (S2, `--queue`): `pushed_branches` leaves `answer/*` out by design, so his own three answers, pushed by `--answer` at 21:27–21:32 and opened as pull requests only at 21:44 on the Principal's word in chat, read *0 waiting on you* — an answer branch without a pull request waits on his press and belongs in the queue as *merge: your answer — open its pull request*. |
+| 2026-09-25 | The Auditor seat's AU-28 on PR 64, through the Owner (06:52:21): the nine rules were in this body only, not in the contract — the same burying as its AU-1 on FM-033's rule. Fixed in the pull request before its merge: the nine stand in `AGENTS.md`'s *How the loop runs*, beside FM-031's other rules, naming `eef0c2e`. Its AU-29 (the `## Asks` record names no signing commit) is a 0.18.4 line in FM-029. |
+| 2026-09-25 | The Reviewer's R4 on PR 64: the contract's bullet had paraphrased the nine; it now carries them in this body's own words. R5: the approximated times replaced by the transcript's — the Auditor's AU-28 and AU-29 relayed in one message at 06:52:21 (this row's first version claimed two replacements and cited 07:00:34, which names neither finding; corrected in place while unmerged, the Reviewer's R6). |
