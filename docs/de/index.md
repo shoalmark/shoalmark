@@ -8,14 +8,26 @@
 kann – ein Satz pro Frage, einmal am Tag –, und macht aus seiner Antwort einen einzigen Befehl.
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
-shoalmark sammelt diese Fragen, legt sie Ihnen einmal am Tag vor, und jede Antwort ist Ihr eigener, signierter Commit.
+shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.
+
+**Ihre Agenten handeln auf Ihr Wort hin — und es gilt nur Ihr signiertes Wort.** Im Beleg zählt eine Antwort nur als
+Commit, signiert mit einem Schlüssel, dem Sie vertrauen; eine unsignierte lehnt das Gate ab. Ein Klick, ein Merge oder
+eine Zeile im Chat ist keine Antwort. Wie stark diese Signatur ist, wählen Sie — [vier Stufen](signing.md), vom
+Schlüssel, den alles unter Ihrem Konto benutzen kann, bis zu einem, der Ihre Berührung braucht —, und jede Signatur
+nennt den Schlüssel, der sie erzeugt hat.
 
 ## Gemessen, nicht versprochen
 
-In einem Projekt — unserem eigenen —, das shoalmark nutzt:
+Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 
-- **Vorher:** Die letzten 200 Pull Requests wurden ungelesen gemergt, keiner wurde geprüft.
-- **Danach, in den ersten 28 Stunden, seit die Regel gilt:** 9 von 13 Pull Requests hatten eine Reviewer-Datei, bevor sie geöffnet wurden.
+- **Bevor der Eigner die Review-Regel signierte** (jede Änderung bekommt einen Reviewer-Durchgang): 10 von 37 Pull
+  Requests hatten eine Reviewer-Datei, als sie geöffnet wurden.
+- **Danach, bis zum 25. September 2026:** 12 von 15.
+
+*Gezählt am 25. September 2026 mit `gh` aus den Pull Requests 1–69 von holgo99/shoalmark: nur gemergte, ohne die
+eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
+`work-tracker/evidence/reviews/` anlegt, vor dem Öffnen des Pull Requests datiert ist. Die Regel ist die signierte
+Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ.*
 
 Was shoalmark dazu ausgibt, jeden Tag:
 
