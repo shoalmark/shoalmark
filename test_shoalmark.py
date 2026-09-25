@@ -3417,7 +3417,8 @@ with tempfile.TemporaryDirectory() as tmp:
           code_ == 0 and out_.splitlines()[:2] == [f"branch fm/002-pushed @ {pushed_[:7]}  wait: no pull request — no verdict on {pushed_[:7]}",
                                                    "1 waiting on you: 0 merge, 0 close, 0 wait, 1 pushed without a pull request"]
           and [c_[1:5] for c_ in asked_] == [["pr", "list", "--state", "open"], ["pr", "list", "--state", "merged"], ["pr", "list", "--state", "closed"]])
-    t78_, t76_ = (datetime.datetime.strptime(ago_(h_), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M") for h_ in (2, 5))
+    # the times the stub answered with, not a second `ago_()`: read again after the run, a minute boundary crossed in between failed the check
+    t78_, t76_ = (datetime.datetime.strptime(s_, "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M") for s_ in (gone_["merged"][0]["mergedAt"], gone_["closed"][1]["closedAt"]))
     check(f"FM-030 · 0.18.4 · `--queue` then prints the last day's merged and closed pull requests, newest first, each once, with its time — so a seat's *still open* is checked against the forge in the same turn; one older than a day is not there (saw {out_.splitlines()[2:]!r})",
           out_.splitlines()[2:] == ["", "MERGED OR CLOSED IN THE LAST 24 HOURS — 2", f"  PR 78  merged  {t78_} UTC  fm/035-ci", f"  PR 76  closed  {t76_} UTC  fm/dropped"])
     rm_git(root)
