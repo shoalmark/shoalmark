@@ -1216,6 +1216,18 @@ with tempfile.TemporaryDirectory() as d:
         _, c_page, _, c_err, c_code = board_with(repo_wordmark_svg=_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
         check("0.18.2 · a wordmark past the size cap is skipped with a warning that names its bytes, never inlined",
               c_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in c_err and 'class="wm"' not in c_page)
+        # FM-035: the same file checked out with Windows line ends (`core.autocrlf`) is the same file — the cap counts it as
+        # committed, `\r\n` as `\n`; the Windows runner wrote it one byte longer and the count above failed there
+        with open(wt / "brand" / "wordmark.svg", "w", encoding="utf-8", newline="\r\n") as f_:
+            f_.write(_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
+        crlf_code, _o, crlf_err = run(root); crlf_page = (wt / "index.html").read_text(encoding="utf-8")
+        with open(wt / "brand" / "wordmark.svg", "w", encoding="utf-8", newline="\r\n") as f_:
+            f_.write(_WORDMARK)
+        run(root); crlf_shown = (wt / "index.html").read_text(encoding="utf-8")
+        _, lf_shown, _, _, _ = board_with(repo_wordmark_svg=_WORDMARK)
+        check("FM-035 · a wordmark with Windows line ends is counted as committed: the same bytes named past the cap, and under it inlined exactly as the LF file is",
+              crlf_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in crlf_err and 'class="wm"' not in crlf_page
+              and head(crlf_shown) == head(lf_shown) and 'class="wm"' in crlf_shown and "\r" not in head(crlf_shown))
         _, o_page, o_report, o_err, _ = board_with(org_wordmark_svg=_WORDMARK, repo_wordmark_svg=_SVG)
         check("0.18.2 · a later place's wordmark wins, and one that is refused leaves the earlier one standing",
               "wordmark      organisation" in o_report and 'aria-label="repo"><svg viewBox="0 0 40 16"' in o_page and "the header keeps the wordmark before it" in o_err)

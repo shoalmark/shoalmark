@@ -2252,6 +2252,19 @@ def _svg_value(key, v):
     return -1
 
 
+def brand_bytes(f):
+    """A brand file's bytes and its size as the cap counts them. An SVG is text: its line ends are counted and inlined as
+    committed, `\r\n` as `\n` — a Windows checkout (`core.autocrlf`) writes the same file one byte longer per line, and
+    the cap refused there what it showed everywhere else (FM-035). A PNG is read as it is. A file past twice the cap is
+    not read at all: no line-end conversion brings it under."""
+    size = f.stat().st_size
+    if size > 2 * LOGO_MAX:
+        return b"", size
+    data = f.read_bytes()
+    data = data.replace(b"\r\n", b"\n") if f.suffix == ".svg" else data
+    return data, len(data)
+
+
 def inline_svg(data, prefix="wm-"):
     """(markup, "") — the SVG written out again from what was read, safe to put in the page — or ("", why it is not).
     The rules are the comment above SVG_ATTRS; the first one broken refuses the file whole. Every id gets `prefix`, and
@@ -2434,14 +2447,16 @@ def brand():
         for name, mime in (("logo.svg", "image/svg+xml"), ("logo.png", "image/png")):
             f = d / name
             if f.is_file():
-                if f.stat().st_size > LOGO_MAX:
-                    warn.append(f"{who}'s {name} is {f.stat().st_size:,} bytes — over {LOGO_MAX:,}, not shown")
+                data, size = brand_bytes(f)
+                if size > LOGO_MAX:
+                    warn.append(f"{who}'s {name} is {size:,} bytes — over {LOGO_MAX:,}, not shown")
                 else:
-                    logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(f.read_bytes()).decode("ascii"))); src["logo"].append(who)
+                    logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(data).decode("ascii"))); src["logo"].append(who)
                 break
         f = d / "wordmark.svg"
         if f.is_file():
-            svg, why = ("", f"it is {f.stat().st_size:,} bytes — over {LOGO_MAX:,}") if f.stat().st_size > LOGO_MAX else inline_svg(f.read_bytes())
+            data, size = brand_bytes(f)
+            svg, why = ("", f"it is {size:,} bytes — over {LOGO_MAX:,}") if size > LOGO_MAX else inline_svg(data)
             if svg:
                 wordmark = (who, svg); src["wordmark"].append(who)
             else:

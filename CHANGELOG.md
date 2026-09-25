@@ -10,6 +10,10 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   now stubs the clipboard, as the second screen's own checks did. Every headless Chrome run goes through one helper:
   a run past 60 s is tried once more, then its block is skipped by name with the reason, and the end of the run names
   what was skipped — never a traceback, never a silent pass. A test-only change.
+- **Windows: a brand SVG's line ends are counted as committed** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and
+  3.12). The size cap counted `wordmark.svg` and `logo.svg` as the checkout wrote them: a Windows checkout
+  (`core.autocrlf`) writes `\r\n`, one byte more per line, and a file near the cap was refused there and shown
+  everywhere else. An SVG is now read, counted and inlined with `\r\n` as `\n`; a PNG as it is.
 - **Windows: the suite reads git's output as UTF-8** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and 3.12). The
   RV-479 check read `git show`'s blob in the locale's encoding — cp1252 on Windows — and the em dash in the ship-log
   row it compares came out as three other characters. The tool names UTF-8 on every read; the test now does too. No
