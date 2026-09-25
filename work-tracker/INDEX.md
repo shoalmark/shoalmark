@@ -34,7 +34,7 @@
 | 3 | P1 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
 | 4 | P1 | wait | *complex* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
 | 5 | P2 | build | — | intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
-| 6 | P2 | build | — | intended, kind | [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:02 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Proposed |
+| 6 | P2 | build | — | intended, kind | [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | In Progress |
 | 7 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
 | 8 | P2 | owner | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
 | 9 | P2 | build | — | intended, kind | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress |
@@ -45,6 +45,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | In Progress | progress | 2026-09-25 |
 | [FM-034](FM-034-a-fresh-clone-s-check-says-the-index-is-stale-the-header.md) | P2 | A fresh clone without the Owner's allowedSignersFile runs --check and reads two findings where there is one: the missin… | In Progress | progress | 2026-09-24 |
 | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | P2 | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress | progress | 2026-09-24 |
 | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | P2 | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress | progress | 2026-09-24 |
@@ -61,7 +62,6 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:02 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Proposed | backlog | 2026-09-25 |
 | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | P2 | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed | backlog | 2026-09-24 |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
 | [FM-022](FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md) | — | A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something… | Shipped | done | 2026-09-23 |
