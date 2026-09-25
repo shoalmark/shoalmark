@@ -28,6 +28,7 @@ import argparse
 import base64
 import datetime
 import difflib
+import fnmatch
 import hashlib
 import collections
 import itertools
@@ -104,6 +105,9 @@ DEFAULTS = {
     # the gate says is a function of the repository alone. The English ones are always understood as well.
     "headings": {"state": "What is true now", "why": "Why", "done": "Done when", "log": "Ship log",
                  "intent": "The intent", "path": "The current path", "passes": "Passes", "asks": "Asks", "raised": "Raised", "acts": "Acts"},
+    # where, under the tracker directory, the Reviewer's files sit — what `--queue` counts as review addenda after a verdict
+    # (FM-031). A folder, or a glob of folders: a consumer that files reviews beside each tracker's evidence names `evidence/*/`
+    "paths": {"reviews": "evidence/reviews/"},
 }
 
 
@@ -1279,11 +1283,17 @@ def queue_actions(prs, branches=()):
     - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
     A verdict is a commit among the pull requests' own that carries `Reviewed: <sha>`, as `--check` reads one, with its
     word in its subject. It names a head that is <sha>, or that only review addenda follow <sha> to — commits touching
-    nothing but `<tracker dir>/evidence/reviews/` and `<tracker dir>/sessions.md`, as a verdict commit itself does."""
+    nothing but the review folder (`[paths] reviews`, `evidence/reviews/` by default, a glob allowed) and
+    `<tracker dir>/sessions.md` — and the verdict commit itself, whose own review file counts wherever it sits under
+    `<tracker dir>/evidence/` (`review*.md`), as the parent project's review gate reads it: a head that IS the verdict,
+    `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    reviews, registry = f"{rel}/evidence/reviews/", f"{rel}/sessions.md"
+    registry = f"{rel}/sessions.md"
+    folder = str({**DEFAULTS["paths"], **(CONFIG.get("paths") or {})}["reviews"]).strip().strip("/") + "/*"
+    in_folder = lambda x: x.startswith(rel + "/") and fnmatch.fnmatchcase(x[len(rel) + 1:], folder)
+    own_review = re.compile(r"^" + re.escape(rel) + r"/evidence/(?:.+/)?review[^/]*\.md$")     # the verdict's own file, anywhere
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
@@ -1335,22 +1345,24 @@ def queue_actions(prs, branches=()):
             if full:
                 verdicts.append((sha, full, word.group(1)))
 
-    def addenda_only(r, h):
-        """every commit from r to h touches only a review or the registry — and none is a merge, which brings a line's files"""
+    def addenda_only(r, h, v):
+        """every commit from r to h touches only the review folder or the registry — the verdict `v` its own review file
+        anywhere under evidence/ too — and none is a merge, which brings a line's files"""
         def read():
-            out = git("log", "--format=%x00%P", "--name-only", "--no-renames", f"{r}..{h}")
+            out = git("log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}")
             for chunk in out.stdout.split("\x00")[1:]:
-                parents, *paths = chunk.strip("\n").split("\n")
-                if len(parents.split()) > 1 or any(x and not (x.startswith(reviews) or x == registry) for x in paths):
+                shas, *paths = chunk.strip("\n").split("\n")
+                sha, *parents = shas.split()
+                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (sha == v and own_review.match(x))) for x in paths):
                     return False
             return out.returncode == 0
-        return cached(("addenda", r, h), read)
+        return cached(("addenda", r, h, v), read)
 
     rows = []
     for p in prs:
         carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
         paths = conflicts(p) if not (within[num(p)] or carried) else []
-        last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p)))), None)
+        last = next(((v, w) for v, r, w in verdicts if r == head(p) or (anc(r, head(p)) and addenda_only(r, head(p), v))), None)
         if head(p) in absent:
             rows.append((p, "wait", f"wait: {head(p)[:7]} not fetched here", ""))
         elif within[num(p)]:
@@ -1369,7 +1381,7 @@ def queue_actions(prs, branches=()):
             rows.append((p, "merge", "merge", f"verdict {last[0][:7]} {last[1]}"))
     for b in pushed:
         paths = conflicts(b) if head(b) not in absent else []
-        last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b)))), None)
+        last = next(((v, w) for v, r, w in verdicts if r == head(b) or (anc(r, head(b)) and addenda_only(r, head(b), v))), None)
         said = ("not fetched here" if head(b) in absent else "conflict in " + ", ".join(paths) if paths else f"no verdict on {head(b)[:7]}" if last is None
                 else f"NOT READY ({last[0][:7]})" if last[1] == "NOT READY" else f"verdict {last[0][:7]} {last[1]}: open it")
         rows.append((b, "branch", "wait: no pull request — " + said, ""))
@@ -3437,6 +3449,10 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
+    "[paths] reviews": ("a folder under the tracker directory, or a glob of folders; `evidence/reviews/` (the default)",
+                        "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
+                        "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
+                        "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "

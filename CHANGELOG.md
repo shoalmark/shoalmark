@@ -65,6 +65,14 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   next midnight and 3.9 refused it, so the gate's word depended on the interpreter. R6: `--notify` exits 1 when a
   notice could not be posted and says *nothing remembered* when nothing is; the README's cron line names Linux's
   session bus for `notify-send` and keeps its output in a log, and the launchd plist keeps its output too.
+- **`--queue` reads a head that is the verdict commit itself** (FM-031; seen in the parent project on the pinned 0.18.3,
+  2026-09-25 18:25:56). PR 851's head was the Reviewer's verdict (`Reviewed:` its parent, READY), its file
+  `evidence/PD-400/review-….md`; the project's review gate read the head as covered — *1 commit past the reviewed tip,
+  all the verdict's own review files* — and `--queue` said *wait: no verdict*: it counted review addenda only under
+  `evidence/reviews/`. Both fixes: the verdict commit's own `review*.md` counts wherever it sits under
+  `<tracker dir>/evidence/`, as the gate reads it; and the review folder is `[paths] reviews` in `shoalmark.toml`
+  (`evidence/reviews/` by default, a glob such as `evidence/*/` allowed), for the addenda after a verdict. *Nothing to
+  do on upgrade; a repository that files reviews beside each tracker's evidence may set `reviews = "evidence/*/"`.*
 - **macOS: a browser check that hangs fails; one that cannot run here is skipped by name** (FM-035, the v0.18.3 tag's
   CI on macos-latest 3.12). What is known: the log shows the suite dying at `subprocess.TimeoutExpired`, 60 s into the
   answer dialog's check, on the page where OK opens the second screen — which copies the command at once. What is

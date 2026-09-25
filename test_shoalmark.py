@@ -2842,6 +2842,43 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-031, 0.18.4: a head that IS the verdict commit — `Reviewed:` its parent, its review file under `evidence/<ID>/` —
+#     is covered, as the parent project's review gate reads it (PR 851 read *wait: no verdict* on the pinned 0.18.3); and
+#     the review folder is `[paths] reviews`, a glob allowed, for what follows a verdict
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def commit_(msg, files):
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True); (root / name).write_text(text)
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", msg)
+        return sha()
+    ev_ = "docs/work-tracker/evidence/"
+    base0 = commit_("the trunk", {"a.txt": "a\n"}); git(root, "update-ref", "refs/remotes/origin/main", base0)
+    git(root, "checkout", "-q", "-b", "v1", base0); w1 = commit_("the slice", {"b.txt": "b\n"})
+    v1 = commit_(f"MSR-400: the Reviewer's pass on {w1[:7]} — READY\n\nReviewed: {w1}", {ev_ + "MSR-400/review-the-slice.md": "READY\n"})
+    git(root, "checkout", "-q", "-b", "v2", base0); w2 = commit_("another slice", {"c.txt": "c\n"})
+    v2 = commit_(f"MSR-401: the Reviewer's pass on {w2[:7]} — READY\n\nReviewed: {w2}", {ev_ + "MSR-401/review-another.md": "READY\n", "c.txt": "c2\n"})
+    git(root, "checkout", "-q", "-b", "v3", base0); w3 = commit_("a third slice", {"d.txt": "d\n"})
+    commit_(f"MSR-402: the Reviewer's pass on {w3[:7]} — READY\n\nReviewed: {w3}", {ev_ + "MSR-402/review-third.md": "READY\n"})
+    h3 = commit_("MSR-402: the Reviewer's note after the verdict", {ev_ + "MSR-402/note.md": "a note\n"})
+    pr = lambda n, branch, head: {"number": n, "title": branch, "headRefName": branch, "headRefOid": head, "baseRefName": "main",
+                                  "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-25T0{n}:00:00Z"}
+    prs_ = [pr(1, "pd/851-the-verdict-is-the-head", v1), pr(2, "pd/852-the-verdict-changes-code", v2), pr(3, "pd/853-a-note-after-it", h3)]
+    fm.configure(root)
+    got_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(prs_))}
+    check(f"FM-031 · 0.18.4 · a head that IS the verdict commit — `Reviewed:` its parent, its own `review*.md` under `evidence/<ID>/` — is covered: merge on its READY; a verdict commit that also changes code is not; a note after it outside the review folder is not either (saw {got_})",
+          got_ == {1: ("merge", f"verdict {v1[:7]} READY"), 2: (f"wait: no verdict on {v2[:7]}", ""), 3: (f"wait: no verdict on {h3[:7]}", "")})
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[paths]\nreviews = "evidence/*/"\n', encoding="utf-8")
+    fm.configure(root)
+    got_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(prs_))}
+    check(f"FM-031 · 0.18.4 · `[paths] reviews = \"evidence/*/\"` makes a consumer's folder of review addenda its own: the note after the verdict no longer voids it; code still does (saw {got_})",
+          got_[3][0] == "merge" and got_[2][0] == f"wait: no verdict on {v2[:7]}" and got_[1][0] == "merge"
+          and "`[paths] reviews`" in fm.render_schema())
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-030, 0.18.4 A: an act owed to the Owner has a time — `due:`, an ISO time with its zone; `window:` in minutes -------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()
