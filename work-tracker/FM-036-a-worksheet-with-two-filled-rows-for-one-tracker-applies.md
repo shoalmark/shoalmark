@@ -1,7 +1,7 @@
 ---
 id: FM-036
 status: Proposed
-considered: FM-030, FM-032, FM-019, FM-028, FM-027
+considered: FM-030, FM-027, FM-003, FM-019, FM-009, FM-015
 tags: bug
 triaged: 2026-09-25
 rank: 3
@@ -18,7 +18,7 @@ hook: "On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the
 The raise rule (his answer `9e48ee8`) re-judges a tracker the same day it is raised. The day's worksheet already held FM-030's
 morning row; the seat added a second filled row for the re-judgement. `apply_worksheet` reads every filled row and applies each in
 order, so two runs of `--triage` on the same tree gave two different trees, and *Applied nothing* never came. The pass was sent back
-on it; the seat struck the morning's row from the table and kept its text under it.
+on it; the seat struck the morning's row from the table and quotes its verdict and reason in the pass's paragraph in TRIAGE.md.
 
 **What is left.** One of two: the newest filled row for a tracker wins (the sheet read bottom-up per tracker, the earlier row kept
 as the record it is), or a second filled row for one tracker is refused by name. The first keeps a same-day re-judgement on the
@@ -39,4 +39,4 @@ by replay, and the raise rule makes a second same-day judgement of one tracker t
 
 | Date | Event |
 |---|---|
-| 2026-09-25 | Filed, from the Reviewer's R1 on the seat's same-day pass; `--related` listed FM-032, FM-019, FM-028 and FM-027 first; held against those and against FM-030, whose re-judgement is the case (the first version named FM-033, which `--related` does not list — the Reviewer's R12). |
+| 2026-09-25 | Filed, from the Reviewer's R1 on the seat's same-day pass; `--related` listed, in its order, FM-027, FM-003, FM-019, FM-009, FM-015; held against those and against FM-030, whose re-judgement is the case (the first version named FM-033, which `--related` does not list — the Reviewer's R12; the order as the tool prints it — R16). |
