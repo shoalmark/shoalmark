@@ -396,6 +396,8 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "queue": "the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions",
     "dialog": "the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command",
     "second": "FM-013 · the second screen, rendered",
+    "acts": "FM-030 · B · his acts on the board, rendered — no date yet, due, overdue, missed",
+    "owe": "FM-030 · C · done and reschedule, rendered — the two buttons and the one command OK gives",
 }
 
 
@@ -2913,16 +2915,18 @@ with tempfile.TemporaryDirectory() as tmp:
           f'["Will you set up the key this week?", "accepted - after the scoring", "{since_}", "", 60]]' in page_ and "actstate=a=>" in page_
           and '"acts.missed": "missed — due {0}, and {1} minutes passed with no result"' in page_
           and "acts.missed" in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")))
-    if _CHROME:
-        dom_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()],
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-        shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
-        acts_shown_ = shown_[shown_.find("your acts"):shown_.find(" id tier status ")]
-        check(f"FM-030 · B · rendered, his board lists his acts after the questions: no date yet, due, overdue, missed — each by the clock, each with its time (saw {shown_[shown_.find('your acts'):][:420]!r})",
-              "your acts, with their time: 4" in shown_ and "AP-410 Will you set up the key this week? · promised " + since_ + ": accepted - after the scoring · no date yet" in shown_
-              and f"AP-411 a read tomorrow · due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago · overdue — due {at_(-10).replace('T', ' ')}" in shown_
-              and f"AP-413 a read two hours ago · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
-              and "AP-414" not in acts_shown_ and "AP-415" not in acts_shown_ and "AP-416" not in acts_shown_ and "AP-417" not in acts_shown_)
+    if _browser("acts"):
+        try:
+            dom_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+            acts_shown_ = shown_[shown_.find("your acts"):shown_.find(" id tier status ")]
+            check(f"FM-030 · B · rendered, his board lists his acts after the questions: no date yet, due, overdue, missed — each by the clock, each with its time (saw {shown_[shown_.find('your acts'):][:420]!r})",
+                  "your acts, with their time: 4" in shown_ and "AP-410 Will you set up the key this week? · promised " + since_ + ": accepted - after the scoring · no date yet" in shown_
+                  and f"AP-411 a read tomorrow · due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago · overdue — due {at_(-10).replace('T', ' ')}" in shown_
+                  and f"AP-413 a read two hours ago · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
+                  and "AP-414" not in acts_shown_ and "AP-415" not in acts_shown_ and "AP-416" not in acts_shown_ and "AP-417" not in acts_shown_)
+        except _ChromeFailed as e_:
+            _hung("acts", e_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -3022,28 +3026,31 @@ with tempfile.TemporaryDirectory() as tmp:
           and "nothing of yours is on it — clear it with `git branch -D answer/ap-423`" in err_x and here_() == start_)
     check("FM-030 · C · `--schema` says what `--done` does to the move: `next: build` where his answer left `next: owner`",
           "`--done` sets `next: build` — the act done, the seat's move is next" in fm.render_schema())
-    if _CHROME:
-        def _owe(tid, kind, fill):
-            """the act's button pressed in the browser, the field filled, OK pressed — the second screen read as rendered."""
-            go = (f'OWE(T.find(x=>x[0]=="{tid}"),"{kind}");const D=document.getElementById("dlg"),F=D.querySelector("form");{fill}'
-                  'D.querySelector("button.go").click();') if kind else ""
-            p_ = root / "docs/work-tracker" / f"owe-{tid}-{kind}.html"
-            p_.write_text(page_ + f'<script>setTimeout(()=>{{{go}}},50)</script>', encoding="utf-8")
-            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", p_.as_uri()],
-                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            p_.unlink()
-            return d_, re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (d_.split('<dialog id="dlg"') + [""])[1].split("</dialog>")[0]))
-        dom_, _ = _owe("AP-421", "", "")
-        rows_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
-        _d, done_ = _owe("AP-421", "done", 'F.text.value="evidence/AP-421/key.md";')
-        when_ = datetime.datetime(2026, 10, 2, 8, 15).astimezone().isoformat()        # the browser's zone is this machine's
-        _d, due_ = _owe("AP-421", "due", 'F.when.value="2026-10-02T08:15";')
-        check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
-              "your acts, with their time: 2 AP-420 Will you read production at seven?" in rows_ and f"AP-421 Will you set up the key? · promised {since_}: accepted - this week · no date yet done reschedule" in rows_
-              and '--done AP-421 "evidence/AP-421/key.md"' in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
-              and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
-              and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
-              and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
+    if _browser("owe"):
+        try:
+            def _owe(tid, kind, fill):
+                """the act's button pressed in the browser, the field filled, OK pressed — the second screen read as rendered."""
+                go = (f'OWE(T.find(x=>x[0]=="{tid}"),"{kind}");const D=document.getElementById("dlg"),F=D.querySelector("form");{fill}'
+                      'D.querySelector("button.go").click();') if kind else ""
+                p_ = root / "docs/work-tracker" / f"owe-{tid}-{kind}.html"
+                p_.write_text(page_ + '<script>Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});</script>'
+                              + f'<script>setTimeout(()=>{{{go}}},50)</script>', encoding="utf-8")
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", p_.as_uri()]).stdout
+                p_.unlink()
+                return d_, re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (d_.split('<dialog id="dlg"') + [""])[1].split("</dialog>")[0]))
+            dom_, _ = _owe("AP-421", "", "")
+            rows_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+            _d, done_ = _owe("AP-421", "done", 'F.text.value="evidence/AP-421/key.md";')
+            when_ = datetime.datetime(2026, 10, 2, 8, 15).astimezone().isoformat()        # the browser's zone is this machine's
+            _d, due_ = _owe("AP-421", "due", 'F.when.value="2026-10-02T08:15";')
+            check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
+                  "your acts, with their time: 2 AP-420 Will you read production at seven?" in rows_ and f"AP-421 Will you set up the key? · promised {since_}: accepted - this week · no date yet done reschedule" in rows_
+                  and '--done AP-421 "evidence/AP-421/key.md"' in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
+                  and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
+                  and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
+                  and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
+        except _ChromeFailed as e_:
+            _hung("owe", e_)
     rm_git(root)
 fm.configure(HERE)
 
