@@ -10,7 +10,8 @@ python3 tools/shoalmark/shoalmark.py --standup
 
 It prints the agenda of one sitting, by kind — **rulings** first (answer; a provisional answer is an answer), then what
 only **your hands** can do, in the order that frees the most work, then what **evidence could settle** without you,
-then **buttons**. Each item is one question, with how long it has waited and what it holds up.
+then **buttons**. Each item is one question, with how long it has waited and what it holds up. After the questions come
+**your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet.
 
 ## The invite
 
@@ -35,6 +36,19 @@ On the board each question carries **accept** and **reject**. Either opens a dia
 one the agent recommends, and what it holds up; accept may carry your change, reject says why. OK gives you one
 command — `python3 tools/shoalmark/shoalmark.py --answer AP-007 accept` — which writes the answer, signs it with your
 key and pushes it. The answer is your own commit: [Your answer is your commit](signing.md).
+
+## Your acts, with their time
+
+Some answers are promises: *yes, I will read production at seven*. What follows is an act only you can do, and it has a
+time — `due:` in its work item, and a window after it (`window:`, 60 minutes unless it says). The board lists your acts
+under the questions, each **due**, **overdue** after its time, or **missed** once its window has passed with no result.
+Each carries two buttons: **done** asks where the result is and gives you
+`python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`; **reschedule** asks for the new time and
+gives you `--due AP-007 <time>`. Both are signed and pushed as an answer is.
+
+Two reminders, if you want them. `--invite AP-007` writes the act as a calendar file — its time, its window, a reminder
+30 minutes before — beside the work item's evidence; import it. `--notify` posts a system notification for every act
+due within 30 minutes, overdue or missed, once each; schedule it yourself (the README has a cron and a launchd line).
 
 ## Which review was independent
 
