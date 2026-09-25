@@ -5,7 +5,6 @@ considered: FM-012, FM-013, FM-016, FM-017, FM-007, FM-005
 tags: bug
 next: wait
 triaged: 2026-09-23
-rank: 3
 tier: P1
 hook: "Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on the wrong branch, leftovers from a failed run, a silent minute, a board that offers an answered ask again and a dialog ending in abort. The Owner: *\"Normal\" users won't like this — we have to make this convenient and fail-safe.* The requirement: he answers from wherever he stands, and his checkout is never switched, dirtied or left behind."
 ---
