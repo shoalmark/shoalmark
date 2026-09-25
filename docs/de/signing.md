@@ -165,8 +165,10 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
     Stufe 3: beide Signierer, je eine Zeile. Die Zeile eines Sicherheitsschlüssels lautet
     `sie@example.org sk-ssh-ed25519@openssh.com AAAA…` — das `sk-` zeigt jedem, der die Datei liest, einen
     Hardware-Schlüssel an. Die eines Secure-Enclave-Schlüssels lautet `ecdsa-sha2-nistp256`, mit ihrer Kommentarzeile
-    darüber. Ein öffentlicher Schlüssel ist öffentlich; ihn einzuchecken ist in Ordnung. Ein Agent, der diese Datei
-    ändert, ist im Diff zu sehen.
+    darüber. Ein öffentlicher Schlüssel ist öffentlich; ihn einzuchecken ist in Ordnung. Nur Ihr signierter Commit
+    ändert diese Datei: Das Werkzeug lehnt die Änderung eines Agenten ab und prüft jede Signatur gegen die Fassung auf
+    dem Standard-Branch, nie gegen die eines Branches. Committen Sie ihre erste Fassung darum selbst auf dem
+    Standard-Branch, signiert — ein Branch kann keinen Schlüssel beweisen, den der Standard-Branch nicht führt.
 
 3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,
    Typ **Signing Key** ([die Schritte bei GitHub](https://docs.github.com/de/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -233,6 +235,25 @@ nach Ihrer Berührung) und pusht; jeden Schritt nennt er, bevor er ihn tut. Sche
 was er geschrieben hat, und gibt den Befehl aus, mit dem Sie die Antwort erneut geben. `git log -1 --format=%G?
 answer/ap-007` gibt `G` aus, und die Frage ist von Ihrer Liste verschwunden.
 
+## Ihre Absicht und Ihr aktueller Weg — nur Ihr signierter Commit ändert sie
+
+Die beiden Abschnitte der `TRIAGE.md`, die Ihnen gehören — *Die Absicht* und *Der aktuelle Weg* —, ändern sich nur in
+einem Commit, den Sie signieren. Auf einem Branch lehnt `--check` jeden anderen Commit ab, der ihren Text ändert (ein
+Wort, eine Zeile, eine Leerzeile: Leerraum zählt), ihre Überschriften umbenennt oder entfernt, die `TRIAGE.md` löscht
+oder aus dem Tracker-Verzeichnis verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen
+solchen Commit eines Agenten ab, bevor er entsteht, und `--queue` liest seinen Pull Request als *wait: TRIAGE.md changed
+unsigned*. Ihr Commit geht durch, wenn `git log -1 --format='%G? %GS %ae'` `G` und zweimal Ihre E-Mail ausgibt — die
+Probe unter *Prüfen*. Ein Agent, der einen der beiden Abschnitte geändert haben will, fragt Sie mit einem `ask:`; die
+Änderung machen Sie selbst, signiert. Der Abschnitt der Durchgänge (`## Passes`) bleibt offen für die Agenten, die eine
+Sichtung festhalten. Die Signierer-Datei ist ebenso geschützt, und eine Signatur wird gegen deren Fassung auf dem
+Standard-Branch geprüft: Ein Branch, der seinen eigenen Schlüssel unter Ihrer E-Mail einträgt, beweist nichts.
+
+**Was es nicht unterscheiden kann.** Ein Commit, der mit Ihrem Schlüssel signiert ist, geht durch; auf Stufe 0 hat jeder
+Prozess unter Ihrem Konto diesen Schlüssel (FM-007) — erst die Stufen oben machen ihn allein zu Ihrem. Wo Ihr Sitz in
+`[seats]` nicht `signed` ist, beweist das Werkzeug nur den Autor, eine Zeichenkette, die jeder tippen kann, und sagt es:
+Markieren Sie ihn `signed`, um den Schlüssel zu beweisen. Unter Subversion liegt dieser Schutz außerhalb des Umfangs:
+seine Arbeitskopie trägt keine Signatur.
+
 ## Was das Werkzeug ablehnt, und was es sagt
 
 | Sie sehen | Es bedeutet |
@@ -242,3 +263,5 @@ answer/ap-007` gibt `G` aus, und die Frage ist von Ihrer Liste verschwunden.
 | *`answered-by: x` but the git author of the answer is `y`* | jemand anderes hat Ihre Antwort committet; sie zählt nicht |
 | *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei nicht an Ihre E-Mail bindet |
 | ein *note*, dass der Autor unverifiziert ist | Sie haben unter git `["name"]` ohne `signed` geschrieben — es funktioniert, und beweist nichts |
+| *refused: commit … changes the text under `## The intent`* (oder `## The current path`) | ein Commit auf diesem Branch, der nicht Ihrer ist, signiert, hat Ihre beiden Abschnitte geändert — er wird nicht gemergt |
+| *… the Owner's email, unsigned* | ein Commit trägt Ihre E-Mail und keine Signatur: Sie haben `-S` vergessen, oder jemand hat Ihre E-Mail getippt |
