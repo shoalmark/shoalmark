@@ -4,9 +4,9 @@ status: In Progress
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: build
-triaged: 2026-09-24
-rank: 6
-tier: P2
+triaged: 2026-09-25
+rank: 3
+tier: P1
 hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day. For an action ask the answer is a promise, not the act, and the tool drops the ask the moment the promise is signed. The rules it ships even steer the second kind away from him."
 ---
 
@@ -64,6 +64,13 @@ The digest is what a session's last message leads with, and the standup is the p
 you* on a morning his hands are due tells him the opposite of the truth. If he believes the tool, the act slips, and the
 acts this kind covers are the ones the design reserves for him because they carry risk.
 
+## Raised
+
+*One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts. The Auditor seat's
+line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
+
+- 2026-09-25 · Auditor (8b91dba2), through the Owner · two acts owed to the Owner have no button on his board: FM-007's hardware key (answered 09-22) and path 3's exception (FM-032, answered 2026-09-24 21:32:35, 97fa87a); --owner prints NOTHING NEEDS THE OWNER · undermines: FM-032's answer ("until FM-007's hardware key" has no route to happen), TRIAGE.md path 1
+
 ## Done when
 
 - **An accepted action ask stays on `--standup`** under *YOUR HANDS*, marked **promised**, until a seat clears it.
@@ -96,3 +103,4 @@ acts this kind covers are the ones the design reserves for him because they carr
 | 2026-09-24 | Widened a second time, on the Auditor seat's check 24: `next: owner` after an answer; 0.18.3 builds this line (ruling · determination · ceremony → `next: build`; action stays `owner`). |
 | 2026-09-24 | In Progress — 0.18.3 builds its second widening — `next:` after an answer (the Auditor seat's check 24); the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
 | 2026-09-24 | A line under the freeze for 0.18.4, the answer flow's: `--answer` cuts the commit subject at 60 characters, so PR 61's subject reads *…FM-007's hardware ke* while the signed `answer:` line is whole (the Reviewer's observation on the answer branches, 21:4x); a subject is cut between words, with an ellipsis, or not at all. |
+| 2026-09-25 | **Raised** by the Auditor seat through the Owner (07:06:48), the line above word for word from his paste: two acts owed to him have no button — FM-007's key, FM-032's path 3 — and `--owner` prints NOTHING NEEDS THE OWNER; it names FM-032's answer and path 1 as undermined, so this tracker is re-judged the same day (his raise rule, `9e48ee8`). |
