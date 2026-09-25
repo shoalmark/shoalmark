@@ -166,3 +166,118 @@ code tier; R2 needs correction or evidence. Only the Owner lands and tags the re
 **Verdict: NOT READY.**
 
 the Owner lands this by merging; a merge rules nothing.
+
+
+## Round two — 4e4d63b, 2026-09-25
+
+Reviewed: `4e4d63bbaacc1f8cba01234a0a2d39276185e5f8`, the one fixing commit after
+`b730c29`, on the same branch. **Tier: code.** Same independent cold Reviewer session
+`01a0d87d`, started by the Owner under his path line 3; the builder remains
+`8e509911/implementer-20`. This pass verifies the fixes; the Principal receives the record.
+The first pass above remains the record of what was true at `df4c8ab`.
+
+### R1 — the blocking page-hang defect is verified fixed
+
+I reran the real-browser counterexample against the new helper and the original board block,
+with the five-second budget used in the first pass. The healthy page passes both assertions,
+zero skips, exit 0. The same generated page with `<script>while(true){}</script>` now gives:
+
+```text
+  FAIL  the board, rendered in a browser — headless Chrome did not return index.html within 5 s, tried twice
+skipped here: 0 checks — every check ran
+FAIL COUNT 1
+```
+
+**Observed exit: 1.** The control passed before the product page was tried. `_hung` adds the
+failure to `FAILS`, and the suite's actual final branch exits 1 for any such failure. All ten
+former `_ChromeSlow` catch sites now use `_ChromeFailed` and `_hung`; none converts a product
+page timeout to a skip. The branch also includes a regression using the real infinite-loop
+page, a healthy page, and the absent-browser case. Its subprocess assertions check exit status.
+
+For the independent probe, I extracted the unchanged test prelude, the helpers between
+`_CHROME_FLAGS =` and `# the helpers themselves:`, and the board block ending immediately
+before `# --- FM-035, its cold review's R1:`. The mutation is the same wrapper printed in the
+first pass. The epilogue prints `skipped_line()` and `len(FAILS)`, then exits with `bool(FAILS)`.
+Only the product-page timeout was reduced to five seconds; the control's timeout stays 60.
+
+### Capability gaps — tested and accepted within the tracker’s skip policy
+
+With `_CHROME = None`, the same board block skips by name, reports two checks omitted and
+`this is NOT a full pass`, and exits 0. With only the blank-page subprocess made to raise
+`TimeoutExpired`, it reports `Chrome started and did not render a blank page within 60 s here`,
+the same two-check skip and partial-pass warning, and exits 0. All other subprocess calls in
+that probe remain real.
+
+Treating that control failure as a platform gap is acceptable under FM-035's explicit
+permission for a check that cannot run to skip: the blank control has not loaded the product
+page, so a product-page loop cannot cause this particular skip. A control timeout establishes
+unavailability for this run, not permanent lack of browser support. It is cached for the run,
+so a transient control failure can omit every browser block. Such a run must be read as partial;
+it supplies no browser evidence and cannot alone establish the release's platform coverage.
+This residual limitation is disclosed, rather than graded as another blocking page-hang defect.
+
+### R2 — the cause claim is verified corrected
+
+The Unreleased bullet, the comment above `_rows`, and the appended FM-035 ship-log row now
+state what the log showed, call the clipboard explanation inferred, and say the hang itself
+was not reproduced. The clipboard stub remains. This meets R2's correction condition without
+claiming a new reproduction of the historical macOS incident. The old commit message remains
+historical and is expressly corrected by the new ship-log row.
+
+### R3 — P3, high confidence: the local hook still hides a partial run
+
+`lefthook.yml` is unchanged: each successful suite is run with `>/dev/null`, and output is
+shown only after a nonzero exit. The explicitly allowed capability skips return 0. Therefore
+both the named skip and `this is NOT a full pass` disappear when this path runs through the
+local hook. Direct suite output also still finishes with `all green` after the partial-pass
+warning (`test_shoalmark.py`'s last line).
+
+The Implementer raised the hook limitation in the brief; this pass confirms it against the
+actual command and the observed zero-exit capability probes. It is **P3**, not the old R1 P2:
+a hanging product page now fails, the CI workflow prints the suite output directly, and the
+tracker explicitly allows capability skips. The remaining defect is the local report's loss
+of the qualification that the new summary was designed to convey.
+
+**Closure/falsifier:** preserve a successful suite's skip summary in hook output, and qualify
+the final success line when checks were omitted. Prove it with an unavailable-browser fixture:
+the hook must display the named skips or their explicit partial-run summary even with exit 0.
+Do not change the now-working nonzero exit for a broken page. This is a nonblocking finding;
+the Principal owns its disposition.
+
+### Verification and handoff
+
+Each suite's exit status was captured directly. On local macOS:
+
+| Command | Exit | Passing checks | Browser skips |
+|---|---:|---:|---:|
+| `python3 test_shoalmark.py` (3.14.3) | 0 | 399 | 0 |
+| `python3 test_core.py` (3.14.3) | 0 | 148 | 0 |
+| `/usr/bin/python3 test_shoalmark.py` (3.9.6) | 0 | 399 | 0 |
+| `/usr/bin/python3 test_core.py` (3.9.6) | 0 | 148 | 0 |
+
+The expected `FAIL` text inside the passing infinite-loop regression's quoted subprocess
+output is its negative-control evidence, not a failed top-level check. The suite ends
+`skipped here: 0 checks — every check ran` and `all green`.
+
+`python3 shoalmark.py --check`: exit 0, INDEX up to date (35 trackers), six commits since
+`origin/main`, every build under a judged In Progress tracker. `--session-check`: exit 0.
+With the review staged, `lefthook run pre-commit` exits 0: session and tracker-index pass;
+the Python hook has no matching staged files. The full suites above were run explicitly.
+The generated INDEX is unchanged.
+
+The encoding and SVG implementation are unchanged from the first pass: `shoalmark.py` has no
+round-two diff, and neither changed UTF-8 reader nor the CRLF fixture was altered. The first
+pass's locale and normalized-byte evidence still applies, alongside the rerun full suites.
+`VERSION` is still 0.18.3 and the head remains `Unreleased — 0.18.4`. The CI workflow is unchanged.
+
+The strongest counterfact to readiness is that an unavailable browser still produces an exit-0
+partial run, and the local hook conceals its qualification (R3). The product-hang counterexample
+now fails as required. **The five-job hosted matrix has not been rerun by this Reviewer**;
+native Windows 3.9/3.12 and hosted macOS 3.12 remain unverified. The Owner's future v0.18.4 tag,
+after FM-030's deadline work, must supply the remaining release evidence; this is readiness of
+the reviewed fix, not a claim that FM-035's five-green-jobs Done when is already satisfied.
+
+**Verdict on 4e4d63b: READY WITH FINDINGS (R3 P3).** R1's blocking behavior is fixed and R2's
+claim corrected. The Principal receives the remaining finding; the Owner alone lands and tags.
+
+the Owner lands this by merging; a merge rules nothing.
