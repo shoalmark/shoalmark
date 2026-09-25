@@ -80,3 +80,49 @@ What holds:
 - The gates are green.
 
 The Owner lands this by merging; a merge rules nothing (path 5).
+
+## Pass on 1dea28b (2026-09-25 16:58 CEST, Reviewer, session `8e509911/reviewer-6`)
+
+**Scope.** `1dea28b` (`1dea28b7adcf31e81aa39d40d5222d240e90f012`): one commit by the principal seat (16:50:04) on the
+verdict above (`92c65a0`). It changes FM-006 alone. **Tier: docs, one pass.** **Independence:** same session, reported.
+
+**What I ran.**
+- **The ask:** `ask-kind: action`. Three options of 115, 112 and 7 characters, all distinct. The proposal is option 1,
+  verbatim. `--owner` lists *FM-006 · action*.
+- **The body:**
+  - The quote of the 14:26:24Z paste is still byte-identical.
+  - Each gate is now the counsel's own clause in italics, found verbatim in the paste, with the seat's gloss in
+    brackets: *CI green on all three platforms*, *the signing tier stated or the hardware key live*, *a gitleaks scan
+    clean*.
+  - The ship log gains one row, and no row is edited.
+- **The parent ledger**, read-only (`git ls-remote`, then `git show` in `worktrees/reviewer-2`): branch
+  `feat/190-day-four-the-thirteenth-hour-row-47-re-made-and-row-46-answered` is at `671e1259`, 16:50:39. Its appended
+  clause carries option 1 exactly as the board has it. Options 2 and 3 stand unchanged in the row's merged cells. So the
+  board and the ledger carry the same option text ✓.
+- **Gates:**
+  - `--check` 0, `--session-check` 0, the generator leaves no diff.
+  - `merge-tree` against `origin/main` (`8b267b4`) is clean. No `fm/030*` head exists on origin.
+  - `test_shoalmark.py` 0 (394 ok), `test_core.py` 0 (148 ok).
+
+**The findings of the first pass.**
+- **R1 ✓ closed.** The kind is `action`, and the body says why: *a yes switches the repository's visibility or creates
+  a new one on his account*.
+- **R2 ✓ closed.** The gates are in the counsel's words, and the gloss stands apart.
+- **R3 ✓ closed.** The condition now stands in the option he reads before he signs.
+
+**R4 · P3 · confidence 60% · Option 1 says *if*; his pick decides it.**
+- Signed, option 1 reads `accepted - this repository as it is, if its client names may be public — …`.
+- The *if* is decided by his choice between option 1 and option 2 (*the client names removed*). A seat reads a pick of
+  option 1 as his judgement that the names may be public, which is sound.
+- But the line itself keeps a condition. A declarative *client names and all* would leave none.
+- The option also drops *09-29* and *named in the body*. *the scoring* is his own phrase, from FM-007's answer, and the
+  gates are named in the body's heading.
+- **Not blocking.** Change it only if the ask is touched again before the board.
+
+Noted, not graded (the parent's record): the clause says *re-made with the board at 16:49*. The board's commit is
+16:50:04 and the clause's own is 16:50:39, so the ledger followed the board by 35 seconds.
+
+**Verdict on 1dea28b: READY WITH FINDINGS (R4 P3).** R1–R3 are closed. The ask meets every form rule, and its kind now
+keeps the act on his board.
+
+The Owner lands this by merging; a merge rules nothing (path 5).
