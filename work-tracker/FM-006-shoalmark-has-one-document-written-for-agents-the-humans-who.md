@@ -4,8 +4,8 @@ status: In Progress
 considered: FM-005, FM-003
 tags: process
 next: owner
-triaged: 2026-09-23
-rank: 5
+triaged: 2026-09-25
+rank: 6
 tier: P2
 ask: "When and how does shoalmark go public?"
 ask-kind: action
