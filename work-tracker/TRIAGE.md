@@ -7,20 +7,20 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 *The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
 
-- **for** a tool that improves the collaboration between people and their agent seats, through a shared record that holds: the single source of project truth, the current state of where seats are authorised to be working, the signed decisions that authorised this work, open questions present for a person to answer, and rule sets that prevent agents from going rogue and against intention. All tracked, traceable and visible through the record to anybody with the rights to read, and writable only for those with the rights to do so.
-- **so that** work can be tracked, can be verified, can be proven as being done. For the owner: that their project goals can be reached and any release can be trusted. For any agent seat: that there is a clear tasking, a mandate, a way forward and a way to communicate with others, to raise blockers and request help. For all: a look at the record gives you the intent, who authorised this, who worked on this, where we are with this, where the results are with evidence, and where the release is that is running this.
-- **never** a rogue tasking or unauthorised work; nothing that is not in the record; a merge without an independent party's review and verification against the record; a merge or release of something that is not done; an issue nobody tracks; a fix that is forgotten; a seat that is left without its answer; a tasking never able to finish; a question never raised; the authorised party never involved; the authority order not respected; the issue not escalated; a failed intent because it was misunderstood; take up work that is not ready or cannot be delivered when due; leak sensible-data, non-redacted into records; 
-
+- **for** a tool that improves the collaboration between people and their agent seats, through a shared record that holds: the single source of project truth, the current state of where seats are authorised to be working, the signed decisions, their strength stated, that authorised this work, open questions present for a person to answer, and rule sets that prevent agents from going rogue and against intention. All tracked, traceable and visible through the record to anybody with the rights to read, and writable only for those with the rights to do so.
+- **so that** work can be tracked, can be verified, can be proven as being done. For the owner: that their project goals can be reached and any release can be trusted, at the least of their time the evidence allows. For any agent seat: that there is a clear tasking, a mandate, a way forward and a way to communicate with others, to raise blockers and request help. For all: a look at the record gives you the intent, who authorised this, who worked on this, where we are with this, where the results are with evidence, and where the release is that is running this.
+- **never** a rogue tasking or unauthorised work; a seat able to block the Owner's signed word; nothing that is not in the record; a merge without a review by a party other than its author and verification against the record; a merge or release of something that is not done; an issue nobody tracks; a fix that is forgotten; a seat that is left without its answer; a tasking never able to finish; a question never raised; the authorised party never involved; the authority order not respected; the issue not escalated; a failed intent because a potential misunderstanding was never questioned; take up work that is not ready or cannot be delivered when due; leak sensitive data, unredacted, into the record 
 
 ## The current path
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
-1. The daily sitting runs on a tagged release with a signed answer and no failed run.
-2. What a sitting finds is filed that day and fixed when it is small and ready; the rest is tracked.
-3. A pull request without an independent review's evidence file cannot merge - checked, not asked.
+1. The daily sitting runs on a tagged release with a signed answer and no failed command in the sitting.
+2. What a sitting finds is filed that day, as a tracker or, under the freeze, as a line in the closest one; fixed when small and judged ready.
+3. A pull request merges only with a review's evidence file on its head: a Reviewer from another independent session for critical changes (critical = a release, the gate or hooks, signing and rights, TRIAGE.md or AGENTS.md rules changed by a seat, anything tagged security or P1); inline Reviewer passes on other code; one Reviewer pass for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until FM-007's hardware key signs them. The Owner merges on a ready line, or over any other verdict with a signed reason.
 4. The owner shall be involved less when trust in the process has been built, but the trust must come from evidence and has to be earned first.
-5. An answer is written and signed through the board. No act of the Owner, a click, a merge, an opened pull request, is an answer, and no seat reads one as such.
+5. An answer, the Owner's signed mandate, is written and signed through the board. No act of the Owner, a click, a merge, an opened pull request, is an answer, and no seat reads one as such.
+6. What the Owner owes is on their board with one button; nothing owed to them lives only in a ledger, a tracker body or a chat.
 
 ## Passes
 
