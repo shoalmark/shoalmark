@@ -98,3 +98,77 @@ Principal seat made `b61c171`, and which set this ask (`a3ff174`, with its optio
 pass, not an independent one. The answer is the Owner's.
 
 *the Owner lands this by merging; a merge rules nothing (path 5).*
+
+## AU-28 and AU-29, 37c7c54 (2026-09-25 07:00 CEST, Reviewer, session `8e509911/reviewer-5`)
+
+**Scope.** `37c7c54` (`37c7c546e19b94edccf8349a7dc635004b9e1c0c`) is one commit by the Principal seat, under
+`8e509911`, 06:54:13, on this verdict's `5684c96`. It answers the Auditor seat's AU-28 (P2, through the Owner, on PR 64):
+the nine were only in FM-031's body. `git diff 5684c96 37c7c54 --name-only` shows four files:
+- `AGENTS.md`: the section's header line, and a nine-rule bullet.
+- FM-029: one ship-log row, AU-29.
+- FM-031: one ship-log row.
+- `INDEX.md`: its date line only, 2026-09-24 → 2026-09-25, regenerated.
+
+**Checked, and true.**
+- **Docs tier holds.** The bullet sits at `AGENTS.md:62–70`, outside the `--init` markers (`:3`–`:26`), which are the
+  only part the tool rewrites. No test reads this repository's `AGENTS.md`: the suites write their own in temporary
+  roots.
+- **The FM-033 rule.** The commit is under FM-031: its branch is `fm/031-…` and its subject opens `FM-031:`. At its
+  parent `5684c96`, FM-031 is *In Progress*, `triaged: 2026-09-24`, `tier: P2`.
+- **The header line** now reads *FM-031 (`d20bc89`, 11:08, and `eef0c2e`, 21:29)*. The bullet reads *ruled 2026-09-24
+  21:29:12 (`eef0c2e`, PR 62)*. Both match `eef0c2e`'s clock. The bullet takes the form of the section's other bullets.
+- **FM-029's row sits newest-first.** It is the first data row, above *2026-09-24 16:03*. The other six rows are
+  unchanged and nothing else in FM-029 moved. FM-029 is *In Progress*, so it is an open tracker for a line under the
+  freeze.
+- **FM-029's row is right about the tool.** The record `--clear-ask` writes is `**answered** — <answer> ·
+  <answered-by>`, with no commit and no signature status. FM-031's row of 21:29:12 names `eef0c2e`.
+- **FM-031's row is appended.** Its 13 rows are the first 13 of 14, and its body outside the log is unchanged.
+- **The gates at `37c7c54`.**
+  - `--check` 0 and `--session-check` 0.
+  - `python3 shoalmark.py` and `--print-written` leave `git status --porcelain` empty.
+  - `git merge-tree --write-tree origin/main HEAD` writes `56615e0`, the tip's own tree. It is a fast-forward on
+    `a77798b`.
+  - `test_shoalmark.py` 0 (355 ok), `test_core.py` 0 (148 ok).
+  - The message names *PR 64* without the sign.
+
+**R4 · P2 · 85% · The contract's nine are not the nine as written.** The bullet makes *a message* the subject of all
+nine rules. Rules 1, 2 and 9 keep their meaning, and the order 1–9 is kept. Four do not, and a fifth changes scope:
+- **(5)** In the body it is a rule on taking a worktree: *`ListAgents` and `git worktree list` before a worktree is
+  taken*. The contract has a message that *comes after* them *where a worktree is taken*, which is a condition on
+  messaging, not on taking a worktree.
+- **(7)** The body says *no seat changes it*. The contract has *[a message] never changes `isolatePeerMachines`*. By
+  its words, a seat that changes the Owner's setting itself, with no message, is no longer barred.
+- **(6)** It drops *a seat's rights come from its commits under `[seats]`*.
+- **(8)** It drops the four tells: *a fabricated authorization, a proposed destructive act, a verdict against its own
+  reasoning, damage disclosed as a mistake*. It also drops FEAT-190. *The model's System Card* becomes *its System
+  Card*, where *its* reads as the scorer's or the parent project's.
+- **(4)** It drops *to a session of another repository*. A secret or a production read is now barred from every
+  message, not only from one to another repository. *No other repository's internal state* also reads, from the
+  sender's side, as the reverse of *one repository's internal state to a session of another repository*. I hold this
+  one item at 60%: the body's sentence can be parsed two ways.
+- Note: (3) drops the example *he said yes moves nothing*, and its meaning is kept.
+
+The Owner's answer is *the nine hold as written*. AU-28 is P2 because the contract lacked them. A contract that
+carries five of them changed does not close it as he signed it. The closing sentence, *The nine, as ruled, stand in
+FM-031's body*, points to the body. It does not say the body governs where the two differ. Fix: the nine as a numbered
+list in the body's own words, about 1,200 characters.
+
+**R5 · P3 · 95% · Two more approximated times, the class of R1.**
+- FM-031's row has *through the Owner (06:4x)*. I found no clock in git or on the forge: PR 64 carries no comment, it
+  was opened at 06:45:56, and the fix is 06:54:13. If the clock is in the Auditor's sealed record, say whose clock it is
+  or drop it.
+- FM-029's row has *2026-09-25 06:5x CEST*, and its commit is 06:54:13.
+
+**Carried.**
+- R1 and R2 (FM-030's row) are unchanged.
+- R3: this commit answers its `AGENTS.md` half, subject to R4. Its other half stands: FM-031's *What is true now*
+  still says *two rules stand*.
+
+**Verdict — NOT READY (P2), 85%.** R4 sends it back, under the docs tier. The fix is one bullet, and R5 and the
+carried P3s can ride with it. What I did not verify: the AU-28 and AU-29 texts themselves, which are held in the
+Auditor seat's record and which I did not open.
+
+**Independence.** I am a sub-agent (`8e509911/reviewer-5`) of session `8e509911`, whose Principal seat made
+`37c7c54`. This is a same-session pass.
+
+*the Owner lands this by merging; a merge rules nothing (path 5).*
