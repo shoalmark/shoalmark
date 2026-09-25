@@ -465,3 +465,65 @@ after the verdict above (`9576f85`). It touches FM-005, FM-030, FM-036, INDEX, T
   `origin/main` is clean.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Pass on 84fddb7 (2026-09-25 15:23 CEST, Reviewer, session `8e509911/reviewer-11`)
+
+**Scope.** The tip is `84fddb7` (`84fddb751d7df8681396c2673d55798aaf10bdda`), one commit by the principal seat (15:17:25)
+after `2909c55`. It touches FM-030 (one ship-log row), FM-036 (`considered:`, its body, and its ship-log row), TRIAGE.md's
+paragraph, and FM-005's row on the sheet. **Tier: docs, one pass.** **Independence:** same session (`8e509911`),
+reported.
+
+**What I ran at `84fddb7`.**
+- **`--triage` three times on a clean clone:** each run exits 0 with *0 trackers to judge* and *Applied nothing*, and the
+  tree is clean after each. Nothing is under the table ✓.
+- **Replay from `38cd89e`** with the tip's sheet: *Applied nothing*. No command-owned key changed in this commit; the
+  differences are the seat's text alone ✓.
+- **Gates:**
+  - `--check` 0 (*85 verdict(s)*; *20 open*) and `--session-check` 0;
+  - the generator leaves the tree clean;
+  - `test_shoalmark.py` 394 ok, `test_core.py` 148 ok;
+  - `git merge-tree` against `origin/main` is clean (tree `689df99`).
+- **Against `origin/fm/035-ci-green-on-every-platform`** (`4e4d63b`), INDEX.md and TRIAGE.md conflict, as before. The
+  resolution is mechanical.
+- **Leaks:** no consumer bug id, day or name remains in TRIAGE.md or in any added line ✓.
+
+**R14–R17.**
+- **R14 closed:** the paragraph quotes the morning row as it stands at `f34de1e`.
+  - The verdict, `keep #3 P1 build`, is byte-identical to that row's Verdict cell.
+  - The reason (780 bytes) is byte-identical to its Reason cell with the cell's two asterisks removed. They set *What is
+    true now* in italics, which cannot be nested inside the paragraph's italic quotation.
+  - The 09-24 reason and the bug id are gone.
+- **R15 closed:** the correcting row now reads *the raise row read 13:31:26 from the start; the word's row first read
+  13:3x and was corrected … to 13:33:29*. That is true to `bd81954`, `ff30d2d` and `d2de1f7`.
+- **R16 closed in its text:** FM-036 now says the superseded verdict is quoted in the pass's paragraph. The listing is R18.
+- **R17 closed:** FM-005's row names its judgement of 09-23 (`14f8fd6`) and says the command dates every applied row
+  today.
+  - Its *kept on 09-24 too* has no record: there is no 09-24 row and no 09-24 paragraph for FM-005. Its #4 simply stood.
+    Noted, not graded.
+
+**R18 · P3 · confidence high · FM-036's `considered:` now leaves out the tracker the tool ranks closest.**
+- The ship-log row: *`--related` listed, in its order, FM-027, FM-003, FM-019, FM-009, FM-015*.
+  - That is the title search run before the filing, whose six hits all tie at 0.6 (FM-010 is the sixth), so their order
+    is arbitrary.
+  - `--related FM-036` prints FM-032 7.1 · FM-030 6.0 · FM-019 4.7 · FM-027 4.0 · FM-016 3.7 · FM-028 3.4.
+- `considered:` went from *FM-030, FM-032, FM-019, FM-028, FM-027* to *FM-030, FM-027, FM-003, FM-019, FM-009, FM-015*.
+  That drops FM-032, which the sheet's derived cell marks *NOT considered* at 7, and the Reason still does not open it.
+- **Fix, forward:** `considered:` keeps FM-032, or the Reason says why it is not the same work. The ship-log row names
+  which query it reports.
+
+**R19 · P3 · confidence high · Two copies of the morning verdict are still in the wrong word order.**
+- FM-030's Reason on the sheet reads *The morning's verdict for this tracker (`keep P1 #3 build`)*.
+- FM-036's hook reads *the morning pass's `keep P1 #3 build`*.
+- The row reads `keep #3 P1 build`, as the paragraph now quotes it.
+- **Fix, forward:** `keep #3 P1 build` in both.
+
+**Verdict on 84fddb7: READY WITH FINDINGS (R18, R19 P3).**
+- No P2 remains. The sheet holds one filled row per tracker, and three runs apply nothing.
+- FM-030 is #1, FM-029 #2, FM-036 #3 and FM-005 #4. FM-007 is P1 `owner` and unranked, with line 6 weighed.
+- The displaced morning row is quoted byte for byte. The raise line is the Owner's paste of 13:31:26, and 13:33:29 is
+  true.
+- Every gate is green, and merge-tree against `origin/main` is clean. The CI branch, which lands first, leaves a
+  mechanical conflict in INDEX.md and TRIAGE.md for whoever merges second.
+- R18 and R19 are fixed forward under the docs tier.
+
+The Owner lands this by merging; a merge rules nothing.
