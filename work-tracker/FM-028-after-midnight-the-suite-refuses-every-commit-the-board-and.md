@@ -117,20 +117,22 @@ telling the Owner an age that `--standup` contradicts is a small untruth on the 
 - The minimal repro, in both zones: board *oldest 3 days* and `--standup` *3 day(s)* at `Etc/GMT-14`; board *oldest 4
   days* and `--standup` *3 day(s)* at `Etc/GMT+12`.
 
-
-**2026-09-26, 00:44 — a line from the Owner's cold session (its RV-577 on the parent project's PR 855, relayed through the Owner):** the first commit
-after midnight — a Reviewer's verdict commit — had INDEX.md's new *Generated* date added to it by the pre-commit hook, and the parent's review gate then
-flagged the verdict commit as touching a non-review file (`review_gate.py`: *all the verdict's own review files* no longer true), which would fail a READY
-verdict the same way. The day change reaches the hook, not only `--triage` (the `--day` line above): a hook that regenerates INDEX.md into a commit
-that did not touch the trackers should leave the date alone, or the review gate should read a date-only INDEX.md change as no change (`drift_normalize`
-already reads it so for `--check`). For 0.18.4 or the release after; the parent's wrapper has the same hook.
+**2026-09-26, 00:44 — a line from the Owner's cold session (its RV-577 on the parent project's PR 855, relayed through
+the Owner):** the first commit after midnight — a Reviewer's verdict commit — had INDEX.md's new *Generated* date
+added to it by the pre-commit hook, and the parent's review gate then flagged the verdict commit as touching a
+non-review file (`review_gate.py`: *all the verdict's own review files* no longer true), which would fail a READY
+verdict the same way. The day change reaches the hook, not only `--triage` (the `--day` rows below): two remedies,
+neither chosen here: (a) the hook leaves INDEX.md's date alone when only the date would change — keyed on the INDEX
+content, as RV-577 is; (b) the parent's `review_gate.py`, not this tool, reads a date-only INDEX.md change as no
+change (`drift_normalize` already reads it so for `--check`). For 0.18.4 or the release after; the parent's wrapper
+has the same hook.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
-| 2026-09-26 | The Owner's cold session's RV-577 filed as a line: after midnight the pre-commit hook writes INDEX.md's new date into a verdict commit, and the review gate flags the verdict (the parent's PR 855, 00:44). |
 | 2026-09-24 | Filed, citing the Reviewer's reproduction after midnight (`916cd26`: exit 1 local, exit 0 under `TZ=UTC`). Reproduced on 0.17.8 at 07:37 CEST: `Etc/GMT-14` passes, `Etc/GMT+12` fails the board's first-words check. A minimal repro shows the board and `--standup` giving one ask two ages. Workaround named: `TZ=UTC`. Nothing built. |
 | 2026-09-24 | 08:54 CEST, the Reviewer's R1 and R2 (`30c4f89`) answered. R1 ruled by the Principal: the registry is append-only, the duplicate id is recorded in the row and the row closed; FM-027 (ids claimed on the server) is the cure. Found on the way: the session gate indexes rows by id, so two rows with one id read as a re-open once both are on main — a tool bug of FM-027's class, to be carried into FM-031's slice S1. Simulated: this branch merged with PR #33's tip `f2cc7bd`, both -6 rows closed, then a further seat commit — `--check` 0, `--session-check` 0; with this filing's row still open, `--session-check` 4, *re-opens 8e509911/implementer-6*. An archive ref (`archive/fm-028-first-filing-implementer-6` → `30c4f89`) pushed at ≈ 08:46 CEST on a route not taken spawned a twin pull request #41 by a banner press; the Owner closes it and deletes the ref — a seat pushes no side refs from here on. R2: why FM-028 is not a slice of FM-027 or FM-005 written beside FM-024's. `main` merged in at `3ba7383`. |
 | 2026-09-25 | A line under the freeze for 0.18.4, on the Auditor seat's item 2 through the Owner (15:34:27): a pass cannot be replayed on a later day — `--triage` reads the machine's date only (`shoalmark.py:5043`), so a Reviewer replaying a day's worksheet the next morning gets the next day's sheet and dates. Proposed: an explicit day for `--triage` (`--triage --day 2026-09-25`), and a suite case that replays a pass the next day and reaches the same tree. |
 | 2026-09-25 | The Auditor seat's addendum, through the Owner at 15:52:59 (as pasted): *FM-028 --day: the replay reaches the same tree only if the day also reaches INDEX.md's "Generated" line (shoalmark.py:5077, printed at :5089), not just --triage at :5043.* — so `--day` governs the generator's date too, or the replay is the same tree only under `drift_normalize`; the 0.18.4 line takes both places. |
+| 2026-09-26 | The Owner's cold session's RV-577 filed as a line: after midnight the pre-commit hook writes INDEX.md's new date into a verdict commit, and the review gate flags the verdict (the parent's PR 855, 00:44). |
