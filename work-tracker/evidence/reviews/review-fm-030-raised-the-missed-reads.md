@@ -375,3 +375,93 @@ it marks.**
   conflict mechanically.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Pass on 38cd89e (2026-09-25 15:14 CEST, Reviewer, session `8e509911/reviewer-11`)
+
+**Scope.** The tip is `38cd89e` (`38cd89e2bb52655a36da07a0fd9c2dee931995a8`), one commit by the principal seat (15:05:17)
+after the verdict above (`9576f85`). It touches FM-005, FM-030, FM-036, INDEX, TRIAGE.md and the worksheet, all under
+`work-tracker/`. **Tier: docs, one pass.** **Independence:** same session (`8e509911`), reported.
+
+**What I ran at `38cd89e`.**
+- **`--triage` three times on a clean clone:** each run exits 0 with *0 trackers to judge* and *Applied nothing*, and the
+  tree is clean after each ✓. **Nothing is under the sheet's table** ✓.
+- **Replay from `bd81954`,** with FM-036 as filed at `069651d` and the tip's sheet: *Applied 5*:
+  - FM-005 `keep P1 #4 wait`, FM-030 `keep P1 #1 build`, FM-036 `keep P2 #3 build`, FM-029 `keep P2 #2 build`,
+    FM-007 `keep P1 owner`;
+  - every command-owned key (`triaged:`, `rank:`, `tier:`, `next:`, `status:`) of all five equals the tip's;
+  - INDEX and the sheet are byte-identical.
+  - FM-005's keys come out in a different order: on `bd81954` it still held `rank:`, while on the tip the key was removed
+    and re-added.
+- **Replay from `05b68a4`,** with the tip's sheet: *Applied 2* (FM-005, FM-036).
+  - FM-005, INDEX and the sheet are byte-identical to the tip.
+  - FM-030, FM-036 and TRIAGE.md differ only in the seat's text: one ship-log row, FM-036's `considered:`/body, and the
+    paragraph ✓.
+- **FM-030's row** is `d2de1f7`'s second-raise row, its eight cells byte-identical. Its marks match its cells: Tier P1, the
+  keep test *RAISED (the second raise)*, Now the 13:31:26 raise, and Facts the seat's ✓.
+- **Gates:**
+  - `--check` 0 (*84 verdict(s)*; *20 open*) and `--session-check` 0;
+  - the generator leaves the tree clean;
+  - `test_shoalmark.py` 394 ok, `test_core.py` 148 ok;
+  - `git merge-tree` against `origin/main` is clean (tree `4c9ddfb`).
+- **`origin/fm/035-ci-green-on-every-platform`** (now `4e4d63b`) conflicts in INDEX.md and TRIAGE.md, as before. The
+  resolution is mechanical.
+
+**R4 and R9–R13.**
+- **R4 closed:** FM-029's Now ends at AU-29, and the paragraph reads *the AU-29 line remains*.
+- **R9 closed on the sheet:** the row, its marks, and nothing under the table. FM-036's interim rule now names the
+  paragraph. How the paragraph quotes the displaced row is R14.
+- **R10 closed:** *the consumer has re-planned within its own record*. No consumer schedule is left in any added line.
+- **R11 not closed:** R15.
+- **R12 closed:** `considered: FM-030, FM-032, FM-019, FM-028, FM-027`, and a ship-log row names the first version's
+  FM-033. That row's order is loose (R16).
+- **R13 closed:** FM-036 is #3, and FM-005's #4 is restored by its own row (R17). The paragraph still folds FM-036's pass
+  into this one. Carried.
+
+**R14 · P2 · confidence high (95 % on the fact) · The paragraph's quotation of the morning's FM-030 row is not that row.**
+- TRIAGE.md: *The morning's FM-030 row — keep P1 #3 build, its reason: a defect he met himself (…); nothing built; the
+  tool slice after 0.18.1 — is superseded by this pass's row and lives here, not on the sheet.*
+- The quoted reason is FM-030's reason on the sheet of **2026-09-24**, whose verdict was `keep P2 #6 build`.
+- The morning row of 2026-09-25, on `origin/main`, reads `keep #3 P1 build`, and its reason is *re-judged the same day
+  on the raise rule (his signed answer `9e48ee8`): the Auditor's line names FM-032's answer and path 1 …*.
+- That reason is now on no current file, and the paragraph says the row *lives here*. The pass's own record of a
+  displaced verdict is therefore a false quotation, in italics, in TRIAGE.md, directly above the morning pass's paragraph
+  that contradicts it.
+- The quotation also brings a consumer's bug id into TRIAGE.md. It was already on main, in the 09-24 sheet.
+- FM-030's Reason repeats the verdict as `keep P1 #3 build`.
+- **Why P2:** the fix for R9 was to say truthfully where the displaced record stands. This says something false about it,
+  in the file the Owner reads first.
+- **Fix:** quote the morning row as it is at `f34de1e`: `keep #3 P1 build`, and its reason whole or cut with `…`.
+  Alternatively, cite it by place: the morning's paragraph just below, and the sheet at `f34de1e`. Either way, drop the
+  09-24 reason and the bug id, and correct the Reason's backticked verdict.
+
+**R15 · P3 · confidence high · The correcting row still times the wrong row.**
+- It now reads *the raise row's 13:3x was corrected in place while unmerged to 13:31:26 …; the 13:33:29 row keeps its
+  own time*.
+- The raise row has read *(13:31:26)* since `bd81954`. The row first written *13:3x* is the Owner's word (`ff30d2d`),
+  which `d2de1f7` made 13:33:29.
+- The correcting row is itself rewritten in place, while unmerged.
+- **Fix, forward:** one line: the word's row read *13:3x* until `d2de1f7` made it 13:33:29, and the raise row was
+  13:31:26 throughout.
+
+**R16 · P3 · confidence high · FM-036's text still claims a superseded row was kept under the table.**
+- Its *What is true now* still reads *the seat struck the morning's row from the table and kept its text under it*. Its
+  own interim rule, five lines below, says nothing under the table survives.
+- The ship-log row says *`--related` listed FM-032, FM-019, FM-028 and FM-027 first*. The list is FM-032, FM-030, FM-019,
+  FM-027, FM-016, FM-028.
+- **Fix, forward:** correct the sentence, and give the list as printed.
+
+**R17 · P3 · confidence high · FM-005's restoring row misdates the pass it restores, and re-dates the judgement.**
+- *unchanged from the pass of 09-24*: FM-005's pass was 09-23 (`14f8fd6`, `keep P1 #4 wait`, *…the shadow week runs on it
+  until 09-29*). The 09-24 sheet has no FM-005 row.
+- The command set `triaged:` from 2026-09-23 to 2026-09-25 on a verdict called unchanged, which moves the weekly
+  re-judgement from 09-30 to 10-02.
+- Its cells are not marked one by one, as the other hand rows now are.
+- **Fix, forward:** 09-23 in the Reason; the re-dating said, or accepted in words; the marks.
+
+**Verdict on 38cd89e: NOT READY — R14 is P2.**
+- R4, R9, R10, R12 and R13 are closed. R11 is not (R15).
+- R15–R17 are P3, fixed forward or with R14.
+- The sheet is stable (three runs apply nothing), the replays converge, every gate is green, and merge-tree against
+  `origin/main` is clean.
+
+The Owner lands this by merging; a merge rules nothing.
