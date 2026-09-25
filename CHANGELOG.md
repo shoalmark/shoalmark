@@ -26,8 +26,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `signed`, pushed, undone on failure — and refused from a seat without the `answer` right. The dialog's time is the
   browser's, sent with its zone. An unmerged `answer/<id>` is never cleared over his commits: where the act is open on
   it, the refusal names the command on that branch; otherwise merge it first; `git branch -D` is named only where
-  nothing of his is on it — for `--answer` too. `[headings]` gains `acts` (German `Handlungen`); eight new labels.
-  *Nothing to do on upgrade.*
+  nothing of his is on it — for `--answer` too, so RV-479's check changed with it: it had expected `git branch -D`
+  over his own unmerged answer. `[headings]` gains `acts` (German `Handlungen`); eight new labels. *Nothing to do on
+  upgrade.*
 - **An invite and a notification per act** (FM-030; his word, 2026-09-25: *Better than only invites would be invites +
   notifications*). `--invite <id>` writes `<tracker dir>/evidence/<id>/<id>-act.ics`, RFC 5545 as the standup's invite
   is: the act's `due:` in UTC, a DURATION of its `window:`, an alarm 30 minutes before, CRLF, folded at 75 octets, the
