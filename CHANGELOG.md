@@ -26,8 +26,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   not in the keyring), a pinned file this checkout has not got — was written into the generated INDEX's header, so the
   INDEX a clone generated differed from the committed one by that line and `--check` said *STALE* beside the finding.
   It is now said on stderr only, once per cause — `checkout: it is signed, but this clone cannot verify: … — N signed
-  commit(s) it could not check: …` — and the run still fails; the drift test is not widened. The committed INDEX reads
-  the same in every clone.
+  commit(s) it could not check: …` — and the run still fails; the drift test is not widened. In every clone the
+  committed INDEX and the one it generates are the same under `drift_normalize` — the `Generated` date aside, which a
+  clone generating it on another day writes anew — and `--check` reads them so.
 - **The 0.18.0 bullet on revoke and supersede names its authority** (FM-031; the Auditor seat's check 14): the Owner's
   word of 2026-09-24 that revoking or changing a given answer needs a path the person can choose, and his signed
   revocation of the cap (PR 46, `7c97c5b`) in FM-031's ship log.
