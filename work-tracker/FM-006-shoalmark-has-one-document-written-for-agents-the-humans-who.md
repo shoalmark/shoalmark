@@ -19,6 +19,8 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**A page for people on what TRIAGE.md holds — the intent and the current path, and what an edit there does — is owed on the Owner's word (22:38:24), built after FM-037 merges; the line is filed below.**
+
 **The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 10 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
 
 **Every page names the tool — 0.18.2, 2026-09-24, on the Owner's word** (*"a micro icon and a tiny wordmark on every shoalmark page, and the version it is running behind it"*, relayed, normalised; then: the name links to the repository, the version to its release): the board and the tracker view end in one muted line, the Pricke at 16 px (its grid allows no smaller sharp size), `shoalmark` in the mono at 11 px, ` · v<VERSION>` — in every repository, whatever its brand.
@@ -120,10 +122,34 @@ FM-006 — the Auditor seat's correction to item 2 of its addendum, before it is
 "7 of their paths only in history" is wrong. The count (all 175 refs of a clone with refs/pull/*/head fetched; every blob; "portdive", any case): 28 versions name the parent project — 8 are the tip's files, 20 are older. The older versions sit at 7 paths: 5 still exist at the tip; 2 are FM-002's evidence before its move from docs/work-tracker/ to work-tracker/. Where the redaction took the name out of the tree, the history keeps it: 3 files (FM-020, FM-022, review-fix-0.17.5) name it only in older versions. The literal name is a lower bound: the redaction wrote "the origin" and "the parent project", so the parent's tracker ids, pull request numbers and incident detail stay under those words, in the tree and the history. Item 2's conclusion stands: "as it is" publishes the parent's traces.
 On the Principal's call (FM-006 holds the act; nothing deleted before his answer): not struck. Name the act in FM-006's What is true now, not only in its Going public section.
 
+## The page on his word in TRIAGE.md — filed 2026-09-25 at 22:38:24
+
+**Through the Owner at 22:38:24 on 2026-09-25, as pasted — the Auditor seat, on the Owner's word (sha256 `be19a4100d73fc27f6d0015ac42a8c4ee152ebcfa751e9ec8fc523ac99933584`):**
+
+From the Auditor seat, on the Owner's word: file the site/ page on his word in TRIAGE.md — a line on FM-006 (the freeze bars a new tracker; FM-022 is Shipped and left the site out on purpose). FM-006 is free now that PR 77 has merged.
+The line:
+- A page for people, English and German (docs/ and docs/de/, in the nav): what TRIAGE.md holds — the intent (for · so that · never) and the current path — and how an edit there changes what the fleet does.
+- Built after FM-037 merges, so the page can say "only you change it" as enforced by the tool, with its tier-0 limit (FM-007): a commit signed with the Owner's key passes, and at tier 0 any process on his account holds that key.
+- Each claim labelled by what enforces it: the tool, review, or the text alone.
+- The term: the site says "your signed word" (the GtM decision against "mandate"). The page keeps it unless the Owner rules "mandate" or "Person-in-charge" in by an ask.
+- Examples from shoalmark's own record or invented, never the parent project's state (its 09-22 ruling, row 10) or a client's:
+  - path line 3's rewrite (fe36cc0) and the independence count --check prints;
+  - FM-035 kept P1 at 42f4eca, re-judged P2 at c8939e3 with path line 1 quoted whole;
+  - a raise naming "path 5" re-judges a tracker the same day;
+  - FM-022's village-library intent for a first draft;
+  - FM-037's refusal of a seat's edit, shown;
+  - what an edit does not do.
+- Worded by the GtM seat; a Reviewer checks every claim against evidence before the merge.
+
+Filed here because the freeze (20 open) bars a new tracker and FM-022 (Shipped) left the site out on purpose; this tracker holds the page.
+The build waits for FM-037's guard to merge, so the page's *only you change it* is the tool's, with its tier-0 limit stated; the GtM seat words it,
+a Reviewer checks every claim against evidence before the merge; the term stays *your signed word* unless the Owner rules otherwise by an ask.
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | **The page on his word in TRIAGE.md filed** — the Auditor seat's line on the Owner's word, through him at 22:38:24, word for word (sha256 `be19a410…`): an English and German page on the intent and the current path and what an edit does, each claim labelled by what enforces it, worded by the GtM seat, every claim checked against evidence before the merge; built after FM-037 merges so *only you change it* is the tool's, with FM-007's tier-0 limit. |
 | 2026-09-25 | **The Auditor seat's addendum to its go-public counsel, and its correction, filed word for word** through the Owner, before PR 77 merges — the addendum of 17:23:39 (sha256 as filed, after its opening line: `281f74bbe32c32f73ef993846f95f147b7f4be492ed251b97a081c3ea7932309`) and its correction to item 2 of 17:37:17, its own error (`a0b8244dbb6b1382d910df2dba91848db8cc8f53d34152d29b4a6d0d2f78ff01`). **A fourth gate**, in the addendum's words: the port evidence (`work-tracker/evidence/FM-001/port/`, six files on main) deleted or moved, as the Owner ruled on 2026-09-22 — the parent's ledger, `docs/work-tracker/evidence/FEAT-190/asks.md` row 10 (2026-09-22; the file's line 36); the act is this tracker's — the freeze allows no new one — named in *What is true now* too, its form picked by his answer, nothing deleted before it. **The count as found** at `9555d2c`, the Implementer seat's, beside the corrected one: 28 blob versions name the parent, 8 the tip's files and 20 older at 7 paths (5 still at the tip, 2 FM-002's before its move), 3 files naming it only in older versions — every number the Auditor seat's; the literal name a lower bound (3 of the 6 port files do not carry it). **The options re-made declarative** on the Auditor seat's wording (the Reviewer's R4): 119, 118 and 7 characters, the proposal the first; the condition leaves the option text — *if either may not be public, the second*, the Auditor seat's counsel, disclosed as such here and in *Going public*. FM-030 gains its 0.18.4 line: the move after an answer follows the picked option, not the kind alone. **Owed:** the parent's ledger row 47, an appended clause to match, in the parent's next ledger commit. |
 | 2026-09-25 | Re-made on its Reviewer's R1–R3 before it reached the board: the ask is `action` (a yes is his hands), the condition on the proposal stands in the first option's text, the three gates are quoted in the counsel's words with the seat's gloss apart. The parent project's ledger row is corrected to the same text by an appended clause (its row had merged). |
 | 2026-09-25 | Asked: when and how shoalmark goes public — a ruling; the proposal is the Auditor seat's counsel (through the Owner at 16:26:24, revising its 16:22:12 ask), disclosed as such and conditional on the client names being public; the three gates in the *Going public* section. The parent project's ledger row came first (`17daad27`, 16:27). |
