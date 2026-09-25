@@ -218,3 +218,58 @@ Not verified:
 - The branch heads at opening before 2026-09-24 05:18 UTC.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## The second pass — at eaf0e63 (2026-09-25 10:40 CEST, Reviewer, session `8e509911/reviewer-9`)
+
+**READY.** Three commits by the GtM seat (`8e509911/gtm-1`) after this verdict (`c68de13`):
+- `78b10da` 10:31:03: `docs/index.md`.
+- `9fd7837` 10:31:05: `docs/de/index.md`.
+- `eaf0e63` 10:31:16: FM-006's wording-decision row, rewritten in place. It is still unmerged: it came in at
+  `d20656d`, which `origin/main` (`c3cd54c`) does not hold.
+
+**Tier: docs, one pass.** The branch touches the two pages, FM-006 and this file. The FM-033 order holds: at the
+parents of `78b10da` and `9fd7837`, FM-006 reads `status: In Progress`.
+
+**R1 closed · confidence high (measured).** Both pages now print the method that was used: *a commit adding or
+changing a file under `work-tracker/evidence/reviews/`, merge commits excluded, dated before the pull request was
+opened* (*… anlegt oder ändert (Merge-Commits nicht mitgezählt) …*).
+- **Inputs.** I fetched the pull request list again: 1–69 are unchanged. I also re-fetched the commit lists of PRs 16,
+  26, 55, 56, 58 and 69, and they are unchanged.
+- **Recount.** By the printed method it is **10 of 37** (PRs 16, 17, 18, 20, 21, 26, 28, 30, 33, 37) and **12 of 15**
+  (PRs 47, 49, 53, 55, 56, 57, 58, 60, 64, 66, 68, 69). These are the pages' numbers, by author date or committer
+  date alike.
+- **The row.** FM-006's row states the same method and numbers. It says the first print gave 9 of 37 and 9 of 15, and
+  it names the fixing commits.
+
+**R2 closed · confidence high (90%).**
+- **On git.** The refusal now reads *on git, once your seat is marked `signed`, as the set-up page does it*. This is
+  `shoalmark.py:3677` → `verified_as`. The link renders `setup.html` in both languages.
+- **Under Subversion.** The pages say *it counts only as a commit the server authenticated as you*. This matches the
+  code:
+  - `line_author` (`:2888`) reads the answer line's author from `svn blame` (`svn_blame`, `:2853`). That is the
+    revision's `svn:author`, which the tool treats as the server-authenticated account, and it has no email.
+  - The answer rule then asks that this author holds `answer` (`:3664`) and is `answered-by:` (`:3666`).
+  - `signed` is refused as a configuration problem (`:3631`, test S4).
+  - Tests S4 run the same reader and seat check for an ask under Subversion. No test runs an *answer* under
+    Subversion; the path is the same function. Not a finding.
+- **The assumption.** `svn:author` is authenticated only where the server authenticates. A `file://` repository or an
+  open revision-property hook would not. The tool's own docstring and `setup.md` assume the same, so the page claims
+  no more than the tool.
+
+**R3 closed · confidence high.** Both pages say that a commit's date is when it was made, not when it was pushed. They
+say the forge's push events confirm the counted pull requests from 2026-09-24 05:18 UTC on, and no longer list older
+ones. That is what I found: all 14 counted in that window were confirmed, and the events stop at 05:18:24Z.
+
+**The German says what the English says.** Sentence for sentence:
+- the qualified refusal, with *Sitz*, the German set-up page's word;
+- the Subversion sentence;
+- the method, with *anlegt oder ändert* and *Merge-Commits nicht mitgezählt*;
+- the date-and-push sentence and 05:18 UTC.
+
+**Gates.**
+- `uvx zensical build` in a scratchpad clone at `eaf0e63`: exit 0, *No issues found*, 0.40 s.
+- `--check` 0 (*INDEX.md is up to date — 34 trackers*), `--session-check` 0, and the generator leaves the tree clean.
+- `test_shoalmark.py` 355 ok and `test_core.py` 148 ok, on Python 3.14.3 and 3.9.6.
+- `merge-tree` is clean against `origin/main` (`c3cd54c`) and against PR 65's branch at its new tip, `e3aa64e`.
+
+The Owner lands this by merging; a merge rules nothing.
