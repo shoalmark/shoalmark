@@ -8,10 +8,10 @@ triaged: 2026-09-23
 rank: 5
 tier: P2
 ask: "When and how does shoalmark go public?"
-ask-kind: ruling
+ask-kind: action
 ask-since: 2026-09-25
-ask-options: "this repository as it is, at the first tag after the 09-29 scoring, with the three gates named in the body held | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet"
-ask-proposal: "this repository as it is, at the first tag after the 09-29 scoring, with the three gates named in the body held"
+ask-options: "this repository as it is, if its client names may be public — the first tag after the scoring, the three gates held | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet"
+ask-proposal: "this repository as it is, if its client names may be public — the first tag after the scoring, the three gates held"
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
 
@@ -83,18 +83,19 @@ Verdict: yes, add the authority point. Keep it to what the tool enforces today, 
 
 ## Going public — the Auditor seat's counsel, and the three gates
 
-**Through the Owner at 16:26:24 on 2026-09-25, as pasted, revising its ask of 16:22:12:** *Ask on the board (ruling): "When and how does shoalmark go public?" options: "this repository, as it is, at the first tag after the 09-29 scoring with CI green on all three platforms, the signing tier stated or the hardware key live, and a gitleaks scan clean | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet" · proposal: the first, if the client names may be public (the Auditor's counsel, 2026-09-25).* The ask above carries it: an option is at most 120 characters on the board, so the first option names *the three gates named in the body* and they are here, word for word from the counsel:
+**Through the Owner at 16:26:24 on 2026-09-25, as pasted, revising its ask of 16:22:12:** *Ask on the board (ruling): "When and how does shoalmark go public?" options: "this repository, as it is, at the first tag after the 09-29 scoring with CI green on all three platforms, the signing tier stated or the hardware key live, and a gitleaks scan clean | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet" · proposal: the first, if the client names may be public (the Auditor's counsel, 2026-09-25).* The ask above carries it — kind `action`: a yes switches the repository's visibility or creates a new one on his account, his hands (`--schema`: an ask whose yes needs the Owner's hands is `action`; the first version said `ruling`, the Reviewer's R1). An option is at most 120 characters on the board, so the first option names *the three gates*; they are here in the counsel's words, and the seat's gloss stands apart in brackets:
 
-1. CI green on all three platforms on the tag that goes public (red on `v0.18.3`: FM-035, its fix in review).
-2. The signing tier stated on the site, or the hardware key live (FM-007; his answer: after the scoring, once the key is delivered).
-3. A `gitleaks` scan of the whole history, clean.
+1. *CI green on all three platforms* [on the tag that goes public; red on `v0.18.3`: FM-035, its fix in review].
+2. *the signing tier stated or the hardware key live* [the tier on the site's signing page, FM-007; his answer: the key after the scoring, once delivered].
+3. *a gitleaks scan clean* [of the whole history].
 
-The proposal is the Auditor seat's counsel, disclosed as such and conditional: *the first, if the client names may be public* — whether they may is his to rule; if not, the second option is the counsel. The earlier ask of 16:22:12 (five gates, a license among them) was replaced by this one before it reached the board.
+The proposal is the Auditor seat's counsel, disclosed as such: *the first, if the client names may be public*. The board shows only the ask, the proposal and the title, so the condition stands inside the first option's text, where he reads it before he signs; if the names may not be public, the second option is the counsel. The earlier ask of 16:22:12 (five gates, a license among them) was replaced by this one before it reached the board.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | Re-made on its Reviewer's R1–R3 before it reached the board: the ask is `action` (a yes is his hands), the condition on the proposal stands in the first option's text, the three gates are quoted in the counsel's words with the seat's gloss apart. The parent project's ledger row is corrected to the same text by an appended clause (its row had merged). |
 | 2026-09-25 | Asked: when and how shoalmark goes public — a ruling; the proposal is the Auditor seat's counsel (through the Owner at 16:26:24, revising its 16:22:12 ask), disclosed as such and conditional on the client names being public; the three gates in the *Going public* section. The parent project's ledger row came first (`17daad27`, 16:27). |
 | 2026-09-25 | The GtM seat's wording decision, on the Owner's tasking: *your signed word*, not *mandate* — *Mandat* reads bureaucratic and political in German, as his own counter-fact warned, while *your word* is a promise every owner understands and *signed* is what the tool checks; the German rests on the idiom *Ihr Wort gilt*. Stated once, high on the page, before the mechanics (`af5229e` English, `50a39b7` German); each claim tied to what v0.18.2 enforces, the tiers linked. The *9 of 13* and *200 merged unread* lines removed — both came from another project's record (`50a90e8`); in their place this repository's own count over its pull requests 1–69 (merged, without `answer/…`), method printed on the page — a commit adding or changing a file under `work-tracker/evidence/reviews/`, merge commits excluded, dated before the pull request was opened: 10 of 37 before the Owner's signed review rule (`ffa63b8`, 09-24 11:07), 12 of 15 after (the Reviewer's R1: the page first printed *adding*, which gives 9 of 37 and 9 of 15; corrected in `78b10da` and `9fd7837`). A commit's date is not its push: the forge's push events confirm the counted pull requests from 2026-09-24 05:18 UTC on and list none before (R3, on the page). The gate's refusal of an unsigned answer is qualified on the page: on git, with the owner's seat marked `signed`; under Subversion, the server-authenticated commit (R2). A Reviewer checks each claim against evidence before the merge. |
 | 2026-09-25 | The Owner's finding of 09:52:49: the landing page names the mechanics, not the consequence — that agents act on his signed word and nothing else counts as it. His proposal and counter-fact recorded, the Auditor seat's assessment filed word for word (its three conditions: claim only what the tool enforces today, pair authority with the signature tiers, the GtM seat words it under this tracker with a Reviewer checking each claim; and the *9 of 13* measured line sourced — repository, window, method — or fixed, in the same change). The GtM seat's wording follows on this branch. |
