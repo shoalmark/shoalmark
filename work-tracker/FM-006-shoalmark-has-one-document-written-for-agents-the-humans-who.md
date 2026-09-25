@@ -91,6 +91,14 @@ Verdict: yes, add the authority point. Keep it to what the tool enforces today, 
 
 The proposal is the Auditor seat's counsel, disclosed as such: *the first, if the client names may be public*. The board shows only the ask, the proposal and the title, so the condition stands inside the first option's text, where he reads it before he signs; if the names may not be public, the second option is the counsel. The earlier ask of 16:22:12 (five gates, a license among them) was replaced by this one before it reached the board.
 
+**Through the Owner at 17:23:39 on 2026-09-25, as pasted — the Auditor seat's addendum to its counsel, against its own miss:**
+FM-006, before PR 77 merges — the Auditor seat's addendum to its go-public counsel, against its own miss:
+1. The Owner's standing ruling of 09-22 (the parent project's ledger, its FEAT-190 row 36): "delete or move the port evidence before shoalmark goes public"; his answer: "Should consider this then now". work-tracker/evidence/FM-001/port/ is still on main (the parent's repository name, local paths, its tracker ids, brand files), and no tracker holds the act. A fourth gate: the port evidence deleted or moved, as ruled on 09-22 — and a tracker for the act.
+2. "As it is" keeps the parent's traces in history after the deletion: 28 blobs across all refs name the parent project, 7 of their paths only in history. The choice turns on two facts: the client names, and the parent's traces.
+3. The options, declarative (R4; the Reviewer's R3 wording): "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held" (119) | "a snapshot as a new repository, client names and the parent's traces removed, this one the private archive, same gates" (118) | "not yet". Proposal: the first — the Auditor seat's counsel; if either may not be public, the second.
+4. The parent's ledger row 47: an appended clause to match.
+5. A 0.18.4 line on FM-030: the move after an answer follows the picked option, not the kind alone.
+
 ## Ship log
 
 | Date | Event |
