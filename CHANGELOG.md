@@ -4,6 +4,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased — 0.18.4
 
+- **macOS: the browser checks cannot kill the suite** (FM-035, the v0.18.3 tag's CI on macos-latest 3.12). The answer
+  dialog's check pressed OK in headless Chrome, and the second screen copies the command at once: the runner's real
+  clipboard never answered, the run went past its 60 s, and the suite died at `subprocess.TimeoutExpired`. The check
+  now stubs the clipboard, as the second screen's own checks did. Every headless Chrome run goes through one helper:
+  a run past 60 s is tried once more, then its block is skipped by name with the reason, and the end of the run names
+  what was skipped — never a traceback, never a silent pass. A test-only change.
 - **Windows: the suite reads git's output as UTF-8** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and 3.12). The
   RV-479 check read `git show`'s blob in the locale's encoding — cp1252 on Windows — and the em dash in the ship-log
   row it compares came out as three other characters. The tool names UTF-8 on every read; the test now does too. No

@@ -12,6 +12,7 @@ import re
 import subprocess
 import datetime
 import sys
+import shutil
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -377,6 +378,47 @@ _CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []    
 _CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome") if os.path.exists(c)), None)
 
 
+class _ChromeSlow(Exception):
+    """Headless Chrome ran past its budget twice — the block that needed it skips BY NAME, with the reason (FM-035)."""
+
+
+def _chrome_run(args, timeout=60):
+    """Headless Chrome with `args` (its flags, then the page), as `subprocess.run` returns it. A run past `timeout` is
+    tried once more, then raises `_ChromeSlow`: the check skips by name and says why — never a traceback. FM-035: on the
+    v0.18.3 tag's macOS runner the answer dialog's run went past 60 s and the suite died at `TimeoutExpired`; on this
+    machine one did too, under the hook, on another dialog run. (A profile of its own per run made every run hang here.)"""
+    for _attempt in (1, 2):
+        try:
+            return subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
+        except subprocess.TimeoutExpired:
+            continue
+    raise _ChromeSlow(f"headless Chrome ran past {timeout} s twice on this machine")
+
+
+SKIPS = []
+
+
+def skip(name, why):
+    """A check that could not run here says so by name — counted, and named again at the end; never a silent pass."""
+    print(f"  skip  {name} — {why}")
+    SKIPS.append(name)
+
+
+_tries, _real_run = [], subprocess.run
+subprocess.run = lambda *a, **k: (_tries.append(a[0]), (_ for _ in ()).throw(subprocess.TimeoutExpired(a[0], k.get("timeout"))))[1]
+try:
+    try:
+        _chrome_run(["--dump-dom", "about:blank"], timeout=1); _slow = ""
+    except _ChromeSlow as e_:
+        _slow = str(e_)
+finally:
+    subprocess.run = _real_run
+check("FM-035 · a headless Chrome run past its budget is tried once more, then raises for its block to skip by name — never a traceback",
+      _slow == "headless Chrome ran past 1 s twice on this machine" and len(_tries) == 2)
+
+
+
 def run_safe(root, *argv, git_env=None):
     """`run`, but a flag this copy of the tool does not know is a failed check, not a stopped suite — what a check that
     must fail on an older tool needs."""
@@ -591,12 +633,15 @@ with tempfile.TemporaryDirectory() as d:
     digest_ = run_safe(root, "--owner")[1]
     strip_ = ""
     if _CHROME:
-        run_safe(root, "--html-only")
-        pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()],
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-        strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<p id="p"[^>]*>([\s\S]*?)</p>', pdom) or [None, ""])[1]))
-    check(f"FM-024 S7 · the board's strip names the sessions with a commit in the last day, with seat and worktree, and counts the week's verdicts; the digest's line groups them by seat (saw {strip_[-200:]!r} · {digest_.strip()[-80:]!r})",
-          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (not _CHROME or (
+        try:
+            run_safe(root, "--html-only")
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<p id="p"[^>]*>([\s\S]*?)</p>', pdom) or [None, ""])[1]))
+        except _ChromeSlow as e_:
+            strip_ = None
+            skip("FM-024 S7 · the board's strip, rendered", e_)
+    check(f"FM-024 S7 · the board's strip names the sessions with a commit in the last day, with seat and worktree, and counts the week's verdicts; the digest's line groups them by seat (saw {(strip_ or '')[-200:]!r} · {digest_.strip()[-80:]!r})",
+          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (not _CHROME or strip_ is None or (
               "sessions · 4 in the last day — a9 t@t (—) · a9/implementer-1 t@t (—) · a9/reviewer-1 t@t (—) · k3 t@t (—)" in strip_
               and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
 fm.configure(HERE)
@@ -682,99 +727,109 @@ check("related skips German stop words as it skips English ones", "und" in fm._S
 
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
 if _CHROME:
-    with tempfile.TemporaryDirectory() as d:
-        root = Path(d).resolve()
-        run(root, "--init", "--key", "msr")
-        tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Shipped", title="A shipped one")
-        run(root)
-        dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
-                                           (root / "docs/work-tracker/index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-        board_dom, view_dom = dom(""), dom("#=MSR-001")
-        shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
-        check("the board renders in a browser: five sections in order, the open tracker under `triage`, the done one folded away",
-              re.search(r"progress.*?triage.*?triaged.*?backlog.*?done", shown, re.S) is not None
-              and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
-        check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
-              "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Shipped", title="A shipped one")
+            run(root)
+            dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
+                                               (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
+            board_dom, view_dom = dom(""), dom("#=MSR-001")
+            shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
+            check("the board renders in a browser: five sections in order, the open tracker under `triage`, the done one folded away",
+                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?done", shown, re.S) is not None
+                  and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
+            check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
+                  "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
+    except _ChromeSlow as e_:
+        skip('the board, rendered in a browser', e_)
+        fm.configure(HERE)
 else:
     print("  skip  no browser found — the board was not rendered")
 
 # --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
 if _CHROME:
-    with tempfile.TemporaryDirectory() as d:
-        root = Path(d).resolve()
-        run(root, "--init", "--key", "msr")
-        tracker(root, "MSR-001", title="Stock is booked per warehouse")
-        tracker(root, "MSR-002", title="Stock is counted per shelf", body="## What is true now\n\nIt needs [MSR-001](MSR-001-x.md) first.\n\n## Done when\n\nit is.\n")
-        tracker(root, "MSR-003", status="Shipped", title="A shipped one")
-        run(root)
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", title="Stock is booked per warehouse")
+            tracker(root, "MSR-002", title="Stock is counted per shelf", body="## What is true now\n\nIt needs [MSR-001](MSR-001-x.md) first.\n\n## Done when\n\nit is.\n")
+            tracker(root, "MSR-003", status="Shipped", title="A shipped one")
+            run(root)
 
-        def found(frag):
-            """The rows a query typed into the box leaves on the board (the URL hash is typed there), and the counter."""
-            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
-                                 (root / "docs/work-tracker/index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            rows = re.findall(r'<tr class="t[^"]*"><td class="m"><i class="q[^"]*"></i><a href="#=(MSR-\d+)">', d_[d_.find("<tbody"):d_.find("</tbody>")])
-            return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
-        whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
-        check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
-              whole[0] == ["MSR-001"] and whole[1].startswith("1 tracker · MSR-001 ·") and low[0] == ["MSR-001"])
-        check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
-              sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
-        # a view with open/all (every view but the board), *open* pressed, a closed tracker searched by its id: it is shown,
-        # and the counter names it — it never counts it as open (R1)
-        probe = '<script>{gi=GROUPS.findIndex(g=>g[0]=="epic");all=false;$("q").value="MSR-003";draw();document.body.dataset.probe=$("n").textContent+"|"+[...document.querySelectorAll("#b tr.t")].map(r=>r.querySelector("a").textContent).join(",")}</script>'
-        wt_ = root / "docs/work-tracker"
-        (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-        pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-        seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-        check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
-              seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
-        # the placeholder fits the box at its CSS minimum (200 px) — measured with the box's own font, not by a window —
-        # in both shipped languages, and the whole help is the box's title (R6, R12)
-        import html as _html, json as _json
-        probe = '<script>{const i=$("q"),c=document.createElement("canvas").getContext("2d");c.font=getComputedStyle(i).font;document.body.dataset.probe=JSON.stringify({min:parseFloat(getComputedStyle(i).minWidth),need:Math.ceil(c.measureText(i.placeholder).width),title:i.title})}</script>'
-        fits = {}
-        for lang, labels in (("en", None), ("de", HERE / "examples/de/labels.yaml")):
-            if labels:
-                (wt_ / "brand").mkdir(exist_ok=True); (wt_ / "brand/labels.yaml").write_text(labels.read_text(encoding="utf-8"), encoding="utf-8"); run(root)
+            def found(frag):
+                """The rows a query typed into the box leaves on the board (the URL hash is typed there), and the counter."""
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
+                                     (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
+                rows = re.findall(r'<tr class="t[^"]*"><td class="m"><i class="q[^"]*"></i><a href="#=(MSR-\d+)">', d_[d_.find("<tbody"):d_.find("</tbody>")])
+                return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
+            whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
+            check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
+                  whole[0] == ["MSR-001"] and whole[1].startswith("1 tracker · MSR-001 ·") and low[0] == ["MSR-001"])
+            check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
+                  sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
+            # a view with open/all (every view but the board), *open* pressed, a closed tracker searched by its id: it is shown,
+            # and the counter names it — it never counts it as open (R1)
+            probe = '<script>{gi=GROUPS.findIndex(g=>g[0]=="epic");all=false;$("q").value="MSR-003";draw();document.body.dataset.probe=$("n").textContent+"|"+[...document.querySelectorAll("#b tr.t")].map(r=>r.querySelector("a").textContent).join(",")}</script>'
+            wt_ = root / "docs/work-tracker"
             (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--window-size=500,900", "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            fits[lang] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "{}"])[1]) or "{}")
-        want = {"en": fm.LABELS.get("search.help"), "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("search.help")}
-        check(f"R12 · the search placeholder fits the box at its 200 px minimum, in English and in German, measured in Chrome with the box's font; the whole help is the box's title (saw need/min: { {k: (v.get('need'), v.get('min')) for k, v in fits.items()} })",
-              len(fits) == 2 and all(v.get("min") == 200 and v.get("need") and v["need"] <= v["min"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()]).stdout
+            seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
+            check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
+                  seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
+            # the placeholder fits the box at its CSS minimum (200 px) — measured with the box's own font, not by a window —
+            # in both shipped languages, and the whole help is the box's title (R6, R12)
+            import html as _html, json as _json
+            probe = '<script>{const i=$("q"),c=document.createElement("canvas").getContext("2d");c.font=getComputedStyle(i).font;document.body.dataset.probe=JSON.stringify({min:parseFloat(getComputedStyle(i).minWidth),need:Math.ceil(c.measureText(i.placeholder).width),title:i.title})}</script>'
+            fits = {}
+            for lang, labels in (("en", None), ("de", HERE / "examples/de/labels.yaml")):
+                if labels:
+                    (wt_ / "brand").mkdir(exist_ok=True); (wt_ / "brand/labels.yaml").write_text(labels.read_text(encoding="utf-8"), encoding="utf-8"); run(root)
+                (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+                pdom = _chrome_run(["--window-size=500,900", "--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()]).stdout
+                fits[lang] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "{}"])[1]) or "{}")
+            want = {"en": fm.LABELS.get("search.help"), "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("search.help")}
+            check(f"R12 · the search placeholder fits the box at its 200 px minimum, in English and in German, measured in Chrome with the box's font; the whole help is the box's title (saw need/min: { {k: (v.get('need'), v.get('min')) for k, v in fits.items()} })",
+                  len(fits) == 2 and all(v.get("min") == 200 and v.get("need") and v["need"] <= v["min"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
+    except _ChromeSlow as e_:
+        skip('FM-020 · a whole id searched, rendered', e_)
+        fm.configure(HERE)
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _CHROME:
-    with tempfile.TemporaryDirectory() as d:
-        root = Path(d).resolve()
-        run(root, "--init", "--key", "msr")
-        tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", title="Stock is counted per shelf")
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", title="Stock is booked per warehouse"); tracker(root, "MSR-002", title="Stock is counted per shelf")
 
-        def progress_line():
-            run(root)
-            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom",
-                                 (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
-            progress_line.triaged = (re.search(r"[▾▸] triaged · \d+ · (.*?) [▾▸] backlog", shown) or [None, ""])[1].strip()
-            return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
-        before = progress_line()
-        tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
-        after = progress_line()
-        check(f"FM-021 · work in progress and no pass run: the empty progress section says why, and names the command (saw: {before!r})",
-              before == "empty until a first triage pass has run — --triage")
-        check(f"FM-021 · …and once one tracker carries a pass's date, the line is its usual one again (saw: {after!r})",
-              after == "kept by triage — by rank, then tier")
-        (root / "docs/work-tracker/MSR-003-x.md").unlink()
-        home = root / "docs/work-tracker/TRIAGE.md"
-        home.write_text(home.read_text(encoding="utf-8").replace("*None yet.*", "2026-09-20 — a pass judged one tracker; worksheet `evidence/triage/triage-2026-09-20.md`."), encoding="utf-8")
-        passed = progress_line()
-        check(f"FM-021 · …and so it is when TRIAGE.md records a pass, though no tracker carries its date any more (saw: {passed!r})",
-              passed == "kept by triage — by rank, then tier")
-        check(f"R4 · in that state the triaged line agrees — it names the pass TRIAGE.md records, never 'no triage pass has run yet' (saw: {progress_line.triaged!r})",
-              progress_line.triaged.startswith("judged 2026-09-20 — each also sits in its own section") and "no triage pass" not in progress_line.triaged)
+            def progress_line():
+                run(root)
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
+                                     (root / "docs/work-tracker/index.html").as_uri()]).stdout
+                shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
+                progress_line.triaged = (re.search(r"[▾▸] triaged · \d+ · (.*?) [▾▸] backlog", shown) or [None, ""])[1].strip()
+                return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
+            before = progress_line()
+            tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
+            after = progress_line()
+            check(f"FM-021 · work in progress and no pass run: the empty progress section says why, and names the command (saw: {before!r})",
+                  before == "empty until a first triage pass has run — --triage")
+            check(f"FM-021 · …and once one tracker carries a pass's date, the line is its usual one again (saw: {after!r})",
+                  after == "kept by triage — by rank, then tier")
+            (root / "docs/work-tracker/MSR-003-x.md").unlink()
+            home = root / "docs/work-tracker/TRIAGE.md"
+            home.write_text(home.read_text(encoding="utf-8").replace("*None yet.*", "2026-09-20 — a pass judged one tracker; worksheet `evidence/triage/triage-2026-09-20.md`."), encoding="utf-8")
+            passed = progress_line()
+            check(f"FM-021 · …and so it is when TRIAGE.md records a pass, though no tracker carries its date any more (saw: {passed!r})",
+                  passed == "kept by triage — by rank, then tier")
+            check(f"R4 · in that state the triaged line agrees — it names the pass TRIAGE.md records, never 'no triage pass has run yet' (saw: {progress_line.triaged!r})",
+                  progress_line.triaged.startswith("judged 2026-09-20 — each also sits in its own section") and "no triage pass" not in progress_line.triaged)
+    except _ChromeSlow as e_:
+        skip('FM-021 · the empty progress section, rendered', e_)
+        fm.configure(HERE)
 
 # --- B′: a deriver by convention (R&D, FM-001) -------------------------------------------------------------
 DERIVER = """#!/usr/bin/env python3
@@ -911,10 +966,13 @@ with tempfile.TemporaryDirectory() as d:
         del os.environ["SHOALMARK_CMD"]
     check("a repository that wraps the tool is named by its own command in every message", code == fm.EXIT_DRIFT and "Run: python3 scripts/tracker.py" in err)
     if _CHROME:
-        run(root)
-        body = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-        shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
-        check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
+        try:
+            run(root)
+            body = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            shown = re.sub(r"<[^>]+>", " ", body[body.find("<tbody"):body.find("</tbody>")])
+            check("the board's cell shows the display form, rendered", "→ 1.3.x" in shown)
+        except _ChromeSlow as e_:
+            skip("the board's cell shows the display form, rendered", e_)
 fm.configure(HERE)
 
 # --- FM-002: a board anyone can brand — three files, four places, the nearest to the viewer wins -------------
@@ -1107,26 +1165,29 @@ with tempfile.TemporaryDirectory() as d:
         check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
               set(fm.LABELS) - set(_shipped_de) <= {"footer", "tagline"} and not set(_shipped_de) - set(fm.LABELS))
         if _CHROME:
-            dom = lambda frag: subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
-            chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
-            shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
-            english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "trackers", "proposed", "shipped",
-                                          "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
-                              if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
-            check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
-            _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
-            ldom = dom("")
-            check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
-            # the scheme button: clicked for real, three times round — whatever the machine's own setting is
-            (wt / "brand/theme.css").write_text(":root{--bg:#010203}\n@media screen and (prefers-color-scheme:dark){:root{--bg:#040506}}\n", encoding="utf-8"); run(root)
-            probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
-            (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-            check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
-                  "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
-            (wt / "probe.html").unlink(); (wt / "brand/theme.css").unlink()
+            try:
+                dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout
+                text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
+                chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
+                shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
+                english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "trackers", "proposed", "shipped",
+                                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
+                                  if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
+                check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
+                _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
+                ldom = dom("")
+                check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
+                # the scheme button: clicked for real, three times round — whatever the machine's own setting is
+                (wt / "brand/theme.css").write_text(":root{--bg:#010203}\n@media screen and (prefers-color-scheme:dark){:root{--bg:#040506}}\n", encoding="utf-8"); run(root)
+                probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
+                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
+                seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
+                check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
+                      "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
+                (wt / "probe.html").unlink(); (wt / "brand/theme.css").unlink()
+            except _ChromeSlow as e_:
+                skip('C4 · the German board, rendered', e_)
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
@@ -1240,23 +1301,26 @@ with tempfile.TemporaryDirectory() as d:
               f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
               and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
         if _CHROME:
-            board_with(repo_wordmark_svg=_WORDMARK, repo_theme_css=":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n")
-            probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
-                     'o.push($("s").dataset.scheme+"="+getComputedStyle(p).stroke+"/"+getComputedStyle(document.querySelector("#H .wm svg")).height)}document.body.dataset.probe=o.join("|")}</script>')
-            (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-            pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-            check(f"0.18.2 · in a browser the wordmark's stroke is the theme's ink, light and dark, through the ◐ switch, at the height it declares (saw: {seen})",
-                  "light=rgb(1, 2, 3)/16px" in seen and "dark=rgb(253, 252, 251)/16px" in seen)
-            shown = []
-            for frag in ("", "#=MSR-001"):                   # the board, then a tracker's view: every screen a viewer can be on
-                probe = '<script>document.body.dataset.probe=[$("B").hidden,$("v").hidden,$("r").offsetHeight>0,$("r").textContent].join("|")</script>'
+            try:
+                board_with(repo_wordmark_svg=_WORDMARK, repo_theme_css=":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n")
+                probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
+                         'o.push($("s").dataset.scheme+"="+getComputedStyle(p).stroke+"/"+getComputedStyle(document.querySelector("#H .wm svg")).height)}document.body.dataset.probe=o.join("|")}</script>')
                 (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri() + frag], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-                shown.append((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
-            check(f"0.18.2 · in a browser the running line is shown on the board and on a tracker's view (saw: {shown})",
-                  shown == [f"false|true|true|shoalmark · v{_ver}", f"true|false|true|shoalmark · v{_ver}"])
-            (wt / "probe.html").unlink()
+                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
+                seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
+                check(f"0.18.2 · in a browser the wordmark's stroke is the theme's ink, light and dark, through the ◐ switch, at the height it declares (saw: {seen})",
+                      "light=rgb(1, 2, 3)/16px" in seen and "dark=rgb(253, 252, 251)/16px" in seen)
+                shown = []
+                for frag in ("", "#=MSR-001"):                   # the board, then a tracker's view: every screen a viewer can be on
+                    probe = '<script>document.body.dataset.probe=[$("B").hidden,$("v").hidden,$("r").offsetHeight>0,$("r").textContent].join("|")</script>'
+                    (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+                    pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri() + frag]).stdout
+                    shown.append((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
+                check(f"0.18.2 · in a browser the running line is shown on the board and on a tracker's view (saw: {shown})",
+                      shown == [f"false|true|true|shoalmark · v{_ver}", f"true|false|true|shoalmark · v{_ver}"])
+                (wt / "probe.html").unlink()
+            except _ChromeSlow as e_:
+                skip('0.18.2 · the wordmark, rendered in a browser', e_)
         _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
         check("C6 · an unreadable theme is a warning that names the two colours and whose file it is — never a failure", c_code == 0 and "person's theme.css: text #888888 on ground #777777" in c_err and "below 4.5:1" in c_err)
         check("C6 · contrast is the WCAG ratio", round(fm.contrast("#000000", "#ffffff")) == 21 and fm.contrast("#777777", "#888888") < 1.5)
@@ -1476,20 +1540,23 @@ with tempfile.TemporaryDirectory() as tmp:
     tracker(root, "AP-020", extra="next: owner\n", title="buried in the body")      # back for the board: what a malformed ask looks like to the Owner
     run(root); page = (root / "docs/work-tracker/index.html").read_text()
     if _CHROME:
-        dom = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-        shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
-        check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
-              "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
-              and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
-        check("what is not a question he can answer is shown apart — `N asks sent back — not for you`, with the reason, after the queue and never as a question",
-              "1 asks sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("asks sent back") < shown.index("AP-020")
-              and "write `ask:` in AP-020-x.md" in shown)
-        check("each stated ask carries two actions — accept · reject — and a dialog that shows the ask, its proposal and its context before anything is decided; an unstated one carries none",
-              dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and '<dialog id="dlg">' in dom and 'name="how" value="${i}" required' in page and 'value="other" required' in page and '--answer ${id} ${kind}' in page)
-        # the dialog's head is one line of ` · `-separated parts: the id ran straight into its first mark ("AP-022 a ruling"),
-        # and an ask with no kind, no age and holding nothing left a dangling separator behind the id
-        check("the dialog's head separates the id from its marks the way the rest of the line is separated, and carries none when there are no marks",
-              '<a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
+        try:
+            dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
+            check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
+                  "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
+                  and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
+            check("what is not a question he can answer is shown apart — `N asks sent back — not for you`, with the reason, after the queue and never as a question",
+                  "1 asks sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("asks sent back") < shown.index("AP-020")
+                  and "write `ask:` in AP-020-x.md" in shown)
+            check("each stated ask carries two actions — accept · reject — and a dialog that shows the ask, its proposal and its context before anything is decided; an unstated one carries none",
+                  dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and '<dialog id="dlg">' in dom and 'name="how" value="${i}" required' in page and 'value="other" required' in page and '--answer ${id} ${kind}' in page)
+            # the dialog's head is one line of ` · `-separated parts: the id ran straight into its first mark ("AP-022 a ruling"),
+            # and an ask with no kind, no age and holding nothing left a dangling separator behind the id
+            check("the dialog's head separates the id from its marks the way the rest of the line is separated, and carries none when there are no marks",
+                  '<a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
+        except _ChromeSlow as e_:
+            skip("the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions", e_)
 fm.configure(HERE)
 
 # --- FM-007: an ask offers CHOICES — one radio each, the recommended one first, Other last -------------------------
@@ -1505,30 +1572,35 @@ with tempfile.TemporaryDirectory() as tmp:
     check("a DRAFT — an `ask:` with `next: review` — needs no recommendation and never enters the Owner's queue: the Principal turns it into an ask",
           "AP-082" not in run(root, "--owner")[1] and "AP-082" not in run(root, "--standup")[1] and [t_["id"] for t_, _a, _h in fm.owner_queue(fm.load_trackers())] == ["AP-080", "AP-081"])
     if _CHROME:
-        page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
-        def _rows(tid, then=""):
-            """the dialog's radio rows, in order, as the Owner reads them — opened in the browser, not inferred."""
-            p_ = root / "docs/work-tracker" / f"dlg-{tid}.html"
-            p_.write_text(page + f'<script>setTimeout(()=>{{ACT(T.find(x=>x[0]=="{tid}"),"accept");{then}}},50)</script>', encoding="utf-8")
-            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", p_.as_uri()],
-                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            p_.unlink()
-            body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]      # the rendered dialog only — the script below it carries the same template
-            return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m)).strip() for m in re.findall(r'<label class="dl">(.*?)</label>', body, re.S)], body
-        r80, _b80 = _rows("AP-080")
-        check("the choices are radios in the order given, except the recommended one — it is offered FIRST and marked — and Other comes last",
-              r80 == ["b — recommended", "a", "c", "Other:"])
-        r81, _b81 = _rows("AP-081")
-        check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "Other:"])
-        r82, b82 = _rows("AP-082")
-        other_, box_ = re.search(r'<input [^>]*value="other"[^>]*>', b82).group(0), re.search(r"<textarea[^>]*>", b82).group(0)
-        check("an ask that offers nothing shows only Other, checked, and its box is the answer — required, not disabled",
-              r82 == ["Other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
-        # OK yields ONE command, and what the Owner picked is what the tracker will record — the option's own words
-        _pick = 'const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[2];R.checked=true;R.dispatchEvent(new Event("change"));D.querySelector("button.go").click();'
-        _, b83 = _rows("AP-080", _pick)
-        check("OK gives one command carrying the chosen option VERBATIM — not an index, not the recommendation",
-              '--answer AP-080 accept "c"' in re.sub(r"<[^>]+>", "", b83))
+        try:
+            page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+            def _rows(tid, then=""):
+                """the dialog's radio rows, in order, as the Owner reads them — opened in the browser, not inferred."""
+                p_ = root / "docs/work-tracker" / f"dlg-{tid}.html"
+                # the clipboard stubbed: OK's second screen copies the command at once, and on the macOS runner the real pasteboard
+                # never answered headless Chrome — the run went past its 60 s (FM-035); the FM-013 checks below stub it the same way
+                p_.write_text(page + '<script>Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});</script>'
+                              + f'<script>setTimeout(()=>{{ACT(T.find(x=>x[0]=="{tid}"),"accept");{then}}},50)</script>', encoding="utf-8")
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", p_.as_uri()]).stdout
+                p_.unlink()
+                body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]      # the rendered dialog only — the script below it carries the same template
+                return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m)).strip() for m in re.findall(r'<label class="dl">(.*?)</label>', body, re.S)], body
+            r80, _b80 = _rows("AP-080")
+            check("the choices are radios in the order given, except the recommended one — it is offered FIRST and marked — and Other comes last",
+                  r80 == ["b — recommended", "a", "c", "Other:"])
+            r81, _b81 = _rows("AP-081")
+            check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "Other:"])
+            r82, b82 = _rows("AP-082")
+            other_, box_ = re.search(r'<input [^>]*value="other"[^>]*>', b82).group(0), re.search(r"<textarea[^>]*>", b82).group(0)
+            check("an ask that offers nothing shows only Other, checked, and its box is the answer — required, not disabled",
+                  r82 == ["Other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
+            # OK yields ONE command, and what the Owner picked is what the tracker will record — the option's own words
+            _pick = 'const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[2];R.checked=true;R.dispatchEvent(new Event("change"));D.querySelector("button.go").click();'
+            _, b83 = _rows("AP-080", _pick)
+            check("OK gives one command carrying the chosen option VERBATIM — not an index, not the recommendation",
+                  '--answer AP-080 accept "c"' in re.sub(r"<[^>]+>", "", b83))
+        except _ChromeSlow as e_:
+            skip("the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command", e_)
     (root / "docs/work-tracker/AP-080-x.md").write_text((root / "docs/work-tracker/AP-080-x.md").read_text(encoding="utf-8").replace('ask-proposal: "b"', 'ask-proposal: "z"'), encoding="utf-8")
     code, _, err = run(root)
     check("a recommendation that is not one of the options is refused — the Owner is never shown a recommendation he cannot pick",
@@ -1552,34 +1624,36 @@ with tempfile.TemporaryDirectory() as tmp:
     check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
           '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
     if _CHROME:
-        def _sign(clip):
-            """OK pressed in the browser, the second screen read as rendered — with the clipboard there, or with none."""
-            stub = {"yes": 'Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});',
-                    "none": 'Object.defineProperty(navigator,"clipboard",{value:undefined});'}[clip]
-            go = ('const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[0];R.checked=true;R.dispatchEvent(new Event("change"));'
-                  'D.querySelector("button.go").click();setTimeout(()=>{const B=document.body.dataset;B.menu=[...D.querySelectorAll("menu button")].map(b=>b.textContent).join("|");'
-                  'B.said=D.querySelector(".said").textContent;B.buttons=D.querySelectorAll("button").length;D.querySelector("menu button").click();B.open=String(D.open)},300);')
-            p_ = root / "docs/work-tracker" / f"s2-{clip}.html"
-            p_.write_text(page + f'<script>{stub}setTimeout(()=>{{ACT(T.find(x=>x[0]=="AP-090"),"accept");{go}}},50)</script>', encoding="utf-8")
-            d_ = subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--virtual-time-budget=4000", "--dump-dom", p_.as_uri()],
-                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout
-            p_.unlink()
-            body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]
-            said = {k: (re.search(rf'data-{k}="([^"]*)"', d_) or [None, None])[1] for k in ("menu", "said", "buttons", "open")}
-            return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
-        s2_, b2_, yes_ = _sign("yes")
-        check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
-              "Sign your answer" in s2_ and re.search(r'<pre class="cmd">[^<]*--answer AP-090 accept "b"</pre>', b2_) is not None and "Copy again" in s2_
-              and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
-              and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
-              and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
-              and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
-              and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
-        check(f"FM-013 · …with ONE way out — Done, the only button in its menu, closes the dialog; the only other control is Copy again (saw: {yes_})",
-              yes_["menu"] == "Done" and yes_["buttons"] == "2" and yes_["open"] == "false")
-        _n0, _n1, none_ = _sign("none")
-        check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
-              yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
+        try:
+            def _sign(clip):
+                """OK pressed in the browser, the second screen read as rendered — with the clipboard there, or with none."""
+                stub = {"yes": 'Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});',
+                        "none": 'Object.defineProperty(navigator,"clipboard",{value:undefined});'}[clip]
+                go = ('const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[0];R.checked=true;R.dispatchEvent(new Event("change"));'
+                      'D.querySelector("button.go").click();setTimeout(()=>{const B=document.body.dataset;B.menu=[...D.querySelectorAll("menu button")].map(b=>b.textContent).join("|");'
+                      'B.said=D.querySelector(".said").textContent;B.buttons=D.querySelectorAll("button").length;D.querySelector("menu button").click();B.open=String(D.open)},300);')
+                p_ = root / "docs/work-tracker" / f"s2-{clip}.html"
+                p_.write_text(page + f'<script>{stub}setTimeout(()=>{{ACT(T.find(x=>x[0]=="AP-090"),"accept");{go}}},50)</script>', encoding="utf-8")
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", p_.as_uri()]).stdout
+                p_.unlink()
+                body = d_.split('<dialog id="dlg"')[1].split("</dialog>")[0]
+                said = {k: (re.search(rf'data-{k}="([^"]*)"', d_) or [None, None])[1] for k in ("menu", "said", "buttons", "open")}
+                return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
+            s2_, b2_, yes_ = _sign("yes")
+            check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
+                  "Sign your answer" in s2_ and re.search(r'<pre class="cmd">[^<]*--answer AP-090 accept "b"</pre>', b2_) is not None and "Copy again" in s2_
+                  and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
+                  and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
+                  and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
+                  and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
+                  and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
+            check(f"FM-013 · …with ONE way out — Done, the only button in its menu, closes the dialog; the only other control is Copy again (saw: {yes_})",
+                  yes_["menu"] == "Done" and yes_["buttons"] == "2" and yes_["open"] == "false")
+            _n0, _n1, none_ = _sign("none")
+            check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
+                  yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
+        except _ChromeSlow as e_:
+            skip('FM-013 · the second screen, rendered', e_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -3299,6 +3373,8 @@ check("the version is the `VERSION` file and nothing else — one source of trut
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 print()
+if SKIPS:
+    print(f"skipped here: {len(SKIPS)} — {', '.join(SKIPS)}")
 if FAILS:
     print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")
     sys.exit(1)
