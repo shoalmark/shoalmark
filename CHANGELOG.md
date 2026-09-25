@@ -9,9 +9,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 - **A record `--clear-ask` wrote before 0.18.1 prints its relation too** (FM-029; the Auditor seat's check 9). Such a
   record has no `**relation** —` line, and `--answered` read it as *relation not computable* — FM-031's and FM-032's
-  among them. The commit that wrote the answer still holds `ask-proposal:` and `ask-options:`: the newest commit whose
-  diff adds that `answer:` line, its revision read back and put through the reader a live answer goes through, never a
-  guess. `--answered`'s acted-on lines and the board's tracker view print it and name that commit — *accepted with a
+  among them. The commit that wrote the answer still holds `ask-proposal:` and `ask-options:`. A record is matched to
+  it by its answer AND its question: a commit whose diff adds that `answer:` line, read back, whose `ask:` is the
+  question on the record's `**<date>** · <question>` line — its lines then go through the reader a live answer goes
+  through. Where one text answered two questions, each record gets its own commit; where no commit, or more than one,
+  holds both — one question answered twice word for word, as FM-007's was on 09-22 — *relation not computable*, never
+  a guess. `--answered`'s acted-on lines and the board's tracker view print it and name that commit — *accepted with a
   change, read from the answer's commit `7c97c5b`* — the view under every such record, an older one's too when a newer
   record follows it, and the file is not touched. Where no commit in the checkout wrote
   that answer (a hand-written record, a shallow clone), *relation not computable*, as before. It costs one `git log` for

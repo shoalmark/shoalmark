@@ -3200,7 +3200,7 @@ with tempfile.TemporaryDirectory() as tmp:
     view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
     v320_, v321_ = view_("AP-320"), view_("AP-321")
     line_ = lambda a, rel, sha: f"**answered** — {a} · holgo\n**relation** — {rel} · read from the answer's commit `{sha}`"
-    s1_ = lambda tid: by_[tid]["asks_recovered_all"][fm.answer_norm(a1_)][1]
+    s1_ = lambda tid: by_[tid]["asks_recovered_all"][(fm.answer_norm(q1_), fm.answer_norm(a1_))][1]
     check(f"FM-029 · R2 · every record under `## Asks` without its relation line prints the recovered one in the board's tracker view — two old records, each from its own answer's commit (saw {by_['AP-320'].get('asks_recovered_all')})",
           line_(a1_, "accepted with a change", s1_("AP-320")) in v320_ and shas_[("AP-320", 1)].startswith(s1_("AP-320"))
           and line_(a2_, "accepted the proposal", by_["AP-320"]["asks_recovered"][1]) in v320_ and shas_[("AP-320", 2)].startswith(by_["AP-320"]["asks_recovered"][1])
@@ -3212,6 +3212,62 @@ with tempfile.TemporaryDirectory() as tmp:
           len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 3 and len(calls_) == 4)
     rm_git(root)
 fm.configure(HERE)
+
+# --- FM-029, 0.18.3 (the cold third pass's R1): the same answer text closing two exchanges — each record is matched to ITS
+#     answer's commit by its question; where the question cannot tell them apart, *relation not computable*, never a guess --
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    day_ = datetime.date.today().isoformat()
+    ask_ = lambda q, proposal: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: 2026-09-22\nask-proposal: "{proposal}"\n'
+    said_ = lambda a: f'answer: "{a}"\nanswered: {day_}\nanswered-by: holgo\n'
+    rec_ = lambda q, a: f"**{day_}** · {q}\n**answered** — {a} · holgo\n"
+    head_ = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def two_(tid, q1, p1, q2, p2):                         # two exchanges answered `accepted - yes`, each cleared as a tool before 0.18.1 cleared it
+        shas = []
+        tracker(root, tid, extra=ask_(q1, p1)); git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid}: asked")
+        tracker(root, tid, extra=ask_(q1, p1) + said_("accepted - yes")); git(root, "commit", "-qam", f"{tid}: accepted - yes"); shas.append(head_())
+        tracker(root, tid, extra=ask_(q2, p2), body=f"## Asks\n\n{rec_(q1, 'accepted - yes')}\n## Ship log\n"); git(root, "commit", "-qam", f"{tid}: cleared, asked again")
+        tracker(root, tid, extra=ask_(q2, p2) + said_("accepted - yes"), body=f"## Asks\n\n{rec_(q1, 'accepted - yes')}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid}: accepted - yes, again"); shas.append(head_())
+        tracker(root, tid, extra="next: build\n", body=f"## Asks\n\n{rec_(q1, 'accepted - yes')}\n{rec_(q2, 'accepted - yes')}\n## Ship log\n")
+        git(root, "commit", "-qam", f"{tid}: cleared")
+        return shas
+    sa_ = two_("AP-330", "Ship the importer?", "yes", "Ship the exporter this week?", "no")        # the Reviewer's case: two questions
+    sb_ = two_("AP-331", "Ship the importer?", "yes", "Ship the importer?", "yes")                 # the same question, twice, the same answer
+    fm.configure(root)
+    by_ = {t["id"]: t for t in fm.load_trackers()}
+    calls_ = argv_of(lambda: fm.recover_relations(list(by_.values())))
+    run(root, "--html-only")
+    import json
+    view_ = lambda tid: (lambda s: json.loads(s[s.index(",") + 1: s.rindex(")")]))((root / f"docs/work-tracker/view/{tid}.js").read_text(encoding="utf-8"))
+    got_ = by_["AP-330"]["asks_recovered_all"]
+    k_ = lambda q: (fm.answer_norm(q), fm.answer_norm("accepted - yes"))
+    check(f"FM-029 · R1 (third pass) · one answer text closing two exchanges: each record is matched to its own answer's commit by its question — the first *accepted the proposal*, the second *accepted with a change*, each naming its own commit (saw {got_})",
+          got_[k_("Ship the importer?")][0] == "accepted the proposal" and sa_[0].startswith(got_[k_("Ship the importer?")][1]) and len(got_[k_("Ship the importer?")][1]) >= 7
+          and got_[k_("Ship the exporter this week?")][0] == "accepted with a change" and sa_[1].startswith(got_[k_("Ship the exporter this week?")][1])
+          and f"**answered** — accepted - yes · holgo\n**relation** — accepted the proposal · read from the answer's commit `{got_[k_('Ship the importer?')][1]}`" in view_("AP-330")
+          and f"**answered** — accepted - yes · holgo\n**relation** — accepted with a change · read from the answer's commit `{got_[k_('Ship the exporter this week?')][1]}`" in view_("AP-330"))
+    check(f"FM-029 · R1 (third pass) · the same answer to the same question, twice: the question cannot tell the commits apart — *relation not computable* under both records, no commit named (saw {by_['AP-331']['asks_recovered_all']})",
+          by_["AP-331"]["asks_recovered_all"] == {k_("Ship the importer?"): ("relation not computable", "")}
+          and view_("AP-331").count("**relation** — relation not computable\n") == 2 and "read from the answer's commit" not in view_("AP-331")
+          and len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 4)
+    rm_git(root)
+fm.configure(HERE)
+# …and FM-007 in this repository: answered twice, word for word, on 09-22 — `63e72b4` at 16:48 and `7521116` at 19:36, the same
+# question. Its record, read without its relation line, is not computable: which of the two is its answer, nothing can say.
+_f007 = next(p_ for p_ in (HERE / "work-tracker").glob("FM-007-*.md"))
+_q007 = "Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?"
+_a007 = "accepted - a hardware key that needs a touch"
+_writers = subprocess.run(["git", "-C", str(HERE), "log", "--full-history", "--format=%h", "-G", "^answer: \"" + _a007, "--", _f007.relative_to(HERE).as_posix()],
+                          capture_output=True, text=True, env=_ENV).stdout.split()
+_t007 = {"id": "FM-007", "file": _f007.name, "asks_answers": [(fm.answer_norm(_q007), fm.answer_norm(_a007))], "asks_key": (fm.answer_norm(_q007), fm.answer_norm(_a007))}
+_no_git_env(lambda: fm.recover_relations([_t007]))
+check(f"FM-029 · R1 (third pass) · FM-007's real double answer in this repository's history — 63e72b4 and 7521116, one question, one text — reads *relation not computable*, never the newer one's (saw {_writers}, {_t007['asks_recovered_all']})",
+      {"63e72b4", "7521116"} <= {w_[:7] for w_ in _writers} and _t007["asks_recovered"] == ("relation not computable", ""))
 
 # --- FM-029: the half-written answer's *give it again* knows all three words, and a superseding answer's flag ----------
 with tempfile.TemporaryDirectory() as tmp:

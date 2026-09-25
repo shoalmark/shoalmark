@@ -515,11 +515,12 @@ def norm_dash(v):
 
 
 def answer_fields(fm):
-    """The three lines an answer's relation is read from — `ask-proposal:`, `ask-options:`, `answer:` — as the loader
-    reads them: the outer quotes off, the options split. ONE reader, for a tracker as it is and for the revision its
-    answer's commit left (`recover_relations`, FM-029)."""
+    """The lines an answer's relation is read from — `ask-proposal:`, `ask-options:`, `answer:`, and the `ask:` a record is
+    matched on — as the loader reads them: the outer quotes off, the options split. ONE reader, for a tracker as it is and
+    for the revision its answer's commit left (`recover_relations`, FM-029)."""
     unquote = lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v
     return {
+        "ask": unquote((fm.get("ask") or "").strip()),
         "ask_proposal": unquote((fm.get("ask-proposal") or "").strip()),
         # the choices as ONE line — `a | b | c`. Split here so the board and the gate read the same list
         "ask_options": [o.strip() for o in unquote((fm.get("ask-options") or "").strip()).split("|") if o.strip()],
@@ -619,9 +620,8 @@ def extract(path, text=None):
         # marks are derived from the file, never typed (see `ready_needs`).
         "fm": fm,
         "next": (fm.get("next") or "").strip().lower(),
-        "ask": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("ask") or "").strip()),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
-        **answer_fields(fm),                            # ask_proposal · ask_options · answer
+        **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
         "answered": (fm.get("answered") or "").strip(),
         # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
         # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
@@ -646,7 +646,8 @@ def extract(path, text=None):
         # git when the relation is printed — never here, where every load passes (FM-012)
         "asks_answer": unrelated_answer(body),
         # …and every record's that carries none, the newest's among them — each read back from its own answer's commit
-        "asks_answers": unrelated_answers(body),
+        "asks_answers": unrelated_records(body),
+        "asks_key": record_key(body[slice(*newest_record(body))]),
         # the answer this one replaced — the commit of the newest ship-log row `--answer … revoke|--supersede` writes
         "supersedes": superseded(body),
         # the lines under `## Raised` — read here, the one place the body is read; which of them re-open the tracker to a
@@ -933,33 +934,46 @@ def unrelated_answer(body):
     return record_answer(body[start:end])
 
 
-def unrelated_answers(body):
-    """The answers of EVERY record under `## Asks` that has no `**relation** —` line, oldest first, each once — what the
-    board's tracker view prints a recovered relation under (the cold second pass's R2: FM-031's older record)."""
-    return list(dict.fromkeys(a for a in (record_answer(body[s_:e_]) for s_, e_ in record_spans(body)) if a))
+def record_key(record):
+    """What one record under `## Asks` without its `**relation** —` line is matched on — its question, from its
+    `**<date>** · <question>` line, and its answer, each with the answer's normalisation — or None."""
+    answer = record_answer(record)
+    if not answer:
+        return None
+    m = re.match(r"\s*\*\*[^*\n]+\*\* · (.+)$", record, re.M)
+    return (answer_norm(m.group(1)) if m else "", answer_norm(answer))
+
+
+def unrelated_records(body):
+    """EVERY record under `## Asks` that has no `**relation** —` line, oldest first, each (question, answer) once — what
+    the board's tracker view prints a recovered relation under (the cold second pass's R2: FM-031's older record)."""
+    return list(dict.fromkeys(k for k in (record_key(body[s_:e_]) for s_, e_ in record_spans(body)) if k))
 
 
 def recover_relations(trackers):
     """FM-029, the Owner's scope — every reading prints the relation — for a record `--clear-ask` wrote before 0.18.1: it
     has no `**relation** —` line, and the proposal and the options left the file with the ask. The commit that wrote the
-    answer still holds them. Found, never guessed: the newest commit whose diff adds an `answer:` line equal to the
-    record's answer (the answer's own normalisation on both sides), its revision read back with `git show`, and that
-    revision's `answer:` must be the record's answer too; its three lines go through `answer_fields` and
-    `answer_relation`, the reader a live answer goes through. Where no commit in this checkout wrote that answer — or
-    under Subversion — *relation not computable*, as before. Every record without the line, not only the newest: a newer
-    answer recorded with its line hid an older one's (the cold second pass's R2). Sets `t["asks_recovered_all"]` =
-    {normalised answer: (relation, the commit's short sha)} and `t["asks_recovered"]` = the newest record's.
+    answer still holds them. Found, never guessed: the commits whose diff adds an `answer:` line equal to the record's
+    answer (the answer's own normalisation on both sides), each read back with `git show`; the ONE whose revision holds
+    that `answer:` under that record's question (`ask:` against the record's `**<date>** · <question>` line) is the
+    answer's commit, and its lines go through `answer_fields` and `answer_relation`, the reader a live answer goes
+    through. The same answer text can close two exchanges — FM-007 was answered twice, word for word, on 09-22 — and
+    the newest commit with the text gave an older record the newer answer's relation and commit (the cold third pass's
+    R1): the question decides, and where no commit, or more than one, holds both, *relation not computable* — never a
+    guess. Under Subversion, not computable too. Every record without the line, not only the newest (the second pass's
+    R2). Sets `t["asks_recovered_all"]` = {(question, answer): (relation, the commit's short sha)} and
+    `t["asks_recovered"]` = the newest record's.
 
     Cost, and why it is spent only here: one `git log` for ALL the records asked about at once, and one `git show` per
-    record whose answer's commit is found. `extract` never calls it — every load, the pre-commit hook's included, would
-    pay; FM-012 measured one git call per tracker at 504 calls and 15.2 s of a 16.8 s load. It runs where the relation is
+    commit that wrote a record's answer text — one per record, but for text reused. `extract` never calls it — every
+    load, the pre-commit hook's included, would pay; FM-012 measured one git call per tracker at 504 calls and 15.2 s of a 16.8 s load. It runs where the relation is
     printed (`--answered`'s acted-on lines, the board's tracker view), and only for a record that lacks the line. The one
     `git log` is not one per record because each walks the whole history: 0.4 s a file on a 3,755-commit repository."""
     need = {}
     for t in trackers:
-        if (t.get("asks_answers") or t.get("asks_answer")) and "asks_recovered_all" not in t:
-            wanted = list(dict.fromkeys(answer_norm(a) for a in (t.get("asks_answers") or []) + [t.get("asks_answer") or ""] if a))
-            t["asks_recovered_all"] = {a: (RELATION_TEXT["unknown"], "") for a in wanted}
+        if (t.get("asks_answers") or t.get("asks_key")) and "asks_recovered_all" not in t:
+            wanted = list(dict.fromkeys(k for k in (t.get("asks_answers") or []) + [t.get("asks_key")] if k))
+            t["asks_recovered_all"] = {k: (RELATION_TEXT["unknown"], "") for k in wanted}
             need[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
     try:
         if not need or vcs() != "git":
@@ -967,12 +981,12 @@ def recover_relations(trackers):
         recover_from_log(need)
     finally:
         for t in need.values():
-            t["asks_recovered"] = t["asks_recovered_all"].get(answer_norm(t.get("asks_answer")), (RELATION_TEXT["unknown"], ""))
+            t["asks_recovered"] = t["asks_recovered_all"].get(t.get("asks_key"), (RELATION_TEXT["unknown"], ""))
 
 
 def recover_from_log(need):
     """`recover_relations`' git work: {path relative to ROOT: tracker} — one `git log` for all of them, one `git show` per
-    record whose answer's commit is found."""
+    commit that wrote a wanted answer's text."""
     git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                                     errors="replace", env=nested_git_env())
     # `-G ^answer:` anchored as `line_regex` anchors it; `--full-history` as `acted_on` has it — an answer written on a
@@ -981,7 +995,7 @@ def recover_from_log(need):
     # `-U0`: only the lines that changed
     log = git("log", "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
               "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
-    found = {rel: {a: [] for a in t["asks_recovered_all"]} for rel, t in need.items()}      # per answer, newest first
+    found = {rel: {a: [] for _q, a in t["asks_recovered_all"]} for rel, t in need.items()}      # per answer text, newest first
     for chunk in log.stdout.split("\x00")[1:]:
         head, _, diff = chunk.partition("\n")
         rel = None
@@ -994,13 +1008,13 @@ def recover_from_log(need):
                 if said in found[rel] and head not in found[rel][said]:
                     found[rel][said].append(head)
     for rel, by_answer in found.items():
-        for said, heads in by_answer.items():
-            for head in heads:
-                sha, _, short = head.partition(" ")
-                fields = answer_fields(parse_frontmatter(git("show", f"{sha}:./{rel}").stdout)[0])
-                if answer_norm(fields["answer"]) == said:
-                    need[rel]["asks_recovered_all"][said] = (relation_text(answer_relation(fields)), short)
-                    break
+        revisions = {head: answer_fields(parse_frontmatter(git("show", f"{head.partition(' ')[0]}:./{rel}").stdout)[0])
+                     for head in dict.fromkeys(h for heads in by_answer.values() for h in heads)}
+        for question, said in need[rel]["asks_recovered_all"]:
+            holds = [(head, fields) for head, fields in revisions.items() if head in by_answer[said]
+                     and answer_norm(fields["answer"]) == said and answer_norm(fields["ask"]) == question]
+            if len(holds) == 1:                               # one exchange: its own commit — none, or two, and nothing is said
+                need[rel]["asks_recovered_all"][(question, said)] = (relation_text(answer_relation(holds[0][1])), holds[0][0].partition(" ")[2])
 
 
 def record_relation(t):
@@ -2544,10 +2558,10 @@ def write_views(trackers):
         _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
         if t.get("asks_answers"):
             for start, end in reversed(record_spans(body)):   # from the end, so each cut leaves the earlier spans where they were
-                answer = record_answer(body[start:end])
-                line = re.search(r"^\*\*answered\*\* — .*$", body[start:end], re.M) if answer else None
+                key = record_key(body[start:end])
+                line = re.search(r"^\*\*answered\*\* — .*$", body[start:end], re.M) if key else None
                 if line:
-                    said, source = (t.get("asks_recovered_all") or {}).get(answer_norm(answer), (RELATION_TEXT["unknown"], ""))
+                    said, source = (t.get("asks_recovered_all") or {}).get(key, (RELATION_TEXT["unknown"], ""))
                     cut = start + line.end()
                     body = body[:cut] + f"\n**relation** — {said}" + (f" · read from the answer's commit `{source}`" if source else "") + body[cut:]
         out, text = VIEW_DIR / f'{t["id"]}.js', f'V({json.dumps(t["id"])},{json.dumps(body, ensure_ascii=False)})\n'
