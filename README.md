@@ -242,10 +242,12 @@ What lives where, by convention — no setting names any of it:
 
 ### An act's reminder
 
-`--notify` is meant to run every few minutes, on the Owner's own machine; nothing installs it. With cron:
+`--notify` is meant to run every few minutes, on the Owner's own machine; nothing installs it. It exits 1 when a notice
+could not be posted, so keep what it says in a log. With cron on Linux — cron gives `notify-send` no session bus, so the
+line names it:
 
 ```
-*/5 * * * * cd /path/to/repo && python3 shoalmark.py --notify >/dev/null 2>&1
+*/5 * * * * cd /path/to/repo && DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus python3 shoalmark.py --notify >> "$HOME/.local/state/shoalmark/notify.log" 2>&1
 ```
 
 With launchd on macOS, `~/Library/LaunchAgents/app.shoalmark.notify.plist`, then `launchctl load` it:
@@ -256,6 +258,8 @@ With launchd on macOS, `~/Library/LaunchAgents/app.shoalmark.notify.plist`, then
   <key>WorkingDirectory</key><string>/path/to/repo</string>
   <key>ProgramArguments</key><array><string>/usr/bin/python3</string><string>shoalmark.py</string><string>--notify</string></array>
   <key>StartInterval</key><integer>300</integer>
+  <key>StandardOutPath</key><string>/Users/you/Library/Logs/shoalmark-notify.log</string>
+  <key>StandardErrorPath</key><string>/Users/you/Library/Logs/shoalmark-notify.log</string>
 </dict></plist>
 ```
 

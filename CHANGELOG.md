@@ -57,6 +57,14 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   its signature where the record is written (`%G?` — G good, U good from a key not trusted here, N none). An answer
   not yet committed says `not committed · N`; under Subversion there is no line. The key's tier is not printed yet
   (FM-007). *Nothing to do on upgrade; records written before keep what they have.*
+- **The pass's R3–R6 on FM-030's build** (the Reviewer's inline pass on `52cfcc7`). R3: `--done` where the act is on an
+  unmerged `answer/<id>` names that branch and his commits on it, as `--due` does, instead of *owes the Owner no act*.
+  R4: the dialogs' copied command single-quotes what he typed — `--answer <id> accept '<text>'`, `--done <id>
+  '<where>'`, a `'` written `'\''` — so a backtick or a `$` in it is inert; in `"…"` a shell ran and expanded them
+  into what he signs. R5: an hour of 24 is refused in `due:` and `done:` on every Python; 3.14 read `T24:00` as the
+  next midnight and 3.9 refused it, so the gate's word depended on the interpreter. R6: `--notify` exits 1 when a
+  notice could not be posted and says *nothing remembered* when nothing is; the README's cron line names Linux's
+  session bus for `notify-send` and keeps its output in a log, and the launchd plist keeps its output too.
 - **macOS: a browser check that hangs fails; one that cannot run here is skipped by name** (FM-035, the v0.18.3 tag's
   CI on macos-latest 3.12). What is known: the log shows the suite dying at `subprocess.TimeoutExpired`, 60 s into the
   answer dialog's check, on the page where OK opens the second screen — which copies the command at once. What is

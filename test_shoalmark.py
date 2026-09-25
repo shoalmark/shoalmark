@@ -1734,7 +1734,7 @@ with tempfile.TemporaryDirectory() as tmp:
             _pick = 'const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[2];R.checked=true;R.dispatchEvent(new Event("change"));D.querySelector("button.go").click();'
             _, b83 = _rows("AP-080", _pick)
             check("OK gives one command carrying the chosen option VERBATIM — not an index, not the recommendation",
-                  '--answer AP-080 accept "c"' in re.sub(r"<[^>]+>", "", b83))
+                  "--answer AP-080 accept 'c'" in re.sub(r"<[^>]+>", "", b83))
         except _ChromeFailed as e_:
             _hung("dialog", e_)
     (root / "docs/work-tracker/AP-080-x.md").write_text((root / "docs/work-tracker/AP-080-x.md").read_text(encoding="utf-8").replace('ask-proposal: "b"', 'ask-proposal: "z"'), encoding="utf-8")
@@ -1777,7 +1777,7 @@ with tempfile.TemporaryDirectory() as tmp:
                 return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
             s2_, b2_, yes_ = _sign("yes")
             check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
-                  "Sign your answer" in s2_ and re.search(r'<pre class="cmd">[^<]*--answer AP-090 accept "b"</pre>', b2_) is not None and "Copy again" in s2_
+                  "Sign your answer" in s2_ and re.search(r"<pre class=\"cmd\">[^<]*--answer AP-090 accept 'b'</pre>", b2_) is not None and "Copy again" in s2_
                   and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
                   and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
                   and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
@@ -2852,7 +2852,7 @@ with tempfile.TemporaryDirectory() as tmp:
     good_ = tracker(root, "AP-400", extra=act_ + "due: 2026-09-26T07:30:00+02:00\nwindow: 90\n", title="a read at seven")
     tracker(root, "AP-401", extra="next: run\ndue: 2026-09-26T05:30Z\n", title="UTC, no seconds")
     code_ok, _o, err_ok = run(root)
-    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00")}
+    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00", "2026-09-26T24:00+02:00")}
     for v in bad_:
         tracker(root, "AP-402", extra=f"next: build\ndue: {v}\n", title="a bad time")
         code_, _o, err_ = run(root)
@@ -2864,7 +2864,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · A · the gate refuses a malformed `due:` — a word, a space for the T, no zone, a month that is not, two zones — and a `window:` or `done:` that is not its shape (saw {[e_.strip()[-90:] for _c, e_ in bad_.values()]})",
           all(c_ == fm.EXIT_LINT and "AP-402: `due:`" in e_ for c_, e_ in bad_.values())
           and "names no real time" in bad_["2026-13-01T07:30+02:00"][1] and "names no real time" in bad_["2026-09-26T07:30"][1]
-          and code_w == fm.EXIT_LINT and "AP-402: `window:`" in err_w and "AP-402: `done:`" in err_w)
+          and code_w == fm.EXIT_LINT and "AP-402: `window:`" in err_w and "AP-402: `done:`" in err_w
+          and fm.parse_due("2026-09-26T24:00+02:00") is None and fm.parse_due("2026-09-26T23:59+02:00") is not None)      # R5: hour 24, refused on every Python
     tracker(root, "AP-402", extra="next: build\n", title="fixed")
     good_.write_text(good_.read_text().replace('ask-proposal: "yes, at seven"\n', f'ask-proposal: "yes, at seven"\nanswer: "accepted"\nanswered: {since_}\nanswered-by: holgo\n'))
     git(root, "add", "-A"); git(root, "commit", "-qm", "an act owed, answered")
@@ -3038,6 +3039,14 @@ with tempfile.TemporaryDirectory() as tmp:
           code_r1 == 0 and t426_.get("next") == "owner" and t426_.get("done", "").endswith("evidence/AP-426/read.md") and not fm.act_of(t426_)
           and "Does the launcher ship before the site?" in owner_r1_ and "AP-426" in [q_[0]["id"] for q_ in fm.owner_queue([t426_])]
           and "next: build" not in out_r1 and '"Does the launcher ship before the site?"' in page_r1_)
+    # R3: his answer — the act — is on `answer/<id>`, not merged: `--done` from the trunk names that branch, as `--due` does
+    tracker(root, "AP-424", extra=f'next: owner\nask: "Will you read the logs tonight?"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes"\n', title="an act answered, not merged")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-424: asked", "-S", "--author=holgo <holgoijo@x>")
+    code_a3, _o, _e = run(root, "--answer", "AP-424", "accept")
+    code_r3, _o, err_r3 = run(root, "--done", "AP-424", "evidence/AP-424/logs.md")
+    check(f"FM-030 · C · R3 · `--done` where the act is on an unmerged `answer/<id>` names that branch and his commit, never *owes no act* (saw {err_r3.strip()[-240:]!r})",
+          code_a3 == 0 and code_r3 == fm.EXIT_LINT and "AP-424's act is on `answer/ap-424`, not merged into " in err_r3 and "owes the Owner no act" not in err_r3
+          and "it carries your commit(s) — " in err_r3 and "`git switch answer/ap-424`, then " in err_r3 and "--done AP-424 evidence/AP-424/logs.md`" in err_r3 and here_() == start_)
     check("FM-030 · C · `--schema` says what `--done` does to the move: `next: build` where his answer left `next: owner`",
           "`--done` sets `next: build` — the act done, the seat's move is next" in fm.render_schema())
     if _browser("owe"):
@@ -3057,9 +3066,15 @@ with tempfile.TemporaryDirectory() as tmp:
             _d, done_ = _owe("AP-421", "done", 'F.text.value="evidence/AP-421/key.md";')
             when_ = datetime.datetime(2026, 10, 2, 8, 15).astimezone().isoformat()        # the browser's zone is this machine's
             _d, due_ = _owe("AP-421", "due", 'F.when.value="2026-10-02T08:15";')
+            _d, odd_ = _owe("AP-421", "done", 'F.text.value="it\'s the report in `docs/x.md`, cost $HOME";')
+            odd_cmd_ = re.search(r"--done AP-421 ('.*')\s+Copy", odd_)
+            said_ = (subprocess.run(["bash", "-c", "printf %s " + odd_cmd_.group(1)], capture_output=True, text=True).stdout
+                     if odd_cmd_ and shutil.which("bash") and os.name != "nt" else "it's the report in `docs/x.md`, cost $HOME")
+            check(f"FM-030 · C · R4 · the copied line single-quotes what he typed — a `'` as `'\\''` — so a backtick or a `$` reaches the tool as typed, never run by the shell (saw {odd_cmd_.group(1) if odd_cmd_ else odd_[:200]!r} → {said_!r})",
+                  odd_cmd_ is not None and odd_cmd_.group(1) == "'it'\\''s the report in `docs/x.md`, cost $HOME'" and said_ == "it's the report in `docs/x.md`, cost $HOME")
             check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
                   "your acts, with their time: 2 AP-420 Will you read production at seven?" in rows_ and f"AP-421 Will you set up the key? · promised {since_}: accepted - this week · no date yet done reschedule" in rows_
-                  and '--done AP-421 "evidence/AP-421/key.md"' in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
+                  and "--done AP-421 'evidence/AP-421/key.md'" in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
                   and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
                   and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
                   and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
@@ -3140,9 +3155,15 @@ with tempfile.TemporaryDirectory() as tmp:
         fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
         code_4, out_4, _e = run(root, "--notify")
         check(f"FM-030 · D · an act moved by a new `due:` is a new notification; one that could not be posted is not remembered, and the next run posts it (saw {out_3.strip()!r} · {out_4.strip()!r})",
-              code_3 == code_4 == 0 and [t_ for t_, _b in posted_[3:5]] == ["d · AP-431 — due in 20 min", "d · AP-436 — overdue"]
+              code_3 == 1 and code_4 == 0 and [t_ for t_, _b in posted_[3:5]] == ["d · AP-431 — due in 20 min", "d · AP-436 — overdue"]
               and "1 posted · 2 posted before · 1 not yet within 30 minutes · 1 NOT posted" in out_3 and "AP-436 — overdue · a notifier that fails" in out_3 and out_3.rstrip().endswith("NOT posted — no display")
               and [t_ for t_, _b in posted_[5:]] == ["d · AP-436 — overdue"] and "1 posted · 3 posted before" in out_4)
+        os.environ["XDG_STATE_HOME"] = str(base / "state-none")
+        fm.post_notice = lambda title, body: "NOT posted — no display"
+        code_5, out_5, _e = run(root, "--notify")
+        check(f"FM-030 · D · R6 · a notifier that posts nothing: `--notify` exits 1 and says nothing is remembered — a schedule's log shows the failure (saw {out_5.splitlines()[0]!r})",
+              code_5 == 1 and out_5.startswith("--notify: 0 posted · 0 posted before · 1 not yet within 30 minutes · 4 NOT posted — nothing remembered — ")
+              and json.loads((base / "state-none/shoalmark/notified.json").read_text(encoding="utf-8")) == {})
     finally:
         fm.post_notice = real_post_
         if state_was_ is None:

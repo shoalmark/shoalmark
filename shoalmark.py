@@ -36,6 +36,7 @@ import math
 import os
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -299,7 +300,7 @@ _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling aw
 # FM-030 — WHEN AN ACT OWED TO THE OWNER FALLS DUE: an ISO time with its zone, seconds optional, `Z` for UTC. The zone is not
 # optional — a time without one is a different hour on every machine that reads it — and `parse_due` refuses one that has
 # none; the shape itself carries no `|`, so the schema's table prints it whole.
-DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"
+DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"     # hour 24 refused (R5)
 WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
 NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an act, and its invite's alarm rings (FM-030 D)
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
@@ -1630,7 +1631,7 @@ def notify_cmd(trackers):
     remembered in `state_dir()/notified.json`, per repository, keyed on the act, its `due:` and the state — a `--due` that
     moves it posts again, and nothing else does; a notice that could not be posted is not remembered. Meant to be
     scheduled by the person — the README has a launchd and a cron line; the tool installs nothing. It reads the
-    trackers and writes nothing in the repository."""
+    trackers and writes nothing in the repository. Exit 1 when a notice could not be posted — a schedule's log shows it."""
     now, name = datetime.datetime.now(datetime.timezone.utc), CONFIG["name"] or ROOT.name
     store = state_dir()
     path = store / "notified.json" if store else None
@@ -1669,14 +1670,14 @@ def notify_cmd(trackers):
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             put(path, json.dumps(seen, indent=1, ensure_ascii=False) + "\n")
-            where = f"remembered in {path}"
+            where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
         except OSError as e:
             where = f"NOT remembered — {path}: {e.strerror or e}; the next run posts again"
     print(f"--notify: {len(lines) - failed} posted · {before} posted before · {later} not yet within {NOTIFY_AHEAD} minutes"
           + (f" · {failed} NOT posted" if failed else "") + f" — {where}")
     for l in lines:
         print(l)
-    return EXIT_OK
+    return 1 if failed else EXIT_OK                         # a notice that could not be posted is a failure a schedule must see (R6)
 
 
 def owner_change(tid, t, how):
@@ -2179,6 +2180,8 @@ function draw(){
     // Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
     // abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
     // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.
+    // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
+    const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
     const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
       const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
       // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
@@ -2198,7 +2201,7 @@ function draw(){
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
         // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
         const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
-        const line=`${cmd} --answer ${id} ${kind}${chosen?` "${chosen}"`:""}`;
+        const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
         sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
       d.showModal()};
     // THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
@@ -2230,7 +2233,7 @@ function draw(){
         <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
       const f=d.querySelector("form");
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();
-        if(kind=="done"){const w=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");return sign(d,id,`${cmd} --done ${id} "${w}"`,`done: ${w}`,"done")}
+        if(kind=="done"){const w=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");return sign(d,id,`${cmd} --done ${id} ${sq(w)}`,`done: ${w}`,"done")}
         // the time the Owner picks is his machine's; the command carries its zone, so it means the same hour everywhere
         const v=f.when.value,dt=new Date(v),o=-dt.getTimezoneOffset(),z=(o<0?"-":"+")+String(Math.floor(Math.abs(o)/60)).padStart(2,"0")+":"+String(Math.abs(o)%60).padStart(2,"0");
         const iso=(v.length==16?v+":00":v)+z;sign(d,id,`${cmd} --due ${id} ${iso}`,`due: ${iso}`,"due")};
@@ -4482,6 +4485,15 @@ def done_cmd(words, trackers):
     tid, where = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
     t = next((x for x in trackers if x["id"] == tid), None)
     act = act_of(t) if t else None
+    if not act and t and vcs() == "git":                    # R3: his answer — the act — may be on `answer/<id>`, not merged yet
+        git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
+        if git("rev-parse", "--verify", "-q", branch).returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0):
+            there = git("show", f"{branch}:{rel}")
+            if there.returncode == 0 and act_of(extract(ROOT / rel, there.stdout)):
+                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{trunk or 'origin'}` — " + unmerged_advice(
+                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
+                return EXIT_LINT
     if not act:
         print(f"--done: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`; "
               + (f"`done:` is written already ({t.get('done')})" if t and t.get("done") else "there is nothing to record"), file=sys.stderr)
