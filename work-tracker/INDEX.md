@@ -25,7 +25,7 @@
 3. A pull request merges only with a review's evidence file on its head: a Reviewer from another independent session for critical changes (critical = a release, the gate or hooks, signing and rights, TRIAGE.md or AGENTS.md rules changed by a seat, anything tagged security or P1); inline Reviewer passes on other code; one Reviewer pass for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until FM-007's hardware key signs them. The Owner merges on a ready line, or over any other verdict with a signed reason.
 4. The owner shall be involved less when trust in the process has been built, but the trust must come from evidence and has to be earned first.
 5. An answer, the Owner's signed mandate, is written and signed through the board. No act of the Owner, a click, a merge, an opened pull request, is an answer, and no seat reads one as such.
-6. What the Owner owes is on his board with one button; nothing owed to him lives only in a ledger, a tracker body or a chat.
+6. What the Owner owes is on their board with one button; nothing owed to them lives only in a ledger, a tracker body or a chat.
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
