@@ -19,6 +19,8 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 3 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
+
 **Every page names the tool — 0.18.2, 2026-09-24, on the Owner's word** (*"a micro icon and a tiny wordmark on every shoalmark page, and the version it is running behind it"*, relayed, normalised; then: the name links to the repository, the version to its release): the board and the tracker view end in one muted line, the Pricke at 16 px (its grid allows no smaller sharp size), `shoalmark` in the mono at 11 px, ` · v<VERSION>` — in every repository, whatever its brand.
 
 **The board wears the site's mark — 0.18.2, 2026-09-24:** shoalmark's own board (`work-tracker/brand/`) shows the site's header lockup as one wordmark — the Pricke `d` at the ruled 16 px beside *shoalmark* in IBM Plex Mono 500, the site's proportions — drawn in `currentColor`, so on the dark scheme the mark takes the name's ink (the GtM's finding); its tab is the site's tab icon, its colours the site's light and dark palettes, its type IBM Plex (the ruled family, self-hosted beside the theme — the board fetches nothing from Google, R3's concern), and its tagline the German claim. The tool gained the fourth brand file this needed, `wordmark.svg`, for every consumer. No reader has seen the board.
@@ -81,13 +83,16 @@ While the page is being edited, one more thing to check · 60%: the "Measured" s
 
 Verdict: yes, add the authority point. Keep it to what the tool enforces today, tie it to the signature tiers, have GtM word it and a Reviewer check it. Fix or source the "9 of 13" line in the same change.
 
-## Going public — the Auditor seat's counsel, and the three gates
+## Going public — the Auditor seat's counsel, and the four gates
 
 **Through the Owner at 16:26:24 on 2026-09-25, as pasted, revising its ask of 16:22:12:** *Ask on the board (ruling): "When and how does shoalmark go public?" options: "this repository, as it is, at the first tag after the 09-29 scoring with CI green on all three platforms, the signing tier stated or the hardware key live, and a gitleaks scan clean | a new repository from a snapshot, this one kept private as the archive, the client names removed, the same gates | not yet" · proposal: the first, if the client names may be public (the Auditor's counsel, 2026-09-25).* The ask above carries it — kind `action`: a yes switches the repository's visibility or creates a new one on his account, his hands (`--schema`: an ask whose yes needs the Owner's hands is `action`; the first version said `ruling`, the Reviewer's R1). An option is at most 120 characters on the board, so the first option names *the three gates*; they are here in the counsel's words, and the seat's gloss stands apart in brackets:
 
 1. *CI green on all three platforms* [on the tag that goes public; red on `v0.18.3`: FM-035, its fix in review].
 2. *the signing tier stated or the hardware key live* [the tier on the site's signing page, FM-007; his answer: the key after the scoring, once delivered].
 3. *a gitleaks scan clean* [of the whole history].
+4. *the port evidence deleted or moved, as ruled on 09-22* [the Auditor seat's addendum of 17:23:39, below: `work-tracker/evidence/FM-001/port/`, six files on main].
+
+**The fourth gate is the Owner's ruling of 2026-09-22** — the parent's ledger, `docs/work-tracker/evidence/FEAT-190/asks.md` row 3 (2026-09-22; the file's line 36): *delete or move the port evidence before shoalmark goes public*; his answer: *should consider this now* [normalised]. The act is FM-006's own: its form — deleted here, or removed in the snapshot — is what his answer to the ask picks, and the act's commit is judged under FM-006; the filing freeze (`--check`: 20 open, only bug filings) allows no new tracker, so this tracker holds the act. Nothing is deleted before his answer.
 
 The proposal is the Auditor seat's counsel, disclosed as such: *the first, if the client names may be public*. The board shows only the ask, the proposal and the title, so the condition stands inside the first option's text, where he reads it before he signs; if the names may not be public, the second option is the counsel. The earlier ask of 16:22:12 (five gates, a license among them) was replaced by this one before it reached the board.
 
