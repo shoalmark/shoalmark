@@ -1274,8 +1274,10 @@ def triage_reading(head, base):
     """FM-037 in `--queue`: (`wait: TRIAGE.md changed unsigned`, the commit) where a commit of the head's own — not on `base`
     — changes the Owner's two sections and is not his signed commit, the walk and the judgement `--check` makes on the
     branch; (`wait: TRIAGE.md change not verified here — <why>`, the commit) where it is signed and this clone cannot check
-    it; None where no commit changes them unsigned, and where `base` names no Owner."""
-    owners = owners_at(base)
+    it; None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default
+    branch's, as `--check` reads him — never a stacked pull request's base, which a seat's branch can be."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    owners = owners_at(default_trunk(git) or base)
     if not owners:
         return None
     verdicts = guard_verdicts(guard_walk(head, "^" + base)[1], owners)

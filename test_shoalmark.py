@@ -3726,6 +3726,11 @@ with tempfile.TemporaryDirectory() as tmp:
           and said37_["ap/037-path"][0] == f"wait: no pull request — TRIAGE.md changed unsigned ({c_path_[:7]})")
     # the Owner is the DEFAULT branch's: a branch that names itself the Owner still judges nothing of its own
     c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
+    git(root, "push", "-q", "origin", "ap/037-self"); c_st_, _g = made37_("ap/037-stacked", "AP-037: the path, on a stacked branch", text37_("2. Nothing merges unreviewed.", "2. The seat merges."), SEAT_, frm="ap/037-self")
+    q_st_ = _no_git_env(lambda: fm.queue_actions([{"number": 9, "title": "s", "headRefName": "ap/037-stacked", "headRefOid": c_st_, "baseRefName": "ap/037-self",
+                                                  "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": "2026-09-25T09:00:00Z"}]))
+    check(f"FM-037 · clause 4 · a pull request stacked on a seat's branch that names the seat the Owner is still read against the default branch's Owner (saw {q_st_[0][2:]!r})",
+          q_st_[0][2:] == ("wait: TRIAGE.md changed unsigned", c_st_[:7]))
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "no Owner named"); git(root, "push", "-q", "origin", "main")
     c_none_, g_none_ = made37_("ap/037-no-owner", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
