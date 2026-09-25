@@ -196,3 +196,68 @@ Not verified:
 - The live 404: the site is not deployed.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Pass on f0a83fe (2026-09-25 09:04 CEST, Reviewer, session `8e509911/reviewer-7`)
+
+**Scope.** Tip `f0a83fe` (`f0a83fe6373e5b8edc706b56794d035392921879`), three commits after the verdict above (`cdb465b`,
+and `c31d1b8`, its heading's time):
+- `9d884da` 08:50:08, principal: merges `origin/main` `7f492a5` (PR 68); INDEX.md resolved (R1).
+- `1a95708` 08:50:57, principal: the Auditor seat's five points filed in FM-007, and one ship-log row (R2).
+- `f0a83fe` 08:51:56, GtM (`8e509911/gtm-1`): the retire step reworded on both pages (R3).
+
+**Tier: docs, one pass.** `git diff --name-only origin/main...HEAD` names five paths: both pages, FM-007, INDEX and
+this file. **FM-033 order:** at `f0a83fe`'s parent, FM-007 reads `status: In Progress`, `tier: P1`,
+`triaged: 2026-09-24`, `rank: 2`. **Independence:** same session `8e509911`, reported.
+
+**R1 — closed; confidence high.**
+- Main changed six paths since the fork: FM-018, FM-030, INDEX, TRIAGE.md, FM-030's review and the worksheet.
+  `git diff --name-only 7f492a5 9d884da` names none of the five that only main changed, so the merge has them as main
+  has them.
+- `git diff --name-only c31d1b8 9d884da` names none of the branch's own paths, so the merge has them as the branch has
+  them.
+- `INDEX.md` differs from main's by FM-007's two rows alone: its triage row reads *In Progress*, and its bucket row
+  moves from *backlog* to *progress*. This is the replay's result.
+- `git merge-tree --write-tree origin/main HEAD` is clean, exit 0. It writes the tip's own tree, `b67780a`, and
+  `origin/main` is an ancestor.
+
+**R2 — closed, the block word for word; confidence high (99%).**
+- The filed block runs from *2. The site conversion: what docs/signing.md …* to *5. Nothing of your own setup on a
+  public page: no fingerprints, no configs.* It equals the 05:59:21Z record's second `<pasted_content>` byte for byte:
+  864 bytes, with no CR and no trailing blanks.
+- Its sha256, with one trailing newline, is `07c31fa5e2fa7b7ac5c3b41847123cba7235c24e9f0ad2603ef6370496d191d5`. That
+  is the value FM-007 states.
+- The note gives the source (the second block of the paste of 07:59:21) and attributes the block to the Auditor seat.
+- The main block and the addendum are still byte-identical to the pastes.
+- The new ship-log row is true: it names both findings and says what each fixed.
+
+**R3 — closed; confidence high.**
+- Both pages now say to retire the old key once none of the answers it signed is still open. An open answer it
+  signed would read unverified once its line leaves the signers file. Neither page names a command any more, and
+  `--clear-ask` appears on neither.
+- The German says the same in the site's register (*Legen Sie ihn still, sobald keine der Antworten … mehr offen
+  ist*).
+- The claim is the one checked above: an open answer signed by a removed key shows `U`, and the gate refuses it.
+
+**R4 · P3 · confidence high · Rendered, the five points are numbered 3 to 7.**
+- The block is the paste word for word: it opens with *2. The site conversion …* and goes on *1. … 5.*
+- Markdown makes one ordered list of the six lines, starting at 2. The board's `marked` (`vendor/marked-18.0.13`)
+  renders `<ol start="2">`, so the tracker view shows the five points as 3, 4, 5, 6 and 7. The source is right; the
+  rendered record misnumbers them.
+- **Fix forward:** a note line saying the numbering is the paste's, or render-safe filing next time, if the Owner
+  wants the view to match.
+
+**Gates at `f0a83fe`.**
+- `--check` exits 0: *INDEX.md is up to date — 34 trackers*, *70 verdict(s)*, *18 open*. `--session-check` exits 0.
+- The generator is clean: `python3 shoalmark.py` leaves the tree clean.
+- `test_shoalmark.py` gives 355 ok and `test_core.py` 148 ok, all green, on Python 3.14.3 and 3.9.6.
+- `uvx zensical build` in a scratchpad clone at `f0a83fe` exits 0 with *No issues found*. `llms_txt.py` gives 9 pages,
+  and `signing.html` and `de/signing.html` are built.
+- The four external links answer 200.
+
+**Verdict on f0a83fe: READY WITH FINDINGS (R4 P3), 92%.** R1–R3 are closed. R4 is fixed forward under the docs tier.
+What was checked at `b38d321` still holds. Not verified, as before:
+- the Auditor seat's record and its prefixes;
+- hardware;
+- the live 404 (the site is not deployed).
+
+The Owner lands this by merging; a merge rules nothing.
