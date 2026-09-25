@@ -174,11 +174,11 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
    beide Signierer. Nur als Signierschlüssel — dieser Schlüssel pusht nie.
 
 4. **Den alten Schlüssel stilllegen**, falls vorher ein anderer signiert hat — etwa der, mit dem Sie pushen. Bis
-   dahin signiert alles, was ihn benutzen kann, weiter, und was er signiert, lässt sich weiter verifizieren. Lassen
-   Sie zuerst Ihre Agenten die Antworten abschließen, die er signiert hat (`--clear-ask`): Das Gate prüft jede
-   Antwort, die in einem Arbeitspaket noch offen ist, und eine, die der alte Schlüssel signiert hat, verifiziert
-   nicht mehr, sobald seine Zeile fehlt. Dann seine Zeile aus der Signierer-Datei nehmen und ihn auf der Forge unter
-   *Signing keys* löschen. Unter *Authentication keys* bleibt er stehen und pusht weiter.
+   dahin signiert alles, was ihn benutzen kann, weiter, und was er signiert, lässt sich weiter verifizieren. Legen
+   Sie ihn still, sobald keine der Antworten, die er signiert hat, mehr offen ist: Eine offene Antwort, die der alte
+   Schlüssel signiert hat, gälte als unverifiziert, sobald seine Zeile die Signierer-Datei verlässt. Dann seine Zeile
+   aus der Signierer-Datei nehmen und ihn auf der Forge unter *Signing keys* löschen. Unter *Authentication keys*
+   bleibt er stehen und pusht weiter.
 
 ## Weg B — mit einem GPG-Schlüssel signieren (git)
 

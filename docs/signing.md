@@ -160,10 +160,10 @@ step says *both*.
    both signers. As a signing key only — this key never pushes.
 
 4. **Retire the old key**, if another key signed before — the one you push with, say. Until you do, anything that
-   can use it still signs, and what it signs still verifies. First have your agents clear the answers it signed
-   (`--clear-ask`): the gate checks every answer still open in a tracker, and one the old key signed stops verifying
-   once its line is gone. Then take its line out of the signers file, and delete it under *Signing keys* on the
-   forge. It stays under *Authentication keys*, and keeps pushing.
+   can use it still signs, and what it signs still verifies. Retire it once none of the answers it signed is still
+   open: an open answer signed by the old key would read unverified once its line leaves the signers file. Then take
+   its line out of the signers file, and delete it under *Signing keys* on the forge. It stays under
+   *Authentication keys*, and keeps pushing.
 
 ## Route B — sign with a GPG key (git)
 
