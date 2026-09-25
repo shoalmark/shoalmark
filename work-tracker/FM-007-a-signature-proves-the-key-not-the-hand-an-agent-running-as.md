@@ -4,15 +4,7 @@ status: Proposed
 considered: FM-005, FM-006
 tags: security
 tier: P1
-next: owner
-ask: "Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?"
-ask-kind: ruling
-ask-since: 2026-09-22
-ask-options: "a hardware key that needs a touch | a signing key on a machine no agent runs on | a hook that refuses a signed commit carrying a seat co-author line"
-ask-proposal: "a hardware key that needs a touch"
-answer: "accepted - a hardware key that needs a touch"
-answered: 2026-09-22
-answered-by: holgo99
+next: wait
 triaged: 2026-09-24
 rank: 2
 hook: "The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not which hand: an agent running as the Owner on his machine, with his key loaded, signs as him — and with commit.gpgsign true set, every agent commit did, until it was caught. Nothing in git, the forge or the tool can tell the difference. Named by the Owner: a doorway for any rogue agent."
@@ -57,6 +49,12 @@ proposal of 2026-09-24 (its draft, sha256 `39690e54…`), applied under the free
 
 The Owner's answers are signed by something an agent on his machine cannot operate (1 or 2, recorded here with what
 was chosen), the tripwire (3) is in the tool with a mutation witness, and the signing page says all three.
+
+## Asks
+
+**2026-09-22** · Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?
+**answered** — accepted - a hardware key that needs a touch · holgo99
+**relation** — accepted the proposal
 
 ## Ship log
 

@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-24 · 34 trackers (34 work).
+> Generated 2026-09-25 · 34 trackers (34 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -29,7 +29,7 @@
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
 | 1 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
-| 2 | P1 | owner | *complicated* | intended | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not… | Proposed |
+| 2 | P1 | wait | *complex* | intended | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not… | Proposed |
 | 3 | P1 | wait | *complex* | intended | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed |
 | 4 | P1 | wait | *complex* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
 | 5 | P2 | build | — | intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
