@@ -1,0 +1,72 @@
+/* THEME "monochrome" — the terminal cut. The GtM/Design seat, 2026-09-25: a candidate, nothing adopted.
+   Written as lines added to work-tracker/brand/theme.css: no markup changes, no change to shoalmark.py.
+   One face, one grid: IBM Plex Mono for every word at 14px on a 21px line, so a character is a cell.
+   Borders are CSS on that grid, never box-drawing glyphs: the fonts are Latin-1 cuts, and U+2500 would
+   fall back to the system's face. Everything drawn in text is ASCII: # // > [ ] — and is drawn, never read: each marker's alt text is "",
+   so a button's accessible name stays "accept", not "[ accept ]". The frame is 104ch, so the Owner's box holds 100ch of prose. */
+@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("brand/fonts/IBMPlexMono-SemiBold-Latin1.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-style:italic;font-weight:400;src:url("brand/fonts/IBMPlexMono-Italic-Latin1.woff2") format("woff2")}
+
+/* two tokens added: --box, a panel's border, twice the row rule's weight; --raise, the one raised surface */
+:root{--box:rgba(0,0,0,.28);--raise:#f9f9f9}
+@media(prefers-color-scheme:dark){:root{--box:rgba(240,241,244,.26);--raise:#16181d}}
+
+body,#dlg textarea,input,button,th,.m,#v code,#dlg pre,#dlg code{font-family:"IBM Plex Mono",ui-monospace,monospace}
+body{font-size:14px;line-height:1.5;max-width:calc(104ch + 32px)}
+th,button,#n,#l,.k,td.m,.h td,.h div,.g td,.g b,.s td,#p,#H span,#f,#dlg h3,#dlg .dq,#dlg textarea,#dlg pre,#dlg code,#v table,#v code{font-size:14px}
+button,th{text-transform:none;letter-spacing:0}
+::selection{background:var(--ink);color:var(--bg)}
+
+/* the search is a prompt line */
+header{border:1px solid var(--box);padding:0 1ch;align-items:center;gap:2ch}
+header:focus-within{border-color:var(--ink)}
+header::before{content:">";content:">" / "";color:var(--mute)}
+header input{border:0;padding:6px 0;margin-left:-1ch;font-size:14px}
+header button[aria-pressed=true]{color:var(--ink);font-weight:600}
+
+/* a button is a bracketed word; the one that goes ahead is inverted */
+button.act,#dlg button,#s{border:0;padding:0 2px;margin-left:1ch;color:var(--dim);font-size:14px}
+button.act::before,#dlg button::before,#s::before{content:"[ ";content:"[ " / "";color:var(--mute)}
+button.act::after,#dlg button::after,#s::after{content:" ]";content:" ]" / "";color:var(--mute)}
+button.act:hover,#dlg button:hover,#s:hover{background:var(--raise);color:var(--ink)}
+#s{margin-left:auto}
+#dlg button.go{background:var(--ink);color:var(--bg)}#dlg button.go::before,#dlg button.go::after{color:inherit}
+
+/* the Owner's panel: a box, its title set into the top border; each section a markdown heading */
+#p{position:relative;max-width:none;margin:22px 0 18px;padding:18px 2ch 12px;border:1px solid var(--box);border-left:1px solid var(--box)}
+#p::before{content:"owed to the owner";position:absolute;top:-.75em;left:1ch;padding:0 1ch;background:var(--bg);color:var(--ink);font-weight:600}
+#p>b{font-weight:600;color:var(--ink)}#p>b.hot{color:var(--coral)}
+#p>b::before{content:"## ";content:"## " / "";color:var(--mute);font-weight:400}
+
+/* the board: a boxed table, the header row the raised surface; a group is a comment line */
+table{border:1px solid var(--box)}
+th{background:var(--raise);color:var(--ink);font-weight:600;padding:3px 1ch}
+td{padding:3px 1ch;border-top:0}
+tr.t:hover td{background:var(--raise)}
+tr.c td:first-child{padding-left:3ch}
+.g td{padding:18px 1ch 3px;color:var(--dim);white-space:normal}   /* a group's line wraps: at 104ch its description is wider than the frame */.g b{font-size:14px}
+.g b::before{content:"// ";content:"// " / "";color:var(--mute);font-weight:400}
+.h td,.s td{padding-left:1ch}.s td{padding-left:3ch}
+.q{width:7px;height:7px;margin-right:1ch}
+
+/* the dialog: a window — its title in the top border, the form scrolls inside so the title is never clipped */
+#dlg{overflow:visible;border:1px solid var(--ink);padding:18px 2ch 14px}
+#dlg form{max-height:calc(100vh - 7em);overflow:auto}
+#dlg h3{position:absolute;top:-.75em;left:1ch;margin:0;padding:0 1ch;background:var(--bg);font-weight:600}
+#dlg h4{text-transform:none;letter-spacing:0;font-size:14px;color:var(--dim)}#dlg h4::before{content:"## ";content:"## " / "";color:var(--mute)}
+#dlg pre.cmd{border:0;border-left:1ch solid var(--teal);background:var(--raise)}
+
+/* a tracker read in the viewer prints as the markdown it is: one size, the heading marks kept */
+#v h1,#v h2,#v h3,#v h4{font-size:14px;font-weight:600}#v h1{margin-top:22px}
+#v h1::before{content:"# ";content:"# " / "";color:var(--mute)}#v h2::before{content:"## ";content:"## " / "";color:var(--mute)}
+#v h3::before{content:"### ";content:"### " / "";color:var(--mute)}#v h4::before{content:"#### ";content:"#### " / "";color:var(--mute)}
+#v pre{border:0;background:var(--raise)}#v blockquote{border-left:1ch solid var(--raise)}
+
+/* the last line (the Owner, 2026-09-25): no rule above it — the claim on the left, the mark, the name and the version on
+   the right. They are two elements, the claim in the board and the running line after the viewer, so the running line
+   is lifted onto the claim's line, only while the board shows and its claim is not empty; the claim keeps 26ch clear
+   on its right so the two never overlap. In the viewer the running line stands alone, on the right. */
+#f{margin:28px 0 0;padding-right:26ch;line-height:21px}
+#r{justify-content:flex-end;margin-top:20px;line-height:21px;font-size:12px}
+#B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}
+@media print{#p,table{border-color:#000}th{background:none}}

@@ -1,0 +1,46 @@
+/* MOCKUP "bagels" (a working name: it names another project). Base: monochrome. A Textual TUI's grammar (the Bagels reference), layered on the terminal cut: the header row a
+   lavender bar with the ground's ink on it; zebra rows; a group a band with '//' and its name in italics; round status
+   dots; the panel that wants you outlined in peach, the search box in blue; the active view a lavender tab. */
+:root{
+  --bg:#f6f5fb;--panel:#f6f5fb;--band:#e3e1f1;--zebra:#eeedf6;--raise:#e3e1f1;--bar:#5a44c8;--barink:#ffffff;
+  --focus:#9a4411;--sel:#2c59bb;--ink:#24253a;--dim:#4d5170;--mute:#5f6383;--box:#b4b2cc;--line:transparent;
+  --blue:#2c59bb;--teal:#0c6f64;--yellow:#7c5a00;--coral:#bb2f47;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1b1c2b;--panel:#1b1c2b;--band:#2c2f48;--zebra:#232438;--raise:#2c2f48;--bar:#b4a0f7;--barink:#1b1c2b;
+  --focus:#f5a86b;--sel:#7ea1f0;--ink:#d6d9ec;--dim:#a8adc8;--mute:#999ebc;--box:#4a4e6e;--line:transparent;
+  --blue:#7ea1f0;--teal:#6fd6c0;--yellow:#e8c56a;--coral:#f7768e;
+}}
+::selection{background:var(--bar);color:var(--barink)}
+#H .wm,#H b{color:var(--focus)}
+
+/* the search box is the blue one; the view it shows is a lavender tab */
+header{border-color:var(--sel)}header:focus-within{border-color:var(--focus)}header::before{color:var(--sel)}
+header button[aria-pressed=true]{background:var(--bar);color:var(--barink);padding:0 1ch}
+
+/* the Owner's box is the focused panel: peach; its sections are tabs — peach on a band, no heading mark */
+#p{border-color:var(--focus)}#p::before{color:var(--focus);font-weight:400}
+#p>b{background:var(--band);color:var(--focus);padding:0 1ch}#p>b.hot{color:var(--coral)}
+#p>b::before{content:"";content:"" / ""}
+#p a[href^="#="]{color:var(--bar);text-decoration:none}#p a[href^="#="]:hover{text-decoration:underline}
+
+/* a button reads like the key bar: its brackets peach, its word the ink; the lavender bar on hover */
+button.act::before,button.act::after,#dlg button::before,#dlg button::after,#s::before,#s::after{color:var(--focus)}
+button.act{color:var(--ink)}button.act:hover,#dlg button:hover{background:var(--bar);color:var(--barink)}
+button.act:hover::before,button.act:hover::after,#dlg button:hover::before,#dlg button:hover::after{color:inherit}
+#dlg button.go{background:var(--bar);color:var(--barink)}
+
+/* the board: a lavender header bar, zebra rows, a group a band */
+table{border-color:var(--box)}
+th{background:var(--bar);color:var(--barink)}
+tr.t:nth-child(even) td{background:var(--zebra)}tr.t:hover td{background:var(--band)}
+.g td{background:var(--band);color:var(--dim);padding:3px 1ch}
+.g b{font-style:italic;font-weight:400;color:var(--ink)}.g b::before{font-style:normal}
+tbody tr.g ~ tr.g td{border-top:12px solid var(--panel)}
+td.m a{color:var(--bar)}td.m.hot{color:var(--coral)}
+.q{border-radius:50%;width:8px;height:8px}
+
+#v h1,#v h2,#v h3,#v h4{color:var(--focus)}#v th{background:var(--bar);color:var(--barink)}
+#v tr:nth-child(even) td{background:var(--zebra)}#v .md a{color:var(--sel)}#v code{color:var(--focus)}
+#dlg{border-color:var(--focus)}#dlg h3{color:var(--focus)}
+#r a:first-child{color:var(--focus)}

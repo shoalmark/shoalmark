@@ -19,6 +19,8 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**The board's themes are filed on the Owner's word (2026-09-25): `monochrome` and `shoalmark` to ship as files in the tool's `brand/themes/`, `--brand DIR --from <theme>` to start from one, and no setting; `catkin`, `bagels` and `seekarte` kept as mockups. Nothing is built. Its ask waits for the going-public ask to be answered; the line is filed below.**
+
 **A page for people on what TRIAGE.md holds — the intent and the current path, and what an edit there does — is owed on the Owner's word (22:38:24), built after FM-037 merges; the line is filed below.**
 
 **The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 10 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
@@ -145,10 +147,43 @@ Filed here because the freeze (20 open) bars a new tracker and FM-022 (Shipped) 
 The build waits for FM-037's guard to merge, so the page's *only you change it* is the tool's, with its tier-0 limit stated; the GtM seat words it,
 a Reviewer checks every claim against evidence before the merge; the term stays *your signed word* unless the Owner rules otherwise by an ask.
 
+## The board's themes — filed 2026-09-25 by the GtM seat
+
+**On the Owner's word in chat, 2026-09-25** (quoted in the evidence, spelling normalised): *"all are keepers"*;
+*"I agree to this direction"*; *"we need a `shoalmark` theme besides the `monochrome` theme … a strong starter"*.
+His words, not a signed answer: the ask below makes them one.
+
+- **What ships, when built:** two themes as files in the tool's `brand/themes/`:
+  - `monochrome`: the terminal cut, IBM Plex Mono on one grid;
+  - `shoalmark`: the brand's own, a sea chart's ECDIS colours, magenta only for what is owed to the Owner, the status
+    marks in the buoyage's shapes.
+- **How a theme is chosen:** `--brand DIR --from <theme>` writes a starter from one. Choosing a theme is putting a file
+  in a place. FM-002's four places and its one rule stay, with no setting, and the tool's default look stays for
+  every consumer.
+- **The mockups:** `catkin`, `bagels` and `seekarte`. The first two are renamed before anything ships.
+- **How it was mocked:** CSS only, on the real board. Every text pair a rule uses is at 4.5:1 or more in both schemes.
+  Markers are never read aloud; Chrome's accessibility tree shows it, with a control run.
+- **Evidence:** [`evidence/FM-006/themes/`](evidence/FM-006/themes/README.md) — the five stylesheets, the script that
+  rebuilds the mocks from the board, the renders, what was checked, what was not.
+- **The Auditor seat's counsel (relayed by the Owner):** its three fixes are in every file. Its hold (file after v0.18.4
+  is tagged) was lifted by the Owner's *"You file this"*. v0.18.4 is not tagged.
+- **Filed here** because the freeze (21 open) bars a new tracker, FM-002 (Shipped) built the brand layers, and this
+  tracker holds the board's brand since 0.18.2.
+- **The build is code:** `brand/themes/`, `--from`, two Plex Mono cuts, and three markup hooks (the owner's box title as
+  a label, one footer element, a class on striped rows). A pass judges it before the first build commit (FM-033), and
+  it waits for the answer.
+- **The ask, raised when this tracker's open ask is answered** (a tracker holds one ask), a ruling:
+  *Does shoalmark ship two themes — monochrome and shoalmark, as files in the tool's brand/themes/ that
+  `--brand DIR --from <theme>` starts from — and which does its own board wear?*
+  - options: both, this board wears shoalmark | both, this board wears monochrome | not yet — the board keeps today's
+    look
+  - proposal: both, this board wears shoalmark
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | **The board's themes filed** by the GtM seat on the Owner's word: `monochrome` and `shoalmark` to ship as files in `brand/themes/`, `--brand DIR --from`; three more kept as mockups. Evidence: `evidence/FM-006/themes/` (five stylesheets, the rebuild script, 16 renders). The Auditor seat's hold lifted on his word; v0.18.4 not tagged. Nothing built. |
 | 2026-09-25 | **The page on his word in TRIAGE.md filed** — the Auditor seat's line on the Owner's word, through him at 22:38:24, word for word (sha256 `be19a410…`): an English and German page on the intent and the current path and what an edit does, each claim labelled by what enforces it, worded by the GtM seat, every claim checked against evidence before the merge; built after FM-037 merges so *only you change it* is the tool's, with FM-007's tier-0 limit. |
 | 2026-09-25 | **The Auditor seat's addendum to its go-public counsel, and its correction, filed word for word** through the Owner, before PR 77 merges — the addendum of 17:23:39 (sha256 as filed, after its opening line: `281f74bbe32c32f73ef993846f95f147b7f4be492ed251b97a081c3ea7932309`) and its correction to item 2 of 17:37:17, its own error (`a0b8244dbb6b1382d910df2dba91848db8cc8f53d34152d29b4a6d0d2f78ff01`). **A fourth gate**, in the addendum's words: the port evidence (`work-tracker/evidence/FM-001/port/`, six files on main) deleted or moved, as the Owner ruled on 2026-09-22 — the parent's ledger, `docs/work-tracker/evidence/FEAT-190/asks.md` row 10 (2026-09-22; the file's line 36); the act is this tracker's — the freeze allows no new one — named in *What is true now* too, its form picked by his answer, nothing deleted before it. **The count as found** at `9555d2c`, the Implementer seat's, beside the corrected one: 28 blob versions name the parent, 8 the tip's files and 20 older at 7 paths (5 still at the tip, 2 FM-002's before its move), 3 files naming it only in older versions — every number the Auditor seat's; the literal name a lower bound (3 of the 6 port files do not carry it). **The options re-made declarative** on the Auditor seat's wording (the Reviewer's R4): 119, 118 and 7 characters, the proposal the first; the condition leaves the option text — *if either may not be public, the second*, the Auditor seat's counsel, disclosed as such here and in *Going public*. FM-030 gains its 0.18.4 line: the move after an answer follows the picked option, not the kind alone. **Owed:** the parent's ledger row 47, an appended clause to match, in the parent's next ledger commit. |
 | 2026-09-25 | Re-made on its Reviewer's R1–R3 before it reached the board: the ask is `action` (a yes is his hands), the condition on the proposal stands in the first option's text, the three gates are quoted in the counsel's words with the seat's gloss apart. The parent project's ledger row is corrected to the same text by an appended clause (its row had merged). |
