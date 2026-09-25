@@ -90,6 +90,11 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   RV-479 check read `git show`'s blob in the locale's encoding — cp1252 on Windows — and the em dash in the ship-log
   row it compares came out as three other characters. The tool names UTF-8 on every read; the test now does too. No
   change to the tool.
+- **`--queue` also prints the last day's merged and closed pull requests** (FM-030, widened; the Auditor seat, through
+  the Owner, 2026-09-25 18:25:16). After the queue, *MERGED OR CLOSED IN THE LAST 24 HOURS*: each pull request `gh pr list
+  --state merged` and `--state closed` return with a merge or close time in the last day, newest first, with its time in
+  UTC and its branch — so a seat's *still open* line is checked against the forge in the same turn. *Nothing to do on
+  upgrade.*
 
 ## 0.18.3 — 2026-09-24
 

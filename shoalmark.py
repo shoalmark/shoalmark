@@ -1401,6 +1401,24 @@ def queue_lines(rows):
                f"{kinds['branch']} pushed without a pull request"])
 
 
+def forge_closed(hours=24):
+    """FM-030, widened (the Auditor seat, through the Owner, 2026-09-25): the pull requests the forge merged or closed in
+    the last `hours`, so a seat's *still open* line is checked against the forge in the same turn — `gh pr list --state
+    merged` and `--state closed`, one pull request once, merged where it has a merge time. [(number, merged|closed, time,
+    branch)], newest first; [] where the forge does not answer."""
+    since, seen = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours), {}
+    for state in ("merged", "closed"):
+        try:
+            r = subprocess.run([shutil.which("gh") or "gh", "pr", "list", "--state", state, "--limit", "50", "--json", "number,headRefName,closedAt,mergedAt"],
+                               cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+                               env=dict(nested_git_env(), GH_PROMPT_DISABLED="1"))
+            seen.update({p["number"]: p for p in (json.loads(r.stdout) if r.returncode == 0 else []) if p["number"] not in seen})
+        except (OSError, ValueError, subprocess.TimeoutExpired, KeyError, TypeError):
+            continue
+    rows = [(n, "merged" if p.get("mergedAt") else "closed", parse_due(p.get("mergedAt") or p.get("closedAt")), p.get("headRefName", "")) for n, p in seen.items()]
+    return sorted(((n, s_, at, b) for n, s_, at, b in rows if at and at >= since), key=lambda row: row[2], reverse=True)
+
+
 def queue_cmd():
     """`--queue`: the open pull requests, one action each, in the order to take them — exit 3 where the forge cannot be read."""
     prs, why = forge_prs()
@@ -1408,6 +1426,9 @@ def queue_cmd():
         print(why, file=sys.stderr)
         return EXIT_NO_FORGE
     print("\n".join(queue_lines(queue_actions(prs, pushed_branches(prs)))))
+    closed = forge_closed()
+    print(f"\nMERGED OR CLOSED IN THE LAST 24 HOURS — {len(closed) or 'none'}" + "".join(
+        f"\n  PR {n}  {state:<6}  {at.strftime('%Y-%m-%d %H:%M')} UTC  {branch}" for n, state, at, branch in closed))
     return EXIT_OK
 
 
@@ -4807,7 +4828,8 @@ def parse_args(argv):
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
                                             "merge: your answer · wait: not an answerer (<author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
-                                            "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count. "
+                                            "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
+                                            "merged or closed in the last 24 hours, with their times. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
     add("--session", nargs="+", metavar="WORD",
         help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "

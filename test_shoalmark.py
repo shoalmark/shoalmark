@@ -3396,10 +3396,16 @@ with tempfile.TemporaryDirectory() as tmp:
     pushed_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
     git(root, "checkout", "-q", "main"); git(root, "push", "-q", "origin", "main", "fm/002-pushed")
     asked_, real_run, real_which, real_forge = [], subprocess.run, fm.shutil.which, fm.github_remote
+    ago_ = lambda hours: (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    gone_ = {"merged": [{"number": 78, "headRefName": "fm/035-ci", "mergedAt": ago_(2), "closedAt": ago_(2)},
+                        {"number": 70, "headRefName": "fm/old", "mergedAt": ago_(30), "closedAt": ago_(30)}],
+             "closed": [{"number": 78, "headRefName": "fm/035-ci", "mergedAt": ago_(2), "closedAt": ago_(2)},
+                        {"number": 76, "headRefName": "fm/dropped", "mergedAt": None, "closedAt": ago_(5)}]}
     def gh_stub_(*a, **k):
-        if a and list(a[0])[:1] == ["gh-stub"]:                  # the forge: no pull request is open
+        if a and list(a[0])[:1] == ["gh-stub"]:                  # the forge: no pull request is open; the last day's merged and closed
             asked_.append(list(a[0]))
-            return subprocess.CompletedProcess(a[0], 0, "[]", "")
+            state_ = list(a[0])[list(a[0]).index("--state") + 1]
+            return subprocess.CompletedProcess(a[0], 0, json.dumps(gone_.get(state_, [])), "")
         return real_run(*a, **k)
     subprocess.run, fm.shutil.which = gh_stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which(name, *a, **k))
     fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge(url)
@@ -3408,9 +3414,12 @@ with tempfile.TemporaryDirectory() as tmp:
     finally:
         subprocess.run, fm.shutil.which, fm.github_remote = real_run, real_which, real_forge
     check(f"FM-031 · `--queue` itself, `gh` stubbed and `origin` a local bare repository: a branch pushed without a pull request reads `branch <name> @ <sha>  wait: no pull request — no verdict on <sha>`, and the count names it (saw {out_!r}, {err_!r})",
-          code_ == 0 and out_.splitlines() == [f"branch fm/002-pushed @ {pushed_[:7]}  wait: no pull request — no verdict on {pushed_[:7]}",
-                                               "1 waiting on you: 0 merge, 0 close, 0 wait, 1 pushed without a pull request"]
-          and [c_[1:3] for c_ in asked_] == [["pr", "list"]])
+          code_ == 0 and out_.splitlines()[:2] == [f"branch fm/002-pushed @ {pushed_[:7]}  wait: no pull request — no verdict on {pushed_[:7]}",
+                                                   "1 waiting on you: 0 merge, 0 close, 0 wait, 1 pushed without a pull request"]
+          and [c_[1:5] for c_ in asked_] == [["pr", "list", "--state", "open"], ["pr", "list", "--state", "merged"], ["pr", "list", "--state", "closed"]])
+    t78_, t76_ = (datetime.datetime.strptime(ago_(h_), "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M") for h_ in (2, 5))
+    check(f"FM-030 · 0.18.4 · `--queue` then prints the last day's merged and closed pull requests, newest first, each once, with its time — so a seat's *still open* is checked against the forge in the same turn; one older than a day is not there (saw {out_.splitlines()[2:]!r})",
+          out_.splitlines()[2:] == ["", "MERGED OR CLOSED IN THE LAST 24 HOURS — 2", f"  PR 78  merged  {t78_} UTC  fm/035-ci", f"  PR 76  closed  {t76_} UTC  fm/dropped"])
     rm_git(root)
 fm.configure(HERE)
 
