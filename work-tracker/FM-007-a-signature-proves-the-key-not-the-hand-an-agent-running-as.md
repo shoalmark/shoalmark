@@ -80,6 +80,15 @@ Tiers, addendum (the Auditor seat, session 8b91dba2, 2026-09-25): a phone passke
   - The tool cannot tell it from a software ECDSA key by its type, so the tier must be declared beside the key in allowed_signers.
   - Verify that no approval is cached between signatures.
 
+*The site conversion — the Auditor seat's five points for `docs/signing.md` and `docs/de/signing.md`, the second block of the Owner's paste of 2026-09-25 07:59:21, filed word for word (the Reviewer's R2); sha256 as filed, with one trailing newline: 07c31fa5e2fa7b7ac5c3b41847123cba7235c24e9f0ad2603ef6370496d191d5.*
+
+2. The site conversion: what docs/signing.md and docs/de/signing.md must say · 85%. The wording is the GtM seat's job, which is legibility to a stranger. The content:
+1. Open with the threat and the four tiers in plain words, before any setup steps.
+2. Rewrite Route A. Drop "the same key may sign; it proves the same thing". Replace it with: a separate signing key. Tier 2 becomes the easy route and tier 3 the strong route. Tier 0 is labelled "for trying the tool; your record will say so".
+3. A tier 3 walk-through: what to buy (FIDO2, Ed25519, PIN, two keys), the macOS OpenSSH note, adding both keys as GitHub Signing Keys, allowed_signers, and retiring the old key.
+4. Correct "an agent never passes -S". Say instead that an agent can pass it, and that only tier 2 or 3 stops that.
+5. Nothing of your own setup on a public page: no fingerprints, no configs.
+
 ## Raised
 
 *One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts. The Auditor seat's
@@ -102,6 +111,7 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | The Auditor seat's five points for the site conversion filed word for word (the Reviewer's R2 on this branch: the record named them as the GtM seat's and listed three); main merged after PR 68 (the Reviewer's R1: INDEX.md conflicted, regenerated). |
 | 2026-09-25 | The site's signing pages rewritten by the GtM seat under this tracker (`56d08bb` English, `007f279` German): the threat and the four tiers first, Route A a separate signing key, tier 3 walked through — two FIDO2 keys, or the Mac's Secure Enclave — a phone passkey ruled out, *an agent can pass -S* corrected, the old key retired last. Two lines under the freeze for 0.18.4, found by that seat: the tool's link to the page (`…/signing/`, and `…/de/signing/` in the German labels) will 404 on the deployed site, which builds `signing.html` (`use_directory_urls = false`); and the tier of a Secure Enclave key cannot be read from its type, so the pages declare it as a comment line above the key in `allowed_signers` (`# tier 3: …`) — the tool's coming tier line reads that form or the pages change. |
 | 2026-09-25 | **Tiers, addendum** filed word for word (the Owner's paste of 08:13:57): a phone passkey is no signing option today; a Mac's Secure Enclave with Touch ID gives a tier 3 without buying — P-256 only, bound to one Mac, the tier declared beside the key in `allowed_signers`. The site pages take both blocks. |
 | 2026-09-25 | In Progress — the seat's work under this tracker is the record and the site's signing pages (the tiers), set here in a tracker-only commit before the first documentation commit (the FM-033 rule); the key itself stays his act, after the scoring. |
