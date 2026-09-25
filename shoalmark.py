@@ -294,6 +294,11 @@ KIND_OF_MOVE = {"script": "obvious", "review": "complicated", "owner": "complica
 # 84 trackers had no front matter at all, and a triage pass could not apply a verdict to the 6 open ones.
 OPEN_STATUSES = ("In Progress", "Parked", "Proposed", "Reserved", "?")
 _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling awaited`, in a few words and without a comma
+# FM-030 — WHEN AN ACT OWED TO THE OWNER FALLS DUE: an ISO time with its zone, seconds optional, `Z` for UTC. The zone is not
+# optional — a time without one is a different hour on every machine that reads it — and `parse_due` refuses one that has
+# none; the shape itself carries no `|`, so the schema's table prints it whole.
+DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"
+WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
 # these are the same sentences, held by the gate instead (FM-008). They are deliberately generous: an ask that trips
 # one of them is not borderline, it is a paragraph, a second question, or a question already asked.
@@ -331,6 +336,12 @@ def front_matter_schema():
                                                                         "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
+        "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; the Owner's `--due` moves it",
+                            "when the Owner's act falls due (FM-030): an ISO time with its zone, `2026-09-26T07:30:00+02:00`. Until `done:` is written the act is on his "
+                            "board — due, overdue, missed — and in INDEX.md with this time. `--clear-ask` leaves it: the answer is a promise, the act is still owed"),
+        "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
+        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
+                            "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -623,6 +634,9 @@ def extract(path, text=None):
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
         **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
         "answered": (fm.get("answered") or "").strip(),
+        # an act owed to the Owner (FM-030): when it falls due, its window, its result
+        "due": (fm.get("due") or "").strip(), "window": (fm.get("window") or "").strip(),
+        "done": (lambda v: v[1:-1] if len(v) > 1 and v[0] == v[-1] == '"' else v)((fm.get("done") or "").strip()),
         # `<you>` or nothing is filled from `git config user.name` — ONLY where there is an answer to sign. Asked of
         # every tracker it was one git process per file: 504 of them, 15.2 s of a 16.8 s load, on a 505-tracker corpus (FM-012)
         "answered_by": (lambda v: git_user() if v in ("", "<you>") and (fm.get("answer") or "").strip() else v)((fm.get("answered-by") or "").strip()),
@@ -3059,11 +3073,26 @@ def schema_problems(t):
         shape, _required, _who, says = FRONT_MATTER[key]
         if shape and value and not re.fullmatch(shape, value, re.I):
             out.append(f'{t["id"]}: `{key}:` is {says} — {shape_words(shape)} — got {value!r}')
+        elif key in ("due", "done") and value and not parse_due(value.strip('"').split(" · ")[0]):
+            out.append(f'{t["id"]}: `{key}:` names no real time — {value!r}: a date and an hour that exist, with the zone')
     is_open = t.get("status") in OPEN_STATUSES
     out += [f'{t["id"]}: {"open work" if required == "open" else "every tracker"} states `{key}:` — {says}'
             for key, (_s, required, _w, says) in FRONT_MATTER.items()
             if (required == "all" or (required == "open" and is_open)) and not t["fm"].get(key)]
     return out
+
+
+def parse_due(text):
+    """An act's time as an aware datetime — `due:`, and the time `done:` opens with — or None where it names no real time
+    (`2026-13-01T07:30+02:00`), or no zone. `Z` is UTC; Python 3.9 reads `+00:00` only."""
+    text = (text or "").strip()
+    if not re.fullmatch(DUE_SHAPE, text) or "Z" in text[:-1]:     # one zone: `Z`, at the end, or an offset — never both
+        return None
+    try:
+        when = datetime.datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
+    except ValueError:
+        return None
+    return when if when.tzinfo is not None else None
 
 
 def shape_words(shape):

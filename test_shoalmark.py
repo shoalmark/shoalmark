@@ -2631,6 +2631,41 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.4 A: an act owed to the Owner has a time — `due:`, an ISO time with its zone; `window:` in minutes -------
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    git(root, "init", "-q")
+    (root / "shoalmark.toml").write_text('name = "a"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    act_ = f'next: owner\nask: "Will you read production at seven?"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes, at seven"\n'
+    good_ = tracker(root, "AP-400", extra=act_ + "due: 2026-09-26T07:30:00+02:00\nwindow: 90\n", title="a read at seven")
+    tracker(root, "AP-401", extra="next: run\ndue: 2026-09-26T05:30Z\n", title="UTC, no seconds")
+    code_ok, _o, err_ok = run(root)
+    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00")}
+    for v in bad_:
+        tracker(root, "AP-402", extra=f"next: build\ndue: {v}\n", title="a bad time")
+        code_, _o, err_ = run(root)
+        bad_[v] = (code_, err_)
+    tracker(root, "AP-402", extra='next: build\nwindow: an hour\ndone: "yesterday · somewhere"\n', title="a bad window and a bad done")
+    code_w, _o, err_w = run(root)
+    check(f"FM-030 · A · `due:` is an ISO time with its zone — with or without seconds, `Z` for UTC — and `window:` minutes: the gate passes them (saw {err_ok.strip()[-160:]!r})",
+          code_ok == 0 and fm.parse_due("2026-09-26T05:30Z") == datetime.datetime(2026, 9, 26, 5, 30, tzinfo=datetime.timezone.utc))
+    check(f"FM-030 · A · the gate refuses a malformed `due:` — a word, a space for the T, no zone, a month that is not, two zones — and a `window:` or `done:` that is not its shape (saw {[e_.strip()[-90:] for _c, e_ in bad_.values()]})",
+          all(c_ == fm.EXIT_LINT and "AP-402: `due:`" in e_ for c_, e_ in bad_.values())
+          and "names no real time" in bad_["2026-13-01T07:30+02:00"][1] and "names no real time" in bad_["2026-09-26T07:30"][1]
+          and code_w == fm.EXIT_LINT and "AP-402: `window:`" in err_w and "AP-402: `done:`" in err_w)
+    tracker(root, "AP-402", extra="next: build\n", title="fixed")
+    good_.write_text(good_.read_text().replace('ask-proposal: "yes, at seven"\n', f'ask-proposal: "yes, at seven"\nanswer: "accepted"\nanswered: {since_}\nanswered-by: holgo\n'))
+    git(root, "add", "-A"); git(root, "commit", "-qm", "an act owed, answered")
+    code_c, _o, _e = run(root, "--clear-ask", "AP-400", "wait")
+    front_ = fm.parse_frontmatter(good_.read_text())[0]
+    schema_ = fm.render_schema()
+    check("FM-030 · A · `--clear-ask` leaves `due:` and `window:`: the answer was a promise, the act is still owed; `--schema` says who writes each and what it means",
+          code_c == 0 and front_.get("due") == "2026-09-26T07:30:00+02:00" and front_.get("window") == "90" and "answer" not in front_
+          and all(f"| `{k}:` |" in schema_ for k in ("due", "window", "done")) and "the Owner's `--due` moves it" in schema_ and "the Owner's `--done`" in schema_)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-031: a branch pushed without a pull request is in the queue too, read the same way — no `gh` needed for it ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()

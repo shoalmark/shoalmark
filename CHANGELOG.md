@@ -2,6 +2,15 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased — 0.18.4
+
+- **An act owed to the Owner has a time** (FM-030; his line 6: *what the Owner owes is on their board with one button*).
+  New front-matter keys: `due:` — an ISO time with its zone, `2026-09-26T07:30:00+02:00`, written by the seat that
+  schedules the act (with the action ask, or when its time is set); `window:` — minutes after it in which the act can
+  still be done, 60 where absent; `done:` — its result, written by the Owner's `--done`. `--clear-ask` leaves `due:`:
+  the answer to an action ask is a promise, and the act is still owed. The gate refuses a time that is not a real one
+  or has no zone. *Nothing to do on upgrade.*
+
 ## 0.18.3 — 2026-09-24
 
 **Every reading prints the relation, an answer writes the next move, and no build commit comes before a judgement**
