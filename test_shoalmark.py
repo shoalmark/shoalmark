@@ -3173,6 +3173,34 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-037 · clause 1 · a merge that carries an ancestor's signed change is accepted — the signed commit judged on its own; a merge that brings a text no parent had is refused as its own (saw {g_mo_[0]!r})",
           g_mc_ == ([], "the Owner's two sections: guarded — 3 commit(s) on `ap/037-merge-carries` since origin/main, 1 change them, each his own commit")
           and g_mo_[0] == [f'refused: commit {c_mo_[:7]} "merge the Owner\'s line in, resolved by hand" brings a text under `## The current path` in docs/work-tracker/TRIAGE.md that no parent had — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}'])
+    # AT COMMIT TIME: the commit-msg hook reads what the commit stages against HEAD. It sees the author, not the signature —
+    # git signs after the hooks — so a seat's change is refused before it is made, the Owner's passes on his name with a
+    # note, and `--check` on the branch judges its signature: the gate
+    run(root, "--install-hook")
+    def hooked37_(branch, subject, edit, *how, frm="main"):
+        git(root, "switch", "-q", "-c", branch, frm); edit(); run(root); git(root, "add", "-A"); before_ = sha37_()
+        r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", subject, *how], capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=_ENV)
+        return sha37_() != before_, [l_.strip() for l_ in r_.stderr.splitlines() if l_.strip().startswith(("refused:", "note:", "the hook", "the limit"))]
+    h_seat_ = hooked37_("ap/037-hook-seat", "AP-037: the path, by a seat", text37_("2. Nothing merges unreviewed.", "2. A seat merges."), SEAT_)
+    git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
+    h_own_ = hooked37_("ap/037-hook-owner", "AP-037: his line, unsigned", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), OWNER_)
+    g_hown_ = guard37_()
+    h_pass_ = hooked37_("ap/037-hook-passes", "AP-037: a pass recorded", text37_("*None yet.*", "**2026-09-25 — a pass.**"), SEAT_)
+    check(f"FM-037 · the hook · a seat's commit that changes the path is refused before it is made — the refusal --check gives, and the hook's own two lines: it proves the author only, `--check` on the branch is the gate; the limit last (saw {h_seat_[1][-4:]!r})",
+          h_seat_[0] is False and any(l_.startswith('refused: this commit "AP-037: the path, by a seat" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`)') for l_ in h_seat_[1])
+          and h_seat_[1][-2] == "the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature"
+          and h_seat_[1][-1] == "the limit: " + fm.GUARD_LIMIT)
+    check(f"FM-037 · the hook · the Owner's own change passes the hook on his name, saying `--check` judges its signature — and `--check` on the branch refuses it unsigned; a seat's `## Passes` passes silently (saw {h_own_[1]!r})",
+          h_own_[0] is True and 'note: this commit "AP-037: his line, unsigned" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md, under the Owner\'s name — its signature is judged on the commit, by `--check` on the branch' in h_own_[1]
+          and len(g_hown_[0]) == 1 and "the Owner's email, unsigned" in g_hown_[0][0]
+          and h_pass_ == (True, []))
+    git(root, "switch", "-q", "-c", "ap/037-hook-merge", "main")
+    merged37_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "--no-edit", "ap/037-intent"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    merging37_ = (root / ".git/MERGE_HEAD").exists(); git(root, "merge", "--abort") if merging37_ else None
+    check(f"FM-037 · the hook · a merge being made that brings a seat's unsigned change to the intent is refused, the carried commit named as `--check` names it (saw {merged37_.stderr.strip()[-200:]!r})",
+          merged37_.returncode != 0 and merging37_ and f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent`' in merged37_.stderr)
+    git(root, "switch", "-q", "main"); (root / ".git/hooks/commit-msg").unlink(); (root / ".git/hooks/pre-commit").unlink()
     # the Owner is the DEFAULT branch's: a branch that names itself the Owner still judges nothing of its own
     c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")

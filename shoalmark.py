@@ -4124,6 +4124,58 @@ def guard_lines(verdicts):
     return out
 
 
+def triage_pending(subject):
+    """(refusals, notes) — FM-037 at commit time, in the commit-msg hook: what the commit being made does to the two
+    sections, read from what it stages (the index git hands the hook, `GIT_INDEX_FILE`) against HEAD — a merge being made
+    against each of its parents — and every commit a merge being made brings, walked as `--check` walks them. What the
+    hook CAN prove is the author: git signs the commit after the hook has run, so the Owner's own commit passes here on his
+    name and a seat's is refused before it is made. `--check` on the branch judges the signature: it is the gate, the hook
+    best-effort (the 0.18.3 ruling on FM-033's hook). `subject` names the commit in what it says."""
+    if vcs() != "git":
+        return [], []
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    owners = owners_at(trunk)
+    if not owners:
+        return [], []
+    heads = merge_heads()
+    parents = (["HEAD"] if git("rev-parse", "--verify", "-q", "HEAD").returncode == 0 else []) + heads
+    env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
+    views = triage_views(["", *parents], env)                  # "" — the index: what this commit carries
+    what = section_changes(views[""], [views[p] for p in parents])
+    refused = guard_lines(guard_verdicts(guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []))[1], owners)) if heads else []
+    notes = []
+    if what:
+        name, email = pending_author()
+        mode = next((m for who, m in owners.items() if who in (email, name)), None)
+        this = f'this commit "{first_words(subject, 60)}"' if subject else "this commit"
+        if mode is None:
+            refused.append(f'refused: {this} {did_words(what)} — its author `{email or name or "nobody git can name"}` is not the Owner '
+                           f'({" · ".join(f"`{w}`" for w in owners)}): not the Owner\'s signed commit — {GUARD_WHY}. The way through: {GUARD_WAY}')
+        else:
+            notes.append(f"note: {this} {did_words(what)}, under the Owner's name — "
+                         + ("its signature is judged on the commit, by `--check` on the branch" if mode == "signed" else "his name is all that is judged"))
+    return refused, notes
+
+
+def commit_msg_hook(message_file):
+    """`--commit-msg <file>`, the commit-msg hook: FM-033's judgement of the commit being made (`commit_msg_check`), then
+    FM-037's (`triage_pending`) — each best-effort, `--check` on the branch the gate."""
+    code = commit_msg_check(message_file)
+    try:
+        text = pathlib.Path(message_file).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return code
+    refused, notes = triage_pending(message_subject(text) or literal_subject(text))
+    for line in refused + notes:
+        print(f"  {line}", file=sys.stderr)
+    if refused or notes:
+        print("  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, "
+              "and it judges the signature", file=sys.stderr)
+        print(f"  the limit: {GUARD_LIMIT}", file=sys.stderr)
+    return EXIT_LINT if refused else code
+
+
 def guard_footer(problems):
     """The refusal's last line, under every line the run printed (clause 6): what a signature proves — the key, not the hand.
     Said once, where the guard said anything."""
@@ -4579,7 +4631,9 @@ def parse_args(argv):
                                                      "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
     add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
                                                       "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
-                                                      "and refused before it is made, with the line `--check` prints of it")
+                                                      "and refused before it is made, with the line `--check` prints of it; and, where the default branch's `[seats]` names the "
+                                                      "Owner, a commit that changes his intent or current path in TRIAGE.md is refused before it is made unless he is its author "
+                                                      "(FM-037 — the hook sees the author; `--check` judges the signature)")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
@@ -5237,8 +5291,8 @@ def main(argv=None):
         return session_trailer(args.session_trailer[0])
     if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
         return session_check()
-    if args.commit_msg:                                     # …and this, once the message exists: no build commit before a judgement (FM-033)
-        return commit_msg_check(args.commit_msg[0])
+    if args.commit_msg:                                     # …and this, once the message exists: no build commit before a judgement (FM-033), the Owner's two sections (FM-037)
+        return commit_msg_hook(args.commit_msg[0])
     if args.session:
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone
