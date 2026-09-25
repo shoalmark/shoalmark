@@ -2,6 +2,13 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased — 0.18.4
+
+- **Windows: the suite reads git's output as UTF-8** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and 3.12). The
+  RV-479 check read `git show`'s blob in the locale's encoding — cp1252 on Windows — and the em dash in the ship-log
+  row it compares came out as three other characters. The tool names UTF-8 on every read; the test now does too. No
+  change to the tool.
+
 ## 0.18.3 — 2026-09-24
 
 **Every reading prints the relation, an answer writes the next move, and no build commit comes before a judgement**

@@ -2489,7 +2489,8 @@ with tempfile.TemporaryDirectory() as tmp:
                    body="## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-20 | Filed. |\n")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
     here_ = lambda: subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    at_ = lambda ref, path="docs/work-tracker/AP-080-x.md": subprocess.run(["git", "-C", str(root), "show", f"{ref}:{path}"], capture_output=True, text=True, env=_ENV).stdout
+    # the blob is UTF-8 (an em dash in the ship-log row): decoded as the locale's, it was cp1252 on Windows (FM-035)
+    at_ = lambda ref, path="docs/work-tracker/AP-080-x.md": subprocess.run(["git", "-C", str(root), "show", f"{ref}:{path}"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
     trunk_ = here_()
     code1, out1, _ = run(root, "--answer", "AP-080", "accept", "the importer")
     first_ = subprocess.run(["git", "-C", str(root), "rev-parse", "answer/ap-080"], capture_output=True, text=True, env=_ENV).stdout.strip()
@@ -2550,7 +2551,7 @@ with tempfile.TemporaryDirectory() as tmp:
     said_, diff_ = {}, {}
     for tid_ in ("AP-095", "AP-096", "AP-097"):
         said_[tid_] = run(root, "--answer", tid_, "accept")
-        diff_[tid_] = subprocess.run(["git", "-C", str(root), "show", "--format=", f"answer/{tid_.lower()}"], capture_output=True, text=True, env=_ENV).stdout
+        diff_[tid_] = subprocess.run(["git", "-C", str(root), "show", "--format=", f"answer/{tid_.lower()}"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
         land_(tid_)
     after_ = {tid_: front_(tid_) for tid_ in said_}
     check(f"FM-030 · the answer writes the next move in its own commit — a ruling and a determination read `next: build`, the seat's move; an action keeps `next: owner`, the act still his — and the run says which (saw {[a_.get('next') for a_ in after_.values()]})",
