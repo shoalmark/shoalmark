@@ -63,4 +63,5 @@ never on a default; a word in chat changes none of them until he signs it.
   authorises the work; it does not judge it ready: a triage pass keeps the tracker before any change outside `work-tracker/`
   is committed under it — code, tests, configuration, hooks and documentation alike — the same day when the answer says
   *now*, and a pass that finds it not ready asks the Owner again. Four pieces were built unjudged on 2026-09-23 and
-  2026-09-24 (FM-033's record); the gate that refuses such a commit on an unjudged tracker builds under FM-033.
+  2026-09-24 (FM-033's record); the gate is built in 0.18.3 (`judged_before_build`, off by default, on here) and refuses
+  such a commit at commit time and in `--check`.
