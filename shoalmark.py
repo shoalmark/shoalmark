@@ -3230,16 +3230,17 @@ def checkout_finding(problem):
 
 def checkout_lines(problems):
     """The checkout's findings as a reader takes them: ONE line per cause — the signers file this clone has not got, not
-    one per answer it could not check — naming what it could not check."""
+    one per answer it could not check — naming what it could not check, each commit once: two rules can ask of one
+    answer's commit, and the count said 8 where 5 commits were meant (the cold second pass's R4)."""
     groups = {}
     for p_ in (p_ for p_ in problems if checkout_finding(p_)):
         what, sep, why = p_.partition(" — it is signed, but ")
         if sep:
             m = re.search(r"`([0-9a-f]{7,40})`", what)
-            groups.setdefault("it is signed, but " + why, []).append(what.split(":")[0] + (f" `{m.group(1)}`" if m else ""))
+            groups.setdefault("it is signed, but " + why, {}).setdefault(m.group(1) if m else what, what.split(":")[0] + (f" `{m.group(1)}`" if m else ""))
         else:
-            groups.setdefault(p_, [])
-    return [f"  checkout: {why}" + (f" — {len(items)} signed commit(s) it could not check: {', '.join(items)}" if items else "") for why, items in groups.items()]
+            groups.setdefault(p_, {})
+    return [f"  checkout: {why}" + (f" — {len(items)} signed commit(s) it could not check: {', '.join(items.values())}" if items else "") for why, items in groups.items()]
 
 
 def staged_now():

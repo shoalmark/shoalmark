@@ -2980,6 +2980,15 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
     shutil.rmtree(fresh_ / ".git", onerror=lambda f, p, e: (os.chmod(p, __import__("stat").S_IWRITE), f(p)))
 fm.configure(HERE)
+# …and each commit once (the cold second pass's R4): on a merge, the answer rule and the rights rule both ask of one answer's
+# commit, and the line counted 8 signed commits where 5 were meant
+_gap = "it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see " + fm.SIGNING_PAGE
+_twice = [f"FM-007: the answer's commit `1034602c96` does not verify as `o@x` — {_gap}",
+          f"in `1034602c96` (o@x), which the merge brings — FM-007: the commit `1034602c96` making a `answer` change does not verify as the seat `owner` — {_gap}",
+          f"FM-024: the answer's commit `64f843ef3a` does not verify as `o@x` — {_gap}",
+          f"FM-024: the commit `64f843ef3a` making a `answer` change does not verify as the seat `owner` — {_gap}"]
+check(f"FM-034 · R4 · the checkout line counts each commit it could not check once, and names it once (saw {fm.checkout_lines(_twice)!r})",
+      fm.checkout_lines(_twice) == [f"  checkout: {_gap} — 2 signed commit(s) it could not check: FM-007 `1034602c96`, FM-024 `64f843ef3a`"])
 # …and a pinned file this checkout has not got is the checkout's finding too — said, never written into the INDEX
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); dest = root / "tools" / "shoalmark"
