@@ -5,7 +5,7 @@ considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: build
 triaged: 2026-09-25
-rank: 3
+rank: 1
 tier: P1
 hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day. For an action ask the answer is a promise, not the act, and the tool drops the ask the moment the promise is signed. The rules it ships even steer the second kind away from him."
 ---
@@ -108,3 +108,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-25 | **Raised** by the Auditor seat through the Owner (07:06:48), the line above word for word from his paste: two acts owed to him have no button — FM-007's key, FM-032's path 3 — and `--owner` prints NOTHING NEEDS THE OWNER; it names FM-032's answer and path 1 as undermined, so this tracker is re-judged the same day (his raise rule, `9e48ee8`). |
 | 2026-09-25 | **Raised a second time** by the Auditor seat through the Owner (13:31:26), the line above word for word from his paste: a consumer's P0 production read owed by the Owner's hands at a fixed hour on two consecutive days was missed both times — named only in chat and a run sheet, no board item (`next: run`), no invite, the next day's standup silent; it names path 6 and path 1, so this tracker is re-judged the same day: #1. The Auditor's product line: a due time on every act owed to the Owner; the board renders due and overdue; *Done* (result attached) and *Reschedule*; an `.ics` per act; a *missed* flag when a window passes with no result; `--standup` lists due and overdue acts — first in 0.18.4. |
 | 2026-09-25 | The Owner's word at 13:33:29 on the product line above (spelling as given): *Better than only invites would be invites + notifications.* — a line under the freeze for 0.18.4's build of this tracker: every act owed to him gets its invite (`.ics`, with an alarm before the window) **and** a notification when it falls due and when its window passes with no result — a `--notify` the person schedules (launchd or cron) that reads the acts' due times from the board's data and posts a system notification; the `.ics` alarm is the first notification, on every device his calendar reaches. |
+| 2026-09-25 | Correcting the rows above (the pass's Reviewer, R7 and R8): the product line in the 13:33:29 row — an `.ics` with an alarm per act and a scheduled `--notify` — is the seat's design on the Owner's word, not his words; the raise row's *his board* is the path's *their board*; the row first timed 13:3x was corrected in place while unmerged, now 13:31:26. |
