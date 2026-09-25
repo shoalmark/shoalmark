@@ -5,7 +5,7 @@ considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: build
 triaged: 2026-09-25
-rank: 1
+rank: 2
 tier: P1
 hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day. For an action ask the answer is a promise, not the act, and the tool drops the ask the moment the promise is signed. The rules it ships even steer the second kind away from him."
 ---

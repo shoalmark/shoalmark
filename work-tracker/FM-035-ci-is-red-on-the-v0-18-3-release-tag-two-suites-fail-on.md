@@ -4,7 +4,7 @@ status: In Progress
 considered: FM-003, FM-028, FM-011, FM-006
 tags: bug
 triaged: 2026-09-25
-rank: 6
+rank: 7
 next: build
 tier: P2
 hook: "The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 and 3.12 fail two checks of test_shoalmark.py — the wordmark past the size cap, and RV-479's merged answer branch cut fresh; macos 3.12 dies in a traceback at test_shoalmark.py:1529 in the answer-dialog checks — headless Chrome past 60 s, TimeoutExpired. A red release tag on two of three platforms, found the day the tag was cut."

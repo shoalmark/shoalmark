@@ -4,7 +4,7 @@ status: Proposed
 considered: FM-030, FM-027, FM-003, FM-019, FM-009, FM-015
 tags: bug
 triaged: 2026-09-25
-rank: 3
+rank: 4
 next: build
 tier: P2
 hook: "On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-day re-judgement's `keep P1 #1 build` on a raise — and `apply_worksheet` applied both in order on every run: the rank read 1, then 3, then 1, each run printing *Applied 1*. A re-judgement the same day has no home on the sheet: the newest filled row for a tracker must win, or a second one be refused."

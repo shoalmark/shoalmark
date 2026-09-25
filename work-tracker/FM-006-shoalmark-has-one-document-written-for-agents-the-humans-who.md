@@ -4,8 +4,8 @@ status: In Progress
 considered: FM-005, FM-003
 tags: process
 next: build
-triaged: 2026-09-23
-rank: 5
+triaged: 2026-09-25
+rank: 6
 tier: P2
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
