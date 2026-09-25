@@ -281,3 +281,68 @@ the reviewed fix, not a claim that FM-035's five-green-jobs Done when is already
 claim corrected. The Principal receives the remaining finding; the Owner alone lands and tags.
 
 the Owner lands this by merging; a merge rules nothing.
+
+
+## Verified again on a911722 — the merge of main
+
+Reviewed: `a911722547f5b194385d99db5892f903ce26c085`, 2026-09-25 18:18 CEST — the Principal seat's merge of
+`origin/main` `8b267b4` (PR 76) into this branch (session `8e509911`, worktree `shoalmark-principal`).
+**Tier: code — the merge only; the substance's verdict is the cold session's `1af6b0b` on `4e4d63b`.**
+**Independence: same session — `8e509911`'s own sub-agent (`8e509911/reviewer-11`, worktree `shoalmark-review-2`),
+reported; the Owner may have his cold session verify the merge instead.** The two passes above stand as written.
+
+### What I ran
+
+- `git fetch origin`: `origin/fm/035-ci-green-on-every-platform` is `a911722`, `origin/main` is `8b267b4`;
+  `git switch --detach a911722`. Its parents are `1af6b0b` (the cold verdict) and `8b267b4`; the merge base is `d86973f`.
+- **Only the branch's seven files differ from main.** `git diff origin/main...HEAD --stat` and
+  `git diff 8b267b4...1af6b0b --stat` print the same seven files, 737 insertions and 220 deletions each: CHANGELOG.md,
+  shoalmark.py, test_shoalmark.py, the FM-035 tracker, INDEX.md, TRIAGE.md and this file. `git diff 8b267b4 a911722`
+  names those seven and no other path, and for each one its changed lines hash the same as the branch's own
+  (`d86973f..1af6b0b`). Five are byte-identical to `1af6b0b`'s blobs — CHANGELOG.md, shoalmark.py, test_shoalmark.py,
+  the FM-035 tracker and this file, so the cold sections above are unchanged by the merge. `git diff --name-only
+  4e4d63b a911722` holds no path outside `.md`: the code here is the code the cold session read.
+- **The conflict is the one the merge's message names.** `git merge-tree --write-tree 1af6b0b 8b267b4`, the merge
+  redone, conflicts in INDEX.md and TRIAGE.md only; its tree differs from `a911722`'s in those two files alone.
+- **TRIAGE.md.** No conflict marker, here or anywhere in the tree (`git grep` for marker lines is empty). The
+  2026-09-25 paragraphs run newest first — FM-030's second raise (13:31:26), FM-035's new filing (12:11:44), FM-030's
+  raise (07:06:48) — the two same-day passes of the conflict once each. The second-raise paragraph is main's byte for
+  byte; the FM-035 paragraph is `1af6b0b`'s byte for byte, and main's with `12:11:44` for `12:1x`; every other line is main's.
+- **INDEX.md** differs from main in FM-035's row alone: 10:03 for 10:02, In Progress for Proposed, moved from backlog to
+  progress. `python3 shoalmark.py` wrote INDEX.md (36 trackers) and `git status --porcelain` stayed empty. Ranks 1–10,
+  no two trackers sharing one.
+- `python3 shoalmark.py --check` 0 (INDEX up to date, 36 trackers; 7 commits since `origin/main`, every build commit
+  under a judged In Progress tracker; the filing freeze holds, 20 open); `--session-check` 0; both 0 again under
+  `/usr/bin/python3`.
+- The suites, one at a time, each exit captured:
+
+| Command | Exit | Passing checks | Browser skips | Last line |
+|---|---:|---:|---:|---|
+| `python3 test_shoalmark.py` (3.14.3) | 0 | 399 | 0 | `all green` |
+| `python3 test_core.py` (3.14.3) | 0 | 148 | — | `all green` |
+| `/usr/bin/python3 test_shoalmark.py` (3.9.6) | 0 | 399 | 0 | `all green` |
+| `/usr/bin/python3 test_core.py` (3.9.6) | 0 | 148 | — | `all green` |
+
+  The counts are round two's on `4e4d63b`, check for check.
+- `git merge-tree --write-tree origin/main HEAD` exits 0 with HEAD's own tree (`df9de5c`); `origin/main` is an
+  ancestor, so the merge to main is a fast-forward.
+
+### R4 — P3, medium confidence: the merge's message reports a verification that had not yet run
+
+`a911722`'s message, committed 18:02:30, ends *the substance is unchanged — verified again on this tip*. No
+verification of `a911722` existed then: this pass is that verification, and it began at 18:04. Read as the plan, the
+line is true now; read as a report, it ran ahead of its evidence. Medium, because the first reading is open. It cost
+nothing — the claim holds — and git is its record, not rewritten. **Fix forward:** a merge's message says *to be
+verified on this tip*; the verification's commit says *verified*.
+
+### Not proven here
+
+The five-job hosted matrix has not run on `a911722`: native Windows 3.9/3.12 and hosted macOS 3.12 remain unverified,
+as round two records; CI runs when the pull request is marked ready and on the tag. R3 (P3) is carried unchanged — the
+merge touched neither `lefthook.yml` nor either suite.
+
+**Verdict on a911722: READY WITH FINDINGS (R4 P3).** The merge brought main's changes and the branch's own, nothing
+else; the substance is unchanged, and the cold session's READY WITH FINDINGS (R3 P3) on `4e4d63b` stands for it. The
+Principal receives R4; the Owner alone lands and tags.
+
+the Owner lands this by merging; a merge rules nothing.
