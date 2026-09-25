@@ -1,6 +1,6 @@
 ---
 id: FM-007
-status: Proposed
+status: In Progress
 considered: FM-005, FM-006
 tags: security
 tier: P1
@@ -93,6 +93,7 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-09-25 | In Progress — the seat's work under this tracker is the record and the site's signing pages (the tiers), set here in a tracker-only commit before the first documentation commit (the FM-033 rule); the key itself stays his act, after the scoring. |
 | 2026-09-25 | **The tiers of a signature** filed word for word from the Auditor seat's text, through the Owner (paste 07:59:21): four tiers, what each stops, what each requires, what the tool should say, and where the site contradicts it today. The site pages `docs/signing.md` and `docs/de/signing.md` are rewritten under this tracker on his word (the GtM seat, its five points). |
 | 2026-09-25 | A line under the freeze for 0.18.4, this tracker's: the tool says the tier, not a bare *verified* — from the key type in `allowed_signers` (`sk-…` is a hardware key) the board and the answer's record say *signed with a software key — anything on the owner's account can produce it* or *signed with a hardware key — needs the owner's touch*. |
 | 2026-09-25 | His answer of 07:29:54 (`1034602`, PR 67, one Reviewer docs pass): *accepted - after the scoring, once the key is delivered.* — changed text, no day this week: the key comes after 09-29 once delivered; until then the software key signs (tier 0) and FM-032's docs pass on every answer pull request stays in force. Not yet cleared: the act is his and open. |
