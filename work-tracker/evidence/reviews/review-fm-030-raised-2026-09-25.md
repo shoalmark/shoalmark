@@ -156,3 +156,36 @@ Not verified:
 - That the Principal ran `--triage` rather than typing the front matter: inferred from the byte-identical replay.
 
 The Owner lands this by merging; a merge rules nothing (path 5).
+
+## Pass on 7a1bbc2 (2026-09-25 07:34 CEST, Reviewer, session `8e509911/reviewer-6`)
+
+**Scope.** Tip `7a1bbc2` (`7a1bbc281c1a7e4fea3fb6f8af3a44a6f3f3bd35`): one merge commit by the principal seat (`Session:
+8e509911`, 07:27:51), parents `702d99f` (the verdict above) and `1fe880a` (`origin/main`: PR 64 and PR 66, landed at
+07:25:16 and 07:25:32). The merge base is `a77798b`. `git diff --name-only origin/main HEAD` names the same six paths
+under `work-tracker/`. **Tier: docs, one pass.** **Independence:** same session `8e509911`, reported.
+
+**The resolution — ✓; confidence high.**
+- Main and the branch both changed two files: FM-030 and INDEX. Every other file main changed (AGENTS.md, FM-007,
+  FM-029, FM-031, two review files) is byte-identical to `1fe880a` in the merge. Every other file the branch changed is
+  byte-identical to `702d99f`. No file changed that neither side changed.
+- **FM-030:** main added one ship-log row (2026-09-24, the 0.18.4 subject-cut line, PR 64). The merge is `702d99f`'s
+  FM-030 with that row inserted directly after the 09-24 *In Progress* row, before the 09-25 *Raised* row. Checked as
+  bytes: nothing else changed. `git diff 7a1bbc2^2 7a1bbc2` on FM-030 shows only the branch's front matter, the
+  `## Raised` section and its row.
+- **INDEX:** the merge's equals `702d99f`'s. Main's only INDEX change was the header's date, which the branch had too.
+  The generator leaves it unchanged on the merged tree.
+
+**What I ran at `7a1bbc2`.**
+- `--triage` in the scratchpad clone: exit 0, *0 trackers to judge*, *Applied nothing — no new filled rows*; the tree
+  clean after it.
+- `--owner` at `1fe880a` and at `7a1bbc2`: *1 NEED THE OWNER* both; the one difference is the sessions line, which
+  counts this seat's verdict commit on the branch.
+- `--check` 0 (*67 verdict(s) · independent 2 · same session 62*; *18 open*); `--session-check` 0.
+- `python3 shoalmark.py`: the tree clean after it.
+- `git merge-tree --write-tree origin/main HEAD`: clean, the tip's own tree (`4decdb0`); `origin/main` is an ancestor.
+- `test_shoalmark.py` 0 (355 ok); `test_core.py` 0 (148 ok).
+
+**Verdict on 7a1bbc2: READY WITH FINDINGS (R1–R3 P3, carried).** The merge brings main in and changes nothing of the
+pass. R1–R3 stay fixed forward.
+
+The Owner lands this by merging; a merge rules nothing (path 5).
