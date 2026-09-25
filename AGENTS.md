@@ -77,4 +77,5 @@ never on a default; a word in chat changes none of them until he signs it.
   is committed under it — code, tests, configuration, hooks and documentation alike — the same day when the answer says
   *now*, and a pass that finds it not ready asks the Owner again. Four pieces were built unjudged on 2026-09-23 and
   2026-09-24 (FM-033's record); the gate is built in 0.18.3 (`judged_before_build`, off by default, on here) and refuses
-  such a commit at commit time and in `--check`.
+  such a commit at commit time and in `--check`. The commit hook is best-effort. The gate is `--check` on the branch, and
+  it must be green on the pull request's head before merge. A bypass of the hook alone, which `--check` catches, is P3.

@@ -47,9 +47,14 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `triaged:`, is not Parked and is `In Progress`; a commit that names none is refused too. At commit time the
   commit-msg hook (`--commit-msg`, which `--install-hook` writes; with lefthook, a `commit-msg` entry) judges the commit
   being made once its message exists — its subject's ids, else its branch, as the history is judged — and refuses it
-  before it is made, with the line `--check` prints of it; `--check` judges each commit of the branch
-  since `origin`'s default branch — a merge by the commits it carries, never as the merger's own change — and says in
-  one line whether the gate is on. On the default branch nothing is judged; on a detached HEAD the subject must name the
+  before it is made, with the line `--check` prints of it. It reads the message before git's cleanup, so it judges every
+  subject git could keep: the first line left once comment lines are stripped (`core.commentChar`) — none left is
+  *names no tracker* — and, where git keeps comment lines (`-m`, `--cleanup=verbatim`), the literal first line too, so
+  `-m '# FM-007: …'` is judged as FM-007's. `--check` judges each commit of the branch since `origin`'s default branch —
+  a merge by the commits it carries, never as the merger's own change — and says in one line whether the gate is on.
+  **The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's
+  head before merge. A bypass of the hook alone, which `--check` catches, is P3** (the Principal's ruling: git's
+  `--no-verify` skips any hook by design). On the default branch nothing is judged; on a detached HEAD the subject must name the
   tracker. Judged at their own parents, the four builds of FM-033's table and the fifth are each refused. What FM-033
   also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker, and the board
   showing activity beside judgement — is 0.18.4. *To turn it on: `judged_before_build = true`, then `--install-hook`

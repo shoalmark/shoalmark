@@ -300,6 +300,10 @@ commit-msg:
       run: python3 tools/shoalmark/shoalmark.py --commit-msg {1}
 ```
 
+**The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's head
+before merge. A bypass of the hook alone, which `--check` catches, is P3.** Git's `--no-verify` skips any hook by
+design; what protects the default branch is `--check` on the branch.
+
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
 per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
 worktree. Nothing is opened, closed or kept in a file, so two branches that land never conflict on it: a session is

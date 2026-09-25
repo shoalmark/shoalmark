@@ -3688,6 +3688,8 @@ def branch_tracker(name):
 def named_trackers(subject, branch):
     """The trackers a commit is built under: the ids its subject names when it names any, else its branch's (C1 of the
     0.18.3 design, ruled 2026-09-24) — a commit `FM-030: …` on a branch named for FM-029 is FM-030's work."""
+    if subject is None:                                    # a message that keeps no subject line: nothing names a tracker
+        return []
     ids = list(dict.fromkeys(re.findall(rf"(?<![A-Za-z0-9])({_IDS})(?!\d)", subject or "")))
     return ids or [b for b in [branch_tracker(branch)] if b]
 
@@ -3764,11 +3766,14 @@ def judge_commits(commits, branch):
                 reasons = []
                 break
         else:
-            if not ids:
+            if not ids and subject is None:
+                reasons = ["names no tracker: every line of its message is a comment, which git strips — no subject is left to name one"]
+            elif not ids:
                 reasons = [f"names no tracker: no {'/'.join(KINDS)}-N in its subject, and "
                            + (f"its branch `{branch}` names none (`<kind>/<NNN>-…`)" if branch else "a detached HEAD names none")]
         if reasons:
-            who = f'commit {commit[:7]} "{first_words(subject, 60)}"' if commit else f'this commit "{first_words(subject, 60)}"'
+            who = (f'commit {commit[:7]} "{first_words(subject, 60)}"' if commit
+                   else "this commit, with no subject," if subject is None else f'this commit "{first_words(subject, 60)}"')
             more = f" (+{len(outside) - 1} more)" if len(outside) > 1 else ""
             out.append(f"refused: {who} changes {outside[0]}{more} outside {rel} — {'; '.join(reasons)} — {BUILD_WHY}")
     return out
@@ -3786,8 +3791,8 @@ def build_judgement(subject=None):
     hook and failed `--check` (the cold review's R1). Any other run judges each commit of `merge-base(origin's default,
     HEAD)..HEAD`, merges walked, not judged. On the default branch nothing is judged. Read once per run."""
     global _BUILD
-    if COMMITTING and subject is None:
-        return [], ""                                      # the commit-msg stage judges it, with its subject
+    if COMMITTING and not subject:
+        return [], ""                                      # the commit-msg stage judges it, with its subject (`pending_judgement`)
     if _BUILD is not None:
         return _BUILD
     if not CONFIG.get("judged_before_build"):
@@ -3802,18 +3807,7 @@ def build_judgement(subject=None):
         _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
         return _BUILD
     if COMMITTING:
-        heads = merge_heads()
-        if heads:
-            commits = commit_list(*heads, "--not", "HEAD", *([trunk] if trunk else []))
-        elif git("rev-parse", "--verify", "-q", "HEAD").returncode == 0:
-            # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
-            env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-            staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", env=env).stdout
-            commits = [("", "HEAD", set(staged.split("\n")) - {""}, subject)]
-        else:
-            commits = []                                   # a first commit has no parent to be judged at
-        _BUILD = (judge_commits(commits, branch), "")
+        _BUILD = (pending_judgement(subject, git, trunk, branch), "")
         return _BUILD
     if not trunk:
         _BUILD = ([], "judged before build: on — no `origin` default branch to measure from: nothing is judged")
@@ -3830,27 +3824,71 @@ def build_problems():
     return build_judgement()[0]
 
 
-def message_subject(text):
-    """A commit message's subject as git will record it: its first line that is not blank and not a comment, above the
-    scissors line an editor commit carries."""
-    for line in text.split("# ------------------------ >8 ------------------------")[0].splitlines():
-        if line.strip() and not line.startswith("#"):
+def pending_judgement(subject, git, trunk, branch):
+    """The commit being made, at HEAD, with `subject` — None where its message keeps no subject line — as refusal lines; a
+    merge being made: each commit it brings, the trunk's aside, by its own subject."""
+    heads = merge_heads()
+    if heads:
+        return judge_commits(commit_list(*heads, "--not", "HEAD", *([trunk] if trunk else [])), branch)
+    if git("rev-parse", "--verify", "-q", "HEAD").returncode != 0:
+        return []                                          # a first commit has no parent to be judged at
+    # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
+    env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
+    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", env=env).stdout
+    return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
+
+
+def message_subject(text, comment="#"):
+    """A commit message's subject as git keeps it when it strips comments — an edited message, `--cleanup=strip`: its
+    first line that is not blank and does not start with the comment character (`core.commentChar`), above the scissors
+    line an editor commit carries. "" where none is left."""
+    for line in text.split(f"{comment} ------------------------ >8 ------------------------")[0].splitlines():
+        if line.strip() and not line.startswith(comment):
             return line.strip()
     return ""
 
 
+def literal_subject(text):
+    """A commit message's subject as git keeps it when it does NOT strip comments — `-m`/`-F` (whitespace cleanup), or
+    `--cleanup=verbatim`: its first line that is not blank, a `#` at its start kept."""
+    return next((line.strip() for line in text.splitlines() if line.strip()), "")
+
+
 def commit_msg_check(message_file):
-    """`--commit-msg <file>`: what the commit-msg hook runs — FM-033's judgement on the commit being made, with the subject
-    its message gives, before the commit is made: the same refusal `--check` prints of it once made. An empty message is
-    git's to refuse."""
+    """`--commit-msg <file>`: what the commit-msg hook runs — FM-033's judgement on the commit being made, with its subject,
+    before the commit is made: the same refusal `--check` prints of it once made. BEST-EFFORT, the Principal's ruling: git's
+    `--no-verify` skips any hook by design, so the gate is `--check` on the branch.
+
+    The hook sees the message BEFORE git's cleanup, and cannot always know which cleanup git will apply: an edited message
+    is stripped of its comment lines, `-m` keeps them (the cold second pass's R1: `-m '# FM-007: …'` passed a hook that
+    skipped every `#` line, and `--check` refused the commit git made with that subject). So it judges every subject git
+    could keep: the first line left once comment lines are stripped (`core.commentChar`, `#` by default) — and none left
+    is *names no tracker* — and, where git keeps comment lines (no editor, the hook's `GIT_EDITOR=:`; or `commit.cleanup`
+    `whitespace` or `verbatim`), the literal first line too. The commit is refused if any of them is."""
     global COMMITTING
     COMMITTING = True
     try:
-        subject = message_subject(pathlib.Path(message_file).read_text(encoding="utf-8", errors="replace"))
+        text = pathlib.Path(message_file).read_text(encoding="utf-8", errors="replace")
     except OSError as e:
         print(f"--commit-msg: cannot read {message_file} — {e}", file=sys.stderr)
         return EXIT_LINT
-    problems = build_judgement(subject)[0] if subject else []
+    if not CONFIG.get("judged_before_build") or vcs() != "git":
+        return EXIT_OK
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk, branch = default_trunk(git), built_on()
+    if trunk and branch == trunk.split("/", 1)[1]:
+        return EXIT_OK                                     # on the default branch nothing is judged
+    comment = ((git_out("config", "--get", "core.commentChar") or "#").strip() or "#")[:1]
+    comment = "#" if comment == "a" else comment          # `auto`: git picks one the message does not use; `#` is its first choice
+    keeps = os.environ.get("GIT_EDITOR") == ":" or (git_out("config", "--get", "commit.cleanup") or "").strip() in ("whitespace", "verbatim")
+    stripped, literal = message_subject(text, comment), literal_subject(text)
+    subjects = list(dict.fromkeys([stripped or None] + ([literal] if keeps and literal and literal != stripped else [])))
+    problems = []
+    for subject in subjects:
+        problems += [p_ for p_ in pending_judgement(subject, git, trunk, branch) if p_ not in problems]
+    if stripped == "" and len(problems) > 1:              # the precise refusal of the literal subject says it; the empty one adds nothing
+        problems = [p_ for p_ in problems if "no subject is left" not in p_]
     for p_ in problems:
         print(f"  {p_}", file=sys.stderr)
     return EXIT_LINT if problems else EXIT_OK

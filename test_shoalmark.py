@@ -2821,6 +2821,25 @@ with tempfile.TemporaryDirectory() as tmp:
           and seen_[("ap/004-probe", "AP-001: gate probe")][1] == ['refused: this commit "AP-001: gate probe" changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed) — ' + fm.BUILD_WHY])
     check(f"FM-033 · R1 · the hook and --check agree on every case of the table — refused or made, and the same reasons — Parked, Proposed, unjudged, no tracker named, a detached HEAD, the subject before the branch, a tracker-only commit (saw {verdicts_})",
           agree_ and [verdicts_[(b_, s_)] for b_, s_ in table_[2:]] == [False, False, False, True, False, True, False, True] and verdicts_["notes"] is True)
+    # a subject that starts with `#` (the cold second pass's R1): `-m` keeps it, an editor strips it — the hook judges what git keeps
+    def commented_(branch, *args):                         # through the installed hooks; then --check on the same commit, made without them
+        git(root, "switch", "-q", "-c", branch, "main"); (root / "src.txt").write_text(branch + "\n"); git(root, "add", "-A"); before_ = sha_()
+        r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        made_ = sha_() != before_
+        if not made_:
+            subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-q", *args], check=True, capture_output=True, env=_ENV)
+        said_ = judged_()[0]; git(root, "switch", "-q", "--detach", "main")
+        return made_, [l_.strip() for l_ in r_.stderr.splitlines() if l_.strip().startswith("refused:")], said_
+    hash_ = commented_("ap/004-hash", "-m", "# AP-001: comment subject probe")          # the Reviewer's exact case
+    verb_ = commented_("ap/004-verbatim", "--cleanup=verbatim", "-m", "# AP-001: comment subject probe")
+    two_ = commented_("ap/004-two", "-m", "# AP-001: hidden", "-m", "AP-004: shown")
+    none_ = commented_("ap/004-none", "-m", "# nothing but a comment")
+    check(f"FM-033 · R1 (second pass) · a subject that starts with `#`: `-m` and `--cleanup=verbatim` keep it, and the hook judges it — refused before it is made, with the reason --check gives it; a `#` line above a named subject too (saw {hash_[1]!r})",
+          all(not r_[0] and r_[1] and [l_.split(" changes ", 1)[1] for l_ in r_[1]] == [l_.split(" changes ", 1)[1] for l_ in r_[2]] for r_ in (hash_, verb_, two_))
+          and "AP-001: not judged, not In Progress (Proposed)" in hash_[1][0] and hash_[1][0].startswith('refused: this commit "# AP-001: comment subject probe"'))
+    check(f"FM-033 · R1 (second pass) · a message whose every line is a comment keeps no subject once stripped: refused as naming no tracker — the hook is best-effort and errs this way (saw {none_[1]!r})",
+          not none_[0] and len(none_[1]) == 1 and "names no tracker: every line of its message is a comment, which git strips" in none_[1][0]
+          and fm.message_subject("; a\nFM-7: x\n", ";") == "FM-7: x" and fm.literal_subject("\n# FM-7: x\nmore\n") == "# FM-7: x")
     git(root, "switch", "-q", "main"); (root / "src.txt").write_text("on main\n"); git(root, "add", "-A")
     main_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", "the trunk, by hand"], capture_output=True, text=True, env=_ENV)
     git(root, "reset", "-q", "--hard", "origin/main")      # main as origin has it: the checks below measure from it
