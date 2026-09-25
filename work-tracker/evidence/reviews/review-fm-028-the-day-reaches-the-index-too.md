@@ -140,3 +140,46 @@ the window FM-028 is about.
 - Tier docs, one pass; same session, `8e509911`'s own sub-agent, reported.
 
 *the Owner lands this by merging; a merge rules nothing.*
+
+## Verified again on c43f694
+
+**Scope.** `c43f694` (`c43f6944d01cff11eaef2b926a83c11533f36ec6`), one commit on this verdict's `09ac4dc`, by the
+principal seat (`Session: 8e509911`, `Worktree: shoalmark-principal`) at 01:17:37 CEST. It fixes R2–R5. Same tier,
+docs, one pass; same session, `8e509911/reviewer-18`, reported. Verified 01:18–01:37 CEST.
+
+| run | result |
+|---|---|
+| `git diff --stat 09ac4dc c43f694` | the FM-028 tracker only, 10 insertions and 8 deletions. **The hook did not touch INDEX.md again**: `git diff fd5d70c c43f694 -- work-tracker/INDEX.md` is empty, because INDEX.md already carried *Generated 2026-09-26* from `fd5d70c`, and this commit was made in the local zone |
+| `git diff --name-only origin/main...HEAD` | FM-028, INDEX.md (the date alone, from `fd5d70c`) and this review file |
+| R2 | *(the `--day` rows below)*. The `--day` rows are the two 2026-09-25 ship-log rows, and they are below ✓ |
+| R3 | the 2026-09-26 row is now last, after the two 09-25 rows, so the log runs oldest first ✓. The moved row is byte-identical to the one removed; the diff's `-` and `+` lines are one text. It was not yet merged, so the move is not an in-place edit of a merged row ✓ |
+| R4 | (a) *the hook leaves INDEX.md's date alone when only the date would change — keyed on the INDEX content, as RV-577 is*, which is RV-577's key ✓. (b) *the parent's `review_gate.py`, not this tool, reads a date-only INDEX.md change as no change* ✓. *Two remedies, neither chosen here* ✓. *For 0.18.4 or the release after* and *the parent's wrapper has the same hook* stand ✓ |
+| R5 | the double blank line is gone. Counted in characters, the paragraph's lines (120–128) are 110–118 wide; `awk` counts bytes, so it reads the em-dash lines as 120 ✓ |
+| front matter | untouched: the hunk starts at line 117 ✓ |
+| `--check` · `--session-check` | exit 0 (*up to date — 37 trackers*; *101 verdict(s)*; *judged before build: on*; *filing freeze: 21 open …*) · exit 0 |
+| `python3 shoalmark.py`, local zone | exit 0, the tree clean |
+| both suites, as the hook runs them, from 01:19:43 CEST | **local: `test_shoalmark.py` exit 1 on 3.14.3 and 3.9.6**, 437 ok and one FAIL, *rendered: the board's first words are the answer …*, which is FM-028's own known failure (no code changed). `test_core.py` exit 0, 148 ok. **Under `TZ=UTC`:** exit 0 on both interpreters, 438 ok and 148 ok |
+| `git merge-tree --write-tree origin/main HEAD` | exit 0, clean (tree `0959bb9`); `origin/main` `87ee09e` is an ancestor of the tip |
+
+**The findings on fd5d70c:**
+- **R2 ✓ closed.**
+- **R3 ✓ closed**, before the merge as asked.
+- **R4 ✓ closed.** (a) now keys on the INDEX content, as RV-577 does, and (b) is placed in the parent's gate.
+- **R5 ✓ closed.**
+
+No new finding.
+
+**This verdict commit carries no INDEX.md change either**: it is a review-only commit in the local zone, on a tree
+already dated today. See the commit's `--stat`.
+
+## Verdict on c43f694 — READY, 92%
+
+- R2–R5 are closed as worded.
+- The diff since `09ac4dc` is the FM-028 tracker alone, and the hook did not touch INDEX.md's date again.
+- `--check` and `--session-check` are 0, the generator leaves the tree clean, and merge-tree is clean.
+- The suite fails locally only on FM-028's own known check, between 00:00 and 02:00 CEST, and passes under `TZ=UTC`.
+- Tier docs, one pass; same session, `8e509911`'s own sub-agent, reported.
+
+*the Owner lands this by merging; a merge rules nothing.*
+
+**`c43f6944d01cff11eaef2b926a83c11533f36ec6`: READY.**
