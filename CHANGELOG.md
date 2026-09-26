@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.18.5
+## 0.18.5 — 2026-09-26
 
 - **The tool ships two themes as starters, `monochrome` and `shoalmark`** (FM-002, slice B; the Owner's signed answer of
   2026-09-26, `4e00f85`, PR 90). **What a vendoring repository receives:** `brand/themes/` in its copy — each theme a
