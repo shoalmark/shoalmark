@@ -1238,7 +1238,10 @@ _WORDMARK = ('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.
              'viewBox="0 0 40 16" height="16" fill="currentColor"><defs><path id="b" d="M0 0h4v4h-4Z"/></defs>'
              '<path d="M2 2v12" stroke="currentColor" stroke-width="2" fill="none"/><use xlink:href="#b" x="8"/><text x="14" y="13">Repo __ROWS__</text></svg>')
 with tempfile.TemporaryDirectory() as d:
-    base = Path(d).resolve(); root = base / "repo"; home = base / "home" / "shoalmark"; org = HERE / "brand"
+    base = Path(d).resolve(); root = base / "repo"; home = base / "home" / "shoalmark"; org = HERE / "brand"; _org_was = org.is_dir()
+    # the tool's own brand/ is the organisation's place — and, since 0.18.5, where the themes the tool ships are committed
+    # (brand/themes/): a check writes its brand files there and removes those files alone, never the folder
+    _org_clear = lambda: [(org / n_).unlink(missing_ok=True) for n_ in fm.BRAND_FILES]
     root.mkdir(); home.mkdir(parents=True)
     git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     tracker(root, "MSR-001", title="Bestand je Lager"); tracker(root, "MSR-002", status="Shipped", title="Erledigtes")
@@ -1246,8 +1249,7 @@ with tempfile.TemporaryDirectory() as d:
     _xdg = os.environ.get("XDG_CONFIG_HOME")
     def board_with(**files):
         """files: place_file=text — place is org | repo | me. Returns (INDEX.md bytes, page, --brand report)."""
-        for place in (org, home):
-            shutil.rmtree(place, ignore_errors=True)
+        shutil.rmtree(home, ignore_errors=True); _org_clear()
         shutil.rmtree(wt / "brand", ignore_errors=True)
         for f in fm.BRAND_FILES:
             (wt / f).unlink(missing_ok=True)
@@ -1277,7 +1279,7 @@ with tempfile.TemporaryDirectory() as d:
         board_with()                                          # every place emptied
         del os.environ["XDG_CONFIG_HOME"]; _h = os.environ.pop("HOME", None)
         try:
-            shutil.rmtree(org, ignore_errors=True); nohome = run(root)[0]; no_page = (wt / "index.html").read_text(encoding="utf-8")
+            _org_clear(); nohome = run(root)[0]; no_page = (wt / "index.html").read_text(encoding="utf-8")
         finally:
             if _h is not None:
                 os.environ["HOME"] = _h
@@ -1504,7 +1506,9 @@ with tempfile.TemporaryDirectory() as d:
               all(w in (base / "starter/theme.css").read_text() for w in ("wordmark.svg", 'fill="currentColor"', "the browser tab", "viewBox", "the name as paths",
                                                                            "whole multiple of its grid", 'never style="…"', "refuses it whole")))
     finally:
-        shutil.rmtree(org, ignore_errors=True)
+        _org_clear()
+        if not _org_was and org.is_dir() and not any(org.iterdir()):
+            org.rmdir()
         if _xdg is None:
             os.environ.pop("XDG_CONFIG_HOME", None)
         else:
@@ -1562,6 +1566,108 @@ with tempfile.TemporaryDirectory() as d:
                 (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
                 _hung("hooks", e_)
+    finally:
+        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
+fm.configure(HERE)
+
+# --- FM-002, 0.18.5: the tool ships two themes as starters — brand/themes/monochrome/ and brand/themes/shoalmark/ (the
+# Owner's signed answer, 4e00f85: the tool ships monochrome and shoalmark as starters), cut from FM-006's mocks (9467b83)
+_th = HERE / "brand/themes"
+_THEMES = ("monochrome", "shoalmark")
+_FONTS = {"IBMPlexMono-Regular-Latin1.woff2": "10d3c7fa7eaf48e78db24f317b64f008a75e00f63a68bb3c2afc6ef51e58674f",       # @ibm/plex-mono 1.1.0,
+          "IBMPlexMono-SemiBold-Latin1.woff2": "1ce95cff1c5056cb0fed049c2912823293b158b816e193a6f937f2d92b1e0f39",      # fonts/split/woff2/
+          "IBMPlexMono-Italic-Latin1.woff2": "08c4566f535253ee314ea35e4d75384a7bb151b4ed8345353698d95b33516d3b"}
+_readme = (_th / "README.md").read_text(encoding="utf-8") if (_th / "README.md").is_file() else ""
+_css = {n: (_th / n / "theme.css").read_text(encoding="utf-8") if (_th / n / "theme.css").is_file() else "" for n in _THEMES}
+check("FM-002 · the tool ships two themes in brand/themes/ — monochrome and shoalmark, each a theme.css with the three Plex Mono cuts it loads and their licence; the README names each in one line and lists the fonts by name and sha256, and each file is that hash",
+      sorted(p.name for p in _th.iterdir() if p.is_dir()) == list(_THEMES) and all(_css.values())
+      and all(sorted(p.name for p in (_th / n / "fonts").iterdir()) == sorted([*_FONTS, "LICENSE.txt"]) for n in _THEMES)
+      and all(fm.digest(_th / n / "fonts" / k) == v and f"`fonts/{k}` | `{v}`" in _readme for n in _THEMES for k, v in _FONTS.items())
+      and all(len(re.findall(rf"^- `{n}` — [^\n]+\.$", _readme, re.M)) == 1 for n in _THEMES)
+      and all((_th / n / "fonts/LICENSE.txt").read_bytes() == (HERE / "work-tracker/brand/fonts/LICENSE.txt").read_bytes() for n in _THEMES)
+      and (_th / "monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes() == (HERE / "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes())
+# every edit a starter makes to FM-006's mocks (evidence/FM-006/themes/, 9467b83), the mock's text -> the starter's: the font
+# urls and the Regular, the placeholder's ink (contrast, slice A's measure), and the three hooks in place of the three
+# workarounds — each marked SLICE B where it stands. Nothing else may differ: the Owner took the mocks as they are.
+_EDITS = {
+    "monochrome.css": [
+        ('@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("brand/fonts/',
+         '/* SLICE B: the font urls relative to this file, as a brand place reads them (the mock\'s were the page\'s, brand/fonts/…),\n'
+         '   and the Regular declared beside the two cuts — the mock\'s page had it from the repository\'s own theme; a board with no\n'
+         '   brand of its own would set every word in the SemiBold */\n'
+         '@font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2")}\n'
+         '@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("fonts/'),
+        ('font-weight:400;src:url("brand/fonts/IBMPlexMono-Italic', 'font-weight:400;src:url("fonts/IBMPlexMono-Italic'),
+        ('header button[aria-pressed=true]{color:var(--ink);font-weight:600}\n',
+         'header button[aria-pressed=true]{color:var(--ink);font-weight:600}\n'
+         '/* SLICE B, not the mock\'s — the built board\'s measure (slice A, 70fedd3): the browser\'s own placeholder ink, #757575, reads\n'
+         '   4.30:1 by day and 4.19:1 by night on this theme\'s grounds; --mute reads 4.75:1 and 5.97:1 */\n'
+         '::placeholder{color:var(--mute);opacity:1}\n'),
+        ('each section a markdown heading */\n',
+         'each section a markdown heading.\n'
+         '   SLICE B, hook 1 of 3: the title is the board\'s label owner.title, the element #p>.pt — the mock\'s #p::before set it as\n'
+         '   CSS content, English, which labels.yaml cannot reach */\n'),
+        ('#p::before{content:"owed to the owner";position:absolute;', '#p>.pt{display:block;position:absolute;'),
+        ('/* over the last line\'s own rules below; the lifted #r keeps its -21px */',
+         '/* over the last line\'s own rules below (SLICE B: nothing is lifted — hook 2) */'),
+        ('\n#f{margin:28px 0 0;padding-right:26ch;line-height:21px}\n',
+         '\n/* SLICE B, hook 2 of 3: the claim and the running line stand in one element, the footer #F — the mock lifted the running\n'
+         '   line onto the claim\'s line, #B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}. While the board shows, the two\n'
+         '   share one cell, the running line at its foot, so it stands on the claim\'s last line; the claim is painted over the\n'
+         '   band the running line draws. In the viewer the footer is a block: the running line alone, as the mock\'s */\n'
+         '#f{margin:28px 0 0;padding-right:26ch;line-height:21px}\n'),
+        ('#B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}\n',
+         '#B:not([hidden])~#F{display:grid}#F>#f,#F>#r{grid-area:1/1}#F>#r{align-self:end}#F>#f{position:relative}\n')],
+    "shoalmark.css": [
+        ('#p::before{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}',
+         '#p>.pt{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}   /* SLICE B: hook 1 of 3 */'),
+        ('tr.t:nth-child(even) td{background:var(--zebra)}',
+         '/* SLICE B, hook 3 of 3: the stripe is the board\'s class on every other row of a group — the mock\'s tr.t:nth-child(even)\n'
+         '   counted a group\'s head and the hidden rows, so it tinted every row of a group or none */\n'
+         'tr.zebra td{background:var(--zebra)}')]}
+
+
+def _cut(name):
+    """The mock `name` with its SLICE B edits — "" when an edit's text is not in it exactly once."""
+    text = (HERE / "work-tracker/evidence/FM-006/themes" / name).read_text(encoding="utf-8")
+    for a_, b_ in _EDITS[name]:
+        if text.count(a_) != 1:
+            return ""
+        text = text.replace(a_, b_)
+    return text
+
+
+_head = lambda css: css[:css.index("*/\n") + 3] if css.startswith("/* THE STARTER") else "\0"
+check("FM-002 · each starter is FM-006's mocks as the Owner took them — monochrome, and monochrome then shoalmark as build-mocks.py stacks them — under a header of its own, every rule verbatim but the SLICE B edits, each marked where it stands: the font urls and the Regular, the placeholder's ink, the three hooks in place of the three workarounds",
+      _cut("monochrome.css") and _cut("shoalmark.css") and _css["monochrome"] == _head(_css["monochrome"]) + _cut("monochrome.css")
+      and _css["shoalmark"] == _head(_css["shoalmark"]) + _cut("monochrome.css") + "\n" + _cut("shoalmark.css")
+      and _css["monochrome"].count("SLICE B") == 6 and _css["shoalmark"].count("SLICE B") == 8)
+check("FM-002 · each starter styles the board through the three hooks, with none of the mocks' workarounds left as a rule; every url() it names is a file beside it; every drawn marker and figure has empty alt text (AU-16)",
+      all(re.findall(r'url\("([^"]+)"\)', c) and all((_th / n / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', c)) for n, c in _css.items())
+      and all("\n#p>.pt{display:block;" in c and "\n#B:not([hidden])~#F{display:grid}" in c and "\n#p::before" not in c and "\n#B:not([hidden]):has(" not in c
+              and 'url("brand/fonts/' not in c and all(f'content:"{x}" / ""' in c for x in re.findall(r'content:"([^"]+)"', c)) for c in _css.values())
+      and "\ntr.zebra td{background:var(--zebra)}" in _css["shoalmark"] and "\ntr.t:nth-child" not in _css["shoalmark"])
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
+    tracker(root, "MSR-001"); wt = root / "docs/work-tracker"
+    _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
+    try:
+        # the default look of a repository that chooses nothing: the tool's brand/ holding the themes changes no byte of the board
+        code0, _, err0 = run(root, "--html-only"); page0 = (wt / "index.html").read_text(encoding="utf-8")
+        _here = fm.HERE
+        try:
+            fm.HERE = Path(d) / "a-copy-with-no-brand"; run(root, "--html-only"); bare = (wt / "index.html").read_text(encoding="utf-8")
+        finally:
+            fm.HERE = _here
+        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all — no theme, no warning",
+              _th.is_dir() and code0 == 0 and page0 == bare and "<style data-from" not in page0 and "brand:" not in err0)
+        worn = {}
+        for n in _THEMES:
+            shutil.rmtree(wt / "brand", ignore_errors=True); shutil.copytree(_th / n, wt / "brand")
+            code_, _, err_ = run(root, "--html-only"); page_ = (wt / "index.html").read_text(encoding="utf-8")
+            worn[n] = (code_, err_.strip(), re.findall(r'url\("([^"]+)"\)', page_.split('<style data-from="repository">')[1].split("</style>")[0]) if '<style data-from="repository">' in page_ else None)
+        check(f"FM-002 · each theme, worn from the repository's place, loads with no warning, and every font it names resolves from the page (saw {worn})",
+              all(c_ == 0 and "brand:" not in e_ and u_ and all((wt / u).is_file() and u.startswith("brand/fonts/") for u in u_) for c_, e_, u_ in worn.values()))
     finally:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
 fm.configure(HERE)
