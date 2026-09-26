@@ -2,12 +2,15 @@
 id: FM-002
 status: In Progress
 considered: FM-001
-next: owner
+next: build
 ask: "Which theme do shoalmark's own board and site wear — the brand layer and the site's stylesheet, no tool change — and, separately, does the tool ship themes: `brand/themes/` and `--brand DIR --from <theme>`, code whose files every vendoring consumer receives?"
 ask-kind: ruling
 ask-since: 2026-09-26
 ask-options: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet | the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme | not yet — shoalmark's own board and site keep today's look; the tool ships no themes"
 ask-proposal: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet"
+answer: "accepted - the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme"
+answered: 2026-09-26
+answered-by: holgo99
 triaged: 2026-09-26
 rank: 4
 tier: P2
