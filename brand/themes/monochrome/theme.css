@@ -2,10 +2,10 @@
    and shoalmark as starters). Nothing reads this copy: `shoalmark.py --brand DIR --from monochrome` copies it and its
    fonts into DIR — `<tracker dir>/brand/` for the repository, `~/.config/shoalmark/` for yourself — yours to change.
    Below: FM-006's mock as it stands at 9467b83 (evidence/FM-006/themes/monochrome.css), its own header included, every
-   rule as the mock wrote it but those marked SLICE B where they stand — the font urls and the Regular, the board's three
-   hooks in place of the mock's three workarounds, the placeholder's ink. The fonts, in fonts/: IBM's Latin-1 cuts of
-   @ibm/plex-mono 1.1.0, unmodified, under the SIL Open Font License in fonts/LICENSE.txt; the tool's
-   brand/themes/README.md lists them by name and sha256. */
+   rule as the mock wrote it but those marked SLICE B where they stand — the font urls and the Regular, the board's hooks
+   for the box's title and the last line in place of the mock's two workarounds, the placeholder's ink. The fonts, in
+   fonts/: IBM's Latin-1 cuts of @ibm/plex-mono 1.1.0, unmodified, under the SIL Open Font License in fonts/LICENSE.txt;
+   the tool's brand/themes/README.md lists them by name and sha256. */
 /* THEME "monochrome" — the terminal cut. The GtM/Design seat, 2026-09-25: a candidate, nothing adopted.
    Written as lines added to work-tracker/brand/theme.css: no markup changes, no change to shoalmark.py.
    One face, one grid: IBM Plex Mono for every word at 14px on a 21px line, so a character is a cell.

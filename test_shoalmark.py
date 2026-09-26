@@ -1189,7 +1189,7 @@ count.id: Eintrag · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet
-owner.title: für den Auftraggeber
+owner.title: für den Eigner
 path.title: der aktuelle Kurs
 waiting.title: wartet auf Sie
 waiting.detail: offene Arbeit, deren nächster Schritt beim Auftraggeber liegt
@@ -1587,8 +1587,9 @@ check("FM-002 · the tool ships two themes in brand/themes/ — monochrome and s
       and all((_th / n / "fonts/LICENSE.txt").read_bytes() == (HERE / "work-tracker/brand/fonts/LICENSE.txt").read_bytes() for n in _THEMES)
       and (_th / "monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes() == (HERE / "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes())
 # every edit a starter makes to FM-006's mocks (evidence/FM-006/themes/, 9467b83), the mock's text -> the starter's: the font
-# urls and the Regular, the placeholder's ink (contrast, slice A's measure), and the three hooks in place of the three
-# workarounds — each marked SLICE B where it stands. Nothing else may differ: the Owner took the mocks as they are.
+# urls and the Regular, the placeholder's ink (contrast, slice A's measure), hooks 1 and 2 in place of the two workarounds,
+# and hook 3 left unused, the mock's stripes kept — each marked SLICE B where it stands. Nothing else may differ: the
+# Owner took the mocks as they are.
 _EDITS = {
     "monochrome.css": [
         ('@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("brand/fonts/',
@@ -1622,9 +1623,11 @@ _EDITS = {
         ('#p::before{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}',
          '#p>.pt{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}   /* SLICE B: hook 1 of 3 */'),
         ('tr.t:nth-child(even) td{background:var(--zebra)}',
-         '/* SLICE B, hook 3 of 3: the stripe is the board\'s class on every other row of a group — the mock\'s tr.t:nth-child(even)\n'
-         '   counted a group\'s head and the hidden rows, so it tinted every row of a group or none */\n'
-         'tr.zebra td{background:var(--zebra)}')]}
+         '/* SLICE B, hook 3 of 3, not used here: the board writes the class zebra on every other row of a group, and a true\n'
+         '   alternate-row stripe is one line — tr.zebra td{background:var(--zebra)} in place of the nth-child rule below. Not made:\n'
+         '   the Owner took the mock as it is (2026-09-26), and the mock\'s tr.t:nth-child(even), which counts a group\'s head and its\n'
+         '   hidden rows, tints every row of a group or none — as the renders he approved show */\n'
+         'tr.t:nth-child(even) td{background:var(--zebra)}')]}
 
 
 def _cut(name):
@@ -1638,15 +1641,15 @@ def _cut(name):
 
 
 _head = lambda css: css[:css.index("*/\n") + 3] if css.startswith("/* THE STARTER") else "\0"
-check("FM-002 · each starter is FM-006's mocks as the Owner took them — monochrome, and monochrome then shoalmark as build-mocks.py stacks them — under a header of its own, every rule verbatim but the SLICE B edits, each marked where it stands: the font urls and the Regular, the placeholder's ink, the three hooks in place of the three workarounds",
+check("FM-002 · each starter is FM-006's mocks as the Owner took them — monochrome, and monochrome then shoalmark as build-mocks.py stacks them — under a header of its own, every rule verbatim but the SLICE B edits, each marked where it stands: the font urls and the Regular, the placeholder's ink, the box's title and the last line on hooks 1 and 2, the mock's stripes kept and hook 3's one line named",
       _cut("monochrome.css") and _cut("shoalmark.css") and _css["monochrome"] == _head(_css["monochrome"]) + _cut("monochrome.css")
       and _css["shoalmark"] == _head(_css["shoalmark"]) + _cut("monochrome.css") + "\n" + _cut("shoalmark.css")
       and _css["monochrome"].count("SLICE B") == 6 and _css["shoalmark"].count("SLICE B") == 8)
-check("FM-002 · each starter styles the board through the three hooks, with none of the mocks' workarounds left as a rule; every url() it names is a file beside it; every drawn marker and figure has empty alt text (AU-16)",
+check("FM-002 · each starter styles the box's title and the last line through hooks 1 and 2, the two workarounds gone as rules, and keeps the mock's stripes; every url() it names is a file beside it; every drawn marker and figure has empty alt text (AU-16)",
       all(re.findall(r'url\("([^"]+)"\)', c) and all((_th / n / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', c)) for n, c in _css.items())
       and all("\n#p>.pt{display:block;" in c and "\n#B:not([hidden])~#F{display:grid}" in c and "\n#p::before" not in c and "\n#B:not([hidden]):has(" not in c
               and 'url("brand/fonts/' not in c and all(f'content:"{x}" / ""' in c for x in re.findall(r'content:"([^"]+)"', c)) for c in _css.values())
-      and "\ntr.zebra td{background:var(--zebra)}" in _css["shoalmark"] and "\ntr.t:nth-child" not in _css["shoalmark"])
+      and "\ntr.t:nth-child(even) td{background:var(--zebra)}" in _css["shoalmark"] and "\ntr.zebra" not in _css["shoalmark"])
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     tracker(root, "MSR-001"); wt = root / "docs/work-tracker"

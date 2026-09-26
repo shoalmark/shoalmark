@@ -194,9 +194,11 @@ button.act:hover{background:var(--magenta);color:var(--magink)}
 
 /* the record: the land's buff across the top, depth-tinted rows, a group a band of shallow water */
 th{background:var(--land);color:var(--landink)}
-/* SLICE B, hook 3 of 3: the stripe is the board's class on every other row of a group — the mock's tr.t:nth-child(even)
-   counted a group's head and the hidden rows, so it tinted every row of a group or none */
-tr.zebra td{background:var(--zebra)}tr.t:hover td{background:var(--shallow)}
+/* SLICE B, hook 3 of 3, not used here: the board writes the class zebra on every other row of a group, and a true
+   alternate-row stripe is one line — tr.zebra td{background:var(--zebra)} in place of the nth-child rule below. Not made:
+   the Owner took the mock as it is (2026-09-26), and the mock's tr.t:nth-child(even), which counts a group's head and its
+   hidden rows, tints every row of a group or none — as the renders he approved show */
+tr.t:nth-child(even) td{background:var(--zebra)}tr.t:hover td{background:var(--shallow)}
 .g td{background:var(--shallow);color:var(--dim);padding:3px 1ch}
 tbody tr.g ~ tr.g td{border-top:12px solid var(--panel)}
 .g b{color:var(--ink)}.g b::before{color:var(--watt)}
