@@ -122,7 +122,7 @@ FM-006 — the Auditor seat's correction to item 2 of its addendum, before it is
 "7 of their paths only in history" is wrong. The count (all 175 refs of a clone with refs/pull/*/head fetched; every blob; "portdive", any case): 28 versions name the parent project — 8 are the tip's files, 20 are older. The older versions sit at 7 paths: 5 still exist at the tip; 2 are FM-002's evidence before its move from docs/work-tracker/ to work-tracker/. Where the redaction took the name out of the tree, the history keeps it: 3 files (FM-020, FM-022, review-fix-0.17.5) name it only in older versions. The literal name is a lower bound: the redaction wrote "the origin" and "the parent project", so the parent's tracker ids, pull request numbers and incident detail stay under those words, in the tree and the history. Item 2's conclusion stands: "as it is" publishes the parent's traces.
 On the Principal's call (FM-006 holds the act; nothing deleted before his answer): not struck. Name the act in FM-006's What is true now, not only in its Going public section.
 
-## The page on his word in TRIAGE.md — filed 2026-09-25 at 22:38:24
+## The page on his word in TRIAGE.md — filed 2026-09-25, the paste of 22:38:24, committed 22:40:18
 
 **Through the Owner at 22:38:24 on 2026-09-25, as pasted — the Auditor seat, on the Owner's word (sha256 `be19a4100d73fc27f6d0015ac42a8c4ee152ebcfa751e9ec8fc523ac99933584`):**
 
@@ -141,7 +141,7 @@ The line:
   - what an edit does not do.
 - Worded by the GtM seat; a Reviewer checks every claim against evidence before the merge.
 
-Filed here because the freeze (20 open) bars a new tracker and FM-022 (Shipped) left the site out on purpose; this tracker holds the page.
+Filed here because the freeze (21 open) bars a new tracker and FM-022 (Shipped) left the site out on purpose; this tracker holds the page.
 The build waits for FM-037's guard to merge, so the page's *only you change it* is the tool's, with its tier-0 limit stated; the GtM seat words it,
 a Reviewer checks every claim against evidence before the merge; the term stays *your signed word* unless the Owner rules otherwise by an ask.
 
