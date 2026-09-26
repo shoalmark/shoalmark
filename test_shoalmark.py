@@ -3216,6 +3216,31 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, the pass's R7 — its case, the cold review of the 0.18.4 cut's R2: the README's cron line makes the log's folder
+#     first. The shell opens `>>` before the tool runs, and on a fresh home only the tool made that folder, so `--notify` never
+#     ran. Run as cron runs it, `/bin/sh -c` with an empty HOME, the tool a stub that says it was reached; and without its `mkdir -p`
+import shlex
+_cron = next(l_ for l_ in (HERE / "README.md").read_text().splitlines() if l_.startswith("*/5 ") and "--notify" in l_)
+_cmd = _cron.split(None, 5)[5]                                         # cron's five time fields off: what cron hands /bin/sh
+_mk = 'mkdir -p "%s" && ' % re.search(r'>> "([^"]+)"', _cmd).group(1).rsplit("/", 1)[0]
+_ran = None                                                            # no /bin/sh — Windows, which has no cron — reads the line only
+if os.path.exists("/bin/sh"):
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); (base / "bin").mkdir(); (base / "repo").mkdir()
+        (base / "bin/python3").write_text('#!/bin/sh\necho "reached: $*"\n'); os.chmod(base / "bin/python3", 0o755)
+
+        def _cron_run(cmd, home):
+            home.mkdir()
+            r_ = subprocess.run(["/bin/sh", "-c", cmd.replace("/path/to/repo", shlex.quote(str(base / "repo")))], capture_output=True,
+                                text=True, encoding="utf-8", errors="replace", env={"HOME": str(home), "PATH": f"{base / 'bin'}:/usr/bin:/bin"})
+            log_ = home / ".local/state/shoalmark/notify.log"
+            return r_.returncode, log_.read_text() if log_.exists() else None
+        _ran = (_cron_run(_cmd, base / "home"), _cron_run(_cmd.replace(_mk, "", 1), base / "home-bare"))
+check("FM-030 · the pass's R7 · the README's cron line makes the log's folder before the shell opens the log — `%s` leads it; " % _mk.strip(" &")
+      + ("run by /bin/sh with an empty HOME it writes notify.log and reaches `--notify`, and the same line without it — the line before 4efa5a0 — "
+         "fails before the tool runs" if _ran else "read, not run: no /bin/sh here, cron's shell") + f" (saw {_ran})",
+      _cmd.startswith(_mk) and (_ran is None or (_ran[0] == (0, "reached: shoalmark.py --notify\n") and _ran[1][0] != 0 and _ran[1][1] is None)))
+
 # --- FM-030, 0.18.4 E: `--standup` and `--owner` list the acts after the asks — due, overdue, missed, no date yet — each
 #     with its `due:` and what it is (FM-030's first line; FM-007's key, promised after the scoring, is *no date yet*)
 with tempfile.TemporaryDirectory() as tmp:

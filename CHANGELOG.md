@@ -104,8 +104,9 @@ of the v0.18.3 tag are fixed** (FM-030, FM-037, FM-035 — with FM-036, FM-029, 
   could not be posted and says *nothing remembered* when nothing is; the README's cron line names Linux's session bus
   for `notify-send` and keeps its output in a log, and the launchd plist keeps its output too. R7: that cron line starts
   with `mkdir -p "$HOME/.local/state/shoalmark" &&` — the shell opens the log before the tool runs, and on a fresh home
-  its folder did not exist, so `--notify` never ran. R8: `due:` and `done:` bound a zone's minutes to 00–59 —
-  `fromisoformat` read `+05:99` as `+06:39` on both Pythons, and the gate passed it.
+  its folder did not exist, so `--notify` never ran; a suite case runs the line as cron does, with an empty home, and
+  without its `mkdir -p`, where it fails (the cold review's R2). R8: `due:` and `done:` bound a zone's minutes to
+  00–59 — `fromisoformat` read `+05:99` as `+06:39` on both Pythons, and the gate passed it.
 - **`--queue` reads a head that is the verdict commit itself** (FM-031; seen in the parent project on the pinned 0.18.3,
   2026-09-25 18:25:56). PR 851's head was the Reviewer's verdict (`Reviewed:` its parent, READY), its file
   `evidence/PD-400/review-….md`; the project's review gate read the head as covered — *1 commit past the reviewed tip,
