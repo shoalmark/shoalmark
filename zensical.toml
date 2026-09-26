@@ -16,12 +16,14 @@ nav = [
   { "Start" = "index.md" },
   { "Set up in ten minutes" = "setup.md" },
   { "Your answer is your commit" = "signing.md" },
+  { "Your word in TRIAGE.md" = "triage.md" },
   { "The standup" = "standup.md" },
   { "For agents — the contract" = "agents/README.md" },
   { "Deutsch" = [
     { "Start" = "de/index.md" },
     { "In zehn Minuten eingerichtet" = "de/setup.md" },
     { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
+    { "Ihr Wort in der TRIAGE.md" = "de/triage.md" },
     { "Der Standup" = "de/standup.md" },
   ] },
 ]
