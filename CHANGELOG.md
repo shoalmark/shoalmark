@@ -148,7 +148,9 @@ of the v0.18.3 tag are fixed** (FM-030, FM-037, FM-035 — with FM-036, FM-029 a
 
 *Named for 0.18.4 and not in it* — each stays a line on its tracker: FM-033's `--queue` and board marks on a pushed branch
 whose commits name an unjudged tracker, and the board's activity beside judgement (named in the 0.18.3 section); FM-028's
-`--triage --day`, with the INDEX's `Generated` date; FM-030's move after an answer following the picked option, and
+`--triage --day`, with the INDEX's `Generated` date, and its verdict-commit date line — after midnight the pre-commit
+hook writes INDEX.md's new date into a verdict commit and the parent's review gate flags it (*0.18.4 or the release
+after*, filed 00:47:31 on 2026-09-26, PR 84); FM-030's move after an answer following the picked option, and
 `--answer`'s commit subject cut between words; FM-031's own answer branches pushed without a pull request, in `--queue`;
 FM-029's real-history relation case for FM-032's record; FM-007's link to the signing page (`…/signing/`, which the built
 site serves as `signing.html`) and the key's tier in what the tool says; FM-006's local site rebuilt after every pull, and
