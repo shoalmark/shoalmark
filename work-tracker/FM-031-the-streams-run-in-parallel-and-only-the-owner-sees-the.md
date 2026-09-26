@@ -97,6 +97,38 @@ and its PR 855 cold review (RV-573, 00:44 on 2026-09-26). The queue must read an
 commit that wrote `answer:` — not its head, where only review files follow it. It fits the 0.18.4 cut with a suite case (the
 stubbed forge, a review commit on top of the answer): built on `release/0.18.4` in its own commit, before the cut.
 
+**Found 2026-09-26, a line for the next release:** the `[paths] reviews` glob crosses folders and the defaults admit
+without a key, so `--queue` can print *merge* over a head no verdict judged — the line under *Open lines* below, filed
+on the parent project's RV-630 and its closure test.
+
+## Open lines
+
+**2026-09-26, a line for the next release (S2, `--queue`) — the `[paths] reviews` glob crosses folders, and the default
+admits without it; the Implementer seat's (`8e509911/implementer-35`), on the parent project's cold Reviewer session and
+its closure test:** 0.18.4 turns the key into a glob by appending `/*` — `queue_actions` builds
+`folder = str({…}["reviews"]).strip().strip("/") + "/*"` and matches a path with
+`fnmatch.fnmatchcase(x[len(rel) + 1:], folder)` — and `fnmatch`'s `*` crosses `/`. So `reviews = "evidence/*/"` becomes
+`evidence/*/*`, and after a verdict it admits every later commit, by any seat and any session, that touches only files
+under any `evidence/<id>/` folder — results, data, scripts, not reviews — and `--queue` prints *merge* for a head the
+consumer's review gate refuses: the head was not judged. The key cannot be narrowed to review files:
+`evidence/*/review*` becomes `evidence/*/review*/*` and matches no `review*.md` file. **The admission is the tool's
+default, not only a consumer's key:** with no key at all, `DEFAULTS` reads `"paths": {"reviews": "evidence/reviews/"}`,
+and `queue_actions` sets `registry = f"{rel}/sessions.md"` and lets `x == registry` through whatever `[paths]` says — so
+after a verdict a later commit by any seat that touches only `evidence/reviews/` (a `note.md` there) or only
+`sessions.md` reads *merge* while the consumer's review gate fails it, and no setting in a consumer's configuration
+closes the second. **Sources:** the parent project's RV-630 (11:16:13 CEST), in its
+`docs/work-tracker/evidence/PD-400/review-pd-400-the-pin-is-0-18-4.md` on its branch `pd/400-the-pin-is-0-18-4`; its
+Implementer's closure test at 11:55:26 CEST, X5 and X6, whose run that branch's commit `962a69c4` quotes; and this
+seat's reproduction, in a scratch repository of its own on `a7e5291` (`v0.18.4`), never pushed — a READY verdict, then a
+commit adding `evidence/x/results.csv` and `evidence/x/run/score.py`: *merge* with `reviews = "evidence/*/"`, *wait: no
+verdict on …* with the default; with `evidence/*/review*`, a commit adding only `evidence/x/review-2.md` after the
+verdict reads *wait: no verdict* too; with no key, a commit adding only `evidence/reviews/note.md`, or touching only
+`sessions.md`, reads *merge*. **The smallest honest fix, this seat's proposal for the next release, not ruled:** the
+key's pattern matches one path segment and never crosses `/`, and what the queue admits after a verdict is the verdict
+session's own `review*.md` files only, in whatever folder the key names, as the parent's review gate reads them —
+`sessions.md` is not a review. **Until then** a consumer's key names no folder that holds non-review files, and no key
+closes the `sessions.md` admission.
+
 ## Ruled — the rules for a message between two sessions
 
 **Ruled 2026-09-24 21:29:12 by the Owner's signed answer `eef0c2e` (PR 62): *the nine hold as written* — the proposal, the first of two.** Recorded as open the same evening at 19:53 on the Auditor seat's check 18 on v0.18.2 (P2), through the Owner; until then neither ruled nor recorded. Sessions of one account can message each other directly (the harness's peer channel, found 2026-09-23 when two
@@ -183,6 +215,8 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-09-26 12:08 CEST | The line under *Open lines* widened by the Implementer seat (`8e509911/implementer-35`) on the Principal's brief, with the parent project's closure test (X5 and X6, 11:55:26; its branch `pd/400-the-pin-is-0-18-4`, commit `962a69c4`): the admission is the tool's default too — `evidence/reviews/` by `DEFAULTS`, and `sessions.md` whatever `[paths]` says — and the proposed fix admits the verdict session's own `review*.md` files only; `sessions.md` is not a review. Reproduced once more in the same scratch repository, never pushed: both read *merge* with no key. |
+| 2026-09-26 11:57 CEST | The line under *Open lines*, filed by the Implementer seat (`8e509911/implementer-35`) on the parent project's cold Reviewer session, its RV-630 (11:16:13): 0.18.4's `[paths] reviews` key becomes a glob by appending `/*`, and `fnmatch`'s `*` crosses `/` — `evidence/*/` admits every later commit under any `evidence/<id>/` folder, and `--queue` prints *merge* over a head no verdict judged; reproduced once in a scratch repository on `a7e5291` (`v0.18.4`), never pushed. The fix is proposed for the next release, not ruled; no code, CHANGELOG or front-matter change. |
 | 2026-09-24 15:17 CEST | R9 of 0.18.0's review, fixed for 0.18.1 by the Implementer: PR 46's merge read *12:53:19* in *What is true now* and *12:53:18* in the 12:55 row. *What is true now* says *12:53:19* (the forge's clock); the 12:55 row stands as written, append-only, and reads 12:53:18 — corrected here, not there. The forge's `mergedAt` (10:53:19Z); `ed11081`'s commit clock says 12:53:18. AGENTS.md's cap paragraph says the same. |
 | 2026-09-24 13:05 CEST | `636f56e`, by the Implementer, from the coordinating session's audit of the merged tree: `--queue` lists each branch on `origin` that no pull request carries, after the pull requests, read as a pull request is — `branch <name> @ <sha>  wait: no pull request — …` — and counts them; an `answer/*` pull request reads `merge: your answer` when the Owner signed its head and it verifies, `wait: unsigned answer` when not (PR 46 read *no verdict*); and `--check` tells a signed commit this clone cannot verify that it cannot, where it said *sign it*. |
 | 2026-09-24 12:55 CEST | The answer of 11:08:24 superseded by the Owner's own signed edit `7c97c5b` (PR 46, merged 12:53:18): it read *"accepted - all three rules now, S1 then S2"* (`d20bc89`); the new one keeps one channel and the detached switch, S1 then S2, and revokes the cap of 2 waiting pull requests. Written by hand, in place, before 0.18.0's `--supersede` existed; rowed here as that command does from now on. The word *accepted* in front of a partial acceptance is FM-029's pattern, typed by hand this time. |
