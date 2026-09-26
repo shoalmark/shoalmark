@@ -166,6 +166,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `` `x@seat` is … the seat `y`, which does not hold `z` `` | that change needs a right this seat has not got: `[rights]`, §6 |
 | `wait: not an answerer (<author>)` (`--queue`) | the `answer/*` pull request's head is by someone who may not answer — signed or not, it is not the Owner's answer: do not merge it, and find out who pushed it |
 | `wait: answer not verified here — <why>` (`--queue`) | the Owner's `answer/*` pull request is signed, and this clone cannot check it — the same cause, the same cure as the next row |
+| `it is signed, but not with a key <file> on <default branch> holds for that identity` | the commit is signed with a key the gate does not trust for that email — it reads the default branch's copy of the signers file (§5). A new key lands there first: the Owner's signed commit to the file, merged — then the same commit verifies, nothing re-signed; `--answer` left it on `answer/<id>`, unpushed: push that branch |
 | `it is signed, but this clone cannot verify: …` | the commit is signed; this clone cannot check it. Set `gpg.ssh.allowedSignersFile` to the repository's signers file (SSH), or import the key (GPG) — the signing page says how. The exit is the same until it verifies |
 | `carries no Session: trailer` · `a session id is eight hex characters` · `names the seat …` | set `seat.session` in your worktree: the harness's id, or `<parent>/<seat>-<n>` for a sub-agent of your own seat (§6 *Sessions*) |
 | `--new: filing freeze — N open, at or above M` | only a product defect is filed now: `--new "…" --tags bug`; add the rest as one line to the closest open tracker, or wait until fewer than `freeze_at` are open |
@@ -194,7 +195,9 @@ branch's* copy of the signers file `gpg.ssh.allowedSignersFile` names, where tha
 repository — never the branch's own — so a branch that appends its own key under his email vouches for nothing; the
 answer gate and `--queue` verify the same way. The signers file itself — that one, and `<tracker dir>/allowed_signers` —
 is kept like the two sections: a change to it is refused unless it is his signed commit. Its first version therefore
-lands on the default branch by his own hand: a branch cannot prove a key the default branch does not hold. `## Passes`
+lands on the default branch by his own hand: a branch cannot prove a key the default branch does not hold — until it
+is there, no SSH signature verifies against a signers file in a checkout (the cold re-review's R2), and a new key
+verifies once it is merged there: `--answer` asks the same test before it pushes (R1). `## Passes`
 and the rest of the file stay open to seats; a scaffold where there was none is accepted — any whose words the readers
 know (`--init`'s, the German one, 0.1.0's bare lines: AU-20). *The reading of a move* (the pass's R7): the guard judges what the tool reads, so a move of
 the whole tracker together with its key that leaves both sections byte-identical is no change — `ae1f05e`, the tracker's

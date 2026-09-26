@@ -3783,6 +3783,36 @@ with tempfile.TemporaryDirectory() as tmp:
     c_ko_, g_ko_ = made37_("ap/037-owner-path", "AP-037: his line, his key", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), "-S", OWNER_)
     check(f"FM-037 · AU-19 · the Owner's real key still verifies against the default branch's file: his signed change to the signers file is accepted, and his signed change to the path (saw {g_k_!r})",
           g_k_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-keys` since origin/main, 1 change them or his signers file, each his own commit") and g_ko_[0] == [])
+    # the cold re-review's R1 · `--answer` asks the gate's own test before it pushes — the default branch's signers file. Mid
+    # key rotation, his new key only on his branch's copy: the answer it signs is NOT pushed, and neither the command nor the
+    # gate tells him to sign a commit he signed — each names the file the key must reach first
+    rkey_ = base / "rotated"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(rkey_)], check=True, capture_output=True)
+    def rotate37_():
+        signers37_.write_text(signers37_.read_text() + "h@x " + rkey_.with_suffix(".pub").read_text())
+        tracker(root, "AP-051", extra=f'next: owner\nask: "Rotate the key?"\nask-kind: ruling\nask-since: {day37_}\nask-proposal: "yes"\n', title="the rotation")
+    c_rot_, g_rot_ = made37_("ap/037-rotate", "AP-051: the Owner's new key, and an ask", rotate37_, "-S", OWNER_)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("user.signingkey", str(rkey_))):
+        git(root, "config", k_, v_)
+    code_r1_, out_r1_, err_r1_ = run(root, "--answer", "AP-051", "accept")
+    pushed_r1_ = "answer/ap-051" in subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
+    code_r1c_, _o, err_r1c_ = run(root, "--check")                     # on `answer/ap-051`, where the refusal left him
+    held_r1_ = "it is signed, but not with a key `docs/work-tracker/allowed_signers` on origin/main holds for that identity — a new key verifies once it is there: the Owner's signed commit to that file, merged into origin/main first"
+    check(f"FM-037 · the cold re-review's R1 · `--answer` verifies as the gate does, against the default branch's signers file: an answer signed with a key only his branch's copy holds is NOT pushed, and the command and the gate each say it is signed and name where the key must land — never *sign it* (saw {err_r1_.strip()[-260:]!r}, {err_r1c_.strip()[-200:]!r})",
+          g_rot_[0] == [] and code_r1_ == fm.EXIT_LINT and not pushed_r1_ and "committed, but the signature does not verify as `holgo`" in err_r1_ and held_r1_ in err_r1_
+          and "NOT pushed" in err_r1_ and "pushed\n" not in out_r1_ and code_r1c_ == fm.EXIT_LINT and "AP-051: the answer's commit" in err_r1c_ and held_r1_ in err_r1c_
+          and "sign it (`git commit -S`)" not in err_r1_ + err_r1c_)
+    # the cold re-review's R2 · while the default branch carries no signers file, NOTHING verifies against the checkout's copy:
+    # a checkout on a branch that writes one read another pull request's change, signed with the key it wrote, as clean
+    git(root, "config", "user.signingkey", str(okey_)); git(root, "switch", "-q", "main"); git(root, "rm", "-q", str(signers37_))
+    git(root, "commit", "-q", "-m", "no signers file on the default branch", OWNER_); git(root, "push", "-q", "origin", "main")
+    c_r2_, _g = made37_("ap/037-r2-pull", "AP-037: the path, signed as him with a seat's key", text37_("2. Nothing merges unreviewed.", "2. The seat's key merges."),
+                        "-S", OWNER_, pre=("-c", "user.signingkey=" + str(skey_)))
+    made37_("ap/037-r2-vouch", "AP-037: a signers file, the seat's key under his email", lambda: signers37_.write_text("h@x " + skey_.with_suffix(".pub").read_text()), SEAT_)
+    fm.configure(root); on_vouch_ = _no_git_env(lambda: fm.triage_reading(c_r2_, "origin/main"))
+    git(root, "switch", "-q", "main"); fm.configure(root); on_main_ = _no_git_env(lambda: fm.triage_reading(c_r2_, "origin/main"))
+    check(f"FM-037 · the cold re-review's R2 · while the default branch carries no signers file, nothing verifies against the checkout's copy: a checkout on a branch that writes one reads another pull request's change, signed with the key that branch wrote, as not verified here — as a checkout on main does, and saying why — never clean (saw {on_vouch_!r}, {on_main_!r})",
+          on_vouch_ is not None and on_vouch_ == on_main_ and on_vouch_[0] == "wait: TRIAGE.md change not verified here — `docs/work-tracker/allowed_signers` is not on origin/main: "
+          "commit its first version there, signed — a branch cannot prove a key the default branch does not hold" and on_vouch_[1] == c_r2_[:7])
     rm_git(root)
 fm.configure(HERE)
 

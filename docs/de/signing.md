@@ -168,7 +168,9 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
     darüber. Ein öffentlicher Schlüssel ist öffentlich; ihn einzuchecken ist in Ordnung. Nur Ihr signierter Commit
     ändert diese Datei: Das Werkzeug lehnt die Änderung eines Agenten ab und prüft jede Signatur gegen die Fassung auf
     dem Standard-Branch, nie gegen die eines Branches. Committen Sie ihre erste Fassung darum selbst auf dem
-    Standard-Branch, signiert — ein Branch kann keinen Schlüssel beweisen, den der Standard-Branch nicht führt.
+    Standard-Branch, signiert — ein Branch kann keinen Schlüssel beweisen, den der Standard-Branch nicht führt, und bis
+    die Datei dort liegt, wird keine Signatur verifiziert. Ein neuer Schlüssel zählt, sobald er dort gemergt ist: `--answer`
+    prüft das, bevor es pusht.
 
 3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,
    Typ **Signing Key** ([die Schritte bei GitHub](https://docs.github.com/de/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -261,7 +263,7 @@ seine Arbeitskopie trägt keine Signatur.
 | *an answer, but no seat in `[seats]` holds the `answer` right* (oder *`answerers` … names nobody*) | die `[seats]`-Zeile oben schreiben |
 | *the answer is not committed yet* | committen — der Commit ist der Beleg |
 | *`answered-by: x` but the git author of the answer is `y`* | jemand anderes hat Ihre Antwort committet; sie zählt nicht |
-| *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei nicht an Ihre E-Mail bindet |
+| *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei auf dem Standard-Branch nicht an Ihre E-Mail bindet — ein neuer Schlüssel zählt, sobald er dort gemergt ist |
 | ein *note*, dass der Autor unverifiziert ist | Sie haben unter git `["name"]` ohne `signed` geschrieben — es funktioniert, und beweist nichts |
 | *refused: commit … changes the text under `## The intent`* (oder `## The current path`) | ein Commit auf diesem Branch, der nicht Ihrer ist, signiert, hat Ihre beiden Abschnitte geändert — er wird nicht gemergt |
 | *… the Owner's email, unsigned* | ein Commit trägt Ihre E-Mail und keine Signatur: Sie haben `-S` vergessen, oder jemand hat Ihre E-Mail getippt |

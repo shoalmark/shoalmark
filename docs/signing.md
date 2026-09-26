@@ -154,7 +154,8 @@ step says *both*.
     `ecdsa-sha2-nistp256`, with its comment line above it. A public key is public; committing it is fine. Only your
     signed commit changes this file: the gate refuses a seat's change to it, and it checks every signature against the
     default branch's copy, never a branch's own. So commit its first version on the default branch yourself, signed — a
-    branch cannot prove a key the default branch does not hold.
+    branch cannot prove a key the default branch does not hold, and until the file is there no signature verifies. A new
+    key counts once it is merged there: `--answer` checks that before it pushes.
 
 3. **Add it on the forge, as a signing key.** On GitHub: *Settings → SSH and GPG keys → New SSH key*, key type
    **Signing Key** ([GitHub's steps](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -241,7 +242,7 @@ this guard is out of scope: its working copy carries no signature.
 | *an answer, but no seat in `[seats]` holds the `answer` right* (or *`answerers` … names nobody*) | write the `[seats]` line above |
 | *the answer is not committed yet* | commit it — the commit is the record |
 | *`answered-by: x` but the git author of the answer is `y`* | someone else committed your answer; it does not count |
-| *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file does not tie to your email |
+| *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file on the default branch does not tie to your email — a new key counts once it is merged there |
 | a *note* that the author is unverified | you wrote `["name"]` without `signed` under git — it works, and it proves nothing |
 | *refused: commit … changes the text under `## The intent`* (or `## The current path`) | a commit on that branch that is not yours, signed, changed your two sections — it does not merge |
 | *… the Owner's email, unsigned* | a commit carries your email and no signature: you forgot `-S`, or someone typed your email |
