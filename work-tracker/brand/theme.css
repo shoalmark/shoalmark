@@ -9,8 +9,9 @@
    The face: IBM Plex Mono for every word — Regular, SemiBold, Italic — IBM's own Latin-1 cuts of @ibm/plex-mono 1.1.0,
    unmodified, under the SIL Open Font License in fonts/LICENSE.txt, their sha256 in evidence/FM-002/slice-a/README.md;
    nothing is fetched from a font service. The Plex Sans cuts beside them are 0.18.2's; this theme does not use them.
-   Three rules below are WORKAROUNDS for markup the board does not have yet — the owner's box title as a label, one footer
-   element, a class on striped rows — marked where they stand; slice B places the hooks, and this file is re-cut on them. */
+   Re-cut on slice B's hooks (FM-002 R1): the owner's box title is the board's label (hook 1), the claim and the running
+   line one footer element (hook 2), each marked SLICE B where it stands; the stripes keep the mock's nth-child rule, as
+   the renders the Owner approved show (workaround 3, kept and marked). */
 @font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2")}
 
 /* THE BASE, "monochrome" — the terminal cut. One face, one grid: IBM Plex Mono for every word at 14px on a 21px line,
@@ -48,9 +49,10 @@ button.act:hover,#dlg button:hover,#s:hover{background:var(--raise);color:var(--
 #dlg button.go{background:var(--ink);color:var(--bg)}#dlg button.go::before,#dlg button.go::after{color:inherit}
 
 /* the Owner's panel: a box, its title set into the top border; each section a markdown heading.
-   WORKAROUND 1 of 3 (slice B's hook): the title is CSS content, English, because labels.yaml cannot reach it */
+   SLICE B, hook 1 of 3: the title is the board's label owner.title, the element #p>.pt — re-cut from workaround 1, the
+   mock's #p::before, CSS content in English, which labels.yaml cannot reach */
 #p{position:relative;max-width:none;margin:22px 0 18px;padding:18px 2ch 12px;border:1px solid var(--box);border-left:1px solid var(--box)}
-#p::before{content:"owed to the owner";position:absolute;top:-.75em;left:1ch;padding:0 1ch;background:var(--bg);color:var(--ink);font-weight:600}
+#p>.pt{display:block;position:absolute;top:-.75em;left:1ch;padding:0 1ch;background:var(--bg);color:var(--ink);font-weight:600}
 #p>b{font-weight:600;color:var(--ink)}#p>b.hot{color:var(--coral)}
 #p>b::before{content:"## ";content:"## " / "";color:var(--mute);font-weight:400}
 
@@ -120,19 +122,21 @@ tr.c td:first-child{padding-left:3ch}
   body::before{content:"      8°24'E             26'               28'              8°30'              32'               34'               36'               38'              8°40'              42'               44'               46'               48'              8°50'              52'               54'               56'               58'              9°00'              02'               04'               06'               08'              9°10'              12'               14'               16'               18'              9°20'              22'               24'               26'               28'              9°30'              32'               34'               36'               38'              9°40'              42'        " / "";top:calc(var(--chart-top) - 16px);height:12px;line-height:12px;
     left:calc(var(--chart-x) + 6px - 9ch);right:var(--chart-x);
     -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 14ch),transparent calc(100% - 4ch));mask-image:linear-gradient(90deg,#000 calc(100% - 14ch),transparent calc(100% - 4ch))}
-  body #f,body #r{margin-top:60px;color:var(--footink)}   /* over the last line's own rules below; the lifted #r keeps its -21px */
+  body #f,body #r{margin-top:60px;color:var(--footink)}   /* over the last line's own rules below (SLICE B: nothing is lifted — hook 2) */
   #r{border-image:linear-gradient(var(--footline) 0 var(--footlw),var(--foot) 0) fill 0//24px 100vmax 100vmax}
 }
 
-/* WORKAROUND 2 of 3 (slice B's hook: one footer element) — this rule and the chart's #f/#r lines above: the foot's
-   band hangs from the running line, lifted onto the claim's line.
+/* SLICE B, hook 2 of 3 — re-cut from workaround 2, which lifted the running line onto the claim's line: the claim and the
+   running line stand in one element, the footer #F. While the board shows, the two share one cell, the running line at
+   its foot, so it stands on the claim's last line; the claim is painted over the band the running line draws. In the
+   viewer the footer is a block: the running line alone. What the mock says of the last line, as it says it:
    The last line (the Owner, 2026-09-25): no rule above it — the claim on the left, the mark, the name and the version on
    the right. They are two elements, the claim in the board and the running line after the viewer, so the running line
    is lifted onto the claim's line, only while the board shows and its claim is not empty; the claim keeps 26ch clear
    on its right so the two never overlap. In the viewer the running line stands alone, on the right. */
 #f{margin:28px 0 0;padding-right:26ch;line-height:21px}
 #r{justify-content:flex-end;margin-top:20px;line-height:21px;font-size:12px}
-#B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}
+#B:not([hidden])~#F{display:grid}#F>#f,#F>#r{grid-area:1/1}#F>#r{align-self:end}#F>#f{position:relative}
 @media print{#p,table{border-color:#000}th{background:none}}
 
 /* THE THEME "shoalmark" — the brand's own, over its base above.
@@ -184,7 +188,7 @@ header button[aria-pressed=true]{background:var(--land);color:var(--landink);pad
 
 /* owed to the Owner: magenta — the box's line, its title a label set into it, its actions tinted chips */
 #p{border:1px solid var(--magenta)}
-#p::before{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}
+#p>.pt{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}   /* SLICE B: hook 1 of 3 */
 #p>b{color:var(--watt)}#p>b::before{color:var(--magenta)}#p>b.hot{color:var(--coral)}
 #p a[href^="#="]{background:var(--shallow);color:var(--id);padding:0 .6ch;text-decoration:none}
 #p a[href^="#="]:hover{background:var(--land);color:var(--landink)}
@@ -194,7 +198,9 @@ button.act:hover{background:var(--magenta);color:var(--magink)}
 
 /* the record: the land's buff across the top, depth-tinted rows, a group a band of shallow water */
 th{background:var(--land);color:var(--landink)}
-/* WORKAROUND 3 of 3 (slice B's hook: a class on striped rows) — a group row shifts nth-child's count */
+/* WORKAROUND 3 of 3, kept (SLICE B): a group row shifts nth-child's count, so this tints every row of a group or none —
+   as the renders the Owner approved show, the mock taken as it is. Hook 3 is one line away, not made on that word:
+   tr.zebra td{background:var(--zebra)} in place of the rule below, every other row of a group */
 tr.t:nth-child(even) td{background:var(--zebra)}
 tr.t:hover td{background:var(--shallow)}
 .g td{background:var(--shallow);color:var(--dim);padding:3px 1ch}
