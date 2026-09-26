@@ -12,6 +12,9 @@ ask-kind: action
 ask-since: 2026-09-25
 ask-options: "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | a snapshot as a new repository, client names and the parent's traces removed, this one the private archive, same gates | not yet"
 ask-proposal: "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held"
+answer: "accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held"
+answered: 2026-09-26
+answered-by: holgo99
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
 
