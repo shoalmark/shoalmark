@@ -1,0 +1,42 @@
+/* SITE THEME "shoalmark" — the brand's own on the documentation site. Base: site-monochrome.css. The board's shoalmark.css
+   carried over: the name in the navy band, full width, ending at the drying line; the chart in its blue-grey; the Watt's
+   green for the headings' marks and the page you are on; land buff across a table's head; links in the chart's blue.
+   Magenta stays unused here: on the board it marks what is owed to the Owner, and the site owes him nothing. */
+body[data-md-color-scheme=default][data-md-color-primary]{
+  --bg:#fbfbf7;--panel:#ffffff;--shallow:#e3eff7;--contour:#8eb1cc;--ink:#10202e;--dim:#3e4e5b;--mute:#51606c;
+  --band:#15293c;--bandink:#f3f6f9;--drying:#9aae57;--watt:#526214;--land:#f1e1b0;--landink:#10202e;--id:#77511a;--blue:#1f5ca8;
+  --grat:rgba(31,92,168,.08);--chart:#86a6c2;--chartink:var(--mute)}
+body[data-md-color-scheme=slate][data-md-color-primary]{
+  --bg:#0d1720;--panel:#111f2c;--shallow:#1a2d3e;--contour:#34546c;--ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;
+  --band:#15293d;--bandink:#d9e4ec;--drying:#b8c98c;--watt:#bccd8f;--land:#e8d4a0;--landink:#0d1720;--id:#e8d4a0;--blue:#8fb9f3;
+  --grat:rgba(143,185,243,.07);--chart:#3f6282;--chartink:var(--mute)}
+body[data-md-color-scheme][data-md-color-primary]{
+  --md-default-bg-color:var(--bg);--md-default-fg-color:var(--ink);--md-default-fg-color--light:var(--dim);
+  --md-default-fg-color--lighter:var(--contour);--md-default-fg-color--lightest:var(--shallow);
+  --md-primary-fg-color:var(--band);--md-primary-bg-color:var(--bandink);--md-accent-fg-color:var(--watt);
+  --md-typeset-a-color:var(--blue);--md-code-bg-color:var(--shallow);--md-code-fg-color:var(--ink);
+  --md-footer-bg-color:var(--band);--md-footer-bg-color--dark:var(--band);--md-footer-fg-color:var(--bandink);
+  --md-footer-fg-color--light:var(--bandink);--md-footer-fg-color--lighter:var(--bandink);
+  --md-typeset-table-color:var(--contour);--chart-top:26px}
+
+/* the band: the name on navy, full width, ending at the drying line */
+.md-header{background:var(--band);color:var(--bandink);border-bottom:2px solid var(--drying);-webkit-backdrop-filter:none;backdrop-filter:none}
+.md-header .md-header__button,.md-header .md-source{color:var(--bandink)}
+.md-header__button.md-logo{color:var(--bandink)!important}
+.md-search__form{background:rgba(255,255,255,.08)}.md-search__input::placeholder{color:var(--bandink);opacity:.8}
+
+/* the Watt's green: the headings' marks, the page you are on */
+.md-typeset h2::before,.md-typeset h3::before{color:var(--watt)}
+.md-nav__link--active,.md-nav__link--active::before{color:var(--watt)}
+.md-nav__link--active{background:var(--shallow)!important}
+.md-typeset a{color:var(--blue);text-decoration-color:color-mix(in srgb,var(--blue) 40%,transparent)}
+.md-typeset :not(pre)>code{color:var(--id)}
+
+/* the record: land buff across the top, rows on the paper */
+.md-typeset table:not([class]){background:var(--panel);border-color:var(--contour)}
+.md-typeset table:not([class]) th{background:var(--land);color:var(--landink)}
+.md-typeset pre>code{border-color:var(--contour);background:var(--panel)}
+
+/* the foot: the band again, the drying line above it */
+.md-footer{background:var(--band);color:var(--bandink);border-top:2px solid var(--drying)}
+.md-footer-meta,.md-footer-meta :is(a,.md-copyright){background:var(--band);color:var(--bandink)}

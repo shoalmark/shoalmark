@@ -1,0 +1,83 @@
+/* THEME "shoalmark" — the brand's own; a starter to make yours from if the tool ships themes. Base: monochrome.
+   A sea chart's colours, as ECDIS draws them (IHO S-52: deep water, the shallow tints, the intertidal drying green, the
+   land's buff, chart magenta) — by night the dusk table with its accents softened to pastel, by day the paper chart with
+   them deepened to 4.5:1. What a chart means by each is what the board means by it:
+     deep water  the page · shallow water  a box, a chip, a raised row · the drying line  where the foot's band begins
+     the chart   the graticule, the border and its figures (monochrome's mechanism): in the chart's blue-grey
+     the Watt    the drying green: headings, the prompt, the running mark — shoalmark's own colour, where the Pricke stands
+     land        the buff of what is fixed: the record's header row, the ids
+     magenta     what must be heeded — here, what is owed to the Owner, and nothing else
+     buoyage     the status marks: in progress a safe-water sphere, shipped a starboard cone, parked a special mark's
+                 cross, blocked a port can — the colour is never the only carrier
+   To make your own theme, change the tokens in the two blocks below. The rules under them name only tokens. */
+:root{
+  --bg:#fbfbf7;--panel:#ffffff;--shallow:#e3eff7;--shallow2:#d3e5f2;--zebra:#f5f9fc;--contour:#8eb1cc;--field:#5d86a8;
+  --ink:#10202e;--dim:#3e4e5b;--mute:#51606c;
+  --band:#15293c;--drying:#9aae57;
+  --watt:#526214;--land:#f1e1b0;--landink:#10202e;--id:#77511a;
+  --magenta:#a0156e;--magink:#ffffff;--magtint:#f7e4f0;
+  --blue:#1f5ca8;--teal:#0d6f56;--yellow:#785b00;--coral:#b3301f;
+  --grat:rgba(31,92,168,.08);--chart:#86a6c2;--chartink:var(--mute);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0d1720;--panel:#111f2c;--shallow:#1a2d3e;--shallow2:#223a4f;--zebra:#152535;--contour:#34546c;--field:#5b83a3;
+  --ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;
+  --band:#15293d;--drying:#b8c98c;
+  --watt:#bccd8f;--land:#e8d4a0;--landink:#0d1720;--id:#e8d4a0;
+  --magenta:#ee92d4;--magink:#0d1720;--magtint:#3a2440;
+  --blue:#8fb9f3;--teal:#7fd9bf;--yellow:#f1d47a;--coral:#f38a80;
+  --grat:rgba(143,185,243,.07);--chart:#3f6282;--chartink:var(--mute);
+}}
+:root{--raise:var(--shallow);--box:var(--contour);--line:transparent}
+::selection{background:var(--magenta);color:var(--magink)}
+
+/* the header — the mark, the name, the switch — stands inline inside the chart's top border, as monochrome's (the Owner,
+   2026-09-26 09:23:58): on the chart's ground, in its ink. The navy band and its drying line are the foot's on the board,
+   and the site's header's; the chart ends above the band */
+:root{--foot:var(--band);--footline:var(--drying);--footlw:2px;--footink:#b4c3d1}
+#H b{color:var(--ink)}   /* the mark and the name: the wordmark is drawn in currentColor */
+
+header,#p,table,#v pre{background:var(--panel)}
+header{border-color:var(--field)}   /* the search box's line is an input's boundary: 3:1 */
+header::before{color:var(--watt)}header:focus-within{border-color:var(--watt)}
+header button[aria-pressed=true]{background:var(--land);color:var(--landink);padding:0 1ch}
+
+/* owed to the Owner: magenta — the box's line, its title a label set into it, its actions tinted chips */
+#p{border:1px solid var(--magenta)}
+#p::before{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}
+#p>b{color:var(--watt)}#p>b::before{color:var(--magenta)}#p>b.hot{color:var(--coral)}
+#p a[href^="#="]{background:var(--shallow);color:var(--id);padding:0 .6ch;text-decoration:none}
+#p a[href^="#="]:hover{background:var(--land);color:var(--landink)}
+button.act::before,button.act::after{content:"";content:"" / ""}
+button.act{background:var(--magtint);color:var(--magenta);padding:0 1ch;margin-left:1ch;font-weight:600}
+button.act:hover{background:var(--magenta);color:var(--magink)}
+
+/* the record: the land's buff across the top, depth-tinted rows, a group a band of shallow water */
+th{background:var(--land);color:var(--landink)}
+tr.t:nth-child(even) td{background:var(--zebra)}tr.t:hover td{background:var(--shallow)}
+.g td{background:var(--shallow);color:var(--dim);padding:3px 1ch}
+tbody tr.g ~ tr.g td{border-top:12px solid var(--panel)}
+.g b{color:var(--ink)}.g b::before{color:var(--watt)}
+td.m a{color:var(--id)}td.m.hot{color:var(--coral)}
+
+/* the buoyage */
+.q{width:9px;height:9px}
+.q.b{border-radius:50%}
+.q.t{clip-path:polygon(50% 0,100% 100%,0 100%);border:0}
+.q.y{clip-path:polygon(18% 0,50% 32%,82% 0,100% 18%,68% 50%,100% 82%,82% 100%,50% 68%,18% 100%,0 82%,32% 50%,0 18%);border:0}
+.q.z{width:7px;height:7px}
+
+/* a tracker, read: the headings in the Watt's green with their marks, ids and code on shallow water */
+#v h1,#v h2,#v h1::before,#v h2::before{color:var(--watt)}#v h3,#v h4,#v h3::before,#v h4::before{color:var(--id)}
+#v .md a{color:var(--blue)}#v code{background:var(--shallow);color:var(--id);padding:0 .5ch}
+#v th{background:var(--land);color:var(--landink)}#v tr:nth-child(even) td{background:var(--zebra)}
+
+/* the dialog is where the Owner answers */
+#dlg{background:var(--panel);border:1px solid var(--magenta)}
+#dlg h3{background:var(--magenta);color:var(--magink);left:2ch}#dlg h3 a{color:inherit}
+#dlg button::before,#dlg button::after{content:"";content:"" / ""}
+#dlg button{background:var(--shallow);color:var(--ink);padding:2px 1.5ch}#dlg button:hover{background:var(--shallow2)}
+#dlg button.go{background:var(--magenta);color:var(--magink)}#dlg button.go:hover{background:var(--ink);color:var(--panel)}
+
+#r a:first-child{color:var(--watt)}
+@media screen and (min-width:1040px){#r a:first-child{color:var(--drying)}}   /* on the band, the drying line's green */
