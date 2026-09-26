@@ -21,6 +21,8 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 **The themes are filed on the Owner's word (2026-09-25, narrowed 2026-09-26): two, `monochrome` and `shoalmark`, each for the board and the site, each drawing a nautical chart behind the page (muted in `monochrome`); no setting — a theme is a file in a place. Nothing is built. Its drafted ask was re-made on 2026-09-26, on his word through the Auditor seat (AU-24): which theme shoalmark's own board and site wear, and whether the tool ships themes, asked apart, the cheap step first. It waits for the going-public ask to be answered; the line is filed below.**
 
+**A landing page is mocked in the `shoalmark` theme on the Owner's word (2026-09-26): attract mode, a pixel chart of the German Wadden coast with this repository's 23 defects as its wrecks. Nothing is built, and no ask is drafted; the line is filed below.**
+
 **The page on his word in TRIAGE.md is built, in review — 2026-09-26, the GtM seat, after FM-037's guard merged (PR 83):** `docs/triage.md` and `docs/de/triage.md`, one nav line each, on `fm/006-the-page-on-his-word-in-triage-md-built`; every claim labelled *the tool*, *review* or *the text alone*; the guard's refusal run in scratch repositories (`evidence/FM-006/triage-page/`). A Reviewer checks every claim against evidence before the merge.
 
 **The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 10 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
@@ -226,10 +228,31 @@ and foot; `shoalmark`'s eight renders were re-made; the site is untouched.
   - `monochrome` is not offered as the worn theme: the GtM seat does not propose it. Under the second option it ships
     as a starter.
 
+## The landing page — mocked 2026-09-26 by the GtM seat
+
+**On the Owner's word in chat, 2026-09-26** (quoted in the evidence, spelling normalised): *"a landing page for
+`shoalmark` showing the current release version, its features and claims: For Agents, For People … the chart renders
+ship wrecks, each with a tracker number, incident ID and a short incident report … make it count!"*; on the result,
+*"you nailed it — file, commit and push"*. His words, not a signed answer.
+
+- **What it is:** one HTML file in the `shoalmark` theme's night palette — an arcade's attract screen whose playfield
+  is a pixel chart of the German Bight's Wadden coast, Borkum to Dithmarschen, with the themes' graduated border and
+  graticule. Its wrecks are the 23 trackers tagged `bug` or `security`: tracker number, the commit that filed it as the
+  incident ID, the filing day, the status, the report from `hook:`. The release is v0.18.4; 1P for agents, 2P for
+  people, the high scores, the register, the stages — every claim read from `docs/index.md`, `README.md`,
+  `CHANGELOG.md` and the trackers, each source named in the evidence.
+- **Checked:** no script error at 1440, 1024 and 390 px; every text pair at 4.5:1 or more; the wrecks keyboard-reachable
+  and named; nothing moves under reduced motion. Not verified: Firefox, Safari, a screen reader, print.
+- **Evidence:** [`evidence/FM-006/landing/`](evidence/FM-006/landing/README.md) — the page and four renders.
+- **Not built, not asked.** Where it would live — the site's start page, or a page of its own — and whether it ships
+  are the Owner's to rule; nothing is drafted for the board while FM-006's asks wait. The statuses on the page are a
+  snapshot of 2026-09-26.
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **A landing page mocked in the `shoalmark` theme** by the GtM seat on the Owner's word in chat: attract mode, a pixel chart of the German Wadden coast whose wrecks are this repository's 23 defects — tracker, filing commit, day, status, report — with v0.18.4, 1P for agents, 2P for people, the high scores and the register, every fact sourced in the evidence. `evidence/FM-006/landing/` (the page, four renders). Nothing built, nothing asked; nothing published outside the repository. |
 | 2026-09-26 | **The board's header inline inside the graticule in both themes**, by the GtM seat on the Owner's word in chat of 09:23:58 (filed in the themes section, spelling normalised, the seat's reading marked; not a signed answer, and nothing on the ask changes): `shoalmark.css` takes the navy band and its drying line off the board's top — they stay the board's foot and the site's header and foot — and the mark, the name and the switch stand inside the chart's top border as `monochrome`'s, in the chart's ink on its ground, on the board and behind the dialog, both schemes; the tracker view, which shows no header on any board, starts inside the chart where `monochrome`'s does; the header's ten pairs measured, the lowest 5.41:1. `shoalmark`'s board, dialog, tracker view and foot re-made with the committed scripts, offline; `monochrome`'s and the sites' renders byte-identical. The themes pass's P3s fixed forward: R1 (`monochrome`'s foot 4.50:1 by day, no margin; the figures from 4.74:1; the sites' pairs from 4.74:1), R3 (a phone's 390px measured: the table scrolls to 505px themed, 905px today), R4 (*wear at most one; the ask says which, or none*; *a starter if the tool ships themes*); R2 a line for slice A; R5 left to the FM-033 pass. |
 | 2026-09-26 | **The themes' drafted ask re-made before it reaches the board**, by the GtM seat on the Owner's word of 07:41:00 through the Auditor seat (AU-24; pasted by him at 07:55:40, sha256 `34ee13d1…`): the draft asked two things in one — whether the tool ships themes and which theme shoalmark's own board and site wear — and had no option for the cheap step. The ask, a ruling, now asks them apart; its three options each say both: the `shoalmark` theme worn and no themes shipped yet (85 characters), both themes shipped as starters and `shoalmark` worn (108), not yet — today's look, no themes shipped (84). The proposal is the first, disclosed as the GtM seat's: the cheap step, one Reviewer pass, and no release after 0.18.4 hands a vendoring consumer a theme before he rules it. `monochrome` is not offered as worn: the seat does not propose it. *The build is code* became *slice A is the brand layer; slice B is code*: slice A is `work-tracker/brand/theme.css`, two Plex Mono cuts and `docs/stylesheets/`, no `shoalmark.py` change; slice B only on his ruling. The three markup hooks are `shoalmark.py` changes, in neither slice as his word draws them; the pass places them. *What is true now*, the two themes' bullet and *How a theme is chosen* no longer state the tool's shipping as filed. The evidence's README carries the same words. Still a draft, raised when the going-public ask is answered. |
 | 2026-09-26 | **The page re-made on its Reviewer's R3–R7** (`f4188ee`, NOT READY on `59febae`), in both languages: FM-007's raise quoted whole, *undermines: TRIAGE.md path 5, FM-033's answer* (R3); tier 2 as the signing page has it, stopping the accident while an agent that means harm can fake the prompt, and only tier 3 making the key the Owner's alone (R4); what a pass re-judges: its sheet lists work in progress not judged in seven days, new filings and raised trackers, nothing reacts to a path edit by itself, and a tracker judged this week keeps its tier until its next pass unless a raise names a path line (R5); the raise check named as the one place the tool reads the path's content, its line numbers only, beside `--triage`'s presence test and the guard's byte comparison (R6); the three lead-in sentences labelled (R7). |
