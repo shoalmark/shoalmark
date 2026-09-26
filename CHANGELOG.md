@@ -2,6 +2,15 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased — 0.18.5
+
+- **shoalmark's own board and site wear the `shoalmark` theme** (FM-002, slice A; the Owner's signed answer of
+  2026-09-26, `4e00f85`, PR 90: *the tool ships monochrome and shoalmark as starters; shoalmark's own board and site
+  wear the shoalmark theme*). This repository's brand layer only — `work-tracker/brand/theme.css`, two IBM Plex Mono
+  cuts beside the Regular, `docs/stylesheets/shoalmark.css`. No `shoalmark.py` change and nothing new that `--vendor`
+  copies: a consumer's board looks as it did. The site is built at the release tag and goes live when the repository
+  is public. The starters for every consumer are slice B.
+
 ## 0.18.4 — 2026-09-26
 
 **What the Owner owes has a time and a button, only he changes his intent and his current path, and the three CI failures
