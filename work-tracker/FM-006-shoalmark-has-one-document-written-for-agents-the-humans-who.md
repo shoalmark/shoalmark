@@ -139,7 +139,7 @@ A line on FM-006's going-public plan: at the flip, transfer holgo99/shoalmark in
 - each seat's remote.
 Then branch protection on main (free for a public repository). Nothing moves before the flip.
 
-[The seat's gloss, not his word: the transfer is the mechanism of the ask's first option (*this repository … public*) and changes no option's text; the consumers' pins (PortDive PD-400, msr-lager, fb-sondermasch) are the parent projects' own slices at the flip, named here so none is forgotten; nothing moves before his answer to the ask.]
+[The seat's gloss, not his word: the transfer is the mechanism of the ask's first option (*this repository … public*) and changes no option's text; the consumers' pins (PortDive PD-400, msr-lager, fb-sondermasch) are PortDive's and the two clients' own slices at the flip, named here so none is forgotten; nothing moves before his answer to the ask.]
 
 ## The page on his word in TRIAGE.md — filed 2026-09-25, the paste of 22:38:24, committed 22:40:18
 
