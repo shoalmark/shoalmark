@@ -3,6 +3,7 @@
    land's buff, chart magenta) — by night the dusk table with its accents softened to pastel, by day the paper chart with
    them deepened to 4.5:1. What a chart means by each is what the board means by it:
      deep water  the page · shallow water  a box, a chip, a raised row · the drying line  where the name's band ends
+     the chart   the graticule, the border and its figures (monochrome's mechanism): in the chart's blue-grey
      the Watt    the drying green: headings, the prompt, the running mark — shoalmark's own colour, where the Pricke stands
      land        the buff of what is fixed: the record's header row, the ids
      magenta     what must be heeded — here, what is owed to the Owner, and nothing else
@@ -16,6 +17,7 @@
   --watt:#526214;--land:#f1e1b0;--landink:#10202e;--id:#77511a;
   --magenta:#a0156e;--magink:#ffffff;--magtint:#f7e4f0;
   --blue:#1f5ca8;--teal:#0d6f56;--yellow:#785b00;--coral:#b3301f;
+  --grat:rgba(31,92,168,.08);--chart:#86a6c2;--chartink:var(--mute);
 }
 @media(prefers-color-scheme:dark){:root{
   --bg:#0d1720;--panel:#111f2c;--shallow:#1a2d3e;--shallow2:#223a4f;--zebra:#152535;--contour:#34546c;--field:#5b83a3;
@@ -24,6 +26,7 @@
   --watt:#bccd8f;--land:#e8d4a0;--landink:#0d1720;--id:#e8d4a0;
   --magenta:#ee92d4;--magink:#0d1720;--magtint:#3a2440;
   --blue:#8fb9f3;--teal:#7fd9bf;--yellow:#f1d47a;--coral:#f38a80;
+  --grat:rgba(143,185,243,.07);--chart:#3f6282;--chartink:var(--mute);
 }}
 :root{--raise:var(--shallow);--box:var(--contour);--line:transparent}
 ::selection{background:var(--magenta);color:var(--magink)}
@@ -31,8 +34,11 @@
 /* the name stands in a band, full width as the site's header does, and the band ends at the drying line */
 html{background:linear-gradient(var(--band) 0 64px,var(--drying) 64px 66px,var(--bg) 66px)}
 body{background:transparent}
-#H{height:40px;margin:0 0 26px}
-#B[hidden] + #v{margin-top:66px}   /* the tracker view has no name in the band: it starts below the drying line */
+#H{height:40px;margin:0 0 46px}
+#B[hidden] + #v{margin-top:86px}   /* the tracker view has no name in the band: it starts below the chart's top border */
+:root{--chart-top:86px;   /* the chart starts below the drying line: its longitude figures between the two */
+  --foot:var(--band);--footline:var(--drying);--footlw:2px;--footink:#b4c3d1}   /* and ends above the band again */
+body{padding-top:24px}   /* the name stays in the band; #H's margin clears the chart's top border instead */
 #H,#H .wm,#H b,#H span,#s,#s::before,#s::after{color:var(--bandink)}
 #s:hover{background:var(--shallow2);color:var(--ink)}
 
@@ -79,3 +85,4 @@ td.m a{color:var(--id)}td.m.hot{color:var(--coral)}
 #dlg button.go{background:var(--magenta);color:var(--magink)}#dlg button.go:hover{background:var(--ink);color:var(--panel)}
 
 #r a:first-child{color:var(--watt)}
+@media screen and (min-width:1040px){#r a:first-child{color:var(--drying)}}   /* on the band, the drying line's green */

@@ -8,8 +8,10 @@
 @font-face{font-family:"IBM Plex Mono";font-style:italic;font-weight:400;src:url("brand/fonts/IBMPlexMono-Italic-Latin1.woff2") format("woff2")}
 
 /* two tokens added: --box, a panel's border, twice the row rule's weight; --raise, the one raised surface */
-:root{--box:rgba(0,0,0,.28);--raise:#f9f9f9}
-@media(prefers-color-scheme:dark){:root{--box:rgba(240,241,244,.26);--raise:#16181d}}
+/* two tokens added: --box, a panel's border, twice the row rule's weight; --raise, the one raised surface.
+   The chart's three, muted here: --grat its graticule, --chart its border, --chartink its figures (4.5:1) */
+:root{--box:rgba(0,0,0,.28);--raise:#f9f9f9;--grat:rgba(0,0,0,.045);--chart:rgba(0,0,0,.26);--chartink:var(--mute)}
+@media(prefers-color-scheme:dark){:root{--box:rgba(240,241,244,.26);--raise:#16181d;--grat:rgba(240,241,244,.04);--chart:rgba(240,241,244,.24)}}
 
 body,#dlg textarea,input,button,th,.m,#v code,#dlg pre,#dlg code{font-family:"IBM Plex Mono",ui-monospace,monospace}
 body{font-size:14px;line-height:1.5;max-width:calc(104ch + 32px)}
@@ -61,6 +63,52 @@ tr.c td:first-child{padding-left:3ch}
 #v h1::before{content:"# ";content:"# " / "";color:var(--mute)}#v h2::before{content:"## ";content:"## " / "";color:var(--mute)}
 #v h3::before{content:"### ";content:"### " / "";color:var(--mute)}#v h4::before{content:"#### ";content:"#### " / "";color:var(--mute)}
 #v pre{border:0;background:var(--raise)}#v blockquote{border-left:1ch solid var(--raise)}
+
+/* THE CHART (the Owner, 2026-09-26: "the graticule must look more like on a real nautical chart, with coordinates").
+   The page is a Mercator sheet of Neuwerk's Watt, where the Pricken stand: 53°57'N 8°24'E at the top left corner.
+   A parallel every minute of latitude (--gy), a meridian every two minutes of longitude (--gx): at 53.9°N two minutes
+   of longitude are 1.18 minutes of latitude long, so 118.8px to 100.8px. The border is a chart's: an outer line, a
+   5px band of alternate minutes, the neatline inside it, tenths ticked on its inner edge (fifths along the top). The
+   figures stand outside the border: latitude down both sides, longitude along the top, each centred on its line.
+   All of it is drawn behind the page by the root and the body's pseudo-elements, never read (alt text ""), and only
+   where the margins hold it; a narrower window shows today's plain ground. The figures are 11px Plex Mono: the
+   longitude cells are 18ch, so a cell is the meridians' spacing exactly.
+   THE FOOT (the Owner, 2026-09-26): the last line — the claim, the mark, the name, the version — leaves the chart for a
+   band of its own, full width, as the site's foot. The running line paints it: a border image outset 24px above it and
+   out to the page's sides and end, so the band holds a claim that wraps, shows in the tracker view too, and never adds
+   scroll. The chart ends 12px above the band. */
+:root{--gx:118.8px;--gy:100.8px;--chart-x:64px;--chart-top:22px;--chart-bottom:81px;
+  --foot:var(--raise);--footline:var(--box);--footlw:1px;--footink:var(--mute)}
+@media screen and (min-width:1040px){
+  html{position:relative}
+  body{background:transparent;padding-top:calc(var(--chart-top) + 26px)}
+  html::before{content:"";position:absolute;z-index:-1;pointer-events:none;
+    top:var(--chart-top);bottom:var(--chart-bottom);left:var(--chart-x);right:var(--chart-x);padding:5px;
+    border:1px solid var(--chart);outline:1px solid var(--chart);outline-offset:-6px;
+    background:
+      linear-gradient(90deg,var(--grat) 1px,transparent 0) 0 0/var(--gx) 100% content-box,
+      linear-gradient(var(--grat) 1px,transparent 0) 0 0/100% var(--gy) content-box,
+      repeating-linear-gradient(var(--chart) 0 1px,transparent 0 calc(var(--gy)/10)) 0 0/3px 100% no-repeat content-box,
+      repeating-linear-gradient(var(--chart) 0 1px,transparent 0 calc(var(--gy)/10)) 100% 0/3px 100% no-repeat content-box,
+      repeating-linear-gradient(90deg,var(--chart) 0 1px,transparent 0 calc(var(--gx)/10)) 0 0/100% 3px no-repeat content-box,
+      repeating-linear-gradient(90deg,var(--chart) 0 1px,transparent 0 calc(var(--gx)/10)) 0 100%/100% 3px no-repeat content-box,
+      linear-gradient(var(--chart) 50%,transparent 0) 0 5px/5px calc(2*var(--gy)) repeat-y padding-box,
+      linear-gradient(var(--chart) 50%,transparent 0) 100% 5px/5px calc(2*var(--gy)) repeat-y padding-box,
+      linear-gradient(90deg,var(--chart) 50%,transparent 0) 5px 0/var(--gx) 5px repeat-x padding-box,
+      linear-gradient(90deg,var(--chart) 50%,transparent 0) 5px 100%/var(--gx) 5px repeat-x padding-box}
+  html::after,body::before,body::after{position:absolute;pointer-events:none;overflow:hidden;white-space:pre;
+    font:11px "IBM Plex Mono",ui-monospace,monospace;color:var(--chartink)}
+  html::after,body::after{content:"53°57'N\A 56'\A 55'\A 54'\A 53'\A 52'\A 51'\A 53°50'\A 49'\A 48'\A 47'\A 46'\A 45'\A 44'\A 43'\A 42'\A 41'\A 53°40'\A 39'\A 38'\A 37'\A 36'\A 35'\A 34'\A 33'\A 32'\A 31'\A 53°30'\A 29'\A 28'\A 27'\A 26'\A 25'\A 24'\A 23'\A 22'\A 21'\A 53°20'\A 19'\A 18'\A 17'\A 16'\A 15'\A 14'\A 13'\A 12'\A 11'\A 53°10'\A 09'\A 08'\A 07'\A 06'\A 05'\A 04'\A 03'\A 02'\A 01'\A 53°00'\A 59'\A 58'\A 57'\A 56'\A 55'\A 54'" / "";top:calc(var(--chart-top) + 6px - var(--gy)/2);bottom:var(--chart-bottom);
+    width:calc(var(--chart-x) - 8px);line-height:var(--gy);
+    -webkit-mask-image:linear-gradient(#000 calc(100% - 30px),transparent calc(100% - 8px));mask-image:linear-gradient(#000 calc(100% - 30px),transparent calc(100% - 8px))}
+  html::after{left:0;text-align:right}
+  body::after{right:0;text-align:left}
+  body::before{content:"      8°24'E             26'               28'              8°30'              32'               34'               36'               38'              8°40'              42'               44'               46'               48'              8°50'              52'               54'               56'               58'              9°00'              02'               04'               06'               08'              9°10'              12'               14'               16'               18'              9°20'              22'               24'               26'               28'              9°30'              32'               34'               36'               38'              9°40'              42'        " / "";top:calc(var(--chart-top) - 16px);height:12px;line-height:12px;
+    left:calc(var(--chart-x) + 6px - 9ch);right:var(--chart-x);
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 14ch),transparent calc(100% - 4ch));mask-image:linear-gradient(90deg,#000 calc(100% - 14ch),transparent calc(100% - 4ch))}
+  body #f,body #r{margin-top:60px;color:var(--footink)}   /* over the last line's own rules below; the lifted #r keeps its -21px */
+  #r{border-image:linear-gradient(var(--footline) 0 var(--footlw),var(--foot) 0) fill 0//24px 100vmax 100vmax}
+}
 
 /* the last line (the Owner, 2026-09-25): no rule above it — the claim on the left, the mark, the name and the version on
    the right. They are two elements, the claim in the board and the running line after the viewer, so the running line

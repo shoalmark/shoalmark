@@ -1,0 +1,69 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=fallback");
+/* SITE THEME "monochrome" — the terminal cut on the documentation site. The GtM/Design seat, 2026-09-26: a candidate,
+   nothing adopted. Written as lines added to docs/stylesheets/shoalmark.css, over Zensical's modern theme: no template,
+   no zensical.toml change. The site keeps its palettes (default by day, slate by night) and IBM Plex Sans for prose —
+   the face is a choice within the ruled Plex family, and prose reads better in Sans. Mono carries everything that is
+   the tool's: the name, the navigation, the headings with their markdown marks, tables and code.
+   The chart is the board's (monochrome.css), muted: the same sheet of Neuwerk's Watt, the same figures, hung from the
+   body, which Zensical positions and which grows with the page. Its three tokens are set per scheme below; the figures
+   are never read (alt text ""), and the chart shows only where the margins hold it. */
+body[data-md-color-scheme=default][data-md-color-primary]{
+  --md-typeset-a-color:var(--md-default-fg-color);--md-accent-fg-color:var(--md-default-fg-color);
+  --grat:rgba(0,0,0,.045);--chart:rgba(0,0,0,.26);--chartink:#6b6b6b}
+body[data-md-color-scheme=slate][data-md-color-primary]{
+  --md-typeset-a-color:var(--md-default-fg-color);--md-accent-fg-color:var(--md-default-fg-color);
+  --grat:rgba(240,241,244,.04);--chart:rgba(240,241,244,.24);--chartink:#8f949c}
+
+/* the header: the ground, a rule under it, the name in Mono */
+.md-header{border-bottom:1px solid var(--md-default-fg-color--lighter);box-shadow:none}
+.md-header__topic,.md-nav,.md-search__input,.md-source,.md-footer,.md-footer-meta,.md-typeset table:not([class]) th{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.md-nav{font-size:.66rem}
+.md-nav__link--active,.md-nav__link:is(:focus,:hover){color:var(--md-default-fg-color)}
+.md-nav__link--active{font-weight:600;background:var(--md-code-bg-color)!important}
+.md-nav__link--active::before{content:"> ";content:"> " / "";white-space:pre}
+
+/* headings: Mono, one weight, the markdown marks kept and never read */
+.md-typeset h1,.md-typeset h2,.md-typeset h3,.md-typeset h4{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:600;letter-spacing:-.01em;color:var(--md-default-fg-color)}
+.md-typeset h1{font-size:1.9em;line-height:1.2;text-wrap:balance}
+.md-typeset h2{font-size:1.2em}.md-typeset h3{font-size:1em}
+.md-typeset h2::before{content:"## ";content:"## " / "";color:var(--md-default-fg-color--light);font-weight:400}
+.md-typeset h3::before{content:"### ";content:"### " / "";color:var(--md-default-fg-color--light);font-weight:400}
+.md-typeset a{text-decoration:underline;text-underline-offset:.2em;text-decoration-color:var(--md-default-fg-color--lighter)}
+.md-typeset a:hover{text-decoration-color:currentColor}
+.md-typeset .headerlink{text-decoration:none}
+
+/* a table is a box, its header row the raised surface; code is flat */
+.md-typeset table:not([class]){border:1px solid var(--md-default-fg-color--lighter);border-radius:0;box-shadow:none}
+.md-typeset table:not([class]) th{background:var(--md-code-bg-color);font-weight:600}
+.md-typeset code{border-radius:0}
+.md-typeset pre>code{border:1px solid var(--md-default-fg-color--lightest)}
+
+/* THE CHART — the board's, hung from the body: frame, figures down both sides, longitude along the top */
+body{--gx:118.8px;--gy:100.8px;--chart-x:64px;--chart-top:24px}
+@media screen and (min-width:1380px){
+  .md-main__inner{margin-top:calc(1.5rem + 18px)}
+  .md-footer{position:relative;z-index:1}   /* the foot covers the chart, figures and all, as the header does */
+  body::before{content:"";position:absolute;z-index:-1;pointer-events:none;
+    top:calc(2.4rem + var(--chart-top));bottom:12px;left:var(--chart-x);right:var(--chart-x);padding:5px;
+    border:1px solid var(--chart);outline:1px solid var(--chart);outline-offset:-6px;
+    background:
+      linear-gradient(90deg,var(--grat) 1px,transparent 0) 0 0/var(--gx) 100% content-box,
+      linear-gradient(var(--grat) 1px,transparent 0) 0 0/100% var(--gy) content-box,
+      repeating-linear-gradient(var(--chart) 0 1px,transparent 0 calc(var(--gy)/10)) 0 0/3px 100% no-repeat content-box,
+      repeating-linear-gradient(var(--chart) 0 1px,transparent 0 calc(var(--gy)/10)) 100% 0/3px 100% no-repeat content-box,
+      repeating-linear-gradient(90deg,var(--chart) 0 1px,transparent 0 calc(var(--gx)/10)) 0 0/100% 3px no-repeat content-box,
+      repeating-linear-gradient(90deg,var(--chart) 0 1px,transparent 0 calc(var(--gx)/10)) 0 100%/100% 3px no-repeat content-box,
+      linear-gradient(var(--chart) 50%,transparent 0) 0 5px/5px calc(2*var(--gy)) repeat-y padding-box,
+      linear-gradient(var(--chart) 50%,transparent 0) 100% 5px/5px calc(2*var(--gy)) repeat-y padding-box,
+      linear-gradient(90deg,var(--chart) 50%,transparent 0) 5px 0/var(--gx) 5px repeat-x padding-box,
+      linear-gradient(90deg,var(--chart) 50%,transparent 0) 5px 100%/var(--gx) 5px repeat-x padding-box}
+  body::after,.md-container::before,.md-container::after{position:absolute;pointer-events:none;overflow:hidden;white-space:pre;
+    font:11px "IBM Plex Mono",ui-monospace,monospace;color:var(--chartink)}
+  body::after,.md-container::before{content:"53°57'N\A 56'\A 55'\A 54'\A 53'\A 52'\A 51'\A 53°50'\A 49'\A 48'\A 47'\A 46'\A 45'\A 44'\A 43'\A 42'\A 41'\A 53°40'\A 39'\A 38'\A 37'\A 36'\A 35'\A 34'\A 33'\A 32'\A 31'\A 53°30'\A 29'\A 28'\A 27'\A 26'\A 25'\A 24'\A 23'\A 22'\A 21'\A 53°20'\A 19'\A 18'\A 17'\A 16'\A 15'\A 14'\A 13'\A 12'\A 11'\A 53°10'\A 09'\A 08'\A 07'\A 06'\A 05'\A 04'\A 03'\A 02'\A 01'\A 53°00'\A 59'\A 58'\A 57'\A 56'\A 55'\A 54'" / "";top:calc(2.4rem + var(--chart-top) + 6px - var(--gy)/2);bottom:12px;
+    width:calc(var(--chart-x) - 8px);line-height:var(--gy)}
+  body::after{left:0;text-align:right}
+  .md-container::before{right:0;text-align:left}
+  .md-container::after{content:"      8°24'E             26'               28'              8°30'              32'               34'               36'               38'              8°40'              42'               44'               46'               48'              8°50'              52'               54'               56'               58'              9°00'              02'               04'               06'               08'              9°10'              12'               14'               16'               18'              9°20'              22'               24'               26'               28'              9°30'              32'               34'               36'               38'              9°40'              42'        " / "";top:calc(2.4rem + var(--chart-top) - 16px);height:12px;line-height:12px;
+    left:calc(var(--chart-x) + 6px - 9ch);right:var(--chart-x);
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 14ch),transparent calc(100% - 4ch));mask-image:linear-gradient(90deg,#000 calc(100% - 14ch),transparent calc(100% - 4ch))}
+}
