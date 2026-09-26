@@ -1,8 +1,9 @@
 /* The site wears the `shoalmark` theme — the Owner's answer on FM-002 (4e00f85, PR 90, 2026-09-26): "the tool ships
    monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme". Slice A: the site's
    own lines first, then FM-006's two site stylesheets as the aligned mock stacks them (evidence/FM-006/themes/, 9467b83,
-   PR 82) — site-monochrome.css, then site-shoalmark.css — every rule as the mock wrote it; no template, no zensical.toml
-   change. The site keeps its header; the board's header is inline inside its chart (the Owner, 09:23:58, for the board).
+   PR 82) — site-monochrome.css, then site-shoalmark.css — every rule as the mock wrote it but one the built site's contrast
+   measure added (the foot's link, marked where it stands); no template, no zensical.toml change. The site keeps its
+   header; the board's header is inline inside its chart (the Owner, 09:23:58, for the board).
    ONE import, here at the top, where browsers honour it: the theme loads its code font at 400 and 700 (and their
    italics) only, so the wordmark's 500 (the Owner's ruling, 2026-09-24) and the headings' and navigation's 600 are
    fetched here. The rest of the page keeps the theme's text font, IBM Plex Sans. The site still loads IBM Plex from
@@ -134,3 +135,7 @@ body[data-md-color-scheme][data-md-color-primary]{
 /* the foot: the band again, the drying line above it */
 .md-footer{background:var(--band);color:var(--bandink);border-top:2px solid var(--drying)}
 .md-footer-meta,.md-footer-meta :is(a,.md-copyright){background:var(--band);color:var(--bandink)}
+/* not the mock's — added on the built site's measure: Zensical's `html .md-footer-meta.md-typeset a:not(:focus,:hover)`
+   outranks the rule above and paints the foot's link in the page's ink, 1.12:1 on the band by day; inside the foot the
+   page's ink is the band's */
+.md-footer-meta{--md-default-fg-color:var(--bandink)}
