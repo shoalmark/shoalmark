@@ -42,7 +42,7 @@ item before the site is ever published: the pages load IBM Plex from Google Font
 Plex under `docs/assets/fonts/`, its own slice.
 
 **Two rules that are not the mock's**, each added where the built files measured a text pair below 4.5:1 (`361336a`;
-the check is below):
+*The checks carried* below):
 - the board's placeholder — the search's and the dialog's note — was the browser's own `#757575`, 3.63:1 on the night
   panel; `::placeholder{color:var(--mute);opacity:1}` reads 6.48:1 by day, 6.42:1 by night. The tool's default board has
   the same ink on its own night ground, 4.19:1 — the tool's, not this slice's;
@@ -107,6 +107,122 @@ lists the 8 mock renders too (below); those are not committed.
 - the site, all four: identical, but for 293 pixels (0.02 %) in one word at 1440 by day — the navigation's *Deutsch*,
   the antialiasing of a Google-served glyph; two of five runs showed none. The foot's fix lies below the viewport.
 
+## The checks carried — measured on the built files
+
+`checks.mjs` here, on the same built files as the renders (the after board and site at `361336a`), both schemes;
+`checks.json` holds every measurement. Chrome, offline as the renders. Four pages: the board and the site's start page
+at 1440 and 390 px; the tracker view (`#=FM-002`) and the dialog (the owner's box's first *done*, opened as he would) at
+1440.
+
+**AU-16 — markers and the chart's figures are never read.** Chrome's accessibility tree, `Accessibility.getFullAXTree`,
+on the board, the tracker view, the dialog and the site, both schemes: **0 chart figures and 0 markers read** on each of
+the 8. The buttons are named by their words — the board's `◐ auto`, `by board`, `done`, `reschedule`, the dialog's
+`OK — give me the command`, `abort` — never `[ … ]`. **The control:** the same pages with every `/ ""` alt text taken
+out of the CSS (14 in the board, 5 in the site) read the figures and the markers — the board 261 figure nodes and 37
+markers (`[ ◐ auto ]`, `## `, `// `…), the tracker view 261 and 18 (`# `, `## `), the site 261 and 21, in both schemes.
+So the check can see what it reports as absent.
+In the CSS: every non-empty `content:` string in `theme.css` has its `/ ""` alt text (10 markers, each after a fallback
+declaration, and the 2 figure strings) but one — the owner's box title, `"owed to the owner"`, which is read aloud
+on purpose: it is the box's name (workaround 1). The site's stylesheet: 3 markers and 2 figure strings, all with alt text.
+Zensical's own `⌘K` search hint is read (its button is named `Search ⌘K`); it is Zensical's, not the theme's.
+
+**AU-18 — the owner's box holds about 100 characters of prose per line.** Its content box is 838 px; the box's own face,
+Plex Mono at 14 px, advances 8.4 px a character: **99.8 characters**. Its longest rendered line holds **99**, of 56 lines,
+in both schemes.
+
+**Contrast — every text pair at 4.5:1 or more, both schemes.** Each visible text run's colour — its alpha and every
+ancestor's opacity applied — against the pixels under its glyphs: two captures, the page as it is and with all text
+made transparent; a pixel that differs is ink, and the transparent capture gives the ground under it. The median ground
+is the pair's; the worst ground under a glyph (a chart line) is the column *under a chart line*. Each `::before`/
+`::after` with text and each placeholder against its own background composited over its ancestors' (the chart's figures:
+the page's ground); `::selection`; and, hovered by DevTools, the owner's box's actions and links, a board row, the
+switch, the running line's link, the dialog's buttons, the site's navigation, links and logo, the tracker view's links.
+**The pipeline's control:** an element of known colours, `#767676` on `#ffffff`, comes out at 4.542:1 — WCAG's 4.54 —
+in both schemes. 746 measurements a scheme, 0 below 4.5:1. **By day the lowest pair is 5.76:1**, the Watt's green
+`#526214` on shallow water `#e3eff7` (a group's `//` mark on the board, the page you are on on the site); the lowest
+under a chart line 5.30:1 (a heading in the Watt's green over a graticule line in the tracker view). **By night the
+lowest is 5.98:1**, a row's tags `#90a3b1` on the zebra `#152535`; under a chart line, 6.26:1.
+
+**By day — 29 pairs, lowest 5.76:1**
+
+| text | ground | ratio | under a chart line | measured | where (first seen) | pages |
+|---|---|---|---|---|---|---|
+| `#526214` | `#e3eff7` | 5.76 | — | 13 | `td.m > b::before` | board, site |
+| `#b3301f` | `#f5f9fc` | 5.91 | — | 9 | `tr.t > td.m.hot` | board |
+| `#77511a` | `#e3eff7` | 6.03 | — | 58 | `p#p > a` | board, site, tracker view |
+| `#9aae57` | `#15293c` | 6.06 | — | 3 | `p#r.m > a` | board, tracker view |
+| `#a0156e` | `#f7e4f0` | 6.12 | — | 17 | `p#p > button.act` | board |
+| `#51606c` | `#f5f9fc` | 6.12 | — | 23 | `td > a.m.k` | board |
+| `#51606c` | `#fbfbf7` | 6.25 | 5.70 | 30 | `p#l.m > span` | board, site, tracker view |
+| `#1f5ca8` | `#fbfbf7` | 6.42 | 5.37 | 15 | `p > a` | site, tracker view |
+| `#51606c` | `#ffffff` | 6.48 | — | 6 | `td > a.m.k` | board, dialog |
+| `#526214` | `#fbfbf7` | 6.50 | 5.30 | 25 | `p#r.m > a` | board, site, tracker view |
+| `#1f5ca8` | `#ffffff` | 6.66 | — | 12 | `td > a` | site, tracker view |
+| `#77511a` | `#f5f9fc` | 6.67 | — | 27 | `td.m > a` | board |
+| `#526214` | `#ffffff` | 6.74 | — | 10 | `p#p > b` | board |
+| `#77511a` | `#ffffff` | 7.06 | — | 2 | `td.m > a` | board |
+| `#3e4e5b` | `#e3eff7` | 7.34 | — | 20 | `tr.g > td.m` | board |
+| `#ffffff` | `#a0156e` | 7.43 | — | 10 | `div#B > p#p::before` | board, dialog, tracker view |
+| `#a0156e` | `#ffffff` | 7.43 | — | 8 | `p#p > b::before` | board |
+| `#f3f6f9@0.70` | `#15293c` | 7.46 | — | 2 | `div.md-footer__title > span.md-footer__direction` | site |
+| `#3e4e5b` | `#f5f9fc` | 8.11 | — | 45 | `tr.t > td.m` | board |
+| `#b4c3d1` | `#15293c` | 8.25 | — | 5 | `div#B > p#f.m` | board, tracker view |
+| `#3e4e5b` | `#fbfbf7` | 8.28 | — | 3 | `div#H > button#s` | board |
+| `#3e4e5b` | `#ffffff` | 8.59 | — | 110 | `header > span#n.m` | board |
+| `#10202e` | `#f1e1b0` | 12.73 | — | 12 | `header > button#g` | board, tracker view |
+| `#f3f6f9` | `#15293c` | 13.69 | — | 9 | `div.md-header__topic > span.md-ellipsis` | site |
+| `#10202e` | `#e3eff7` | 14.16 | — | 12 | `td.m > b` | board, dialog, site |
+| `#10202e` | `#f5f9fc` | 15.64 | — | 32 | `td > a` | board, tracker view |
+| `#10202e` | `#f7fafd` | 15.81 | — | 1 | `div.md-search > button.md-search__button::after` | site |
+| `#10202e` | `#fbfbf7` | 15.96 | 12.75 | 189 | `p.m > a` | site, tracker view |
+| `#10202e` | `#ffffff` | 16.56 | — | 38 | `td > a` | board, dialog, site, tracker view |
+
+**By night — 31 pairs, lowest 5.98:1**
+
+| text | ground | ratio | under a chart line | measured | where (first seen) | pages |
+|---|---|---|---|---|---|---|
+| `#90a3b1` | `#152535` | 5.98 | — | 23 | `td > a.m.k` | board |
+| `#d9e4ec@0.70` | `#15293d` | 6.39 | — | 2 | `div.md-footer__title > span.md-footer__direction` | site |
+| `#90a3b1` | `#111f2c` | 6.42 | — | 6 | `td > a.m.k` | board, dialog |
+| `#ee92d4` | `#3a2440` | 6.44 | — | 17 | `p#p > button.act` | board |
+| `#f38a80` | `#152535` | 6.50 | — | 9 | `tr.t > td.m.hot` | board |
+| `#90a3b1` | `#0d1720` | 6.94 | 6.26 | 30 | `p#l.m > span` | board, site, tracker view |
+| `#a9bbc8` | `#1a2d3e` | 7.14 | — | 20 | `tr.g > td.m` | board |
+| `#ee92d4` | `#111f2c` | 7.72 | — | 8 | `p#p > b::before` | board |
+| `#a9bbc8` | `#152535` | 7.89 | — | 45 | `tr.t > td.m` | board |
+| `#b4c3d1` | `#15293d` | 8.24 | — | 5 | `div#B > p#f.m` | board, tracker view |
+| `#bccd8f` | `#1a2d3e` | 8.24 | — | 13 | `td.m > b::before` | board, site |
+| `#8fb9f3` | `#111f2c` | 8.28 | — | 12 | `td > a` | site, tracker view |
+| `#b8c98c` | `#15293d` | 8.31 | — | 3 | `p#r.m > a` | board, tracker view |
+| `#0d1720` | `#ee92d4` | 8.36 | — | 10 | `div#B > p#p::before` | board, dialog, tracker view |
+| `#a9bbc8` | `#111f2c` | 8.46 | — | 110 | `header > span#n.m` | board |
+| `#8fb9f3` | `#0d1720` | 8.96 | 7.41 | 15 | `p > a` | site, tracker view |
+| `#a9bbc8` | `#0d1720` | 9.16 | — | 3 | `div#H > button#s` | board |
+| `#e8d4a0` | `#1a2d3e` | 9.64 | — | 58 | `p#p > a` | board, site, tracker view |
+| `#bccd8f` | `#111f2c` | 9.77 | — | 10 | `p#p > b` | board |
+| `#bccd8f` | `#0d1720` | 10.57 | 8.43 | 25 | `p#r.m > a` | board, site, tracker view |
+| `#e8d4a0` | `#152535` | 10.65 | — | 27 | `td.m > a` | board |
+| `#d9e4ec` | `#1a2d3e` | 10.92 | — | 12 | `td.m > b` | board, dialog, site |
+| `#e8d4a0` | `#111f2c` | 11.43 | — | 2 | `td.m > a` | board |
+| `#d9e4ec` | `#15293d` | 11.48 | — | 7 | `a.md-source > div.md-source__repository` | site |
+| `#c4d0d8` | `#0d1720` | 11.51 | — | 1 | `a.md-nav__link > span.md-ellipsis` | site |
+| `#d9e4ec` | `#152535` | 12.06 | — | 32 | `td > a` | board, tracker view |
+| `#0d1720` | `#e8d4a0` | 12.37 | — | 12 | `header > button#g` | board, tracker view |
+| `#d9e4ec` | `#111f2c` | 12.94 | — | 38 | `td > a` | board, dialog, site, tracker view |
+| `#d9e4ec` | `#121b25` | 13.43 | — | 1 | `div.md-search > button.md-search__button::after` | site |
+| `#d9e4ec` | `#0d1720` | 14.01 | 10.92 | 188 | `p.m > a` | site, tracker view |
+| `#ffffff` | `#15293d` | 14.83 | — | 2 | `div.md-header__topic > span.md-ellipsis` | site |
+
+The pairs merge the board's, the site's, the tracker view's and the dialog's where their colours are the same, hovered
+states included; `checks.json`'s `pairs` has every place each was seen. Decorative lines — the chart's graticule, its
+border, the boxes' borders — are not text and are not measured; the search box's border is an input's boundary, FM-006's
+3:1.
+
+**The tracker view, aligned as the mock.** `#=FM-002` at 1440, both schemes: no header in the view (`#H` has no box, as
+on today's board — it sits inside `#B`, which the view hides); the view starts at (283, 62), 874 px wide, its first
+heading at (283, 420) — **after and mock the same** in both schemes. Before: (186, 39), 900 px, the heading at
+(186, 407).
+
 ## Rebuild
 
 ```sh
@@ -119,6 +235,7 @@ git checkout HEAD -- work-tracker/brand/theme.css docs/stylesheets/shoalmark.css
 python3 shoalmark.py --html-only && uvx zensical build
 cp work-tracker/index.html $S/after/board.html && cp -R work-tracker/brand work-tracker/view site $S/after/
 node work-tracker/evidence/FM-002/slice-a/render.mjs $S work-tracker/evidence/FM-002/slice-a/shots
+node work-tracker/evidence/FM-002/slice-a/checks.mjs $S work-tracker/evidence/FM-002/slice-a/checks.json
 ```
 
 The boards' *sessions* line reorders with the clock: two boards built minutes apart differ there.
@@ -126,7 +243,8 @@ The boards' *sessions* line reorders with the clock: two boards built minutes ap
 ## Not verified
 
 - Firefox and Safari; print; a real phone — 390 px is Chrome's device metrics, not a device.
-- How the board reads over a long session, and the dialog's second screen (the command) under the theme — the checks
-  below open the first.
+- The dialog's second screen (the command) and the answer dialog under the theme: the checks open the acts' dialog's
+  first screen; no ask is open on today's board to open the answer dialog as he would.
+- A screen reader: the accessibility tree is what one is given, not what one says.
 - The site live: `docs.yml` deploys only while the repository is public, so the site is **built** at the next release
   tag and goes **live** at the go-public act (the pass's R1); nothing here publishes it.
