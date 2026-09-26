@@ -1,10 +1,9 @@
 ---
 id: FM-036
-status: In Progress
+status: Shipped
 considered: FM-030, FM-027, FM-003, FM-019, FM-009, FM-015
 tags: bug
 triaged: 2026-09-25
-rank: 4
 next: build
 tier: P2
 hook: "On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-day re-judgement's `keep P1 #1 build` on a raise — and `apply_worksheet` applied both in order on every run: the rank read 1, then 3, then 1, each run printing *Applied 1*. A re-judgement the same day has no home on the sheet: the newest filled row for a tracker must win, or a second one be refused."
@@ -13,6 +12,8 @@ hook: "On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the
 # FM-036 — A worksheet with two filled rows for one tracker applies both in order, so every run flips the rank
 
 ## What is true now
+
+**Shipped — status corrected by today's pass (2026-09-26, a `fix` verdict): a sheet's newest filled row wins and the earlier is reported *superseded on this sheet by the later row*, the rule printed by `--triage`, shipped in `v0.18.4` (`a7e5291`) with its suite case on the 2026-09-25 FM-030 rows. Its Done-when is met.**
 
 **Filed 2026-09-25 by the Principal seat, from its own pass's Reviewer (R1 on `fm/030-raised-the-missed-reads`); nothing is built.**
 The raise rule (his answer `9e48ee8`) re-judges a tracker the same day it is raised. The day's worksheet already held FM-030's
@@ -39,5 +40,6 @@ by replay, and the raise rule makes a second same-day judgement of one tracker t
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **Status corrected to Shipped** by the same-day pass after v0.18.4 (a `fix` verdict: merged code says Shipped): in `v0.18.4` (`a7e5291`). |
 | 2026-09-25 | Filed, from the Reviewer's R1 on the seat's same-day pass; `--related` listed, in its order, FM-027, FM-003, FM-019, FM-009, FM-015; held against those and against FM-030, whose re-judgement is the case (the first version named FM-033, which `--related` does not list — the Reviewer's R12; the order as the tool prints it — R16). |
 | 2026-09-25 | In Progress — 0.18.4's second build, with FM-030, on `fm/030-the-acts-owed-to-him-on-his-board`; the status set before its first build commit, as the FM-033 rule asks. |

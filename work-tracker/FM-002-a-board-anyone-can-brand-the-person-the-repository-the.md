@@ -1,13 +1,24 @@
 ---
 id: FM-002
-status: Shipped
+status: In Progress
 considered: FM-001
+next: owner
+ask: "Which theme do shoalmark's own board and site wear — the brand layer and the site's stylesheet, no tool change — and, separately, does the tool ship themes: `brand/themes/` and `--brand DIR --from <theme>`, code whose files every vendoring consumer receives?"
+ask-kind: ruling
+ask-since: 2026-09-26
+ask-options: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet | the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme | not yet — shoalmark's own board and site keep today's look; the tool ships no themes"
+ask-proposal: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet"
+triaged: 2026-09-26
+rank: 4
+tier: P2
 hook: "The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English only. And several kinds of user want to brand it at once: several people looking at one repository's board, several repositories, an organisation shipping its house brand into every repository it sets up. One rule, three files, four places — to be proven before it is built."
 ---
 
 # FM-002 — A board anyone can brand — the person, the repository, the organisation
 
 ## What is true now
+
+**Raised 2026-09-26 on the Owner's word, and re-opened for the brand's themes.** What shipped as 0.8.0 stands. The themes are mocked as FM-006's evidence (`evidence/FM-006/themes/` — the aligned board at `9467b83`, PR 82): `monochrome` and `shoalmark`, each for the board and the site. **Slice A**, the brand layer only: shoalmark's own board and site wear one — `work-tracker/brand/theme.css` from the chosen theme, two Plex Mono cuts (SemiBold, Italic; Latin-1 from `@ibm/plex-mono` 1.1.0, hashed as the Regular is), the site's `docs/stylesheets/`; no `shoalmark.py` change — the three markup hooks the mocks used are the pass's to place. **Slice B**, only if he rules it: the tool ships both as starters (`brand/themes/`, `--brand DIR --from <theme>`; code tier; a line on what vendoring consumers receive; the default look of a consumer that chooses nothing stays). The ask is on the board, the GtM seat's proposal disclosed; nothing is built before his answer and a pass's judgement of the build (FM-033); the order is after the `v0.18.4` tag (made today, 09:58). Carried into the build: AU-16 (every `::before`/`::after` marker with empty alt text, and the chart's coordinate labels hidden from screen readers), AU-18 (the Owner's box at about 100 characters of prose per line), contrast at 4.5:1 on every pair in both schemes re-measured on built files, real renders before and after in both schemes at desktop and phone width seen by the Owner before the merge, the site live only at the next release tag. **The tier is today's pass's: P2** — TRIAGE.md's current path does not name the restyle and nobody is harmed today; it is P1 the day the Owner writes it into his current path by his own signed commit, which FM-037's guard alone admits.
 
 **Shipped as 0.8.0 — merged by the Owner (#1) after the R&D; the origin's board wears its real brand from it.** Three optional files (`theme.css`, `logo.svg`,
 `labels.yaml`) in three places plus the defaults — the vendored tool's `brand/`, beside the trackers, the person's
@@ -27,10 +38,19 @@ over a generated file because their boards look different.
 Every pre-registered claim has an outcome under its forecast; the Owner has ruled on the merge; on merge, the
 README explains the whole feature in one section of at most 25 lines.
 
+**The themes, raised 2026-09-26 — done when:** slice A: shoalmark's own board and site wear the theme the Owner's answer names, from `work-tracker/brand/theme.css` and `docs/stylesheets/`, the two Plex Mono cuts (SemiBold, Italic) hashed beside the Regular, the board's header inline inside the graticule as his word of 09:23:58 draws it, no `shoalmark.py` change; the renders before and after, both schemes, desktop and phone width, seen by him before the merge; AU-16 (markers and the chart's coordinate labels silent to screen readers) and AU-18 (the Owner's box at about 100 characters of prose per line) held, every text pair at 4.5:1 re-measured on the built files; one Reviewer pass on the branch; the site live at the next release tag. Slice B, only on his ruling that the tool ships themes: `brand/themes/` holds both starters, `--brand DIR --from <theme>` writes one, the suites cover it, the CHANGELOG names it and what a vendoring consumer receives; the default look of a consumer that chooses nothing unchanged. Both judged by a pass before their first build commit (FM-033).
+
+## Raised
+
+*One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts.*
+
+- 2026-09-26 · the Owner — *proceed with the board's themes and bring the mockups into the dashboard and the site* (07:41:00, through the Auditor seat; his paste of 07:55:40, sha256 `34ee13d1…`); *for the dashboard I prefer the inline header … align for both; all dashboards aligned over all themes; the site's renderings are excluded* (09:23:58, in chat, spelling normalised; sha256 `21497e4d…`); *go — raise FM-002 as proposed; … for the v0.18.5 release we also add a landing page requirement alongside the restyle and rebrand of shoalmark's brand identity* (10:25:41, in chat, normalised; sha256 `416d54ce…`; the three hashes are the Principal's paste files', reported for the Auditor seat's match — the words themselves stand in the Principal's transcript at the times named) · the fact: two themes are mocked for the board and the site (FM-006's evidence) and the brand layer this tracker shipped carries none; the restyle is his line for 0.18.5 · undermines no signed rule — it widens this tracker's shipped scope, so the same-day pass is the seat's choice on his word, not the raise rule's.
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **Raised on the Owner's word and re-opened for the brand's themes** — status In Progress by the Principal seat; the themes' ask on the board (a ruling: which theme shoalmark's own board and site wear, and, apart, whether the tool ships themes; three options of 85, 108 and 84 characters; the proposal the GtM seat's, disclosed — the cheap step first), moved here from FM-006's body, where it was re-made on AU-24 (`7344a78`) because FM-006 holds its one ask (going public) and the freeze bars a new tracker; the slices, the carry-overs and the tier's reason in *What is true now*; judged by today's pass (its worksheet and TRIAGE.md's *Passes*). Nothing built. |
 | 2026-09-21 | **Merged (#1), released as 0.8.0.** First real use: the origin — an 8-line theme importing its brand tokens, its micro mark linked, two labels; looked at in a browser there in both schemes. The German labels wait for the first client's repository. |
 | 2026-09-21 | Spiked on `rd/fm-002-brand-layers`: 9 of 11 claims held outright; 90 + 144 checks green on Python 3.14 and 3.9; the outcome is under the pre-registration. Not merged. |
 | 2026-09-21 | Filed; the pre-registration committed before the spike. |
