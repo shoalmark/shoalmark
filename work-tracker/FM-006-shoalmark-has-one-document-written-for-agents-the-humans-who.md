@@ -228,6 +228,7 @@ and foot; `shoalmark`'s eight renders were re-made; the site is untouched.
   - *In neither slice as his word draws them:* the three markup hooks the mocks work around in CSS (the owner's box
     title as a label, one footer element, a class on striped rows) are `shoalmark.py` changes. Slice A wears the mocks'
     CSS, workarounds and all, on the board the tool writes today; the pass says where the hooks go.
+- **Moved to FM-002 on 2026-09-26** — the ask stands on FM-002's board, raised on the Owner's *go* of 10:25:41 and judged by the same-day pass (its worksheet `evidence/triage/triage-2026-09-26.md`); this tracker keeps its one ask, going public. The draft below is the record of the wording it took:
 - **The ask, raised when this tracker's open ask is answered** (a tracker holds one ask; the Principal raises it) —
   still a draft, re-made on 2026-09-26 on the Owner's word through the Auditor seat (AU-24): the first draft asked two
   things in one and had no option for the cheap step.
