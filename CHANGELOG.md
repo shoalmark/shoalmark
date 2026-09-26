@@ -2,7 +2,10 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.18.4
+## 0.18.4 — 2026-09-26
+
+**What the Owner owes has a time and a button, only he changes his intent and his current path, and the three CI failures
+of the v0.18.3 tag are fixed** (FM-030, FM-037, FM-035 — with FM-036, FM-029 and FM-031).
 
 - **Only the Owner changes his intent and his current path** (FM-037, the Auditor seat's AU-12; the Owner's word of
   2026-09-25 18:55:33 on its line *stop a seat from editing your TRIAGE.md*: *let's fix this first then* — the
@@ -27,6 +30,18 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   default branch's `[seats]` names the Owner, a seat's change to his two sections or his signers file fails `--check`;
   with no seat holding `answer` there, `--check` says it is not guarded; a first signers file lands on the default
   branch by his own hand.
+- **`--answer` verifies as the gate does; no signers file on the default branch verifies nothing** (FM-037, the cold
+  re-review's R1 and R2 on `b0d863e`). R1: `--answer`'s own check before it pushes read the clone's signers file, so mid
+  key rotation — his new key only on his branch's copy — it said *pushed*, and `--check` then refused the answer and
+  told him to sign a commit he had signed. It now asks `verified_as`, the gate's test against the default branch's file,
+  and pushes nothing that fails it; and neither it nor the gate says *sign it* to an SSH-signed commit whose key that
+  file does not hold for the identity: each names the file, and that a new key verifies once his signed commit to it is
+  merged. R2: where `gpg.ssh.allowedSignersFile` names a file in a checkout and the default branch does not carry it,
+  nothing verifies against it — the checkout's copy is whatever branch is checked out, and a checkout on a branch that
+  writes one let `--queue` read another pull request's change, signed with that branch's key, as clean. Every SSH-signed
+  commit then reads *`<file>` is not on <default branch>: commit its first version there, signed*. *On upgrade: where
+  the signers file sits in the repository and its default branch does not carry it yet, no SSH signature verifies until
+  it does.*
 - **An act owed to the Owner has a time** (FM-030; his line 6: *what the Owner owes is on their board with one button*).
   New front-matter keys: `due:` — an ISO time with its zone, `2026-09-26T07:30:00+02:00`, written by the seat that
   schedules the act (with the action ask, or when its time is set); `window:` — minutes after it in which the act can
@@ -54,15 +69,15 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   nothing of his is on it — for `--answer` too, so RV-479's check changed with it: it had expected `git branch -D`
   over his own unmerged answer. `[headings]` gains `acts` (German `Handlungen`); eight new labels. *Nothing to do on
   upgrade.*
-- **An invite and a notification per act** (FM-030; his word, 2026-09-25: *Better than only invites would be invites +
-  notifications*). `--invite <id>` writes `<tracker dir>/evidence/<id>/<id>-act.ics`, RFC 5545 as the standup's invite
-  is: the act's `due:` in UTC, a DURATION of its `window:`, an alarm 30 minutes before, CRLF, folded at 75 octets, the
-  same bytes for the same act; its SEQUENCE counts the act's records, so the file written after a `--due` replaces the
-  event. `--notify` posts one system notification per act due within 30 minutes, overdue or missed — `osascript`,
-  `notify-send`, PowerShell's toast, else a printed line — once per act per state, remembered in
-  `$XDG_STATE_HOME/shoalmark/notified.json` (`~/.local/state/shoalmark/`, `%LOCALAPPDATA%\shoalmark\` on Windows),
-  never in the repository; a notice that could not be posted is tried again. The README has a cron and a launchd
-  line; the tool installs nothing. *Nothing to do on upgrade; schedule `--notify` if you want it.*
+- **An invite and a notification per act** (FM-030; the Owner's word of 2026-09-25 13:33:29: *Better than only invites
+  would be invites + notifications*). `--invite <id>` writes `<tracker dir>/evidence/<id>/<id>-act.ics`, RFC 5545 as the
+  standup's invite is: the act's `due:` in UTC, a DURATION of its `window:`, an alarm 30 minutes before, CRLF, folded at
+  75 octets, the same bytes for the same act; its SEQUENCE counts the act's records, so the file written after a `--due`
+  replaces the event. `--notify` posts one system notification per act due within 30 minutes, overdue or missed —
+  `osascript`, `notify-send`, PowerShell's toast, else a printed line — once per act per state, remembered in
+  `$XDG_STATE_HOME/shoalmark/notified.json` (`~/.local/state/shoalmark/`, `%LOCALAPPDATA%\shoalmark\` on Windows), never
+  in the repository; a notice that could not be posted is tried again. The README has a cron and a launchd line; the
+  tool installs nothing. *Nothing to do on upgrade; schedule `--notify` if you want it.*
 - **`--standup` and `--owner` list the acts** (FM-030's first line: *`--standup` lists due and overdue acts, not
   just asks*). After the asks, *ACTS — yours, with their time*: missed and overdue first, then what falls due, soonest
   first, then what has no date yet — an accepted action with no `due:`, such as FM-007's hardware key, promised after
@@ -80,14 +95,17 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   its signature where the record is written (`%G?` — G good, U good from a key not trusted here, N none). An answer
   not yet committed says `not committed · N`; under Subversion there is no line. The key's tier is not printed yet
   (FM-007). *Nothing to do on upgrade; records written before keep what they have.*
-- **The pass's R3–R6 on FM-030's build** (the Reviewer's inline pass on `52cfcc7`). R3: `--done` where the act is on an
-  unmerged `answer/<id>` names that branch and his commits on it, as `--due` does, instead of *owes the Owner no act*.
-  R4: the dialogs' copied command single-quotes what he typed — `--answer <id> accept '<text>'`, `--done <id>
-  '<where>'`, a `'` written `'\''` — so a backtick or a `$` in it is inert; in `"…"` a shell ran and expanded them
-  into what he signs. R5: an hour of 24 is refused in `due:` and `done:` on every Python; 3.14 read `T24:00` as the
-  next midnight and 3.9 refused it, so the gate's word depended on the interpreter. R6: `--notify` exits 1 when a
-  notice could not be posted and says *nothing remembered* when nothing is; the README's cron line names Linux's
-  session bus for `notify-send` and keeps its output in a log, and the launchd plist keeps its output too.
+- **The pass's R3–R8 on FM-030's build** (FM-030; the Reviewer's passes on `52cfcc7` and `647da17`). R3: `--done` where
+  the act is on an unmerged `answer/<id>` names that branch and his commits on it, as `--due` does, instead of *owes the
+  Owner no act*. R4: the dialogs' copied command single-quotes what he typed — `--answer <id> accept '<text>'`, `--done
+  <id> '<where>'`, a `'` written `'\''` — so a backtick or a `$` in it is inert; in `"…"` a shell ran and expanded them
+  into what he signs. R5: an hour of 24 is refused in `due:` and `done:` on every Python; 3.14 read `T24:00` as the next
+  midnight and 3.9 refused it, so the gate's word depended on the interpreter. R6: `--notify` exits 1 when a notice
+  could not be posted and says *nothing remembered* when nothing is; the README's cron line names Linux's session bus
+  for `notify-send` and keeps its output in a log, and the launchd plist keeps its output too. R7: that cron line starts
+  with `mkdir -p "$HOME/.local/state/shoalmark" &&` — the shell opens the log before the tool runs, and on a fresh home
+  its folder did not exist, so `--notify` never ran. R8: `due:` and `done:` bound a zone's minutes to 00–59 —
+  `fromisoformat` read `+05:99` as `+06:39` on both Pythons, and the gate passed it.
 - **`--queue` reads a head that is the verdict commit itself** (FM-031; seen in the parent project on the pinned 0.18.3,
   2026-09-25 18:25:56). PR 851's head was the Reviewer's verdict (`Reviewed:` its parent, READY), its file
   `evidence/PD-400/review-….md`; the project's review gate read the head as covered — *1 commit past the reviewed tip,
@@ -96,6 +114,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `<tracker dir>/evidence/`, as the gate reads it; and the review folder is `[paths] reviews` in `shoalmark.toml`
   (`evidence/reviews/` by default, a glob such as `evidence/*/` allowed), for the addenda after a verdict. *Nothing to
   do on upgrade; a repository that files reviews beside each tracker's evidence may set `reviews = "evidence/*/"`.*
+- **`--queue` reads an answer branch by its answer commit, not its head** (FM-031; seen in the parent project's pinned
+  queue at 21:24:12 on 2026-09-25 and its PR 855 cold review, RV-573, 00:44 on 2026-09-26). An answer branch whose head
+  is the Reviewer's docs-pass commit on the answer read *wait: not an answerer (reviewer@seat)* — its PRs 836, 849 and
+  853. An `answer/*` pull request is now read by the newest commit of its own that changed an `answer:` line, where every
+  commit past it touches review files only — the review folder, `sessions.md`, a `review*.md` anywhere under
+  `<tracker dir>/evidence/` — and the line names that commit, `signed <sha>`; anything else past it, and the head is
+  read, as before. Built in 0.18.4. *Nothing to do on upgrade.*
 - **macOS: a browser check that hangs fails; one that cannot run here is skipped by name** (FM-035, the v0.18.3 tag's
   CI on macos-latest 3.12). What is known: the log shows the suite dying at `subprocess.TimeoutExpired`, 60 s into the
   answer dialog's check, on the page where OK opens the second screen — which copies the command at once. What is
@@ -104,7 +129,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   absent or unable to start — its control run on a blank page failing — skips the block by name, with the reason and
   its number of checks; Chrome present and a page not returning within 60 s, twice, FAILS the check and the suite
   exits 1. The run always ends with `skipped here: N checks`, zero or not, and says a run with skips is not a full
-  pass. A test-only change.
+  pass. A test-only change. *Open, for the release after* (the CI fix's review, R3): the pre-commit hook runs each suite
+  with its output to `/dev/null`, so on a run that exits 0 a skipped block's name and *this is NOT a full pass* are not
+  shown locally; CI prints the suites whole.
 - **Windows: a brand SVG's line ends are counted as committed** (FM-035, the v0.18.3 tag's CI on windows-latest 3.9 and
   3.12). The size cap counted `wordmark.svg` and `logo.svg` as the checkout wrote them: a Windows checkout
   (`core.autocrlf`) writes `\r\n`, one byte more per line, and a file near the cap was refused there and shown
@@ -118,6 +145,19 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   --state merged` and `--state closed` return with a merge or close time in the last day, newest first, with its time in
   UTC and its branch — so a seat's *still open* line is checked against the forge in the same turn. *Nothing to do on
   upgrade.*
+
+*Named for 0.18.4 and not in it* — each stays a line on its tracker: FM-033's `--queue` and board marks on a pushed branch
+whose commits name an unjudged tracker, and the board's activity beside judgement (named in the 0.18.3 section); FM-028's
+`--triage --day`, with the INDEX's `Generated` date; FM-030's move after an answer following the picked option, and
+`--answer`'s commit subject cut between words; FM-031's own answer branches pushed without a pull request, in `--queue`;
+FM-029's real-history relation case for FM-032's record; FM-007's link to the signing page (`…/signing/`, which the built
+site serves as `signing.html`) and the key's tier in what the tool says; FM-006's local site rebuilt after every pull, and
+`docs.yml`'s first line.
+
+*On upgrade:* new front-matter keys `due:`, `window:` and `done:`, and one optional configuration key, `[paths] reviews`;
+`--notify` runs only where you schedule it. Where the default branch's `[seats]` names the Owner, a seat's change to his
+two sections or his signers file now fails `--check`; where the signers file sits in the repository, it verifies
+from the default branch's copy, and from nothing until that copy exists.
 
 ## 0.18.3 — 2026-09-24
 
