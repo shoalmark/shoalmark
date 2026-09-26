@@ -22,9 +22,9 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
-**A landing page is a requirement of the v0.18.5 release, alongside the restyle and rebrand of shoalmark's brand identity — the Owner's word in chat, 2026-09-26 10:25:41 (spelling normalised; sha256 `416d54ce…`; not a signed answer): the mock the GtM/Design session filed at `9704140` (PR 82, `evidence/FM-006/landing/`) is its starting point. The seat's reading, marked: the landing page is the site's start page unless he says otherwise; where it ships is decided with the 0.18.5 plan, and its build is judged by a pass before its first build commit (FM-033). The themes' ask now stands on FM-002 (raised today on his word); this tracker's one ask stays *going public*, which he answers now that v0.18.4 has landed (his word, the same turn).**
+**A landing page is a requirement of the v0.18.5 release, alongside the restyle and rebrand of shoalmark's brand identity — the Owner's word in chat, 2026-09-26 10:25:41 (spelling normalised; sha256 `416d54ce…`; not a signed answer): the mock the GtM/Design session filed at `9704140` (PR 82, `evidence/FM-006/landing/`) is its starting point. The seat's reading, marked: the landing page is the site's start page unless he says otherwise; where it ships is decided with the 0.18.5 plan, and its build is judged by a pass before its first build commit (FM-033). The themes' ask moved to FM-002 (raised today on his word) and is answered there (`4e00f85`, PR 90, option 2); this tracker's one ask, *going public*, is answered too (`8defe63`, PR 91, the proposal: after the scoring, gates held), its act not yet recorded. The site is built at a release tag and live only at that act: `.github/workflows/docs.yml` deploys only when `github.event.repository.private == false`, and the repository is private until then — so the Google Fonts item below (IBM Plex, the open item of 2026-09-24; slice L's mock loads Plex Mono and Silkscreen from Google too, `evidence/FM-006/landing/index.html:11`) is due before publication.**
 
-**The themes are filed on the Owner's word (2026-09-25, narrowed 2026-09-26): two, `monochrome` and `shoalmark`, each for the board and the site, each drawing a nautical chart behind the page (muted in `monochrome`); no setting — a theme is a file in a place. Nothing is built. Its drafted ask was re-made on 2026-09-26, on his word through the Auditor seat (AU-24): which theme shoalmark's own board and site wear, and whether the tool ships themes, asked apart, the cheap step first. It waits for the going-public ask to be answered; the line is filed below.**
+**The themes are filed on the Owner's word (2026-09-25, narrowed 2026-09-26): two, `monochrome` and `shoalmark`, each for the board and the site, each drawing a nautical chart behind the page (muted in `monochrome`); no setting — a theme is a file in a place. Nothing is built. Its drafted ask was re-made on 2026-09-26, on his word through the Auditor seat (AU-24): which theme shoalmark's own board and site wear, and whether the tool ships themes, asked apart, the cheap step first. It moved to FM-002 on 2026-09-26 and is answered there (`4e00f85`, PR 90), as the going-public ask is here (`8defe63`, PR 91); the slices are FM-002's to build, and the line below is the record as filed.**
 
 **A landing page is mocked in the `shoalmark` theme on the Owner's word (2026-09-26): attract mode, a pixel chart of the German Wadden coast with this repository's 23 defects as its wrecks. Nothing is built, and no ask is drafted; the line is filed below.**
 
@@ -216,11 +216,13 @@ and foot; `shoalmark`'s eight renders were re-made; the site is untouched.
 - **Evidence:** [`evidence/FM-006/themes/`](evidence/FM-006/themes/README.md) — the four stylesheets, the script that
   rebuilds the mocks from the board and the site, the renders, what was checked, what was not.
 - **The Auditor seat's counsel (relayed by the Owner):** its three fixes are in every file. Its hold (file after v0.18.4
-  is tagged) was lifted by the Owner's *"You file this"*. v0.18.4 is not tagged.
+  is tagged) was lifted by the Owner's *"You file this"*. v0.18.4 was tagged on 2026-09-26 at 09:58 (`a7e5291`).
 - **Filed here** because the freeze (21 open) bars a new tracker, FM-002 (Shipped) built the brand layers, and this
   tracker holds the board's and the site's brand since 0.18.2.
-- **Slice A is the brand layer; slice B is code** — the cheap step first. A pass judges the build before its first
-  build commit (FM-033), the tier stated per slice, and it waits for the answer.
+- **Slice A is the brand layer; slice B is code** — the cheap step first. Both are FM-002's since 2026-09-26: its
+  answer (`4e00f85`, PR 90, option 2) rules both in, and the pass of 2026-09-26 judged the build before its first build
+  commit (FM-033), the tier stated per slice, the markup hooks in slice B. FM-002's *What is true now* and *Done when* are
+  the slices' home; the lines below are the record as filed.
   - *Slice A — shoalmark's own board and site:* `work-tracker/brand/theme.css` from the chosen theme; two Plex Mono
     cuts, SemiBold and Italic, Latin-1, from `@ibm/plex-mono` 1.1.0, hashed as the Regular is (`10d3c7fa…`); the site's
     theme in `docs/stylesheets/`. No `shoalmark.py` change, and none of the files `--vendor` copies: no consumer
@@ -231,7 +233,7 @@ and foot; `shoalmark`'s eight renders were re-made; the site is untouched.
   - *In neither slice as his word draws them:* the three markup hooks the mocks work around in CSS (the owner's box
     title as a label, one footer element, a class on striped rows) are `shoalmark.py` changes. Slice A wears the mocks'
     CSS, workarounds and all, on the board the tool writes today; the pass says where the hooks go.
-- **Moved to FM-002 on 2026-09-26** — the ask stands on FM-002's board, raised on the Owner's *go* of 10:25:41 and judged by the same-day pass (its worksheet `evidence/triage/triage-2026-09-26.md`); this tracker keeps its one ask, going public. The draft below is the record of the wording it took:
+- **Moved to FM-002 on 2026-09-26** — the ask stood on FM-002's board, raised on the Owner's *go* of 10:25:41 and judged by the same-day pass (its worksheet `evidence/triage/triage-2026-09-26.md`), and is answered there (`4e00f85`, PR 90, option 2); this tracker keeps its one ask, going public, answered (`8defe63`, PR 91). The draft below is the record of the wording it took:
 - **The ask, raised when this tracker's open ask is answered** (a tracker holds one ask; the Principal raises it) —
   still a draft, re-made on 2026-09-26 on the Owner's word through the Auditor seat (AU-24): the first draft asked two
   things in one and had no option for the cheap step.
