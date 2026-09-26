@@ -90,6 +90,13 @@ status reads *Shipped* or *Closed*; one window, from the first filing to the mea
 - **The registry is the file every stream conflicts on.**
 - **Only the Owner holds the whole queue,** so he is the integrator by default.
 
+**Widened 2026-09-26, a line under the freeze for 0.18.4 (S2, `--queue`):** `--queue` reads an `answer/*` pull request by its
+head commit's author, so an answer branch whose head is the Reviewer's docs-pass commit on the answer prints *wait: not an
+answerer (reviewer@seat)* — the parent project's PRs 836, 849 and 853, in its pinned queue's line at 21:24:12 on 2026-09-25
+and its PR 855 cold review (RV-573, 00:44 on 2026-09-26). The queue must read an answer branch by its answer commit — the
+commit that wrote `answer:` — not its head, where only review files follow it. It fits the 0.18.4 cut with a suite case (the
+stubbed forge, a review commit on top of the answer): built on `release/0.18.4` in its own commit, before the cut.
+
 ## Ruled — the rules for a message between two sessions
 
 **Ruled 2026-09-24 21:29:12 by the Owner's signed answer `eef0c2e` (PR 62): *the nine hold as written* — the proposal, the first of two.** Recorded as open the same evening at 19:53 on the Auditor seat's check 18 on v0.18.2 (P2), through the Owner; until then neither ruled nor recorded. Sessions of one account can message each other directly (the harness's peer channel, found 2026-09-23 when two
@@ -192,3 +199,4 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 | 2026-09-24 | Found the same evening, a line under the freeze for 0.18.4 (S2, `--queue`): `pushed_branches` leaves `answer/*` out by design, so his own three answers, pushed by `--answer` at 21:27–21:32 and opened as pull requests only at 21:44 on the Principal's word in chat, read *0 waiting on you* — an answer branch without a pull request waits on his press and belongs in the queue as *merge: your answer — open its pull request*. |
 | 2026-09-25 | The Auditor seat's AU-28 on PR 64, through the Owner (06:52:21): the nine rules were in this body only, not in the contract — the same burying as its AU-1 on FM-033's rule. Fixed in the pull request before its merge: the nine stand in `AGENTS.md`'s *How the loop runs*, beside FM-031's other rules, naming `eef0c2e`. Its AU-29 (the `## Asks` record names no signing commit) is a 0.18.4 line in FM-029. |
 | 2026-09-25 | The Reviewer's R4 on PR 64: the contract's bullet had paraphrased the nine; it now carries them in this body's own words. R5: the approximated times replaced by the transcript's — the Auditor's AU-28 and AU-29 relayed in one message at 06:52:21 (this row's first version claimed two replacements and cited 07:00:34, which names neither finding; corrected in place while unmerged, the Reviewer's R6). |
+| 2026-09-26 | A line for 0.18.4 under the freeze (S2, `--queue`), the widening above: an answer branch whose head is the Reviewer's docs-pass commit read *wait: not an answerer (reviewer@seat)* — the parent's PRs 836, 849 and 853, its pinned queue's line at 21:24:12 on 2026-09-25 and its PR 855 cold review (RV-573, 00:44). The queue reads an answer branch by the commit that wrote `answer:`, not its head; 0.18.4 builds it on `release/0.18.4`, its own commit, with a suite case. |
