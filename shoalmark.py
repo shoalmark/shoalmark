@@ -1259,10 +1259,11 @@ def have_not(shas):
 
 
 def answer_reading(head):
-    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when its
-    head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an
-    author who may not answer, named, whatever the commit's signature (R8 — a signed commit by someone else read
-    *unsigned*, and the impostor is the case the Owner most needs named); else on the signature."""
+    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when the
+    author of `head` — its answer commit, as `queue_actions` finds it — may answer and the commit verifies as him — the
+    gate's one test, `verified_as` — else it waits: on an author who may not answer, named, whatever the commit's signature
+    (R8 — a signed commit by someone else read *unsigned*, and the impostor is the case the Owner most needs named); else on
+    the signature."""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
     may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
     if not may:
@@ -1295,7 +1296,9 @@ def queue_actions(prs, branches=()):
     """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
     inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
     verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
-    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict. For a pull
+    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on its answer
+    commit, the newest of its own that changed an `answer:` line, where only review files follow it (FM-031, 0.18.4: a
+    Reviewer's docs pass on the answer read *not an answerer* by the head); else on its head. For a pull
     request the first rule that holds is the action:
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
@@ -1372,16 +1375,24 @@ def queue_actions(prs, branches=()):
 
     def addenda_only(r, h, v):
         """every commit from r to h touches only the review folder or the registry — the verdict `v` its own review file
-        anywhere under evidence/ too — and none is a merge, which brings a line's files"""
+        anywhere under evidence/ too, and with `v` None every commit its own — and none is a merge, which brings a line's files"""
         def read():
             out = git("log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}")
             for chunk in out.stdout.split("\x00")[1:]:
                 shas, *paths = chunk.strip("\n").split("\n")
                 sha, *parents = shas.split()
-                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (sha == v and own_review.match(x))) for x in paths):
+                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (v in (None, sha) and own_review.match(x))) for x in paths):
                     return False
             return out.returncode == 0
         return cached(("addenda", r, h, v), read)
+
+    def answered_at(p):
+        """the commit an `answer/*` pull request is read by: the newest of its own that changed an `answer:` line in a
+        tracker, where every commit past it is a review file's only (`addenda_only`, any commit's own `review*.md`) — the
+        parent project's PRs 836, 849 and 853, a Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)*
+        by the head; anything else past it, and the head is read, as before"""
+        at = git("log", "-1", "--format=%H", "-G", "^answer:", head(p), "^" + base(p), "--", rel).stdout.strip()
+        return at if at and (at == head(p) or addenda_only(at, head(p), None)) else head(p)
 
     rows = []
     for p in prs:
@@ -1399,7 +1410,7 @@ def queue_actions(prs, branches=()):
         elif (guarded := triage_reading(head(p), base(p))):
             rows.append((p, "wait", *guarded))
         elif p["headRefName"].startswith("answer/"):
-            rows.append((p, *answer_reading(head(p))))
+            rows.append((p, *answer_reading(answered_at(p))))
         elif last is None:
             rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
         elif last[1] == "NOT READY":

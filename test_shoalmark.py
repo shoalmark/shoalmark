@@ -3874,6 +3874,19 @@ with tempfile.TemporaryDirectory() as tmp:
     by_name_ = read_(); cfg_.write_text(plain_cfg); fm.configure(root)
     check(f"R1 · with `[seats]` naming the Owner by his git name, as the gate matches a seat (email or name), his signed answer reads `merge: your answer` (saw {by_name_})",
           by_name_ == ["merge: your answer", "wait: unsigned answer", "wait: not an answerer (m@m)"])
+    # FM-031, 0.18.4 · an answer branch is read by its answer commit — the one that wrote `answer:` — where only review files
+    # follow it: the Reviewer's docs pass on the answer read `not an answerer (reviewer@seat)` by its head (the parent's PRs 836,
+    # 849, 853 — its review file beside the tracker's evidence, as the parent files it); a seat's other change is read as before
+    git(root, "checkout", "-q", "-b", "answer/msr-001-reviewed", signed_); (root / "docs/work-tracker/evidence/MSR-001").mkdir(parents=True, exist_ok=True)
+    (root / "docs/work-tracker/evidence/MSR-001/review-the-answer.md").write_text("# Review — the answer to MSR-001\n\nREADY\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "review: the answer to MSR-001 — READY", "--author=reviewer <reviewer@seat>"); reviewed_ = sha()
+    git(root, "checkout", "-q", "-b", "answer/msr-001-built", signed_); (root / "z.txt").write_text("z"); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "MSR-001: a seat's change on the answer", "--author=seat <s@s>"); built_ = sha()
+    on_top_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(
+        [{"number": n_, "title": "t", "headRefName": "answer/msr-001", "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"} for n_, h_ in ((4, reviewed_), (5, built_))]))}
+    check(f"FM-031, 0.18.4 · an `answer/*` pull request is read by its answer commit, the one that wrote `answer:`, where only review files follow it: a Reviewer's docs pass on the signed answer reads `merge: your answer`, naming the answer commit — its head read `not an answerer (reviewer@seat)`; a seat's other change on it is read by its head, as before (saw {on_top_})",
+          on_top_ == {4: ("merge: your answer", f"signed {signed_[:7]}"), 5: ("wait: not an answerer (s@s)", "")})
     git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
     git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
     untrusted_ = read_(); code_, _, err_ = run(root, "--check")
