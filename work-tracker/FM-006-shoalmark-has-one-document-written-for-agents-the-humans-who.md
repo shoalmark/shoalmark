@@ -19,6 +19,10 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**The themes are filed on the Owner's word (2026-09-25, narrowed 2026-09-26): two, `monochrome` and `shoalmark`, each for the board and the site, each drawing a nautical chart behind the page (muted in `monochrome`); no setting — a theme is a file in a place. Nothing is built. Its drafted ask was re-made on 2026-09-26, on his word through the Auditor seat (AU-24): which theme shoalmark's own board and site wear, and whether the tool ships themes, asked apart, the cheap step first. It waits for the going-public ask to be answered; the line is filed below.**
+
+**A landing page is mocked in the `shoalmark` theme on the Owner's word (2026-09-26): attract mode, a pixel chart of the German Wadden coast with this repository's 23 defects as its wrecks. Nothing is built, and no ask is drafted; the line is filed below.**
+
 **The page on his word in TRIAGE.md is built, in review — 2026-09-26, the GtM seat, after FM-037's guard merged (PR 83):** `docs/triage.md` and `docs/de/triage.md`, one nav line each, on `fm/006-the-page-on-his-word-in-triage-md-built`; every claim labelled *the tool*, *review* or *the text alone*; the guard's refusal run in scratch repositories (`evidence/FM-006/triage-page/`). A Reviewer checks every claim against evidence before the merge.
 
 **The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 10 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
@@ -149,12 +153,112 @@ a Reviewer checks every claim against evidence before the merge; the term stays 
 The refusal quoted on each page is the output of `evidence/FM-006/triage-page/demo.sh` and `demo-de.sh` (their `.out` beside them): an
 invented Owner, a seat, the tool of `88c7b0c`, the village library as the intent; the German run set up as `docs/de/setup.md` §2 says.
 
+## The themes, for the board and the site — filed 2026-09-25 by the GtM seat, narrowed 2026-09-26
+
+**On the Owner's word in chat** (quoted in the evidence, spelling normalised) — 2026-09-25: *"I agree to this
+direction"*; *"we need a `shoalmark` theme besides the `monochrome` theme … a strong starter"*. 2026-09-26: *"Only
+`monochrome` + `shoalmark + graticule` themes. The design must go also into `site/`"*; *"the graticule must look more
+like on a real nautical chart and have also coordinates / degrees"*; *"the monochrome site shall also get the
+graticule, but muted"*; *"move the claim, shoalmark and version outside the inner chart area into a footer"*. His
+words, not a signed answer: the ask below makes them one.
+
+**His word in chat of 2026-09-26 09:23:58** (spelling normalised; with it two screenshots of the committed renders, the
+top of `monochrome-light.png` and the top of `shoalmark-dark.png`, not filed): *"For the dashboard I prefer this 'inline
+header' (shoalmark logo + light/dark switch) variant [the first] over this variant used in the dark mode, where the
+header sits outside the graticule [the second]. Align for both. All dashboards aligned over all themes. The `site/`
+renderings are excluded."* The seat's reading, marked as such: on the board, the mark, the name and the switch stand
+inside the graticule, as `monochrome`'s board has them, in both themes and every board view; the site keeps its header.
+A word in chat, not a signed answer; the drafted ask is unchanged by it. **What it changed:** of the stylesheets, only
+`shoalmark.css` — the navy band and its drying line left the board's top and stay the board's foot and the site's header
+and foot; `shoalmark`'s eight renders were re-made; the site is untouched.
+
+- **The two themes, each for the board and the documentation site** — which one shoalmark's own wear, and whether the
+  tool ships them, is the ask's:
+  - `monochrome`: the terminal cut, IBM Plex Mono on one grid;
+  - `shoalmark`: the brand's own, a sea chart's ECDIS colours, magenta only for what is owed to the Owner, the status
+    marks in the buoyage's shapes; on the board its header — the mark, the name, the switch — inline inside the
+    chart's top border as `monochrome`'s (his word of 09:23:58), the navy band and its drying line the board's foot
+    and the site's header and foot.
+  - on the board, both: the last line — the claim, the mark, the name, the version — in a foot of its own below the
+    chart, full width, as the site's.
+- **The chart, in both:** a Mercator sheet of Neuwerk's Watt drawn behind the page — parallels every minute, meridians
+  every two, a chart's graduated border, degrees and minutes along it; muted in `monochrome`, blue-grey in `shoalmark`.
+  CSS only, never read aloud, shown only where the margins hold it.
+- **How a theme is chosen:** choosing a theme is putting a file in a place — for shoalmark's own board,
+  `work-tracker/brand/theme.css`; if the tool ships themes, `--brand DIR --from <theme>` writes a starter from one.
+  FM-002's four places and its one rule stay, with no setting, and the tool's default look stays for every consumer.
+  shoalmark's own board and site wear at most one theme; the ask says which, or none.
+- **Dropped on 2026-09-26:** the mockups `catkin`, `bagels` and `seekarte`, on the Owner's *"only"*. They are in git at
+  `96aa05e`.
+- **How it was mocked:** CSS only, on the real board and the real site. Every text pair a rule uses is at 4.5:1 or more
+  in both schemes, the chart's figures included. Markers and figures are never read aloud; Chrome's accessibility tree
+  shows it, with a control run.
+- **Evidence:** [`evidence/FM-006/themes/`](evidence/FM-006/themes/README.md) — the four stylesheets, the script that
+  rebuilds the mocks from the board and the site, the renders, what was checked, what was not.
+- **The Auditor seat's counsel (relayed by the Owner):** its three fixes are in every file. Its hold (file after v0.18.4
+  is tagged) was lifted by the Owner's *"You file this"*. v0.18.4 is not tagged.
+- **Filed here** because the freeze (21 open) bars a new tracker, FM-002 (Shipped) built the brand layers, and this
+  tracker holds the board's and the site's brand since 0.18.2.
+- **Slice A is the brand layer; slice B is code** — the cheap step first. A pass judges the build before its first
+  build commit (FM-033), the tier stated per slice, and it waits for the answer.
+  - *Slice A — shoalmark's own board and site:* `work-tracker/brand/theme.css` from the chosen theme; two Plex Mono
+    cuts, SemiBold and Italic, Latin-1, from `@ibm/plex-mono` 1.1.0, hashed as the Regular is (`10d3c7fa…`); the site's
+    theme in `docs/stylesheets/`. No `shoalmark.py` change, and none of the files `--vendor` copies: no consumer
+    receives anything.
+  - *Slice B — only if he rules the tool ships themes:* `brand/themes/` and `--brand DIR --from <theme>` in
+    `shoalmark.py`; code, and every vendoring consumer receives the files. A consumer that chooses nothing keeps the
+    tool's default look (FM-002's per-repository choice).
+  - *In neither slice as his word draws them:* the three markup hooks the mocks work around in CSS (the owner's box
+    title as a label, one footer element, a class on striped rows) are `shoalmark.py` changes. Slice A wears the mocks'
+    CSS, workarounds and all, on the board the tool writes today; the pass says where the hooks go.
+- **The ask, raised when this tracker's open ask is answered** (a tracker holds one ask; the Principal raises it) —
+  still a draft, re-made on 2026-09-26 on the Owner's word through the Auditor seat (AU-24): the first draft asked two
+  things in one and had no option for the cheap step.
+  - kind: `ruling` — a decision of intent; no hands of his are needed for the answer.
+  - ask: *Which theme do shoalmark's own board and site wear — the brand layer and the site's stylesheet, no tool
+    change — and, separately, does the tool ship themes: `brand/themes/` and `--brand DIR --from <theme>`, code whose
+    files every vendoring consumer receives?*
+  - options: shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet | the tool ships
+    monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme | not yet —
+    shoalmark's own board and site keep today's look; the tool ships no themes (85, 108 and 84 characters)
+  - proposal: shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet — **the GtM seat's
+    proposal**, because it is the cheap step: one Reviewer pass instead of adding the code tier (inline passes, tests,
+    CHANGELOG), and none of the files `--vendor` copies changes, so no release after 0.18.4 hands a vendoring consumer a
+    theme before he rules the tool ships them.
+  - `monochrome` is not offered as the worn theme: the GtM seat does not propose it. Under the second option it ships
+    as a starter.
+
+## The landing page — mocked 2026-09-26 by the GtM seat
+
+**On the Owner's word in chat, 2026-09-26** (quoted in the evidence, spelling normalised): *"a landing page for
+`shoalmark` showing the current release version, its features and claims: For Agents, For People … the chart renders
+ship wrecks, each with a tracker number, incident ID and a short incident report … make it count!"*; on the result,
+*"you nailed it — file, commit and push"*. His words, not a signed answer.
+
+- **What it is:** one HTML file in the `shoalmark` theme's night palette — an arcade's attract screen whose playfield
+  is a pixel chart of the German Bight's Wadden coast, Borkum to Dithmarschen, with the themes' graduated border and
+  graticule. Its wrecks are the 23 trackers tagged `bug` or `security`: tracker number, the commit that filed it as the
+  incident ID, the filing day, the status, the report from `hook:`. The release is v0.18.4; 1P for agents, 2P for
+  people, the high scores, the register, the stages — every claim read from `docs/index.md`, `README.md`,
+  `CHANGELOG.md` and the trackers, each source named in the evidence.
+- **Checked:** no script error at 1440, 1024 and 390 px; every text pair at 4.5:1 or more; the wrecks keyboard-reachable
+  and named; nothing moves under reduced motion. Not verified: Firefox, Safari, a screen reader, print.
+- **Evidence:** [`evidence/FM-006/landing/`](evidence/FM-006/landing/README.md) — the page and four renders.
+- **Not built, not asked.** Where it would live — the site's start page, or a page of its own — and whether it ships
+  are the Owner's to rule; nothing is drafted for the board while FM-006's asks wait. The statuses on the page are a
+  snapshot of 2026-09-26.
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **A landing page mocked in the `shoalmark` theme** by the GtM seat on the Owner's word in chat: attract mode, a pixel chart of the German Wadden coast whose wrecks are this repository's 23 defects — tracker, filing commit, day, status, report — with v0.18.4, 1P for agents, 2P for people, the high scores and the register, every fact sourced in the evidence. `evidence/FM-006/landing/` (the page, four renders). Nothing built, nothing asked; nothing published outside the repository. |
+| 2026-09-26 | **The board's header inline inside the graticule in both themes**, by the GtM seat on the Owner's word in chat of 09:23:58 (filed in the themes section, spelling normalised, the seat's reading marked; not a signed answer, and nothing on the ask changes): `shoalmark.css` takes the navy band and its drying line off the board's top — they stay the board's foot and the site's header and foot — and the mark, the name and the switch stand inside the chart's top border as `monochrome`'s, in the chart's ink on its ground, on the board and behind the dialog, both schemes; the tracker view, which shows no header on any board, starts inside the chart where `monochrome`'s does; the header's ten pairs measured, the lowest 5.41:1. `shoalmark`'s board, dialog, tracker view and foot re-made with the committed scripts, offline; `monochrome`'s and the sites' renders byte-identical. The themes pass's P3s fixed forward: R1 (`monochrome`'s foot 4.50:1 by day, no margin; the figures from 4.74:1; the sites' pairs from 4.74:1), R3 (a phone's 390px measured: the table scrolls to 505px themed, 905px today), R4 (*wear at most one; the ask says which, or none*; *a starter if the tool ships themes*); R2 a line for slice A; R5 left to the FM-033 pass. |
+| 2026-09-26 | **The themes' drafted ask re-made before it reaches the board**, by the GtM seat on the Owner's word of 07:41:00 through the Auditor seat (AU-24; pasted by him at 07:55:40, sha256 `34ee13d1…`): the draft asked two things in one — whether the tool ships themes and which theme shoalmark's own board and site wear — and had no option for the cheap step. The ask, a ruling, now asks them apart; its three options each say both: the `shoalmark` theme worn and no themes shipped yet (85 characters), both themes shipped as starters and `shoalmark` worn (108), not yet — today's look, no themes shipped (84). The proposal is the first, disclosed as the GtM seat's: the cheap step, one Reviewer pass, and no release after 0.18.4 hands a vendoring consumer a theme before he rules it. `monochrome` is not offered as worn: the seat does not propose it. *The build is code* became *slice A is the brand layer; slice B is code*: slice A is `work-tracker/brand/theme.css`, two Plex Mono cuts and `docs/stylesheets/`, no `shoalmark.py` change; slice B only on his ruling. The three markup hooks are `shoalmark.py` changes, in neither slice as his word draws them; the pass places them. *What is true now*, the two themes' bullet and *How a theme is chosen* no longer state the tool's shipping as filed. The evidence's README carries the same words. Still a draft, raised when the going-public ask is answered. |
 | 2026-09-26 | **The page re-made on its Reviewer's R3–R7** (`f4188ee`, NOT READY on `59febae`), in both languages: FM-007's raise quoted whole, *undermines: TRIAGE.md path 5, FM-033's answer* (R3); tier 2 as the signing page has it, stopping the accident while an agent that means harm can fake the prompt, and only tier 3 making the key the Owner's alone (R4); what a pass re-judges: its sheet lists work in progress not judged in seven days, new filings and raised trackers, nothing reacts to a path edit by itself, and a tracker judged this week keeps its tier until its next pass unless a raise names a path line (R5); the raise check named as the one place the tool reads the path's content, its line numbers only, beside `--triage`'s presence test and the guard's byte comparison (R6); the three lead-in sentences labelled (R7). |
 | 2026-09-26 | **The page on his word in TRIAGE.md built** by the GtM seat after FM-037's guard merged (PR 83): `docs/triage.md` (*Your word in TRIAGE.md*) and `docs/de/triage.md` (*Ihr Wort in der TRIAGE.md*), one nav line each in `zensical.toml`, `uvx zensical build` green. What the file holds and what an edit changes, every claim labelled *the tool*, *review* or *the text alone* (DE: *das Werkzeug*, *das Review*, *nur der Text*); the term *your signed word* (*Ihr signiertes Wort*). Examples from this repository's record only: path line 3's rewrite (`fe36cc0`) and the independence line `--check` printed at `88c7b0c`; FM-035 P1 at `42f4eca`, P2 at `c8939e3` with path line 1 whole; FM-007's raise naming path 5, re-judged the same evening (`29466fc`, `c5696c5`); FM-022's village-library intent; FM-037's refusal of a seat's edit, run in a scratch repository and quoted as printed (`evidence/FM-006/triage-page/`, English and German), with the hook's refusal and the tier-0 limit shown (a commit signed with the Owner's passphrase-less key passes); what an edit does not do. The filing's review, R1 and R2 (P3) fixed: *21 open*; the section heading's times. |
+| 2026-09-26 | **The themes narrowed to two, and the site added** by the GtM seat on the Owner's word: `monochrome` and `shoalmark` only, each for the board and the site, each drawing a nautical chart behind the page — a Mercator sheet of Neuwerk's Watt, its border graduated, its degrees and minutes figured — muted in `monochrome`. `catkin`, `bagels` and `seekarte` dropped (in git at `96aa05e`). The board's last line moved out of the chart into a foot band of its own. Evidence re-made: four stylesheets, 18 renders, 27 new contrast pairs, the figures absent from the accessibility tree. Nothing built; nothing published outside the repository, at his word. |
+| 2026-09-25 | **The board's themes filed** by the GtM seat on the Owner's word: `monochrome` and `shoalmark` to ship as files in `brand/themes/`, `--brand DIR --from`; three more kept as mockups. Evidence: `evidence/FM-006/themes/` (five stylesheets, the rebuild script, 16 renders). The Auditor seat's hold lifted on his word; v0.18.4 not tagged. Nothing built. |
 | 2026-09-25 | **The page on his word in TRIAGE.md filed** — the Auditor seat's line on the Owner's word, through him at 22:38:24, word for word (sha256 `be19a410…`): an English and German page on the intent and the current path and what an edit does, each claim labelled by what enforces it, worded by the GtM seat, every claim checked against evidence before the merge; built after FM-037 merges so *only you change it* is the tool's, with FM-007's tier-0 limit. |
 | 2026-09-25 | **The Auditor seat's addendum to its go-public counsel, and its correction, filed word for word** through the Owner, before PR 77 merges — the addendum of 17:23:39 (sha256 as filed, after its opening line: `281f74bbe32c32f73ef993846f95f147b7f4be492ed251b97a081c3ea7932309`) and its correction to item 2 of 17:37:17, its own error (`a0b8244dbb6b1382d910df2dba91848db8cc8f53d34152d29b4a6d0d2f78ff01`). **A fourth gate**, in the addendum's words: the port evidence (`work-tracker/evidence/FM-001/port/`, six files on main) deleted or moved, as the Owner ruled on 2026-09-22 — the parent's ledger, `docs/work-tracker/evidence/FEAT-190/asks.md` row 10 (2026-09-22; the file's line 36); the act is this tracker's — the freeze allows no new one — named in *What is true now* too, its form picked by his answer, nothing deleted before it. **The count as found** at `9555d2c`, the Implementer seat's, beside the corrected one: 28 blob versions name the parent, 8 the tip's files and 20 older at 7 paths (5 still at the tip, 2 FM-002's before its move), 3 files naming it only in older versions — every number the Auditor seat's; the literal name a lower bound (3 of the 6 port files do not carry it). **The options re-made declarative** on the Auditor seat's wording (the Reviewer's R4): 119, 118 and 7 characters, the proposal the first; the condition leaves the option text — *if either may not be public, the second*, the Auditor seat's counsel, disclosed as such here and in *Going public*. FM-030 gains its 0.18.4 line: the move after an answer follows the picked option, not the kind alone. **Owed:** the parent's ledger row 47, an appended clause to match, in the parent's next ledger commit. |
 | 2026-09-25 | Re-made on its Reviewer's R1–R3 before it reached the board: the ask is `action` (a yes is his hands), the condition on the proposal stands in the first option's text, the three gates are quoted in the counsel's words with the seat's gloss apart. The parent project's ledger row is corrected to the same text by an appended clause (its row had merged). |
