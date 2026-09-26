@@ -307,8 +307,9 @@ OPEN_STATUSES = ("In Progress", "Parked", "Proposed", "Reserved", "?")
 _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling awaited`, in a few words and without a comma
 # FM-030 — WHEN AN ACT OWED TO THE OWNER FALLS DUE: an ISO time with its zone, seconds optional, `Z` for UTC. The zone is not
 # optional — a time without one is a different hour on every machine that reads it — and `parse_due` refuses one that has
-# none; the shape itself carries no `|`, so the schema's table prints it whole.
-DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:\d{2})?"     # hour 24 refused (R5)
+# none. A zone's minutes are bounded here, not by `fromisoformat`, which reads `+05:99` as `+06:39` on 3.9 and 3.14
+# alike (the pass's R8); its hours are refused there from 24 up.
+DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:[0-5]\d)?"     # hour 24 refused (R5); a zone's minutes 00–59 (R8)
 WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
 NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an act, and its invite's alarm rings (FM-030 D)
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
@@ -1258,10 +1259,11 @@ def have_not(shas):
 
 
 def answer_reading(head):
-    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when its
-    head's author may answer and the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an
-    author who may not answer, named, whatever the commit's signature (R8 — a signed commit by someone else read
-    *unsigned*, and the impostor is the case the Owner most needs named); else on the signature."""
+    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when the
+    author of `head` — its answer commit, as `queue_actions` finds it — may answer and the commit verifies as him — the
+    gate's one test, `verified_as` — else it waits: on an author who may not answer, named, whatever the commit's signature
+    (R8 — a signed commit by someone else read *unsigned*, and the impostor is the case the Owner most needs named); else on
+    the signature."""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
     may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
     if not may:
@@ -1294,7 +1296,9 @@ def queue_actions(prs, branches=()):
     """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
     inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
     verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
-    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict. For a pull
+    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on its answer
+    commit, the newest of its own that changed an `answer:` line, where only review files follow it (FM-031, 0.18.4: a
+    Reviewer's docs pass on the answer read *not an answerer* by the head); else on its head. For a pull
     request the first rule that holds is the action:
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
@@ -1371,16 +1375,24 @@ def queue_actions(prs, branches=()):
 
     def addenda_only(r, h, v):
         """every commit from r to h touches only the review folder or the registry — the verdict `v` its own review file
-        anywhere under evidence/ too — and none is a merge, which brings a line's files"""
+        anywhere under evidence/ too, and with `v` None every commit its own — and none is a merge, which brings a line's files"""
         def read():
             out = git("log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}")
             for chunk in out.stdout.split("\x00")[1:]:
                 shas, *paths = chunk.strip("\n").split("\n")
                 sha, *parents = shas.split()
-                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (sha == v and own_review.match(x))) for x in paths):
+                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (v in (None, sha) and own_review.match(x))) for x in paths):
                     return False
             return out.returncode == 0
         return cached(("addenda", r, h, v), read)
+
+    def answered_at(p):
+        """the commit an `answer/*` pull request is read by: the newest of its own that changed an `answer:` line in a
+        tracker, where every commit past it is a review file's only (`addenda_only`, any commit's own `review*.md`) — the
+        parent project's PRs 836, 849 and 853, a Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)*
+        by the head; anything else past it, and the head is read, as before"""
+        at = git("log", "-1", "--format=%H", "-G", "^answer:", head(p), "^" + base(p), "--", rel).stdout.strip()
+        return at if at and (at == head(p) or addenda_only(at, head(p), None)) else head(p)
 
     rows = []
     for p in prs:
@@ -1398,7 +1410,7 @@ def queue_actions(prs, branches=()):
         elif (guarded := triage_reading(head(p), base(p))):
             rows.append((p, "wait", *guarded))
         elif p["headRefName"].startswith("answer/"):
-            rows.append((p, *answer_reading(head(p))))
+            rows.append((p, *answer_reading(answered_at(p))))
         elif last is None:
             rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
         elif last[1] == "NOT READY":
@@ -1849,15 +1861,13 @@ def owner_change(tid, t, how):
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
         return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
-    if signed:
-        # the gate's own rule, asked here so the change is never pushed under one the gate will refuse: a good signature
-        # (`%G?`) AND the principal the key is trusted for (`%GS`) being the author's email — a trusted key still says
-        # nothing about whose name is on the commit
-        good, signer, email = (git("log", "-1", "--format=%G?%n%GS%n%ae").stdout.split("\n") + ["", "", ""])[:3]
-        if good.strip() != "G" or email.strip() not in signer:
-            print(f"{flag}: committed, but the signature does not verify as `{me}` — `git commit --amend -S`, or check the signers file; "
-                  f"NOT pushed, and the gate would refuse this {noun}", file=sys.stderr)
-            return EXIT_LINT
+    if signed and not verified_as("HEAD"):
+        # the gate's own test, `verified_as`, asked here so the change is never pushed under one the gate will refuse: a good
+        # signature under a key the DEFAULT branch's signers file trusts, for the author's email (FM-037's cold re-review, R1:
+        # this read the clone's own file, so mid key rotation it said *pushed*, and the gate refused the answer after)
+        print(f"{flag}: committed, but the signature does not verify as `{me}` — "
+              + unverified("HEAD", "`git commit --amend -S`, or check the signers file") + f"; NOT pushed, and the gate would refuse this {noun}", file=sys.stderr)
+        return EXIT_LINT
     step(4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
     print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}"))
@@ -3644,19 +3654,20 @@ _SIGNERS = None
 
 def trusted_signers():
     """{"file": the signers file SSH signatures are verified against, or None; "why": why there is none; "rel": its path in
-    the repository, or None; "trunk": the default branch; "own": the default branch does not carry it} — FM-037's AU-19,
-    the Auditor seat's: never a file the branch being judged can have written. `gpg.ssh.allowedSignersFile` names the
-    file. Where it sits in a checkout of this repository — the signing page keeps it in the tracker directory — what
-    verifies is the DEFAULT branch's copy, written to a temporary file for this run: a branch that appends its own key
-    under the Owner's email and signs with it vouches for nothing. A file outside every checkout is used as it is: no
-    branch writes it. With no default branch to read, or one that does not carry the file, the clone's file stands —
-    except for a commit whose own tree carries it (`signers_gap`). Read once per run."""
+    the repository, or None; "trunk": the default branch} — FM-037's AU-19, the Auditor seat's: never a file the branch
+    being judged can have written. `gpg.ssh.allowedSignersFile` names the file. Where it sits in a checkout of this
+    repository — the signing page keeps it in the tracker directory — what verifies is the DEFAULT branch's copy, written
+    to a temporary file for this run: a branch that appends its own key under the Owner's email and signs with it vouches
+    for nothing. Where the default branch does not carry it, NOTHING verifies against it until its first version lands
+    there (FM-037's cold re-review, R2): the checkout's copy is whatever branch is checked out, and a checkout on a branch
+    that writes one vouched for another pull request's commits. A file outside every checkout is used as it is: no branch
+    writes it; so is the clone's file where there is no default branch to read. Read once per run."""
     global _SIGNERS
     if _SIGNERS is not None:
         return _SIGNERS
     conf = (git_out("config", "--path", "--get", "gpg.ssh.allowedSignersFile") or "").strip()
     if not conf:
-        _SIGNERS = {"file": None, "why": "`gpg.ssh.allowedSignersFile` is not set", "rel": None, "trunk": None, "own": False}
+        _SIGNERS = {"file": None, "why": "`gpg.ssh.allowedSignersFile` is not set", "rel": None, "trunk": None}
         return _SIGNERS
     path = (pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf).resolve()
     rels = []                                               # its path under each checkout that holds it — the nearest one wins,
@@ -3675,11 +3686,14 @@ def trusted_signers():
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             f.write(blob)
         atexit.register(lambda: os.path.exists(tmp) and os.remove(tmp))
-        _SIGNERS = {"file": tmp, "why": "", "rel": rel, "trunk": trunk, "own": False}
+        _SIGNERS = {"file": tmp, "why": "", "rel": rel, "trunk": trunk}
+    elif trunk:
+        _SIGNERS = {"file": None, "why": f"`{rel}` is not on {trunk}: commit its first version there, signed — a branch cannot prove a key the default branch does not hold",
+                    "rel": rel, "trunk": trunk}
     elif not path.is_file():
-        _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, which does not exist", "rel": rel, "trunk": trunk, "own": False}
+        _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, which does not exist", "rel": rel, "trunk": trunk}
     else:
-        _SIGNERS = {"file": str(path), "why": "", "rel": rel, "trunk": trunk, "own": bool(trunk)}
+        _SIGNERS = {"file": str(path), "why": "", "rel": rel, "trunk": trunk}
     return _SIGNERS
 
 
@@ -3690,14 +3704,10 @@ def signers_args():
 
 
 def signers_gap(commit):
-    """Why an SSH signature on `commit` cannot be verified here, or "": no signers file; or one the default branch does not
-    carry while this commit's own tree does — a signers file a branch writes vouches for none of its commits (AU-19)."""
-    s = trusted_signers()
-    if not s["file"]:
-        return s["why"]
-    if s["own"] and cat_blobs([f"{commit}:{s['rel']}"]).get(f"{commit}:{s['rel']}") is not None:
-        return f"`{s['rel']}` is not on {s['trunk']}, and the commit's own tree carries it — a signers file a branch writes vouches for none of its commits"
-    return ""
+    """Why an SSH signature cannot be verified here, or "": no signers file to verify against — none set, none there, or
+    one in a checkout that the default branch does not carry yet: a signers file a branch writes vouches for nothing (AU-19,
+    and the cold re-review's R2). The same for every commit; the argument keeps the callers' shape."""
+    return trusted_signers()["why"]
 
 
 def signature_gap(commit):
@@ -3716,9 +3726,21 @@ def signature_gap(commit):
 
 def unverified(commit, tail):
     """The end of a refusal for a commit that does not verify: *cannot verify* and why, where the clone cannot check a
-    signed commit — else the seat's own words (`tail`), which ask for a signature."""
+    signed commit; where it is SSH-signed and the check ran, that its key is not the one the signers file the gate reads
+    holds for it, with the way through — a key lands in that file first (FM-037's cold re-review, R1: mid key rotation the
+    answer gate told the Owner to sign a commit he had signed) — `%G?` U, a key the file does not hold, or G, one it holds for
+    someone else; else the seat's own words (`tail`), which ask for a signature — a bad signature (`%G?` B) among them."""
     gap = signature_gap(commit)
-    return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}" if gap else tail
+    if gap:
+        return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}"
+    s = trusted_signers()
+    ssh = "BEGIN SSH SIGNATURE" in (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    if ssh and s["file"] and (git_out(*signers_args(), "log", "-1", "--format=%G?", commit) or "").strip() in ("G", "U"):
+        held = f"`{s['rel']}` on {s['trunk']}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
+        return (f"it is signed, but not with a key {held} holds for that identity — a new key verifies once it is there"
+                + (f": the Owner's signed commit to that file, merged into {s['trunk']} first" if s["rel"] and s["trunk"] else "")
+                + f" — see {SIGNING_PAGE}")
+    return tail
 
 
 # FM-034 — WHAT IS THE CHECKOUT'S, NOT THE LEDGER'S: a signed commit this clone cannot verify (its signers file, its

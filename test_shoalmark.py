@@ -2889,7 +2889,8 @@ with tempfile.TemporaryDirectory() as tmp:
     good_ = tracker(root, "AP-400", extra=act_ + "due: 2026-09-26T07:30:00+02:00\nwindow: 90\n", title="a read at seven")
     tracker(root, "AP-401", extra="next: run\ndue: 2026-09-26T05:30Z\n", title="UTC, no seconds")
     code_ok, _o, err_ok = run(root)
-    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00", "2026-09-26T24:00+02:00")}
+    r8_ = ("2026-09-26T07:30+05:99", "2026-09-26T07:30-00:60")      # the pass's R8: a zone's minutes past 59
+    bad_ = {v: None for v in ("tomorrow", "2026-09-26 07:30", "2026-09-26T07:30", "2026-13-01T07:30+02:00", "2026-09-26T07:30Z+02:00", "2026-09-26T24:00+02:00", *r8_)}
     for v in bad_:
         tracker(root, "AP-402", extra=f"next: build\ndue: {v}\n", title="a bad time")
         code_, _o, err_ = run(root)
@@ -2903,6 +2904,11 @@ with tempfile.TemporaryDirectory() as tmp:
           and "names no real time" in bad_["2026-13-01T07:30+02:00"][1] and "names no real time" in bad_["2026-09-26T07:30"][1]
           and code_w == fm.EXIT_LINT and "AP-402: `window:`" in err_w and "AP-402: `done:`" in err_w
           and fm.parse_due("2026-09-26T24:00+02:00") is None and fm.parse_due("2026-09-26T23:59+02:00") is not None)      # R5: hour 24, refused on every Python
+    check(f"FM-030 · the pass's R8 · a zone's minutes are 00–59: `+05:99` and `-00:60` are refused by the gate and by `parse_due` on every Python — "
+          f"`fromisoformat` reads them as `+06:39` and `-01:00` — and `+05:59`, `-00:30` pass (saw {[bad_[v][1].strip()[-90:] for v in r8_]})",
+          all(bad_[v][0] == fm.EXIT_LINT and "AP-402: `due:`" in bad_[v][1] for v in r8_) and all(fm.parse_due(v) is None for v in r8_)
+          and fm.parse_due("2026-09-26T07:30+05:59") == datetime.datetime(2026, 9, 26, 1, 31, tzinfo=datetime.timezone.utc)
+          and fm.parse_due("2026-09-26T07:30-00:30") is not None)
     tracker(root, "AP-402", extra="next: build\n", title="fixed")
     good_.write_text(good_.read_text().replace('ask-proposal: "yes, at seven"\n', f'ask-proposal: "yes, at seven"\nanswer: "accepted"\nanswered: {since_}\nanswered-by: holgo\n'))
     git(root, "add", "-A"); git(root, "commit", "-qm", "an act owed, answered")
@@ -3209,6 +3215,31 @@ with tempfile.TemporaryDirectory() as tmp:
             os.environ["XDG_STATE_HOME"] = state_was_
     rm_git(root)
 fm.configure(HERE)
+
+# --- FM-030, the pass's R7 — its case, the cold review of the 0.18.4 cut's R2: the README's cron line makes the log's folder
+#     first. The shell opens `>>` before the tool runs, and on a fresh home only the tool made that folder, so `--notify` never
+#     ran. Run as cron runs it, `/bin/sh -c` with an empty HOME, the tool a stub that says it was reached; and without its `mkdir -p`
+import shlex
+_cron = next(l_ for l_ in (HERE / "README.md").read_text().splitlines() if l_.startswith("*/5 ") and "--notify" in l_)
+_cmd = _cron.split(None, 5)[5]                                         # cron's five time fields off: what cron hands /bin/sh
+_mk = 'mkdir -p "%s" && ' % re.search(r'>> "([^"]+)"', _cmd).group(1).rsplit("/", 1)[0]
+_ran = None                                                            # no /bin/sh — Windows, which has no cron — reads the line only
+if os.path.exists("/bin/sh"):
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); (base / "bin").mkdir(); (base / "repo").mkdir()
+        (base / "bin/python3").write_text('#!/bin/sh\necho "reached: $*"\n'); os.chmod(base / "bin/python3", 0o755)
+
+        def _cron_run(cmd, home):
+            home.mkdir()
+            r_ = subprocess.run(["/bin/sh", "-c", cmd.replace("/path/to/repo", shlex.quote(str(base / "repo")))], capture_output=True,
+                                text=True, encoding="utf-8", errors="replace", env={"HOME": str(home), "PATH": f"{base / 'bin'}:/usr/bin:/bin"})
+            log_ = home / ".local/state/shoalmark/notify.log"
+            return r_.returncode, log_.read_text() if log_.exists() else None
+        _ran = (_cron_run(_cmd, base / "home"), _cron_run(_cmd.replace(_mk, "", 1), base / "home-bare"))
+check("FM-030 · the pass's R7 · the README's cron line makes the log's folder before the shell opens the log — `%s` leads it; " % _mk.strip(" &")
+      + ("run by /bin/sh with an empty HOME it writes notify.log and reaches `--notify`, and the same line without it — the line before 4efa5a0 — "
+         "fails before the tool runs" if _ran else "read, not run: no /bin/sh here, cron's shell") + f" (saw {_ran})",
+      _cmd.startswith(_mk) and (_ran is None or (_ran[0] == (0, "reached: shoalmark.py --notify\n") and _ran[1][0] != 0 and _ran[1][1] is None)))
 
 # --- FM-030, 0.18.4 E: `--standup` and `--owner` list the acts after the asks — due, overdue, missed, no date yet — each
 #     with its `due:` and what it is (FM-030's first line; FM-007's key, promised after the scoring, is *no date yet*)
@@ -3777,6 +3808,36 @@ with tempfile.TemporaryDirectory() as tmp:
     c_ko_, g_ko_ = made37_("ap/037-owner-path", "AP-037: his line, his key", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), "-S", OWNER_)
     check(f"FM-037 · AU-19 · the Owner's real key still verifies against the default branch's file: his signed change to the signers file is accepted, and his signed change to the path (saw {g_k_!r})",
           g_k_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-keys` since origin/main, 1 change them or his signers file, each his own commit") and g_ko_[0] == [])
+    # the cold re-review's R1 · `--answer` asks the gate's own test before it pushes — the default branch's signers file. Mid
+    # key rotation, his new key only on his branch's copy: the answer it signs is NOT pushed, and neither the command nor the
+    # gate tells him to sign a commit he signed — each names the file the key must reach first
+    rkey_ = base / "rotated"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(rkey_)], check=True, capture_output=True)
+    def rotate37_():
+        signers37_.write_text(signers37_.read_text() + "h@x " + rkey_.with_suffix(".pub").read_text())
+        tracker(root, "AP-051", extra=f'next: owner\nask: "Rotate the key?"\nask-kind: ruling\nask-since: {day37_}\nask-proposal: "yes"\n', title="the rotation")
+    c_rot_, g_rot_ = made37_("ap/037-rotate", "AP-051: the Owner's new key, and an ask", rotate37_, "-S", OWNER_)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("user.signingkey", str(rkey_))):
+        git(root, "config", k_, v_)
+    code_r1_, out_r1_, err_r1_ = run(root, "--answer", "AP-051", "accept")
+    pushed_r1_ = "answer/ap-051" in subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
+    code_r1c_, _o, err_r1c_ = run(root, "--check")                     # on `answer/ap-051`, where the refusal left him
+    held_r1_ = "it is signed, but not with a key `docs/work-tracker/allowed_signers` on origin/main holds for that identity — a new key verifies once it is there: the Owner's signed commit to that file, merged into origin/main first"
+    check(f"FM-037 · the cold re-review's R1 · `--answer` verifies as the gate does, against the default branch's signers file: an answer signed with a key only his branch's copy holds is NOT pushed, and the command and the gate each say it is signed and name where the key must land — never *sign it* (saw {err_r1_.strip()[-260:]!r}, {err_r1c_.strip()[-200:]!r})",
+          g_rot_[0] == [] and code_r1_ == fm.EXIT_LINT and not pushed_r1_ and "committed, but the signature does not verify as `holgo`" in err_r1_ and held_r1_ in err_r1_
+          and "NOT pushed" in err_r1_ and "pushed\n" not in out_r1_ and code_r1c_ == fm.EXIT_LINT and "AP-051: the answer's commit" in err_r1c_ and held_r1_ in err_r1c_
+          and "sign it (`git commit -S`)" not in err_r1_ + err_r1c_)
+    # the cold re-review's R2 · while the default branch carries no signers file, NOTHING verifies against the checkout's copy:
+    # a checkout on a branch that writes one read another pull request's change, signed with the key it wrote, as clean
+    git(root, "config", "user.signingkey", str(okey_)); git(root, "switch", "-q", "main"); git(root, "rm", "-q", str(signers37_))
+    git(root, "commit", "-q", "-m", "no signers file on the default branch", OWNER_); git(root, "push", "-q", "origin", "main")
+    c_r2_, _g = made37_("ap/037-r2-pull", "AP-037: the path, signed as him with a seat's key", text37_("2. Nothing merges unreviewed.", "2. The seat's key merges."),
+                        "-S", OWNER_, pre=("-c", "user.signingkey=" + str(skey_)))
+    made37_("ap/037-r2-vouch", "AP-037: a signers file, the seat's key under his email", lambda: signers37_.write_text("h@x " + skey_.with_suffix(".pub").read_text()), SEAT_)
+    fm.configure(root); on_vouch_ = _no_git_env(lambda: fm.triage_reading(c_r2_, "origin/main"))
+    git(root, "switch", "-q", "main"); fm.configure(root); on_main_ = _no_git_env(lambda: fm.triage_reading(c_r2_, "origin/main"))
+    check(f"FM-037 · the cold re-review's R2 · while the default branch carries no signers file, nothing verifies against the checkout's copy: a checkout on a branch that writes one reads another pull request's change, signed with the key that branch wrote, as not verified here — as a checkout on main does, and saying why — never clean (saw {on_vouch_!r}, {on_main_!r})",
+          on_vouch_ is not None and on_vouch_ == on_main_ and on_vouch_[0] == "wait: TRIAGE.md change not verified here — `docs/work-tracker/allowed_signers` is not on origin/main: "
+          "commit its first version there, signed — a branch cannot prove a key the default branch does not hold" and on_vouch_[1] == c_r2_[:7])
     rm_git(root)
 fm.configure(HERE)
 
@@ -3838,6 +3899,19 @@ with tempfile.TemporaryDirectory() as tmp:
     by_name_ = read_(); cfg_.write_text(plain_cfg); fm.configure(root)
     check(f"R1 · with `[seats]` naming the Owner by his git name, as the gate matches a seat (email or name), his signed answer reads `merge: your answer` (saw {by_name_})",
           by_name_ == ["merge: your answer", "wait: unsigned answer", "wait: not an answerer (m@m)"])
+    # FM-031, 0.18.4 · an answer branch is read by its answer commit — the one that wrote `answer:` — where only review files
+    # follow it: the Reviewer's docs pass on the answer read `not an answerer (reviewer@seat)` by its head (the parent's PRs 836,
+    # 849, 853 — its review file beside the tracker's evidence, as the parent files it); a seat's other change is read as before
+    git(root, "checkout", "-q", "-b", "answer/msr-001-reviewed", signed_); (root / "docs/work-tracker/evidence/MSR-001").mkdir(parents=True, exist_ok=True)
+    (root / "docs/work-tracker/evidence/MSR-001/review-the-answer.md").write_text("# Review — the answer to MSR-001\n\nREADY\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "review: the answer to MSR-001 — READY", "--author=reviewer <reviewer@seat>"); reviewed_ = sha()
+    git(root, "checkout", "-q", "-b", "answer/msr-001-built", signed_); (root / "z.txt").write_text("z"); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "MSR-001: a seat's change on the answer", "--author=seat <s@s>"); built_ = sha()
+    on_top_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(
+        [{"number": n_, "title": "t", "headRefName": "answer/msr-001", "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"} for n_, h_ in ((4, reviewed_), (5, built_))]))}
+    check(f"FM-031, 0.18.4 · an `answer/*` pull request is read by its answer commit, the one that wrote `answer:`, where only review files follow it: a Reviewer's docs pass on the signed answer reads `merge: your answer`, naming the answer commit — its head read `not an answerer (reviewer@seat)`; a seat's other change on it is read by its head, as before (saw {on_top_})",
+          on_top_ == {4: ("merge: your answer", f"signed {signed_[:7]}"), 5: ("wait: not an answerer (s@s)", "")})
     git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
     git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
     untrusted_ = read_(); code_, _, err_ = run(root, "--check")
@@ -4214,6 +4288,11 @@ check("the vendored renderer is the pinned one — an update is a deliberate act
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",
       fm.__version__ == (HERE / "VERSION").read_text().strip() and re.fullmatch(r"\d+\.\d+\.\d+", fm.__version__) is not None)
+# FM-006, the cold review of the 0.18.4 cut, R1: the setup pages still cloned v0.17.8 as "the newest tag" at 0.18.4. A release
+# is cut on its branch and tagged by the Owner after the merge, so the pages name the tag VERSION names — the one they ship with.
+_clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in ("docs/setup.md", "docs/de/setup.md")}
+check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
+      all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 print()
