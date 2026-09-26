@@ -1,8 +1,8 @@
-/* THEME "shoalmark" — the brand's own, and the starter to make yours from. Base: monochrome (the terminal cut).
+/* THEME "shoalmark" — the brand's own; a starter to make yours from if the tool ships themes. Base: monochrome.
    A sea chart's colours, as ECDIS draws them (IHO S-52: deep water, the shallow tints, the intertidal drying green, the
    land's buff, chart magenta) — by night the dusk table with its accents softened to pastel, by day the paper chart with
    them deepened to 4.5:1. What a chart means by each is what the board means by it:
-     deep water  the page · shallow water  a box, a chip, a raised row · the drying line  where the name's band ends
+     deep water  the page · shallow water  a box, a chip, a raised row · the drying line  where the foot's band begins
      the chart   the graticule, the border and its figures (monochrome's mechanism): in the chart's blue-grey
      the Watt    the drying green: headings, the prompt, the running mark — shoalmark's own colour, where the Pricke stands
      land        the buff of what is fixed: the record's header row, the ids
@@ -13,7 +13,7 @@
 :root{
   --bg:#fbfbf7;--panel:#ffffff;--shallow:#e3eff7;--shallow2:#d3e5f2;--zebra:#f5f9fc;--contour:#8eb1cc;--field:#5d86a8;
   --ink:#10202e;--dim:#3e4e5b;--mute:#51606c;
-  --band:#15293c;--bandink:#f3f6f9;--drying:#9aae57;
+  --band:#15293c;--drying:#9aae57;
   --watt:#526214;--land:#f1e1b0;--landink:#10202e;--id:#77511a;
   --magenta:#a0156e;--magink:#ffffff;--magtint:#f7e4f0;
   --blue:#1f5ca8;--teal:#0d6f56;--yellow:#785b00;--coral:#b3301f;
@@ -22,7 +22,7 @@
 @media(prefers-color-scheme:dark){:root{
   --bg:#0d1720;--panel:#111f2c;--shallow:#1a2d3e;--shallow2:#223a4f;--zebra:#152535;--contour:#34546c;--field:#5b83a3;
   --ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;
-  --band:#15293d;--bandink:#d9e4ec;--drying:#b8c98c;
+  --band:#15293d;--drying:#b8c98c;
   --watt:#bccd8f;--land:#e8d4a0;--landink:#0d1720;--id:#e8d4a0;
   --magenta:#ee92d4;--magink:#0d1720;--magtint:#3a2440;
   --blue:#8fb9f3;--teal:#7fd9bf;--yellow:#f1d47a;--coral:#f38a80;
@@ -31,16 +31,11 @@
 :root{--raise:var(--shallow);--box:var(--contour);--line:transparent}
 ::selection{background:var(--magenta);color:var(--magink)}
 
-/* the name stands in a band, full width as the site's header does, and the band ends at the drying line */
-html{background:linear-gradient(var(--band) 0 64px,var(--drying) 64px 66px,var(--bg) 66px)}
-body{background:transparent}
-#H{height:40px;margin:0 0 46px}
-#B[hidden] + #v{margin-top:86px}   /* the tracker view has no name in the band: it starts below the chart's top border */
-:root{--chart-top:86px;   /* the chart starts below the drying line: its longitude figures between the two */
-  --foot:var(--band);--footline:var(--drying);--footlw:2px;--footink:#b4c3d1}   /* and ends above the band again */
-body{padding-top:24px}   /* the name stays in the band; #H's margin clears the chart's top border instead */
-#H,#H .wm,#H b,#H span,#s,#s::before,#s::after{color:var(--bandink)}
-#s:hover{background:var(--shallow2);color:var(--ink)}
+/* the header — the mark, the name, the switch — stands inline inside the chart's top border, as monochrome's (the Owner,
+   2026-09-26 09:23:58): on the chart's ground, in its ink. The navy band and its drying line are the foot's on the board,
+   and the site's header's; the chart ends above the band */
+:root{--foot:var(--band);--footline:var(--drying);--footlw:2px;--footink:#b4c3d1}
+#H b{color:var(--ink)}   /* the mark and the name: the wordmark is drawn in currentColor */
 
 header,#p,table,#v pre{background:var(--panel)}
 header{border-color:var(--field)}   /* the search box's line is an input's boundary: 3:1 */

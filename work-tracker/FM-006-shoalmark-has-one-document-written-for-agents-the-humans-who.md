@@ -160,11 +160,23 @@ like on a real nautical chart and have also coordinates / degrees"*; *"the monoc
 graticule, but muted"*; *"move the claim, shoalmark and version outside the inner chart area into a footer"*. His
 words, not a signed answer: the ask below makes them one.
 
+**His word in chat of 2026-09-26 09:23:58** (spelling normalised; with it two screenshots of the committed renders, the
+top of `monochrome-light.png` and the top of `shoalmark-dark.png`, not filed): *"For the dashboard I prefer this 'inline
+header' (shoalmark logo + light/dark switch) variant [the first] over this variant used in the dark mode, where the
+header sits outside the graticule [the second]. Align for both. All dashboards aligned over all themes. The `site/`
+renderings are excluded."* The seat's reading, marked as such: on the board, the mark, the name and the switch stand
+inside the graticule, as `monochrome`'s board has them, in both themes and every board view; the site keeps its header.
+A word in chat, not a signed answer; the drafted ask is unchanged by it. **What it changed:** of the stylesheets, only
+`shoalmark.css` — the navy band and its drying line left the board's top and stay the board's foot and the site's header
+and foot; `shoalmark`'s eight renders were re-made; the site is untouched.
+
 - **The two themes, each for the board and the documentation site** — which one shoalmark's own wear, and whether the
   tool ships them, is the ask's:
   - `monochrome`: the terminal cut, IBM Plex Mono on one grid;
   - `shoalmark`: the brand's own, a sea chart's ECDIS colours, magenta only for what is owed to the Owner, the status
-    marks in the buoyage's shapes, the name in a navy band ending at the drying line.
+    marks in the buoyage's shapes; on the board its header — the mark, the name, the switch — inline inside the
+    chart's top border as `monochrome`'s (his word of 09:23:58), the navy band and its drying line the board's foot
+    and the site's header and foot.
   - on the board, both: the last line — the claim, the mark, the name, the version — in a foot of its own below the
     chart, full width, as the site's.
 - **The chart, in both:** a Mercator sheet of Neuwerk's Watt drawn behind the page — parallels every minute, meridians
@@ -173,7 +185,7 @@ words, not a signed answer: the ask below makes them one.
 - **How a theme is chosen:** choosing a theme is putting a file in a place — for shoalmark's own board,
   `work-tracker/brand/theme.css`; if the tool ships themes, `--brand DIR --from <theme>` writes a starter from one.
   FM-002's four places and its one rule stay, with no setting, and the tool's default look stays for every consumer.
-  shoalmark's own board and site wear one theme, which the ask picks.
+  shoalmark's own board and site wear at most one theme; the ask says which, or none.
 - **Dropped on 2026-09-26:** the mockups `catkin`, `bagels` and `seekarte`, on the Owner's *"only"*. They are in git at
   `96aa05e`.
 - **How it was mocked:** CSS only, on the real board and the real site. Every text pair a rule uses is at 4.5:1 or more
@@ -218,6 +230,7 @@ words, not a signed answer: the ask below makes them one.
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **The board's header inline inside the graticule in both themes**, by the GtM seat on the Owner's word in chat of 09:23:58 (filed in the themes section, spelling normalised, the seat's reading marked; not a signed answer, and nothing on the ask changes): `shoalmark.css` takes the navy band and its drying line off the board's top — they stay the board's foot and the site's header and foot — and the mark, the name and the switch stand inside the chart's top border as `monochrome`'s, in the chart's ink on its ground, on the board and behind the dialog, both schemes; the tracker view, which shows no header on any board, starts inside the chart where `monochrome`'s does; the header's ten pairs measured, the lowest 5.41:1. `shoalmark`'s board, dialog, tracker view and foot re-made with the committed scripts, offline; `monochrome`'s and the sites' renders byte-identical. The themes pass's P3s fixed forward: R1 (`monochrome`'s foot 4.50:1 by day, no margin; the figures from 4.74:1; the sites' pairs from 4.74:1), R3 (a phone's 390px measured: the table scrolls to 505px themed, 905px today), R4 (*wear at most one; the ask says which, or none*; *a starter if the tool ships themes*); R2 a line for slice A; R5 left to the FM-033 pass. |
 | 2026-09-26 | **The themes' drafted ask re-made before it reaches the board**, by the GtM seat on the Owner's word of 07:41:00 through the Auditor seat (AU-24; pasted by him at 07:55:40, sha256 `34ee13d1…`): the draft asked two things in one — whether the tool ships themes and which theme shoalmark's own board and site wear — and had no option for the cheap step. The ask, a ruling, now asks them apart; its three options each say both: the `shoalmark` theme worn and no themes shipped yet (85 characters), both themes shipped as starters and `shoalmark` worn (108), not yet — today's look, no themes shipped (84). The proposal is the first, disclosed as the GtM seat's: the cheap step, one Reviewer pass, and no release after 0.18.4 hands a vendoring consumer a theme before he rules it. `monochrome` is not offered as worn: the seat does not propose it. *The build is code* became *slice A is the brand layer; slice B is code*: slice A is `work-tracker/brand/theme.css`, two Plex Mono cuts and `docs/stylesheets/`, no `shoalmark.py` change; slice B only on his ruling. The three markup hooks are `shoalmark.py` changes, in neither slice as his word draws them; the pass places them. *What is true now*, the two themes' bullet and *How a theme is chosen* no longer state the tool's shipping as filed. The evidence's README carries the same words. Still a draft, raised when the going-public ask is answered. |
 | 2026-09-26 | **The page re-made on its Reviewer's R3–R7** (`f4188ee`, NOT READY on `59febae`), in both languages: FM-007's raise quoted whole, *undermines: TRIAGE.md path 5, FM-033's answer* (R3); tier 2 as the signing page has it, stopping the accident while an agent that means harm can fake the prompt, and only tier 3 making the key the Owner's alone (R4); what a pass re-judges: its sheet lists work in progress not judged in seven days, new filings and raised trackers, nothing reacts to a path edit by itself, and a tracker judged this week keeps its tier until its next pass unless a raise names a path line (R5); the raise check named as the one place the tool reads the path's content, its line numbers only, beside `--triage`'s presence test and the guard's byte comparison (R6); the three lead-in sentences labelled (R7). |
 | 2026-09-26 | **The page on his word in TRIAGE.md built** by the GtM seat after FM-037's guard merged (PR 83): `docs/triage.md` (*Your word in TRIAGE.md*) and `docs/de/triage.md` (*Ihr Wort in der TRIAGE.md*), one nav line each in `zensical.toml`, `uvx zensical build` green. What the file holds and what an edit changes, every claim labelled *the tool*, *review* or *the text alone* (DE: *das Werkzeug*, *das Review*, *nur der Text*); the term *your signed word* (*Ihr signiertes Wort*). Examples from this repository's record only: path line 3's rewrite (`fe36cc0`) and the independence line `--check` printed at `88c7b0c`; FM-035 P1 at `42f4eca`, P2 at `c8939e3` with path line 1 whole; FM-007's raise naming path 5, re-judged the same evening (`29466fc`, `c5696c5`); FM-022's village-library intent; FM-037's refusal of a seat's edit, run in a scratch repository and quoted as printed (`evidence/FM-006/triage-page/`, English and German), with the hook's refusal and the tier-0 limit shown (a commit signed with the Owner's passphrase-less key passes); what an edit does not do. The filing's review, R1 and R2 (P3) fixed: *21 open*; the section heading's times. |

@@ -32,6 +32,12 @@ His words, not a signed answer. The ask drafted at the end is how they become on
   Plex Mono over the graticule — and its boxes titled in their border, the magenta one holding the drafted ask. That page
   was a private artifact; he deleted it and asked that none be published. Nothing about the themes lives outside this
   folder.
+- 09:23:58, with two screenshots of the committed renders — the top of `monochrome-light.png`, then the top of
+  `shoalmark-dark.png`: *"For the dashboard I prefer this 'inline header' (shoalmark logo + light/dark switch) variant
+  [the first] over this variant used in the dark mode, where the header sits outside the graticule [the second]. Align
+  for both. All dashboards aligned over all themes. The `site/` renderings are excluded."* The seat's reading, marked as
+  such: on the board, the mark, the name and the switch stand inside the graticule, as `monochrome`'s board has them, in
+  both themes and every board view; the site keeps its header. Of the stylesheets, only `shoalmark.css` changed.
 
 The three further mockups of 2026-09-25 (`catkin`, `bagels`, `seekarte`) are dropped on his first line of 2026-09-26.
 Their stylesheets and renders are in git at `96aa05e`.
@@ -50,9 +56,9 @@ Its hold ("file after v0.18.4 is tagged") was lifted by the Owner's *"You file t
 | File | For | Base | What it is |
 |---|---|---|---|
 | `monochrome.css` | board | — | **The terminal cut.** The site's palette. IBM Plex Mono for every word, on one grid. Boxes are titled in their top border; the search is a `>` prompt; an action is a `[ bracketed ]` word; a group is a `// comment`; a tracker's view prints its `#` marks. The frame is 104ch, so the owner's box holds 100ch of prose. The last line — the claim on the left, the mark, the name and the version on the right — stands below the chart in a foot of its own: the raised surface under a rule, full width. The chart, muted: greys at a few per cent. |
-| `shoalmark.css` | board | monochrome | **The brand's own, and the starter to make yours from.** A sea chart's colours as ECDIS draws them (IHO S-52): pastel by night, deepened to 4.5:1 by day. The name stands in a navy band, full width, which ends at a drying line in the Watt's green. The Watt's green carries headings, the prompt and the running mark. Land buff carries the record's header row and the ids. Magenta carries what is owed to the Owner and nothing else. Status marks take the buoyage's shapes: sphere, starboard cone, special mark's cross, port can. The chart in its blue-grey, between the navy band at the top and the navy band of the foot, under its own drying line, where the mark and the name take the drying line's green. Every rule names only tokens, so a fork changes two blocks. |
+| `shoalmark.css` | board | monochrome | **The brand's own; a starter to make yours from if the tool ships themes.** A sea chart's colours as ECDIS draws them (IHO S-52): pastel by night, deepened to 4.5:1 by day. The header — the mark, the name and the switch — stands inline inside the chart's top border, as `monochrome`'s, in the chart's ink on its ground. The Watt's green carries headings, the prompt and the running mark. Land buff carries the record's header row and the ids. Magenta carries what is owed to the Owner and nothing else. Status marks take the buoyage's shapes: sphere, starboard cone, special mark's cross, port can. The chart in its blue-grey, above the navy band of the foot, full width, under its own drying line in the Watt's green, where the mark and the name take the drying line's green. The navy band belongs to the site's header and the board's foot; the board's header has none. Every rule names only tokens, so a fork changes two blocks. |
 | `site-monochrome.css` | site | — | The terminal cut on Zensical's modern theme: the site's own palettes, a rule under the header, Mono for the name, the navigation (`>` marks the page you are on), the headings with their `##` marks, tables and code; tables and code boxed, square. The chart, muted. |
-| `site-shoalmark.css` | site | site-monochrome | The board's `shoalmark` carried over: the navy band with its drying line as the header, and again as the foot; the chart in its blue-grey between the two; the Watt's green for the headings' marks and the page you are on; land buff across a table's head; links in the chart's blue. Magenta stays unused: on the board it marks what is owed to the Owner, and the site owes him nothing. |
+| `site-shoalmark.css` | site | site-monochrome | The board's `shoalmark` carried over: the navy band with its drying line as the header (the site's alone: the board's header stands inside the chart), and again as the foot; the chart in its blue-grey between the two; the Watt's green for the headings' marks and the page you are on; land buff across a table's head; links in the chart's blue. Magenta stays unused: on the board it marks what is owed to the Owner, and the site owes him nothing. |
 
 ## The chart
 
@@ -72,6 +78,9 @@ the chart is 53°57'N 8°24'E.
   (`html::before` the frame, `html::after` and `body::after` the latitudes, `body::before` the longitudes); on the site
   the body's and `.md-container`'s, because Zensical positions the body, grows it with the page and sets the scheme as
   an attribute on it. The site's header and foot cover the chart.
+- **The header.** On the board, in both themes, the mark, the name and the switch stand inline inside the chart's top
+  border, 26px below it, on the chart's ground; the tracker view starts inside it too, at the same place in both
+  themes. The site's header covers the chart as before.
 - **The foot.** On the board the last line leaves the chart for a band of its own, full width, as the site's foot: the
   running line paints it, a border image outset 24px above it and out to the page's sides and end, so it holds a claim
   that wraps, shows in the tracker view too and adds no scroll. The chart ends 12px above it; the latitude figures fade
@@ -91,13 +100,21 @@ the chart is 53°57'N 8°24'E.
   release whose Regular the repository already carries (sha256 `10d3c7fa…`, identical). Every drawn character is
   Latin-1: `°` and `'` included, no box-drawing glyph. The site loads Mono 600 from Google Fonts, as its
   `shoalmark.css` already loads 500.
-- **Contrast, both schemes.** Every text pair a rule uses measures 4.5:1 or more, and every status mark 3:1 or more. The
-  board's palettes are unchanged since 2026-09-25: `shoalmark` 29 text pairs and 8 mark pairs, `monochrome` the 7 pairs
-  its rules add. New on 2026-09-26, 27 pairs: the chart's figures on each ground, board and site (4.75:1, `monochrome`'s
-  muted figures by day, to 6.94:1); the board's foot — the claim and the version on the band (8.2:1), the mark and the
-  name in the drying line's green (6.06:1 by day), `monochrome`'s on its raised surface (4.84:1 by day); and the site's
-  own — its navigation, links, inline code, header and foot, table heads, prose and heading marks (5.76:1 to 16.6:1). The chart's lines, its border and the boxes' borders are
-  decorative and sit below 3:1.
+- **Contrast, both schemes** — WCAG as the tool's `contrast()`, an ink with alpha composited on its ground. Every text
+  pair a rule uses measures 4.5:1 or more, and every status mark 3:1 or more. The board's palettes are unchanged since
+  2026-09-25: `shoalmark` 29 text pairs and 8 mark pairs, counted with its header on the band, `monochrome` the 7 pairs
+  its rules add. New on 2026-09-26, 27 pairs, re-measured on the Reviewer's R1: the chart's figures on each ground, board
+  and site (4.74:1, `monochrome`'s muted figures by day, `#737373` on white, to 6.94:1); the board's foot — the claim
+  and the version on the band (8.2:1), the mark and the name in the drying line's green (6.06:1 by day),
+  `monochrome`'s on its raised surface (4.50:1 by day, `#737373` on `#f9f9f9`: the floor itself, no margin); and the
+  sites' own, both sites — navigation, links, inline code, header and foot, table heads, prose and heading marks
+  (4.74:1, `site-monochrome`'s heading marks by day, Zensical's `#0000008c` on white, to 16.6:1).
+  `shoalmark`'s header on the chart's ground since 09:23:58, by day / by night: the mark and the name (`--ink`)
+  15.96 / 14.01:1; the switch's word (`--dim`) 8.28 / 9.16:1; its brackets, drawn and never read, in `--mute` (a
+  tagline's ink, if one is set) 6.25 / 6.95:1; hovered, on `--shallow`, the word 14.16 / 10.92:1 and the brackets
+  5.54 / 5.41:1.
+  Where a meridian of the graticule crosses them, the lowest is 5.55 / 6.18:1. The chart's lines, its border and the
+  boxes' borders are decorative and sit below 3:1.
 - **Markers are drawn, never read.** In Chrome's accessibility tree the buttons are named `accept`, `reject`, `done`,
   `reschedule`, `OK — give me the command` and `abort` (2026-09-25). No chart figure is in the tree, on the board or the
   site, in either theme (2026-09-26). The controls: without the alt text, the board read `[ accept ]` and exposed `## `
@@ -110,8 +127,14 @@ the chart is 53°57'N 8°24'E.
   - On the site, `monochrome` marked the page you are on in Zensical's lavender. It is the raised surface now.
   - The foot's margins lost to the last line's own rules, later in the file, and the board's last rows ran over the
     chart's bottom border. The foot's rule is the more specific now.
-- **Not verified:** a phone's width (the chart is off there by design; headless Chrome will not go below about 500px),
-  Firefox and Safari, and print.
+- **A phone's width, measured, not rendered:** `render.mjs`'s device metrics lay a page out at 390px. There the chart
+  is off by design and both themes show the header on the plain ground, as today's board does; the tracker view fits
+  390px; the board's table does not, and the page scrolls sideways to 503px under `monochrome`, 505px under `shoalmark`
+  and 905px on today's board.
+- **Not verified:** how either theme reads at a phone's width, Firefox and Safari, and print. The stylesheets' font urls
+  and `site-monochrome.css`'s `@import` are the mocks', not the build's (the Reviewer's R2): slice A writes a theme's
+  urls relative to its own file (`fonts/…`) and puts the site's Mono 600 and italic into the site's existing import or
+  the self-hosting slice; no CSS changes here.
 
 ## What the build is — not done
 
@@ -164,7 +187,10 @@ step.
 ## Renders
 
 `shots/`: each theme's board, its foot, its answer dialog and its site's start page, dark and light; `shoalmark`'s
-tracker view. The board at 1300px, the site at 1440px.
+tracker view. The board at 1300px, the site at 1440px. `shoalmark`'s eight — its board, foot, dialog and tracker view —
+were re-made on 2026-09-26 after 09:23:58 for the inline header; the foot too, because the chart now starts 64px higher
+and its figures fall differently above the band. `monochrome`'s and the sites' are `f3f994b`'s, byte for byte, so the
+boards' content differs by a morning.
 
 | | dark | light |
 |---|---|---|
