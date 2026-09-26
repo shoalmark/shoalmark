@@ -5,7 +5,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 ## 0.18.4 — 2026-09-26
 
 **What the Owner owes has a time and a button, only he changes his intent and his current path, and the three CI failures
-of the v0.18.3 tag are fixed** (FM-030, FM-037, FM-035 — with FM-036, FM-029 and FM-031).
+of the v0.18.3 tag are fixed** (FM-030, FM-037, FM-035 — with FM-036, FM-029, FM-031 and FM-006).
 
 - **Only the Owner changes his intent and his current path** (FM-037, the Auditor seat's AU-12; the Owner's word of
   2026-09-25 18:55:33 on its line *stop a seat from editing your TRIAGE.md*: *let's fix this first then* — the
@@ -145,6 +145,10 @@ of the v0.18.3 tag are fixed** (FM-030, FM-037, FM-035 — with FM-036, FM-029 a
   --state merged` and `--state closed` return with a merge or close time in the last day, newest first, with its time in
   UTC and its branch — so a seat's *still open* line is checked against the forge in the same turn. *Nothing to do on
   upgrade.*
+- **The setup pages clone the release they ship with** (FM-006; the cold review's R1 on the 0.18.4 cut). `docs/setup.md`
+  and its German page cloned `--branch v0.17.8` and called it the newest tag; the site built from them said the same.
+  Both now clone `v0.18.4`, and a suite case fails when a `--branch v…` in either page is not `v<VERSION>`, or a page
+  has none — a cut changes them with `VERSION`. The site is built from them at the tag. *Nothing to do on upgrade.*
 
 *Named for 0.18.4 and not in it* — each stays a line on its tracker: FM-033's `--queue` and board marks on a pushed branch
 whose commits name an unjudged tracker, and the board's activity beside judgement (named in the 0.18.3 section); FM-028's
