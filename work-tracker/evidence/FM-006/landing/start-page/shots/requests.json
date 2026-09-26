@@ -14,7 +14,7 @@
  "start-1440-full.png": {
   "page": "page",
   "width": 1440,
-  "height": 5819,
+  "height": 5837,
   "reduce": false,
   "reached": [
    "fonts.googleapis.com",
@@ -86,7 +86,7 @@
  "start-390-full.png": {
   "page": "page",
   "width": 390,
-  "height": 11008,
+  "height": 11025,
   "reduce": false,
   "reached": [
    "fonts.googleapis.com",
