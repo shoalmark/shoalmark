@@ -4,10 +4,11 @@
 übernehmen Ihre Agenten.*
 
 Ihre Agenten bringen eine Aufgabe ohne Rückfrage zu Ende, wenn sie zwei Dinge vorher von Ihnen wissen: wofür die
-Arbeit da ist und was zuerst kommt. Beides steht in einer einzigen Datei, die Ihre Agenten für Sie anlegen, der
-`TRIAGE.md`. Von Ihnen kommen drei Zeilen und eine kurze nummerierte Liste. Daran messen Ihre Agenten jede Bewertung,
-und **ändern kann sie nur Ihr signiertes Wort**. Das hält das Werkzeug, bis zu einer Grenze, deren Stärke Sie selbst
-wählen; beides steht weiter unten. Im Chat müssen Sie sich nicht wiederholen, denn die Datei sagt es für Sie.
+Arbeit da ist und was zuerst kommt. Beides schreiben Sie einmal auf, in eine einzige Datei, die `TRIAGE.md`: drei
+Zeilen und eine kurze nummerierte Liste. Die Datei legen Ihre Agenten mit `--init` an, samt einem Beispiel
+(*das Werkzeug*). Jede Sichtung misst ihre Arbeitspakete an Ihren Worten (*das Review*), und **ändern kann sie nur
+Ihr signiertes Wort** (*das Werkzeug*, bis zu einer Grenze, deren Stärke Sie selbst wählen). Im Chat müssen Sie
+sich nicht wiederholen, denn das Werkzeug gibt Ihre Worte für Ihre Agenten aus. Wie das alles geht, steht unten.
 
 ## Was jede Aussage trägt
 
@@ -28,7 +29,7 @@ Abschnitte, und zwei davon gehören Ihnen.
   einzelnes Feature. Sie sagen, wofür es da ist, was gilt, wenn es funktioniert, und was keine Sichtung und kein
   Agent tun darf, um dorthin zu kommen.
 - **Der aktuelle Weg.** Diese nummerierte Liste sagt, was zuerst kommt und nach welchen Regeln gearbeitet wird. An
-  ihm misst jede Sichtung, was P1, P2 oder P3 ist.
+  ihm misst eine Sichtung die Arbeitspakete auf ihrem Arbeitsblatt (*das Review*; welche das sind, steht unten).
 - **Durchgänge.** Hier steht ein Absatz je Sichtung, geschrieben von dem Agenten, der sie gemacht hat. Dieser
   Abschnitt gehört Ihren Agenten.
 
@@ -53,8 +54,8 @@ das Beispiel so:
 
 ## Was eine Änderung bewirkt
 
-Sobald Ihr Commit drin ist, arbeiten Ihre Agenten ab ihrem nächsten Befehl nach den neuen Worten. Dafür braucht es
-weder eine Besprechung noch eine Nachricht.
+Sobald Ihr Commit drin ist, bekommen Ihre Agenten die neuen Worte beim nächsten Befehl zu sehen; *das Werkzeug*
+gibt sie aus, wie die ersten beiden Punkte unten zeigen. Dafür braucht es weder eine Besprechung noch eine Nachricht.
 
 - **Das Werkzeug.** `--next`, der Befehl am Anfang einer Session, gibt Ihren aktuellen Weg aus, noch vor der
   gereihten Arbeit. `INDEX.md` führt ihn wörtlich weit oben, und Ihre Tafel zeigt ihn unter dem, was auf Sie wartet.
@@ -62,14 +63,23 @@ weder eine Besprechung noch eine Nachricht.
   leave you a choice, this decides it"*: Wo die Mechanik eine Wahl lässt, entscheidet Ihre Absicht. Ihren Weg gibt
   es darunter aus, mit der Anweisung *„judge against it"*. Ist kein Weg geschrieben, fängt die Sichtung gar nicht
   erst an: *„tiers cannot be judged; the Owner writes it first"*.
-- **Das Review.** Die nächste Sichtung misst jedes offene Arbeitspaket an Ihren neuen Worten. So verlangen es ihre
-  Regeln: *„P1 on the current path · P2 next · P3 someday"*. Die Urteile schreibt das Werkzeug. Ob sie Ihren Worten
-  folgen, prüft der Reviewer der Sichtung.
+- **Das Werkzeug.** Eine Sichtung stuft nicht alles neu ein, und auf eine Änderung Ihres Wegs allein reagiert im
+  Werkzeug nichts. Auf ihr Arbeitsblatt kommen laufende Arbeitspakete, die seit mehr als sieben Tagen keine Sichtung
+  eingestuft hat (`triage_days`), neu erfasste und solche mit einem Einwand (nächster Punkt). Was schon eingestuft ist
+  und nicht läuft, also vorgeschlagene, zurückgestellte oder reservierte Arbeit, bleibt mit seiner Stufe im Rückstand.
+  Ein Arbeitspaket, das diese Woche eingestuft wurde, behält seine Stufe deshalb bis zu seiner nächsten Sichtung,
+  außer ein Einwand nennt eine Zeile Ihres Wegs.
+- **Das Review.** Die Arbeitspakete auf dem Arbeitsblatt werden an Ihren neuen Worten gemessen. So verlangen es die
+  Regeln der Sichtung: *„P1 on the current path · P2 next · P3 someday"*. Die Urteile schreibt das Werkzeug. Ob sie
+  Ihren Worten folgen, prüft der Reviewer der Sichtung.
 - **Das Werkzeug.** Ein *Einwand* ist eine belegte Zeile, die ein Agent unter ein Arbeitspaket schreibt
   (`## Einwände`). Er kann eine Zeile Ihres Wegs als untergraben nennen, etwa `path 5`. Ist der Einwand jünger als
   die letzte Einstufung und nennt er eine Zeile, die Ihr Weg wirklich hat, kommt das Arbeitspaket zurück auf das
-  Arbeitsblatt der Sichtung, markiert als RAISED. Nur an dieser Stelle richtet sich eine Prüfung nach Ihrem Weg, und
-  zwar nach der Nummer der Zeile, nicht nach ihrem Inhalt.
+  Arbeitsblatt der Sichtung, markiert als RAISED, wie frisch seine Stufe auch ist. Diese Prüfung des Einwands ist die
+  einzige Stelle, an der das Werkzeug liest, was in Ihrem Weg steht, und sie liest nur die Nummern: Sie sammelt die
+  Nummern der Zeilen Ihres Wegs und gleicht das `path N` des Einwands damit ab. Was eine Zeile sagt, liest sie nie.
+  Die beiden anderen Prüfungen am Weg schauen nur, ob überhaupt einer geschrieben ist (`--triage` und `--next`,
+  oben) und ob sich seine Bytes geändert haben (der Schutz, unten).
 
 ### Aus shoalmarks eigenem Beleg
 
@@ -114,15 +124,16 @@ command"*. Die Befehle des Standups selbst waren grün gelaufen.
   dem, was Ihre Worte sagen, und deshalb achtet der Reviewer darauf, dass die Sichtung sich an sie hält. Soll ein
   rotes Release-Tag für Sie P1 sein, schreiben Sie es in Ihren Weg. Es ist Ihre Zeile.
 
-**Ein Einwand, der Ihren Weg nennt.** Am 24. September 2026 hat der Auditor-Sitz zu FM-007 einen Einwand erhoben,
-mit einer belegten Zeile. Darin stand, dass der Schlüssel, der die Antworten des Eigners signiert, ein
-Software-Schlüssel im gemeinsamen ssh-agent war, den jeder Push eines Agenten ohne Nachfrage benutzte. Die Zeile
-endete mit *„undermines: TRIAGE.md path 5"*. Am selben Abend hat eine Sichtung FM-007 neu eingestuft (`29466fc`).
-Nach den Befunden ihres Reviewers wurde sie neu gemacht (`c5696c5`) und setzte P1: *„on the current path, line 5: an
-answer is written and signed, and the raise shows the signature proves the account, not the hand"*. Die Signatur
-beweist also das Konto, nicht die Hand.
+**Ein Einwand, der Ihren Weg nennt.** Am 24. September 2026 hat der Auditor-Sitz zu FM-007 einen Einwand erhoben, mit
+einer belegten Zeile. Darin stand, dass der Schlüssel, der die Antworten des Eigners signiert, ein Software-Schlüssel
+im gemeinsamen ssh-agent war, den jeder Push eines Agenten ohne Nachfrage benutzte. Die Zeile endete mit
+*„undermines: TRIAGE.md path 5, FM-033's answer"*. Sie nannte also zwei signierte Regeln als untergraben: Zeile 5 des
+Wegs und die signierte Antwort des Eigners zu FM-033. Am selben Abend hat eine Sichtung FM-007 neu eingestuft
+(`29466fc`). Nach den Befunden ihres Reviewers wurde sie neu gemacht (`c5696c5`) und setzte P1: *„on the current path,
+line 5: an answer is written and signed, and the raise shows the signature proves the account, not the hand"*. Die
+Signatur beweist also das Konto, nicht die Hand.
 
-- **Nur der Text.** Dass neu eingestuft wird, noch am selben Tag, ist Ihre Regel, Ihre signierte Antwort zu
+- **Nur der Text.** Dass neu eingestuft wird, noch am selben Tag, ist die Regel des Eigners, seine signierte Antwort zu
   FM-033. Eine Sichtung hält sie ein, indem sie an diesem Tag noch läuft.
 - **Das Werkzeug**, seit 0.18.3: Ein Einwand, der eine Zeile nennt, die Ihr Weg hat, stellt das Arbeitspaket unter
   *triage*, bis eine Sichtung es neu eingestuft hat. Am 24. September konnte das Werkzeug ein solches Arbeitspaket
@@ -179,8 +190,11 @@ nach jeder Ablehnung aus.
 
 - **Das Werkzeug** kann den Unterschied nicht erkennen. Auf Stufe 0 heißt *nur Sie* in Wahrheit *nur Ihr Konto*. Im
   Scratch-Repository ging ein Commit, der mit dem Schlüssel des Eigners ohne Passphrase signiert war, genauso durch
-  `--check` wie sein eigener. Erst eine Passphrase bei jeder Signatur (Stufe 2) oder ein Hardware-Schlüssel
-  (Stufe 3) macht den Schlüssel allein zu Ihrem. Die vier Stufen stehen auf der [Signaturseite](signing.md).
+  `--check` wie sein eigener. Eine Passphrase bei jeder Signatur (Stufe 2) fängt eine verirrte Signatur ab, aber ein
+  Agent, der Schaden will, kann die Abfrage fälschen und die Passphrase mitlesen. Die [Signaturseite](signing.md) sagt
+  es so: *Stufe 2 hält den Agenten auf, der aus Versehen signiert; Stufe 3 auch den, der es absichtlich tut.* Stufe 3
+  ist ein Hardware-Schlüssel mit PIN und Berührung oder ein Schlüssel in der Secure Enclave eines Macs mit Touch ID;
+  erst dort gehört der Schlüssel allein Ihnen.
 - **Das Werkzeug.** Ist Ihr Sitz in `[seats]` nicht als `signed` markiert, beweist der Schutz nur den Autor, eine
   Zeichenkette, die jeder tippen kann, und das Werkzeug sagt das auch.
 - **Das Werkzeug.** Unter Subversion liegt der Schutz außerhalb seines Umfangs, und das Werkzeug sagt es in einer
@@ -191,11 +205,15 @@ nach jeder Ablehnung aus.
 - **Sie ändert keine Prüfung.** Die Ablehnungen des Gates, die Art, wie `--queue` einen Pull Request liest, der
   Aufnahmestopp für neue Arbeitspakete und die Rechte der Sitze stehen im Code des Werkzeugs und in `shoalmark.toml`.
   Zeile 3 verlangt die Belegdatei eines Reviews, und `--queue` verlangt ein Urteil auf dem Kopf, weil sein Code es so
-  vorsieht. Streichen Sie Zeile 3, bleibt das so. *Das Werkzeug:* Keine Prüfung richtet sich nach dem Inhalt Ihrer
-  Zeilen, nur eine nach ihren Nummern (der Einwand, siehe oben).
-- **Sie verschiebt weder Einstufung noch Rang.** Die ändern sich erst bei der nächsten Sichtung, wenn ihr Befehl das
-  Arbeitsblatt anwendet. *Das Werkzeug* schreibt sie und lehnt einen Agenten ohne das Recht `triage` ab. Dass kein
-  Agent sie von Hand ändert, trägt *nur der Text*. Bis dahin zeigt Ihre Tafel das alte Urteil.
+  vorsieht. Streichen Sie Zeile 3, bleibt das so. *Das Werkzeug:* Keine Prüfung liest, was Ihre Zeilen sagen; die
+  Prüfung des Einwands liest ihre Nummern (siehe oben).
+- **Sie verschiebt von sich aus weder Stufe noch Rang.** Die Stufe eines Arbeitspakets ändert sich erst, wenn es auf
+  dem Arbeitsblatt einer Sichtung steht und deren Befehl seine Zeile anwendet: laufende Arbeit, die seit mehr als
+  sieben Tagen nicht eingestuft wurde, eine neue Erfassung oder ein Arbeitspaket, dessen Einwand eine Zeile Ihres
+  Wegs nennt (*das Werkzeug*). Nach den Regeln der Sichtung wird ein solches Arbeitspaket noch am selben Tag neu
+  eingestuft (die Regel aus FM-033); dass es geschieht, trägt *nur der Text*. Alle anderen behalten ihre Stufe bis zu
+  ihrer nächsten Sichtung, und bis dahin zeigt Ihre Tafel das alte Urteil. Stufe oder Rang von einem Agenten ohne das
+  Recht `triage` lehnt *das Werkzeug* ab; dass kein Agent sie von Hand ändert, trägt *nur der Text*.
 - **Sie beantwortet keine Frage.** Eine Frage auf Ihrer Tafel beantworten Sie mit `--answer`, signiert (*das
   Werkzeug*). Eine Änderung an der `TRIAGE.md` beantwortet nichts, und ein Merge oder ein Klick ebenso wenig. Dass
   kein Agent so etwas als Ihre Antwort nimmt, steht in einer Zeile des Wegs, bei shoalmark selbst in Zeile 5, und das
