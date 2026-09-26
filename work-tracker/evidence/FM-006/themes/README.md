@@ -115,30 +115,51 @@ the chart is 53°57'N 8°24'E.
 
 ## What the build is — not done
 
-It is code and documentation outside `work-tracker/`, so a pass judges it first (FM-033) and the full review loop
-follows:
-- `brand/themes/monochrome.css` and `shoalmark.css` in the tool, with the two fonts beside them.
-- `--brand DIR --from <theme>`, writing the starter from a theme.
-- In the board's markup:
+Two slices, the cheap one first. A pass judges the build before its first build commit (FM-033), the tier stated per
+slice, and it waits for the ask's answer:
+- **Slice A — shoalmark's own board and site, the brand layer only:** `work-tracker/brand/theme.css` from the chosen
+  theme; the two Plex Mono cuts, SemiBold and Italic, Latin-1, from `@ibm/plex-mono` 1.1.0, hashed as the Regular is;
+  the site's theme as lines in `docs/stylesheets/`. The site wears one; it has no picker. No `shoalmark.py` change, and
+  none of the files `--vendor` copies.
+- **Slice B — only if he rules the tool ships themes; code:**
+  - `brand/themes/monochrome.css` and `shoalmark.css` in the tool, with the two fonts beside them.
+  - `--brand DIR --from <theme>`, writing the starter from a theme.
+- **In neither slice as his word draws them — the board's markup**, which the mocks work around in CSS:
   - the owner's box title as a label, because `labels.yaml` cannot reach CSS `content:`;
   - one footer element, because lifting the running line onto the claim's line is a CSS workaround — the foot's band
     hangs from the lifted line;
   - a class on striped rows, because group rows break `nth-child`.
-- The site: the theme it wears, as lines in `docs/stylesheets/shoalmark.css`. The site wears one; it has no picker.
+
+  They are `shoalmark.py` changes. Slice A wears the mocks' CSS, workarounds and all, on the board the tool writes
+  today; the pass says where the hooks go.
 
 The one rule and "no setting" stay. The tool's default look stays for every consumer: a theme is a file someone puts
 in a place.
 
 ## The ask, drafted
 
-It is raised when FM-006's open ask (going public) is answered, because a tracker holds one ask.
+It is raised when FM-006's open ask (going public) is answered, because a tracker holds one ask; the Principal raises
+it. Re-made on 2026-09-26 on the Owner's word through the Auditor seat (AU-24): the first draft asked two things in one
+— whether the tool ships themes and which theme shoalmark's own board and site wear — and had no option for the cheap
+step.
 
-> **ask:** Does shoalmark ship two themes — monochrome and shoalmark, each drawing a nautical chart behind the page, as
-> files in the tool's brand/themes/ that `--brand DIR --from <theme>` starts from — and which do its own board and site
-> wear?
-> **options:** both, the board and the site wear shoalmark | both, the board and the site wear monochrome | not yet —
-> the board and the site keep today's look · **proposal:** both, the board and the site wear shoalmark — the brand's
-> own, and the starter the library is made from
+> **kind:** ruling — a decision of intent; no hands of his are needed for the answer.
+>
+> **ask:** Which theme do shoalmark's own board and site wear — the brand layer and the site's stylesheet, no tool
+> change — and, separately, does the tool ship themes: `brand/themes/` and `--brand DIR --from <theme>`, code whose
+> files every vendoring consumer receives?
+>
+> **options:** shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet | the tool ships
+> monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme | not yet —
+> shoalmark's own board and site keep today's look; the tool ships no themes (85, 108 and 84 characters)
+>
+> **proposal:** shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet — **the GtM
+> seat's proposal**, because it is the cheap step: one Reviewer pass instead of adding the code tier (inline passes,
+> tests, CHANGELOG), and none of the files `--vendor` copies changes, so no release after 0.18.4 hands a vendoring
+> consumer a theme before he rules the tool ships them.
+>
+> `monochrome` is not offered as the worn theme: the GtM seat does not propose it. Under the second option it ships as
+> a starter.
 
 ## Renders
 
