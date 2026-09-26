@@ -10,3 +10,7 @@ at your option.
 
 This product bundles marked (vendor/marked-18.0.13.umd.js), Copyright (c) 2018-2026 MarkedJS and
 Copyright (c) 2011-2018 Christopher Jeffrey, under the MIT License — https://github.com/markedjs/marked
+
+This product bundles IBM Plex Mono (brand/themes/*/fonts/, the Latin-1 cuts of @ibm/plex-mono 1.1.0, unmodified),
+Copyright 2017 IBM Corp., with Reserved Font Name "Plex", under the SIL Open Font License 1.1 — the licence is in
+each brand/themes/*/fonts/LICENSE.txt

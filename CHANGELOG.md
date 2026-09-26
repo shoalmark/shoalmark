@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## 0.18.5 — 2026-09-26
+## 0.18.5 — 2026-09-27
 
 **shoalmark is restyled and rebranded — the tool ships `monochrome` and `shoalmark` as starter themes, and shoalmark's
 own board and site wear `shoalmark` — and the site's start page is the landing page, built at the tag and live when the
@@ -17,8 +17,9 @@ repository is public** (FM-002, FM-006 — with the open lines of FM-031, FM-038
   there; an unknown name is refused with the two; `--from` alone is refused. `--schema` says no key chooses the look;
   `--brand` marks a place that holds no brand file. Each theme is FM-006's mock as he took it (`9467b83`), every edit
   marked in the file — the board's header, the mark, the name and the switch, inline inside the chart's top border in
-  both, on his word in chat of 09:23:58 (*for the dashboard I prefer this inline header … over this variant, where the
-  header sits outside the graticule. Align for both*; spelling normalised, not a signed answer). **Three hooks in the
+  both, on his word in chat of 2026-09-26 09:23:58 (*For the Dashboard i prefer this "inline header" (Soalmark logo +
+  light/dark switch) variant … over this variant used in the dar mode, where the header sits outside the graticule. …
+  Align for both.* — verbatim, the two screenshots' references cut at `…`; not a signed answer). **Three hooks in the
   board** a theme styles, none seen without one: the Owner's box's title, a label (`owner.title`, `#p>.pt`, wherever
   the box is drawn); the last line's one element, `<footer id="F">` — the claim `#f`, now outside the board `#B`, and
   the running line `#r`; the class `zebra` on every other row of a group. *On upgrade:* a theme that placed the
@@ -30,18 +31,18 @@ repository is public** (FM-002, FM-006 — with the open lines of FM-031, FM-038
   Plex Mono cuts beside the Regular, `docs/stylesheets/shoalmark.css`. No `shoalmark.py` change and nothing new that
   `--vendor` copies: a consumer's board looks as it did. The site is built at the release tag and goes live when the
   repository is public. The starters for every consumer are slice B.
-- **The site's start page is the landing page** (FM-006, slice L; the Owner's word in chat of 2026-09-26 10:25:41, not a
-  signed answer: *for the v0.18.5 release we also add a landing page requirement, alongside the restyle and rebrand of
-  shoalmark's brand identity*). The GtM/Design mock as it is — an arcade's attract screen over a pixel chart of the
-  German Wadden coast whose wrecks are this repository's defects — through `overrides/landing.html`, which
-  `docs/index.md` selects; every other page keeps the site's chrome. Documentation only: no `shoalmark.py` change,
-  nothing new that `--vendor` copies. The site is built at the release tag and goes live when the repository is
-  public. The page names this release, from `VERSION` at the cut; its wrecks and the board's excerpt are main's at
-  `bef2a1e`, read 18:00 CEST, as its foot says — FM-039, filed at this cut, is not on its chart. *Open, for the
-  release after* (FM-006's lines, his to rule; the slice's review, R1 and R2): the fonts, Plex and now Silkscreen,
-  self-hosted before the site is published; the page's links are the mock's absolute `holgo99.github.io` addresses,
-  which serve nothing before the go-public act, and it has no favicon; three sentences of the old start page are on no
-  English page; a German landing page; the page's facts generated at build time.
+- **The site's start page is the landing page** (FM-006, slice L; the Owner's word in chat of 2026-09-26 10:25:41,
+  spelling normalised, not a signed answer: *for the `v0.18.5` release we also add a landing page requirement, that
+  goes alongside the restyle and rebrand of `shoalmark`'s brand identity*). The GtM/Design mock as it is — an arcade's
+  attract screen over a pixel chart of the German Wadden coast whose wrecks are this repository's defects — through
+  `overrides/landing.html`, which `docs/index.md` selects; every other page keeps the site's chrome. Documentation
+  only: no `shoalmark.py` change, nothing new that `--vendor` copies. The site is built at the release tag and goes
+  live when the repository is public. The page names this release, from `VERSION` at the cut; its wrecks and the
+  board's excerpt are main's at `bef2a1e`, read 18:00 CEST, as its foot says — FM-039, filed at this cut, is not on
+  its chart. *Open, for the release after* (FM-006's lines, his to rule; the slice's review, R1 and R2): the fonts,
+  Plex and now Silkscreen, self-hosted before the site is published; the page's links are the mock's absolute
+  `holgo99.github.io` addresses, which serve nothing before the go-public act, and it has no favicon; three sentences
+  of the old start page are on no English page; a German landing page; the page's facts generated at build time.
 - **FM-035's healthy-board case fails under machine load — filed at this cut, not built** (FM-039, under the freeze as a
   bug; the slice B seat's finding of 2026-09-26, `9f2f525`). The case gives headless Chrome 5 s of wall-clock time on
   a healthy board: `test_shoalmark.py` on 3.9 read 469 of 470 in 3 of 3 runs at a 1-minute load of 9–27, while other
@@ -68,8 +69,8 @@ the landing page mocked (PR 82), the home at the flip a GitHub organisation (PR 
 hashed (PR 89, PR 93); the passes of 2026-09-26 (PR 89, PR 93) — FM-034, FM-035 and FM-036 corrected to Shipped by `fix`
 rows for what 0.18.3 and 0.18.4 shipped, and the build judged before its first commit, FM-033's rule.
 
-*Trackers touched:* FM-002 and FM-006, built; FM-031, FM-038 and FM-039, open lines; FM-033, FM-034, FM-035 and FM-036,
-by the passes only.
+*Trackers touched:* FM-002 and FM-006, built; FM-031, FM-038 and FM-039, open lines; FM-034, FM-035 and FM-036, by the
+passes' `fix` rows only.
 
 *On upgrade:* the copy carries `brand/themes/`, pinned; nothing changes until a repository runs `--brand DIR --from
 <theme>`. A theme that placed the running line by the board's sibling (`#B … ~ #r`) or reached the claim through `#B`
