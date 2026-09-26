@@ -1,0 +1,171 @@
+# Your word in TRIAGE.md
+
+*For the owner. Five minutes to read. You write it once, in your own words, and your agents do the rest.*
+
+Your agents can run a task from start to finish without asking you, if they know two things first: what the work is
+for, and what comes first. Both live in one file that your agents create for you, `TRIAGE.md`. You write three lines
+and a short numbered list. Your agents hold every judgement against them, and **only your signed word changes them**.
+The tool holds that, up to a limit whose strength you choose; both are below. You don't repeat yourself in chat: the
+file says it for you.
+
+## What holds each claim
+
+Every claim on this page is labelled with what holds it:
+
+| Label | What it means |
+|---|---|
+| **The tool** | shoalmark checks it: it prints the text, or it refuses the commit. |
+| **Review** | a Reviewer checks it against the record before a merge. Nothing refuses it on its own. |
+| **The text alone** | a written rule. Seats keep it because it is written down, and nothing checks it. |
+
+## What the file holds
+
+`TRIAGE.md` sits in the tracker directory (`docs/work-tracker/` unless you chose another). It has three sections, and
+two of them are yours.
+
+- **The intent — *for · so that · never*.** Three lines about the repository as a whole, never one feature of it:
+  what it is for, what is true when it works, and what no pass or seat may do to get there.
+- **The current path.** A numbered list of what comes first and the rules the work runs by. A pass judges every tier
+  against it.
+- **Passes.** One paragraph per triage pass, written by the seat that ran it. This section belongs to your agents.
+
+**A first draft: the village library.** `--init` writes an example in italics, and it is a whole product on purpose.
+The owner's own first draft once came out the size of one feature, after a seat had shown him a feature-sized example
+(FM-022). So the example looks like this:
+
+> - **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*
+> - **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*
+> - **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*
+
+Write over it in your own words.
+
+- **The tool.** A pass reads everything you write there. It leaves out only the lead-in and the examples as they stand,
+  so an untouched example reads as *no intent written*.
+
+## What an edit changes
+
+Once your commit is in, your agents work to the new words from their next command. You don't need a meeting or a
+message.
+
+- **The tool.** `--next`, where a session starts, prints your current path before the ranked work. `INDEX.md` carries it
+  word for word near its top, and your board shows it below what waits for you.
+- **The tool.** `--triage` prints your intent above its rules: *"Where the mechanics below leave you a choice, this
+  decides it"*. It prints your path below them: *"THE CURRENT PATH is the Owner's, printed below — judge against it."*
+  With no path written, it refuses to start: *"tiers cannot be judged; the Owner writes it first."*
+- **Review.** The next pass keeps and tiers every open tracker against your new words, as its rules say: *"P1 on the
+  current path · P2 next · P3 someday."* The tool writes the verdicts; whether they follow your words is what its
+  Reviewer checks.
+- **The tool.** A *raise* is a seat's sourced line under a tracker, and it can name a line of your path as undermined
+  (`path 5`). A raise dated after the tracker's last judgement that names a line your path has puts the tracker back
+  on the triage sheet, marked RAISED. That is the one place a check acts on your path, and it acts on the line's
+  number, not on what the line says.
+
+### From shoalmark's own record
+
+**Path line 3, rewritten.** On 25 September 2026 at 10:37, the owner rewrote line 3 in his own signed commit
+(`fe36cc0`, `%G?` G), which also reworded lines 1, 2 and 5 and added line 6. Line 3 before:
+
+> 3\. A pull request without an independent review's evidence file cannot merge - checked, not asked.
+
+After:
+
+> 3\. A pull request merges only with a review's evidence file on its head: a Reviewer from another independent
+> session for critical changes (critical = a release, the gate or hooks, signing and rights, TRIAGE.md or AGENTS.md
+> rules changed by a seat, anything tagged security or P1); inline Reviewer passes on other code; one Reviewer pass
+> for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until FM-007's
+> hardware key signs them. The Owner merges on a ready line, or over any other verdict with a signed reason.
+
+- **Review.** The same day, the seats sorted their work by the new line. The pass that took in the CI fix wrote
+  *"the Owner's line 3 names a release critical, so its fix's review is the cold session's"* (`42f4eca`). FM-037, the
+  guard described below, was reviewed in two other sessions before it merged, and `--check` lists both verdicts as
+  *independent*.
+- **The tool.** `--check` prints how independent the week's reviews were. At `88c7b0c` on 26 September 2026 it
+  printed `reviews this week · 104 verdict(s) · independent 10 · same session 89 · untraced 5`. That is a report,
+  not a gate: most of that week's verdicts came from the same session as the work, and nothing refuses a same-session
+  verdict yet (FM-024's second slice is not built). The line shows you what you are merging.
+
+**One phrase decides a tier.** CI went red on the release tag `v0.18.3` on 25 September 2026. The first pass
+(`42f4eca`, 12:15) kept FM-035 at P1: *"a red release tag on two of three platforms is a failed command on the
+current path, line 1"*. Its Reviewer found the quotation cut short. Line 1 in full reads: *"The daily sitting runs on
+a tagged release with a signed answer and no failed command in the sitting."* The pass was re-made (`c8939e3`, 12:30)
+and judged P2: *"the sitting's commands ran green here, so a red CI is not that command"*.
+
+- **Review.** Three words, *in the sitting*, moved the tier. No check acts on what your words say, so the Reviewer
+  holds the pass to them. If a red release tag should be P1 for you, write that into your path. It's your line.
+
+**A raise that names your path.** On 24 September 2026 the Auditor seat raised FM-007 with a sourced line under it.
+The key that signs the owner's answers was a software key in the shared ssh-agent, used by every seat's push without
+a prompt, and the line ended *"undermines: TRIAGE.md path 5"*. The same evening a pass judged FM-007 again
+(`29466fc`). Re-made on its Reviewer's findings (`c5696c5`), it set P1: *"on the current path, line 5: an answer is
+written and signed, and the raise shows the signature proves the account, not the hand"*.
+
+- **The text alone,** for *the same day*: that is your rule, your signed answer on FM-033, and a pass keeps it by
+  running.
+- **The tool,** since 0.18.3: a raise that names a line your path has puts the tracker under *triage* until a pass
+  has judged it again. On 24 September the tool couldn't list a raised tracker yet, so the seat wrote the row by hand.
+- **Review.** The reason for the new tier is the seat's own; its Reviewer checks that reason against your line.
+
+## Only you change it
+
+- **The tool.** On a branch, `--check` refuses any commit that changes the text under *The intent* or *The current
+  path*: a word, a line, even a blank line, because whitespace counts. It also refuses a commit that renames or
+  removes those headings, deletes or moves `TRIAGE.md`, or points the tracker directory somewhere else. The one
+  exception is your signed commit: `%G?` G, the signer your email, and the author the seat that holds `answer` in the
+  default branch's `[seats]`. A merge is judged only on a text that no parent had.
+- **The tool.** The commit hook refuses such a commit from a seat before it is made, and `--queue` reads its pull
+  request as `wait: TRIAGE.md changed unsigned`.
+- **The tool.** The keys your signature is checked against are kept the same way. They come from the default
+  branch's signers file, never a branch's own copy, so a branch that adds its own key under your email proves nothing.
+- **The tool.** *Passes* stays open to the seats that record a pass.
+
+**Shown.** We ran this in a scratch repository with the tool from shoalmark's `main` (`88c7b0c`). The repository had
+the village library as its intent, two path lines, an invented owner with his key, and a seat. Nothing of it left the
+scratch directory. On its own branch, the seat changed path line 2 from *"A pull request merges only with a review's
+evidence file on its head."* to *"A pull request merges when its tests pass."* `--check` on that branch exited 4, and
+these are the refusal's lines as the tool printed them (the script and its whole output are in
+[FM-006's evidence](https://github.com/holgo99/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page)):
+
+```text
+  lint: refused: commit 1063448 "LIB-001: path line 2, shorter" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`you@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+FAILED: 1 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
+```
+
+With the hooks installed (`--install-hook`), a seat's change to the intent was not made at all: the hook printed the
+same refusal for *this commit*, and before the limit it added *"the hook proves the author only: git signs a commit
+after its hooks have run — `--check` on the branch is the gate, and it judges the signature"*.
+
+**The way through is yours.** A seat that wants a line changed asks you, in the form the refusal names (*the tool*):
+an `ask:` in its tracker, `ask-kind: ruling`. You answer on your board. If you agree, you make the edit yourself:
+edit the file, `git commit -S`, push. `git log -1 --format='%G? %GS %ae'` then prints `G` and your email twice. That
+is the check on [the signing page](signing.md).
+
+**The limit,** in the words FM-006 filed it with: *a commit signed with the Owner's key passes, and at tier 0 any
+process on his account holds that key.* The tool prints it after every refusal.
+
+- **The tool** cannot tell the difference. At tier 0, *only you* means *only your account*. In the scratch
+  repository, a commit made with the owner's key, which had no passphrase, passed `--check` exactly like his own. A
+  passphrase at every signature (tier 2) or a hardware key (tier 3) makes the key yours alone; the four tiers are
+  [on the signing page](signing.md).
+- **The tool.** Where your seat in `[seats]` is not marked `signed`, the guard proves the author only, a string anyone
+  can type, and it says so.
+- **The tool.** Under Subversion the guard is out of scope, and it says so in one line: a working copy carries no
+  signature.
+
+## What an edit does not do
+
+- **It changes no check.** The gate's refusals, `--queue`'s reading of a pull request, the filing freeze and each
+  seat's rights come from the tool's code and `shoalmark.toml`. Path line 3 asks for a review's evidence file, and
+  `--queue` asks for a verdict on the head because its code does. Deleting line 3 wouldn't change that. *The tool:*
+  no check acts on what your lines say, and one acts on their numbers (the raise, above).
+- **It moves no tier and no rank.** They move at the next pass, when its command applies the rows. *The tool* writes
+  them and refuses a seat that lacks the `triage` right. That no seat edits them by hand is *the text alone*. Until
+  that pass, your board shows the old judgement.
+- **It answers no question.** An ask on your board is answered by `--answer`, signed (*the tool*). An edit to
+  `TRIAGE.md` answers nothing, and neither does a merge or a click. That no seat reads one as your answer is a line
+  of the path (shoalmark's own line 5), and that is *the text alone*: the tool cannot stop a seat from reading a click
+  as your word.
+- **It doesn't reach a branch cut before it.** *The tool* reads the file in the checkout it runs in. A seat on an
+  older branch reads your old lines until its branch takes in your commit.
+- **It doesn't rewrite a past pass.** Each pass was judged against the words of its day. *The tool* writes each new
+  pass to a worksheet of its own day, so an earlier one stays as it was, and git keeps your old text.

@@ -1,0 +1,47 @@
+== der Commit des Eigners
+12a4f02 du@example.org G du@example.org der Eigner schreibt seine Absicht und seinen aktuellen Weg
+
+== 1. ein Agent ändert Zeile 2 des Wegs auf seinem Branch (noch ohne Hooks); dann --check
+aee039e implementer@seat N AP-001: Zeile 2 des Wegs, kürzer
+docs/work-tracker/INDEX.md is STALE — a tracker changed without regenerating. Run: python3 shoalmark.py
+  lint: refused: commit aee039e "AP-001: Zeile 2 des Wegs, kürzer" changes the text under `## Der aktuelle Weg` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`du@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+FAILED: 1 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
+judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on
+the Owner's two sections: guarded — 1 commit(s) on `ap/001-schneller-mergen` since origin/main, 1 change them or his signers file, 1 refused
+exit 4
+
+== 2. mit Hooks; ein Agent ändert die Absicht
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+  refused: this commit "AP-002: die Absicht, geschärft" changes the text under `## Die Absicht` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`du@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+commit exit 1
+12a4f02 du@example.org der Eigner schreibt seine Absicht und seinen aktuellen Weg
+
+== 3. der Eigner ändert Zeile 2 selbst, signiert; dann --check
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+  note: this commit "Zeile 2 des Wegs: auch die Tests grün" changes the text under `## Der aktuelle Weg` in docs/work-tracker/TRIAGE.md, under the Owner's name — its signature is judged on the commit, by `--check` on the branch
+  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+commit exit 0
+e14faef du@example.org G du@example.org Zeile 2 des Wegs: auch die Tests grün
+docs/work-tracker/INDEX.md is up to date — 0 trackers.
+judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on
+the Owner's two sections: guarded — 1 commit(s) on `ap/003-des-eigners-eigene` since origin/main, 1 change them or his signers file, each his own commit
+exit 0
+
+== 4. Stufe 0: ein Prozess unter dem Konto des Eigners signiert mit seinem Schlüssel ohne Passphrase
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+  note: this commit "Zeile 2 des Wegs, mit dem Schlüssel des Eigners signiert" changes the text under `## Der aktuelle Weg` in docs/work-tracker/TRIAGE.md, under the Owner's name — its signature is judged on the commit, by `--check` on the branch
+  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+commit exit 0
+cc9e82d du@example.org G du@example.org Zeile 2 des Wegs, mit dem Schlüssel des Eigners signiert
+docs/work-tracker/INDEX.md is up to date — 0 trackers.
+judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on
+the Owner's two sections: guarded — 1 commit(s) on `ap/004-mit-seinem-schluessel` since origin/main, 1 change them or his signers file, each his own commit
+exit 0
