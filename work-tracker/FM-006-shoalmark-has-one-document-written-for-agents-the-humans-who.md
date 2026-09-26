@@ -25,7 +25,7 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 **The page on his word in TRIAGE.md is built, in review — 2026-09-26, the GtM seat, after FM-037's guard merged (PR 83):** `docs/triage.md` and `docs/de/triage.md`, one nav line each, on `fm/006-the-page-on-his-word-in-triage-md-built`; every claim labelled *the tool*, *review* or *the text alone*; the guard's refusal run in scratch repositories (`evidence/FM-006/triage-page/`). A Reviewer checks every claim against evidence before the merge.
 
-**The home at the flip is a GitHub organisation `shoalmark` — the Owner's word of 2026-09-26, 11:05:27, through the Auditor seat; nothing moves before the flip; the line is filed in *Going public*, below.**
+**The home at the flip is a GitHub organisation `shoalmark` — the Owner's word of 2026-09-26 through the Auditor seat, as pasted by him at 11:05:27, sha256 `19ca39d1794c67cf15e26399667d392cadc65fdb1c5c5d22fe44993277ad4ec5`; nothing moves before the flip; the line is filed in *Going public*, below.**
 
 **The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 10 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
 
