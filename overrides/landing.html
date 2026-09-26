@@ -11,9 +11,12 @@
 <title>shoalmark — get a better-performing human Owner</title>
 <meta name="description" content="shoalmark: a work tracker that lives in the repository it tracks. One Markdown file per work item, one Python file, a gate on every commit. It puts what needs the Owner first.">
 <link rel="alternate" type="text/plain" title="llms.txt — for agents" href="https://holgo99.github.io/shoalmark/llms.txt">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+{# FM-006 slice L, edit (d): the fonts loaded the site's way — Google Fonts as the theme loads them on every other page, the
+   family its [project.theme.font] code (IBM Plex Mono), the theme's one preconnect and display=fallback — in one load with
+   Silkscreen: the mock's faces and weights (Plex Mono 400, 400 italic, 500, 600; Silkscreen 400, 700), no Plex Sans, no
+   second copy of Plex. Self-hosting Plex before the site is published stays FM-006's open item. -#}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ config.theme.font.code | replace(' ', '+') }}:ital,wght@0,400;0,500;0,600;1,400&amp;family=Silkscreen:wght@400;700&amp;display=fallback">
 <style>
 /* LANDING — the GtM/Design seat, 2026-09-26: a mockup in the shoalmark theme, nothing adopted.
    Attract mode: an arcade cabinet's attract screen whose playfield is a night chart of the German Bight's Wadden coast.
