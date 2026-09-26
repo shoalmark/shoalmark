@@ -151,8 +151,10 @@ step says *both*.
 
     Tier 3: both signers, one line each. A security key's line reads `you@example.org sk-ssh-ed25519@openssh.com AAAA…`
     — the `sk-` marks a hardware key for anyone who reads the file. A Secure Enclave key's reads
-    `ecdsa-sha2-nistp256`, with its comment line above it. A public key is public; committing it is fine. A seat that
-    edits this file shows in the diff.
+    `ecdsa-sha2-nistp256`, with its comment line above it. A public key is public; committing it is fine. Only your
+    signed commit changes this file: the gate refuses a seat's change to it, and it checks every signature against the
+    default branch's copy, never a branch's own. So commit its first version on the default branch yourself, signed — a
+    branch cannot prove a key the default branch does not hold.
 
 3. **Add it on the forge, as a signing key.** On GitHub: *Settings → SSH and GPG keys → New SSH key*, key type
    **Signing Key** ([GitHub's steps](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -215,6 +217,23 @@ writes the three lines, commits them signed with your key (tier 2 asks for your 
 and pushes, naming each step as it starts. If anything fails it undoes everything it wrote and prints the
 command to give the answer again. `git log -1 --format=%G? answer/ap-007` prints `G`, and the ask leaves your queue.
 
+## Your intent and your current path — only your signed commit changes them
+
+The two sections of `TRIAGE.md` that are yours — *The intent* and *The current path* — change only in a commit you
+sign. On a branch, `--check` refuses any other commit that changes their text (a word, a line, a blank line: whitespace
+counts), renames or removes their headings, deletes `TRIAGE.md` or moves it away from the tracker directory, or points
+`tracker_dir` somewhere else; the commit hook refuses a seat's such commit before it is made, and `--queue` reads its
+pull request *wait: TRIAGE.md changed unsigned*. Your commit passes when `git log -1 --format='%G? %GS %ae'` prints `G`
+and your email twice — the check under *Check it*. A seat that wants either section changed asks you, with an `ask:`;
+you make the change yourself, signed. `## Passes` stays open to the seats that record a pass. The signers file is
+guarded the same way, and a signature is checked against the default branch's copy of it: a branch that adds its own
+key under your email proves nothing.
+
+**What it cannot tell.** A commit signed with your key passes; at tier 0 any process on your account holds that key
+(FM-007) — the tiers above are what make the key yours alone. Where your seat in `[seats]` is not marked `signed`, the
+tool proves the author only, a string anyone can type, and says so: mark it `signed` to prove the key. Under Subversion
+this guard is out of scope: its working copy carries no signature.
+
 ## What the tool refuses, and what it says
 
 | You see | It means |
@@ -224,3 +243,5 @@ command to give the answer again. `git log -1 --format=%G? answer/ap-007` prints
 | *`answered-by: x` but the git author of the answer is `y`* | someone else committed your answer; it does not count |
 | *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file does not tie to your email |
 | a *note* that the author is unverified | you wrote `["name"]` without `signed` under git — it works, and it proves nothing |
+| *refused: commit … changes the text under `## The intent`* (or `## The current path`) | a commit on that branch that is not yours, signed, changed your two sections — it does not merge |
+| *… the Owner's email, unsigned* | a commit carries your email and no signature: you forgot `-S`, or someone typed your email |

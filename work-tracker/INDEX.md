@@ -29,7 +29,7 @@
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
-| 1 | P1 | build | — | intended, kind | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress |
+| 1 | P1 | review | *complicated* | intended | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress |
 | 2 | P1 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
 | 3 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
 | 4 | P2 | build | — | intended, kind | [FM-036](FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md) | On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-… | In Progress |

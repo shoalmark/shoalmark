@@ -1,0 +1,50 @@
+== the Owner's commit
+fdb31db you@example.org G you@example.org the Owner writes his intent and his current path
+
+== 1. a seat's commit on a branch changes path line 2 (no hooks installed yet); then --check
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+regenerate exit 0
+1063448 implementer@seat N LIB-001: path line 2, shorter
+docs/work-tracker/INDEX.md is STALE — a tracker changed without regenerating. Run: python3 shoalmark.py
+  lint: refused: commit 1063448 "LIB-001: path line 2, shorter" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`you@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+FAILED: 1 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
+judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on
+the Owner's two sections: guarded — 1 commit(s) on `lib/001-faster-merges` since origin/main, 1 change them or his signers file, 1 refused
+exit 4
+
+== 2. the hooks installed; a seat's commit that changes the intent
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+  refused: this commit "LIB-002: the intent, sharpened" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`you@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+commit exit 1
+fdb31db you@example.org the Owner writes his intent and his current path
+
+== 3. the Owner makes path line 2's change himself, signed; then --check
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+  note: this commit "path line 2: tests green too" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md, under the Owner's name — its signature is judged on the commit, by `--check` on the branch
+  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+commit exit 0
+d5c5c85 you@example.org G you@example.org path line 2: tests green too
+docs/work-tracker/INDEX.md is up to date — 0 trackers.
+judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on
+the Owner's two sections: guarded — 1 commit(s) on `lib/003-the-owners-own` since origin/main, 1 change them or his signers file, each his own commit
+exit 0
+
+== 4. the tier-0 limit: a process on the Owner's account, his key without a passphrase, signs as him
+wrote docs/work-tracker/INDEX.md — 0 trackers, 0 unknown-status
+  buckets — In Progress: 0 · generated files: 0
+  note: this commit "path line 2, signed with the Owner's key" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md, under the Owner's name — its signature is judged on the commit, by `--check` on the branch
+  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, and it judges the signature
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+commit exit 0
+fe98bbf you@example.org G you@example.org path line 2, signed with the Owner's key
+docs/work-tracker/INDEX.md is up to date — 0 trackers.
+judged before build: off — `judged_before_build = true` in shoalmark.toml turns it on
+the Owner's two sections: guarded — 1 commit(s) on `lib/004-signed-with-his-key` since origin/main, 1 change them or his signers file, each his own commit
+exit 0

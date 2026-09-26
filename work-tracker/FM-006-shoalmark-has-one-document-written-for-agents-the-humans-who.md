@@ -21,7 +21,7 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 **The themes are filed on the Owner's word (2026-09-25, narrowed 2026-09-26): two, `monochrome` and `shoalmark`, each for the board and the site, each drawing a nautical chart behind the page (muted in `monochrome`); as files in the tool's `brand/themes/`, `--brand DIR --from <theme>` to start from one, and no setting. Nothing is built. Its ask waits for the going-public ask to be answered; the line is filed below.**
 
-**A page for people on what TRIAGE.md holds — the intent and the current path, and what an edit there does — is owed on the Owner's word (22:38:24), built after FM-037 merges; the line is filed below.**
+**The page on his word in TRIAGE.md is built, in review — 2026-09-26, the GtM seat, after FM-037's guard merged (PR 83):** `docs/triage.md` and `docs/de/triage.md`, one nav line each, on `fm/006-the-page-on-his-word-in-triage-md-built`; every claim labelled *the tool*, *review* or *the text alone*; the guard's refusal run in scratch repositories (`evidence/FM-006/triage-page/`). A Reviewer checks every claim against evidence before the merge.
 
 **The port evidence is this tracker's act — 2026-09-25, on the Auditor seat's addendum and its correction, through the Owner:** `work-tracker/evidence/FM-001/port/` (six files) is still on main; its deletion or move is this tracker's act, ruled on 2026-09-22 — the parent's ledger, row 10 (2026-09-22; the file's line 36) — its form picked by his answer to the ask (*Going public*, below). Nothing is deleted before that answer.
 
@@ -124,7 +124,7 @@ FM-006 — the Auditor seat's correction to item 2 of its addendum, before it is
 "7 of their paths only in history" is wrong. The count (all 175 refs of a clone with refs/pull/*/head fetched; every blob; "portdive", any case): 28 versions name the parent project — 8 are the tip's files, 20 are older. The older versions sit at 7 paths: 5 still exist at the tip; 2 are FM-002's evidence before its move from docs/work-tracker/ to work-tracker/. Where the redaction took the name out of the tree, the history keeps it: 3 files (FM-020, FM-022, review-fix-0.17.5) name it only in older versions. The literal name is a lower bound: the redaction wrote "the origin" and "the parent project", so the parent's tracker ids, pull request numbers and incident detail stay under those words, in the tree and the history. Item 2's conclusion stands: "as it is" publishes the parent's traces.
 On the Principal's call (FM-006 holds the act; nothing deleted before his answer): not struck. Name the act in FM-006's What is true now, not only in its Going public section.
 
-## The page on his word in TRIAGE.md — filed 2026-09-25 at 22:38:24
+## The page on his word in TRIAGE.md — filed 2026-09-25, the paste of 22:38:24, committed 22:40:18
 
 **Through the Owner at 22:38:24 on 2026-09-25, as pasted — the Auditor seat, on the Owner's word (sha256 `be19a4100d73fc27f6d0015ac42a8c4ee152ebcfa751e9ec8fc523ac99933584`):**
 
@@ -143,9 +143,13 @@ The line:
   - what an edit does not do.
 - Worded by the GtM seat; a Reviewer checks every claim against evidence before the merge.
 
-Filed here because the freeze (20 open) bars a new tracker and FM-022 (Shipped) left the site out on purpose; this tracker holds the page.
+Filed here because the freeze (21 open) bars a new tracker and FM-022 (Shipped) left the site out on purpose; this tracker holds the page.
 The build waits for FM-037's guard to merge, so the page's *only you change it* is the tool's, with its tier-0 limit stated; the GtM seat words it,
 a Reviewer checks every claim against evidence before the merge; the term stays *your signed word* unless the Owner rules otherwise by an ask.
+
+**Built 2026-09-26 by the GtM seat** (`8e509911/gtm-2`), cut from `main` at `88c7b0c`: `docs/triage.md` and `docs/de/triage.md`, in the nav.
+The refusal quoted on each page is the output of `evidence/FM-006/triage-page/demo.sh` and `demo-de.sh` (their `.out` beside them): an
+invented Owner, a seat, the tool of `88c7b0c`, the village library as the intent; the German run set up as `docs/de/setup.md` §2 says.
 
 ## The themes, for the board and the site — filed 2026-09-25 by the GtM seat, narrowed 2026-09-26
 
@@ -193,6 +197,8 @@ words, not a signed answer: the ask below makes them one.
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **The page re-made on its Reviewer's R3–R7** (`f4188ee`, NOT READY on `59febae`), in both languages: FM-007's raise quoted whole, *undermines: TRIAGE.md path 5, FM-033's answer* (R3); tier 2 as the signing page has it, stopping the accident while an agent that means harm can fake the prompt, and only tier 3 making the key the Owner's alone (R4); what a pass re-judges: its sheet lists work in progress not judged in seven days, new filings and raised trackers, nothing reacts to a path edit by itself, and a tracker judged this week keeps its tier until its next pass unless a raise names a path line (R5); the raise check named as the one place the tool reads the path's content, its line numbers only, beside `--triage`'s presence test and the guard's byte comparison (R6); the three lead-in sentences labelled (R7). |
+| 2026-09-26 | **The page on his word in TRIAGE.md built** by the GtM seat after FM-037's guard merged (PR 83): `docs/triage.md` (*Your word in TRIAGE.md*) and `docs/de/triage.md` (*Ihr Wort in der TRIAGE.md*), one nav line each in `zensical.toml`, `uvx zensical build` green. What the file holds and what an edit changes, every claim labelled *the tool*, *review* or *the text alone* (DE: *das Werkzeug*, *das Review*, *nur der Text*); the term *your signed word* (*Ihr signiertes Wort*). Examples from this repository's record only: path line 3's rewrite (`fe36cc0`) and the independence line `--check` printed at `88c7b0c`; FM-035 P1 at `42f4eca`, P2 at `c8939e3` with path line 1 whole; FM-007's raise naming path 5, re-judged the same evening (`29466fc`, `c5696c5`); FM-022's village-library intent; FM-037's refusal of a seat's edit, run in a scratch repository and quoted as printed (`evidence/FM-006/triage-page/`, English and German), with the hook's refusal and the tier-0 limit shown (a commit signed with the Owner's passphrase-less key passes); what an edit does not do. The filing's review, R1 and R2 (P3) fixed: *21 open*; the section heading's times. |
 | 2026-09-26 | **The themes narrowed to two, and the site added** by the GtM seat on the Owner's word: `monochrome` and `shoalmark` only, each for the board and the site, each drawing a nautical chart behind the page — a Mercator sheet of Neuwerk's Watt, its border graduated, its degrees and minutes figured — muted in `monochrome`. `catkin`, `bagels` and `seekarte` dropped (in git at `96aa05e`). The board's last line moved out of the chart into a foot band of its own. Evidence re-made: four stylesheets, 18 renders, 27 new contrast pairs, the figures absent from the accessibility tree. Nothing built; nothing published outside the repository, at his word. |
 | 2026-09-25 | **The board's themes filed** by the GtM seat on the Owner's word: `monochrome` and `shoalmark` to ship as files in `brand/themes/`, `--brand DIR --from`; three more kept as mockups. Evidence: `evidence/FM-006/themes/` (five stylesheets, the rebuild script, 16 renders). The Auditor seat's hold lifted on his word; v0.18.4 not tagged. Nothing built. |
 | 2026-09-25 | **The page on his word in TRIAGE.md filed** — the Auditor seat's line on the Owner's word, through him at 22:38:24, word for word (sha256 `be19a410…`): an English and German page on the intent and the current path and what an edit does, each claim labelled by what enforces it, worded by the GtM seat, every claim checked against evidence before the merge; built after FM-037 merges so *only you change it* is the tool's, with FM-007's tier-0 limit. |

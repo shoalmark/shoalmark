@@ -4,6 +4,29 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased — 0.18.4
 
+- **Only the Owner changes his intent and his current path** (FM-037, the Auditor seat's AU-12; the Owner's word of
+  2026-09-25 18:55:33 on its line *stop a seat from editing your TRIAGE.md*: *let's fix this first then* — the
+  attribution as AU-13 corrected it in the tracker's ship log). (1) `--check` walks the
+  branch's own commits, merges included, and refuses one that changes what a pass reads as his — the text under
+  `## The intent` or `## The current path`, byte for byte, whitespace counted, each commit under its own
+  `shoalmark.toml`: a heading renamed or removed, `TRIAGE.md` deleted or moved away, `tracker_dir` re-pointed — unless it
+  is his signed commit: `%G?` G, the signer principal the author's email, the author the seat holding `answer` in the
+  default branch's `[seats]`; a merge only for a text no parent had. A move of the whole tracker with its key, the text
+  unchanged, is no change (`ae1f05e`; the reading is in the README, §5). (2) The refusal, exit 4, names the commit, its
+  subject and the section, and the way through: he commits it signed; a seat proposes it as an `ask:`. The commit-msg
+  hook refuses a seat's such commit before it is made — it sees the author, and says `--check` on the branch judges the
+  signature. (3) `## Passes` stays open to seats; the scaffold `--init` writes is accepted. (4) `--queue` reads such a
+  pull request `wait: TRIAGE.md changed unsigned`. (5) Where his seat is not `signed` it proves the author only and says
+  so; Subversion is out of scope, in one line. (6) The refusal's last line, and `docs/signing.md`: a commit signed with
+  his key passes; at tier 0 any process on his account holds that key (FM-007). (7) A synthetic test for each, and one
+  that walks this repository's main to 0d60d55: the six signed commits `45198d5` … `ad9bf67` accepted, `ae1f05e` no
+  change. The Auditor seat's AU-19: every signature — this guard's, the answer gate's, `--queue`'s — is verified against
+  the default branch's copy of the signers file `gpg.ssh.allowedSignersFile` names, never a branch's own, and a change
+  to that file (or `<tracker dir>/allowed_signers`) is refused unless it is his signed commit: a branch could vouch for
+  itself. AU-20: a scaffold of any version the readers know is accepted where there was none. *On upgrade:* where the
+  default branch's `[seats]` names the Owner, a seat's change to his two sections or his signers file fails `--check`;
+  with no seat holding `answer` there, `--check` says it is not guarded; a first signers file lands on the default
+  branch by his own hand.
 - **An act owed to the Owner has a time** (FM-030; his line 6: *what the Owner owes is on their board with one button*).
   New front-matter keys: `due:` — an ISO time with its zone, `2026-09-26T07:30:00+02:00`, written by the seat that
   schedules the act (with the action ask, or when its time is set); `window:` — minutes after it in which the act can
