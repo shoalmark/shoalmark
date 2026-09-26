@@ -1,6 +1,6 @@
 ---
 id: FM-034
-status: In Progress
+status: Shipped
 considered: FM-024, FM-019, FM-011
 tags: bug
 triaged: 2026-09-25
@@ -12,6 +12,8 @@ hook: "A fresh clone without the Owner's allowedSignersFile runs --check and rea
 # FM-034 — A fresh clone's `--check` says the INDEX is stale: the header carries the clone's own finding
 
 ## What is true now
+
+**Shipped — status corrected by today's pass (2026-09-26, a `fix` verdict): the fix shipped with `v0.18.3` (`57aac8d`, 2026-09-25) — the checkout's own finding goes to stderr, never into the INDEX header — and its suite case holds on `v0.18.4` (`a7e5291`). Its Done-when is met; *byte-identical* holds under `drift_normalize`, the `Generated` date aside.**
 
 **Filed 2026-09-24 at the Auditor seat's check 20 on v0.18.2, through the Owner; nothing is built.** Found in a fresh `gh` clone
 of this repository without the Owner's `gpg.ssh.allowedSignersFile` configured. There `--check` names the missing signers file —
@@ -44,6 +46,7 @@ seat meet the tool, and to each of them a `--check` that says STALE on a clean c
 
 | Date | Event |
 |---|---|
+| 2026-09-26 | **Status corrected to Shipped** by the same-day pass after v0.18.4 (a `fix` verdict: merged code says Shipped): the fix is in `v0.18.3` (`57aac8d`); nothing of it in 0.18.4. |
 | 2026-09-24 | Filed, from the Auditor seat's check 20 as the Owner pasted it; `--related` held it against FM-024, FM-019 and FM-011 — none owns the INDEX header. |
 | 2026-09-24 | In Progress — 0.18.3 builds it; the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
 | 2026-09-24 | The *Why* paragraph was re-worded by hand in the pass's re-make (c5696c5): the sitting's own checkout has the signers file, so P2, not P1 — said here because the commit did not say it. |

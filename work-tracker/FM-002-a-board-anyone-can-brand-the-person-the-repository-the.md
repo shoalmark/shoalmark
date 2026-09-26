@@ -8,6 +8,9 @@ ask-kind: ruling
 ask-since: 2026-09-26
 ask-options: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet | the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme | not yet — shoalmark's own board and site keep today's look; the tool ships no themes"
 ask-proposal: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet"
+triaged: 2026-09-26
+rank: 4
+tier: P2
 hook: "The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English only. And several kinds of user want to brand it at once: several people looking at one repository's board, several repositories, an organisation shipping its house brand into every repository it sets up. One rule, three files, four places — to be proven before it is built."
 ---
 
