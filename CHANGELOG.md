@@ -10,6 +10,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   cuts beside the Regular, `docs/stylesheets/shoalmark.css`. No `shoalmark.py` change and nothing new that `--vendor`
   copies: a consumer's board looks as it did. The site is built at the release tag and goes live when the repository
   is public. The starters for every consumer are slice B.
+- **The site's start page is the landing page** (FM-006, slice L; the Owner's word in chat of 2026-09-26 10:25:41, not a
+  signed answer: *for the v0.18.5 release we also add a landing page requirement, alongside the restyle and rebrand of
+  shoalmark's brand identity*). The GtM/Design mock as it is — an arcade's attract screen over a pixel chart of the German
+  Wadden coast whose wrecks are this repository's defects — through `overrides/landing.html`, which `docs/index.md`
+  selects; every other page keeps the site's chrome. Documentation only: no `shoalmark.py` change, nothing new that
+  `--vendor` copies. The site is built at the release tag and goes live when the repository is public.
 
 ## 0.18.4 — 2026-09-26
 
