@@ -1,0 +1,158 @@
+{
+ "start-1440.png": {
+  "page": "page",
+  "width": 1440,
+  "height": 900,
+  "reduce": false,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "start-1440-full.png": {
+  "page": "page",
+  "width": 1440,
+  "height": 5819,
+  "reduce": false,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "reduced-1440.png": {
+  "page": "page",
+  "width": 1440,
+  "height": 900,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "start-1024.png": {
+  "page": "page",
+  "width": 1024,
+  "height": 900,
+  "reduce": false,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "start-1024-full.png": {
+  "page": "page",
+  "width": 1024,
+  "height": 6459,
+  "reduce": false,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "reduced-1024.png": {
+  "page": "page",
+  "width": 1024,
+  "height": 900,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "start-390.png": {
+  "page": "page",
+  "width": 390,
+  "height": 844,
+  "reduce": false,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "start-390-full.png": {
+  "page": "page",
+  "width": 390,
+  "height": 11008,
+  "reduce": false,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "reduced-390.png": {
+  "page": "page",
+  "width": 390,
+  "height": 844,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "r3-before-1440.png": {
+  "page": "r3-before",
+  "width": 1440,
+  "height": 820,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "r3-after-1440.png": {
+  "page": "r3-after",
+  "width": 1440,
+  "height": 820,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "r3-before-1024.png": {
+  "page": "r3-before",
+  "width": 1024,
+  "height": 615,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ },
+ "r3-after-1024.png": {
+  "page": "r3-after",
+  "width": 1024,
+  "height": 615,
+  "reduce": true,
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [],
+  "errors": []
+ }
+}
