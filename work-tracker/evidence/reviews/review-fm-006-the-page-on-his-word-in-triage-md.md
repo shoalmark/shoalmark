@@ -235,3 +235,52 @@ label.**
 - Tier: *docs, every claim against evidence*. Independence: *same session — 8e509911's own sub-agent, reported*.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Verified again on 7c5d423
+
+**Scope.** Tip `7c5d423` (`7c5d4235ab3a262431a0ec8eea763ff105cc8f29`) is one commit by the GtM seat (`8e509911/gtm-2`,
+02:43:54) on the verdict above (`f4188ee`). It changes `docs/triage.md` (+35/−22), `docs/de/triage.md` (+45/−27) and FM-006's ship
+log (one row). The nav, the evidence, the refusal block and the examples not named in R3–R7 are untouched. Reviewer
+session `8e509911/reviewer-20`, from 02:45 CEST. It was 00:45 UTC and 02:45 CEST, the same date: **outside FM-028's
+window**, so everything ran as the hooks run it, without `TZ=UTC`.
+
+**The five, against their evidence again.**
+
+| # | The fix (EN l. / DE l.) | Label | Evidence | Holds? |
+|---|---|---|---|---|
+| R3 | FM-007's raise quoted whole: *"undermines: TRIAGE.md path 5, FM-033's answer"*. It *named two signed rules, line 5 of the path and the owner's signed answer on FM-033* (105–107 / 130–132) | — | FM-007 `## Raised`, from `0f0766e` to main. When it was raised (18:08), FM-033's answer was `65f37a4` (`holgo99`, G, 16:29:09). The raise rule in the next bullet is FM-033's second answer, `9e48ee8` (G, 18:59:10). Both are *his signed answer on FM-033*; neither is misstated. | ✓ closed |
+| R4 | Tier 2 stops a stray signature, and an agent that means harm can fake the prompt and catch it. The signing page's sentence is quoted. Tier 3 is a hardware key with PIN and touch, or the Secure Enclave with Touch ID; *only there is the key yours alone* (155–159 / 193–197) | the tool (bullet) | Re-read `docs/signing.md`: the tier-2 row, *An agent that means harm can fake the prompt and catch it*, and the sentence *Tier 2 stops the agent that signs by mistake; tier 3 also stops the one that means to.* Both are word for word (whitespace aside), and the tier-3 row matches. The German quote is `docs/de/signing.md` l.61 word for word, and the DE tier-2 row (l.25) says *kann die Abfrage fälschen und die Passphrase mitlesen*. | ✓ closed |
+| R5 | A pass does not re-judge everything, and nothing in the tool reacts to a path edit by itself. The sheet lists work in progress not judged in seven days (`triage_days`), new filings and raised trackers. Proposed, parked and reserved work stays in the backlog with its tier. A tracker judged this week keeps its tier unless a raise names a path line. The *Review* bullet now reads *the trackers on the sheet*. The same in *What an edit does not do* (55–63, 171–177 / 66–74, 210–216) | the tool / review / the text alone | `triage_worksheet` (`fresh`: ≤ `TRIAGE_DAYS`), `owed_a_pass` (older Proposed, Reserved and Parked work *is backlog*). `triage_days = 7` by default and in `shoalmark.toml`. No code reads a change to the path. The same-day rule is *the text alone* (see row 19 above). | ✓ closed; R8 |
+| R6 | The raise check is the one place the tool reads what the path contains, and only its numbers: it collects the line numbers and matches `path N` against them. `--triage` and `--next` look only at whether a path is written; the guard, whether its bytes changed. *What an edit does not do* says the same (64–68, 170 / 77–82, 208–209) | the tool | `mark_raised`: `re.findall(r"^\s*(\d+)\.\s", path)`, and `signed()` matches `(?:TRIAGE\.md\s+)?path\s+(\d+)` against that set. `--triage` refuses on an empty `triage_home()["path"]`, and `--next` prints *none is written*. The guard compares sections byte for byte. `triage_home()["path"]` is read in only five places: the raise, INDEX.md, the board, `--next` and `--triage`; the guard reads the section's bytes on its own (`triage_views`). The board also links the tracker ids named in the path (`ids()`), which is display, not a check. | ✓ closed |
+| R7 | The lead-ins labelled: `--init` writes the file with its example (*the tool*); every pass judges its trackers against his words (*review*); only his signed word changes them (*the tool*, up to a limit); the new words are printed at the next command (*the tool*, the first two points) (5–9, 28–29, 47–48 / 6–11, 31–32, 57–58) | the tool / review | The `TRIAGE_HOME` that `--init` writes where there is none. The review label as rows 13–18 above. | ✓ closed |
+
+The German lead-in says `--init` lays out the file with its example. In a German repository the agents copy
+`examples/de/TRIAGE.md` first, and `--init` leaves it as it is. `docs/de/setup.md` §2 says the same (*Der Befehl
+schreibt `TRIAGE.md` … Nichts wird überschrieben*), and the example is the tool's template either way. Not a finding.
+
+**R8 · P3 · confidence 65% (the listing is right; whether the "only" needs the seat's hand row is the question) · The
+sheet's three kinds read as the only way onto it (EN l.171–173, DE l.210–213).**
+- The page says *A tracker's tier moves only when the tracker is on a pass's sheet and the command applies its row:
+  work in progress not judged in the last seven days, a new filing, or a tracker whose raise names a line of your path*.
+- That list is what the tool lists. `apply_worksheet` applies *every filled row*, and seats add rows by hand. On the
+  25 September sheet, FM-005 was judged on the 24th, so the tool did not list it, and its rank was *restored by a row of
+  its own* (TRIAGE.md, *Passes*).
+- The page itself shows a hand row: on 24 September *the seat wrote the row by hand*.
+- **Fix forward, or leave:** *… or a row a seat adds by hand*.
+
+**Gates at `7c5d423`.**
+- `--check` 0: INDEX up to date (37 trackers), *filing freeze: 21 open*. The guard: *4 commit(s) … none changes them
+  or his signers file*.
+- `--session-check` 0.
+- The suites as `lefthook.yml` runs them. On 3.14.3: `test_shoalmark.py` 0 (456 ok) and `test_core.py` 0 (148 ok). On `/usr/bin/python3` 3.9.6: the same, 456 and 148.
+- `uvx zensical build`: *No issues found*. Both pages were rebuilt and carry the re-made text.
+- `git merge-tree --write-tree origin/main HEAD` is clean (`5f844ac`). `origin/main` is still `88c7b0c`, and no release
+  branch is on origin.
+
+**Verdict on 7c5d423: READY WITH FINDINGS (R8 P3).**
+- R3, R4, R5, R6 and R7 are closed in both languages, each against its evidence.
+- The diff touches only the two pages and FM-006's ship log.
+- The gates are green, and it merges clean.
+- Tier: *docs, every claim against evidence*. Independence: *same session — 8e509911's own sub-agent, reported*.
+
+The Owner lands this by merging; a merge rules nothing.
