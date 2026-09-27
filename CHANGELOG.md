@@ -37,6 +37,19 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   records no act, so the gate reads no right in it, and the refusal may be the signing key's own. Where the line's
   commit is refused too, it is taken back and the refusal printed only; before the cut — a tree with changes, no
   signing key — it is printed only, as before. The merged-branch path is unchanged.
+- **`--done` and `--due` gather the facts of a repository path — the person gives the path** (FM-030; the Owner's word
+  in chat of 2026-09-27 13:42:40, on a `--done FM-024` line that carried the path with the review's facts written out:
+  *we expect the person in charge to be too lazy to gather all the data points … that would require more than three
+  clicks* *(normalised)*). The person gives the path; the record gathers the facts. Where `--done <id> "<where>"` names
+  a file in the repository — from its root, or from the tracker directory, as evidence paths are written — the line
+  under `## Acts` carries, beside the path, the commit that added it (`git log --diff-filter=A`) and that commit's
+  date, or *not committed*; and where the file states a verdict — the first line that does, not prose that mentions
+  one, nor the shape quoted in code — it is a review: its word (READY, READY WITH FINDINGS, NOT READY), the
+  `Reviewed:` sha and the `Session:`, from its own lines, else the adding commit's trailers. A word that names no file
+  there is recorded as given with *not in the repository* beside it, never refused; words, a link or a folder are
+  recorded as given; nothing outside the repository is read, and nothing is guessed. `--due` on an act that was done
+  keeps that act in its record, with its facts. The board's *done* dialog stays one field; `--schema` says it under
+  `done:`.
 
 ## 0.18.5 — 2026-09-27
 

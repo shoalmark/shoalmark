@@ -3260,7 +3260,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · C · `--done` writes `done:` — the time, and where the result is — hands the move back to the seat, and records the act under `## Acts`; signed as the owner seat and pushed to `answer/<id>`, and he is back where he started (saw {out_.strip()!r} · {err_.strip()[-200:]!r} · {sig_!r})",
           code_ == 0 and sig_.startswith("G holgoijo@x holgoijo@x AP-420: done — evidence/AP-420/read.md")
           and re.fullmatch(fm.DUE_SHAPE + r" · evidence/AP-420/read\.md", front_.get("done", "").strip('"')) is not None and front_.get("next") == "build"
-          and front_.get("due") == at_(-10) and f"· done — evidence/AP-420/read.md · at seven · due {at_(-10)} · holgo" in record_
+          and front_.get("due") == at_(-10) and f"· done — evidence/AP-420/read.md (not in the repository) · at seven · due {at_(-10)} · holgo" in record_
           and "the act has left your list" in out_ and "next: build — the seat's move follows" in out_ and here_() == start_)
     git(root, "switch", "-q", "answer/ap-420")
     fm.configure(root); acts_ = {t_["id"] for t_ in fm.load_trackers() if fm.act_of(t_)}
@@ -3744,6 +3744,70 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · 0.18.6 · the merged path is unchanged: a spent `answer/<id>` that carried the record is deleted and cut fresh, and the act's record follows the refusal's (saw {err_m.strip()[-200:]!r})",
           code_m == 0 and "was left by an earlier answer and is merged into `origin/main` — deleted, and cut fresh" in err_m
           and fm.parse_frontmatter(after_)[0].get("due") == when_ and after_.index(" refused — ") < after_.index(f"· scheduled — due {when_} ·"))
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 on FM-024's *done*: *if I fill in the path this is how the command is
+#     composed … we expect the person in charge to be too lazy to gather all the data points.* The person gives the path; the
+#     record gathers the facts: a review file's verdict, its `Reviewed:` sha and its `Session:`, the commit that added the
+#     file and when; any other file, its adding commit; a word that names no file here, *not in the repository*; words, as given
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "f"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    for n_ in range(480, 486):
+        tracker(root, f"AP-{n_}", extra=f"next: run\ndue: {at_(60)}\n", title=f"the act {n_}")
+    ev_ = root / "docs/work-tracker/evidence"
+    (ev_ / "reviews").mkdir(parents=True); (ev_ / "AP-482").mkdir()
+    (ev_ / "reviews/review-ap-480.md").write_text("# The pass on AP-480\n\nThe first pass came back NOT READY at 14:23:59, and fixes followed.\n\n"
+                                                  "**Verdict: READY WITH FINDINGS. Tier: code.** R1 is a P3.\n\nReviewed: `0123456789abcdef0123456789abcdef01234567`\n"
+                                                  "Session: `8e509911/reviewer-9`\n", encoding="utf-8")
+    (ev_ / "AP-482/read.md").write_text("the read, as it came back\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts, a review, a read", "--author=holgo <h@x>")
+    (ev_ / "reviews/review-ap-481.md").write_text("# The pass on AP-481\n\n**READY** — R1 closed.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-481 — READY\n\nReviewed: 89abcdef0123456789abcdef0123456789abcdef\nSession: 01a0d6e7", "--author=r <r@x>")
+    git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    added_ = lambda rel: subprocess.run(["git", "-C", str(root), "log", "-1", "--no-renames", "--diff-filter=A", "--format=%h %cI", "--", rel],
+                                        capture_output=True, text=True, env=_ENV).stdout.strip()
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    rec_ = lambda tid: next((l_ for l_ in show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md").split("\n") if "· done — " in l_), "")
+    r480_, r481_, r482_ = "docs/work-tracker/evidence/reviews/review-ap-480.md", "docs/work-tracker/evidence/reviews/review-ap-481.md", "docs/work-tracker/evidence/AP-482/read.md"
+    runs_ = {tid: run(root, "--done", tid, w_) for tid, w_ in (("AP-480", r480_), ("AP-481", "evidence/reviews/review-ap-481.md"), ("AP-482", r482_),
+                                                              ("AP-483", "the forge's comment on PR 65"), ("AP-484", "docs/work-tracker/evidence/AP-484/missing.md"))}
+    check(f"FM-030 · 0.18.6 · the path he gives to a review file is recorded with what the repository says of it: its verdict — the first line that states one, not "
+          f"prose that mentions one — its `Reviewed:` sha and its `Session:`, the commit that added it and when (saw {rec_('AP-480')!r} · {runs_['AP-480'][1].strip()[-200:]!r})",
+          runs_["AP-480"][0] == 0 and f"· done — {r480_} (verdict READY WITH FINDINGS, reviewed 0123456, session 8e509911/reviewer-9, added in {added_(r480_)}) · the act 480 · due " in rec_("AP-480")
+          and "with what the repository says of it: verdict READY WITH FINDINGS" in runs_["AP-480"][1])
+    check(f"FM-030 · 0.18.6 · …where the file names no `Reviewed:` and no `Session:`, the commit that added it does, and a path written from the tracker directory is named from the root (saw {rec_('AP-481')!r})",
+          runs_["AP-481"][0] == 0 and f"· done — evidence/reviews/review-ap-481.md ({r481_}, verdict READY, reviewed 89abcde, session 01a0d6e7, added in {added_(r481_)}) · " in rec_("AP-481"))
+    check(f"FM-030 · 0.18.6 · any other file: the commit that added it, and nothing more; words are recorded as given; a path that is no file here is recorded, *not in the repository* beside it — never refused (saw {rec_('AP-482')!r} · {rec_('AP-483')!r} · {rec_('AP-484')!r})",
+          runs_["AP-482"][0] == runs_["AP-483"][0] == runs_["AP-484"][0] == 0
+          and f"· done — {r482_} (added in {added_(r482_)}) · the act 482 · " in rec_("AP-482")
+          and "· done — the forge's comment on PR 65 · the act 483 · " in rec_("AP-483")
+          and "· done — docs/work-tracker/evidence/AP-484/missing.md (not in the repository) · the act 484 · " in rec_("AP-484"))
+    (base / "outside.md").write_text("**Verdict: READY.**\n", encoding="utf-8"); (ev_ / "AP-485.md").write_text("not yet committed; a review reads `Verdict: READY` — the shape, quoted\n", encoding="utf-8")
+    fm.configure(root)
+    check("FM-030 · 0.18.6 · nothing is read outside the repository, a link or a folder gathers nothing, a file not committed says so, and a verdict's shape "
+          "quoted in code states none — the README's act row quotes it and is no review",
+          fm.result_facts("../outside.md") == "not in the repository" and fm.result_facts(str(base / "outside.md")) == "not in the repository"
+          and fm.result_facts("https://github.com/o/r/pull/65") == "" and fm.result_facts("docs/work-tracker/evidence") == ""
+          and fm.result_facts("docs/work-tracker/evidence/AP-485.md") == "not committed")
+    check("FM-030 · 0.18.6 · `--schema` says it under `done:`: the person gives the path, the record gathers the facts — the adding commit, a review's verdict, "
+          "`Reviewed:` and `Session:` — a word that names no file is recorded as given, nothing is guessed",
+          "The person gives the path; the record gathers the facts" in fm.render_schema() and "*not in the repository* beside it; nothing is guessed" in fm.render_schema()
+          and "its word, the `Reviewed:` sha and the `Session:`" in fm.render_schema())
+    git(root, "switch", "-q", "answer/ap-482")
+    code_, out_, err_ = run(root, "--due", "AP-482", at_(24 * 60))
+    t482_ = (root / "docs/work-tracker/AP-482-x.md").read_text(encoding="utf-8")
+    check(f"FM-030 · 0.18.6 · `--due` on an act that was done keeps the act before in its record — its time, where its result is, and what the repository says of it (saw {err_.strip()[-160:]!r})",
+          code_ == 0 and re.search(r"· scheduled — due %s, a new act — the one before was done %s · %s \(added in %s\) · the act 482 · holgo"
+                                   % (re.escape(at_(24 * 60)), fm.DUE_SHAPE, re.escape(r482_), re.escape(added_(r482_))), t482_) is not None)
     rm_git(root)
 fm.configure(HERE)
 

@@ -361,7 +361,10 @@ def front_matter_schema():
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
         "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
                             "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
-                            "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next"),
+                            "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next. The person gives the path; "
+                            "the record gathers the facts: for a file in the repository, the commit that added it and its date, and for a review — a file "
+                            "that states a verdict — its word, the `Reviewed:` sha and the `Session:`; a word that names no file there is recorded as given, "
+                            "*not in the repository* beside it; nothing is guessed"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -5179,6 +5182,66 @@ def act_record(lines, fields, block):
     return (text[: len(text) - len(body)] + append_record(body, ACTS_HEAD_RE, HEAD["acts"], block)).split("\n")
 
 
+# a review file's verdict, stated: `Verdict` before the word (`**Verdict: READY.**`, `## Verdict — READY WITH FINDINGS`,
+# `**Verdict on 67532e3:** …`), or the word in bold opening its line (`**NOT READY — one P2.**`); prose that mentions a
+# verdict in passing (`came back NOT READY at 14:23`) does not state one, nor does the shape quoted in code — the README's
+# act row writes `Verdict: READY` to say what a review looks like, and the README is no review
+VERDICT_LINE_RE = re.compile(r"(?<![`\w])Verdict\b[^A-Za-z]*(?:on\s+`?[0-9a-f]{7,40}`?\s*[:—-]?\s*)?" + VERDICT_WORD_RE.pattern
+                             + r"|^(?:#{1,6}\s+)?(?:\*\*|__)" + VERDICT_WORD_RE.pattern, re.M)
+_FILE_SHA_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?Reviewed:(?:\*\*)?\s*`?([0-9a-f]{7,40})\b", re.M)
+_FILE_SESSION_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?Session:(?:\*\*)?\s*`?(" + SESSION_ID_RE.pattern + r")(?![\w/-])", re.M)
+
+
+def result_facts(where):
+    """FM-030, the Owner's word of 2026-09-27 13:42:40: *the person gives the path; the record gathers the facts.*
+    What the repository says of `where` — read, never guessed — as one clause for the record beside it, or "":
+    - a file in the repository (from its root, or from the tracker directory, as evidence paths are written — never one
+      outside it): the commit that added it under that name and the commit's date (`git log --no-renames --diff-filter=A`),
+      or *not committed*; and where the file states a verdict (`VERDICT_LINE_RE`, the first such line) it is a review: its
+      word, the `Reviewed:` sha and the `Session:` it names — its own lines first, else the adding commit's trailers;
+    - one word that names no file in the repository: *not in the repository* — recorded as given, never refused;
+    - words, a link, a folder: nothing beside it."""
+    w = (where or "").strip()
+    if not w:
+        return ""
+    top, found = ROOT.resolve(), None
+    for base in (ROOT, TRACKER_DIR):
+        try:
+            p = (base / w).resolve()
+            p.relative_to(top)
+        except (ValueError, OSError, RuntimeError):
+            continue
+        if p.exists():
+            found = p
+            break
+    if found is None:
+        return "" if re.search(r"\s", w) or "://" in w else "not in the repository"
+    if not found.is_file():
+        return ""
+    rel, facts = found.relative_to(top).as_posix(), []
+    if rel not in (w, w.lstrip("./")):
+        facts.append(rel)
+    try:
+        with found.open(encoding="utf-8", errors="replace") as f:
+            text = f.read(1 << 20)
+    except OSError:
+        text = ""
+    sha = date = block = ""
+    if vcs() == "git":
+        log = (git_out("log", "-1", "--no-renames", "--diff-filter=A", f"--format=%h%x00%cI%x00{TRAILERS}", "--", rel) or "").strip("\n")
+        sha, date, block = (log.split("\x00") + ["", "", ""])[:3] if log else ("", "", "")
+    verdict = VERDICT_LINE_RE.search(text)
+    if verdict:
+        facts.append("verdict " + next(g for g in verdict.groups() if g))
+        reviewed = _FILE_SHA_RE.search(text)
+        reviewed = reviewed.group(1) if reviewed else (trailer_values(block, "Reviewed") or [""])[0]
+        session = _FILE_SESSION_RE.search(text)
+        session = session.group(1) if session else (trailer_values(block, "Session") or [""])[0]
+        facts += ([f"reviewed {reviewed[:7]}"] if re.fullmatch(r"[0-9a-f]{7,40}", reviewed or "") else []) + ([f"session {session}"] if session else [])
+    facts.append(f"added in {sha} {date}" if sha else "not committed")
+    return ", ".join(facts)
+
+
 def done_cmd(words, trackers):
     """`--done <id> "<where the result is>"` — the Owner's act is done: `done:` gets the time and where its result is, the
     act leaves his list, and its record goes under `## Acts`. His own change, made as `--answer` makes his answer: on
@@ -5211,12 +5274,15 @@ def done_cmd(words, trackers):
     # ONLY there: a `due:` beside a question he has not answered keeps `next: owner` — the question is still his, and
     # moving it would take it off his list unanswered (the pass's R1 on 52cfcc7)
     fields = {"done": f'"{now} · {where}"', **({"next": "build"} if t.get("next") == "owner" and act[1] else {})}
+    facts = result_facts(where)                             # the person gives the path; the record gathers the facts
     return owner_change(tid, t, dict(
         flag="--done", verb="recording", noun="record", right="the result of the Owner's act is an `answer` change", check=lambda: "",
         write=lambda lines, me, branch: (act_record(lines, fields,
-                                                    f"**{today}** · done — {where} · {what}" + (f" · due {due}" if due else "") + f" · {me}"), ""),
+                                                    f"**{today}** · done — {where}" + (f" ({facts})" if facts else "") + f" · {what}"
+                                                    + (f" · due {due}" if due else "") + f" · {me}"), ""),
         subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {tid} "{where}"',
         said=lambda branch, pushed: f"{tid} done: {where}\n  signed, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
+                                     + (f" — with what the repository says of it: {facts}" if facts else "")
                                      + ("\n  next: build — the seat's move follows" if "next" in fields else "")))
 
 
@@ -5240,10 +5306,14 @@ def due_cmd(words, trackers):
         return EXIT_LINT
     today, act = datetime.date.today().isoformat(), act_of(t)
     what, old = (act[0] if act else t.get("title") or tid), ("" if t.get("done") else t.get("due", ""))
+    # a new act on one that was done: `done:` leaves the front matter, so the record keeps it — its time, where its result
+    # is, and what the repository says of that (`result_facts`)
+    was_done, _, was_where = (t.get("done") or "").partition(" · ")
+    before = (f", a new act — the one before was done {was_done} · {was_where}" + (lambda f: f" ({f})" if f else "")(result_facts(was_where))) if t.get("done") else ""
     return owner_change(tid, t, dict(
         flag="--due", verb="rescheduling", noun="record", right="the time of the Owner's act is an `answer` change", check=lambda: "",
         write=lambda lines, me, branch: (act_record(lines, {"due": when, "done": None},
-                                                    f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}")
+                                                    f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}{before}")
                                                     + f" · {what} · {me}"), ""),
         subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {tid} {when}",
         said=lambda branch, pushed: f"{tid} due: {when}\n  signed, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
