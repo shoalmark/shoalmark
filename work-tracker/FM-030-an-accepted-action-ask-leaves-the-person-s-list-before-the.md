@@ -3,7 +3,12 @@ id: FM-030
 status: In Progress
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
-next: build
+next: owner
+ask: "How does the board show an act or answer you just gave, before your merge lands it on main?"
+ask-kind: ruling
+ask-since: 2026-09-27
+ask-options: "the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way | a local pending file written by the command, cleared when main carries the change | the browser marks it on OK"
+ask-proposal: "the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way"
 triaged: 2026-09-25
 rank: 2
 tier: P1
@@ -60,6 +65,8 @@ accepted *action* asks only; FM-007 is the case it would still miss.
 
 **For 0.18.4:** *the move after an answer follows the picked option, not the kind alone* — the Auditor seat, through the Owner, 17:23:39 on 2026-09-25: an action ask answered "not yet" must not read as the act begun.
 
+**The ask of 2026-09-27 — the board and an act not yet merged.** The board is rebuilt by the checkout hook from `main`; an act or answer he just gave is a signed commit on `answer/<id>`, pushed, and `main` knows nothing of it until his merge. Option 1 keeps one truth: git. After the push the remote-tracking ref `origin/answer/<id>` holds the exact sha the tool committed; the board reads every such branch not merged into `main`, opens the tracker at its tip, and where it carries a `done:` or `answer:` that `main` lacks, renders the row as *done, on its way* — the branch, the sha, the push time, *your merge is next* — the buttons replaced by *revoke*; `--done`/`--answer` end on `main`, where the hook rebuilds, so the page shows it at once. A stale branch from an earlier session is merged (ignored) or an unmerged answer (shown, with its date); a tip without the change is not shown; another machine sees it after a fetch. Option 2 (a local pending file) is a second truth beside git, per machine, drifting when a branch is rewritten. Option 3 (the browser marks it on OK) says done before anything is signed — against line 5. *Revoke*: the tool's revoke/supersede of an `answer:` (a new signed commit, never an overwrite) extended to `done:`.
+
 ## Why
 
 The digest is what a session's last message leads with, and the standup is the person's one sitting. *Nothing needs
@@ -74,6 +81,8 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 - 2026-09-25 · Auditor (8b91dba2), through the Owner · two acts owed to the Owner have no button on his board: FM-007's hardware key (answered 09-22) and path 3's exception (FM-032, answered 2026-09-24 21:32:35, 97fa87a); --owner prints NOTHING NEEDS THE OWNER · undermines: FM-032's answer ("until FM-007's hardware key" has no route to happen), TRIAGE.md path 1
 
 - 2026-09-25 · Auditor (8b91dba2), through the Owner · a consumer's P0 production read, owed by the Owner's hands at a fixed hour on two consecutive days, was missed both times: it was named only in chat and a run sheet, --standup and --owner showed no item (next: run), no calendar invite was written, and the next day's standup did not notice · undermines: TRIAGE.md path 6, path 1
+- 2026-09-27 13:57:50 · the Owner, in chat with a screenshot (taken 13:45:18), after his `--done FM-024` (f8246fae) · the board, rebuilt from `main`, still showed the act with its *done* and *reschedule* buttons — his act lives on `answer/fm-024` until his merge; his words (spelling normalised): *when the user presses done in the dashboard's dialog, they return to the board page, but the act is not marked as answered — this is confusing and might look like a bug … the state is rendered from main and is consistent; the answer was pushed on a branch not yet merged, but a user won't care: they pushed the button, did the answer and expect the page to display that state right away* — his two ways forward: verify by sha that the act answered is the one on the pushed branch before marking it, and keep a button to answer again or revoke · source: the board's acts list reads the checkout's `main`; `--queue` already reads `answer/*` heads (`answer_reading`) · undermines line 6: the button's result is not on his board after the press.
+- 2026-09-27 14:09:46 · the Owner, in chat, on the Principal's three options · *Option 1 is the only valid one and holds to the single source of truth. Go, file the ask on FM-030 with option 1 as proposed.* (spelling normalised) · the ask above; his signed answer rules it.
 
 ## Done when
 
