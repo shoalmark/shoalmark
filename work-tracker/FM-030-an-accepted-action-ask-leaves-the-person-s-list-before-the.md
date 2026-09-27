@@ -3,12 +3,15 @@ id: FM-030
 status: In Progress
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
-next: owner
+next: build
 ask: "How does the board show an act or answer you just gave, before your merge lands it on main?"
 ask-kind: ruling
 ask-since: 2026-09-27
 ask-options: "the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way | a local pending file written by the command, cleared when main carries the change | the browser marks it on OK"
 ask-proposal: "the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way"
+answer: "accepted - the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way"
+answered: 2026-09-27
+answered-by: holgo99
 triaged: 2026-09-27
 rank: 2
 tier: P1
