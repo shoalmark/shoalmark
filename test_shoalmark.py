@@ -3513,7 +3513,7 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 13:35:40, pressing *done* for FM-024: the dialog repeated the ask's
+# --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 13:38:30 (his screenshot 13:35:40), on *done* for FM-024: the dialog repeated the ask's
 #     question — *who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody …?* — so
 #     *where is the result?* pointed at three options, not at the one he took. An act that is a promise is shown as what he
 #     promised, with the question below it, as context: on the board, in its dialogs, in `--owner`, `--standup`, `--notify`

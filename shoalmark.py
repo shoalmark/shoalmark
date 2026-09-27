@@ -1085,7 +1085,7 @@ def acts_lines(trackers, now=None):
     """FM-030 E — the acts owed to the Owner, as `--standup` and `--owner` list them after the asks: missed and overdue
     first, then what falls due, soonest first, then what has no date yet — each with its `due:` and what it is, in the
     board's words, and the day he promised it. A promise's line is what he promised, and the question it answered follows
-    on the next line, as context (the Owner's word of 2026-09-27 13:35:40). [] where he owes none."""
+    on the next line, as context (the Owner's word of 2026-09-27 13:38:30). [] where he owes none."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
     order = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}
     acts = sorted(((t, a) for t, a in ((t, act_of(t)) for t in trackers) if a),
@@ -2492,7 +2492,7 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
-    # an act that is a promise (FM-030, the Owner's word of 2026-09-27 13:35:40): its line is what he promised, `acts.promised`
+    # an act that is a promise (FM-030, the Owner's word of 2026-09-27 13:38:30): its line is what he promised, `acts.promised`
     # the day he did — {1}, his answer as signed, is there for a table that quotes it — and `acts.asked` the question below
     "acts.title": "your acts, with their time", "acts.promised": "promised {0}", "acts.asked": "asked: {0}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
     "acts.missed": "missed — due {0}, and {1} minutes passed with no result", "acts.nodate": "no date yet",
@@ -3654,7 +3654,7 @@ def answer_due(text, day):
 
 
 def promise_of(t):
-    """What an accepted answer promised, in his words — the Owner's word of 2026-09-27 13:35:40 (FM-030): the text his
+    """What an accepted answer promised, in his words — the Owner's word of 2026-09-27 13:38:30 (FM-030): the text his
     `answer:` carries after its word — the option he chose, or his change — else, for a bare `accepted`, the proposal it
     took; "" where neither says it, and for an answer that did not accept. The signed line is not touched."""
     word = ANSWER_WORD_RE.fullmatch(answer_norm(t.get("answer")))
@@ -3668,7 +3668,7 @@ def act_of(t):
     An accepted action ask is one — its answer is a promise of his hands, the act still his — and so is any `due:`, which
     the seat that schedules an act writes. `done:` closes it; closed work owes nothing. `window:` is minutes, 60 where absent.
     `what` is the act's line: for a promise, what he promised (`promise_of`), and `asked` the question it answered, the
-    context below it — the Owner's word of 2026-09-27 13:35:40: the question alone read as the act, where the act is the
+    context below it — the Owner's word of 2026-09-27 13:38:30: the question alone read as the act, where the act is the
     option he took. A `due:` beside a question he has not answered keeps its own line, and the question stays on his
     queue (the pass's R1 on 52cfcc7): `asked` is "" there. Where no promise can be read, the question is the line."""
     if t.get("status") not in OPEN_STATUSES or t.get("done"):
