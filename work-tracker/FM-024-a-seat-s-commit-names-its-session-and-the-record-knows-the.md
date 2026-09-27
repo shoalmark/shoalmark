@@ -4,18 +4,11 @@ status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: owner
+next: build
 triaged: 2026-09-25
 rank: 9
 tier: P2
-ask: "Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict?"
-ask-kind: action
-ask-since: 2026-09-24
-ask-options: "a cold Reviewer session you start reviews 0.18.3 | this session's own Reviewer sub-agent, independence reported same-session | 0.18.3 waits until FM-024's slice 2 is built and a same-session verdict is refused"
-ask-proposal: "a cold Reviewer session you start reviews 0.18.3"
-answer: "accepted - a cold Reviewer session you start reviews 0.18.3"
-answered: 2026-09-24
-answered-by: holgo99
+done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -256,6 +249,16 @@ verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
 The Owner has ruled the candidate; a seat commit without a registered open session is refused by the gate; the board
 shows the open sessions with their scope; FM-023's plan marks steps by this id; and one week's commits trace, each, to a
 row.
+
+## Acts
+
+**2026-09-27** · done — work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md · Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict? · holgo99
+## Asks
+
+**2026-09-24** · Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict?
+**answered** — accepted - a cold Reviewer session you start reviews 0.18.3 · holgo99
+**relation** — accepted the proposal
+**signed** — 64f843e · G
 
 ## Ship log
 
