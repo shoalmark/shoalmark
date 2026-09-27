@@ -349,9 +349,15 @@ def front_matter_schema():
                                                                         "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
-        "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; the Owner's `--due` moves it",
+        "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; `--answer`, from an accepted "
+                                           "action answer that names its hour; the Owner's `--due` moves it",
                             "when the Owner's act falls due (FM-030): an ISO time with its zone, `2026-09-26T07:30:00+02:00`. Until `done:` is written the act is on his "
-                            "board — due, overdue, missed — and in INDEX.md with this time. `--clear-ask` leaves it: the answer is a promise, the act is still owed"),
+                            "board — due, overdue, missed — and in INDEX.md with this time. `--clear-ask` leaves it: the answer is a promise, the act is still owed. "
+                            "`--answer` writes it with an accepted action answer whose promise names a date with its hour — `2026-09-26 09:00`, "
+                            "`2026-09-26T09:00+02:00`, or the weekday with its month and day, `Sat 09-26 09:00`, the next such day on or after the answer, "
+                            "its weekday checked — in the zone it names (an offset, `Z`, `UTC`, `GMT`, or this machine's own name for its zone, `CEST`), "
+                            "else this machine's zone; a weekday alone, a month and day with neither year nor weekday, a zone name this machine does not "
+                            "carry, or two times are not read, and the act shows *no date yet*. A `due:` already set is left, and `--answer` says so"),
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
         "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
                             "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
@@ -1534,6 +1540,9 @@ def answer_cmd(words, trackers, supersede=False):
     answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
     move = ANSWER_MOVE.get(t.get("ask_kind"))
     replaced = []                                            # the answer this one replaces, and its commit — read on the branch it is cut from
+    # FM-030, E0 row 20: an accepted action answer that names its hour seeds `due:` — read from what he promised, the text
+    # he gave or, bare, the proposal he took (`promise_of`); a `due:` already set is left for `--due` to move
+    seed = dict(zip(("when", "words", "why"), answer_due(promise_of({**t, "answer": answer}), datetime.date.today()))) if move == "owner" and verdict == "accept" else {}
 
     def check_ask():
         # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
@@ -1559,6 +1568,10 @@ def answer_cmd(words, trackers, supersede=False):
         lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
         if move:                                             # FM-030: the move after his — the seat's, or his own hands' for an action
             lines = set_front("\n".join(lines), "next", move).split("\n")
+        if seed.get("when"):
+            seed["had"] = (parse_frontmatter("\n".join(lines))[0].get("due") or "").strip()
+            if not seed["had"]:
+                lines = set_front("\n".join(lines), "due", seed["when"]).split("\n")
         if replaced:
             cell = lambda v: v.replace(chr(34), chr(39)).replace("|", "\\|")
             lines = ship_log_row(lines, f'Answer of {replaced[0][1]} superseded: *"{cell(replaced[0][0])}"* ({replaced[0][2]}) — '
@@ -1570,7 +1583,22 @@ def answer_cmd(words, trackers, supersede=False):
         subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
         again=f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else ""),
         said=lambda branch, pushed: (f"{tid} answered: {answer}\n  signed, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
-                                     + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, "")))))
+                                     + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
+                                     + seed_said(tid, seed))))
+
+
+def seed_said(tid, seed):
+    """What `--answer` says of the hour it read in an accepted action answer — written as `due:`, left beside a `due:` that
+    was set, or not read, and why: the act then shows *no date yet*. "" where it read nothing because it looked for nothing."""
+    if not seed:
+        return ""
+    if not seed.get("when"):
+        return f"\n  no date read in your answer — {seed['why']}; the act shows *no date yet*: `{CMD} --due {tid} <time>` sets it"
+    if not seed.get("had"):
+        return f"\n  due: {seed['when']} — read from your answer's `{seed['words']}`, written with it; `{CMD} --due {tid} <time>` moves it"
+    if parse_due(seed["had"]) == parse_due(seed["when"]):
+        return f"\n  due: {seed['had']} — your answer names the same time"
+    return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {tid} {seed['when']}` moves it"
 
 
 def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
@@ -3513,6 +3541,70 @@ def parse_due(text):
     except ValueError:
         return None
     return when if when.tzinfo is not None else None
+
+
+# FM-030, the E0 counter's row 20 — AN ANSWER'S HOUR SEEDS `due:`. His promise *accepted - Sat 09-26 09:00 CEST* showed
+# *no date yet* for five hours past the hour it named: the hour lived only in `answer:`. What is read, and nothing else —
+# the smallest rule that is honest about a date: a date with its hour, `2026-09-26 09:00` or `2026-09-26T09:00+02:00`,
+# or the weekday with its month and day, `Sat 09-26 09:00`, whose year is the answer's, or the next where that day has
+# passed, and whose weekday must be that day's. A weekday alone (`Sat 09:00`) names no date, and a month and day with
+# neither year nor weekday (`09-26 09:00`) is not read either: nothing checks it. The zone: an offset, `Z`, `UTC` or `GMT`,
+# or the name this machine gives its own zone at that hour (`CEST` in Berlin in summer); none, this machine's zone — the
+# one `--done` writes its time in, and the board's reschedule takes from the browser. Any other name is not guessed.
+_WEEKDAY = (r"(?i:(?P<wd>mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))\.?,?\s+")
+ANSWER_TIME_RE = re.compile(r"(?<![\w:.+-])(?:" + _WEEKDAY + r")?(?:(?P<y>\d{4})-)?(?P<mo>\d{2})-(?P<d>\d{2})(?:T|\s+(?:at\s+)?)"
+                            r"(?P<h>[01]?\d|2[0-3]):(?P<mi>[0-5]\d)(?::(?P<s>[0-5]\d))?"
+                            r"(?:\s*(?P<z>Z|UTC|GMT|[+-](?:[01]\d|2[0-3]):?[0-5]\d|[A-Z]{3,5})(?![\w:]))?(?![\w:])")
+
+
+def local_time(naive):
+    """A wall-clock time as this machine keeps it — aware, in its zone at that date, summer or winter. One place, so the
+    suite can stand in a machine of another zone."""
+    return naive.astimezone()
+
+
+def answer_due(text, day):
+    """The time an answer's text names, read as `ANSWER_TIME_RE` says — (the ISO time with its zone, the words it was read
+    from, "") — or (None, "", why not): no date with an hour in it; a year-less day with no weekday; a weekday that is not
+    the date's; a zone name this machine does not carry; or two times that differ — nothing is chosen between them.
+    `day` is the day of the answer: a year-less date is the next on or after it."""
+    found = []
+    for m in ANSWER_TIME_RE.finditer(text or ""):
+        words = " ".join(m.group(0).split())
+        mo, d, h, mi, s = (int(m.group(k) or 0) for k in ("mo", "d", "h", "mi", "s"))
+        try:
+            if m.group("y"):
+                date = datetime.date(int(m.group("y")), mo, d)
+            elif not m.group("wd"):
+                return None, "", f"`{words}` names neither the year nor the weekday — nothing checks which {mo:02d}-{d:02d} it is"
+            else:
+                date = datetime.date(day.year, mo, d)
+                if date < day:
+                    date = datetime.date(day.year + 1, mo, d)
+        except ValueError:
+            return None, "", f"`{words}` names no real date"
+        wd = (m.group("wd") or "")[:3].lower()
+        if wd and date.weekday() != ("mon", "tue", "wed", "thu", "fri", "sat", "sun").index(wd):
+            return None, "", f"`{words}`: {date.isoformat()} is a {date.strftime('%A')}"
+        naive, zone = datetime.datetime(date.year, date.month, date.day, h, mi, s), m.group("z")
+        if not zone:
+            when = local_time(naive)
+        elif zone in ("Z", "UTC", "GMT"):
+            when = naive.replace(tzinfo=datetime.timezone.utc)
+        elif zone[0] in "+-":
+            sign, digits = (1 if zone[0] == "+" else -1), zone[1:].replace(":", "")
+            when = naive.replace(tzinfo=datetime.timezone(sign * datetime.timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))))
+        else:
+            here = local_time(naive)
+            if here.tzname() != zone:
+                return None, "", f"`{zone}` is not this machine's zone at that hour ({here.tzname()}) — an offset is not guessed from a name"
+            when = here
+        found.append((when.isoformat(), words))
+    if not found:
+        return None, "", "it names no date with an hour — `2026-09-26 09:00`, or `Sat 09-26 09:00`; a weekday alone is not a date"
+    if len({datetime.datetime.fromisoformat(w) for w, _ in found}) > 1:
+        return None, "", "it names " + " and ".join(f"`{w_}`" for _, w_ in found) + " — two times, and neither is chosen"
+    return found[0][0], found[0][1], ""
 
 
 def promise_of(t):

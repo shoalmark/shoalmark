@@ -3601,6 +3601,85 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.6 — the E0 counter's row 20: his promise *accepted - Sat 09-26 09:00 CEST*, answered on 09-25, showed
+#     *no date yet* for five hours past its hour — the hour lived only in `answer:`. An accepted action answer whose promise
+#     names a date with its hour seeds `due:` in the answer's own commit, and says so. The rule: a full date is read — the
+#     year, or the weekday with its month and day, the weekday checked; a weekday alone is not, nor a day nothing checks
+_cest = datetime.timezone(datetime.timedelta(hours=2), "CEST")
+_real_local = fm.local_time
+fm.local_time = lambda naive: naive.replace(tzinfo=_cest)          # a machine in Berlin in summer, wherever the suite runs
+try:
+    _two = "2026-09-26T09:00:00+02:00, or 2026-09-27T09:00+02:00"
+    _reads = {t_: fm.answer_due(t_, datetime.date(2026, 9, 25)) for t_ in (
+        "Sat 09-26 09:00 CEST", "Sat 09:00 CEST", "09-26 09:00", "Fri 09-26 09:00", "Sat 09-26 09:00 PST", "2026-09-26 09:00",
+        "2026-09-26T07:30Z", "the read, 2026-09-26T09:00+02:00 — and again 2026-09-26 09:00 CEST", _two, "after the scoring",
+        "Saturday 09-26 at 9:00", "2026-02-30 09:00", "yes, at 09:00 and on time")}
+    _rolled = fm.answer_due("Sat 01-02 09:00", datetime.date(2026, 12, 30))
+finally:
+    fm.local_time = _real_local
+check(f"FM-030 · 0.18.6 · E0 row 20 · the answer's hour is read where a full date names it: *Sat 09-26 09:00 CEST*, answered 09-25, is 2026-09-26T09:00+02:00 — "
+      f"a weekday alone, a day with neither year nor weekday, a weekday that is not the date's, a zone this machine does not carry, a day that is not, or two times, are not read (saw {_reads})",
+      _reads["Sat 09-26 09:00 CEST"] == ("2026-09-26T09:00:00+02:00", "Sat 09-26 09:00 CEST", "")
+      and _reads["Sat 09:00 CEST"][0] is None and "a weekday alone is not a date" in _reads["Sat 09:00 CEST"][2]
+      and _reads["09-26 09:00"][0] is None and "names neither the year nor the weekday" in _reads["09-26 09:00"][2]
+      and _reads["Fri 09-26 09:00"][0] is None and "2026-09-26 is a Saturday" in _reads["Fri 09-26 09:00"][2]
+      and _reads["Sat 09-26 09:00 PST"][0] is None and "`PST` is not this machine's zone at that hour (CEST)" in _reads["Sat 09-26 09:00 PST"][2]
+      and _reads["2026-09-26 09:00"][0] == "2026-09-26T09:00:00+02:00" and _reads["2026-09-26T07:30Z"][0] == "2026-09-26T07:30:00+00:00"
+      and _reads["the read, 2026-09-26T09:00+02:00 — and again 2026-09-26 09:00 CEST"][0] == "2026-09-26T09:00:00+02:00"
+      and _reads[_two][0] is None and "two times, and neither is chosen" in _reads[_two][2]
+      and _reads["after the scoring"][0] is None and _reads["yes, at 09:00 and on time"][0] is None
+      and _reads["Saturday 09-26 at 9:00"][0] == "2026-09-26T09:00:00+02:00" and _reads["2026-02-30 09:00"][0] is None
+      and _rolled[0] == "2027-01-02T09:00:00+02:00")
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("holgoijo@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "holgoijo@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                   ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    sat_ = datetime.date.today() + datetime.timedelta(days=(5 - datetime.date.today().weekday()) % 7 or 7)     # the next Saturday, never today
+    ask_ = lambda q, kind="action", extra="": f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "yes"\n{extra}'
+    tracker(root, "AP-460", extra=ask_("Will you read production on Saturday?"), title="the read")
+    tracker(root, "AP-461", extra=ask_("Will you set up the key on a Saturday?"), title="the key")
+    tracker(root, "AP-462", extra=ask_("Will you rotate the token?", extra="due: 2026-10-05T10:00:00+02:00\n"), title="scheduled by the seat")
+    tracker(root, "AP-463", extra=ask_("Does the launcher ship on Saturday?", kind="ruling"), title="a ruling")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks", "-S", "--author=holgo <holgoijo@x>")
+    git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    front_ = lambda tid: fm.parse_frontmatter(show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md"))[0]
+    said_ = f"{sat_:%a} {sat_:%m-%d} 09:00 CEST"                    # the form of the raise's answer, on the next Saturday
+    fm.local_time = lambda naive: naive.replace(tzinfo=_cest)
+    try:
+        code_0, out_0, err_0 = run(root, "--answer", "AP-460", "accept", said_)
+        code_1, out_1, _e = run(root, "--answer", "AP-461", "accept", "Sat 09:00 CEST")
+        code_2, out_2, _e = run(root, "--answer", "AP-462", "accept", f"{sat_.isoformat()} 10:00")
+        code_3, out_3, _e = run(root, "--answer", "AP-463", "accept", f"{sat_.isoformat()} 10:00")
+    finally:
+        fm.local_time = _real_local
+    sig_ = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %s", "origin/answer/ap-460"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.strip()
+    check(f"FM-030 · 0.18.6 · E0 row 20 · `--answer` on an action, accepted with *{said_}*, writes `due:` from it in the same signed commit and says so (saw {out_0.strip()!r} · {err_0.strip()[-160:]!r} · {sig_!r})",
+          code_0 == 0 and front_("AP-460").get("due") == f"{sat_.isoformat()}T09:00:00+02:00" and front_("AP-460").get("answer") == f'"accepted - {said_}"'
+          and sig_.startswith("G AP-460: accepted - ") and f"due: {sat_.isoformat()}T09:00:00+02:00 — read from your answer's `{said_}`, written with it" in out_0)
+    fm.configure(root)
+    t461_ = fm.extract(root / "docs/work-tracker/AP-461-x.md", show_("origin/answer/ap-461", "docs/work-tracker/AP-461-x.md"))
+    check(f"FM-030 · 0.18.6 · a weekday alone is not read: no `due:`, the act shows *no date yet* as before, and `--answer` says why and names `--due` (saw {out_1.strip()!r})",
+          code_1 == 0 and "due" not in front_("AP-461") and fm.act_state(fm.act_of(t461_)) == "nodate"
+          and "no date read in your answer — it names no date with an hour" in out_1 and "a weekday alone is not a date" in out_1 and "--due AP-461 <time>" in out_1)
+    check(f"FM-030 · 0.18.6 · a `due:` the seat set is left and the answer's time named beside it, with the `--due` that moves it; a ruling's answer seeds nothing (saw {out_2.strip()!r} · {out_3.strip()!r})",
+          code_2 == code_3 == 0 and front_("AP-462").get("due") == "2026-10-05T10:00:00+02:00"
+          and f"`due:` is 2026-10-05T10:00:00+02:00 already and is left — " in out_2 and f"--due AP-462 {sat_.isoformat()}T10:00:00" in out_2
+          and "due" not in front_("AP-463") and "due" not in out_3.replace("--due", "") and "no date read" not in out_3)
+    check("FM-030 · 0.18.6 · `--schema` says `--answer` seeds `due:` and what it reads — a full date with its hour, the weekday checked; a weekday alone is not",
+          "`--answer`, from an accepted action answer that names its hour" in fm.render_schema() and "`Sat 09-26 09:00`" in fm.render_schema()
+          and "a weekday alone" in fm.render_schema())
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-036, 0.18.4 F: two filled rows for one tracker on one sheet — the newest wins. Today's case: FM-030 judged
 #     `keep P1 #3 build` in the morning pass and `keep P1 #1 build` on the raise; every run flipped the rank between them
 with tempfile.TemporaryDirectory() as tmp:
