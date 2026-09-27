@@ -42,6 +42,7 @@ key and pushes it. The answer is your own commit: [Your answer is your commit](s
 Some answers are promises: *yes, I will read production at seven*. What follows is an act only you can do, and it has a
 time — `due:` in its work item, and a window after it (`window:`, 60 minutes unless it says). The board lists your acts
 under the questions, each **due**, **overdue** after its time, or **missed** once its window has passed with no result.
+An act you promised reads as your promise — the option you took — with the question it answered below it, smaller.
 Each carries two buttons: **done** asks where the result is and gives you
 `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`; **reschedule** asks for the new time and
 gives you `--due AP-007 <time>`. Both are signed and pushed as an answer is.

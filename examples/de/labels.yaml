@@ -91,7 +91,8 @@ waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
 acts.title: Ihre Handlungen, mit ihrer Zeit
-acts.promised: "zugesagt {0}: {1}"
+acts.promised: zugesagt {0}
+acts.asked: "gefragt: {0}"
 acts.due: fällig {0}
 acts.overdue: überfällig — fällig {0}
 acts.missed: "versäumt — fällig {0}, und {1} Minuten ohne Ergebnis verstrichen"
@@ -99,7 +100,8 @@ acts.nodate: noch kein Termin
 acts.done: erledigt
 acts.reschedule: verschieben
 act.done.title: Erledigt — wo ist das Ergebnis?
-act.done.hint: ein Pfad im Repository, oder wo das Ergebnis liegt
+act.done.hint: der Pfad zum Ergebnis, oder wo es liegt
+act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"

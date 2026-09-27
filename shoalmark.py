@@ -1078,12 +1078,14 @@ ACTS_TITLE = "ACTS — yours, with their time"
 def acts_lines(trackers, now=None):
     """FM-030 E — the acts owed to the Owner, as `--standup` and `--owner` list them after the asks: missed and overdue
     first, then what falls due, soonest first, then what has no date yet — each with its `due:` and what it is, in the
-    board's words, and the promise it came from. [] where he owes none."""
+    board's words, and the day he promised it. A promise's line is what he promised, and the question it answered follows
+    on the next line, as context (the Owner's word of 2026-09-27 13:35:40). [] where he owes none."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
     order = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}
     acts = sorted(((t, a) for t, a in ((t, act_of(t)) for t in trackers) if a),
                   key=lambda p: (order[act_state(p[1], now)], parse_due(p[1][3]) or now, p[0]["id"]))
-    return [f"  {t['id']} — {a[0]} · {act_words(a, now)}" + (f" · promised {a[2]}: {a[1]}" if a[1] else "") for t, a in acts]
+    return [f"  {t['id']} — {a[0]} · {act_words(a, now)}" + (" · " + LABELS["acts.promised"].format(a[2], a[1]) if a[1] else "")
+            + (f"\n       {LABELS['acts.asked'].format(a[5])}" if a[5] else "") for t, a in acts]
 
 
 def owner_digest(trackers):
@@ -1630,14 +1632,15 @@ def invite_cmd(tid, trackers):
     if not when:
         print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {tid} <time>` first", file=sys.stderr)
         return EXIT_LINT
-    what, answer, answered, due, window = act
+    what, answer, answered, due, window, asked = act
     body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))[1]
     at = ACTS_HEAD_RE.search(body)
     records = re.split(r"^#{1,3}\s", body[at.end():], maxsplit=1, flags=re.M)[0] if at else ""
     sequence = len(ACT_RECORD_RE.findall(records))
     utc = lambda d: d.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = CONFIG["name"] or ROOT.name
-    said = ((f"Promised {answered}: {answer}. " if answer else "") + f"Owed to you, due {due}; it can still be done {window} minutes after. "
+    said = ((f"{what}\nAsked: {asked}\n" if asked else "") + (f"Promised {answered}: {answer}. " if answer else "")
+            + f"Owed to you, due {due}; it can still be done {window} minutes after. "
             f'Done: {CMD} --done {tid} "<where the result is>" — moved: {CMD} --due {tid} <time>')
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT",
              f"UID:act-{tid.lower()}-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", "DTSTAMP:20000101T000000Z",
@@ -1729,7 +1732,7 @@ def notify_cmd(trackers):
             before += 1
             continue
         said = f"due in {max(1, math.ceil((when - now).total_seconds() / 60))} min" if state == "due" else state
-        how = post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}")
+        how = post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}" + (f"\n{LABELS['acts.asked'].format(act[5])}" if act[5] else ""))
         lines.append(f"  {t['id']} — {said} · {act[0]} · {act_words(act, now)} — {how}")
         if how.startswith("NOT"):
             failed += 1
@@ -2081,7 +2084,7 @@ def render_triage(trackers):
                 "> Due, overdue or missed is the board's to say: it has a clock, and this file has none. `done:` takes an act off.\n",
                 "| ID | Act | Promised | Due | Window |", "|----|-----|----------|-----|--------|"]
         out += [f"| [{t['id']}]({t['file']}) | {cell(what)} | {cell(f'{answered}: {answer}') if answer else '—'} | {due.replace('T', ' ') if due else 'no date yet'} | {window} min |"
-                for t, (what, answer, answered, due, window) in acts]
+                for t, (what, answer, answered, due, window, _asked) in acts]
     out.append("")
     return "\n".join(out)
 
@@ -2143,6 +2146,8 @@ tr.c td:first-child{padding-left:20px}
    place of the logo and the name, inline, so its currentColor is the name's ink: the size its height says, else the logo's */
 #H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H .wm{display:flex}#H .wm svg{display:block;flex:none}#H .wm svg:not([height]){height:22px;width:auto}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
+/* an act that is a promise: what he promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
+#p .aq{padding-left:2ch;font-size:12px;color:var(--mute)}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
 #dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
@@ -2177,7 +2182,7 @@ __RUNNING__</footer>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
-//        [the act owed to the Owner: what, his answer, its date, due, window in minutes — FM-030; empty where none is owed]]
+//        [the act owed to the Owner: what — for a promise, what he promised —, his answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -2303,8 +2308,8 @@ function draw(){
     // screen as an answer: a browser cannot sign; the terminal does.
     const owe=(t,kind)=>{const d=$("dlg"),id=t[0],a=t[30],cmd="__CMD__";
       d.innerHTML=`<form method="dialog"><h3>${l(kind=="done"?"act.done.title":"act.due.title")} · <a href="#=${id}">${id}</a></h3>
-        <p class="dq">${esc(a[0])}</p><p class="m ddim">${a[3]?l("acts.due",a[3].replace("T"," ")):l("acts.nodate")}</p>
-        ${kind=="done"?`<textarea name="text" rows="2" placeholder="${l("act.done.hint")}" required></textarea>`:`<input name="when" type="datetime-local" required>`}
+        <p class="dq">${esc(a[0])}</p>${a[5]?`<p class="ddim">${l("acts.asked",a[5])}</p>`:""}<p class="m ddim">${a[3]?l("acts.due",a[3].replace("T"," ")):l("acts.nodate")}</p>
+        ${kind=="done"?`<textarea name="text" rows="2" placeholder="${l(a[5]?"act.done.hint.promise":"act.done.hint")}" required></textarea>`:`<input name="when" type="datetime-local" required>`}
         <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
       const f=d.querySelector("form");
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();
@@ -2323,7 +2328,8 @@ function draw(){
       const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
       return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
         +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`
-        +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`}).join("\n"):"")(T.filter(t=>t[30].length))
+        +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`
+        +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
     +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
@@ -2412,9 +2418,12 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
-    "acts.title": "your acts, with their time", "acts.promised": "promised {0}: {1}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
+    # an act that is a promise (FM-030, the Owner's word of 2026-09-27 13:35:40): its line is what he promised, `acts.promised`
+    # the day he did — {1}, his answer as signed, is there for a table that quotes it — and `acts.asked` the question below
+    "acts.title": "your acts, with their time", "acts.promised": "promised {0}", "acts.asked": "asked: {0}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
     "acts.missed": "missed — due {0}, and {1} minutes passed with no result", "acts.nodate": "no date yet",
-    "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "Done — where is the result?", "act.done.hint": "a path in the repository, or where the result is",
+    "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "Done — where is the result?", "act.done.hint": "the path to the result, or where it is",
+    "act.done.hint.promise": "the path to the result of this promise, or where it is",
     "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
     "act.sign.step.due": "writes the new {0}, and the old one into the record under {1}",
     "sessions.recent": "sessions · {0} in the last day",
@@ -3506,10 +3515,24 @@ def parse_due(text):
     return when if when.tzinfo is not None else None
 
 
+def promise_of(t):
+    """What an accepted answer promised, in his words — the Owner's word of 2026-09-27 13:35:40 (FM-030): the text his
+    `answer:` carries after its word — the option he chose, or his change — else, for a bare `accepted`, the proposal it
+    took; "" where neither says it, and for an answer that did not accept. The signed line is not touched."""
+    word = ANSWER_WORD_RE.fullmatch(answer_norm(t.get("answer")))
+    if not word or word.group(1).lower() != "accepted":
+        return ""
+    return (word.group(2) or "").strip() or answer_norm(t.get("ask_proposal"))
+
+
 def act_of(t):
-    """FM-030 — the act a tracker owes the Owner, while it is owed: (what, his answer, its date, due, window) or None. An
-    accepted action ask is one — its answer is a promise of his hands, the act still his — and so is any `due:`, which the
-    seat that schedules an act writes. `done:` closes it; closed work owes nothing. `window:` is minutes, 60 where absent."""
+    """FM-030 — the act a tracker owes the Owner, while it is owed: (what, his answer, its date, due, window, asked) or None.
+    An accepted action ask is one — its answer is a promise of his hands, the act still his — and so is any `due:`, which
+    the seat that schedules an act writes. `done:` closes it; closed work owes nothing. `window:` is minutes, 60 where absent.
+    `what` is the act's line: for a promise, what he promised (`promise_of`), and `asked` the question it answered, the
+    context below it — the Owner's word of 2026-09-27 13:35:40: the question alone read as the act, where the act is the
+    option he took. A `due:` beside a question he has not answered keeps its own line, and the question stays on his
+    queue (the pass's R1 on 52cfcc7): `asked` is "" there. Where no promise can be read, the question is the line."""
     if t.get("status") not in OPEN_STATUSES or t.get("done"):
         return None
     word = ANSWER_WORD_RE.fullmatch(answer_norm(t.get("answer")))
@@ -3517,8 +3540,9 @@ def act_of(t):
     if not (promised or t.get("due")):
         return None
     window = int(t["window"]) if str(t.get("window") or "").isdigit() else WINDOW_DEFAULT
-    return ((t.get("ask") if promised else "") or t.get("title") or t["id"], t.get("answer", "") if promised else "",
-            t.get("answered", "") if promised else "", t.get("due", ""), window)
+    promise = promise_of(t) if promised else ""
+    return (promise or (t.get("ask") if promised else "") or t.get("title") or t["id"], t.get("answer", "") if promised else "",
+            t.get("answered", "") if promised else "", t.get("due", ""), window, t.get("ask", "") if promise else "")
 
 
 def act_state(act, now=None):
@@ -5044,7 +5068,7 @@ def done_cmd(words, trackers):
         print("--done: this is a git command; under Subversion, write `done:` and its record under `## Acts`, and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
     now, today = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), datetime.date.today().isoformat()
-    what, _answer, _answered, due, _window = act
+    what, _answer, _answered, due, _window, _asked = act
     # an action's yes left `next: owner` — the promise was his hands (ANSWER_MOVE); the act done, the seat's move follows.
     # ONLY there: a `due:` beside a question he has not answered keeps `next: owner` — the question is still his, and
     # moving it would take it off his list unanswered (the pass's R1 on 52cfcc7)

@@ -45,10 +45,10 @@
 
 | ID | Act | Promised | Due | Window |
 |----|-----|----------|-----|--------|
-| [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | When and how does shoalmark go public? | 2026-09-26: accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | no date yet | 60 min |
-| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | Which day this week do you set up the hardware key that needs a touch — your answer of 09-22 — so that the key signing your answers stops being a software key in the shared agent? | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
-| [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict? | 2026-09-24: accepted - a cold Reviewer session you start reviews 0.18.3 | no date yet | 60 min |
-| [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file? | 2026-09-24: accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | no date yet | 60 min |
+| [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | 2026-09-26: accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | no date yet | 60 min |
+| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
+| [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | a cold Reviewer session you start reviews 0.18.3 | 2026-09-24: accepted - a cold Reviewer session you start reviews 0.18.3 | no date yet | 60 min |
+| [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | 2026-09-24: accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | no date yet | 60 min |
 
 
 ## Work
