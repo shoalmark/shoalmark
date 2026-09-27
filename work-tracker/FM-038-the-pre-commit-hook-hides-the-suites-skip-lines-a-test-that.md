@@ -3,6 +3,9 @@ id: FM-038
 status: Proposed
 considered: FM-035, FM-028, FM-017
 tags: bug
+triaged: 2026-09-27
+next: build
+tier: P3
 hook: "the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time"
 ---
 

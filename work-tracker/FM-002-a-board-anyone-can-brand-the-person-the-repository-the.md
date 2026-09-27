@@ -1,10 +1,9 @@
 ---
 id: FM-002
-status: In Progress
+status: Shipped
 considered: FM-001
 next: build
-triaged: 2026-09-26
-rank: 4
+triaged: 2026-09-27
 tier: P2
 hook: "The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English only. And several kinds of user want to brand it at once: several people looking at one repository's board, several repositories, an organisation shipping its house brand into every repository it sets up. One rule, three files, four places — to be proven before it is built."
 ---
@@ -56,6 +55,7 @@ README explains the whole feature in one section of at most 25 lines. *(Met, 0.8
 
 | Date | Event |
 |---|---|
+| 2026-09-27 | **Shipped at v0.18.5** — `b15c6d9` (PR 97, tagged 12:05:24): slice A (PR 94, `b9644b7e`, READY WITH FINDINGS) and slice B (PR 96, `9704145`, READY on the tree with A merged in) on his signed answer `4e00f85`; the cut's same-session pass READY at `6bef2cb` and his cold session's verdict READY WITH FINDINGS at `27072ef7` (11:12:42); the Done-when met (contrast 4.5:1 in both schemes on the built files; the header inline inside the graticule; the mocks as-is). Set Shipped by the same-day pass after the tag (`triage-2026-09-27.md`, the `fix` row); the answered ask cleared with `--clear-ask FM-002 build` (`d15616d`). |
 | 2026-09-26 | **Slice B built** — the tool ships `monochrome` and `shoalmark` as starters, by the Implementer seat (`8e509911/implementer-37`) on `fm/002-slice-b-the-tool-ships-themes` off `2a9f7eb`, judged before its first build commit by the pass at `13d70189`: the board's three hooks, no visible change without a theme (`919eb86`); `brand/themes/`, FM-006's mocks as he took them on the hooks, with their Plex Mono cuts (`cd1c33f`); the Principal's two rulings — the mock's stripes kept, the German box title *für den Eigner* (`9f2f525`); slice A merged in (`d111ab1`); then, in one commit on the machine's load, `--brand DIR --from`, `--vendor` carrying the themes, the README's brand section at 24 lines, the CHANGELOG line, and pass 1's R1 (this repository's theme re-cut on hooks 1 and 2, its foot as approved), R2 (the box's title in every view), R3 (`--brand` marks a place with no brand file) and R5 (*Eigner* throughout the German board). Not merged: code tier, the Reviewer's pass 2 due. |
 | 2026-09-26 | **Slice A built** — the brand layer, no `shoalmark.py` change, by the Implementer seat (`8e509911/implementer-36`) on `fm/002-slice-a-the-brand-layer` off `2a9f7eb`, judged before its first build commit by the pass at `13d70189`: the board's theme and the two Plex Mono cuts (`349fbe8`), the site's stylesheet (`73ea047`), two text pairs the built files measured below 4.5:1 fixed — the board's placeholder 3.63:1, the site foot's link 1.12:1 (`361336a`), the renders before and after (`5ff3539`), the checks carried — AU-16 with its control, AU-18 at 99.8 characters, 746 contrast measurements a scheme, none below 4.5:1, the tracker view aligned as the mock (`11faa03`). Not merged: the Owner sees the renders first; one Reviewer pass. |
 | 2026-09-26 | **Raised on the Owner's word and re-opened for the brand's themes** — status In Progress by the Principal seat; the themes' ask on the board (a ruling: which theme shoalmark's own board and site wear, and, apart, whether the tool ships themes; three options of 85, 108 and 84 characters; the proposal the GtM seat's, disclosed — the cheap step first), moved here from FM-006's body, where it was re-made on AU-24 (`7344a78`) because FM-006 holds its one ask (going public) and the freeze bars a new tracker; the slices, the carry-overs and the tier's reason in *What is true now*; judged by today's pass (its worksheet and TRIAGE.md's *Passes*). Nothing built. |
