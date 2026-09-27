@@ -45,8 +45,10 @@ Commit: [Ihre Antwort ist Ihr Commit](signing.md).
 Manche Antworten sind Zusagen: *ja, ich lese die Produktion um sieben*. Was folgt, ist eine Handlung, die nur Sie tun
 können, und sie hat eine Zeit — `due:` im Arbeitspaket, und ein Fenster danach (`window:`, 60 Minuten, wenn nichts
 anderes dasteht). Die Tafel listet Ihre Handlungen unter den Fragen, jede **fällig**, **überfällig** nach ihrer Zeit
-oder **versäumt**, wenn ihr Fenster ohne Ergebnis verstrichen ist. Jede trägt zwei Knöpfe: **erledigt** fragt, wo das
-Ergebnis liegt, und gibt Ihnen `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`;
+oder **versäumt**, wenn ihr Fenster ohne Ergebnis verstrichen ist. Eine zugesagte Handlung steht als Ihre Zusage da — die
+Option, die Sie gewählt haben —, die Frage, die sie beantwortet, klein darunter. Jede trägt zwei Knöpfe: **erledigt** fragt, wo das
+Ergebnis liegt — der Pfad genügt: der Eintrag ergänzt, was das Repository über die Datei weiß, wer sie wann hinzugefügt
+hat und bei einer Prüfung ihr Urteil —, und gibt Ihnen `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`;
 **verschieben** fragt nach der neuen Zeit und gibt Ihnen `--due AP-007 <Zeit>`. Beides wird signiert und gepusht wie
 eine Antwort.
 

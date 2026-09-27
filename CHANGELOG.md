@@ -2,6 +2,58 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased — 0.18.6
+
+- **An act that is a promise reads as what he promised, the question below it** (FM-030; the Owner's word in chat of
+  2026-09-27 13:38:30, with a screenshot taken 13:35:40 on pressing *done* for FM-024, spelling normalised: *for a
+  user here the confusion might come from* [the question] *because this repeats the question*). The *done* dialog
+  showed the ask's question — *who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent,
+  or nobody …?* — so *where is the result?* pointed at three options, not at the one he took. The board's acts list,
+  the *done* and *reschedule* dialogs, `--owner`, `--standup`, `--notify`'s notice and `--invite`'s SUMMARY,
+  DESCRIPTION and alarm now lead with the promise — the text his accepted answer carries, the option he took or his
+  change, else the proposal a bare `accepted` took — with the question it answered below it, smaller, as context; the
+  *done* hint asks for *the path to the result of this promise, or where it is*. A `due:` beside a question he has not
+  answered keeps its own line, and the question stays on his queue (the pass's R1 on `52cfcc7`). INDEX.md's Act column
+  reads the promise, its Promised column the answer as signed. Labels: `acts.promised` is `promised {0}`; new
+  `acts.asked` and `act.done.hint.promise`; `act.done.hint` reworded — German in `examples/de/labels.yaml`. *On
+  upgrade:* a `labels.yaml` that sets `acts.promised` with `{1}` prints the signed answer after the promise; drop the
+  `{1}`.
+- **An accepted action answer that names its hour seeds `due:`** (FM-030; the E0 counter's row 20: a consumer's
+  promise *accepted - Sat 09-26 09:00 CEST*, answered the day before, showed *no date yet* for 5 h 24 min past its
+  hour — the hour lived only in `answer:`). `--answer … accept` on an `ask-kind: action` reads the promise's time and
+  writes `due:` in the same signed commit, and says so. The rule, the smallest that is honest about a date: a full
+  date is read — a date with its hour, `2026-09-26 09:00` or `2026-09-26T09:00+02:00`, or the weekday with its month
+  and day, `Sat 09-26 09:00`, the next such day on or after the answer, its weekday checked; a weekday alone (`Sat
+  09:00`) is not, nor a month and day with neither year nor weekday. The zone it names — an offset, `Z`, `UTC`, `GMT`,
+  or the machine's own name for its zone at that hour (`CEST`) — else the machine's zone; another name, a word after
+  the time that is no zone as written (`cest`), a 12-hour time (`9:00 PM`), a fraction of a second (`09:00:00.000Z`),
+  or two different times, are not read — nothing rather than a wrong hour. Where nothing is read, `--answer` says why
+  and names `--due`, and the act shows *no date yet*, as before; a `due:` already set is left, and named beside the
+  answer's time. `--schema` says it under `due:`.
+- **A refused act command leaves a record** (FM-030; the E0 counter's row 20: one `--due` of his was refused after its
+  cut, and the undo left nothing — only his clone's reflog knew). Refused on `answer/<id>` — the commit refused, the
+  file not written — `--done`, `--due` and `--answer` still undo their change, then write one line under `## Acts`
+  there, `**<date> <time>** · <the command> refused — <why>`, commit it unsigned and push it, and say so; his next run
+  on that tracker names the branch and its commit. Unsigned is honest: the line changes no front-matter key and
+  records no act, so the gate reads no right in it, and the refusal may be the signing key's own. Where the line's
+  commit is refused too, it is taken back and the refusal printed only; before the cut — a tree with changes, no
+  signing key — it is printed only, as before. The merged-branch path is unchanged.
+- **`--done` and `--due` gather the facts of a repository path — the person gives the path** (FM-030; the Owner's word
+  in chat of 2026-09-27 13:42:40, on a `--done FM-024` line that carried the path with the review's facts written out:
+  *we expect the person in charge to be too lazy to gather all the data points … that would require more than three
+  clicks* *(normalised)*). The person gives the path; the record gathers the facts. Where `--done <id> "<where>"` names
+  a file in the repository — from its root, or from the tracker directory, as evidence paths are written; a line
+  anchor after it, `file.md:12` or `file.md#L1-L9`, is kept as given and not read as its name — the line under
+  `## Acts` carries, beside the path, the commit that added it (`git log --diff-filter=A`) and that commit's date, or
+  *not committed*; and where the file states a verdict — not prose that mentions one, nor the shape quoted in code —
+  it is a review, and its last pass speaks: the last line that states a verdict gives the word (READY, READY WITH
+  FINDINGS, NOT READY), that pass's own lines the `Reviewed:` sha and the `Session:`, else the trailers of the newest
+  commit that touched the file, named as *last pass in* where it is not the one that added it. A word that names no file
+  there is recorded as given with *not in the repository* beside it, never refused; words, a link or a folder are
+  recorded as given; nothing outside the repository is read, and nothing is guessed. `--due` on an act that was done
+  keeps that act in its record, with its facts. The board's *done* dialog stays one field; `--schema` says it under
+  `done:`.
+
 ## 0.18.5 — 2026-09-27
 
 **shoalmark is restyled and rebranded — the tool ships `monochrome` and `shoalmark` as starter themes, and shoalmark's

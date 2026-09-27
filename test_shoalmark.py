@@ -412,6 +412,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "second": "FM-013 · the second screen, rendered",
     "acts": "FM-030 · B · his acts on the board, rendered — no date yet, due, overdue, missed",
     "owe": "FM-030 · C · done and reschedule, rendered — the two buttons and the one command OK gives",
+    "promise": "FM-030 · 0.18.6 · a promise on the board and in its dialogs, rendered — what he promised, the question below it",
     "hooks": "FM-002 · the three hooks, rendered — none seen without a theme, each styled by one",
 }
 
@@ -1120,7 +1121,8 @@ waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
 acts.title: Ihre Handlungen, mit ihrer Zeit
-acts.promised: "zugesagt {0}: {1}"
+acts.promised: zugesagt {0}
+acts.asked: "gefragt: {0}"
 acts.due: fällig {0}
 acts.overdue: überfällig — fällig {0}
 acts.missed: "versäumt — fällig {0}, und {1} Minuten ohne Ergebnis verstrichen"
@@ -1128,7 +1130,8 @@ acts.nodate: noch kein Termin
 acts.done: erledigt
 acts.reschedule: verschieben
 act.done.title: Erledigt — wo ist das Ergebnis?
-act.done.hint: ein Pfad im Repository, oder wo das Ergebnis liegt
+act.done.hint: der Pfad zum Ergebnis, oder wo es liegt
+act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
@@ -3175,17 +3178,18 @@ with tempfile.TemporaryDirectory() as tmp:
     acts_ = {k: fm.act_of(t) for k, t in by_.items()}
     check(f"FM-030 · B · an act is owed where an action ask was accepted or a `due:` is set — not after a rejection, not for a ruling, not once `done:` is written, not on closed work (saw {sorted(k for k, a in acts_.items() if a)})",
           code_ == 0 and sorted(k for k, a in acts_.items() if a) == ["AP-410", "AP-411", "AP-412", "AP-413"]
-          and acts_["AP-410"] == ("Will you set up the key this week?", "accepted - after the scoring", since_, "", 60) and acts_["AP-413"][4] == 30)
+          and acts_["AP-410"] == ("after the scoring", "accepted - after the scoring", since_, "", 60, "Will you set up the key this week?") and acts_["AP-413"][4] == 30
+          and acts_["AP-411"][5] == "")
     index_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
     run(root); again_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
     check("FM-030 · B · INDEX.md lists the acts with their time as written — no due, overdue or missed, which need a clock — so a minute passing changes nothing committed",
           "### Acts owed to the Owner — with their time" in index_ and f"| [AP-412](AP-412-x.md) | a read ten minutes ago | — | {at_(-10).replace('T', ' ')} | 60 min |" in index_
-          and f"| [AP-410](AP-410-x.md) | Will you set up the key this week? | {since_}: accepted - after the scoring | no date yet | 60 min |" in index_
+          and f"| [AP-410](AP-410-x.md) | after the scoring | {since_}: accepted - after the scoring | no date yet | 60 min |" in index_
           and "AP-414" not in (table_ := index_.split("### Acts owed")[1].split("\n## ")[0]) and not re.search(r"^\|.*\b(overdue|missed)\b", table_, re.M)
           and fm.drift_normalize(again_) == fm.drift_normalize(index_))
     page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     check("FM-030 · B · the page carries each act in its row and the second clock rule beside the first, in the words of its labels — English built in, German in the table the tool ships",
-          f'["Will you set up the key this week?", "accepted - after the scoring", "{since_}", "", 60]]' in page_ and "actstate=a=>" in page_
+          f'["after the scoring", "accepted - after the scoring", "{since_}", "", 60, "Will you set up the key this week?"]]' in page_ and "actstate=a=>" in page_
           and '"acts.missed": "missed — due {0}, and {1} minutes passed with no result"' in page_
           and "acts.missed" in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")))
     if _browser("acts"):
@@ -3194,7 +3198,7 @@ with tempfile.TemporaryDirectory() as tmp:
             shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
             acts_shown_ = shown_[shown_.find("your acts"):shown_.find(" id tier status ")]
             check(f"FM-030 · B · rendered, his board lists his acts after the questions: no date yet, due, overdue, missed — each by the clock, each with its time (saw {shown_[shown_.find('your acts'):][:420]!r})",
-                  "your acts, with their time: 4" in shown_ and "AP-410 Will you set up the key this week? · promised " + since_ + ": accepted - after the scoring · no date yet" in shown_
+                  "your acts, with their time: 4" in shown_ and "AP-410 after the scoring · promised " + since_ + " · no date yet done reschedule asked: Will you set up the key this week?" in shown_
                   and f"AP-411 a read tomorrow · due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago · overdue — due {at_(-10).replace('T', ' ')}" in shown_
                   and f"AP-413 a read two hours ago · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
                   and "AP-414" not in acts_shown_ and "AP-415" not in acts_shown_ and "AP-416" not in acts_shown_ and "AP-417" not in acts_shown_)
@@ -3256,7 +3260,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · C · `--done` writes `done:` — the time, and where the result is — hands the move back to the seat, and records the act under `## Acts`; signed as the owner seat and pushed to `answer/<id>`, and he is back where he started (saw {out_.strip()!r} · {err_.strip()[-200:]!r} · {sig_!r})",
           code_ == 0 and sig_.startswith("G holgoijo@x holgoijo@x AP-420: done — evidence/AP-420/read.md")
           and re.fullmatch(fm.DUE_SHAPE + r" · evidence/AP-420/read\.md", front_.get("done", "").strip('"')) is not None and front_.get("next") == "build"
-          and front_.get("due") == at_(-10) and f"· done — evidence/AP-420/read.md · Will you read production at seven? · due {at_(-10)} · holgo" in record_
+          and front_.get("due") == at_(-10) and f"· done — evidence/AP-420/read.md (not in the repository) · at seven · due {at_(-10)} · holgo" in record_
           and "the act has left your list" in out_ and "next: build — the seat's move follows" in out_ and here_() == start_)
     git(root, "switch", "-q", "answer/ap-420")
     fm.configure(root); acts_ = {t_["id"] for t_ in fm.load_trackers() if fm.act_of(t_)}
@@ -3277,7 +3281,7 @@ with tempfile.TemporaryDirectory() as tmp:
     sig_ = subprocess.run(["git", "-C", str(root), "log", "-2", "--format=%G? %ae %s", "answer/ap-421"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.split("\n")
     check(f"FM-030 · C · `--due` writes the time: an act with none is scheduled, and moved again the old time goes into the record under `## Acts`, newest last — each signed, each pushed (saw {out_2.strip()!r} · {err_1.strip()[-160:]!r} · {sig_})",
           code_1 == code_2 == 0 and front_.get("due") == then_ and "next" in front_ and front_["next"] == "owner"
-          and record_.index(f"scheduled — due {first_} · Will you set up the key?") < record_.index(f"rescheduled — was due {first_}, now due {then_} · Will you set up the key?")
+          and record_.index(f"scheduled — due {first_} · this week") < record_.index(f"rescheduled — was due {first_}, now due {then_} · this week")
           and all(s_.startswith("G holgoijo@x AP-421: due ") for s_ in sig_[:2]) and f"was due {first_}" in out_2
           and show_("origin/answer/ap-421", "docs/work-tracker/AP-421-x.md") == due_text_ and run(root, "--check")[0] == 0)
     check("FM-030 · C · the board carries the two buttons' words and their dialogs' in its labels — English built in, German in the table the tool ships — and the record's heading as configured",
@@ -3345,7 +3349,7 @@ with tempfile.TemporaryDirectory() as tmp:
             check(f"FM-030 · C · R4 · the copied line single-quotes what he typed — a `'` as `'\\''` — so a backtick or a `$` reaches the tool as typed, never run by the shell (saw {odd_cmd_.group(1) if odd_cmd_ else odd_[:200]!r} → {said_!r})",
                   odd_cmd_ is not None and odd_cmd_.group(1) == "'it'\\''s the report in `docs/x.md`, cost $HOME'" and said_ == "it's the report in `docs/x.md`, cost $HOME")
             check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
-                  "your acts, with their time: 2 AP-420 Will you read production at seven?" in rows_ and f"AP-421 Will you set up the key? · promised {since_}: accepted - this week · no date yet done reschedule" in rows_
+                  "your acts, with their time: 2 AP-420 at seven" in rows_ and f"AP-421 this week · promised {since_} · no date yet done reschedule asked: Will you set up the key?" in rows_
                   and "--done AP-421 'evidence/AP-421/key.md'" in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
                   and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
                   and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
@@ -3491,7 +3495,8 @@ with tempfile.TemporaryDirectory() as tmp:
              f"  AP-443 — the read at five · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result",
              f"  AP-442 — the read at seven · overdue — due {at_(-10).replace('T', ' ')}",
              f"  AP-444 — the read tomorrow · due {at_(24 * 60).replace('T', ' ')}",
-             f"  AP-441 — Will you set up the hardware key? · no date yet · promised {since_}: accepted - after the scoring"]
+             f"  AP-441 — after the scoring · no date yet · promised {since_}",
+             "       asked: Will you set up the hardware key?"]
     code_s, out_s, _e = run(root, "--standup")
     code_o, out_o, _e = run(root, "--owner")
     block_ = lambda out: next((b_.strip("\n").split("\n") for b_ in out.split("\n\n") if b_.startswith("ACTS —")), [])
@@ -3505,6 +3510,351 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · E · with no question and acts owed, neither says nothing needs him: the digest leads with the acts (saw {out_o.split(chr(10))[0]!r} · {out_s.split(chr(10))[0]!r})",
           code_s == code_o == 0 and out_o.startswith("NO QUESTION FOR THE OWNER · 4 ACT(S) OWED, WITH THEIR TIME") and "NOTHING NEEDS" not in out_o
           and "· 0 item(s) · 4 act(s)" in out_s.split("\n")[0] and "nothing needs the Owner today" not in out_s and block_(out_o) == block_(out_s) == want_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 13:38:30 (his screenshot 13:35:40), on *done* for FM-024: the dialog repeated the ask's
+#     question — *who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody …?* — so
+#     *where is the result?* pointed at three options, not at the one he took. An act that is a promise is shown as what he
+#     promised, with the question below it, as context: on the board, in its dialogs, in `--owner`, `--standup`, `--notify`
+#     and the invite. A `due:` beside a question he has not answered keeps its own line (the pass's R1 on 52cfcc7)
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    (root / "shoalmark.toml").write_text('name = "p"\nanswerers = ["holgo"]\nstandup = "09:00"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    q_ = "Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until slice 2 is built?"
+    promise_ = "a cold Reviewer session you start reviews 0.18.3"
+    shape_ = lambda answer, extra="": (f'next: owner\nask: "{q_}"\nask-kind: action\nask-since: {since_}\nask-options: "{promise_} | this session\'s own '
+                                       f'Reviewer sub-agent | nobody until slice 2 is built"\nask-proposal: "{promise_}"\nanswer: "{answer}"\nanswered: {since_}\nanswered-by: holgo\n{extra}')
+    tracker(root, "AP-450", extra=shape_(f"accepted - {promise_}"), title="FM-024's shape")
+    tracker(root, "AP-451", extra=shape_("accepted", f"due: {at_(10)}\n").replace(q_, q_[:-1] + ", or the Principal?"), title="a bare accepted takes the proposal")
+    tracker(root, "AP-452", extra=f'next: owner\nask: "Does the launcher ship before the site?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "the launcher"\n'
+                                  f'due: {at_(24 * 60)}\n', title="a read beside an open ruling")
+    q451_ = q_[:-1] + ", or the Principal?"
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the promises", "--author=holgo <h@x>")
+    fm.configure(root); by_ = {t_["id"]: t_ for t_ in fm.load_trackers()}
+    bare_ = fm.act_of({"status": "In Progress", "ask": "Will you read the logs?", "ask_kind": "action", "answer": "accepted", "answered": since_})
+    check(f"FM-030 · 0.18.6 · an act that is a promise is what he promised — the option he took, or the proposal a bare `accepted` took — and the question it answered is its context; "
+          f"a `due:` beside an open question keeps its own line, and where nothing names the promise the question is the line (saw {fm.act_of(by_['AP-450'])} · {bare_})",
+          fm.act_of(by_["AP-450"]) == (promise_, f"accepted - {promise_}", since_, "", 60, q_)
+          and fm.act_of(by_["AP-451"]) == (promise_, "accepted", since_, at_(10), 60, q451_)
+          and fm.act_of(by_["AP-452"]) == ("a read beside an open ruling", "", "", at_(24 * 60), 60, "")
+          and bare_ == ("Will you read the logs?", "accepted", since_, "", 60, ""))
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    act450_ = json.dumps([promise_, f"accepted - {promise_}", since_, "", 60, q_], ensure_ascii=False)
+    check("FM-030 · 0.18.6 · the board's HTML for FM-024's shape carries the promise first and the question second, and its dialogs show the question below the promise with a hint that names it — in the labels, English built in, German in the table the tool ships",
+          act450_ + "]" in page_ and '`<p class="ddim">${l("acts.asked",a[5])}</p>`' in page_ and 'l(a[5]?"act.done.hint.promise":"act.done.hint")' in page_
+          and '`\\n<span class="aq">${l("acts.asked",a[5])}</span>`' in page_ and '"act.done.hint.promise": "the path to the result of this promise, or where it is"' in page_
+          and all(k in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")) for k in ("acts.asked", "act.done.hint.promise")))
+    code_s, out_s, _e = run(root, "--standup")
+    code_o, out_o, _e = run(root, "--owner")
+    line_ = f"  AP-450 — {promise_} · no date yet · promised {since_}\n       asked: {q_}"
+    check(f"FM-030 · 0.18.6 · `--standup` and `--owner` print the same order: the promise on the act's line, the question it answered on the next — never the question as the act (saw {out_o!r})",
+          code_s == code_o == 0 and line_ in out_s and line_ in out_o and f"  AP-450 — {q_}" not in out_s + out_o
+          and f"  AP-451 — {promise_} · due {at_(10).replace('T', ' ')} · promised {since_}\n       asked: {q451_}" in out_o
+          and f"  AP-452 — a read beside an open ruling · due {at_(24 * 60).replace('T', ' ')}\n" in out_o + "\n" and "Does the launcher ship before the site?" in out_o)
+    code_i, _o, _e = run(root, "--invite", "AP-451")
+    ics_ = (root / "docs/work-tracker/evidence/AP-451/AP-451-act.ics").read_bytes().decode("utf-8").replace("\r\n ", "").split("\r\n") if code_i == 0 else []
+    desc_ = next((l_ for l_ in ics_ if l_.startswith("DESCRIPTION:")), "")
+    check(f"FM-030 · 0.18.6 · the invite leads with the promise: its SUMMARY and its alarm name what he promised, and its DESCRIPTION opens with it, the question on the next line (saw {desc_[:200]!r})",
+          code_i == 0 and f"SUMMARY:p — AP-451: {fm.ics_text(promise_)}" in ics_ and f"DESCRIPTION:AP-451: {fm.ics_text(promise_)}" in ics_
+          and desc_.startswith("DESCRIPTION:" + fm.ics_text(f"{promise_}\nAsked: {q451_}\nPromised {since_}: accepted. Owed to you, due {at_(10)}")))
+    posted_, real_post_, state_was_ = [], fm.post_notice, os.environ.get("XDG_STATE_HOME")
+    fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
+    os.environ["XDG_STATE_HOME"] = str(base / "state")
+    try:
+        code_n, out_n, _e = run(root, "--notify")
+    finally:
+        fm.post_notice = real_post_
+        if state_was_ is None:
+            os.environ.pop("XDG_STATE_HOME", None)
+        else:
+            os.environ["XDG_STATE_HOME"] = state_was_
+    check(f"FM-030 · 0.18.6 · `--notify` posts the promise and its time, the question below it (saw {posted_})",
+          code_n == 0 and len(posted_) == 1 and posted_[0][0].startswith("p · AP-451 — due in ")
+          and posted_[0][1] == f"{promise_} · due {at_(10).replace('T', ' ')}\nasked: {q451_}")
+    if _browser("promise"):
+        try:
+            def _dlg(tid, kind):
+                """the act's button pressed in the browser — the dialog as rendered, its markup and its text."""
+                p_ = root / "docs/work-tracker" / f"promise-{tid}-{kind}.html"
+                p_.write_text(page_ + (f'<script>setTimeout(()=>{{OWE(T.find(x=>x[0]=="{tid}"),"{kind}")}},50)</script>' if kind else ""), encoding="utf-8")
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", p_.as_uri()]).stdout
+                p_.unlink()
+                inner_ = (d_.split('<dialog id="dlg"') + [""])[1].split("</dialog>")[0].split(">", 1)[-1]
+                return d_, inner_, re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", inner_))
+            dom_, _i, _t = _dlg("AP-450", "")
+            rows_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+            _d, done_html_, done_ = _dlg("AP-450", "done")
+            _d, due_html_, due_ = _dlg("AP-452", "due")
+            check(f"FM-030 · 0.18.6 · rendered, his board lists the act as his promise and the question below it; its *done* dialog shows the promise, the question under it, smaller, and asks for the result of this promise; a `due:` beside an open question shows its own line and no question (saw {done_[:260]!r} · {due_[:160]!r})",
+                  f"AP-450 {promise_} · promised {since_} · no date yet done reschedule asked: {q_}" in rows_
+                  and done_.strip().startswith(f"Done — where is the result? · AP-450 {promise_} asked: {q_} no date yet")
+                  and 'placeholder="the path to the result of this promise, or where it is"' in done_html_ and 'class="ddim">asked: ' in done_html_
+                  and due_.strip().startswith(f"Reschedule — to when? · AP-452 a read beside an open ruling due {at_(24 * 60).replace('T', ' ')}")
+                  and "asked:" not in due_)
+        except _ChromeFailed as e_:
+            _hung("promise", e_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the E0 counter's row 20: his promise *accepted - Sat 09-26 09:00 CEST*, answered on 09-25, showed
+#     *no date yet* for five hours past its hour — the hour lived only in `answer:`. An accepted action answer whose promise
+#     names a date with its hour seeds `due:` in the answer's own commit, and says so. The rule: a full date is read — the
+#     year, or the weekday with its month and day, the weekday checked; a weekday alone is not, nor a day nothing checks
+_cest = datetime.timezone(datetime.timedelta(hours=2), "CEST")
+_real_local = fm.local_time
+fm.local_time = lambda naive: naive.replace(tzinfo=_cest)          # a machine in Berlin in summer, wherever the suite runs
+try:
+    _two = "2026-09-26T09:00:00+02:00, or 2026-09-27T09:00+02:00"
+    _reads = {t_: fm.answer_due(t_, datetime.date(2026, 9, 25)) for t_ in (
+        "Sat 09-26 09:00 CEST", "Sat 09:00 CEST", "09-26 09:00", "Fri 09-26 09:00", "Sat 09-26 09:00 PST", "2026-09-26 09:00",
+        "2026-09-26T07:30Z", "the read, 2026-09-26T09:00+02:00 — and again 2026-09-26 09:00 CEST", _two, "after the scoring",
+        "Saturday 09-26 at 9:00", "2026-02-30 09:00", "yes, at 09:00 and on time")}
+    _rolled = fm.answer_due("Sat 01-02 09:00", datetime.date(2026, 12, 30))
+finally:
+    fm.local_time = _real_local
+check(f"FM-030 · 0.18.6 · E0 row 20 · the answer's hour is read where a full date names it: *Sat 09-26 09:00 CEST*, answered 09-25, is 2026-09-26T09:00+02:00 — "
+      f"a weekday alone, a day with neither year nor weekday, a weekday that is not the date's, a zone this machine does not carry, a day that is not, or two times, are not read (saw {_reads})",
+      _reads["Sat 09-26 09:00 CEST"] == ("2026-09-26T09:00:00+02:00", "Sat 09-26 09:00 CEST", "")
+      and _reads["Sat 09:00 CEST"][0] is None and "a weekday alone is not a date" in _reads["Sat 09:00 CEST"][2]
+      and _reads["09-26 09:00"][0] is None and "names neither the year nor the weekday" in _reads["09-26 09:00"][2]
+      and _reads["Fri 09-26 09:00"][0] is None and "2026-09-26 is a Saturday" in _reads["Fri 09-26 09:00"][2]
+      and _reads["Sat 09-26 09:00 PST"][0] is None and "`PST` is not this machine's zone at that hour (CEST)" in _reads["Sat 09-26 09:00 PST"][2]
+      and _reads["2026-09-26 09:00"][0] == "2026-09-26T09:00:00+02:00" and _reads["2026-09-26T07:30Z"][0] == "2026-09-26T07:30:00+00:00"
+      and _reads["the read, 2026-09-26T09:00+02:00 — and again 2026-09-26 09:00 CEST"][0] == "2026-09-26T09:00:00+02:00"
+      and _reads[_two][0] is None and "two times, and neither is chosen" in _reads[_two][2]
+      and _reads["after the scoring"][0] is None and _reads["yes, at 09:00 and on time"][0] is None
+      and _reads["Saturday 09-26 at 9:00"][0] == "2026-09-26T09:00:00+02:00" and _reads["2026-02-30 09:00"][0] is None
+      and _rolled[0] == "2027-01-02T09:00:00+02:00")
+fm.local_time = lambda naive: naive.replace(tzinfo=_cest)
+try:
+    _odd = {t_: fm.answer_due(t_, datetime.date(2026, 9, 25)) for t_ in (
+        "2026-10-03T09:00:00.000Z", "2026-10-03 9:00 PM", "2026-10-03 09:00pm", "sat 10-03 09:00 cest", "2026-10-03 09:00 then the read",
+        "2026-10-03 09:00, then the read")}
+finally:
+    fm.local_time = _real_local
+check(f"FM-030 · 0.18.6 · the pass's R2 on 9c96f5b · only the shapes `--schema` states are read: a fraction of a second (its `.000` hid the zone), a 12-hour "
+      f"time, and a word after the time that is no zone as written — `cest`, `then` — seed nothing and say why, rather than a wrong `due:`; a comma after the "
+      f"time is no word (saw {_odd})",
+      _odd["2026-10-03T09:00:00.000Z"][0] is None and "a fraction of a second is not read" in _odd["2026-10-03T09:00:00.000Z"][2]
+      and _odd["2026-10-03 9:00 PM"][0] is None and "a 12-hour time is not read" in _odd["2026-10-03 9:00 PM"][2]
+      and _odd["2026-10-03 09:00pm"][0] is None and "a 12-hour time is not read" in _odd["2026-10-03 09:00pm"][2]
+      and _odd["sat 10-03 09:00 cest"][0] is None and "`cest` after the time is no zone as written" in _odd["sat 10-03 09:00 cest"][2]
+      and _odd["2026-10-03 09:00 then the read"][0] is None and "`then` after the time is no zone as written" in _odd["2026-10-03 09:00 then the read"][2]
+      and _odd["2026-10-03 09:00, then the read"][0] == "2026-10-03T09:00:00+02:00"
+      and "a 12-hour time (`9:00 PM`)" in fm.render_schema() and "a fraction of a second (`09:00:00.000Z`)" in fm.render_schema()
+      and "a word after the time that is no zone as written (`cest`)" in fm.render_schema())
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("holgoijo@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "holgoijo@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                   ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    sat_ = datetime.date.today() + datetime.timedelta(days=(5 - datetime.date.today().weekday()) % 7 or 7)     # the next Saturday, never today
+    ask_ = lambda q, kind="action", extra="": f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "yes"\n{extra}'
+    tracker(root, "AP-460", extra=ask_("Will you read production on Saturday?"), title="the read")
+    tracker(root, "AP-461", extra=ask_("Will you set up the key on a Saturday?"), title="the key")
+    tracker(root, "AP-462", extra=ask_("Will you rotate the token?", extra="due: 2026-10-05T10:00:00+02:00\n"), title="scheduled by the seat")
+    tracker(root, "AP-463", extra=ask_("Does the launcher ship on Saturday?", kind="ruling"), title="a ruling")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks", "-S", "--author=holgo <holgoijo@x>")
+    git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    front_ = lambda tid: fm.parse_frontmatter(show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md"))[0]
+    said_ = f"{sat_:%a} {sat_:%m-%d} 09:00 CEST"                    # the form of the raise's answer, on the next Saturday
+    fm.local_time = lambda naive: naive.replace(tzinfo=_cest)
+    try:
+        code_0, out_0, err_0 = run(root, "--answer", "AP-460", "accept", said_)
+        code_1, out_1, _e = run(root, "--answer", "AP-461", "accept", "Sat 09:00 CEST")
+        code_2, out_2, _e = run(root, "--answer", "AP-462", "accept", f"{sat_.isoformat()} 10:00")
+        code_3, out_3, _e = run(root, "--answer", "AP-463", "accept", f"{sat_.isoformat()} 10:00")
+    finally:
+        fm.local_time = _real_local
+    sig_ = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %s", "origin/answer/ap-460"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.strip()
+    check(f"FM-030 · 0.18.6 · E0 row 20 · `--answer` on an action, accepted with *{said_}*, writes `due:` from it in the same signed commit and says so (saw {out_0.strip()!r} · {err_0.strip()[-160:]!r} · {sig_!r})",
+          code_0 == 0 and front_("AP-460").get("due") == f"{sat_.isoformat()}T09:00:00+02:00" and front_("AP-460").get("answer") == f'"accepted - {said_}"'
+          and sig_.startswith("G AP-460: accepted - ") and f"due: {sat_.isoformat()}T09:00:00+02:00 — read from your answer's `{said_}`, written with it" in out_0)
+    fm.configure(root)
+    t461_ = fm.extract(root / "docs/work-tracker/AP-461-x.md", show_("origin/answer/ap-461", "docs/work-tracker/AP-461-x.md"))
+    check(f"FM-030 · 0.18.6 · a weekday alone is not read: no `due:`, the act shows *no date yet* as before, and `--answer` says why and names `--due` (saw {out_1.strip()!r})",
+          code_1 == 0 and "due" not in front_("AP-461") and fm.act_state(fm.act_of(t461_)) == "nodate"
+          and "no date read in your answer — it names no date with an hour" in out_1 and "a weekday alone is not a date" in out_1 and "--due AP-461 <time>" in out_1)
+    check(f"FM-030 · 0.18.6 · a `due:` the seat set is left and the answer's time named beside it, with the `--due` that moves it; a ruling's answer seeds nothing (saw {out_2.strip()!r} · {out_3.strip()!r})",
+          code_2 == code_3 == 0 and front_("AP-462").get("due") == "2026-10-05T10:00:00+02:00"
+          and f"`due:` is 2026-10-05T10:00:00+02:00 already and is left — " in out_2 and f"--due AP-462 {sat_.isoformat()}T10:00:00" in out_2
+          and "due" not in front_("AP-463") and "due" not in out_3.replace("--due", "") and "no date read" not in out_3)
+    check("FM-030 · 0.18.6 · `--schema` says `--answer` seeds `due:` and what it reads — a full date with its hour, the weekday checked; a weekday alone is not",
+          "`--answer`, from an accepted action answer that names its hour" in fm.render_schema() and "`Sat 09-26 09:00`" in fm.render_schema()
+          and "a weekday alone" in fm.render_schema())
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the E0 counter's row 20: one `--due` of his was refused after its cut and left nothing — the undo took
+#     it all back, and only his clone's reflog knew. Refused on `answer/<id>`, an act command leaves ONE line under `## Acts`
+#     there, committed unsigned and pushed, and the undo says so; refused before the cut, it prints only. The merged-branch
+#     path — a spent `answer/<id>` deleted and cut fresh — and the unmerged one are unchanged
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    act_ = lambda q, answer=True: (f'next: owner\nask: "{q}"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes"\n'
+                                   + (f'answer: "accepted - yes"\nanswered: {since_}\nanswered-by: holgo\n' if answer else ""))
+    tracker(root, "AP-470", extra=act_("Will you read the logs?"), title="the logs")
+    tracker(root, "AP-471", extra=act_("Will you rotate the key?"), title="the key")
+    tracker(root, "AP-472", extra=act_("Will you sign the release?", answer=False), title="not answered yet")
+    tracker(root, "AP-473", extra=f"next: run\ndue: {at_(90)}\n", title="a read later")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    start_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    here_ = lambda: subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    log_ = lambda ref: subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %s", ref], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.strip()
+    clean_ = lambda: subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True, env=_ENV).stdout
+    hook_ = root / ".git/hooks/pre-commit"
+    hook_.write_bytes(b"#!/bin/sh\nif git diff --cached | grep -qE '^\\+(due|done|answer): '; then\n  echo \"gate: the act refused here - the reason the Owner must read\" >&2\n  exit 1\nfi\nexit 0\n")
+    os.chmod(hook_, 0o755)
+    when_ = at_(60)
+    code_d, _o, err_d = run(root, "--due", "AP-470", when_)
+    code_n, _o, err_n = run(root, "--done", "AP-471", "evidence/AP-471/key.md")
+    code_a, _o, err_a = run(root, "--answer", "AP-472", "accept")
+    rec_ = lambda tid: [l_ for l_ in show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md").split("## Acts")[-1].split("\n") if " refused — " in l_]
+    line_ = r"\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\*\* · %s refused — the commit was refused: gate: the act refused here - the reason the Owner must read"
+    check(f"FM-030 · 0.18.6 · E0 row 20 · `--due`, `--done` and `--answer` refused after the cut each leave ONE line under `## Acts` on `answer/<id>` — "
+          f"when, the command, what refused it — committed unsigned and pushed; the undo says so, and he is back on a clean tree (saw {err_d.strip()!r} · {rec_('AP-470')})",
+          code_d == code_n == code_a == fm.EXIT_LINT and here_() == start_ and clean_() == ""
+          and [re.fullmatch(line_ % re.escape(f"--due AP-470 {when_}"), l_) is not None for l_ in rec_("AP-470")] == [True]
+          and [re.fullmatch(line_ % re.escape('--done AP-471 "evidence/AP-471/key.md"'), l_) is not None for l_ in rec_("AP-471")] == [True]
+          and [re.fullmatch(line_ % re.escape("--answer AP-472 accept"), l_) is not None for l_ in rec_("AP-472")] == [True]
+          and all("the commit was refused" in e_ and "recorded under `## Acts` on `answer/ap-47" in e_ and "`, unsigned — pushed" in e_ for e_ in (err_d, err_n, err_a))
+          and log_("origin/answer/ap-470").startswith("N AP-470: --due refused — the commit was refused")
+          and "due" not in fm.parse_frontmatter(show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md"))[0]
+          and "answer" not in fm.parse_frontmatter(show_("origin/answer/ap-472", "docs/work-tracker/AP-472-x.md"))[0])
+    toml_ = (root / "shoalmark.toml").read_text(encoding="utf-8")
+    (root / "shoalmark.toml").write_text(toml_ + "# a change of his\n", encoding="utf-8")
+    code_b, _o, err_b = run(root, "--due", "AP-473", when_)
+    (root / "shoalmark.toml").write_text(toml_, encoding="utf-8")
+    check(f"FM-030 · 0.18.6 · refused before the cut — a tree with changes — it prints only: no branch is cut and nothing is recorded (saw {err_b.strip()[-160:]!r})",
+          code_b == fm.EXIT_LINT and "the working tree has changes" in err_b and "recorded" not in err_b and here_() == start_
+          and subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", "answer/ap-473"], capture_output=True, env=_ENV).returncode != 0)
+    code_u, _o, err_u = run(root, "--due", "AP-470", when_)
+    check(f"FM-030 · 0.18.6 · the unmerged path is unchanged: the next `--due` names `answer/<id>`, the refusal's commit as his, and the command to run there (saw {err_u.strip()[-240:]!r})",
+          code_u == fm.EXIT_LINT and "`answer/ap-470` exists and is not merged" in err_u and "it carries your commit(s) — " in err_u and "AP-470: --due refused" in err_u
+          and "AP-470's act is open there: `git switch answer/ap-470`, then " in err_u and here_() == start_)
+    hook_.unlink()
+    git(root, "merge", "-q", "--no-edit", "answer/ap-470"); git(root, "push", "-q", "origin", "HEAD:main")
+    code_m, _o, err_m = run(root, "--due", "AP-470", when_)
+    after_ = show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md")
+    check(f"FM-030 · 0.18.6 · the merged path is unchanged: a spent `answer/<id>` that carried the record is deleted and cut fresh, and the act's record follows the refusal's (saw {err_m.strip()[-200:]!r})",
+          code_m == 0 and "was left by an earlier answer and is merged into `origin/main` — deleted, and cut fresh" in err_m
+          and fm.parse_frontmatter(after_)[0].get("due") == when_ and after_.index(" refused — ") < after_.index(f"· scheduled — due {when_} ·"))
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 on FM-024's *done*: *if I fill in the path this is how the command is
+#     composed … we expect the person in charge to be too lazy to gather all the data points.* The person gives the path; the
+#     record gathers the facts: a review file's verdict, its `Reviewed:` sha and its `Session:`, the commit that added the
+#     file and when; any other file, its adding commit; a word that names no file here, *not in the repository*; words, as given.
+#     The pass's R1 on 9c96f5b: a file that carries several passes speaks by its LAST — the last stated verdict, that pass's own
+#     lines, else the newest commit's trailers, and *last pass in* that commit; R3: a line anchor after the path is kept as given
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "f"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    for n_ in range(480, 488):
+        tracker(root, f"AP-{n_}", extra=f"next: run\ndue: {at_(60)}\n", title=f"the act {n_}")
+    ev_ = root / "docs/work-tracker/evidence"
+    (ev_ / "reviews").mkdir(parents=True); (ev_ / "AP-482").mkdir()
+    (ev_ / "reviews/review-ap-480.md").write_text("# The pass on AP-480\n\nThe first pass came back NOT READY at 14:23:59, and fixes followed.\n\n"
+                                                  "**Verdict: READY WITH FINDINGS. Tier: code.** R1 is a P3.\n\nReviewed: `0123456789abcdef0123456789abcdef01234567`\n"
+                                                  "Session: `8e509911/reviewer-9`\n", encoding="utf-8")
+    (ev_ / "AP-482/read.md").write_text("the read, as it came back\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts, a review, a read", "--author=holgo <h@x>")
+    (ev_ / "reviews/review-ap-481.md").write_text("# The pass on AP-481\n\n**READY** — R1 closed.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-481 — READY\n\nReviewed: 89abcdef0123456789abcdef0123456789abcdef\nSession: 01a0d6e7", "--author=r <r@x>")
+    # two passes in one file, each with its own lines; and a file whose passes name nothing, each in a commit with its trailers
+    (ev_ / "reviews/review-ap-485.md").write_text("# The pass on AP-485\n\n**NOT READY — one P2.**\n\nReviewed: `aaaaaaa0123456789abcdef0123456789abcdef0`\n"
+                                                  "Session: `8e509911/reviewer-9`\n\n## The second pass\n\n**Verdict: READY WITH FINDINGS.** R1 closed, R2 a P3.\n\n"
+                                                  "Reviewed: `bbbbbbb0123456789abcdef0123456789abcdef0`\nSession: `8e509911/reviewer-11`\n", encoding="utf-8")
+    (ev_ / "reviews/review-ap-486.md").write_text("# The pass on AP-486\n\n**NOT READY** — R1 is a P2.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-486 — NOT READY\n\nReviewed: 1111111111111111111111111111111111111111\nSession: 01a0aaaa", "--author=r <r@x>")
+    with (ev_ / "reviews/review-ap-486.md").open("a", encoding="utf-8") as f_:
+        f_.write("\n## The second pass\n\n**READY** — R1 closed.\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-486 — READY\n\nReviewed: fedcba9876543210fedcba9876543210fedcba98\nSession: 8e509911/reviewer-12", "--author=r <r@x>")
+    git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    added_ = lambda rel: subprocess.run(["git", "-C", str(root), "log", "-1", "--no-renames", "--diff-filter=A", "--format=%h %cI", "--", rel],
+                                        capture_output=True, text=True, env=_ENV).stdout.strip()
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    rec_ = lambda tid: next((l_ for l_ in show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md").split("\n") if "· done — " in l_), "")
+    newest_ = lambda rel: subprocess.run(["git", "-C", str(root), "log", "-1", "--no-renames", "--format=%h %cI", "--", rel],
+                                         capture_output=True, text=True, env=_ENV).stdout.strip()
+    r480_, r481_, r482_ = "docs/work-tracker/evidence/reviews/review-ap-480.md", "docs/work-tracker/evidence/reviews/review-ap-481.md", "docs/work-tracker/evidence/AP-482/read.md"
+    r485_, r486_ = "docs/work-tracker/evidence/reviews/review-ap-485.md", "docs/work-tracker/evidence/reviews/review-ap-486.md"
+    runs_ = {tid: run(root, "--done", tid, w_) for tid, w_ in (("AP-480", r480_), ("AP-481", "evidence/reviews/review-ap-481.md"), ("AP-482", r482_),
+                                                              ("AP-483", "the forge's comment on PR 65"), ("AP-484", "docs/work-tracker/evidence/AP-484/missing.md"),
+                                                              ("AP-485", r485_), ("AP-486", r486_), ("AP-487", r482_ + "#L1-L2"))}
+    check(f"FM-030 · 0.18.6 · the path he gives to a review file is recorded with what the repository says of it: its verdict — the line that states one, not "
+          f"prose that mentions one — its `Reviewed:` sha and its `Session:`, the commit that added it and when (saw {rec_('AP-480')!r} · {runs_['AP-480'][1].strip()[-200:]!r})",
+          runs_["AP-480"][0] == 0 and f"· done — {r480_} (verdict READY WITH FINDINGS, reviewed 0123456, session 8e509911/reviewer-9, added in {added_(r480_)}) · the act 480 · due " in rec_("AP-480")
+          and "with what the repository says of it: verdict READY WITH FINDINGS" in runs_["AP-480"][1])
+    check(f"FM-030 · 0.18.6 · …where the file names no `Reviewed:` and no `Session:`, the commit that added it does, and a path written from the tracker directory is named from the root (saw {rec_('AP-481')!r})",
+          runs_["AP-481"][0] == 0 and f"· done — evidence/reviews/review-ap-481.md ({r481_}, verdict READY, reviewed 89abcde, session 01a0d6e7, added in {added_(r481_)}) · " in rec_("AP-481"))
+    check(f"FM-030 · 0.18.6 · any other file: the commit that added it, and nothing more; words are recorded as given; a path that is no file here is recorded, *not in the repository* beside it — never refused (saw {rec_('AP-482')!r} · {rec_('AP-483')!r} · {rec_('AP-484')!r})",
+          runs_["AP-482"][0] == runs_["AP-483"][0] == runs_["AP-484"][0] == 0
+          and f"· done — {r482_} (added in {added_(r482_)}) · the act 482 · " in rec_("AP-482")
+          and "· done — the forge's comment on PR 65 · the act 483 · " in rec_("AP-483")
+          and "· done — docs/work-tracker/evidence/AP-484/missing.md (not in the repository) · the act 484 · " in rec_("AP-484"))
+    check(f"FM-030 · 0.18.6 · the pass's R1 on 9c96f5b · a file that carries two passes speaks by its last: the last stated verdict, and the `Reviewed:` and "
+          f"`Session:` of that pass — not the first pass's NOT READY with its sha (saw {rec_('AP-485')!r})",
+          runs_["AP-485"][0] == 0 and f"· done — {r485_} (verdict READY WITH FINDINGS, reviewed bbbbbbb, session 8e509911/reviewer-11, added in {added_(r485_)}) · the act 485 · "
+          in rec_("AP-485"))
+    check(f"FM-030 · 0.18.6 · the pass's R1 on 9c96f5b · where the file names no `Reviewed:` and no `Session:`, the newest commit that touched it does — not "
+          f"the one that added it — and *last pass in* names it, with its time (saw {rec_('AP-486')!r})",
+          runs_["AP-486"][0] == 0 and added_(r486_) != newest_(r486_)
+          and f"· done — {r486_} (verdict READY, reviewed fedcba9, session 8e509911/reviewer-12, added in {added_(r486_)}, last pass in {newest_(r486_)}) · the act 486 · "
+          in rec_("AP-486"))
+    check(f"FM-030 · 0.18.6 · the pass's R3 on 9c96f5b · a line anchor after a real file's path is recorded as given, and the file's facts beside it — not "
+          f"*not in the repository* (saw {rec_('AP-487')!r})",
+          runs_["AP-487"][0] == 0 and f"· done — {r482_}#L1-L2 (added in {added_(r482_)}) · the act 487 · " in rec_("AP-487"))
+    (base / "outside.md").write_text("**Verdict: READY.**\n", encoding="utf-8"); (ev_ / "AP-485.md").write_text("not yet committed; a review reads `Verdict: READY` — the shape, quoted\n", encoding="utf-8")
+    fm.configure(root)
+    check("FM-030 · 0.18.6 · nothing is read outside the repository, a link or a folder gathers nothing, a file not committed says so, and a verdict's shape "
+          "quoted in code states none — the README's act row quotes it and is no review",
+          fm.result_facts("../outside.md") == "not in the repository" and fm.result_facts(str(base / "outside.md")) == "not in the repository"
+          and fm.result_facts("https://github.com/o/r/pull/65") == "" and fm.result_facts("docs/work-tracker/evidence") == ""
+          and fm.result_facts("docs/work-tracker/evidence/AP-485.md") == "not committed"
+          and fm.result_facts(r482_ + ":12") == fm.result_facts(r482_ + "#L1") == f"added in {added_(r482_)}"
+          and fm.result_facts("evidence/AP-482/read.md:3-9") == f"{r482_}, added in {added_(r482_)}" and fm.result_facts("PR65:3") == "not in the repository")
+    check("FM-030 · 0.18.6 · `--schema` says it under `done:`: the person gives the path, the record gathers the facts — the adding commit, a review's verdict, "
+          "`Reviewed:` and `Session:` — a word that names no file is recorded as given, nothing is guessed",
+          "The person gives the path; the record gathers the facts" in fm.render_schema() and "*not in the repository* beside it; nothing is guessed" in fm.render_schema()
+          and "its word, the `Reviewed:` sha and the `Session:`" in fm.render_schema())
+    git(root, "switch", "-q", "answer/ap-482")
+    code_, out_, err_ = run(root, "--due", "AP-482", at_(24 * 60))
+    t482_ = (root / "docs/work-tracker/AP-482-x.md").read_text(encoding="utf-8")
+    check(f"FM-030 · 0.18.6 · `--due` on an act that was done keeps the act before in its record — its time, where its result is, and what the repository says of it (saw {err_.strip()[-160:]!r})",
+          code_ == 0 and re.search(r"· scheduled — due %s, a new act — the one before was done %s · %s \(added in %s\) · the act 482 · holgo"
+                                   % (re.escape(at_(24 * 60)), fm.DUE_SHAPE, re.escape(r482_), re.escape(added_(r482_))), t482_) is not None)
     rm_git(root)
 fm.configure(HERE)
 
