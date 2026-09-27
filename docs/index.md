@@ -1,3 +1,10 @@
+---
+template: landing.html
+---
+
+<!-- FM-006 slice L: the site renders this page with overrides/landing.html, the landing page — the start page. This prose
+     is its source, the German start page's original and llms.txt's Markdown twin of the start page; the site does not show it. -->
+
 # shoalmark
 
 *A Pricke on the Wadden flats keeps the fleet in the channel.*
