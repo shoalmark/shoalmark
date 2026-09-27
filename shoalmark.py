@@ -357,14 +357,18 @@ def front_matter_schema():
                             "`2026-09-26T09:00+02:00`, or the weekday with its month and day, `Sat 09-26 09:00`, the next such day on or after the answer, "
                             "its weekday checked — in the zone it names (an offset, `Z`, `UTC`, `GMT`, or this machine's own name for its zone, `CEST`), "
                             "else this machine's zone; a weekday alone, a month and day with neither year nor weekday, a zone name this machine does not "
-                            "carry, or two times are not read, and the act shows *no date yet*. A `due:` already set is left, and `--answer` says so"),
+                            "carry, a word after the time that is no zone as written (`cest`), a 12-hour time (`9:00 PM`), a fraction of a second "
+                            "(`09:00:00.000Z`), or two times are not read — nothing rather than a wrong hour — and the act shows *no date yet*. "
+                            "A `due:` already set is left, and `--answer` says so"),
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
         "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
                             "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
                             "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next. The person gives the path; "
                             "the record gathers the facts: for a file in the repository, the commit that added it and its date, and for a review — a file "
-                            "that states a verdict — its word, the `Reviewed:` sha and the `Session:`; a word that names no file there is recorded as given, "
-                            "*not in the repository* beside it; nothing is guessed"),
+                            "that states a verdict — its word, the `Reviewed:` sha and the `Session:` of its last pass: the last line that states a verdict, "
+                            "that pass's own lines, else the trailers of the newest commit that touched the file, named as *last pass in* where it is not "
+                            "the one that added it; a line anchor after the path (`file.md:12`, `#L1-L9`) is kept as given and not read as its name; "
+                            "a word that names no file there is recorded as given, *not in the repository* beside it; nothing is guessed"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -2224,7 +2228,7 @@ tr.c td:first-child{padding-left:20px}
 #H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H .wm{display:flex}#H .wm svg{display:block;flex:none}#H .wm svg:not([height]){height:22px;width:auto}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 /* an act that is a promise: what he promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
-#p .aq{padding-left:2ch;font-size:12px;color:var(--mute)}
+#p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
 #dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
@@ -3599,11 +3603,15 @@ def parse_due(text):
 # passed, and whose weekday must be that day's. A weekday alone (`Sat 09:00`) names no date, and a month and day with
 # neither year nor weekday (`09-26 09:00`) is not read either: nothing checks it. The zone: an offset, `Z`, `UTC` or `GMT`,
 # or the name this machine gives its own zone at that hour (`CEST` in Berlin in summer); none, this machine's zone — the
-# one `--done` writes its time in, and the board's reschedule takes from the browser. Any other name is not guessed.
+# one `--done` writes its time in, and the board's reschedule takes from the browser. Any other name is not guessed, and
+# nor is any other shape (the pass's R2 on 9c96f5b): a fraction of a second, `09:00:00.000Z`, whose `.000` hid the zone;
+# a 12-hour time, `9:00 PM`, read as nine in the morning; a word after the time the zone does not take, `cest` — each
+# seeds nothing, and says why, rather than a wrong `due:`.
 _WEEKDAY = (r"(?i:(?P<wd>mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?))\.?,?\s+")
 ANSWER_TIME_RE = re.compile(r"(?<![\w:.+-])(?:" + _WEEKDAY + r")?(?:(?P<y>\d{4})-)?(?P<mo>\d{2})-(?P<d>\d{2})(?:T|\s+(?:at\s+)?)"
                             r"(?P<h>[01]?\d|2[0-3]):(?P<mi>[0-5]\d)(?::(?P<s>[0-5]\d))?"
-                            r"(?:\s*(?P<z>Z|UTC|GMT|[+-](?:[01]\d|2[0-3]):?[0-5]\d|[A-Z]{3,5})(?![\w:]))?(?![\w:])")
+                            r"(?:\s*(?P<z>Z|UTC|GMT|[+-](?:[01]\d|2[0-3]):?[0-5]\d|[A-Z]{3,5})(?![\w:])"
+                            r"|(?P<odd>[.,]\d+|\s*[A-Za-z][A-Za-z.]*)|(?![\w:]))")
 
 
 def local_time(naive):
@@ -3616,10 +3624,17 @@ def answer_due(text, day):
     """The time an answer's text names, read as `ANSWER_TIME_RE` says — (the ISO time with its zone, the words it was read
     from, "") — or (None, "", why not): no date with an hour in it; a year-less day with no weekday; a weekday that is not
     the date's; a zone name this machine does not carry; or two times that differ — nothing is chosen between them.
-    `day` is the day of the answer: a year-less date is the next on or after it."""
+    `day` is the day of the answer: a year-less date is the next on or after it. A time in any other shape — a fraction of
+    a second, a 12-hour time, a word after it that is no zone as written — is not read, and nothing is chosen instead."""
     found = []
     for m in ANSWER_TIME_RE.finditer(text or ""):
         words = " ".join(m.group(0).split())
+        odd = (m.group("odd") or "").strip()
+        if odd:
+            return None, "", f"`{words}`: " + ("a fraction of a second is not read" if odd[0] in ".," else
+                                               "a 12-hour time is not read — the hour is 00–23" if re.fullmatch(r"[AaPp]\.?[Mm]\.?", odd) else
+                                               f"`{odd}` after the time is no zone as written — an offset, `Z`, `UTC`, `GMT` or this machine's own "
+                                               "name for its zone, in capitals; nothing is guessed")
         mo, d, h, mi, s = (int(m.group(k) or 0) for k in ("mo", "d", "h", "mi", "s"))
         try:
             if m.group("y"):
@@ -5190,55 +5205,76 @@ VERDICT_LINE_RE = re.compile(r"(?<![`\w])Verdict\b[^A-Za-z]*(?:on\s+`?[0-9a-f]{7
                              + r"|^(?:#{1,6}\s+)?(?:\*\*|__)" + VERDICT_WORD_RE.pattern, re.M)
 _FILE_SHA_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?Reviewed:(?:\*\*)?\s*`?([0-9a-f]{7,40})\b", re.M)
 _FILE_SESSION_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*)?Session:(?:\*\*)?\s*`?(" + SESSION_ID_RE.pattern + r")(?![\w/-])", re.M)
+# a line anchor after a path, as a review or a forge writes one — `file.md:12`, `file.md:12-20`, `file.md#L1`, `#L1-L9`
+_LINE_ANCHOR_RE = re.compile(r"(?:#[\w.-]*|:\d+(?:[-:]\d+)?)$")
 
 
 def result_facts(where):
     """FM-030, the Owner's word of 2026-09-27 13:42:40: *the person gives the path; the record gathers the facts.*
     What the repository says of `where` — read, never guessed — as one clause for the record beside it, or "":
     - a file in the repository (from its root, or from the tracker directory, as evidence paths are written — never one
-      outside it): the commit that added it under that name and the commit's date (`git log --no-renames --diff-filter=A`),
-      or *not committed*; and where the file states a verdict (`VERDICT_LINE_RE`, the first such line) it is a review: its
-      word, the `Reviewed:` sha and the `Session:` it names — its own lines first, else the adding commit's trailers;
+      outside it; a trailing line anchor, `file.md:12` or `file.md#L1-L9`, is not part of its name — `where` is recorded
+      as given, anchor and all): the commit that added it under that name and the commit's date (`git log --no-renames
+      --diff-filter=A`), or *not committed*;
+    - where the file states a verdict (`VERDICT_LINE_RE`) it is a review, and its LAST such line is the verdict — a file
+      that carries several passes is superseded pass by pass, and the last stated verdict is the newest verdict commit's
+      in every review file of this repository (the pass's R1 on 9c96f5b; 77 of 77 at d18c9ba). Its `Reviewed:` sha and
+      `Session:` are that pass's own lines — the nearest after it, or the file's only ones — else the trailers of the
+      newest commit that touched the file; where that commit is not the one that added it, *last pass in* names it;
     - one word that names no file in the repository: *not in the repository* — recorded as given, never refused;
     - words, a link, a folder: nothing beside it."""
     w = (where or "").strip()
     if not w:
         return ""
-    top, found = ROOT.resolve(), None
-    for base in (ROOT, TRACKER_DIR):
-        try:
-            p = (base / w).resolve()
-            p.relative_to(top)
-        except (ValueError, OSError, RuntimeError):
-            continue
-        if p.exists():
-            found = p
+    top, found, bare = ROOT.resolve(), None, _LINE_ANCHOR_RE.sub("", w)
+    for name in dict.fromkeys(n for n in (w, bare) if n):     # as given first: a name may carry a `#` or a `:` of its own
+        for base in (ROOT, TRACKER_DIR):
+            try:
+                p = (base / name).resolve()
+                p.relative_to(top)
+            except (ValueError, OSError, RuntimeError):
+                continue
+            if p.exists():
+                found = p
+                break
+        if found is not None:
             break
     if found is None:
         return "" if re.search(r"\s", w) or "://" in w else "not in the repository"
     if not found.is_file():
         return ""
     rel, facts = found.relative_to(top).as_posix(), []
-    if rel not in (w, w.lstrip("./")):
+    if rel not in (w, w.lstrip("./"), bare, bare.lstrip("./")):
         facts.append(rel)
     try:
         with found.open(encoding="utf-8", errors="replace") as f:
             text = f.read(1 << 20)
     except OSError:
         text = ""
-    sha = date = block = ""
+    added = newest = ("", "", "")
     if vcs() == "git":
-        log = (git_out("log", "-1", "--no-renames", "--diff-filter=A", f"--format=%h%x00%cI%x00{TRAILERS}", "--", rel) or "").strip("\n")
-        sha, date, block = (log.split("\x00") + ["", "", ""])[:3] if log else ("", "", "")
-    verdict = VERDICT_LINE_RE.search(text)
-    if verdict:
-        facts.append("verdict " + next(g for g in verdict.groups() if g))
-        reviewed = _FILE_SHA_RE.search(text)
-        reviewed = reviewed.group(1) if reviewed else (trailer_values(block, "Reviewed") or [""])[0]
-        session = _FILE_SESSION_RE.search(text)
-        session = session.group(1) if session else (trailer_values(block, "Session") or [""])[0]
+        log = lambda *a: tuple(((git_out("log", "-1", "--no-renames", *a, f"--format=%h%x00%cI%x00{TRAILERS}", "--", rel) or "")
+                                .strip("\n").split("\x00") + ["", ""])[:3])
+        added, newest = log("--diff-filter=A"), log()
+    stated = list(VERDICT_LINE_RE.finditer(text))
+    if stated:
+        last = stated[-1]
+        facts.append("verdict " + next(g for g in last.groups() if g))
+        after = text.find("\n", last.end()) + 1 or len(text)     # the lines after the last verdict's own line
+
+        def own(rx):
+            """The pass's own line: the nearest after its verdict, else the file's only value; None where neither says."""
+            near = rx.search(text, after)
+            if near:
+                return near.group(1)
+            every = {m.group(1) for m in rx.finditer(text)}
+            return every.pop() if len(every) == 1 else None
+        reviewed = own(_FILE_SHA_RE) or (trailer_values(newest[2], "Reviewed") or [""])[0]
+        session = own(_FILE_SESSION_RE) or (trailer_values(newest[2], "Session") or [""])[0]
         facts += ([f"reviewed {reviewed[:7]}"] if re.fullmatch(r"[0-9a-f]{7,40}", reviewed or "") else []) + ([f"session {session}"] if session else [])
-    facts.append(f"added in {sha} {date}" if sha else "not committed")
+    facts.append(f"added in {added[0]} {added[1]}" if added[0] else "not committed")
+    if stated and newest[0] and newest[0] != added[0]:
+        facts.append(f"last pass in {newest[0]} {newest[1]}")        # the verdict's own time, where a later pass wrote it
     return ", ".join(facts)
 
 

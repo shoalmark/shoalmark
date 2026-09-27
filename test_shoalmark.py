@@ -3630,6 +3630,24 @@ check(f"FM-030 · 0.18.6 · E0 row 20 · the answer's hour is read where a full 
       and _reads["after the scoring"][0] is None and _reads["yes, at 09:00 and on time"][0] is None
       and _reads["Saturday 09-26 at 9:00"][0] == "2026-09-26T09:00:00+02:00" and _reads["2026-02-30 09:00"][0] is None
       and _rolled[0] == "2027-01-02T09:00:00+02:00")
+fm.local_time = lambda naive: naive.replace(tzinfo=_cest)
+try:
+    _odd = {t_: fm.answer_due(t_, datetime.date(2026, 9, 25)) for t_ in (
+        "2026-10-03T09:00:00.000Z", "2026-10-03 9:00 PM", "2026-10-03 09:00pm", "sat 10-03 09:00 cest", "2026-10-03 09:00 then the read",
+        "2026-10-03 09:00, then the read")}
+finally:
+    fm.local_time = _real_local
+check(f"FM-030 · 0.18.6 · the pass's R2 on 9c96f5b · only the shapes `--schema` states are read: a fraction of a second (its `.000` hid the zone), a 12-hour "
+      f"time, and a word after the time that is no zone as written — `cest`, `then` — seed nothing and say why, rather than a wrong `due:`; a comma after the "
+      f"time is no word (saw {_odd})",
+      _odd["2026-10-03T09:00:00.000Z"][0] is None and "a fraction of a second is not read" in _odd["2026-10-03T09:00:00.000Z"][2]
+      and _odd["2026-10-03 9:00 PM"][0] is None and "a 12-hour time is not read" in _odd["2026-10-03 9:00 PM"][2]
+      and _odd["2026-10-03 09:00pm"][0] is None and "a 12-hour time is not read" in _odd["2026-10-03 09:00pm"][2]
+      and _odd["sat 10-03 09:00 cest"][0] is None and "`cest` after the time is no zone as written" in _odd["sat 10-03 09:00 cest"][2]
+      and _odd["2026-10-03 09:00 then the read"][0] is None and "`then` after the time is no zone as written" in _odd["2026-10-03 09:00 then the read"][2]
+      and _odd["2026-10-03 09:00, then the read"][0] == "2026-10-03T09:00:00+02:00"
+      and "a 12-hour time (`9:00 PM`)" in fm.render_schema() and "a fraction of a second (`09:00:00.000Z`)" in fm.render_schema()
+      and "a word after the time that is no zone as written (`cest`)" in fm.render_schema())
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
@@ -3750,7 +3768,9 @@ fm.configure(HERE)
 # --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 on FM-024's *done*: *if I fill in the path this is how the command is
 #     composed … we expect the person in charge to be too lazy to gather all the data points.* The person gives the path; the
 #     record gathers the facts: a review file's verdict, its `Reviewed:` sha and its `Session:`, the commit that added the
-#     file and when; any other file, its adding commit; a word that names no file here, *not in the repository*; words, as given
+#     file and when; any other file, its adding commit; a word that names no file here, *not in the repository*; words, as given.
+#     The pass's R1 on 9c96f5b: a file that carries several passes speaks by its LAST — the last stated verdict, that pass's own
+#     lines, else the newest commit's trailers, and *last pass in* that commit; R3: a line anchor after the path is kept as given
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
@@ -3761,7 +3781,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('name = "f"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
     at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
-    for n_ in range(480, 486):
+    for n_ in range(480, 488):
         tracker(root, f"AP-{n_}", extra=f"next: run\ndue: {at_(60)}\n", title=f"the act {n_}")
     ev_ = root / "docs/work-tracker/evidence"
     (ev_ / "reviews").mkdir(parents=True); (ev_ / "AP-482").mkdir()
@@ -3772,15 +3792,28 @@ with tempfile.TemporaryDirectory() as tmp:
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts, a review, a read", "--author=holgo <h@x>")
     (ev_ / "reviews/review-ap-481.md").write_text("# The pass on AP-481\n\n**READY** — R1 closed.\n", encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-481 — READY\n\nReviewed: 89abcdef0123456789abcdef0123456789abcdef\nSession: 01a0d6e7", "--author=r <r@x>")
+    # two passes in one file, each with its own lines; and a file whose passes name nothing, each in a commit with its trailers
+    (ev_ / "reviews/review-ap-485.md").write_text("# The pass on AP-485\n\n**NOT READY — one P2.**\n\nReviewed: `aaaaaaa0123456789abcdef0123456789abcdef0`\n"
+                                                  "Session: `8e509911/reviewer-9`\n\n## The second pass\n\n**Verdict: READY WITH FINDINGS.** R1 closed, R2 a P3.\n\n"
+                                                  "Reviewed: `bbbbbbb0123456789abcdef0123456789abcdef0`\nSession: `8e509911/reviewer-11`\n", encoding="utf-8")
+    (ev_ / "reviews/review-ap-486.md").write_text("# The pass on AP-486\n\n**NOT READY** — R1 is a P2.\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-486 — NOT READY\n\nReviewed: 1111111111111111111111111111111111111111\nSession: 01a0aaaa", "--author=r <r@x>")
+    with (ev_ / "reviews/review-ap-486.md").open("a", encoding="utf-8") as f_:
+        f_.write("\n## The second pass\n\n**READY** — R1 closed.\n")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "review: AP-486 — READY\n\nReviewed: fedcba9876543210fedcba9876543210fedcba98\nSession: 8e509911/reviewer-12", "--author=r <r@x>")
     git(root, "push", "-q", "-u", "origin", "HEAD:main")
     added_ = lambda rel: subprocess.run(["git", "-C", str(root), "log", "-1", "--no-renames", "--diff-filter=A", "--format=%h %cI", "--", rel],
                                         capture_output=True, text=True, env=_ENV).stdout.strip()
     show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
     rec_ = lambda tid: next((l_ for l_ in show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md").split("\n") if "· done — " in l_), "")
+    newest_ = lambda rel: subprocess.run(["git", "-C", str(root), "log", "-1", "--no-renames", "--format=%h %cI", "--", rel],
+                                         capture_output=True, text=True, env=_ENV).stdout.strip()
     r480_, r481_, r482_ = "docs/work-tracker/evidence/reviews/review-ap-480.md", "docs/work-tracker/evidence/reviews/review-ap-481.md", "docs/work-tracker/evidence/AP-482/read.md"
+    r485_, r486_ = "docs/work-tracker/evidence/reviews/review-ap-485.md", "docs/work-tracker/evidence/reviews/review-ap-486.md"
     runs_ = {tid: run(root, "--done", tid, w_) for tid, w_ in (("AP-480", r480_), ("AP-481", "evidence/reviews/review-ap-481.md"), ("AP-482", r482_),
-                                                              ("AP-483", "the forge's comment on PR 65"), ("AP-484", "docs/work-tracker/evidence/AP-484/missing.md"))}
-    check(f"FM-030 · 0.18.6 · the path he gives to a review file is recorded with what the repository says of it: its verdict — the first line that states one, not "
+                                                              ("AP-483", "the forge's comment on PR 65"), ("AP-484", "docs/work-tracker/evidence/AP-484/missing.md"),
+                                                              ("AP-485", r485_), ("AP-486", r486_), ("AP-487", r482_ + "#L1-L2"))}
+    check(f"FM-030 · 0.18.6 · the path he gives to a review file is recorded with what the repository says of it: its verdict — the line that states one, not "
           f"prose that mentions one — its `Reviewed:` sha and its `Session:`, the commit that added it and when (saw {rec_('AP-480')!r} · {runs_['AP-480'][1].strip()[-200:]!r})",
           runs_["AP-480"][0] == 0 and f"· done — {r480_} (verdict READY WITH FINDINGS, reviewed 0123456, session 8e509911/reviewer-9, added in {added_(r480_)}) · the act 480 · due " in rec_("AP-480")
           and "with what the repository says of it: verdict READY WITH FINDINGS" in runs_["AP-480"][1])
@@ -3791,13 +3824,27 @@ with tempfile.TemporaryDirectory() as tmp:
           and f"· done — {r482_} (added in {added_(r482_)}) · the act 482 · " in rec_("AP-482")
           and "· done — the forge's comment on PR 65 · the act 483 · " in rec_("AP-483")
           and "· done — docs/work-tracker/evidence/AP-484/missing.md (not in the repository) · the act 484 · " in rec_("AP-484"))
+    check(f"FM-030 · 0.18.6 · the pass's R1 on 9c96f5b · a file that carries two passes speaks by its last: the last stated verdict, and the `Reviewed:` and "
+          f"`Session:` of that pass — not the first pass's NOT READY with its sha (saw {rec_('AP-485')!r})",
+          runs_["AP-485"][0] == 0 and f"· done — {r485_} (verdict READY WITH FINDINGS, reviewed bbbbbbb, session 8e509911/reviewer-11, added in {added_(r485_)}) · the act 485 · "
+          in rec_("AP-485"))
+    check(f"FM-030 · 0.18.6 · the pass's R1 on 9c96f5b · where the file names no `Reviewed:` and no `Session:`, the newest commit that touched it does — not "
+          f"the one that added it — and *last pass in* names it, with its time (saw {rec_('AP-486')!r})",
+          runs_["AP-486"][0] == 0 and added_(r486_) != newest_(r486_)
+          and f"· done — {r486_} (verdict READY, reviewed fedcba9, session 8e509911/reviewer-12, added in {added_(r486_)}, last pass in {newest_(r486_)}) · the act 486 · "
+          in rec_("AP-486"))
+    check(f"FM-030 · 0.18.6 · the pass's R3 on 9c96f5b · a line anchor after a real file's path is recorded as given, and the file's facts beside it — not "
+          f"*not in the repository* (saw {rec_('AP-487')!r})",
+          runs_["AP-487"][0] == 0 and f"· done — {r482_}#L1-L2 (added in {added_(r482_)}) · the act 487 · " in rec_("AP-487"))
     (base / "outside.md").write_text("**Verdict: READY.**\n", encoding="utf-8"); (ev_ / "AP-485.md").write_text("not yet committed; a review reads `Verdict: READY` — the shape, quoted\n", encoding="utf-8")
     fm.configure(root)
     check("FM-030 · 0.18.6 · nothing is read outside the repository, a link or a folder gathers nothing, a file not committed says so, and a verdict's shape "
           "quoted in code states none — the README's act row quotes it and is no review",
           fm.result_facts("../outside.md") == "not in the repository" and fm.result_facts(str(base / "outside.md")) == "not in the repository"
           and fm.result_facts("https://github.com/o/r/pull/65") == "" and fm.result_facts("docs/work-tracker/evidence") == ""
-          and fm.result_facts("docs/work-tracker/evidence/AP-485.md") == "not committed")
+          and fm.result_facts("docs/work-tracker/evidence/AP-485.md") == "not committed"
+          and fm.result_facts(r482_ + ":12") == fm.result_facts(r482_ + "#L1") == f"added in {added_(r482_)}"
+          and fm.result_facts("evidence/AP-482/read.md:3-9") == f"{r482_}, added in {added_(r482_)}" and fm.result_facts("PR65:3") == "not in the repository")
     check("FM-030 · 0.18.6 · `--schema` says it under `done:`: the person gives the path, the record gathers the facts — the adding commit, a review's verdict, "
           "`Reviewed:` and `Session:` — a word that names no file is recorded as given, nothing is guessed",
           "The person gives the path; the record gathers the facts" in fm.render_schema() and "*not in the repository* beside it; nothing is guessed" in fm.render_schema()
