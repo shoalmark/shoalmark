@@ -22,20 +22,25 @@ hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner
 
 ## What is true now
 
-**Filed 2026-09-24; nothing is built.** Found on 0.17.7 in a consumer repository at its morning sitting. The lines below
-are from 0.17.8 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on an earlier chain of this branch, which was
-replaced before its merge to keep unredacted detail out of the record; it found R1–R16, and this text closes R1–R10.
+**Filed 2026-09-24; built in part, and more on a branch not merged.** 0.18.3 and 0.18.4 shipped its first lines — an
+answer writes the next move; the acts owed to the Owner on his board with their time, *done* and *reschedule*, an invite
+and a notice per act — and `fm/030-the-done-dialog-shows-the-question` builds four lines more for 0.18.6, not merged
+(the next paragraph; the ship log names each commit). Found on 0.17.7 in a consumer repository at its morning sitting.
+The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on an earlier chain of
+this branch, which was replaced before its merge to keep unredacted detail out of the record; it found R1–R16, and this
+text closes R1–R10.
 
-**Built for 0.18.6 on `fm/030-the-done-dialog-shows-the-question`, not merged, not released** — on the two raise lines of
-2026-09-27 (the Owner's word at 13:38:30, the E0 counter's row 20): an act that is a promise reads as what he promised,
-the question below it, on the board, in its *done* and *reschedule* dialogs, `--owner`, `--standup`, `--notify` and the
-invite (`a752c87`); an accepted action answer that names a full date with its hour seeds `due:` in the answer's commit —
-a weekday alone is not read (`5f558f7`); an act command refused after its cut leaves one unsigned line under `## Acts`
-on `answer/<id>`, pushed (`2935cf7`); and, on his word of 13:42:40 — the person gives the path, the record gathers the
-facts — `--done`, and `--due` on an act that was done, write beside a path in the repository the commit that added it and
-its date, and for a review its verdict, `Reviewed:` sha and `Session:`; a word that names no file there is recorded as
-given, *not in the repository* beside it (item 5, its sha in the ship log). The Owner opens the pull request; code tier,
-the full loop is due. Not proven here: the notices on Linux and Windows, and how a notifier shows a two-line body.
+**Built for 0.18.6 on `fm/030-the-done-dialog-shows-the-question`, not merged, not released** — on the two raise lines
+of 2026-09-27 (the Owner's word at 13:38:30, the E0 counter's row 20): an act that is a promise reads as what he
+promised, the question below it, on the board, in its *done* and *reschedule* dialogs, `--owner`, `--standup`,
+`--notify` and the invite (`a752c87`); an accepted action answer that names a full date with its hour seeds `due:` in
+the answer's commit — a weekday alone is not read (`5f558f7`); an act command refused after its cut leaves one unsigned
+line under `## Acts` on `answer/<id>`, pushed (`2935cf7`); and, on his word of 13:42:40 — the person gives the path, the
+record gathers the facts — `--done`, and `--due` on an act that was done, write beside a path in the repository the
+commit that added it and its date, and for a review the verdict of its last pass, that pass's `Reviewed:` sha and
+`Session:`; a word that names no file there is recorded as given, *not in the repository* beside it (item 5, its sha in
+the ship log). The Owner opens the pull request; code tier, the full loop is due. Not proven here: the notices on Linux
+and Windows, and how a notifier shows a two-line body.
 
 **What happened.** `--standup` printed *0 item(s) — nothing needs the Owner today* and `--owner` printed *NOTHING NEEDS
 THE OWNER*. Two acts only the person could do were owed that day:
@@ -141,4 +146,6 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-26 | The pass's R7 and R8 on `647da17` (`a112fbd`, P3), fixed forward before the 0.18.4 cut: R7 — the README's cron line starts with `mkdir -p "$HOME/.local/state/shoalmark" &&`, so the log's folder exists before the shell opens the redirect (the launchd plist's arguments redirect nothing; its log is `~/Library/Logs`, which macOS makes); R8 — `DUE_SHAPE` bounds a zone's minutes to 00–59, so `+05:99` and `-00:60`, which `fromisoformat` reads as `+06:39` and `-01:00`, are refused on 3.9 and 3.14, with a suite case. A line, not fixed here: `--schema` prints the `due:` and `done:` shapes raw in its Markdown table, and R5's hour group carries the alternation bar, which splits their rows there. |
 | 2026-09-27 | **Asked on the board — how the board shows an act or answer he just gave, before his merge lands it** (ruling; three options; the proposal: the board reads git — an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as *done, on its way*, the buttons replaced by *revoke*), by the Principal seat at 14:14:18 on his words of 13:57:50 and 14:09:46, the ledger row first (PortDive `feat/190-day-six-the-ask-on-fm-030-the-board-reads-his-unmerged-acts` @ `71a06fbe`, 14:12:51); the two raises name path 6, so FM-030 was re-judged the same day (`triage-2026-09-27.md`: keep P1 #2 owner). |
 | 2026-09-27 | Built on `fm/030-the-done-dialog-shows-the-question` for 0.18.6, not merged — on the Owner's word of 13:38:30 (his screenshot 13:35:40) and the E0 counter's row 20, the two raise lines of the day: the act's line is his promise, the question below it (`a752c87`); an accepted action answer's full date with its hour seeds `due:` (`5f558f7`); a refused act command leaves one unsigned line under `## Acts` on `answer/<id>` (`2935cf7`). The first raise line's time corrected to his message's, 13:38:30 — 13:35:40 is the screenshot's (the Principal). CHANGELOG `## Unreleased — 0.18.6`. |
+| 2026-09-27 | Item 4 on `fm/030-the-done-dialog-shows-the-question`, the build in the record (`a7d0f52`): CHANGELOG `## Unreleased — 0.18.6` with one bullet per item built, the row above naming `a752c87`, `5f558f7` and `2935cf7`, and the *What is true now* clause; the first raise line's time corrected to 13:38:30, his message's, and the same time in four comments of `shoalmark.py`, the suite's block heading and the README's act row. This row added after the Reviewer's pass on `9c96f5b` found none naming `a7d0f52` (R5). |
 | 2026-09-27 | Item 5 built on `fm/030-the-done-dialog-shows-the-question` for 0.18.6, not merged (`a7f26ae`) — on the Owner's word of 13:42:40, *the person gives the path; the record gathers the facts*: `--done <id> "<where>"`, and `--due` on an act that was done, write beside a path in the repository the commit that added it and its date, and for a review — a file that states a verdict — its word, the `Reviewed:` sha and the `Session:`, from its own lines, else the adding commit's trailers; a word that names no file there is recorded as given, *not in the repository* beside it, never refused; nothing outside the repository is read, nothing guessed. The *done* dialog stays one field; `--schema` says it under `done:`. The raise line of 13:42:40 and a CHANGELOG bullet in the same commit. |
+| 2026-09-27 | The Reviewer's pass on `9c96f5b` (reviewer-40, `d18c9ba`): NOT READY — R1 a P2, R2–R5 P3, all accepted by the Principal. R1–R4 fixed in `2f84d47`: `--done` records a review's last pass — the last stated verdict, that pass's `Reviewed:` and `Session:`, else the newest commit's trailers, and *last pass in* where a later commit wrote it (the last stated verdict is the newest verdict commit's in 77 of 77 review files, the first in 55); only the time shapes `--schema` states seed `due:`; a path's line anchor is kept as given; the question under a promise wraps in its own column. R5 in this commit: the row for `a7d0f52` and the lead. The fix loop comes back to a Reviewer. |
