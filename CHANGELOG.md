@@ -4,6 +4,19 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased — 0.18.5
 
+- **The tool ships two themes as starters, `monochrome` and `shoalmark`** (FM-002, slice B; the Owner's signed answer of
+  2026-09-26, `4e00f85`, PR 90). **What a vendoring repository receives:** `brand/themes/` in its copy — each theme a
+  `theme.css` with the three IBM Plex Mono cuts it loads (Latin-1, `@ibm/plex-mono` 1.1.0, their SIL OFL) and a README
+  listing them by sha256 — pinned like the rest. **Nothing changes until it chooses:** no board reads `brand/themes/`,
+  and a board with no theme looks byte for byte as it did. `--brand DIR --from monochrome|shoalmark` copies a theme's
+  files into a brand place, never over a file there; an unknown name is refused with the two; `--from` alone is refused.
+  `--schema` says no key chooses the look; `--brand` marks a place that holds no brand file. Each theme is FM-006's mock
+  as he took it (`9467b83`), every edit marked in the file. **Three hooks in the board** a theme styles, none seen
+  without one: the Owner's box's title, a label (`owner.title`, `#p>.pt`, wherever the box is drawn); the last line's
+  one element, `<footer id="F">` — the claim `#f`, now outside the board `#B`, and the running line `#r`; the class
+  `zebra` on every other row of a group. *On upgrade:* a theme that placed the running line by the board's sibling (`#B
+  … ~ #r`) or reached the claim through `#B` reaches both through `#F` now. The German board names the Owner *Eigner*
+  throughout.
 - **shoalmark's own board and site wear the `shoalmark` theme** (FM-002, slice A; the Owner's signed answer of
   2026-09-26, `4e00f85`, PR 90: *the tool ships monochrome and shoalmark as starters; shoalmark's own board and site
   wear the shoalmark theme*). This repository's brand layer only — `work-tracker/brand/theme.css`, two IBM Plex Mono

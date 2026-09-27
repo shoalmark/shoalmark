@@ -41,9 +41,10 @@ count.id: Eintrag · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet
+owner.title: für den Eigner
 path.title: der aktuelle Kurs
 waiting.title: wartet auf Sie
-waiting.detail: offene Arbeit, deren nächster Schritt beim Auftraggeber liegt
+waiting.detail: offene Arbeit, deren nächster Schritt beim Eigner liegt
 story.chapter: Kapitel
 story.chapters: Kapitel
 story.done: erledigt
@@ -63,10 +64,10 @@ viewer.forge: Ablage
 viewer.no_copy: keine gerenderte Fassung von {0} — bitte {1} ausführen
 viewer.intent: Absicht
 viewer.from: aus {0}
-viewer.intent.missing: fehlt — der Auftraggeber nennt sie am Eintrag oder am Vorhaben
+viewer.intent.missing: fehlt — der Eigner nennt sie am Eintrag oder am Vorhaben
 viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
-viewer.answer: die Antwort des Auftraggebers
+viewer.answer: die Antwort des Eigners
 viewer.supersedes: ersetzt {0}
 relation.proposal: den Vorschlag angenommen
 relation.changed: mit einer Änderung angenommen

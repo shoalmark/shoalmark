@@ -2152,6 +2152,10 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
 #dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
+/* three hooks a theme styles (FM-002), none of them seen without one: the Owner's box's title `.pt`, the label
+   `owner.title`; the last line's one element `#F` — the claim `#f`, shown with the board only, as when it stood in it,
+   and the running line `#r`; `zebra` on every other row of a group, which `nth-child` cannot count past a group's head */
+.pt{display:none}#B[hidden]~#F #f{display:none}
 /* the running line: the tool's, on every screen, below the footer — its mark at 16 px, the smallest size its 16-unit grid
    stays sharp at, and the name linking to the tool; the version to its release. Muted like any link here: underlined on hover */
 #r{display:flex;gap:.6em;align-items:center;margin:20px 0 0;color:var(--mute);font-size:11px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}
@@ -2164,10 +2168,10 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
 <p id="p"></p>
-<table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table>
-<p id="f" class="m" data-l="footer"></p></div>
+<table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
-__RUNNING__
+<footer id="F"><p id="f" class="m" data-l="footer"></p>
+__RUNNING__</footer>
 <dialog id="dlg"></dialog>
 <script>__MARKED__</script>
 <script>
@@ -2235,11 +2239,11 @@ function draw(){
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
-    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    return head+(folded?"":g.map((t,i)=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}${i%2?" zebra":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=gname=="board"&&!q?(all_=>{
+  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(gname=="board"&&!q?(all_=>{
     // ONLY what passes the ask rules is a question here — t[29][7] is why it is not. The Owner never reads a malformed
     // ask as one; what was sent back is listed after the queue, with its reason, for the seat that wrote it.
     const w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);
@@ -2323,7 +2327,7 @@ function draw(){
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
     +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
-      +(REG.reviews?(REG.recent.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"";
+      +(REG.reviews?(REG.recent.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"");   // the box keeps its title in every view (FM-002 R2)
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -2402,6 +2406,7 @@ LABELS = {
     "group.none": "no {0}",
     "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.id": "tracker · {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
+    "owner.title": "owed to the owner",   # the title of the Owner's box — shown by a theme that styles `.pt` (FM-002)
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
@@ -2835,8 +2840,38 @@ def brand():
     return themes, logo, labels, src, warn, wordmark
 
 
-def brand_report(dest=None):
-    """`--brand`: why does my board look like this? `--brand DIR`: a commented starter to edit."""
+def shipped_themes():
+    """The themes this copy of the tool ships (FM-002): each folder of `brand/themes/` that holds a theme.css. Starters —
+    no board reads them there; `--brand DIR --from <theme>` copies one into a place."""
+    d = HERE / "brand" / "themes"
+    return sorted(p.name for p in d.iterdir() if (p / "theme.css").is_file()) if d.is_dir() else []
+
+
+def theme_files():
+    """Every file of `brand/themes/`, relative to the tool — what `--vendor` pins and a theme's folder `--from` copies.
+    A dot file (a desktop's .DS_Store) is no part of a theme and never travels."""
+    d = HERE / "brand" / "themes"
+    return tuple(sorted(p.relative_to(HERE).as_posix() for p in d.rglob("*")
+                        if p.is_file() and not any(s.startswith(".") for s in p.relative_to(d).parts))) if d.is_dir() else ()
+
+
+def brand_report(dest=None, theme=None):
+    """`--brand`: why does my board look like this? `--brand DIR`: a commented starter to edit. `--brand DIR --from
+    <theme>`: a starter from a theme the tool ships — its files copied, never over a file that is there."""
+    if dest and theme is not None:
+        names = shipped_themes()
+        if theme not in names:
+            print(f"--from {theme}: the tool ships no such theme — {' or '.join(names) if names else 'this copy ships none'}; nothing was written", file=sys.stderr)
+            return 2
+        dest, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
+        print(f"the {theme} theme — a starter from {src}")
+        for rel in (r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")):
+            if (dest / rel).exists():
+                print(f"kept {dest / rel} — it is there already; delete it to start from {theme}")
+                continue
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src / rel, dest / rel); print(f"wrote {dest / rel}")
+        print(f"yours to change; a board wears it from a brand place — <tracker dir>/brand/, or ~/.config/shoalmark/ for you alone (`--brand` lists them)")
+        return EXIT_OK
     if dest:
         dest = pathlib.Path(dest); dest.mkdir(parents=True, exist_ok=True)
         for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
@@ -2848,7 +2883,8 @@ def brand_report(dest=None):
     themes, logo, labels, src, warn, _wordmark = brand()
     print("the board is built from these places, the later one winning:")
     for who, d in brand_places():
-        print(f"  {who:<13} {d}")
+        print(f"  {who:<13} {d}" + ("" if any((d / n).is_file() for n in BRAND_FILES) else "  — no brand file here"
+                                    + (": its themes/ are starters, worn only once --from copies one" if (d / "themes").is_dir() else "")))
     print(f"  name          {CONFIG['name'] or ROOT.name}  ({CONFIG_NAME})")
     for kind in ("theme.css", "logo", "wordmark", "labels.yaml"):
         print(f"  {kind:<13} {' → '.join(src[kind]) or 'built in'}")
@@ -3532,7 +3568,10 @@ def render_schema():
             for k, (shape, required, who, says) in FRONT_MATTER.items()]
     return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows
                      + ["", f"`{CONFIG_NAME}`, at its top level:", "", "| Key | Value | Says |", "|---|---|---|"]
-                     + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()])
+                     + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()]
+                     + ["", "No key chooses the board's look: a brand is files in its places, the later one winning (`--brand` says which gave "
+                            "what). `--brand DIR --from THEME` writes a starter from a theme the tool ships in `brand/themes/`: "
+                            + (" · ".join(f"`{n}`" for n in shipped_themes()) or "none in this copy") + "."])
 
 
 def git_user():
@@ -5317,9 +5356,12 @@ def parse_args(argv):
              "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
     add("--brand", nargs="?", const="", metavar="DIR",
         help="why does my board look like this: which places gave it its theme, logo, wordmark and labels. With DIR: write a commented starter there")
+    add("--from", dest="theme", metavar="THEME",
+        help=f"with --brand DIR: the starter is a theme the tool ships in brand/themes/ — {' or '.join(shipped_themes()) or 'none in this copy'}: its theme.css and "
+             "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
-    add("--vendor", metavar="DIR", help="copy this tool into DIR with a PIN file of sha256 hashes — a pinned, self-contained copy. Only from a release: "
+    add("--vendor", metavar="DIR", help="copy this tool into DIR — the themes it ships in brand/themes/ with it — with a PIN file of sha256 hashes: a pinned, self-contained copy. Only from a release: "
                                             "the whole tool, a git checkout whose HEAD is at the tag of its VERSION, a clean tree — otherwise refused, nothing written. "
                                             "The PIN's first line says where the copy came from; `--check` in the consumer reads it")
     add("--partial", action="store_true", help="with --vendor: copy what the source has although files are missing, and name them in the PIN")
@@ -5535,7 +5577,7 @@ def vendor(dest, partial=False, allow_untagged=False):
               f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
         return EXIT_LINT
     lines = []
-    for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES):
+    for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files():   # the themes it ships travel, pinned (FM-002)
         src = HERE / rel
         if not src.is_file():
             continue
@@ -5942,9 +5984,11 @@ def main(argv=None):
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
     args = parse_args(argv)
-    for flag, needs, alone in (("--tags", "--new", args.tags is not None and not args.new), ("--supersede", "--answer", args.supersede and not args.answer)):
+    for flag, needs, alone, like in (("--tags", "--new", args.tags is not None and not args.new, '`--new KIND "the title" --tags bug`'),
+                                     ("--supersede", "--answer", args.supersede and not args.answer, '`--answer <id> accept|reject "<option>" --supersede`'),
+                                     ("--from", "--brand DIR", args.theme is not None and not args.brand, f"`--brand DIR --from {'|'.join(shipped_themes()) or 'THEME'}`")):
         if alone:                                           # a flag that means nothing alone is refused, never silently ignored
-            print(f"{flag} goes with {needs} — " + ('`--new KIND "the title" --tags bug`' if flag == "--tags" else '`--answer <id> accept|reject "<option>" --supersede`'), file=sys.stderr)
+            print(f"{flag} goes with {needs} — {like}", file=sys.stderr)
             return 2
     if args.tsvn_hook:
         # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
@@ -5959,7 +6003,7 @@ def main(argv=None):
     if args.vendor:
         return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
     if args.brand is not None:
-        return brand_report(args.brand or None)
+        return brand_report(args.brand or None, args.theme)
     if args.init:
         return init(args.key)
     if args.install_hook:

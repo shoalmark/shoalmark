@@ -1,27 +1,25 @@
-/* shoalmark's own board wears the `shoalmark` theme — the Owner's answer on FM-002 (4e00f85, PR 90, 2026-09-26): "the tool
-   ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme". This file is slice A,
-   the brand layer only: the theme as FM-006's aligned mock has it (evidence/FM-006/themes/, 9467b83, PR 82) — its base,
-   monochrome.css, then shoalmark.css, in one file, the rules as the mock wrote them but one rule the built board's
-   contrast measure added (the placeholder, marked where it stands); the header — the mark, the name, the
-   switch — inline inside the chart's top border (the Owner, 2026-09-26 09:23:58). It replaces the site-brand theme of
-   0.18.2 (FM-006) — the site's palettes and Plex Sans — which the shoalmark tokens and the one face override whole. No
-   setting, no markup: the one rule reads this file because it is here.
-   The face: IBM Plex Mono for every word — Regular, SemiBold, Italic — IBM's own Latin-1 cuts of @ibm/plex-mono 1.1.0,
-   unmodified, under the SIL Open Font License in fonts/LICENSE.txt, their sha256 in evidence/FM-002/slice-a/README.md;
-   nothing is fetched from a font service. The Plex Sans cuts beside them are 0.18.2's; this theme does not use them.
-   Re-cut on slice B's hooks (FM-002 R1): the owner's box title is the board's label (hook 1), the claim and the running
-   line one footer element (hook 2), each marked SLICE B where it stands; the stripes keep the mock's nth-child rule, as
-   the renders the Owner approved show (workaround 3, kept and marked). */
+/* THE STARTER "monochrome" — a theme the tool ships (FM-002; the Owner's signed answer, 4e00f85: the tool ships monochrome
+   and shoalmark as starters). Nothing reads this copy: `shoalmark.py --brand DIR --from monochrome` copies it and its
+   fonts into DIR — `<tracker dir>/brand/` for the repository, `~/.config/shoalmark/` for yourself — yours to change.
+   Below: FM-006's mock as it stands at 9467b83 (evidence/FM-006/themes/monochrome.css), its own header included, every
+   rule as the mock wrote it but those marked SLICE B where they stand — the font urls and the Regular, the board's hooks
+   for the box's title and the last line in place of the mock's two workarounds, the placeholder's ink. The fonts, in
+   fonts/: IBM's Latin-1 cuts of @ibm/plex-mono 1.1.0, unmodified, under the SIL Open Font License in fonts/LICENSE.txt;
+   the tool's brand/themes/README.md lists them by name and sha256. */
+/* THEME "monochrome" — the terminal cut. The GtM/Design seat, 2026-09-25: a candidate, nothing adopted.
+   Written as lines added to work-tracker/brand/theme.css: no markup changes, no change to shoalmark.py.
+   One face, one grid: IBM Plex Mono for every word at 14px on a 21px line, so a character is a cell.
+   Borders are CSS on that grid, never box-drawing glyphs: the fonts are Latin-1 cuts, and U+2500 would
+   fall back to the system's face. Everything drawn in text is ASCII: # // > [ ] — and is drawn, never read: each marker's alt text is "",
+   so a button's accessible name stays "accept", not "[ accept ]". The frame is 104ch, so the Owner's box holds 100ch of prose. */
+/* SLICE B: the font urls relative to this file, as a brand place reads them (the mock's were the page's, brand/fonts/…),
+   and the Regular declared beside the two cuts — the mock's page had it from the repository's own theme; a board with no
+   brand of its own would set every word in the SemiBold */
 @font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2")}
-
-/* THE BASE, "monochrome" — the terminal cut. One face, one grid: IBM Plex Mono for every word at 14px on a 21px line,
-   so a character is a cell. Borders are CSS on that grid, never box-drawing glyphs: the fonts are Latin-1 cuts, and
-   U+2500 would fall back to the system's face. Everything drawn in text is ASCII: # // > [ ] — and is drawn, never read:
-   each marker's alt text is "", so a button's accessible name stays "accept", not "[ accept ]". The frame is 104ch, so
-   the Owner's box holds 100ch of prose. */
 @font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("fonts/IBMPlexMono-SemiBold-Latin1.woff2") format("woff2")}
 @font-face{font-family:"IBM Plex Mono";font-style:italic;font-weight:400;src:url("fonts/IBMPlexMono-Italic-Latin1.woff2") format("woff2")}
 
+/* two tokens added: --box, a panel's border, twice the row rule's weight; --raise, the one raised surface */
 /* two tokens added: --box, a panel's border, twice the row rule's weight; --raise, the one raised surface.
    The chart's three, muted here: --grat its graticule, --chart its border, --chartink its figures (4.5:1) */
 :root{--box:rgba(0,0,0,.28);--raise:#f9f9f9;--grat:rgba(0,0,0,.045);--chart:rgba(0,0,0,.26);--chartink:var(--mute)}
@@ -39,6 +37,9 @@ header:focus-within{border-color:var(--ink)}
 header::before{content:">";content:">" / "";color:var(--mute)}
 header input{border:0;padding:6px 0;margin-left:-1ch;font-size:14px}
 header button[aria-pressed=true]{color:var(--ink);font-weight:600}
+/* SLICE B, not the mock's — the built board's measure (slice A, 70fedd3): the browser's own placeholder ink, #757575, reads
+   4.30:1 by day and 4.19:1 by night on this theme's grounds; --mute reads 4.75:1 and 5.97:1 */
+::placeholder{color:var(--mute);opacity:1}
 
 /* a button is a bracketed word; the one that goes ahead is inverted */
 button.act,#dlg button,#s{border:0;padding:0 2px;margin-left:1ch;color:var(--dim);font-size:14px}
@@ -49,8 +50,8 @@ button.act:hover,#dlg button:hover,#s:hover{background:var(--raise);color:var(--
 #dlg button.go{background:var(--ink);color:var(--bg)}#dlg button.go::before,#dlg button.go::after{color:inherit}
 
 /* the Owner's panel: a box, its title set into the top border; each section a markdown heading.
-   SLICE B, hook 1 of 3: the title is the board's label owner.title, the element #p>.pt — re-cut from workaround 1, the
-   mock's #p::before, CSS content in English, which labels.yaml cannot reach */
+   SLICE B, hook 1 of 3: the title is the board's label owner.title, the element #p>.pt — the mock's #p::before set it as
+   CSS content, English, which labels.yaml cannot reach */
 #p{position:relative;max-width:none;margin:22px 0 18px;padding:18px 2ch 12px;border:1px solid var(--box);border-left:1px solid var(--box)}
 #p>.pt{display:block;position:absolute;top:-.75em;left:1ch;padding:0 1ch;background:var(--bg);color:var(--ink);font-weight:600}
 #p>b{font-weight:600;color:var(--ink)}#p>b.hot{color:var(--coral)}
@@ -126,106 +127,15 @@ tr.c td:first-child{padding-left:3ch}
   #r{border-image:linear-gradient(var(--footline) 0 var(--footlw),var(--foot) 0) fill 0//24px 100vmax 100vmax}
 }
 
-/* SLICE B, hook 2 of 3 — re-cut from workaround 2, which lifted the running line onto the claim's line: the claim and the
-   running line stand in one element, the footer #F. While the board shows, the two share one cell, the running line at
-   its foot, so it stands on the claim's last line; the claim is painted over the band the running line draws. In the
-   viewer the footer is a block: the running line alone. What the mock says of the last line, as it says it:
-   The last line (the Owner, 2026-09-25): no rule above it — the claim on the left, the mark, the name and the version on
+/* the last line (the Owner, 2026-09-25): no rule above it — the claim on the left, the mark, the name and the version on
    the right. They are two elements, the claim in the board and the running line after the viewer, so the running line
    is lifted onto the claim's line, only while the board shows and its claim is not empty; the claim keeps 26ch clear
    on its right so the two never overlap. In the viewer the running line stands alone, on the right. */
+/* SLICE B, hook 2 of 3: the claim and the running line stand in one element, the footer #F — the mock lifted the running
+   line onto the claim's line, #B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}. While the board shows, the two
+   share one cell, the running line at its foot, so it stands on the claim's last line; the claim is painted over the
+   band the running line draws. In the viewer the footer is a block: the running line alone, as the mock's */
 #f{margin:28px 0 0;padding-right:26ch;line-height:21px}
 #r{justify-content:flex-end;margin-top:20px;line-height:21px;font-size:12px}
 #B:not([hidden])~#F{display:grid}#F>#f,#F>#r{grid-area:1/1}#F>#r{align-self:end}#F>#f{position:relative}
 @media print{#p,table{border-color:#000}th{background:none}}
-
-/* THE THEME "shoalmark" — the brand's own, over its base above.
-   A sea chart's colours, as ECDIS draws them (IHO S-52: deep water, the shallow tints, the intertidal drying green, the
-   land's buff, chart magenta) — by night the dusk table with its accents softened to pastel, by day the paper chart with
-   them deepened to 4.5:1. What a chart means by each is what the board means by it:
-     deep water  the page · shallow water  a box, a chip, a raised row · the drying line  where the foot's band begins
-     the chart   the graticule, the border and its figures (monochrome's mechanism): in the chart's blue-grey
-     the Watt    the drying green: headings, the prompt, the running mark — shoalmark's own colour, where the Pricke stands
-     land        the buff of what is fixed: the record's header row, the ids
-     magenta     what must be heeded — here, what is owed to the Owner, and nothing else
-     buoyage     the status marks: in progress a safe-water sphere, shipped a starboard cone, parked a special mark's
-                 cross, blocked a port can — the colour is never the only carrier
-   To make your own theme, change the tokens in the two blocks below. The rules under them name only tokens. */
-:root{
-  --bg:#fbfbf7;--panel:#ffffff;--shallow:#e3eff7;--shallow2:#d3e5f2;--zebra:#f5f9fc;--contour:#8eb1cc;--field:#5d86a8;
-  --ink:#10202e;--dim:#3e4e5b;--mute:#51606c;
-  --band:#15293c;--drying:#9aae57;
-  --watt:#526214;--land:#f1e1b0;--landink:#10202e;--id:#77511a;
-  --magenta:#a0156e;--magink:#ffffff;--magtint:#f7e4f0;
-  --blue:#1f5ca8;--teal:#0d6f56;--yellow:#785b00;--coral:#b3301f;
-  --grat:rgba(31,92,168,.08);--chart:#86a6c2;--chartink:var(--mute);
-}
-@media(prefers-color-scheme:dark){:root{
-  --bg:#0d1720;--panel:#111f2c;--shallow:#1a2d3e;--shallow2:#223a4f;--zebra:#152535;--contour:#34546c;--field:#5b83a3;
-  --ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;
-  --band:#15293d;--drying:#b8c98c;
-  --watt:#bccd8f;--land:#e8d4a0;--landink:#0d1720;--id:#e8d4a0;
-  --magenta:#ee92d4;--magink:#0d1720;--magtint:#3a2440;
-  --blue:#8fb9f3;--teal:#7fd9bf;--yellow:#f1d47a;--coral:#f38a80;
-  --grat:rgba(143,185,243,.07);--chart:#3f6282;--chartink:var(--mute);
-}}
-:root{--raise:var(--shallow);--box:var(--contour);--line:transparent}
-::selection{background:var(--magenta);color:var(--magink)}
-
-/* the header — the mark, the name, the switch — stands inline inside the chart's top border, as monochrome's (the Owner,
-   2026-09-26 09:23:58): on the chart's ground, in its ink. The navy band and its drying line are the foot's on the board,
-   and the site's header's; the chart ends above the band */
-:root{--foot:var(--band);--footline:var(--drying);--footlw:2px;--footink:#b4c3d1}
-#H b{color:var(--ink)}   /* the mark and the name: the wordmark is drawn in currentColor */
-
-header,#p,table,#v pre{background:var(--panel)}
-header{border-color:var(--field)}   /* the search box's line is an input's boundary: 3:1 */
-header::before{color:var(--watt)}header:focus-within{border-color:var(--watt)}
-header button[aria-pressed=true]{background:var(--land);color:var(--landink);padding:0 1ch}
-/* not the mock's — added on the built board's measure: the browser's own placeholder ink, #757575, read 3.63:1 on the
-   night panel (the search and the dialog's note); --mute reads 6.48:1 by day and 6.42:1 by night */
-::placeholder{color:var(--mute);opacity:1}
-
-/* owed to the Owner: magenta — the box's line, its title a label set into it, its actions tinted chips */
-#p{border:1px solid var(--magenta)}
-#p>.pt{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}   /* SLICE B: hook 1 of 3 */
-#p>b{color:var(--watt)}#p>b::before{color:var(--magenta)}#p>b.hot{color:var(--coral)}
-#p a[href^="#="]{background:var(--shallow);color:var(--id);padding:0 .6ch;text-decoration:none}
-#p a[href^="#="]:hover{background:var(--land);color:var(--landink)}
-button.act::before,button.act::after{content:"";content:"" / ""}
-button.act{background:var(--magtint);color:var(--magenta);padding:0 1ch;margin-left:1ch;font-weight:600}
-button.act:hover{background:var(--magenta);color:var(--magink)}
-
-/* the record: the land's buff across the top, depth-tinted rows, a group a band of shallow water */
-th{background:var(--land);color:var(--landink)}
-/* WORKAROUND 3 of 3, kept (SLICE B): a group row shifts nth-child's count, so this tints every row of a group or none —
-   as the renders the Owner approved show, the mock taken as it is. Hook 3 is one line away, not made on that word:
-   tr.zebra td{background:var(--zebra)} in place of the rule below, every other row of a group */
-tr.t:nth-child(even) td{background:var(--zebra)}
-tr.t:hover td{background:var(--shallow)}
-.g td{background:var(--shallow);color:var(--dim);padding:3px 1ch}
-tbody tr.g ~ tr.g td{border-top:12px solid var(--panel)}
-.g b{color:var(--ink)}.g b::before{color:var(--watt)}
-td.m a{color:var(--id)}td.m.hot{color:var(--coral)}
-
-/* the buoyage */
-.q{width:9px;height:9px}
-.q.b{border-radius:50%}
-.q.t{clip-path:polygon(50% 0,100% 100%,0 100%);border:0}
-.q.y{clip-path:polygon(18% 0,50% 32%,82% 0,100% 18%,68% 50%,100% 82%,82% 100%,50% 68%,18% 100%,0 82%,32% 50%,0 18%);border:0}
-.q.z{width:7px;height:7px}
-
-/* a tracker, read: the headings in the Watt's green with their marks, ids and code on shallow water */
-#v h1,#v h2,#v h1::before,#v h2::before{color:var(--watt)}#v h3,#v h4,#v h3::before,#v h4::before{color:var(--id)}
-#v .md a{color:var(--blue)}#v code{background:var(--shallow);color:var(--id);padding:0 .5ch}
-#v th{background:var(--land);color:var(--landink)}#v tr:nth-child(even) td{background:var(--zebra)}
-
-/* the dialog is where the Owner answers */
-#dlg{background:var(--panel);border:1px solid var(--magenta)}
-#dlg h3{background:var(--magenta);color:var(--magink);left:2ch}#dlg h3 a{color:inherit}
-#dlg button::before,#dlg button::after{content:"";content:"" / ""}
-#dlg button{background:var(--shallow);color:var(--ink);padding:2px 1.5ch}#dlg button:hover{background:var(--shallow2)}
-#dlg button.go{background:var(--magenta);color:var(--magink)}#dlg button.go:hover{background:var(--ink);color:var(--panel)}
-
-#r a:first-child{color:var(--watt)}
-@media screen and (min-width:1040px){#r a:first-child{color:var(--drying)}}   /* on the band, the drying line's green */
