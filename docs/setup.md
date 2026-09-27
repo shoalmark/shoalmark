@@ -5,7 +5,7 @@
 ## 1. Put the tool in the repository
 
 ```
-git clone --branch v0.18.4 https://github.com/holgo99/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
+git clone --branch v0.18.5 https://github.com/holgo99/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
 cd <your repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```

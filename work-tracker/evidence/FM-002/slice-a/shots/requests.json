@@ -154,5 +154,23 @@
   "refused": [
    "api.github.com"
   ]
+ },
+ "site-after-foot-1440-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "site-after-foot-1440-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
  }
 }

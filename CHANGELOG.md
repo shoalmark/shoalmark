@@ -2,33 +2,79 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.18.5
+## 0.18.5 — 2026-09-27
+
+**shoalmark is restyled and rebranded — the tool ships `monochrome` and `shoalmark` as starter themes, and shoalmark's
+own board and site wear `shoalmark` — and the site's start page is the landing page, built at the tag and live when the
+repository is public** (FM-002, FM-006 — with the open lines of FM-031, FM-038 and FM-039).
 
 - **The tool ships two themes as starters, `monochrome` and `shoalmark`** (FM-002, slice B; the Owner's signed answer of
-  2026-09-26, `4e00f85`, PR 90). **What a vendoring repository receives:** `brand/themes/` in its copy — each theme a
-  `theme.css` with the three IBM Plex Mono cuts it loads (Latin-1, `@ibm/plex-mono` 1.1.0, their SIL OFL) and a README
-  listing them by sha256 — pinned like the rest. **Nothing changes until it chooses:** no board reads `brand/themes/`,
-  and a board with no theme looks byte for byte as it did. `--brand DIR --from monochrome|shoalmark` copies a theme's
-  files into a brand place, never over a file there; an unknown name is refused with the two; `--from` alone is refused.
-  `--schema` says no key chooses the look; `--brand` marks a place that holds no brand file. Each theme is FM-006's mock
-  as he took it (`9467b83`), every edit marked in the file. **Three hooks in the board** a theme styles, none seen
-  without one: the Owner's box's title, a label (`owner.title`, `#p>.pt`, wherever the box is drawn); the last line's
-  one element, `<footer id="F">` — the claim `#f`, now outside the board `#B`, and the running line `#r`; the class
-  `zebra` on every other row of a group. *On upgrade:* a theme that placed the running line by the board's sibling (`#B
-  … ~ #r`) or reached the claim through `#B` reaches both through `#F` now. The German board names the Owner *Eigner*
-  throughout.
+  2026-09-26 13:54:50, `4e00f85`, PR 90: *the tool ships monochrome and shoalmark as starters*). **What a vendoring
+  repository receives:** `brand/themes/` in its copy — each theme a `theme.css` with the three IBM Plex Mono cuts it
+  loads (Latin-1, `@ibm/plex-mono` 1.1.0, their SIL OFL) and a README listing them by sha256 — pinned like the rest.
+  **Nothing changes until it chooses:** no board reads `brand/themes/`, and a board with no theme looks byte for byte
+  as it did. `--brand DIR --from monochrome|shoalmark` copies a theme's files into a brand place, never over a file
+  there; an unknown name is refused with the two; `--from` alone is refused. `--schema` says no key chooses the look;
+  `--brand` marks a place that holds no brand file. Each theme is FM-006's mock as he took it (`9467b83`), every edit
+  marked in the file — the board's header, the mark, the name and the switch, inline inside the chart's top border in
+  both, on his word in chat of 2026-09-26 09:23:58 (*For the Dashboard i prefer this "inline header" (Soalmark logo +
+  light/dark switch) variant … over this variant used in the dar mode, where the header sits outside the graticule. …
+  Align for both.* — verbatim, the two screenshots' references cut at `…`; not a signed answer). **Three hooks in the
+  board** a theme styles, none seen without one: the Owner's box's title, a label (`owner.title`, `#p>.pt`, wherever
+  the box is drawn); the last line's one element, `<footer id="F">` — the claim `#f`, now outside the board `#B`, and
+  the running line `#r`; the class `zebra` on every other row of a group. *On upgrade:* a theme that placed the
+  running line by the board's sibling (`#B … ~ #r`) or reached the claim through `#B` reaches both through `#F` now.
+  The German board names the Owner *Eigner* throughout.
 - **shoalmark's own board and site wear the `shoalmark` theme** (FM-002, slice A; the Owner's signed answer of
-  2026-09-26, `4e00f85`, PR 90: *the tool ships monochrome and shoalmark as starters; shoalmark's own board and site
-  wear the shoalmark theme*). This repository's brand layer only — `work-tracker/brand/theme.css`, two IBM Plex Mono
-  cuts beside the Regular, `docs/stylesheets/shoalmark.css`. No `shoalmark.py` change and nothing new that `--vendor`
-  copies: a consumer's board looks as it did. The site is built at the release tag and goes live when the repository
-  is public. The starters for every consumer are slice B.
-- **The site's start page is the landing page** (FM-006, slice L; the Owner's word in chat of 2026-09-26 10:25:41, not a
-  signed answer: *for the v0.18.5 release we also add a landing page requirement, alongside the restyle and rebrand of
-  shoalmark's brand identity*). The GtM/Design mock as it is — an arcade's attract screen over a pixel chart of the German
-  Wadden coast whose wrecks are this repository's defects — through `overrides/landing.html`, which `docs/index.md`
-  selects; every other page keeps the site's chrome. Documentation only: no `shoalmark.py` change, nothing new that
-  `--vendor` copies. The site is built at the release tag and goes live when the repository is public.
+  2026-09-26 13:54:50, `4e00f85`, PR 90: *the tool ships monochrome and shoalmark as starters; shoalmark's own board
+  and site wear the shoalmark theme*). This repository's brand layer only — `work-tracker/brand/theme.css`, two IBM
+  Plex Mono cuts beside the Regular, `docs/stylesheets/shoalmark.css`. No `shoalmark.py` change and nothing new that
+  `--vendor` copies: a consumer's board looks as it did. The site is built at the release tag and goes live when the
+  repository is public. The starters for every consumer are slice B.
+- **The site's start page is the landing page** (FM-006, slice L; the Owner's word in chat of 2026-09-26 10:25:41,
+  spelling normalised, not a signed answer: *for the `v0.18.5` release we also add a landing page requirement, that
+  goes alongside the restyle and rebrand of `shoalmark`'s brand identity*). The GtM/Design mock as it is — an arcade's
+  attract screen over a pixel chart of the German Wadden coast whose wrecks are this repository's defects — through
+  `overrides/landing.html`, which `docs/index.md` selects; every other page keeps the site's chrome. Documentation
+  only: no `shoalmark.py` change, nothing new that `--vendor` copies. The site is built at the release tag and goes
+  live when the repository is public. The page names this release, from `VERSION` at the cut; its wrecks and the
+  board's excerpt are main's at `bef2a1e`, read 18:00 CEST, as its foot says — FM-039, filed at this cut, is not on
+  its chart. *Open, for the release after* (FM-006's lines, his to rule; the slice's review, R1 and R2): the fonts,
+  Plex and now Silkscreen, self-hosted before the site is published; the page's links are the mock's absolute
+  `holgo99.github.io` addresses, which serve nothing before the go-public act, and it has no favicon; three sentences
+  of the old start page are on no English page; a German landing page; the page's facts generated at build time.
+- **FM-035's healthy-board case fails under machine load — filed at this cut, not built** (FM-039, under the freeze as a
+  bug; the slice B seat's finding of 2026-09-26, `9f2f525`). The case gives headless Chrome 5 s of wall-clock time on
+  a healthy board: `test_shoalmark.py` on 3.9 read 469 of 470 in 3 of 3 runs at a 1-minute load of 9–27, while other
+  seats' suites ran; run alone, the case failed the same way on the pushed tip `f11bc04` at load 27 and passed on both
+  at load 5, so it is the load, not a diff. A test-only defect: the tool is not changed by it. *Open, for the release
+  after:* a CPU-time or load-scaled budget, or one retry.
+- **The pre-commit hook still hides the suites' skip lines, and a docs-only commit still runs no suite — filed, not
+  built** (FM-038, under the freeze as a bug, PR 92: FM-035's R3, carried open in 0.18.4, and the cold session's line
+  3 on the 0.18.4 cut). `lefthook.yml` is unchanged in 0.18.5: each suite's output goes to `/dev/null`, so a check
+  that skips by name is not seen at commit time, and the suites run only when a `.py` file is staged, so no commit of
+  this cut ran them; the seat ran both, on 3.14 and 3.9, by hand after each. *Open, for the release after.*
+- **`--queue`'s `[paths] reviews` glob crosses folders, and its default admits `evidence/reviews/` and `sessions.md`
+  after a verdict — filed, not built** (FM-031's open line, PR 88; the parent project's RV-630 and its closure test).
+  0.18.4 makes the key a glob by appending `/*`, and `fnmatch`'s `*` crosses `/`: `reviews = "evidence/*/"` admits,
+  after a verdict, a later commit touching only files under any `evidence/<id>/`, and `--queue` prints *merge* for a
+  head the consumer's review gate refuses; `evidence/*/review*` matches no review file; with no key, a commit touching
+  only `evidence/reviews/` or `sessions.md` reads *merge* too. *Open, for the release after* — the seat's proposal,
+  not ruled: the pattern never crosses `/`, and only the verdict session's own `review*.md` files are admitted. *Until
+  then:* a key names no folder that holds non-review files.
+
+*Also since 0.18.4, with nothing a vendoring repository receives:* FM-006's records — the board's themes filed, they and
+the landing page mocked (PR 82), the home at the flip a GitHub organisation (PR 87), his answer on going public
+(`8defe63`, PR 91; its act not yet recorded); FM-002 raised on his words, and his three words of the day filed whole,
+hashed (PR 89, PR 93); the passes of 2026-09-26 (PR 89, PR 93) — FM-034, FM-035 and FM-036 corrected to Shipped by `fix`
+rows for what 0.18.3 and 0.18.4 shipped, and the build judged before its first commit, FM-033's rule.
+
+*Trackers touched:* FM-002 and FM-006, built; FM-031, FM-038 and FM-039, open lines; FM-034, FM-035 and FM-036, by the
+passes' `fix` rows only.
+
+*On upgrade:* the copy carries `brand/themes/`, pinned; nothing changes until a repository runs `--brand DIR --from
+<theme>`. A theme that placed the running line by the board's sibling (`#B … ~ #r`) or reached the claim through `#B`
+reaches both through `#F` now.
 
 ## 0.18.4 — 2026-09-26
 

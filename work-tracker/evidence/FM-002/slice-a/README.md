@@ -77,6 +77,7 @@ viewport's top; 16 PNGs in `shots/`, named `<page>-<before|after>-<width>-<schem
 | the board, 390 | ![](shots/board-before-390-dark.png) | ![](shots/board-before-390-light.png) | ![](shots/board-after-390-dark.png) | ![](shots/board-after-390-light.png) |
 | the site, 1440 | ![](shots/site-before-1440-dark.png) | ![](shots/site-before-1440-light.png) | ![](shots/site-after-1440-dark.png) | ![](shots/site-after-1440-light.png) |
 | the site, 390 | ![](shots/site-before-390-dark.png) | ![](shots/site-before-390-light.png) | ![](shots/site-after-390-dark.png) | ![](shots/site-after-390-light.png) |
+| the site's foot, 1440 | — | — | ![](shots/site-after-foot-1440-dark.png) | ![](shots/site-after-foot-1440-light.png) |
 
 What they show:
 - **The board, 1440:** the chart behind the page, the header inline inside its top border (the mark, the name, the
@@ -105,7 +106,10 @@ lists the 8 mock renders too (below); those are not committed.
 - the board, all four: identical but the placeholder — the one rule this slice added — 401–419 pixels, all inside the
   search box (`(310, 90)–(410, 102)` at 1440, `(43, 66)–(143, 78)` at 390);
 - the site, all four: identical, but for 293 pixels (0.02 %) in one word at 1440 by day — the navigation's *Deutsch*,
-  the antialiasing of a Google-served glyph; two of five runs showed none. The foot's fix lies below the viewport.
+  the antialiasing of a Google-served glyph; two of five runs showed none. The foot's fix lies below the viewport: `site-after-foot-1440-dark.png` and
+  `-light.png` show it — the *after* start page's last 240 px at 1440, *Made with Zensical* with its link in the band's
+  ink (the record's R2, rendered at the 0.18.5 cut by `render.mjs … foot` from `361336a`'s site, whose
+  `docs/stylesheets/shoalmark.css` the release carries byte for byte).
 
 ## The checks carried — measured on the built files
 
@@ -226,17 +230,24 @@ heading at (283, 420) — **after and mock the same** in both schemes. Before: (
 ## Rebuild
 
 ```sh
-S=/tmp/slice-a && mkdir -p $S/before $S/after
-git checkout origin/main -- work-tracker/brand/theme.css docs/stylesheets/shoalmark.css           # before
+R=$(git rev-parse --show-toplevel) && S=/tmp/slice-a && mkdir -p $S/before $S/after
+git clone -q "$R" $S/src && cd $S/src && git checkout -q --detach 361336a   # the tree the renders were built from
+git checkout 2a9f7eb -- work-tracker/brand/theme.css docs/stylesheets/shoalmark.css              # before: main at 2a9f7eb
 python3 shoalmark.py --html-only && uvx zensical build
 cp work-tracker/index.html $S/before/board.html && cp -R work-tracker/brand work-tracker/view site $S/before/
 python3 work-tracker/evidence/FM-006/themes/build-mocks.py $S/mock --plex <@ibm/plex-mono 1.1.0>/fonts/split/woff2
-git checkout HEAD -- work-tracker/brand/theme.css docs/stylesheets/shoalmark.css                  # after
+git checkout 70fedd3 -- work-tracker/brand/theme.css docs/stylesheets/shoalmark.css              # after: slice A's tip
 python3 shoalmark.py --html-only && uvx zensical build
 cp work-tracker/index.html $S/after/board.html && cp -R work-tracker/brand work-tracker/view site $S/after/
-node work-tracker/evidence/FM-002/slice-a/render.mjs $S work-tracker/evidence/FM-002/slice-a/shots
-node work-tracker/evidence/FM-002/slice-a/checks.mjs $S work-tracker/evidence/FM-002/slice-a/checks.json
+node $R/work-tracker/evidence/FM-002/slice-a/render.mjs $S $R/work-tracker/evidence/FM-002/slice-a/shots
+node $R/work-tracker/evidence/FM-002/slice-a/render.mjs $S $R/work-tracker/evidence/FM-002/slice-a/shots foot   # the foot
+node $R/work-tracker/evidence/FM-002/slice-a/checks.mjs $S $R/work-tracker/evidence/FM-002/slice-a/checks.json
 ```
+
+Pinned to shas (the 0.18.5 cut's pass, R3; the record's R1): *before* is main at `2a9f7eb` (PR 92), the base; *after*
+is slice A's tip `70fedd3`, whose two files are `361336a`'s; both are built in a checkout at `361336a`, the tree the
+renders were made from — its trackers, main's tool. `origin/main` and `HEAD` moved: after the merge main is *after*,
+and at the release's tip the site's start page is the landing page.
 
 The boards' *sessions* line reorders with the clock: two boards built minutes apart differ there.
 

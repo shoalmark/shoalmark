@@ -46,7 +46,7 @@ field for field — `facts.json` is that 18:00:51 reading), and the board render
 
 | On the page | Read from `main` at `bef2a1e`, 18:00:51 CEST |
 |---|---|
-| release **v0.18.4**, *released 26 September 2026*, its summary | `VERSION` 0.18.4; the tag `v0.18.4` on `a7e5291` (09:58:57); `CHANGELOG.md`'s 0.18.4 headline — unchanged from the mock |
+| release **v0.18.5**, *released 27 September 2026*, its summary | re-read at the 0.18.5 cut: `VERSION` 0.18.5 and `CHANGELOG.md`'s 0.18.5 head line (`522db92`), the day the tag's earliest (`69552ed`); at `bef2a1e` the page read v0.18.4 — `VERSION` 0.18.4, the tag `v0.18.4` on `a7e5291` (09:58:57), the 0.18.4 headline, unchanged from the mock |
 | **24 wrecks**, not 23: 8 open, 15 raised, 1 closed | the trackers tagged `bug` or `security`: FM-038 was filed at 13:35 (`5558b1a`), after the mock; the register's heading is *Every defect, on the chart* |
 | each wreck's incident ID and filing day | `git log --diff-filter=A` on its file, the earliest, the day in Europe/Berlin — unchanged for the 23 |
 | each wreck's status and title | its front matter and `# ` line: FM-034, FM-035, FM-036 now Shipped (raised); FM-037's title in main's lower case |
@@ -169,16 +169,22 @@ to strike.
 ## Renders — `shots/`, of the built page
 
 Chrome 154 headless, served from 127.0.0.1, offline but for the two Google Fonts hosts (`requests.json`: only they were
-reached, none refused, no script error), a dark preference, device scale 1.
+reached, none refused, no script error), a dark preference, device scale 1. **The first screens, the whole pages and the
+reduced-motion screens are the page as v0.18.5 ships it**, built at `69552ed` — the HUD's *release* v0.18.5, the foot's
+link and fine print — re-rendered at the 0.18.5 cut (27 September 2026, 00:27 CEST; the pass's R4 on `0612dfe`); the R3
+pairs are `9307cf8`'s and `ab69afb`'s builds, as the slice made them.
 
 | File | What |
 |---|---|
 | `start-1440.png`, `start-1024.png`, `start-390.png` | the first screen, motion allowed, 3 s after load |
-| `start-1440-full.png`, `start-1024-full.png`, `start-390-full.png` | the whole page: 5819, 6459 and 11008 px tall |
+| `start-1440-full.png`, `start-1024-full.png`, `start-390-full.png` | the whole page: 5837, 6459 and 11025 px tall (the fine print one line longer than at `cb49101`) |
 | `reduced-1440.png`, `reduced-1024.png`, `reduced-390.png` | the first screen under reduced motion |
 | `r3-before-1440.png`, `r3-after-1440.png`, `r3-before-1024.png`, `r3-after-1024.png` | the chart alone, before and after R3 |
 
 ## Checked — `checks.json`, on the tip's build
+
+Of the slice's tip `cb49101`, not re-run at the cut: the same-session pass on `0612dfe` ran `checks.mjs` on the release's
+build and read the same summary but the page's height, 5819 → 5837.
 
 - **No script error**, no failed request, at 1440, 1024 and 390 px.
 - **No sideways scroll**: the page is as wide as the window at all three.
@@ -195,8 +201,8 @@ reached, none refused, no script error), a dark preference, device scale 1.
 
 From the repository's root, Node 22 or later, `uv`:
 
-    for c in 9307cf8 ab69afb cb49101; do mkdir -p stage-$c && git archive $c | tar -x -C stage-$c && (cd stage-$c && uvx zensical build); done
-    # STAGE/page = cb49101's site/ (the page as the slice leaves it), STAGE/r3-before = 9307cf8's, STAGE/r3-after = ab69afb's
+    for c in 9307cf8 ab69afb 69552ed; do mkdir -p stage-$c && git archive $c | tar -x -C stage-$c && (cd stage-$c && uvx zensical build); done
+    # STAGE/page = 69552ed's site/ (the page as v0.18.5 ships it; cb49101's for the slice's own), STAGE/r3-before = 9307cf8's, STAGE/r3-after = ab69afb's
     node work-tracker/evidence/FM-006/landing/start-page/render.mjs STAGE shots
     node work-tracker/evidence/FM-006/landing/start-page/checks.mjs STAGE/page checks.json work-tracker/evidence/FM-006/landing/index.html
     node work-tracker/evidence/FM-006/landing/start-page/checks.mjs STAGE/r3-before checks-r3-before.json   # its chart part kept
