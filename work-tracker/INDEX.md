@@ -36,7 +36,7 @@
 | 6 | P2 | owner | *complicated* | intended | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
 | 7 | P2 | build | — | intended, kind | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | Proposed |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
-| 9 | P2 | owner | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
+| 9 | P2 | build | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
 | 10 | P2 | build | — | intended, kind | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress |
 
 ### Acts owed to the Owner — with their time
@@ -47,7 +47,6 @@
 |----|-----|----------|-----|--------|
 | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | When and how does shoalmark go public? | 2026-09-26: accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | no date yet | 60 min |
 | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | Which day this week do you set up the hardware key that needs a touch — your answer of 09-22 — so that the key signing your answers stops being a software key in the shared agent? | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
-| [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody until FM-024's slice 2 refuses a same-session verdict? | 2026-09-24: accepted - a cold Reviewer session you start reviews 0.18.3 | no date yet | 60 min |
 | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file? | 2026-09-24: accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | no date yet | 60 min |
 
 
