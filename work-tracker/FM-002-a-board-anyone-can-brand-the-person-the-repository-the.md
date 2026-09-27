@@ -3,14 +3,6 @@ id: FM-002
 status: In Progress
 considered: FM-001
 next: build
-ask: "Which theme do shoalmark's own board and site wear — the brand layer and the site's stylesheet, no tool change — and, separately, does the tool ship themes: `brand/themes/` and `--brand DIR --from <theme>`, code whose files every vendoring consumer receives?"
-ask-kind: ruling
-ask-since: 2026-09-26
-ask-options: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet | the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme | not yet — shoalmark's own board and site keep today's look; the tool ships no themes"
-ask-proposal: "shoalmark's own board and site wear the shoalmark theme; the tool ships no themes yet"
-answer: "accepted - the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme"
-answered: 2026-09-26
-answered-by: holgo99
 triaged: 2026-09-26
 rank: 4
 tier: P2
@@ -52,6 +44,13 @@ README explains the whole feature in one section of at most 25 lines. *(Met, 0.8
 *One sourced line per raise — the date, who raised it, the fact, its source, what it undermines; no counts.*
 
 - 2026-09-26 · the Owner — *proceed with the board's themes and bring the mockups into the dashboard and the site* (07:41:00, through the Auditor seat; his paste of 07:55:40, sha256 `34ee13d1…`); *for the dashboard I prefer the inline header … align for both; all dashboards aligned over all themes; the site's renderings are excluded* (09:23:58, in chat, spelling normalised; sha256 `21497e4d…`); *go — raise FM-002 as proposed; … for the v0.18.5 release we also add a landing page requirement alongside the restyle and rebrand of shoalmark's brand identity* (10:25:41, in chat, normalised; sha256 `416d54ce…`; the three hashes are the Principal's paste files', reported for the Auditor seat's match — the words themselves stand in the Principal's transcript at the times named, and the three files filed whole, byte for byte, each under a 3-line head: `evidence/FM-002/owner-words-2026-09-26-0741.md`, `evidence/FM-002/owner-words-2026-09-26-0923.md`, `evidence/FM-002/owner-words-2026-09-26-1025.md`) · the fact: two themes are mocked for the board and the site (FM-006's evidence) and the brand layer this tracker shipped carries none; the restyle is his line for 0.18.5 · undermines no signed rule — it widens this tracker's shipped scope, so the same-day pass is the seat's choice on his word, not the raise rule's.
+
+## Asks
+
+**2026-09-26** · Which theme do shoalmark's own board and site wear — the brand layer and the site's stylesheet, no tool change — and, separately, does the tool ship themes: `brand/themes/` and `--brand DIR --from <theme>`, code whose files every vendoring consumer receives?
+**answered** — accepted - the tool ships monochrome and shoalmark as starters; shoalmark's own board and site wear the shoalmark theme · holgo99
+**relation** — chose option 2: the tool ships monochrome and shoalmark…
+**signed** — 4e00f85 · G
 
 ## Ship log
 
