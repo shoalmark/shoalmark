@@ -30,7 +30,7 @@
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
 | 1 | P1 | review | *complicated* | intended | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress |
-| 2 | P1 | owner | *complicated* | intended | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
+| 2 | P1 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
 | 3 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
 | 5 | P1 | wait | *complex* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
 | 6 | P2 | owner | *complicated* | intended | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
