@@ -1,0 +1,158 @@
+{
+ "board-before-1440-dark.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-before-1440-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-before-1440-light.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-before-1440-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-before-390-dark.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-before-390-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-before-390-light.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-before-390-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-after-1440-dark.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-after-1440-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-after-1440-light.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-after-1440-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-after-390-dark.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-after-390-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-after-390-light.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-after-390-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-mock-1440-dark.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-mock-1440-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-mock-1440-light.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-mock-1440-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-mock-390-dark.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-mock-390-dark.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ },
+ "board-mock-390-light.png": {
+  "reached": [],
+  "refused": []
+ },
+ "site-mock-390-light.png": {
+  "reached": [
+   "fonts.googleapis.com",
+   "fonts.gstatic.com"
+  ],
+  "refused": [
+   "api.github.com"
+  ]
+ }
+}
