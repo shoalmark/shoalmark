@@ -1845,6 +1845,7 @@ def owner_change(tid, t, how):
         restored = changed_paths(git)
         if restored:
             git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in restored])
+        recorded = record_refusal(what, said)
         back = gone = ""
         if switched:
             s_ = git("switch", here) if here else git("switch", "--detach", start)
@@ -1853,8 +1854,43 @@ def owner_change(tid, t, how):
                 gone = f"`{branch}` deleted — it carried no commit"
         print(f"{flag}: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
         print("  undone: " + " · ".join(x for x in (f"restored {', '.join(restored)}" if restored else "", back, gone) if x) if restored or back else "  nothing was changed", file=sys.stderr)
+        if recorded:
+            print(f"  {recorded}", file=sys.stderr)
         print(f"  {how['kept'][0]}, not lost: {how['kept'][1]}\n  to give it again: {how['again']}", file=sys.stderr)
         return EXIT_LINT
+
+    def record_refusal(what, said):
+        """FM-030, the E0 counter's row 20: one `--due` of his was refused after its cut and left nothing — the undo took
+        it all back, and only his clone's reflog knew. A refusal on `answer/<id>`, the tree restored, leaves ONE line under
+        `## Acts` there — `**<date> <time>** · <the command> refused — <why>` — committed and pushed, so the record and the
+        forge show the attempt; his next run on this tracker names the branch and its commit, and commits on top of it.
+        UNSIGNED, whoever runs the command, and honest so: the line changes no front-matter key and rules or records no act —
+        the tool's report of one that did not happen — so the gate reads no right in it, a signature would prove nothing it
+        needs, and the refusal may be the signing key's own.
+        Refused itself, the line is taken back and the refusal is printed only; before the cut, it is printed only."""
+        if git("branch", "--show-current").stdout.strip() != branch or not path.is_file():
+            return ""
+        command = how["again"][len(CMD) + 1:] if how["again"].startswith(CMD + " ") else how["again"]
+        reason = refusal_reason(what, said)
+        try:
+            text = path.read_text(encoding="utf-8")
+            body = parse_frontmatter(text)[1]
+            put(path, text[: len(text) - len(body)] + append_record(body, ACTS_HEAD_RE, HEAD["acts"],
+                                                                    f"**{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}** · {command} refused — {reason}"))
+        except OSError as e:
+            return f"NOT recorded: {rel} could not be written — {e}"
+        r = git("add", "--", rel)
+        c = git("commit", "--no-gpg-sign", "-m", f"{tid}: {flag} refused — {first_words(reason, 60)}") if r.returncode == 0 else r
+        if c.returncode:
+            left = changed_paths(git)
+            if left:
+                git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in left])
+            tail = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (c.stdout.strip() + "\n" + c.stderr.strip()).strip()).splitlines()
+            return f"NOT recorded: the line's own commit was refused too — {(tail or ['git said nothing'])[-1].strip()[:160]}"
+        sha = git("rev-parse", "--short", "HEAD").stdout.strip()
+        p = git("push", "-u", "origin", branch)
+        return (f"recorded under `## {HEAD['acts']}` on `{branch}`: `{sha}`, unsigned — " + ("pushed" if p.returncode == 0 else f"NOT pushed: {p.stderr.strip()[-160:]}")
+                + f"; your next `{flag}` on {tid} names this branch — run it there, and it commits on top")
 
     if here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
@@ -1908,6 +1944,16 @@ def owner_change(tid, t, how):
         s_ = git("switch", here) if here else git("switch", "--detach", start)
         print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
     return EXIT_OK
+
+
+def refusal_reason(what, said=""):
+    """The one line a refused act command's record keeps (FM-030, E0 row 20): the undo's own words — `the commit was refused`,
+    `could not write …` — and, from what refused the commit, the line that says so: the first that names a refusal, a
+    failure or an error, else the last with words in it. Quoted as printed, flattened to one line, cut between two words."""
+    head = re.sub(r"\s*(?:—\s*)?nothing is committed\.\s*What refused it:\s*$", "", what).strip()
+    lines = [l_.strip() for l_ in (said or "").splitlines() if re.search(r"[A-Za-z]{2}", l_)]
+    pick = next((l_ for l_ in lines if re.search(r"refus|fail|error|denied", l_, re.I)), lines[-1] if lines else "")
+    return first_words(" ".join((head + (f": {pick}" if pick else "")).split()), 240)
 
 
 def default_trunk(git):

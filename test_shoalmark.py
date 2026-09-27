@@ -3680,6 +3680,73 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.6 — the E0 counter's row 20: one `--due` of his was refused after its cut and left nothing — the undo took
+#     it all back, and only his clone's reflog knew. Refused on `answer/<id>`, an act command leaves ONE line under `## Acts`
+#     there, committed unsigned and pushed, and the undo says so; refused before the cut, it prints only. The merged-branch
+#     path — a spent `answer/<id>` deleted and cut fresh — and the unmerged one are unchanged
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "r"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
+    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    act_ = lambda q, answer=True: (f'next: owner\nask: "{q}"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes"\n'
+                                   + (f'answer: "accepted - yes"\nanswered: {since_}\nanswered-by: holgo\n' if answer else ""))
+    tracker(root, "AP-470", extra=act_("Will you read the logs?"), title="the logs")
+    tracker(root, "AP-471", extra=act_("Will you rotate the key?"), title="the key")
+    tracker(root, "AP-472", extra=act_("Will you sign the release?", answer=False), title="not answered yet")
+    tracker(root, "AP-473", extra=f"next: run\ndue: {at_(90)}\n", title="a read later")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    start_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    here_ = lambda: subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    log_ = lambda ref: subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %s", ref], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.strip()
+    clean_ = lambda: subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True, env=_ENV).stdout
+    hook_ = root / ".git/hooks/pre-commit"
+    hook_.write_bytes(b"#!/bin/sh\nif git diff --cached | grep -qE '^\\+(due|done|answer): '; then\n  echo \"gate: the act refused here - the reason the Owner must read\" >&2\n  exit 1\nfi\nexit 0\n")
+    os.chmod(hook_, 0o755)
+    when_ = at_(60)
+    code_d, _o, err_d = run(root, "--due", "AP-470", when_)
+    code_n, _o, err_n = run(root, "--done", "AP-471", "evidence/AP-471/key.md")
+    code_a, _o, err_a = run(root, "--answer", "AP-472", "accept")
+    rec_ = lambda tid: [l_ for l_ in show_(f"origin/answer/{tid.lower()}", f"docs/work-tracker/{tid}-x.md").split("## Acts")[-1].split("\n") if " refused — " in l_]
+    line_ = r"\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\*\* · %s refused — the commit was refused: gate: the act refused here - the reason the Owner must read"
+    check(f"FM-030 · 0.18.6 · E0 row 20 · `--due`, `--done` and `--answer` refused after the cut each leave ONE line under `## Acts` on `answer/<id>` — "
+          f"when, the command, what refused it — committed unsigned and pushed; the undo says so, and he is back on a clean tree (saw {err_d.strip()!r} · {rec_('AP-470')})",
+          code_d == code_n == code_a == fm.EXIT_LINT and here_() == start_ and clean_() == ""
+          and [re.fullmatch(line_ % re.escape(f"--due AP-470 {when_}"), l_) is not None for l_ in rec_("AP-470")] == [True]
+          and [re.fullmatch(line_ % re.escape('--done AP-471 "evidence/AP-471/key.md"'), l_) is not None for l_ in rec_("AP-471")] == [True]
+          and [re.fullmatch(line_ % re.escape("--answer AP-472 accept"), l_) is not None for l_ in rec_("AP-472")] == [True]
+          and all("the commit was refused" in e_ and "recorded under `## Acts` on `answer/ap-47" in e_ and "`, unsigned — pushed" in e_ for e_ in (err_d, err_n, err_a))
+          and log_("origin/answer/ap-470").startswith("N AP-470: --due refused — the commit was refused")
+          and "due" not in fm.parse_frontmatter(show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md"))[0]
+          and "answer" not in fm.parse_frontmatter(show_("origin/answer/ap-472", "docs/work-tracker/AP-472-x.md"))[0])
+    toml_ = (root / "shoalmark.toml").read_text(encoding="utf-8")
+    (root / "shoalmark.toml").write_text(toml_ + "# a change of his\n", encoding="utf-8")
+    code_b, _o, err_b = run(root, "--due", "AP-473", when_)
+    (root / "shoalmark.toml").write_text(toml_, encoding="utf-8")
+    check(f"FM-030 · 0.18.6 · refused before the cut — a tree with changes — it prints only: no branch is cut and nothing is recorded (saw {err_b.strip()[-160:]!r})",
+          code_b == fm.EXIT_LINT and "the working tree has changes" in err_b and "recorded" not in err_b and here_() == start_
+          and subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", "answer/ap-473"], capture_output=True, env=_ENV).returncode != 0)
+    code_u, _o, err_u = run(root, "--due", "AP-470", when_)
+    check(f"FM-030 · 0.18.6 · the unmerged path is unchanged: the next `--due` names `answer/<id>`, the refusal's commit as his, and the command to run there (saw {err_u.strip()[-240:]!r})",
+          code_u == fm.EXIT_LINT and "`answer/ap-470` exists and is not merged" in err_u and "it carries your commit(s) — " in err_u and "AP-470: --due refused" in err_u
+          and "AP-470's act is open there: `git switch answer/ap-470`, then " in err_u and here_() == start_)
+    hook_.unlink()
+    git(root, "merge", "-q", "--no-edit", "answer/ap-470"); git(root, "push", "-q", "origin", "HEAD:main")
+    code_m, _o, err_m = run(root, "--due", "AP-470", when_)
+    after_ = show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md")
+    check(f"FM-030 · 0.18.6 · the merged path is unchanged: a spent `answer/<id>` that carried the record is deleted and cut fresh, and the act's record follows the refusal's (saw {err_m.strip()[-200:]!r})",
+          code_m == 0 and "was left by an earlier answer and is merged into `origin/main` — deleted, and cut fresh" in err_m
+          and fm.parse_frontmatter(after_)[0].get("due") == when_ and after_.index(" refused — ") < after_.index(f"· scheduled — due {when_} ·"))
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-036, 0.18.4 F: two filled rows for one tracker on one sheet — the newest wins. Today's case: FM-030 judged
 #     `keep P1 #3 build` in the morning pass and `keep P1 #1 build` on the raise; every run flipped the rank between them
 with tempfile.TemporaryDirectory() as tmp:
