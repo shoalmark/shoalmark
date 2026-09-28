@@ -66,6 +66,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   check says why: a Chrome made 5 s slower to start — each run of it, its control included — renders the healthy board
   and passes, where 5 s of wall-clock time is spent before the page begins. A test-only change. *Not shown here:* a
   1-minute load of 20 or more — none tonight. *Nothing to do on upgrade.*
+- **`--queue` reads an answer branch by his newest `answer:`, `done:` or `due:` commit** (FM-031, RV-679; the parent
+  project's `answer/bug-327`: a Reviewer's verdict at 20:45:02 on 2026-09-27, on his `--done` of 20:21:18, turned its
+  line from *merge: your answer* into *wait: not an answerer (reviewer@seat)*). `--done` and `--due` are cut on
+  `answer/<id>` as `--answer` is, and change a `done:` or `due:` line, not `answer:` — so 0.18.4's reading found no
+  `answer:` change under the verdict and read the head. An `answer/*` pull request is now read by the newest commit of
+  its own that changed an `answer:`, `done:` or `due:` line, where every commit past it touches review files only; it
+  names that commit, `signed <sha>`; anything else past it, and the head is read, as before. *Nothing to do on upgrade.*
 
 ## 0.18.5 — 2026-09-27
 

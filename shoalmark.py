@@ -1274,11 +1274,11 @@ def have_not(shas):
 
 
 def answer_reading(head):
-    """An `answer/*` pull request is the Owner's own signed answer, and needs no Reviewer: `merge: your answer` when the
-    author of `head` — its answer commit, as `queue_actions` finds it — may answer and the commit verifies as him — the
-    gate's one test, `verified_as` — else it waits: on an author who may not answer, named, whatever the commit's signature
-    (R8 — a signed commit by someone else read *unsigned*, and the impostor is the case the Owner most needs named); else on
-    the signature."""
+    """An `answer/*` pull request is the Owner's own signed answer, `done:` or `due:`, and needs no Reviewer: `merge: your
+    answer` when the author of `head` — his answer, `done:` or `due:` commit, as `queue_actions` finds it — may answer and
+    the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an author who may not answer,
+    named, whatever the commit's signature (R8 — a signed commit by someone else read *unsigned*, and the impostor is the
+    case the Owner most needs named); else on the signature."""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
     may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
     if not may:
@@ -1311,10 +1311,11 @@ def queue_actions(prs, branches=()):
     """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
     inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
     verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
-    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on its answer
-    commit, the newest of its own that changed an `answer:` line, where only review files follow it (FM-031, 0.18.4: a
-    Reviewer's docs pass on the answer read *not an answerer* by the head); else on its head. For a pull
-    request the first rule that holds is the action:
+    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on his
+    answer, `done:` or `due:` commit, the newest of its own that changed an `answer:`, `done:` or `due:` line, where only
+    review files follow it (FM-031, 0.18.4: a Reviewer's docs pass on the answer read *not an answerer* by the head;
+    0.18.6, RV-679: on his `--done` or `--due`, too); else on its head. For a pull request the first rule that holds is
+    the action:
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
@@ -1402,11 +1403,13 @@ def queue_actions(prs, branches=()):
         return cached(("addenda", r, h, v), read)
 
     def answered_at(p):
-        """the commit an `answer/*` pull request is read by: the newest of its own that changed an `answer:` line in a
-        tracker, where every commit past it is a review file's only (`addenda_only`, any commit's own `review*.md`) — the
-        parent project's PRs 836, 849 and 853, a Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)*
-        by the head; anything else past it, and the head is read, as before"""
-        at = git("log", "-1", "--format=%H", "-G", "^answer:", head(p), "^" + base(p), "--", rel).stdout.strip()
+        """the commit an `answer/*` pull request is read by: the newest of its own that changed an `answer:`, `done:` or
+        `due:` line in a tracker — `owner_change` cuts the branch for `--answer`, `--done` and `--due` alike — where every
+        commit past it is a review file's only (`addenda_only`, any commit's own `review*.md`) — the parent project's PRs
+        836, 849 and 853, a Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)* by the head, and
+        its `answer/bug-327`, a Reviewer's verdict on his `--done`, the same (RV-679, 0.18.6); anything else past it, and
+        the head is read, as before"""
+        at = git("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head(p), "^" + base(p), "--", rel).stdout.strip()
         return at if at and (at == head(p) or addenda_only(at, head(p), None)) else head(p)
 
     rows = []

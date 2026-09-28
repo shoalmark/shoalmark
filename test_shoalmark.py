@@ -4522,6 +4522,33 @@ with tempfile.TemporaryDirectory() as tmp:
           "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"} for n_, h_ in ((4, reviewed_), (5, built_))]))}
     check(f"FM-031, 0.18.4 · an `answer/*` pull request is read by its answer commit, the one that wrote `answer:`, where only review files follow it: a Reviewer's docs pass on the signed answer reads `merge: your answer`, naming the answer commit — its head read `not an answerer (reviewer@seat)`; a seat's other change on it is read by its head, as before (saw {on_top_})",
           on_top_ == {4: ("merge: your answer", f"signed {signed_[:7]}"), 5: ("wait: not an answerer (s@s)", "")})
+    # FM-031, 0.18.6 · RV-679 · his `--done` and `--due` are cut on `answer/<id>` as `--answer` is (`owner_change`) and change
+    # a `done:` or `due:` line, not `answer:` — so a Reviewer's verdict on top read `not an answerer (reviewer@seat)` by the
+    # head (the parent's `answer/bug-327`); the queue reads the newest `answer:`, `done:` or `due:` change of its own
+    def act31_(branch, line, subject):
+        git(root, "checkout", "-q", "-b", branch, t0)
+        tr_.write_text(tr_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\n{line}\n'), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", subject)
+        return sha()
+    def verdict31_(branch, on):
+        git(root, "checkout", "-q", "-b", branch, on); (root / "docs/work-tracker/evidence/MSR-001").mkdir(parents=True, exist_ok=True)
+        (root / "docs/work-tracker/evidence/MSR-001/review-the-act.md").write_text("# Review — the act on MSR-001\n\nREADY\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "review: the act on MSR-001 — READY", "-m", f"Reviewed: {on}", "--author=reviewer <reviewer@seat>")
+        return sha()
+    done_ = act31_("answer/msr-004", 'done: "2026-09-28T09:00:00+02:00 · docs/x.md"', "MSR-001: done — docs/x.md")
+    due_ = act31_("answer/msr-005", "due: 2026-09-29T09:00:00+02:00", "MSR-001: due 2026-09-29T09:00:00+02:00")
+    on_done_, on_due_ = verdict31_("answer/msr-004-reviewed", done_), verdict31_("answer/msr-005-reviewed", due_)
+    git(root, "checkout", "-q", "-b", "answer/msr-004-built", done_); (root / "w.txt").write_text("w"); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "MSR-001: a seat's change on the done", "--author=seat <s@s>"); done_built_ = sha()
+    acts31_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(
+        [{"number": n_, "title": "t", "headRefName": "answer/msr-001", "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"} for n_, h_ in ((6, on_done_), (7, on_due_), (8, done_built_))]))}
+    check(f"FM-031, 0.18.6 · RV-679 · an `answer/*` pull request whose signed owner commit changes a `done:` line — his `--done`, cut on `answer/<id>` as `--answer` is — with a Reviewer's verdict on top, its review file only, reads `merge: your answer`, naming the `done:` commit — its head read `not an answerer (reviewer@seat)`, the parent's `answer/bug-327` (saw {acts31_.get(6)})",
+          acts31_.get(6) == ("merge: your answer", f"signed {done_[:7]}"))
+    check(f"FM-031, 0.18.6 · RV-679 · the same with his `--due`: a signed owner commit that changes a `due:` line, a Reviewer's verdict on top, its review file only, reads `merge: your answer`, naming the `due:` commit (saw {acts31_.get(7)})",
+          acts31_.get(7) == ("merge: your answer", f"signed {due_[:7]}"))
+    check(f"FM-031, 0.18.6 · RV-679 · a seat's change on top of his `done:` commit that is not a review file's is read by its head, as before: `wait: not an answerer (s@s)` (saw {acts31_.get(8)})",
+          acts31_.get(8) == ("wait: not an answerer (s@s)", ""))
     git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
     git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
     untrusted_ = read_(); code_, _, err_ = run(root, "--check")
