@@ -34,16 +34,16 @@ FM-034 (a fresh clone's `--check` — the same header path, not its time), FM-03
 regeneration's). None names the regeneration's wall-clock time; a new filing.
 
 **The two routes, the Owner's, for his ruling once the profile is in:**
-- **a. profile the Python path** — `cProfile` of `--html-only` on both repositories at low load, the number of `git` subprocesses per run, the ten
+- **a. profile the Python path** — `cProfile` of `--html-only` and of the commit's `--print-written` path on both repositories at low load, the number of `git` subprocesses per run, the ten
   functions by cumulative time; then the optimisation that bites (a cache of per-tracker git facts across a run, one `git log` for all files instead
   of one per file, or whatever the profile names). The Principal's counsel, disclosed as such: the cheaper route, and it keeps the single Python file
   every consumer vendors.
 - **b. explore the Rust port** — one code base for the tool and for mobile clients, as PortDive's Rust core is; the upfront price: a build per
-  platform, `brew install shoalmark` for consumers, the pin and the vendoring redone. A product decision, his, not a performance fix.
+  platform, `brew install shoalmark` for consumers, the pin and the vendoring redone. The Principal's counsel, disclosed as such: a product decision, his, not a performance fix.
 
-**Read, not measured (a seat's code reading of 2026-09-28 02:1x, confidence about 55 % until profiled):** the board path starts with `git branch
+**Read, not measured (a seat's code reading reported 2026-09-28 02:03:03, confidence about 55 % until profiled):** the board path starts with `git branch
 --show-current`, then per tracker in `render_html`: `ask_problems` runs with provenance on, so every `next: owner` tracker goes through `seat_problems`
-and can cost a `git log -1 --full-history -G` history walk per ask (the docstring near line 996 measures that pattern at about 0.4 s per file on a
+and can cost a `git log -1 --full-history -G` history walk per ask (the docstring at line 1012, in `recover_relations`, measures that pattern at about 0.4 s per file on a
 3,755-commit repository), plus `git diff`/`git show`; `board_sessions` → `verdict_reports` makes three or four git calls per verdict (rev-parse,
 merge-base, rev-list --ancestry-path, log — 137 verdicts this week); `recover_relations` does one `git log -p` and one `git show` per answer commit;
 `held_up_by` is O(n²) in Python but cheap beside the git calls. The change most likely to bite: the board path with `provenance=False`, or the per-ask
@@ -67,3 +67,4 @@ after his ruling, as a wall-clock number for the hook on both repositories that 
 |---|---|
 | 2026-09-28 | Filed on the Owner's word of 01:42:26 (his two hook summaries: 25.88 s / 14.48 s); a full regeneration on `bbbfc0b` measured 42.7 s real (16.8 user, 24.3 sys), started 01:44:16; PortDive's `tracker-index` pre-commit step 18.57 s at 01:47. Slice 1 (the profile, read-only) started the same night; the route is his ask after it. |
 | 2026-09-28 | The filing's pass `e7d16b8` READY WITH FINDINGS (RV-681…684, reviewer-40; its own full regeneration 50.84 s real / 18.25 user / 29.50 sys at a 1-minute load of 150 falling to 72). Fixed in the next commit: the hook steps named from `lefthook.yml` (RV-681), the times exact (RV-682), FM-035/FM-039 marked as held by hand (RV-683), the route weighing disclosed as the Principal's counsel (RV-684); the seat's unmeasured code reading added; the profile not run — the permission classifier refused the seat's runner. |
+| 2026-09-28 | The re-check `fd43178` (reviewer-40): RV-682/683 closed; RV-681 and RV-684 open in part, RV-691 new (an approximate time, a docstring's line) — fixed in the next commit: route a profiles `--print-written` too, route b labelled as counsel, the reading's time 02:03:03, the docstring at line 1012 in `recover_relations`. |
