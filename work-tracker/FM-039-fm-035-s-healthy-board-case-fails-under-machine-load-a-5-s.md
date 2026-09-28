@@ -1,6 +1,6 @@
 ---
 id: FM-039
-status: Proposed
+status: In Progress
 considered: FM-035, FM-038, FM-028, FM-012
 tags: bug
 triaged: 2026-09-27
@@ -29,3 +29,4 @@ The healthy run of FM-035's case passes on a machine at a 1-minute load of 20 or
 | Date | Event |
 |---|---|
 | 2026-09-26 | Filed at the 0.18.5 cut by the Implementer seat (`8e509911/implementer-39`), under the freeze as a bug, on the slice B seat's finding (`9f2f525`) and the Reviewer's row 9 on it; the facts, the why and the Done-when above. Nothing built. |
+| 2026-09-28 | In Progress — the build, on `fm/039-the-chrome-budget-follows-a-control` off `origin/main` `bbbfc0b`, by the Implementer seat (`8e509911/implementer-48`): judged 2026-09-27, P2 #7, `next: build`; the status set before the first build commit, as the FM-033 rule asks. The rule chosen: the budget follows a control — Chrome's own time on `about:blank`, measured here before the board renders, plus 5 s for the board. Tonight Chrome here needs 5.4–5.5 s for `about:blank` alone, so the healthy run fails the 5 s budget on `main`'s own tool and the pre-commit hook refuses every commit that stages a `.py`. |
