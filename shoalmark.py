@@ -1488,36 +1488,49 @@ def refusal_record(commit):
 
 
 def refusal_record_in_place(parent, commit, path):
-    """RV-715 — the diff alone said what lines were added, not WHERE: the tracker's text at `parent` and at `commit` must
-    differ in the section under `## Acts` only, by the one refusal line. Front matter byte-identical; the body before
-    the heading byte-identical (trailing blank lines aside — the heading may be new, made at the body's end); the lines
-    under the heading the parent's followed by exactly one refusal line (blank lines aside). Anything else — a line in
-    *What is true now*, a moved heading, a second record — and it is not the tool's record, whatever the diff looked like."""
+    """RV-715, RV-716 (the Owner's cold re-checks of `af5a9e2` and `729ddae`) — the diff alone said what lines were added, not
+    WHERE: the tracker's text at `parent` and at `commit` is read in three parts — the body before the `## Acts` heading,
+    the section from that heading to the next `##`/`###` heading (as `append_record` bounds it), and the suffix after it.
+    The front matter and the body before the heading are byte-identical, the suffix is byte-identical, and the section's
+    lines are the parent's followed by exactly one refusal line. Where the parent has no `## Acts`, the new section is
+    the heading and that one line, placed exactly where `append_record` puts one — immediately above the ship-log heading
+    where the parent has one, else at the body's end — and the rest of the body is the parent's byte for byte. Anything else — a line in *What is true now*, a line in a later `## Asks`, a moved
+    heading, a second record — and it is not the tool's record, whatever the diff looked like."""
     def text_at(ref):
         r = subprocess.run(["git", "-c", "core.quotePath=false", "show", f"{ref}:{path}"], cwd=ROOT, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=nested_git_env())
         return r.stdout if r.returncode == 0 else None
-    def split(text):
+    def parts(text):
         body = parse_frontmatter(text)[1]
         front = text[: len(text) - len(body)]
         m = ACTS_HEAD_RE.search(body)
-        return front, (body[: m.start()] if m else body), (body[m.end():] if m else None)
+        if not m:
+            return front, body, None, None
+        rest = re.search(r"^#{2,3}\s+", body[m.end():], re.M)
+        cut = m.end() + (rest.start() if rest else len(body) - m.end())
+        return front, body[: m.start()], body[m.start():cut], body[cut:]
+    lines = lambda x: [l for l in x.split("\n") if l.strip()]
     old, new = text_at(parent), text_at(commit)
     if old is None or new is None:
         return False
-    of, ob, oa = split(old)
-    nf, nb, na = split(new)
-    if of != nf or na is None:
+    of, obefore, oacts, osuffix = parts(old)
+    nf, nbefore, nacts, nsuffix = parts(new)
+    if of != nf or nacts is None:
         return False
-    if oa is None:
-        if nb.rstrip("\n") != ob.rstrip("\n"):
-            return False
-        before = []
-    else:
-        if nb.rstrip("\n") != ob.rstrip("\n"):
-            return False
-        before = [l for l in oa.split("\n") if l.strip()]
-    after = [l for l in na.split("\n") if l.strip()]
+    if oacts is None:
+        # the heading is new: the section is the heading and one line, and it sits exactly where `append_record` puts one —
+        # immediately above the ship-log heading where the parent has one, else at the body's end — with the rest of the body
+        # the parent's byte for byte (a section made before any other heading is not the tool's)
+        log = re.search(r"^#{2,3}\s+(%s)\s*$" % re.escape(HEAD["log"]), obefore, re.I | re.M)
+        if log:
+            around = nbefore == obefore[: log.start()] and nsuffix == obefore[log.start():]
+        else:
+            around = not nsuffix.strip() and nbefore.rstrip("\n") == obefore.rstrip("\n")
+        got = lines(nacts)
+        return around and len(got) == 2 and ACTS_HEAD_RE.match(got[0]) is not None and REFUSAL_LINE_RE.match(got[1]) is not None
+    if nbefore != obefore or nsuffix != osuffix:
+        return False
+    before, after = lines(oacts), lines(nacts)
     return after[: len(before)] == before and len(after) == len(before) + 1 and REFUSAL_LINE_RE.match(after[-1]) is not None
 
 
