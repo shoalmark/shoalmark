@@ -15,6 +15,7 @@ import datetime
 import sys
 import shutil
 import tempfile
+import time
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -401,6 +402,7 @@ _CHROME = next((c for c in ("/Applications/Google Chrome.app/Contents/MacOS/Goog
 _BLOCKS = {       # each browser block: its name, as a skip or a failure reads it
     "strip": "FM-024 S7 · the board's strip, rendered — its one check then reads the digest alone",
     "hang": "FM-035 · a page that never comes back fails the suite",
+    "control": "FM-039 · a Chrome slow to start, the board's budget counted beyond its control",
     "board": "the board, rendered in a browser",
     "search": "FM-020 · a whole id searched, rendered",
     "progress": "FM-021 · the empty progress section, rendered",
@@ -421,11 +423,16 @@ class _ChromeFailed(Exception):
     """Headless Chrome started here and did not return a page within its budget, twice: the check FAILS."""
 
 
+_CONTROL_S = {}     # FM-039: per Chrome, its own time here on the control, a blank page, in seconds — a page's budget is counted beyond it
+
+
 def _chrome_probe(chrome):
     """"" where `chrome` starts here and renders a blank page within 60 s — the healthy control — else why it cannot:
-    none installed, a launch error, no display. Only this makes a browser check a platform gap."""
+    none installed, a launch error, no display. Only this makes a browser check a platform gap. The control's time is
+    kept in `_CONTROL_S`: what Chrome costs here before any page of ours (FM-039)."""
     if not chrome:
         return "no Chrome or Chromium is installed here"
+    t0 = time.monotonic()
     try:
         r = subprocess.run([chrome, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--dump-dom", "about:blank"],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
@@ -435,6 +442,7 @@ def _chrome_probe(chrome):
         return "Chrome started and did not render a blank page within 60 s here"
     if r.returncode != 0 or "<html" not in r.stdout:
         return f"Chrome could not start here: exit {r.returncode}" + (f" — {r.stderr.strip().splitlines()[-1][:160]}" if r.stderr.strip() else "")
+    _CONTROL_S[chrome] = time.monotonic() - t0
     return ""
 
 
@@ -452,17 +460,20 @@ def _browser(key):
 
 
 def _chrome_run(args, timeout=60):
-    """Headless Chrome, which passed its control here, on one page: `subprocess.run`'s result. Past `timeout` it is tried
-    once more, then raises `_ChromeFailed`, which the block's `_hung` turns into a FAIL naming the page and the budget.
-    (FM-035: on the v0.18.3 tag's macOS runner the answer dialog's run went past 60 s and the suite died in a
-    traceback. A profile of its own per run, tried, made every run hang here.)"""
+    """Headless Chrome, which passed its control here, on one page: `subprocess.run`'s result. Its budget is `timeout`
+    seconds beyond Chrome's own time on the control — the page's cost, not Chrome's start. Past it the run is tried once
+    more, then raises `_ChromeFailed`, which the block's `_hung` turns into a FAIL naming the page, the budget and the
+    control's time. (FM-035: on the v0.18.3 tag's macOS runner the answer dialog's run went past 60 s and the suite died
+    in a traceback. A profile of its own per run, tried, made every run hang here. FM-039: a budget in wall-clock seconds
+    measured Chrome's start — on the Owner's machine on 2026-09-27 a blank page alone took 5.4 s, past FM-035's 5 s.)"""
+    own = _CONTROL_S.get(_CHROME, 0.0)
     for _attempt in (1, 2):
         try:
             return subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=own + timeout)
         except subprocess.TimeoutExpired:
             continue
-    raise _ChromeFailed(f"headless Chrome did not return {args[-1].rsplit('/', 1)[-1]} within {timeout} s, tried twice")
+    raise _ChromeFailed(f"headless Chrome did not return {args[-1].rsplit('/', 1)[-1]} within {timeout} s beyond Chrome's own {own:.1f} s, tried twice")
 
 
 def _hung(key, e):
@@ -501,17 +512,17 @@ def skipped_line():
 
 
 # the helpers themselves: a timed-out run is tried once more and then FAILS; a Chrome that is not there, or cannot start, skips
-_tries, _real_run = [], subprocess.run
-subprocess.run = lambda *a, **k: (_tries.append(a[0]), (_ for _ in ()).throw(subprocess.TimeoutExpired(a[0], k.get("timeout"))))[1]
+_tries, _real_run, _CONTROL_S[_CHROME] = [], subprocess.run, 5.5
+subprocess.run = lambda *a, **k: (_tries.append(k.get("timeout")), (_ for _ in ()).throw(subprocess.TimeoutExpired(a[0], k.get("timeout"))))[1]
 try:
     try:
         _chrome_run(["--dump-dom", "file:///x/page.html"], timeout=1); _slow = ""
     except _ChromeFailed as e_:
         _slow = str(e_)
 finally:
-    subprocess.run = _real_run
-check("FM-035 · a headless Chrome run past its budget is tried once more, then raises a FAILURE naming the page and the budget — a hang is never a skip",
-      _slow == "headless Chrome did not return page.html within 1 s, tried twice" and len(_tries) == 2)
+    subprocess.run = _real_run; del _CONTROL_S[_CHROME]
+check(f"FM-035 · a headless Chrome run past its budget is tried once more, then raises a FAILURE naming the page and the budget — a hang is never a skip; FM-039 · the budget is counted beyond Chrome's own time on its control, and the failure names both (saw {_tries})",
+      _slow == "headless Chrome did not return page.html within 1 s beyond Chrome's own 5.5 s, tried twice" and _tries == [6.5, 6.5])
 check("FM-035 · Chrome not installed, or unable to start, is a platform gap: the control run says why, and only that skips",
       _chrome_probe(None) == "no Chrome or Chromium is installed here" and _chrome_probe(str(HERE / "no-such-chrome")).startswith("Chrome could not start here:"))
 # --- end of the browser helpers
@@ -860,18 +871,38 @@ def run(root, *a, **k):
     return got
 """
 _end = "\nprint(skipped_line())\nsys.exit(1 if FAILS else 0)\n"
-_block_run = lambda mutation: subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + _end], capture_output=True, text=True,
-                                             encoding="utf-8", errors="replace", env=_ENV, timeout=300)
+_block_run = lambda mutation, end="": subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + end + _end], capture_output=True, text=True,
+                                                      encoding="utf-8", errors="replace", env=_ENV, timeout=300)
 _none = _block_run("\n_CHROME = None\n")
 check(f"FM-035 · no Chrome here: the board block is skipped by name with the reason and its two checks, the run's end says this is not a full pass, and it exits 0 (saw {_none.stdout.strip()[-260:]!r})",
       _none.returncode == 0 and "  skip  the board, rendered in a browser — no Chrome or Chromium is installed here; 2 check(s) did not run" in _none.stdout
       and "skipped here: 2 check(s) in 1 block(s) did not run — this is NOT a full pass: the board, rendered in a browser (2): no Chrome or Chromium is installed here" in _none.stdout)
 if _browser("hang"):
     _hang, _healthy = _block_run(_hang_page), _block_run("")
-    check(f"FM-035 · Chrome here and a page that never comes back — an infinite loop in the board: the block FAILS by name, the budget and the retry named, nothing skipped, the run exits 1; the same block on the healthy page passes (saw {_hang.stdout.strip()[-260:]!r})",
+    check(f"FM-035 · Chrome here and a page that never comes back — an infinite loop in the board: the block FAILS by name, the budget, Chrome's own time on its control (FM-039) and the retry named, nothing skipped, the run exits 1; the same block on the healthy page passes (saw {_hang.stdout.strip()[-260:]!r})",
           _healthy.returncode == 0 and _healthy.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _healthy.stdout
-          and _hang.returncode == 1 and "  FAIL  the board, rendered in a browser — headless Chrome did not return index.html within 5 s, tried twice" in _hang.stdout
+          and _hang.returncode == 1 and re.search(r"  FAIL  the board, rendered in a browser — headless Chrome did not return index\.html within 5 s beyond Chrome's own \d+\.\d s, tried twice\n", _hang.stdout) is not None
           and "skipped here: 0 checks — every check ran" in _hang.stdout and "  skip  " not in _hang.stdout)
+
+# --- FM-039: the board's budget follows a control. A Chrome that needs more than the whole 5 s to start — each run of it
+#     costs 5 s before it begins, its control on a blank page included, within the run's own timeout — still renders the
+#     healthy board: the budget is 5 s beyond Chrome's own time here, measured before the board, not 5 s of wall-clock time
+_slow_start = """
+_real_sp_run = subprocess.run
+def _slow_sp_run(cmd, *a, **k):
+    if cmd[0] == _CHROME:
+        time.sleep(min(5, k["timeout"]))
+        if k["timeout"] <= 5:
+            raise subprocess.TimeoutExpired(cmd, k["timeout"])
+        k["timeout"] -= 5
+    return _real_sp_run(cmd, *a, **k)
+subprocess.run = _slow_sp_run
+"""
+if _browser("control"):
+    _late = _block_run(_slow_start, "\nprint(f'control: {_CONTROL_S.get(_CHROME, 0.0):.1f} s')\n")
+    _own = float((re.search(r"^control: (\d+\.\d) s$", _late.stdout, re.M) or [None, "0"])[1])
+    check(f"FM-039 · a Chrome 5 s slower to start than this one — its control on a blank page took {_own} s — renders the healthy board and passes: the budget is 5 s beyond the control, the page's own cost, not 5 s of wall-clock time, which Chrome's start alone would spend (saw {_late.stdout.strip()[-260:]!r})",
+          _own >= 5 and _late.returncode == 0 and _late.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _late.stdout)
 
 # --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
 if _browser("search"):
