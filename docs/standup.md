@@ -56,7 +56,8 @@ then the board reads git, so the page you come back to shows it at once: the que
 leaves *your acts*, and each is listed under **on their way** — your promise or your answer first, then what it is:
 *answered, on its way*, *done, on its way — <where the result is>*, *rescheduled, on its way — due <time>*, *revoked, on
 its way — <why>* or *done revoked, on its way*; the branch, the commit and its time, whether it is signed, and *your merge
-is next*. An answer or an act done carries one button, **revoke**, where accept and reject or done and reschedule were:
+is next* — or *your merge waits: …* where the queue waits on the branch, a seat's commit below your act the usual one.
+An answer or an act done carries one button, **revoke**, where accept and reject or done and reschedule were:
 it asks why and gives you `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<why>"` — a new signed commit on top of
 it, on the same branch, never an overwrite. A reschedule carries none; to move it again, run `--due` on its branch. After
 your merge each reads from the default branch again; another machine shows the same rows after a fetch.

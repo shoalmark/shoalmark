@@ -1171,6 +1171,7 @@ act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — un
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
 way.title: unterwegs
 way.merge: Ihr Merge ist als Nächstes dran
+way.held: "Ihr Merge wartet: {0}"
 way.done: erledigt, unterwegs
 way.answer: beantwortet, unterwegs
 way.revoked: zurückgenommen, unterwegs
@@ -3795,6 +3796,11 @@ with tempfile.TemporaryDirectory() as tmp:
           and log_("origin/answer/ap-470").startswith("N AP-470: --due refused — the commit was refused")
           and "due" not in fm.parse_frontmatter(show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md"))[0]
           and "answer" not in fm.parse_frontmatter(show_("origin/answer/ap-472", "docs/work-tracker/AP-472-x.md"))[0])
+    fm.configure(root)
+    recs_ = [subprocess.run(["git", "-C", str(root), "rev-parse", f"origin/answer/ap-{n_}"], capture_output=True, text=True, env=_ENV).stdout.strip() for n_ in (470, 471, 472)]
+    shaped_ = [_no_git_env(lambda: fm.refusal_record(c_)) for c_ in recs_ + ["origin/main"]]
+    check(f"FM-031, 0.18.6 · RV-712 · the three refusal records the tool itself committed — `--due`, `--done`, `--answer` refused after the cut — read as `refusal_record`, the one unsigned commit `--queue` admits below his act; the commit under them does not (saw {shaped_})",
+          shaped_ == [True, True, True, False])
     toml_ = (root / "shoalmark.toml").read_text(encoding="utf-8")
     (root / "shoalmark.toml").write_text(toml_ + "# a change of his\n", encoding="utf-8")
     code_b, _o, err_b = run(root, "--due", "AP-473", when_)
@@ -3979,6 +3985,30 @@ with tempfile.TemporaryDirectory() as tmp:
     no_trunk_ = fm.on_their_way(fm.load_trackers())
     git(root, "remote", "rename", "elsewhere", "origin")
     check("FM-030 · 0.18.6 · the reader reads the clone alone: with no `origin` default branch it reads nothing, and it never fetches", no_trunk_ == {})
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-031, 0.18.6 · RV-714 (the local pass on d3f0463, on the merge of main) — the board reads an act branch as `--queue`
+#     does: his signed `--answer`, cut from a seat's unmerged branch, carries the seat's commit; `--queue` waits on it, and the
+#     board, `--owner` and `--standup` say that wait in place of *your merge is next*
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    tracker(root, "AP-506", extra=f'next: owner\nask: "Does the loader ship first?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n', title="cut from a seat's branch")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "one more ask", "-S", "--author=holgo <h@x>"); git(root, "push", "-q", "origin", "HEAD:main")
+    git(root, "switch", "-q", "-c", "fm/seat-work"); (root / "seat.txt").write_text("a seat's work\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a seat's work", "--author=impl <impl@x>"); git(root, "push", "-q", "origin", "fm/seat-work")
+    seat_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    code_ = run(root, "--answer", "AP-506", "accept")[0]
+    git(root, "switch", "-q", "main"); fm.configure(root)
+    w_ = fm.on_their_way(fm.load_trackers()).get("AP-506", {})
+    out_ = run(root, "--owner")[1]; run(root, "--html-only"); page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    held_ = f"wait: a seat's commit on your answer branch ({seat_[:7]}, impl@x)"
+    line_ = next((l_ for l_ in out_.splitlines() if l_.startswith("  AP-506 — ")), "")
+    check(f"FM-031, 0.18.6 · RV-714 · his signed answer cut from a seat's unmerged branch: the board's reader carries `--queue`'s wait on the seat's commit, and `--owner` says *your merge waits: …* in place of *your merge is next*; the page carries the same (saw {w_.get('held')!r}, {line_!r})",
+          code_ == 0 and w_.get("said") == "merge: your answer" and w_.get("held") == held_
+          and line_.endswith(f" · signed · your merge waits: a seat's commit on your answer branch ({seat_[:7]}, impl@x)") and "your merge is next" not in line_
+          and json.dumps(held_) in page_ and '"way.held"' in page_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -4207,7 +4237,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and out_o.count("done revoked, on its way") == 1 and fm.ACTS_TITLE not in out_o and fm.ACTS_TITLE not in out_s)
     check("FM-030 · 0.18.6 · RV-730 · the board's rows carry the three: two *rescheduled* with the new time, one *done revoked* — and the new label in the English and the German table",
           f'["due", "answer/ap-501", "{tip_("answer/ap-501")}", ' in board_ and f'["due", "answer/ap-503", "{tip_("answer/ap-503")}", ' in board_
-          and f'["undone", "answer/ap-504", "{tip_("answer/ap-504")}", ' in board_ and f', 0, 0, "{two_}", ""]' in board_ and f', 0, 0, "{three_}", ""]' in board_
+          and f'["undone", "answer/ap-504", "{tip_("answer/ap-504")}", ' in board_ and f', 0, 0, "{two_}", "", ""]' in board_ and f', 0, 0, "{three_}", "", ""]' in board_
           and '"way.due": "rescheduled, on its way"' in board_ and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("way.due") == "verschoben, unterwegs")
     if _browser("rescheduled"):
         try:
@@ -4857,6 +4887,177 @@ with tempfile.TemporaryDirectory() as tmp:
           "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"} for n_, h_ in ((4, reviewed_), (5, built_))]))}
     check(f"FM-031, 0.18.4 · an `answer/*` pull request is read by its answer commit, the one that wrote `answer:`, where only review files follow it: a Reviewer's docs pass on the signed answer reads `merge: your answer`, naming the answer commit — its head read `not an answerer (reviewer@seat)`; a seat's other change on it is read by its head, as before (saw {on_top_})",
           on_top_ == {4: ("merge: your answer", f"signed {signed_[:7]}"), 5: ("wait: not an answerer (s@s)", "")})
+    # FM-031, 0.18.6 · RV-679 · his `--done` and `--due` are cut on `answer/<id>` as `--answer` is (`owner_change`) and change
+    # a `done:` or `due:` line, not `answer:` — so a Reviewer's verdict on top read `not an answerer (reviewer@seat)` by the
+    # head (the parent's `answer/bug-327`); the queue reads the newest `answer:`, `done:` or `due:` change of its own
+    def act31_(branch, line, subject):
+        git(root, "checkout", "-q", "-b", branch, t0)
+        tr_.write_text(tr_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\n{line}\n'), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", subject)
+        return sha()
+    def verdict31_(branch, on):
+        git(root, "checkout", "-q", "-b", branch, on); (root / "docs/work-tracker/evidence/MSR-001").mkdir(parents=True, exist_ok=True)
+        (root / "docs/work-tracker/evidence/MSR-001/review-the-act.md").write_text("# Review — the act on MSR-001\n\nREADY\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "review: the act on MSR-001 — READY", "-m", f"Reviewed: {on}", "--author=reviewer <reviewer@seat>")
+        return sha()
+    done_ = act31_("answer/msr-004", 'done: "2026-09-28T09:00:00+02:00 · docs/x.md"', "MSR-001: done — docs/x.md")
+    due_ = act31_("answer/msr-005", "due: 2026-09-29T09:00:00+02:00", "MSR-001: due 2026-09-29T09:00:00+02:00")
+    on_done_, on_due_ = verdict31_("answer/msr-004-reviewed", done_), verdict31_("answer/msr-005-reviewed", due_)
+    git(root, "checkout", "-q", "-b", "answer/msr-004-built", done_); (root / "w.txt").write_text("w"); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "MSR-001: a seat's change on the done", "--author=seat <s@s>"); done_built_ = sha()
+    acts31_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(
+        [{"number": n_, "title": "t", "headRefName": "answer/msr-001", "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T0{n_}:00:00Z"} for n_, h_ in ((6, on_done_), (7, on_due_), (8, done_built_))]))}
+    check(f"FM-031, 0.18.6 · RV-679 · an `answer/*` pull request whose signed owner commit changes a `done:` line — his `--done`, cut on `answer/<id>` as `--answer` is — with a Reviewer's verdict on top, its review file only, reads `merge: your answer`, naming the `done:` commit — its head read `not an answerer (reviewer@seat)`, the parent's `answer/bug-327` (saw {acts31_.get(6)})",
+          acts31_.get(6) == ("merge: your answer", f"signed {done_[:7]}"))
+    check(f"FM-031, 0.18.6 · RV-679 · the same with his `--due`: a signed owner commit that changes a `due:` line, a Reviewer's verdict on top, its review file only, reads `merge: your answer`, naming the `due:` commit (saw {acts31_.get(7)})",
+          acts31_.get(7) == ("merge: your answer", f"signed {due_[:7]}"))
+    check(f"FM-031, 0.18.6 · RV-679 · a seat's change on top of his `done:` commit that is not a review file's is read by its head, as before: `wait: not an answerer (s@s)` (saw {acts31_.get(8)})",
+          acts31_.get(8) == ("wait: not an answerer (s@s)", ""))
+    # FM-031, 0.18.6 · RV-710 (the Owner's cold review of 3bb53ec, P1) and RV-735 · a merge carries every commit below the one
+    # the pull request is read by, and `owner_change` cuts `answer/<id>` from the branch he stands on — a seat's, unmerged,
+    # carries its commits: *merge: your answer* only where each commit of its own below that one is his too (the gate's one
+    # test) or a review file's only; else a wait naming the commit — never the false merge, never the head's reading
+    n31_ = [0]
+    def seat31_(who):
+        n31_[0] += 1; (root / f"seat-{n31_[0]}.txt").write_text("s\n", encoding="utf-8"); git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", f"MSR-001: a seat's change {n31_[0]}", f"--author=seat <{who}>")
+        return sha()
+    def his31_(line=None):
+        n31_[0] += 1
+        if line:
+            tr_.write_text(tr_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\n{line}\n'), encoding="utf-8")
+        else:
+            (root / f"his-{n31_[0]}.txt").write_text("h\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", f"MSR-001: {(line or 'his other change').split(chr(10))[0]}")
+        return sha()
+    def review31_(on):
+        n31_[0] += 1; (root / "docs/work-tracker/evidence/MSR-001").mkdir(parents=True, exist_ok=True)
+        (root / f"docs/work-tracker/evidence/MSR-001/review-{n31_[0]}.md").write_text("# Review\n\nREADY\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "review: the act on MSR-001 — READY", "-m", f"Reviewed: {on}", "--author=reviewer <reviewer@seat>")
+        return sha()
+    answer31_ = f'answer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: t'
+    done31_, due31_ = 'done: "2026-09-28T09:00:00+02:00 · docs/x.md"', "due: 2026-09-29T09:00:00+02:00"
+    b31_ = lambda n_: git(root, "checkout", "-q", "-b", f"answer/msr-0{n_}", t0)
+    b31_(10); s10_ = seat31_("impl@seat"); h10_ = review31_(his31_(answer31_))             # the cold review's shape, `answer:` (RV-735's row 9)
+    b31_(11); s11_ = seat31_("impl@seat"); h11_ = review31_(his31_(done31_))               # … `done:` (the cold review's RV-710, row 8)
+    b31_(12); s12_ = seat31_("impl@seat"); h12_ = review31_(his31_(due31_))                # … `due:`
+    b31_(13); s13_ = seat31_("impl@seat"); h13_ = his31_(done31_)                          # his act is the head
+    b31_(14); u14_ = his31_(due31_); a14_ = his31_(done31_); h14_ = review31_(a14_)       # his `--due`, then his `--done`
+    b31_(15); r15_ = review31_(t0); h15_ = his31_(done31_)                                 # a review file's commit below his act
+    b31_(16); s16_ = seat31_("impl@seat"); his31_(done31_); h16_ = seat31_("s@s")          # a seat's commit above his act
+    b31_(17); his31_(done31_); s17_ = seat31_("impl@seat"); h17_ = his31_()                # the head his, a seat's commit between
+    got31_ = {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(
+        [{"number": n_, "title": "t", "headRefName": f"answer/msr-0{n_}", "headRefOid": h_, "baseRefName": "main", "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T{n_}:00:00Z"}
+         for n_, h_ in ((10, h10_), (11, h11_), (12, h12_), (13, h13_), (14, h14_), (15, h15_), (16, h16_), (17, h17_))]))}
+    stray31_ = lambda c_: ("wait: a seat's commit on your answer branch (" + c_[:7] + ", impl@seat)", "")
+    check(f"FM-031, 0.18.6 · RV-710, RV-735 · an `answer/*` pull request with a seat's commit BELOW his signed `answer:` and a Reviewer's verdict on top reads `wait: a seat's commit on your answer branch (<sha>, <author>)`, naming the seat's commit — never `merge: your answer`, which would carry it (saw {got31_.get(10)})",
+          got31_.get(10) == stray31_(s10_))
+    check(f"FM-031, 0.18.6 · RV-710 · the cold review's shape: a seat's commit, his signed `done:`, a Reviewer's verdict — the same wait, naming the seat's commit (saw {got31_.get(11)})",
+          got31_.get(11) == stray31_(s11_))
+    check(f"FM-031, 0.18.6 · RV-710 · the same with his signed `due:` — the same wait, naming the seat's commit (saw {got31_.get(12)})",
+          got31_.get(12) == stray31_(s12_))
+    check(f"FM-031, 0.18.6 · RV-710 · his signed act as the head, a seat's commit below it: the same wait — the head's own reading would say *merge* (saw {got31_.get(13)}); "
+          f"and a seat's commit between his `done:` and his signed head, the head read: the same wait (saw {got31_.get(17)})",
+          got31_.get(13) == stray31_(s13_) and got31_.get(17) == stray31_(s17_))
+    check(f"FM-031, 0.18.6 · RV-710 · his two own signed acts stacked — a `--due`, then a `--done` — under a Reviewer's verdict read `merge: your answer`, naming the `done:` commit; a review file's commit below his act reads the same (saw {got31_.get(14)}, {got31_.get(15)})",
+          got31_.get(14) == ("merge: your answer", f"signed {a14_[:7]}") and got31_.get(15) == ("merge: your answer", f"signed {h15_[:7]}"))
+    check(f"FM-031, 0.18.6 · RV-710 · a seat's commit ABOVE his act is read by the head, as before — `wait: not an answerer (s@s)`, the head's author — even with a seat's commit below it too (saw {got31_.get(16)})",
+          got31_.get(16) == ("wait: not an answerer (s@s)", ""))
+    # RV-711 (the local pass on d3f0463) · a reader that cannot see below his act never says merge: a single-branch clone
+    # that never fetched the pull request's base — his signed act as the head, cut from a seat's branch — waits, saying so
+    q31_ = lambda n_, h_, b_="main": {p_["number"]: (a_, d_) for p_, _k, a_, d_ in _no_git_env(lambda: fm.queue_actions(
+        [{"number": n_, "title": "t", "headRefName": f"answer/msr-0{n_}", "headRefOid": h_, "baseRefName": b_, "mergeable": "UNKNOWN",
+          "mergeStateStatus": "UNKNOWN", "createdAt": f"2026-09-24T{n_}:00:00Z"}]))}.get(n_)
+    git(root, "checkout", "-q", "-b", "fm/seat-base", t0); sb18_ = seat31_("impl@seat")
+    git(root, "checkout", "-q", "-b", "answer/msr-018"); h18_ = his31_(done31_)
+    o31_, sb_ = base / "o31.git", base / "single"
+    subprocess.run(["git", "init", "-q", "--bare", str(o31_)], check=True, env=_ENV)
+    git(root, "push", "-q", str(o31_), f"{t0}:refs/heads/main", "fm/seat-base", "answer/msr-018")
+    subprocess.run(["git", "clone", "-q", "--single-branch", "-b", "main", str(o31_), str(sb_)], check=True, capture_output=True, env=_ENV)
+    git(sb_, "fetch", "-q", "origin", "answer/msr-018")          # the pull request's head, fetched by itself; its base never
+    git(sb_, "config", "gpg.ssh.allowedSignersFile", str(base / "signers")); fm.configure(sb_)
+    blind18_ = q31_(18, h18_, "fm/seat-base")
+    git(sb_, "fetch", "-q", "origin", "fm/seat-base:refs/remotes/origin/fm/seat-base"); seen18_ = q31_(18, h18_, "fm/seat-base")
+    fm.configure(root)
+    check(f"FM-031, 0.18.6 · RV-711 · a single-branch clone that never fetched the pull request's base cannot see the commits below his act: it waits — `wait: the base origin/<base> is not fetched here — fetch it; …` — never `merge: your answer` over the seat's commit it cannot see; with the base fetched, the stacked pull request reads merge (saw {blind18_}, {seen18_})",
+          blind18_ == (f"wait: the base origin/fm/seat-base is not fetched here — fetch it; the commits below {h18_[:7]} are unread", "")
+          and seen18_ == ("merge: your answer", f"signed {h18_[:7]}"))
+    # RV-712 · the tool's own refusal record — his, unsigned by design, ONE line under `## Acts` (`record_refusal`) — is admitted
+    # below his act as a review file's commit is; any other commit in his name that does not verify waits, and is never *a seat's*
+    def record31_(also=None):
+        text_ = tr_.read_text(encoding="utf-8"); body_ = fm.parse_frontmatter(text_)[1]
+        text_ = text_[: len(text_) - len(body_)] + fm.append_record(body_, fm.ACTS_HEAD_RE, fm.HEAD["acts"],
+                                                                     "**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate")
+        tr_.write_text(also(text_) if also else text_, encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate")
+        return sha()
+    b31_(19); r19_ = record31_(); d19_ = his31_(due31_); h19_ = review31_(d19_)
+    b31_(20); u20_ = his31_(); git(root, "commit", "-q", "--amend", "--no-edit", "--no-gpg-sign"); u20_ = sha(); h20_ = review31_(his31_(done31_))
+    b31_(21); f21_ = record31_(lambda x_: x_.replace("next: owner\n", "next: build\n", 1)); h21_ = review31_(his31_(done31_))
+    # RV-715 · the Owner's cold re-check of af5a9e2 (P1): the same one refusal-shaped line, unsigned in his name, typed into the
+    # body ABOVE `## Acts` — the current truth — passed the diff alone; `refusal_record` now proves the place from the tracker's text
+    def forged31_():
+        text_ = tr_.read_text(encoding="utf-8"); end_ = text_.index("\n---\n", 4) + len("\n---\n")
+        tr_.write_text(text_[:end_] + "**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n" + text_[end_:], encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate")
+        return sha()
+    b31_(25); f25_ = forged31_(); h25_ = review31_(his31_(done31_))
+    # RV-716 · the Owner's cold re-check of 729ddae (P1): the section under `## Acts` ends at the next heading — the tool's own record
+    # placed before a following `## Asks` is admitted; a refusal-shaped line appended inside that later `## Asks` waits
+    def sections31_():
+        text_ = tr_.read_text(encoding="utf-8")
+        tr_.write_text(text_.rstrip("\n") + "\n\n## Acts\n\n**2026-09-27 08:00** · --due MSR-001 2026-09-28T09:00:00+02:00 refused — the commit was refused: gate\n\n"
+                       "## Asks\n\n**2026-09-27** · Ship it? · answered — accepted · t\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", "MSR-001: the acts and the asks sections"); return sha()
+    def tail31_():
+        tr_.write_text(tr_.read_text(encoding="utf-8").rstrip("\n") + "\n\n**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate"); return sha()
+    b31_(26); sections31_(); r26_ = record31_(); d26_ = his31_(done31_); h26_ = review31_(d26_)
+    b31_(27); sections31_(); f27_ = tail31_(); h27_ = review31_(his31_(done31_))
+    # the same-session read of the RV-716 fix (reviewer-53): a NEW `## Acts` section sits only where `append_record` puts one — above the
+    # ship log, else at the end; one made before another heading (here `## Done when`) is not the tool's and waits; above a ship log it merges
+    def midacts31_():
+        text_ = tr_.read_text(encoding="utf-8")
+        tr_.write_text(text_.replace("## Done when", "## Acts\n\n**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n\n## Done when", 1), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate"); return sha()
+    def shiplog31_():
+        tr_.write_text(tr_.read_text(encoding="utf-8").rstrip("\n") + f"\n\n## {fm.HEAD['log']}\n\n| Date | Event |\n|---|---|\n| 2026-09-27 | filed |\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", "MSR-001: the ship log"); return sha()
+    b31_(28); f28_ = midacts31_(); h28_ = review31_(his31_(done31_))
+    b31_(29); shiplog31_(); r29_ = record31_(); d29_ = his31_(done31_); h29_ = review31_(d29_)
+    # the cold session's coverage list on 2185250 (READY at 0842ce8): the RV-715 line under `## What is true now` itself, under his signed `due:`;
+    # and `refusal_record` asserted directly on every shape, not only through the queue's reading
+    def truth31_():
+        tr_.write_text(tr_.read_text(encoding="utf-8").replace("## What is true now\n\n", "## What is true now\n\n**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n\n", 1), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate"); return sha()
+    b31_(30); f30_ = truth31_(); h30_ = review31_(his31_(due31_))
+    fm.configure(root)
+    shapes31_ = {n_: _no_git_env(lambda s_=s_: fm.refusal_record(s_)) for n_, s_ in ((19, r19_), (25, f25_), (26, r26_), (27, f27_), (28, f28_), (29, r29_), (30, f30_))}
+    rec31_ = {n_: q31_(n_, h_) for n_, h_ in ((19, h19_), (20, h20_), (21, h21_), (25, h25_), (26, h26_), (27, h27_), (28, h28_), (29, h29_), (30, h30_))}
+    check(f"FM-031, 0.18.6 · RV-712, RV-715, RV-716 · the tool's own refusal record under his signed act — his, unsigned, one line under `## Acts`, the tracker otherwise byte-identical — reads `merge: your answer`; another unsigned commit in his name waits as `an unverified commit in your name`, never *a seat's*; the same refusal-shaped line typed ABOVE `## Acts` (RV-715, the current truth) or appended inside a later `## Asks` (RV-716) waits too, while the tool's own record before that `## Asks` reads merge; a new `## Acts` made before another heading waits, one made above the ship log (where `append_record` makes it) merges; the RV-715 line under `## What is true now` itself waits under his signed `due:`; `refusal_record` says True for the tool's three placements and False for the four forged ones (saw {shapes31_}); a refusal record that also changes a front-matter key is no record (saw {rec31_})",
+          rec31_ == {19: ("merge: your answer", f"signed {d19_[:7]}"), 20: (f"wait: an unverified commit in your name on your answer branch ({u20_[:7]})", ""),
+                     21: (f"wait: an unverified commit in your name on your answer branch ({f21_[:7]})", ""),
+                     25: (f"wait: an unverified commit in your name on your answer branch ({f25_[:7]})", ""),
+                     26: ("merge: your answer", f"signed {d26_[:7]}"), 27: (f"wait: an unverified commit in your name on your answer branch ({f27_[:7]})", ""),
+                     28: (f"wait: an unverified commit in your name on your answer branch ({f28_[:7]})", ""), 29: ("merge: your answer", f"signed {d29_[:7]}"),
+                     30: (f"wait: an unverified commit in your name on your answer branch ({f30_[:7]})", "")}
+          and shapes31_ == {19: True, 25: False, 26: True, 27: False, 28: False, 29: True, 30: False})
+    # RV-713 · the way out the wait names: the seat's commit lands on the default branch by its own pull request — his act is
+    # kept, nothing of his re-given (FM-030 C) — and the answer branch then reads merge; the act commands' refusal says the same
+    git(root, "checkout", "-q", "-b", "fm/seat-work", t0); sw22_ = seat31_("impl@seat")
+    git(root, "checkout", "-q", "-b", "answer/msr-022"); a22_ = his31_(done31_); h22_ = review31_(a22_)
+    held22_ = q31_(22, h22_)
+    gitf_ = lambda *a: subprocess.run(["git", *a], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    adv22_ = _no_git_env(lambda: fm.unmerged_advice(gitf_, "answer/msr-022", "origin/main", "docs/work-tracker/MSR-001-x.md", "MSR-001",
+                                                    {"flag": "--answer", "again": "shoalmark --answer MSR-001 accept"}, "t", "t@t"))
+    git(root, "checkout", "-q", "--detach", t0); git(root, "merge", "-q", "--no-ff", "fm/seat-work", "-m", "Merge pull request #22 from fm/seat-work")
+    git(root, "update-ref", "refs/remotes/origin/main", sha()); landed22_ = q31_(22, h22_); git(root, "update-ref", "refs/remotes/origin/main", t0)
+    check(f"FM-031, 0.18.6 · RV-713 · the wait's way out works: once the seat's commit lands on main by its own pull request, the same answer branch — his signed `done:`, the verdict — reads `merge: your answer`, his act untouched; the refusal of his next act on the tracker names that way, never *merge it first* (saw {held22_}, {landed22_}, {adv22_!r})",
+          held22_ == (f"wait: a seat's commit on your answer branch ({sw22_[:7]}, impl@seat)", "") and landed22_ == ("merge: your answer", f"signed {a22_[:7]}")
+          and f"`--queue` holds its merge on a seat's commit on your answer branch ({sw22_[:7]}, impl@seat) — that commit lands on `origin/main` first, by its own pull request, never through yours" in adv22_
+          and "merge it first" not in adv22_)
     git(root, "checkout", "-q", "answer/msr-001"); ok_ = run(root, "--check")[0]
     git(root, "config", "gpg.ssh.allowedSignersFile", ""); fm.configure(root)          # empty here, whatever the machine's own config says
     untrusted_ = read_(); code_, _, err_ = run(root, "--check")

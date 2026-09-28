@@ -115,6 +115,33 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   question, then *revoked, on its way — <why>*, and `--revoke`'s steps and refusals say *revoking* and `--revoke`, on an
   answer too (RV-734). Signed where his seat is `signed`; the seats that hold `answer` may run it. `--schema` says it under
   `answer:` and `done:`, and that `done:` stamps the time the act was recorded, not the act's own.
+- **`--queue` reads an answer branch by his newest `answer:`, `done:` or `due:` commit** (FM-031, RV-679; the parent
+  project's `answer/bug-327`: a Reviewer's verdict at 20:45:02 on 2026-09-27, on his `--done` of 20:21:18, turned its
+  line from *merge: your answer* into *wait: not an answerer (reviewer@seat)*). `--done` and `--due` are cut on
+  `answer/<id>` as `--answer` is, and change a `done:` or `due:` line, not `answer:` — so 0.18.4's reading found no
+  `answer:` change under the verdict and read the head. An `answer/*` pull request is now read by the newest commit of
+  its own that changed an `answer:`, `done:` or `due:` line, where every commit past it touches review files only; it
+  names that commit, `signed <sha>`; anything else past it, and the head is read, as before. *Nothing to do on upgrade.*
+- **`--queue` says *merge: your answer* only where every commit below his act is his too** (FM-031, RV-710 — the
+  Owner's cold review of `3bb53ec`, P1, `d79ffa7` at 14:59:48 on 2026-09-28 — and RV-735, the local pass's; RV-711 to
+  RV-714, the local pass on `d3f0463`, `31eed9f`). `--answer`, `--done` and `--due` cut `answer/<id>` from the branch
+  he stands on, so an act given on a seat's unmerged branch carries its commits, and the queue read the pull request by
+  his act alone: with the widening above, a seat's commit, his signed `done:` or `due:`, and a Reviewer's verdict on top
+  read *merge: your answer*, where 0.18.5 read the head and waited — and below his `answer:` it has read so since
+  0.18.4. The pull request is now read as his only where each commit of its own below the one it is read by is his as
+  well — the gate's one test: its author may answer and it verifies as him —, a review file's only, or the tool's own
+  refusal record (one line under `## Acts`, unsigned by design, read by its exact shape AND by the tracker's text at the parent and the commit — the front matter and every other section byte-identical, the one line under `## Acts`: RV-715, the Owner's cold re-check of `af5a9e2`, P1 — a refusal-shaped line typed into *What is true now* passed the diff alone; RV-716, his cold re-check of `729ddae`: the section is bounded at the next heading, as `append_record` bounds it, and the suffix after it compared too — a line appended inside a later `## Asks` is not under `## Acts`, and the tool's own record placed before that `## Asks` is); else `wait: a seat's commit on
+  your answer branch (<sha>, <author>)`, or for a commit in his name that does not verify `wait: an unverified commit in
+  your name on your answer branch (<sha>)`, the first such below his, never the head's reading. A clone that has not
+  fetched the pull request's base — a single-branch clone — cannot see below his act and says so, `wait: the base
+  <base> is not fetched here — …`, never *merge*. His own acts stacked (a `--due`, then a `--done`) and a review file's
+  commit below his act still read *merge*; a seat's commit above his act is read by the head, as before. The board,
+  `--owner` and `--standup` read an act branch by the same reader: where the queue waits on it, the line says *your
+  merge waits: <the wait>* in place of *your merge is next* (new label `way.held`, German in
+  `examples/de/labels.yaml`); `--answer`, `--done` and `--due` refused on such a branch say how it clears. *Nothing to
+  do on upgrade:* an `answer/*` pull request that now waits on a seat's commit clears when that commit lands on the
+  default branch by its own pull request — then it reads *merge: your answer*, his act as he signed it; nothing of his
+  is deleted.
 
 ## 0.18.5 — 2026-09-27
 

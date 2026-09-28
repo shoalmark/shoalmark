@@ -60,7 +60,8 @@ Ihrem Merge. Bis dahin liest die Tafel git, und die Seite, auf die Sie zurückko
 *wartet auf Sie*, die Handlung verlässt *Ihre Handlungen*, und beide stehen unter **unterwegs** — Ihre Zusage oder Ihre
 Antwort zuerst, dann was es ist: *beantwortet, unterwegs*, *erledigt, unterwegs — <wo das Ergebnis liegt>*,
 *verschoben, unterwegs — fällig <Zeit>*, *zurückgenommen, unterwegs — <warum>* oder *Erledigung zurückgenommen,
-unterwegs*; der Zweig, der Commit und seine Zeit, ob er signiert ist, und *Ihr Merge ist als Nächstes dran*. Eine
+unterwegs*; der Zweig, der Commit und seine Zeit, ob er signiert ist, und *Ihr Merge ist als Nächstes dran* — oder
+*Ihr Merge wartet: …*, wo die Queue auf den Zweig wartet, meist auf den Commit eines Sitzes unter Ihrer Handlung. Eine
 Antwort oder eine erledigte Handlung trägt einen Knopf, **zurücknehmen**, wo annehmen und ablehnen oder erledigt und
 verschieben standen: er fragt, warum, und gibt Ihnen `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<warum>"` —
 einen neuen signierten Commit darauf, auf demselben Zweig, nie ein Überschreiben. Eine Verschiebung trägt keinen; um sie

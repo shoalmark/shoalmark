@@ -108,6 +108,7 @@ act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — un
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
 way.title: unterwegs
 way.merge: Ihr Merge ist als Nächstes dran
+way.held: "Ihr Merge wartet: {0}"
 way.done: erledigt, unterwegs
 way.answer: beantwortet, unterwegs
 way.revoked: zurückgenommen, unterwegs
