@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.18.6
+## 0.18.6 — 2026-09-28
 
 - **An act that is a promise reads as what he promised, the question below it** (FM-030; the Owner's word in chat of
   2026-09-27 13:38:30, with a screenshot taken 13:35:40 on pressing *done* for FM-024, spelling normalised: *for a
