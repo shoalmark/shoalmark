@@ -346,7 +346,9 @@ def front_matter_schema():
                                                                         "computes the answer's relation to `ask-proposal:` and `ask-options:` and prints it beside it: accepted the proposal · chose option N · "
                                                                         "accepted with a change · rejected · revoked · relation not computable, where there is no proposal to compare it with. "
                                                                         "Never overwritten in place: `--answer <id> revoke \"<reason>\"` makes it `revoked - <reason>`, and `--answer <id> accept|reject \"<option>\" --supersede` replaces it — "
-                                                                        "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
+                                                                        "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*. "
+                                                                        "Until his merge, an answer on an `answer/<id>` not merged into the default branch reads *answered, on its way* on the board, in "
+                                                                        "`--owner` and in `--standup`, and the ask leaves his queue (FM-030); `--revoke <id> \"<why>\"` takes it back there, on top of it"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
         "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; `--answer`, from an accepted "
@@ -361,14 +363,17 @@ def front_matter_schema():
                             "(`09:00:00.000Z`), or two times are not read — nothing rather than a wrong hour — and the act shows *no date yet*. "
                             "A `due:` already set is left, and `--answer` says so"),
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
-        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
+        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`; his `--revoke` removes it",
                             "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
                             "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next. The person gives the path; "
                             "the record gathers the facts: for a file in the repository, the commit that added it and its date, and for a review — a file "
                             "that states a verdict — its word, the `Reviewed:` sha and the `Session:` of its last pass: the last line that states a verdict, "
                             "that pass's own lines, else the trailers of the newest commit that touched the file, named as *last pass in* where it is not "
                             "the one that added it; a line anchor after the path (`file.md:12`, `#L1-L9`) is kept as given and not read as its name; "
-                            "a word that names no file there is recorded as given, *not in the repository* beside it; nothing is guessed"),
+                            "a word that names no file there is recorded as given, *not in the repository* beside it; nothing is guessed. The time is when the act "
+                            "was recorded, not the act's own, which is in the evidence its path names. Until his merge, a `done:` on an `answer/<id>` not merged "
+                            "reads *done, on its way* and the act leaves his list (FM-030); `--revoke <id> \"<why>\"` takes it back — `done:` leaves, the "
+                            "revocation is recorded under `## Acts`, the act is owed again — on that branch, on top of it"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),

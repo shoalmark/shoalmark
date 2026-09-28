@@ -24,13 +24,14 @@ hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner
 
 **Filed 2026-09-24; built in part, and more on a branch not merged.** 0.18.3 and 0.18.4 shipped its first lines — an
 answer writes the next move; the acts owed to the Owner on his board with their time, *done* and *reschedule*, an invite
-and a notice per act — and `fm/030-the-done-dialog-shows-the-question` builds four lines more for 0.18.6, not merged
-(the next paragraph; the ship log names each commit). Found on 0.17.7 in a consumer repository at its morning sitting.
-The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on an earlier chain of
-this branch, which was replaced before its merge to keep unredacted detail out of the record; it found R1–R16, and this
-text closes R1–R10.
+and a notice per act — `fm/030-the-done-dialog-shows-the-question` built four lines more for 0.18.6, merged as PR 103
+(`bbbfc0b`, 2026-09-28 01:34), not released, and `fm/030-the-board-reads-his-unmerged-acts` builds the board that reads
+git, not merged (the next two paragraphs; the ship log names each commit). Found on 0.17.7 in a consumer repository at
+its morning sitting. The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `main` at `cdd6e3f`). A first review ran on
+an earlier chain of this branch, which was replaced before its merge to keep unredacted detail out of the record; it
+found R1–R16, and this text closes R1–R10.
 
-**Built for 0.18.6 on `fm/030-the-done-dialog-shows-the-question`, not merged, not released** — on the two raise lines
+**Built for 0.18.6 on `fm/030-the-done-dialog-shows-the-question`, merged as PR 103, not released** — on the two raise lines
 of 2026-09-27 (the Owner's word at 13:38:30, the E0 counter's row 20): an act that is a promise reads as what he
 promised, the question below it, on the board, in its *done* and *reschedule* dialogs, `--owner`, `--standup`,
 `--notify` and the invite (`a752c87`); an accepted action answer that names a full date with its hour seeds `due:` in
@@ -39,8 +40,24 @@ line under `## Acts` on `answer/<id>`, pushed (`2935cf7`); and, on his word of 1
 record gathers the facts — `--done`, and `--due` on an act that was done, write beside a path in the repository the
 commit that added it and its date, and for a review the verdict of its last pass, that pass's `Reviewed:` sha and
 `Session:`; a word that names no file there is recorded as given, *not in the repository* beside it (item 5, its sha in
-the ship log). The Owner opens the pull request; code tier, the full loop is due. Not proven here: the notices on Linux
-and Windows, and how a notifier shows a two-line body.
+the ship log). Not proven here: the notices on Linux and Windows, and how a notifier shows a two-line body.
+
+**Built for 0.18.6 on `fm/030-the-board-reads-his-unmerged-acts`, not merged, not released** — on his signed answer of
+2026-09-27 14:56:15 (`920970b7`), option 1 of the ask of 14:14:18; the paragraph *The ask of 2026-09-27* below is the
+spec. The board, `--owner` and `--standup` read every `origin/answer/<id>` the clone holds that is not merged into the
+default branch, and where its tip carries a `done:` or an `answer:` the default branch lacks, the ask leaves *waiting for
+you*, the act leaves *your acts*, and both join *on their way: n* — his promise or his answer first, *done, on its way* or
+*answered, on its way*, the branch, the commit that wrote it (read from the branch's commits: a Reviewer's verdict on top
+is no act — RV-679 itself stays FM-031's), its time, whether it verifies (`answer_reading`, called, `--queue` unchanged),
+*your merge is next*. Right after the act the page shows it: rebuilt by the checkout hook, or — where the board's file did
+not change between the push and the switch back — by the command itself. On each such row one button, **revoke**:
+`--revoke <id> "<why>"` takes back an act done (`done:` leaves, the revocation under `## Acts`, the act owed again) or an
+answer, as a new signed commit on that same `answer/<id>` where it is not merged. The ship log names each commit; code
+tier, the full loop is due. Not proven here: a pull request is not looked up — every row says *your merge is next*.
+`done:` stamps the time the act was recorded — his BUG-327 `done:` reads 20:21:07 where the sitting ran ~16:25–17:41 per
+his evidence; the act's own time is in the evidence he points to, and the tool does not guess it — a second field would
+need his word (RV-680, P3 forward; the Reviewer's pass
+`docs/work-tracker/evidence/BUG-327/review-answer-bug-327-done-2026-09-27.md` on PortDive main).
 
 **What happened.** `--standup` printed *0 item(s) — nothing needs the Owner today* and `--owner` printed *NOTHING NEEDS
 THE OWNER*. Two acts only the person could do were owed that day:
@@ -149,3 +166,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-27 | Item 4 on `fm/030-the-done-dialog-shows-the-question`, the build in the record (`a7d0f52`): CHANGELOG `## Unreleased — 0.18.6` with one bullet per item built, the row above naming `a752c87`, `5f558f7` and `2935cf7`, and the *What is true now* clause; the first raise line's time corrected to 13:38:30, his message's, and the same time in four comments of `shoalmark.py`, the suite's block heading and the README's act row. This row added after the Reviewer's pass on `9c96f5b` found none naming `a7d0f52` (R5). |
 | 2026-09-27 | Item 5 built on `fm/030-the-done-dialog-shows-the-question` for 0.18.6, not merged (`a7f26ae`) — on the Owner's word of 13:42:40, *the person gives the path; the record gathers the facts*: `--done <id> "<where>"`, and `--due` on an act that was done, write beside a path in the repository the commit that added it and its date, and for a review — a file that states a verdict — its word, the `Reviewed:` sha and the `Session:`, from its own lines, else the adding commit's trailers; a word that names no file there is recorded as given, *not in the repository* beside it, never refused; nothing outside the repository is read, nothing guessed. The *done* dialog stays one field; `--schema` says it under `done:`. The raise line of 13:42:40 and a CHANGELOG bullet in the same commit. |
 | 2026-09-27 | The Reviewer's pass on `9c96f5b` (reviewer-40, `d18c9ba`): NOT READY — R1 a P2, R2–R5 P3, all accepted by the Principal. R1–R4 fixed in `2f84d47`: `--done` records a review's last pass — the last stated verdict, that pass's `Reviewed:` and `Session:`, else the newest commit's trailers, and *last pass in* where a later commit wrote it (the last stated verdict is the newest verdict commit's in 77 of 77 review files, the first in 55); only the time shapes `--schema` states seed `due:`; a path's line anchor is kept as given; the question under a promise wraps in its own column. R5 in this commit: the row for `a7d0f52` and the lead. The fix loop comes back to a Reviewer. |
+| 2026-09-28 | Built on `fm/030-the-board-reads-his-unmerged-acts` for 0.18.6, not merged — on the Owner's signed answer of 2026-09-27 14:56:15 (`920970b7`), option 1 of the ask of 14:14:18, and his words of 13:57:50 and 14:09:46: the reader of every `origin/answer/*` tip not merged into the default branch, calling `answer_reading` (`867f649`); the board, `--owner` and `--standup` show his act or answer *on its way* — *on their way: n*, the asks and acts it names leave his two lists (`1205790`); right after the act the page shows it — rebuilt by the checkout hook, or by the command itself where the board's file did not change (`a3f2b81`); `--revoke <id> "<why>"` for an act as for an answer, on its branch, the board's one button on what is on its way (`320771a`); `--schema`, the README's row, CHANGELOG `## Unreleased — 0.18.6`, the *What is true now* clause with RV-680's line, and this row in this commit. The branch took `main` at `24c26f2` (FM-039, the Chrome budget beyond a control) as a fast-forward before its first commit. |
