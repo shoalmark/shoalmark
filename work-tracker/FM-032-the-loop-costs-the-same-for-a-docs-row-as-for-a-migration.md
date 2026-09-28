@@ -3,17 +3,14 @@ id: FM-032
 status: In Progress
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
-next: owner
 triaged: 2026-09-24
 tier: P2
-ask: "How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file?"
-ask-kind: action
-ask-since: 2026-09-24
-ask-options: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | one Reviewer docs pass, always, as any docs change | path 3 stays as written: the tool refuses the merge without a review file"
-ask-proposal: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
-answer: "accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
-answered: 2026-09-24
-answered-by: holgo99
+next: owner
+ask: "After a READY WITH FINDINGS verdict, how does a fix of its findings reach main without a second Reviewer pass?"
+ask-kind: ruling
+ask-since: 2026-09-28
+ask-options: "the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts | a docs verdict with only sub-P1 findings and exact fixes reads READY WITH FINDINGS; no fix commit before the merge | as today: every commit after a verdict is a new head; the same seat re-checks the lines the finding names"
+ask-proposal: "the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts"
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
@@ -26,7 +23,27 @@ this branch, the same day: S2, the registry as a report from the commit trailers
 answers); S4, the filing freeze at 8 with `--tags` on `--new` (`43e6815`, `66f4b7b`); S1 the review tier and S3 the miss
 threshold written into AGENTS.md as rules (`fbc2697`). The tier and the miss rule apply from the ruling; the first
 pull request under the tier was the parent project's ledger, one pass, P3 fixed forward. The ask is cleared below as
-acted on; the Owner tags the release.
+acted on; the Owner tags the release. The path-3 ask of the same day (kind action, answered 21:32:35, signed `97fa87a`)
+was cleared on 2026-09-28 by `--clear-ask FM-032 build`: its act is done — the Owner's own hands wrote the exception into
+TRIAGE.md's path 3 in `fe36cc0` (2026-09-25 11:14:26, signed G); the record below keeps the answer's lines, the act's result is that commit.
+
+**2026-09-28 — the ask of this pass (PortDive ledger row 54 first, 06:45:49):** the Owner's question of 02:07:38 (normalised): *"if we have these READY WITH FINDINGS, wouldn't it be good to forward-fix those with a commit before the merge that does not require another Reviewer run? The findings shall be verified first, graded, and then, based on confidence score with threshold and rationale, decided if this issue is fixed or left open as no-fix?"* (his two sentences after *Question:*; spelling and punctuation normalised, no word dropped or added) — asked after FM-040's filing took four commits and two re-checks for P3s (37 min, first verdict 02:00:26 to last re-check 02:37:10) and, later that morning, two ledger rows three passes (17 min 33 s by the same measure, 06:07:40 to 06:25:13). The Auditor's checks and design, relayed by the Owner 02:33:25, word for word (sha256 of the filed text `06ea1596923a9358b342888b05a9c9de7e2202b6247632a4bbeba61dfbbb5749`; its first character is missing in his paste and kept so):
+
+> he Owner's question on READY WITH FINDINGS, with the Auditor's checks (2026-09-28, about 02:30 CEST):
+> 1. Confirmed: a commit after a verdict that touches more than review files reads `wait: no verdict` (shoalmark's queue_actions / addenda_only; PortDive's review_gate at f101aeaa).
+> 2. Ledger 28 is not the example: its passes were NOT READY, NOT READY, READY, on P2s (RV-667, RV-668, RV-676; grade confidence 0.6–0.7). The proposal as asked saves none of them.
+> 3. The design for the ask, as slice S5 on FM-032 (the freeze holds at 20 open):
+>    - the Reviewer writes each fix as exact old → new text;
+>    - the author records, per finding, fixed / forward / no-fix / rejected, with confidence and a reason, in a review-folder file;
+>    - after READY WITH FINDINGS, the gate covers a commit only when its diff is exactly the fixed findings' texts, in docs files only, and it names the verdict. "Files the verdict names, small diff" is too loose: RV-673's fix said only "a line on F84", and the new line carried a wrong time;
+>    - below P2 the author decides; a no-fix or rejection at P2 or above goes to the Reviewer (a scoped check) or to the Owner;
+>    - the threshold is his (counsel: 0.9).
+> 4. A second option for him: a docs verdict whose findings are all below P1, with exact fixes, is READY WITH FINDINGS, not NOT READY.
+> 5. The decision file can start now as a convention. The gate change is critical (shoalmark, and PortDive's scripts/review_gate.py): the full loop and a cold Reviewer. The Auditor seals a plan before the build.
+> 6. The filing freeze: no lift needed for this. If he asks, an ask on FM-032 about freeze_at (keep 8 / raise / off / parked not counted).
+> 7. BUG-327, holgo99/portdive-monorepo, branch bug/327-the-act-done-the-exchange-cleared @ b4645c0d: review_gate passes (2 commits past 3de57f54, review files only).
+
+The Principal's counsel, disclosed as such: the first option — S5 as the Auditor designed it, the threshold his (its counsel 0.9); the decision file may start as a record without a tool change; the gate change (shoalmark's `queue_actions`/`addenda_only` and PortDive's `scripts/review_gate.py`) is critical under path line 3 — the full loop and a cold Reviewer, the Auditor sealing its verification plan before the build. Nothing is acted on before his answer.
 
 ## Why
 
@@ -121,6 +138,11 @@ Each takes effect on the Owner's answer, never on a default.
 
 **2026-09-24** · Rule the deregulation: one Reviewer pass for docs and ledgers, findings below P2 fixed forward, no re-pass; the registry a report generated from commit trailers, not a gate; a miss rowed only if it cost you a command or a decision; a filing freeze except product defects until the open count falls?
 **answered** — accepted - all four now · holgo99
+
+**2026-09-24** · How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file?
+**answered** — accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 · holgo99
+**relation** — accepted the proposal
+**signed** — 97fa87a · G
 
 ## Ship log
 
