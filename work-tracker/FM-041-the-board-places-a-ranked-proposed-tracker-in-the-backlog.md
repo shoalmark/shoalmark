@@ -22,7 +22,8 @@ consumer's ranked Proposed tracker the same way.
 **The design — the Auditor's proposal as the Principal reads it, for the pass that judges this filing:** an open tracker with a rank sits in *progress*,
 ordered by rank then tier, whatever its status; the backlog holds the open unranked; the *triage* rule (a raise on a signed rule, or a judgment owed and
 missing) keeps its precedence; *done* is unchanged. `board()` is the one definition INDEX.md and the dashboard share, so one change places both. Tier:
-the board's placement and INDEX.md — code, not critical (no queue reader, no gate touched); one Reviewer pass, as the Auditor counsels.
+the board's placement and INDEX.md — code, not critical (no queue reader, no gate touched): AGENTS.md's code loop — NOT READY on any P2 until READY,
+same-session Reviewers; the Auditor counselled one pass, and a clean first pass is where the loop ends.
 
 ## Why
 

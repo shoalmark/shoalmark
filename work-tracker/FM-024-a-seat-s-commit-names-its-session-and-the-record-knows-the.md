@@ -293,7 +293,6 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 
 | Date | Event |
 |---|---|
-| 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |
@@ -306,3 +305,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-24 | Asked, kind action: who verifies 0.18.3 — slice 2 (a same-session verdict refused) is unbuilt and 55 of this week's 57 verdicts are one session's own sub-agents (the Auditor seat's AU-17); the parent project's ledger row came first. |
 | 2026-09-24 | Correcting the row above (the Reviewer's R6): the 55 of 57 are *same session* as `--check` counts them — each verdict by its own branch's session, 54 of them this session's sub-agents and one another's — not one session's. |
 | 2026-09-24 | The row of 20:24 above was edited in place before the branch merged (the pass Reviewer's R10); from here, a correction is an appended row. |
+| 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
