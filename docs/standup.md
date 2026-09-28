@@ -11,7 +11,8 @@ python3 tools/shoalmark/shoalmark.py --standup
 It prints the agenda of one sitting, by kind — **rulings** first (answer; a provisional answer is an answer), then what
 only **your hands** can do, in the order that frees the most work, then what **evidence could settle** without you,
 then **buttons**. Each item is one question, with how long it has waited and what it holds up. After the questions come
-**your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet.
+**your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet — and last
+what you answered or did that is **on its way** to your merge.
 
 ## The invite
 
@@ -47,6 +48,18 @@ Each carries two buttons: **done** asks where the result is — the path is enou
 says of the file, who added it and when, and for a review its verdict — and gives you
 `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`; **reschedule** asks for the new time and
 gives you `--due AP-007 <time>`. Both are signed and pushed as an answer is.
+
+## On their way — before your merge
+
+What you answer or do is a signed commit on `answer/<id>`, pushed; the default branch has it only after your merge. Until
+then the board reads git, so the page you come back to shows it at once: the question leaves *waiting for you*, the act
+leaves *your acts*, and each is listed under **on their way** — your promise or your answer first, then what it is:
+*answered, on its way*, *done, on its way — <where the result is>*, *rescheduled, on its way — due <time>*, *revoked, on
+its way — <why>* or *done revoked, on its way*; the branch, the commit and its time, whether it is signed, and *your merge
+is next*. An answer or an act done carries one button, **revoke**, where accept and reject or done and reschedule were:
+it asks why and gives you `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<why>"` — a new signed commit on top of
+it, on the same branch, never an overwrite. A reschedule carries none; to move it again, run `--due` on its branch. After
+your merge each reads from the default branch again; another machine shows the same rows after a fetch.
 
 Two reminders, if you want them. `--invite AP-007` writes the act as a calendar file — its time, its window, a reminder
 30 minutes before — beside the work item's evidence; import it. `--notify` posts a system notification for every act

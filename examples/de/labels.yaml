@@ -105,7 +105,22 @@ act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
+act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
+way.title: unterwegs
+way.merge: Ihr Merge ist als Nächstes dran
+way.done: erledigt, unterwegs
+way.answer: beantwortet, unterwegs
+way.revoked: zurückgenommen, unterwegs
+way.undone: Erledigung zurückgenommen, unterwegs
+way.due: verschoben, unterwegs
+way.signed: signiert
+way.unverified: "hier nicht geprüft: {0}"
+way.revoke: zurücknehmen
+way.revoke.title: Zurücknehmen — warum?
+way.revoke.hint: "warum Sie es zurücknehmen — der Eintrag hält es neben dem fest, was es zurücknimmt"
+way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austausch"
+act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
+act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}

@@ -66,6 +66,55 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   check says why: a Chrome made 5 s slower to start — each run of it, its control included — renders the healthy board
   and passes, where 5 s of wall-clock time is spent before the page begins. A test-only change. *Not shown here:* a
   1-minute load of 20 or more — none tonight. *Nothing to do on upgrade.*
+- **The board reads git: an act or an answer he just gave shows as *done, on its way* before his merge** (FM-030; the
+  Owner's signed answer of 2026-09-27 14:56:15, `920970b7` — *accepted - the board reads git: an unmerged
+  `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way*, option 1 of the ask of
+  14:14:18; his words in chat of 13:57:50, spelling normalised: *when the user presses done in the dashboard's dialog,
+  they return to the board page, but the act is not marked as answered — this is confusing and might look like a bug
+  […] they pushed the button, did the answer and expect the page to display that state right away*; and of 14:09:46:
+  *Option 1 is the only valid one and holds to the single source of truth*). His act or answer is a signed commit on
+  `answer/<id>`, pushed; the board was built from the checkout alone. Now the board, `--owner` and `--standup` read every
+  `origin/answer/<id>` the clone holds that is not merged into `origin`'s default branch — one `git for-each-ref
+  --no-merged`, no fetch, no forge, nothing written to remember it — and where its tip carries a `done:`, an `answer:`
+  or a `due:` the default branch lacks, the ask leaves *waiting for you* and the act leaves *your acts*; both join *on
+  their way: n* — his promise or his answer first, *answered, on its way*, *done, on its way — <where>* or
+  *rescheduled, on its way — due <time>*, the branch, the commit that wrote
+  it (read from the branch's commits: a Reviewer's verdict on top of his answer is no act — RV-679's misreading is not
+  inherited), its time, whether it verifies — `--queue`'s own reading, `answer_reading`, called and unchanged — and
+  *your merge is next*. `--owner`'s first line no longer says *nothing needs the Owner* while his merge is next. A
+  board with nothing on its way has the rows and the rendered board it had: a merged branch, or a tip that carries no
+  such change, adds nothing to them (the page's file carries the new script and labels). Another machine shows the same after a fetch. New labels `way.*` — German in
+  `examples/de/labels.yaml`.
+- **`--due` is his act on its way too — *rescheduled, on its way*** (FM-030; the Reviewer's RV-730 on `ada15c6`, a P2,
+  and the Principal's ruling of 2026-09-28: `--due` is the Owner's act as `--done` and `--answer` are — all three cut
+  `answer/<id>` through one flow — an extension of his answer's words, *`done:` or `answer:`*, in their spirit, for his
+  check). The reschedule button's result was not on his board after the press, and a `--due` on an act that was done —
+  a new act, which drops `done:` — read *done revoked, on its way*, which he never did (a `--due` of his on a consumer
+  repository on 2026-09-28 was that case). Now a `due:` the default branch lacks reads
+  *rescheduled, on its way — due <time>*, his promise or the act's line first, and the act leaves *your acts* until the
+  merge, on the board, in `--owner` and in `--standup`; a `--due` after a done act reads the same, never *done
+  revoked*; *done revoked* reads only where the branch's own commit that dropped `done:` is `--revoke`'s, by its
+  subject. A time a promise seeded shows on its *answered, on its way* row. A reschedule on its way carries no button
+  (`--due` again, on its branch). Label `way.due` — German *verschoben, unterwegs*; the reschedule dialog's second screen
+  says the board reads it so until the merge.
+- **Right after the act, the page shows it** (FM-030, the same answer). `--answer`, `--done`, `--due` and `--revoke` end
+  on the branch they started on, as before; where a checkout hook rebuilds the board there (`--install-hook`'s
+  post-checkout), the page already reads the branch just pushed. How the command knows: the board's file changed —
+  its modification time or its size — between the push and the switch back. Where it did not — no such hook, or the
+  command ran on `answer/<id>` itself — the command rebuilds the board itself, `--html-only` in its own process, and
+  says which of the two happened.
+- **`--revoke <id> "<why>"` — revoke, for an act as for an answer** (FM-030, the same answer: *revoke* in the place of
+  the buttons). On what is on its way, the board's row has one button, **revoke**, and its dialog one field, *why*; OK
+  gives the one command. It takes back what he last did on the tracker as a new signed commit, never an overwrite: on
+  an act done, `done:` leaves the front matter, the revocation is recorded under `## Acts` beside what it revokes —
+  `**<date>** · done revoked — <why> · it was done <time> · <where> · <the act> · <who>` — and where `--done` had
+  handed the move to the seat, `next: owner` is his again: the act is owed. Else his answer is taken back as `--answer
+  <id> revoke` takes it. Where `answer/<id>` is not merged — here or on `origin` — it commits on top of it, on that
+  branch (one branch per exchange); merged, it is cut fresh and the revocation is on its way in its turn (*revoked*,
+  *done revoked*) — a promise revoked on its way leaves his acts until the merge; a revoked answer's row reads the
+  question, then *revoked, on its way — <why>*, and `--revoke`'s steps and refusals say *revoking* and `--revoke`, on an
+  answer too (RV-734). Signed where his seat is `signed`; the seats that hold `answer` may run it. `--schema` says it under
+  `answer:` and `done:`, and that `done:` stamps the time the act was recorded, not the act's own.
 
 ## 0.18.5 — 2026-09-27
 
