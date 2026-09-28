@@ -1273,16 +1273,30 @@ def have_not(shas):
     return [s_ for s_, line in zip(shas, r.stdout.splitlines()) if line.endswith(" missing")]
 
 
+def answerer_of(commit):
+    """(whether the author of `commit` may answer — the gate's own match, email or name —, that author as the queue names
+    one — the email, else the name —, the email)"""
+    name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", commit) or "").strip().partition("\x01")
+    return (holds(seat_of(name, email), "answer") if SEATS else name in may_answer()), email or name or "no author", email
+
+
+def answers_as_him(commit):
+    """`commit` is his: its author may answer and it verifies as him — the gate's one test, `verified_as`, as
+    `answer_reading` applies it to the commit an `answer/*` pull request is read by (FM-031, RV-710)"""
+    may, _who, email = answerer_of(commit)
+    return may and verified_as(commit, email or None)
+
+
 def answer_reading(head):
     """An `answer/*` pull request is the Owner's own signed answer, `done:` or `due:`, and needs no Reviewer: `merge: your
     answer` when the author of `head` — his answer, `done:` or `due:` commit, as `queue_actions` finds it — may answer and
     the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an author who may not answer,
     named, whatever the commit's signature (R8 — a signed commit by someone else read *unsigned*, and the impostor is the
-    case the Owner most needs named); else on the signature."""
-    name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", head) or "").strip().partition("\x01")
-    may = holds(seat_of(name, email), "answer") if SEATS else name in may_answer()      # the gate's own match: email or name
+    case the Owner most needs named); else on the signature. `queue_actions` reads a merge here as his only where every
+    commit of the pull request's own below `head` is his too, or a review file's only (RV-710)."""
+    may, who, email = answerer_of(head)
     if not may:
-        return "wait", f"wait: not an answerer ({email or name or 'no author'})", ""
+        return "wait", f"wait: not an answerer ({who})", ""
     if verified_as(head, email or None):
         return "merge", "merge: your answer", f"signed {head[:7]}"
     gap = signature_gap(head)
@@ -1314,8 +1328,9 @@ def queue_actions(prs, branches=()):
     merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on his
     answer, `done:` or `due:` commit, the newest of its own that changed an `answer:`, `done:` or `due:` line, where only
     review files follow it (FM-031, 0.18.4: a Reviewer's docs pass on the answer read *not an answerer* by the head;
-    0.18.6, RV-679: on his `--done` or `--due`, too); else on its head. For a pull request the first rule that holds is
-    the action:
+    0.18.6, RV-679: on his `--done` or `--due`, too); else on its head — and it reads *merge: your answer* only where
+    every commit of its own below that one is his too, or a review file's only; else `wait: a seat's commit on your answer
+    branch (<sha>, <author>)` (RV-710). For a pull request the first rule that holds is the action:
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
@@ -1402,15 +1417,26 @@ def queue_actions(prs, branches=()):
             return out.returncode == 0
         return cached(("addenda", r, h, v), read)
 
-    def answered_at(p):
-        """the commit an `answer/*` pull request is read by: the newest of its own that changed an `answer:`, `done:` or
-        `due:` line in a tracker — `owner_change` cuts the branch for `--answer`, `--done` and `--due` alike — where every
-        commit past it is a review file's only (`addenda_only`, any commit's own `review*.md`) — the parent project's PRs
-        836, 849 and 853, a Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)* by the head, and
-        its `answer/bug-327`, a Reviewer's verdict on his `--done`, the same (RV-679, 0.18.6); anything else past it, and
-        the head is read, as before"""
+    def answer_action(p):
+        """an `answer/*` pull request's action. It is read by ONE commit (`answer_reading`): the newest of its own that
+        changed an `answer:`, `done:` or `due:` line in a tracker — `owner_change` cuts the branch for `--answer`, `--done`
+        and `--due` alike — where every commit past it is a review file's only (`addenda_only`, any commit's own
+        `review*.md`) — the parent project's PRs 836, 849 and 853, a Reviewer's docs pass on the answer, read *not an
+        answerer (reviewer@seat)* by the head, and its `answer/bug-327`, a Reviewer's verdict on his `--done`, the same
+        (RV-679, 0.18.6); anything else past it, and the head is read, as before. A merge carries every commit below that
+        one too, and `owner_change` cuts `answer/<id>` from the branch he stands on — a seat's, unmerged, carries its
+        commits: *merge: your answer* only where each commit of its own below the one read is his as well
+        (`answers_as_him`, the same test) or a review file's only; else `wait: a seat's commit on your answer branch
+        (<sha>, <author>)`, the first such below his, and never the head's reading (RV-710, the Owner's cold review of
+        0.18.6's widening; RV-735, the same below his `answer:` since 0.18.4)"""
         at = git("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head(p), "^" + base(p), "--", rel).stdout.strip()
-        return at if at and (at == head(p) or addenda_only(at, head(p), None)) else head(p)
+        at = at if at and (at == head(p) or addenda_only(at, head(p), None)) else head(p)
+        action = answer_reading(at)
+        if action[0] != "merge":
+            return action
+        below = [c for c in git("rev-list", at, "^" + base(p)).stdout.split() if c != at]       # newest first
+        stray = next((c for c in below if not (addenda_only(c + "^", c, None) or answers_as_him(c))), None)
+        return ("wait", f"wait: a seat's commit on your answer branch ({stray[:7]}, {answerer_of(stray)[1]})", "") if stray else action
 
     rows = []
     for p in prs:
@@ -1428,7 +1454,7 @@ def queue_actions(prs, branches=()):
         elif (guarded := triage_reading(head(p), base(p))):
             rows.append((p, "wait", *guarded))
         elif p["headRefName"].startswith("answer/"):
-            rows.append((p, *answer_reading(answered_at(p))))
+            rows.append((p, *answer_action(p)))
         elif last is None:
             rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
         elif last[1] == "NOT READY":
@@ -5601,7 +5627,7 @@ def parse_args(argv):
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
-                                            "merge: your answer · wait: not an answerer (<author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
+                                            "merge: your answer · wait: not an answerer (<author>) · wait: a seat's commit on your answer branch (<sha>, <author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
                                             "merged or closed in the last 24 hours, with their times. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")

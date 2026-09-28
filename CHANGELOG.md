@@ -73,6 +73,18 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `answer:` change under the verdict and read the head. An `answer/*` pull request is now read by the newest commit of
   its own that changed an `answer:`, `done:` or `due:` line, where every commit past it touches review files only; it
   names that commit, `signed <sha>`; anything else past it, and the head is read, as before. *Nothing to do on upgrade.*
+- **`--queue` says *merge: your answer* only where every commit below his act is his too** (FM-031, RV-710 — the
+  Owner's cold review of `3bb53ec`, P1, `d79ffa7` at 14:59:48 on 2026-09-28 — and RV-735, the local pass's). `--answer`,
+  `--done` and `--due` cut `answer/<id>` from the branch he stands on, so an act given on a seat's unmerged branch
+  carries its commits, and the queue read the pull request by his act alone: with the widening above, a seat's commit,
+  his signed `done:` or `due:`, and a Reviewer's verdict on top read *merge: your answer*, where 0.18.5 read the head
+  and waited — and below his `answer:` it has read so since 0.18.4. The pull request is now read as his only where each
+  commit of its own below the one it is read by is his as well — the gate's one test: its author may answer and it
+  verifies as him — or a review file's only; else `wait: a seat's commit on your answer branch (<sha>, <author>)`, the
+  first such below his, never the head's reading. His own acts stacked (a `--due`, then a `--done`) and a review file's
+  commit below his act still read *merge*; a seat's commit above his act is read by the head, as before. *Nothing to do
+  on upgrade:* an `answer/*` pull request that now waits carries a commit that is not his — close it, and give the act
+  again from the default branch.
 
 ## 0.18.5 — 2026-09-27
 
