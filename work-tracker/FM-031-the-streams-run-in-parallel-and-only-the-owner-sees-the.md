@@ -103,6 +103,8 @@ on the parent project's RV-630 and its closure test.
 
 ## Open lines
 
+**2026-09-28, a line for the queue (S2) — RV-679, the Reviewer seat's (`8e509911/reviewer-42`) on the Owner's own `--done BUG-327` act (PortDive `answer/bug-327`: his `--done` c502c7a4 at 2026-09-27 20:21:18, the verdict 66884f5f at 20:45:02):** a Reviewer's verdict commit on top of his act commit (`--done`, `--due`) turns `--queue`'s line for that pull request from *merge: your answer* into *wait: not an answerer (reviewer@seat)* — `queue_actions` reads the head, and `answered_at` finds the commit under the verdict only for an `answer:` change; an `--answer` branch under a verdict has been read at its answer commit since 0.18.4 (review addenda) and is not affected — and FM-032's signed rule (one docs pass on every answer pull request) makes it happen on every act branch. The fix reads the act commit — the newest `done:`/`due:` change — as `answered_at` reads `answer:`; the queue's reader is critical under path line 3 — a cold Reviewer. Filed by the pass of 2026-09-28; no ask.
+
 **2026-09-26, a line for the next release (S2, `--queue`) — the `[paths] reviews` glob crosses folders, and the default
 admits without it; the Implementer seat's (`8e509911/implementer-35`), on the parent project's cold Reviewer session and
 its closure test:** 0.18.4 turns the key into a glob by appending `/*` — `queue_actions` builds

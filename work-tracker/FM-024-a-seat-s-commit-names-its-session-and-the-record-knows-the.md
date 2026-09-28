@@ -4,11 +4,16 @@ status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-next: build
 triaged: 2026-09-25
 rank: 9
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
+next: owner
+ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
+ask-kind: ruling
+ask-since: 2026-09-28
+ask-options: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami | the status line only: --statusline and its install, no rule and no --whoami | the rule only: To: <session> <seat> (<worktree>) in AGENTS.md and --whoami, no status line"
+ask-proposal: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -259,6 +264,21 @@ row.
 **answered** — accepted - a cold Reviewer session you start reviews 0.18.3 · holgo99
 **relation** — accepted the proposal
 **signed** — 64f843e · G
+
+**2026-09-28 — the ask of this pass (PortDive ledger row 56 first, 06:50:17):** the Owner's question, relayed 06:48:37 with the Auditor's counsel (normalised): *"How can we integrate these scripts for Claude and Codex settings and the rule from project memory into the shoalmark repo, so that this ships together and users can use it too when they pin a version of shoalmark?"* The paste, word for word (sha256 of the filed text `88db73aff8fed3fb87fe469ef7fb38e08090e2b1e27090d4eb2ac49d21401c20`):
+
+> To: 8e509911 principal (shoalmark-principal-4)
+> From the Owner, with the Auditor's counsel (2026-09-28 ≈06:55 CEST). His question: "How can we integrate these scripts for Claude and Codex settings and the rule from project memory into the shoalmark repo so that this ships together and users can use it too when they pin a version of shoalmark?" (normalised)
+> Proposal — a slice on FM-024 (the freeze holds at 21; FM-024's problem is the one that bit today: two sessions of one seat), citing FM-031:
+> 1. `shoalmark.py --statusline`: reads Claude Code's JSON on stdin, prints `<session> <seat> (<worktree>) · <branch>` from the tool's own [seats] and the sessions strip's trailer reader (newest `Session: <id>` or `<id>/<seat>` commit; a sub-agent's `<id>/<seat>-<n>` excluded; before the first commit the worktree badge marked `?`), cached under .git/. No board, no tracker load (FM-040). Prototype on his machine: ~/.claude/statusline.sh.
+> 2. `--install-statusline` beside `--install-hook`: merges a statusLine entry into the repo's .claude/settings.json pointing at the pinned copy (merge, never replace, print only what it adds); the Codex [tui] lines (status_line = ["thread-title","git-branch","model-with-reasoning","context-remaining"], terminal_title = ["thread-title","git-branch"]) into a project .codex/config.toml if Codex 0.157 reads one there, else printed. Codex shows id (while the thread is untitled) and branch, never the seat — say so.
+> 3. AGENTS.md, as his rule: a message a person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's report opens with its own; `--whoami` prints it (seat.session or CODEX_THREAD_ID, [seats], the worktree folder).
+> To settle in the build: PortDive ignores .claude/ except output styles (an exception there, or a --user install form); which cwd a project statusLine command runs in (test from a subfolder and a worktree).
+> Process: an ask on FM-024, rowed first — options: all three · the status line only · the rule only; no default. Code tier, full loop. The Auditor seals its verification plan before the build.
+
+The paste's own stamp, *≈06:55 CEST*, is its writer's estimate, kept as written; it reached this session at 06:48:37 (the transcript's stamp), the time this record and the ledger's row 56 use.
+
+The Principal's counsel, disclosed as such: the first option — all three, as a slice on this tracker (its problem is the one that bit on 2026-09-28: two sessions of one seat are one author); to settle in the build, as the Auditor names them: PortDive ignores `.claude/` except output styles, and the cwd a project statusLine command runs in. Code tier, the full loop; the Auditor seals its verification plan before the build. Nothing is built before his answer and the pass that judges the slice.
 
 ## Ship log
 

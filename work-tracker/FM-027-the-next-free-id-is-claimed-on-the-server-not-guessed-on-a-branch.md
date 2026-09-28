@@ -4,9 +4,14 @@ status: Parked
 considered: FM-008, FM-011, FM-024
 tags: research
 kind-of-problem: complicated
-next: review
-triaged: 2026-09-24
+next: owner
+triaged: 2026-09-28
 tier: P3
+ask: "How are review ids (RV-…) allocated across sessions, so that two Reviewers never mint the same id?"
+ask-kind: ruling
+ask-since: 2026-09-28
+ask-options: "a block per session, claimed on the server in the review folder: FM-027's design for tracker ids, extended to review ids | each session's Principal allocates ranges to its Reviewers and announces its block in chat; both forges grepped first | as today: the next free id across both forges, read right before writing"
+ask-proposal: "a block per session, claimed on the server in the review folder: FM-027's design for tracker ids, extended to review ids"
 hook: "`--new` takes the next id it can see on the branch it runs on; two branches that have not merged both get it — it happened twice in one evening. A readable prefix and a counting number stay; the claim moves to the one place that is atomic for everyone, the server"
 ---
 
@@ -19,6 +24,8 @@ not want UUIDs or anything nobody can read or remember — never. Humans like a 
 Written to be attacked.
 
 ## What is true now
+
+**2026-09-28 — raised and asked (PortDive ledger row 55 first, 06:45:49):** the class returned for review ids across sessions (see `## Raised`); the pass of 2026-09-28 keeps it P3, Parked, `next: owner` for the ask above — the Principal's counsel is the first option, a block per session claimed on the server, this tracker's own design extended; the status stays Parked until his answer names a design worth building.
 
 **Filed 2026-09-23; nothing is built.** `--new` reads the trackers on the branch it runs on and takes the next number
 after the highest it sees. Two branches cut from the same trunk both see the same highest number; both get the same id;
@@ -73,6 +80,10 @@ readable and count upwards, and it must be claimed once, by an act that cannot s
 
 The Owner has ruled the candidate; two branches can no longer hold one id; `--new` claims before it writes; the gate
 refuses an unclaimed id; the number stays a prefix and a count.
+
+## Raised
+
+- 2026-09-28 · Principal seat (8e509911), on its own Reviewers' collision · two Reviewer seats of one session, each minting "the next free RV id" across both forges (the Principal's briefs said RV-681 onward to both, six minutes apart), minted RV-681 twice — on shoalmark `e7d16b8` (02:00:26) and on PortDive `97fa9ada` (02:06:06); the later renumbered RV-685 before merge. The same evening the Owner's other session took RV-686…690 (`9318ee1b`) and RV-692 while this session's Reviewers minted, and RV-700 crossed this session's own two allocations. The class this tracker names for tracker ids (`--new` on two branches), now for review ids across sessions; RV-473…480 were minted twice on 2026-09-24 as well · source: the two verdict commits, PortDive's ledger rows 54–55 and FM-027's worksheet row of 2026-09-28 · the Principal's word, 2026-09-28: a rule is owed — the ask below · undermines: no signed rule (none names review ids)
 
 ## Ship log
 
