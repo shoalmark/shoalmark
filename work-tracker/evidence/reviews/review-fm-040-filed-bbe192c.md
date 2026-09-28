@@ -72,3 +72,70 @@ seat's counsel.
 re-pass.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Re-check on af4644d (2026-09-28 02:26 CEST, the same seat)
+
+**Scope.** A scoped re-check, not a new pass. `af4644d` (`af4644db4a5d0c65159542aeb8e341ef6ee73dff`, the Principal,
+02:22:43, confirmed by `ls-remote`) is one tracker-only commit on `e7d16b8`. I read `git diff e7d16b8 af4644d`
+whole: 22 lines in, 6 out, FM-040's file only.
+
+**Gates.** The tool and both suites are still byte-identical to `origin/main` `bbbfc0b`, so no suite was run.
+- `--check`: exit 0. *INDEX.md is up to date — 40 trackers*; *21 open … only bug filings*; the Owner's two sections
+  guarded.
+- `--session-check`: exit 0.
+- `git merge-tree --write-tree origin/main HEAD`: clean (`9f4340c`).
+
+**RV-681 — open in part.**
+- **The hook steps: closed.** Checked against both files:
+  - shoalmark's `lefthook.yml` line 22 is `tracker-board` under `post-merge:`, running `--html-only || true`. Its
+    pre-commit `tracker-index` runs `--print-written` (line 10), and checkout is the plain hook.
+  - PortDive's `lefthook.yml` (`origin/main`, read-only) runs `gen-tracker-index.py --print-written` at line 41,
+    under `pre-commit:`. It runs `--html-only` at line 154, under `post-merge:`, and line 158, under
+    `post-checkout:`.
+  - `scripts/gen-tracker-index.py` line 9 runs `tools/shoalmark/shoalmark.py` through `subprocess.call`: the child
+    process, as the text says.
+  - The 27.82 s for the filing's own commit is hook output I cannot see.
+- **The profile's scope: still open, P3.** Route a still reads *`cProfile` of `--html-only` on both repositories*.
+  The commit's path, `--print-written`, is not in slice 1's plan, and that is the path of the 27.82 s, of PortDive's
+  18.57 s, and of my verdict commit's 29.42 s. Fix forward: profile both commands.
+
+**RV-682 — closed.** 01:42:26 (his word) and 01:44:16 (the start of the run) stand where *~01:40* and *01:4x* stood,
+in the Why and in the first ship-log row. I take them as the Principal's claim from his transcript, which I cannot
+read.
+
+**RV-683 — closed.** *Held against (FM-035 and FM-039 by hand — `--related` does not return them)* is recorded.
+
+**RV-684 — open in part.**
+- **Route a: closed.** Its weighing now reads *"The Principal's counsel, disclosed as such: the cheaper route, …"*.
+- **Route b: open, P3.** It still says *"A product decision, his, not a performance fix"*, and its price is still
+  written past his words, with no counsel label. Fix forward: label it as counsel, or keep his words, when the ask is
+  filed.
+
+**The new paragraph, judged: it claims nothing as measured.**
+- It is headed *Read, not measured*, gives *confidence about 55 % until profiled*, and calls its estimate *an
+  unmeasured guess*.
+- The one number that is a measurement, *0.4 s a file on a 3,755-commit repository*, is the tool's own docstring,
+  cited as such.
+- *137 verdicts this week* is `--check`'s own count.
+- *~3,971 commits* is marked approximate; PortDive's `origin/main` counts 3,994 at `450c67ac`.
+- *The profile itself did not run*, with the loads and the refusal, is a record of what did not happen.
+- The second ship-log row matches my pass: *50.84 s real / 18.25 user / 29.50 sys at a 1-minute load of 150 falling to
+  72*, and RV-681…684.
+
+**RV-691 · P3 · confidence high — two imprecise pointers in the new paragraph.** (Numbered from RV-690, the highest id on either repository at 02:27. That is PortDive's `bug/327-sitting-one-corrections` at `9318ee1b`, read through the forge's compare API without a fetch; shoalmark's highest is RV-684. RV-685–690 are taken on PortDive.)
+1. *"a seat's code reading of 2026-09-28 02:1x"* is an approximate time again, the kind RV-682 closed.
+2. *"the docstring near line 996"* is at line 1012. It is `recover_relations`' docstring, about one `git log` per
+   answer record, and not about `seat_problems`' per-ask pickaxe, which the sentence attaches it to. The pattern is
+   alike, and the paragraph is marked as reading, so this is precision only.
+
+Fix forward: the reading's exact time, and *line 1012, `recover_relations`' docstring, the same pattern per answer
+record*.
+
+**Re-check verdict:**
+- RV-682 and RV-683 are closed.
+- RV-681 and RV-684 are closed in part; their open halves are P3, fixed forward: the profile's scope covers
+  `--print-written`, and route b's weighing is labelled or dropped.
+- RV-691 is P3.
+- The filing stays **READY WITH FINDINGS**.
+
+The Owner lands this by merging; a merge rules nothing.
