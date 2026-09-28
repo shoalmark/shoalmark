@@ -47,7 +47,6 @@
 |----|-----|----------|-----|--------|
 | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | 2026-09-26: accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | no date yet | 60 min |
 | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
-| [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | 2026-09-24: accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | no date yet | 60 min |
 
 
 ## Work

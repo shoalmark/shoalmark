@@ -3,17 +3,9 @@ id: FM-032
 status: In Progress
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
-next: owner
+next: build
 triaged: 2026-09-24
 tier: P2
-ask: "How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file?"
-ask-kind: action
-ask-since: 2026-09-24
-ask-options: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 | one Reviewer docs pass, always, as any docs change | path 3 stays as written: the tool refuses the merge without a review file"
-ask-proposal: "one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
-answer: "accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3"
-answered: 2026-09-24
-answered-by: holgo99
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
@@ -121,6 +113,11 @@ Each takes effect on the Owner's answer, never on a default.
 
 **2026-09-24** · Rule the deregulation: one Reviewer pass for docs and ledgers, findings below P2 fixed forward, no re-pass; the registry a report generated from commit trailers, not a gate; a miss rowed only if it cost you a command or a decision; a filing freeze except product defects until the open count falls?
 **answered** — accepted - all four now · holgo99
+
+**2026-09-24** · How does an answer pull request — your signed answer and nothing else — pass path 3, which lets no pull request merge without a review file?
+**answered** — accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 · holgo99
+**relation** — accepted the proposal
+**signed** — 97fa87a · G
 
 ## Ship log
 
