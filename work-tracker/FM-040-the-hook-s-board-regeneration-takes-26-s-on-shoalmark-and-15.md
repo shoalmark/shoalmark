@@ -3,6 +3,10 @@ id: FM-040
 status: Proposed
 considered: FM-018, FM-025, FM-034, FM-035, FM-039, FM-012, FM-024
 tags: bug
+triaged: 2026-09-28
+rank: 4
+next: build
+tier: P2
 hook: "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it"
 ---
 
