@@ -42,3 +42,5 @@ tool's own `append_record`, every forged one does not, and the ship-log row stat
 green and the merge onto main is clean.
 
 path 5 — a merge rules nothing.
+
+Trailer: this verdict's `Reviewed:` trailer rides the commit that adds this line — the reviewed tip is unchanged.
