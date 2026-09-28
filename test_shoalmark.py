@@ -3889,6 +3889,79 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.6 — the board reads git: his signed answer of 2026-09-27 14:56:15 (920970b7), option 1 of the ask of 14:14:18, on
+#     his words of 13:57:50 — *they pushed the button, did the answer and expect the page to display that state right away*. The
+#     reader: every `origin/answer/<id>` not merged into the default branch whose tip carries a `done:` or an `answer:` the default
+#     branch lacks — read from the clone alone; merged ones, and tips that carry no such change, are not read; several at once
+#     are all read; a Reviewer's verdict on top of his commit is no act (RV-679): the branch's commits are read, not its head.
+def _way_repo(base, hooks=False):
+    """A clone of a bare `origin` whose `main` carries five asks and a promise, the owner seat `signed` with an SSH key."""
+    root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                   ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x signed"\nreviewer = "reviewer@seat"\n', encoding="utf-8")
+    (root / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q, kind="ruling", prop="yes": f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "{prop}"\n'
+    tracker(root, "AP-501", extra=ask_("Will you read production at seven?", "action", "at seven tomorrow"), title="an action asked")
+    tracker(root, "AP-502", extra=ask_("Does the importer ship first?"), title="a ruling asked")
+    tracker(root, "AP-503", extra=ask_("Will you set up the key?", "action", "this week") + f'answer: "accepted - this week"\nanswered: {since_}\nanswered-by: holgo\n', title="a promise")
+    tracker(root, "AP-504", extra=ask_("Does the exporter ship first?"), title="an answer merged")
+    tracker(root, "AP-505", extra=ask_("Does the report ship first?"), title="a branch that carries no answer")
+    if hooks:
+        run(root, "--install-hook")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks", "-S", "--author=holgo <h@x>")
+    git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    return root
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    sha_ = lambda ref: subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root)
+    check("FM-030 · 0.18.6 · the reader: nothing on its way — no `answer/*` pushed — reads nothing", fm.on_their_way(fm.load_trackers()) == {})
+    codes_ = [run(root, *a)[0] for a in (("--answer", "AP-501", "accept"), ("--answer", "AP-502", "reject", "not before the audit"),
+                                          ("--done", "AP-503", "evidence/AP-503/key.md"), ("--answer", "AP-504", "accept"))]
+    git(root, "merge", "-q", "--no-ff", "answer/ap-504", "-m", "Merge answer/ap-504"); git(root, "push", "-q", "origin", "HEAD:main")
+    git(root, "switch", "-q", "-c", "answer/ap-505"); (root / "notes.txt").write_text("a seat's note\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a seat's note", "--author=impl <impl@x>"); git(root, "push", "-q", "origin", "answer/ap-505")
+    # a Reviewer's verdict on top of his answer (RV-679): the head is the verdict, the act is the commit below it
+    answer502_ = sha_("origin/answer/ap-502")
+    git(root, "switch", "-q", "answer/ap-502"); (root / "docs/work-tracker/evidence/reviews").mkdir(parents=True)
+    (root / "docs/work-tracker/evidence/reviews/review-ap-502.md").write_text("**Verdict: READY.**\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", f"review: AP-502 at {answer502_[:7]} — READY\n\nReviewed: {answer502_}", "--author=reviewer <reviewer@seat>")
+    git(root, "push", "-q", "origin", "answer/ap-502"); git(root, "switch", "-q", "main")
+    fm.configure(root); way_ = fm.on_their_way(fm.load_trackers())
+    w1_, w2_, w3_ = way_.get("AP-501", {}), way_.get("AP-502", {}), way_.get("AP-503", {})
+    check(f"FM-030 · 0.18.6 · the reader lists every unmerged `origin/answer/<id>` whose tip carries a `done:` or an `answer:` main lacks — several at once — and "
+          f"not a merged one, nor one whose tip carries no such change (saw {sorted(way_)} · {codes_})",
+          codes_ == [0, 0, 0, 0] and sorted(way_) == ["AP-501", "AP-502", "AP-503"])
+    check(f"FM-030 · 0.18.6 · an answer on its way: its kind, the branch, its tip and the commit that wrote it, that commit's time and `%G?`, `--queue`'s own reading "
+          f"of it, and his promise first — the proposal a bare `accepted` took — with the question as context (saw {w1_})",
+          w1_.get("kind") == "answer" and w1_.get("answered") is True and w1_.get("branch") == "answer/ap-501" and w1_.get("tip") == w1_.get("commit") == sha_("origin/answer/ap-501")
+          and re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|[+-]\d\d:\d\d)", w1_.get("time", "")) is not None and w1_.get("sig") == "G"
+          and w1_.get("said") == "merge: your answer" and w1_.get("what") == "at seven tomorrow" and w1_.get("asked") == "Will you read production at seven?"
+          and w1_.get("value") == "accepted")
+    check(f"FM-030 · 0.18.6 · RV-679 · a Reviewer's verdict on top of his answer is no act: the reader names HIS commit below the head, signed, read *merge: your answer* — "
+          f"never *not an answerer* by the head (saw {w2_})",
+          w2_.get("kind") == "answer" and w2_.get("tip") == sha_("origin/answer/ap-502") != answer502_ and w2_.get("commit") == answer502_
+          and w2_.get("said") == "merge: your answer" and w2_.get("sig") == "G" and w2_.get("what") == "rejected - not before the audit")
+    check(f"FM-030 · 0.18.6 · an act done on its way: `done`, its line his promise with the question below it, the `done:` as written, signed (saw {w3_})",
+          w3_.get("kind") == "done" and w3_.get("answered") is False and w3_.get("what") == "this week" and w3_.get("asked") == "Will you set up the key?"
+          and w3_.get("value", "").endswith(" · evidence/AP-503/key.md") and w3_.get("sig") == "G" and w3_.get("said") == "merge: your answer")
+    git(root, "remote", "rename", "origin", "elsewhere"); fm.configure(root)
+    no_trunk_ = fm.on_their_way(fm.load_trackers())
+    git(root, "remote", "rename", "elsewhere", "origin")
+    check("FM-030 · 0.18.6 · the reader reads the clone alone: with no `origin` default branch it reads nothing, and it never fetches", no_trunk_ == {})
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-036, 0.18.4 F: two filled rows for one tracker on one sheet — the newest wins. Today's case: FM-030 judged
 #     `keep P1 #3 build` in the morning pass and `keep P1 #1 build` on the raise; every run flipped the rank between them
 with tempfile.TemporaryDirectory() as tmp:

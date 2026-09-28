@@ -1101,6 +1101,76 @@ def acts_lines(trackers, now=None):
             + (f"\n       {LABELS['acts.asked'].format(a[5])}" if a[5] else "") for t, a in acts]
 
 
+# FM-030 — THE BOARD READS GIT: an act or an answer he just gave, before his merge. The Owner's signed answer of 2026-09-27
+# 14:56:15 (920970b7), option 1 of the ask of 14:14:18, on his words of 13:57:50 — *they pushed the button, did the answer
+# and expect the page to display that state right away* (spelling normalised). His act or answer is a signed commit on
+# `answer/<id>`, pushed; the default branch knows nothing of it until his merge, and the board, `--owner` and `--standup`
+# were built from the checkout alone. One truth stays, git: after the push the remote-tracking ref holds the sha the tool
+# committed, and another machine has it after a fetch. Nothing is written to remember it, and nothing is fetched to read it.
+
+
+def on_their_way(trackers):
+    """{id: reading} — every `origin/answer/<id>` this clone holds that is NOT merged into the default branch
+    (`default_trunk`; one `git for-each-ref --no-merged` for all of them), whose tracker at the tip carries a `done:` or an
+    `answer:` the default branch's copy lacks — or drops a `done:` the default branch has: a revocation. A
+    merged branch is not read, nor one whose tip carries no such change, nor one for a tracker this checkout does not hold.
+    A reading:
+    - `kind` — `done` · `answer` · `revoked` (an answer that revokes) · `undone` (a `done:` revoked); `done` first where the
+      tip carries both;
+    - `answered` — the tip carries an answer the default branch lacks: the ask leaves his waiting list, whatever the kind;
+    - `branch`, `tip` — its head;
+    - `commit` — the newest of the branch's OWN commits that changed that line, read from its commits, never from its head
+      alone: a Reviewer's verdict on top of his act is no act (RV-679); `time` its committer time, `sig` its `%G?` against the
+      signers the gate trusts, `said` what `--queue` reads of it — `answer_reading`, the one reader of an answer commit;
+    - `what` — his promise, else the answer as signed; for an act, its line; `asked` the question, as context; `value` the
+      `done:` or `answer:` as written — for `undone`, the `done:` it revokes.
+    {} without git, without a default branch, or with nothing on its way. Local: no fetch, no forge — a pull request is not
+    looked up, and every reading says *your merge is next*."""
+    if vcs() != "git" or not trackers:
+        return {}
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    if not trunk:
+        return {}
+    refs = git("for-each-ref", f"--no-merged={trunk}", "--format=%(refname:lstrip=3)%00%(objectname)", "refs/remotes/origin/answer/")
+    by_id, heads = {t["id"]: t for t in trackers}, []
+    for line in refs.stdout.splitlines() if refs.returncode == 0 else []:
+        branch, _, tip = line.partition("\x00")
+        t = by_id.get(branch[len("answer/"):].upper()) if branch.startswith("answer/") else None
+        if t and tip:
+            heads.append((branch, tip, t["id"], (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()))
+    blobs = cat_blobs([spec for _b, tip, _i, rel in heads for spec in (f"{tip}:{rel}", f"{trunk}:{rel}")])
+    out = {}
+    for branch, tip, tid, rel in heads:
+        there, here = blobs.get(f"{tip}:{rel}"), blobs.get(f"{trunk}:{rel}")
+        if there is None:
+            continue
+        at, was = extract(ROOT / rel, there), (extract(ROOT / rel, here) if here is not None else {})
+        answered = bool(at.get("answer")) and at["answer"] != was.get("answer")
+        word = ANSWER_WORD_RE.fullmatch(answer_norm(at.get("answer")))
+        if at.get("done") and at["done"] != was.get("done"):
+            kind, key = "done", "done:"
+        elif answered:
+            kind, key = ("revoked" if word and word.group(1).lower() == "revoked" else "answer"), "answer:"
+        elif was.get("done") and not at.get("done"):
+            kind, key = "undone", "done:"
+        else:
+            continue
+        log = git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?", "-G", line_regex(key), tip, "^" + trunk, "--", rel).stdout.strip()
+        if not log:                                         # the line came in through a merge on the branch: its head speaks
+            log = git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?", tip).stdout.strip()
+        commit, when, sig = (log.split("\x00") + ["", "", ""])[:3]
+        if kind in ("done", "undone"):                      # the act's line, and its question, as they read while it was owed
+            act = act_of({**at, "done": ""})
+            what, asked = (act[0], act[5]) if act else (at.get("title") or tid, "")
+        else:
+            what, asked = promise_of(at) or at["answer"], at.get("ask", "")
+        out[tid] = {"kind": kind, "answered": answered, "branch": branch, "tip": tip, "commit": commit or tip, "time": when, "sig": sig or "N",
+                    "said": answer_reading(commit or tip)[1], "what": what, "asked": asked if asked != what else "",
+                    "value": was.get("done", "") if kind == "undone" else at["done"] if kind == "done" else at["answer"]}
+    return out
+
+
 def owner_digest(trackers):
     """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened. After the
     asks, the acts he owes, with their time (FM-030)."""
