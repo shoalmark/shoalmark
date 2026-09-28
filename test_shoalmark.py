@@ -4033,6 +4033,51 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-030, 0.18.6 — *right after the act*: `--answer`, `--done` and `--due` end where they started, and the board they leave
+#     already shows the act on its way — rebuilt by the checkout hook where one is installed (its file changed between the push
+#     and the switch back), else by the command itself, `--html-only` in its own process. Another machine shows the same after
+#     a fetch: two clones of one bare `origin`.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base, hooks=True)
+    page_ = lambda r: (r / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (r / "docs/work-tracker/index.html").exists() else ""
+    here_ = lambda r: subprocess.run(["git", "-C", str(r), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    tip_ = lambda r, b: subprocess.run(["git", "-C", str(r), "rev-parse", f"origin/{b}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    other = base / "wc2"                                   # another machine: cloned before the act, fetched after it
+    subprocess.run(["git", "clone", "-q", str(base / "origin.git"), str(other)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
+        git(other, "config", k_, v_)
+    code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
+    code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
+    board_ = page_(root)
+    check(f"FM-030 · 0.18.6 · with the checkout hook installed, `--answer` and `--done` end on the branch they started on, the hook has rebuilt the board, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook" in out_a
+          and "the board was rebuilt by the checkout hook" in out_d
+          and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
+    run(other, "--html-only"); before_ = page_(other)
+    git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)
+    code_o, out_o, _e = run(other, "--owner")
+    check(f"FM-030 · 0.18.6 · another machine: before its fetch its board shows nothing on its way; after it, the same rows, the same shas — and `--owner` lists them, signed (saw {out_o[:300]!r})",
+          '"answer/ap-50' not in before_ and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in after_
+          and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in after_ and code_o == 0
+          and "  AP-501 — at seven tomorrow · answered, on its way · answer/ap-501 @ " in out_o and "  AP-503 — this week · done, on its way — evidence/AP-503/key.md · " in out_o
+          and out_o.count("· signed · your merge is next") == 2)
+    rm_git(root); rm_git(other)
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    code_a, out_a, _e = run(root, "--answer", "AP-502", "reject", "not before the audit")
+    board_ = page_(root)
+    when_ = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).replace(microsecond=0).isoformat()
+    code_u, out_u, _e = run(root, "--due", "AP-503", when_)
+    git(root, "switch", "-q", "answer/ap-503"); stamp_ = (root / "docs/work-tracker/index.html").stat().st_mtime_ns
+    code_w, out_w, _e = run(root, "--due", "AP-503", (datetime.datetime.fromisoformat(when_) + datetime.timedelta(days=1)).isoformat())
+    check(f"FM-030 · 0.18.6 · with no checkout hook, the command rebuilds the board itself after the push — the board's file had not changed — and it shows the answer on its way; `--due` ends where it started too, and run on `answer/<id>` itself, where no checkout happens, it rebuilds as well (saw {out_a.strip()[-160:]!r} · {out_w.strip()[-160:]!r})",
+          code_a == code_u == code_w == 0 and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
+          and f'["answer", "answer/ap-502", "{tip_(root, "answer/ap-502")}", ' in board_ and "\n  back on `main`\n  the board is rebuilt" in out_u
+          and here_(root) == "answer/ap-503" and "back on" not in out_w and "the board is rebuilt — no checkout hook rebuilt it" in out_w
+          and (root / "docs/work-tracker/index.html").stat().st_mtime_ns != stamp_)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-036, 0.18.4 F: two filled rows for one tracker on one sheet — the newest wins. Today's case: FM-030 judged
 #     `keep P1 #3 build` in the morning pass and `keep P1 #1 build` on the raise; every run flipped the rank between them
 with tempfile.TemporaryDirectory() as tmp:

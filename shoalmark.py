@@ -2044,10 +2044,49 @@ def owner_change(tid, t, how):
     print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}"))
     if r.returncode != 0:
         return EXIT_LINT
+    stamp = board_stamp()                                   # the board as the push left it: whatever writes it from here on, it is read below
     if switched:                                             # pushed: back where he started, so his next command does not begin on this one's branch
         s_ = git("switch", here) if here else git("switch", "--detach", start)
         print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
+    said = board_after_act(stamp)
+    if said:
+        print(f"  {said}")
     return EXIT_OK
+
+
+def board_stamp():
+    """The board's file as the system keeps it — (modification time in nanoseconds, size) — or None where there is none."""
+    try:
+        st = HTML_OUT.stat()
+    except OSError:
+        return None
+    return st.st_mtime_ns, st.st_size
+
+
+def board_after_act(stamp):
+    """FM-030, his signed answer 920970b7 — *right after the act* the board shows it: he pressed the button, ran the command,
+    and the page he returns to must say *done, on its way* (his words of 13:57:50). Put back where he started, a checkout hook
+    that rebuilds the board — `--install-hook`'s post-checkout, `--html-only` — has written it already, and it reads the
+    branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or its size —
+    between the push and now. Where it did not — no such hook is installed, the checkout ran none (he ran the command on
+    `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
+    process; but never where the board is tracked by git — `--init` ignores it, and written, a committed board would leave
+    the tree changed and refuse his next command. What it says of it, one line; "" where there is no tracker directory."""
+    if not TRACKER_DIR.is_dir():
+        return ""
+    if board_stamp() != stamp:
+        return "the board was rebuilt by the checkout hook — it reads the branch just pushed"
+    tracked = (git_out("ls-files", "--", HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()) or "").split()
+    if tracked:
+        return f"the board is NOT rebuilt — git tracks {tracked[0]} here, and writing it would leave the tree changed; `{CMD} --html-only` rebuilds it"
+    try:
+        r = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), "--root", str(ROOT), "--html-only"], cwd=ROOT, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", env=nested_git_env(), timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"the board was NOT rebuilt ({type(e).__name__}) — `{CMD} --html-only` rebuilds it"
+    if r.returncode != 0 or board_stamp() == stamp:
+        return f"the board was NOT rebuilt — `{CMD} --html-only` rebuilds it" + (f": {(r.stderr.strip().splitlines() or [''])[-1][:160]}" if r.stderr.strip() else "")
+    return "the board is rebuilt — no checkout hook rebuilt it; it reads the branch just pushed"
 
 
 def refusal_reason(what, said=""):
