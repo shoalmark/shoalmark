@@ -1,7 +1,7 @@
 ---
 id: FM-040
 status: Proposed
-considered: FM-018, FM-025, FM-034, FM-035, FM-039
+considered: FM-018, FM-025, FM-034, FM-035, FM-039, FM-012, FM-024
 tags: bug
 hook: "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it"
 ---
@@ -29,11 +29,12 @@ pinned `tools/shoalmark/shoalmark.py` as a child process, so a profile targets t
 0.18.5 (`scripts/gen-tracker-index.py`, 507 trackers). Every seat's loop — checkout, commit, verdict — pays it dozens of times a day, and the Owner
 pays it at every button.
 
-Held against (FM-035 and FM-039 by hand — `--related` does not return them): FM-018 (the answer flow's convenience — this is the hook's, not the flow's), FM-025 (a cold start's tokens — a different cost),
+Held against (FM-035, FM-039 and FM-012 by hand — `--related` does not return them; FM-024 on the Auditor's word): FM-018 (the answer flow's convenience — this is the hook's, not the flow's), FM-025 (a cold start's tokens — a different cost),
 FM-034 (a fresh clone's `--check` — the same header path, not its time), FM-035 and FM-039 (the suite's 5 s Chrome budget — a render budget, not the
-regeneration's). None names the regeneration's wall-clock time; a new filing.
+regeneration's). FM-012 (the same kind of cost — its batching fix — a design, not this bug's time) and FM-024 (S6, `294a368`, v0.17.6 — where
+`verdict_reports` and its cost came from). None names the regeneration's wall-clock time; a new filing.
 
-**The two routes, the Owner's, for his ruling once the profile is in:**
+**The two routes, the Owner's, as they stood before the profile (the measurement below chose route a for this bug; route b stays his separate question):**
 - **a. profile the Python path** — `cProfile` of `--html-only` and of the commit's `--print-written` path on both repositories at low load, the number of `git` subprocesses per run, the ten
   functions by cumulative time; then the optimisation that bites (a cache of per-tracker git facts across a run, one `git log` for all files instead
   of one per file, or whatever the profile names). The Principal's counsel, disclosed as such: the cheaper route, and it keeps the single Python file
@@ -41,7 +42,9 @@ regeneration's). None names the regeneration's wall-clock time; a new filing.
 - **b. explore the Rust port** — one code base for the tool and for mobile clients, as PortDive's Rust core is; the upfront price: a build per
   platform, `brew install shoalmark` for consumers, the pin and the vendoring redone. The Principal's counsel, disclosed as such: a product decision, his, not a performance fix.
 
-**Read, not measured (a seat's code reading reported 2026-09-28 02:03:03, confidence about 55 % until profiled):** the board path starts with `git branch
+**Superseded by the Auditor's measurement below (2026-09-28 02:43–02:47) — kept as the record of a reading that was wrong:** the seat's code reading
+(reported 02:03:03, confidence about 55 % until profiled) put the cost in provenance's per-ask pickaxe; the profile puts 92–96 % of it in
+`board_sessions → verdict_reports`, and the Auditor says to drop the pickaxe change — it would give up the wrong-seat check for nothing. The reading: the board path starts with `git branch
 --show-current`, then per tracker in `render_html`: `ask_problems` runs with provenance on, so every `next: owner` tracker goes through `seat_problems`
 and can cost a `git log -1 --full-history -G` history walk per ask (the docstring at line 1012, in `recover_relations`, measures that pattern at about 0.4 s per file on a
 3,755-commit repository), plus `git diff`/`git show`; `board_sessions` → `verdict_reports` makes three or four git calls per verdict (rev-parse,
@@ -52,14 +55,32 @@ wrong-seat ask as malformed, leaving `--check` the only guard. The profile itsel
 load (1-minute averages of 12 to 176 between 01:52 and 02:00) and the permission classifier then refused its restart; its script
 (`run_all.sh`, one command at a time, writes only under the session's scratch folder) is the Owner's to run or a permitted seat's.
 
-The profile (slice 1) is a seat's read-only work and needs no ruling; the route after it is an ask to the Owner, rowed first in the ledger, with the
-profile's numbers as its input and no default.
+**The Auditor's measurement, relayed by the Owner 2026-09-28 05:24:00 (his paste, word for word; sha256 of the filed text
+`a6cb201bc20cfb7f64503ddddcf4d670a1efa098969e99bcc8b1f764fe4d7ebe`):**
+
+> The Auditor on FM-040 (shoalmark main @ 3bc0a51), measured 2026-09-28 02:43–02:47 CEST in its own clones at load 7–14:
+> 1. The profile: shoalmark --html-only 39.0 s real, 568 git calls, 96% in board_sessions → verdict_reports (4 git calls per verdict × 140 verdicts in 7 days; reviewed_range's rev-list --ancestry-path alone 24.5 s). --print-written 40.4 s, 92% in the same place: the pre-commit builds the HTML board. PortDive (pinned 0.18.5, 450c67ac) 31.2 s under the profiler, 81% in verdict_reports, 97 verdicts.
+> 2. The reading's "change most likely to bite" (provenance off / pickaxe batched) does not appear in the profile. Drop it; it would give up the wrong-seat check for nothing.
+> 3. considered: misses FM-012 (the same kind of cost, its batching fix) and FM-024 S6 (294a368, v0.17.6, where the cost comes from).
+> 4. Counsel: (a) the pre-commit writes INDEX without building the HTML board; (b) verdict reports cached per verdict sha in .git, or read in one batch. Hook code, so the full loop. The route b ask is not needed for this bug; the Rust port is his separate product question.
+> 5. The profile is done — nothing for the Owner to run.
+
+Graded by the Principal: accepted whole. The profile is slice 1, done by the Auditor in its own clones; FM-012 and FM-024 added to `considered:`
+(FM-024 S6, `294a368`, v0.17.6, is where `verdict_reports` came from); the seat's reading struck as above. **The fix, two slices per the counsel, hook
+code — the full loop, a cold Reviewer:** (a) the pre-commit's `--print-written` writes INDEX.md without building the HTML board (the board is built
+post-merge and post-checkout, where it is read); (b) `verdict_reports` cached per verdict sha under `.git/` or read in one batched `git` call
+(`reviewed_range`'s `rev-list --ancestry-path` is 24.5 s of the 39). **Route b is not this bug's:** the Rust port stays the Owner's separate product
+question and is not asked here. The route ask this tracker foresaw is therefore not filed; the measurement answered it.
+
+The profile (slice 1) was a seat's read-only work and needed no ruling; the route ask it foresaw is not filed — the measurement chose (see the clause
+above), and the Rust port remains the Owner's separate product question, asked on its own tracker if he wants it tracked.
 
 ## Done when
 
-Slice 1: the profile stands in this tracker's body — both repositories, the ten functions by cumulative time, the subprocess count, the machine's
-load at the run — and the ask on the route (a or b) is filed on the Owner's answer flow with a ledger row first. The fix's own Done-when is written
-after his ruling, as a wall-clock number for the hook on both repositories that he sets or accepts.
+Slice 1 (the profile) is done: the Auditor's measurement stands in the body (568 git calls, 96 % in `verdict_reports`; both repositories; load 7–14).
+The fix (slices a and b above) is done when the pre-commit step and the post-merge board build on both repositories run in a wall-clock time the Owner
+sets or accepts — proposed by the build with its own measurement, before and after, at a stated load — and the board it writes is byte-identical to
+today's for the same trackers.
 
 ## Ship log
 
@@ -68,3 +89,5 @@ after his ruling, as a wall-clock number for the hook on both repositories that 
 | 2026-09-28 | Filed on the Owner's word of 01:42:26 (his two hook summaries: 25.88 s / 14.48 s); a full regeneration on `bbbfc0b` measured 42.7 s real (16.8 user, 24.3 sys), started 01:44:16; PortDive's `tracker-index` pre-commit step 18.57 s at 01:47. Slice 1 (the profile, read-only) started the same night; the route is his ask after it. |
 | 2026-09-28 | The filing's pass `e7d16b8` READY WITH FINDINGS (RV-681…684, reviewer-40; its own full regeneration 50.84 s real / 18.25 user / 29.50 sys at a 1-minute load of 150 falling to 72). Fixed in the next commit: the hook steps named from `lefthook.yml` (RV-681), the times exact (RV-682), FM-035/FM-039 marked as held by hand (RV-683), the route weighing disclosed as the Principal's counsel (RV-684); the seat's unmeasured code reading added; the profile not run — the permission classifier refused the seat's runner. |
 | 2026-09-28 | The re-check `fd43178` (reviewer-40): RV-682/683 closed; RV-681 and RV-684 open in part, RV-691 new (an approximate time, a docstring's line) — fixed in the next commit: route a profiles `--print-written` too, route b labelled as counsel, the reading's time 02:03:03, the docstring at line 1012 in `recover_relations`. |
+| 2026-09-28 | The Auditor's measurement (02:43–02:47, its own clones, load 7–14), relayed by the Owner 05:24:00 and filed word for word (sha256 `a6cb201b…`): 568 git calls, 96 % in `board_sessions → verdict_reports`, the pre-commit builds the HTML board; the seat's reading struck; FM-012/FM-024 added to `considered:`; the fix's two slices per its counsel (hook code — cold review); the route ask not filed — the Rust port is his separate question. |
+| 2026-09-28 | The filing's pass `cb17819` (reviewer-40) READY WITH FINDINGS: the quoted block byte for byte the paste, `294a368` confirmed as FM-024 S6; RV-694 two lines still announced the route ask — reworded; RV-695 FM-012/FM-024 named in *Held against*. |
