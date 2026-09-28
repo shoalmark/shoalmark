@@ -415,6 +415,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "acts": "FM-030 · B · his acts on the board, rendered — no date yet, due, overdue, missed",
     "owe": "FM-030 · C · done and reschedule, rendered — the two buttons and the one command OK gives",
     "promise": "FM-030 · 0.18.6 · a promise on the board and in its dialogs, rendered — what he promised, the question below it",
+    "way": "FM-030 · 0.18.6 · on their way, rendered — the box's counts, his act and his answers before his merge",
     "hooks": "FM-002 · the three hooks, rendered — none seen without a theme, each styled by one",
 }
 
@@ -1167,6 +1168,14 @@ act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
+way.title: unterwegs
+way.merge: Ihr Merge ist als Nächstes dran
+way.done: erledigt, unterwegs
+way.answer: beantwortet, unterwegs
+way.revoked: zurückgenommen, unterwegs
+way.undone: Erledigung zurückgenommen, unterwegs
+way.signed: signiert
+way.unverified: "hier nicht geprüft: {0}"
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
@@ -3252,6 +3261,9 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "config", k_, v_)
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     (root / "shoalmark.toml").write_text('name = "c"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    # the board is git-ignored, as `--init` writes it (FM-030, 0.18.6: the board reads git — rebuilt by the checkout hook after an act,
+    # a committed board would differ from its commit and leave the tree changed for his next command)
+    (root / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
     now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
     at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
     since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -3959,6 +3971,65 @@ with tempfile.TemporaryDirectory() as tmp:
     no_trunk_ = fm.on_their_way(fm.load_trackers())
     git(root, "remote", "rename", "elsewhere", "origin")
     check("FM-030 · 0.18.6 · the reader reads the clone alone: with no `origin` default branch it reads nothing, and it never fetches", no_trunk_ == {})
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the board, `--owner` and `--standup` read it: an ask whose answer is on its way leaves *waiting for you*,
+#     an act done on its way leaves his acts, and both join *on their way: n* — his promise or his answer first, what it is,
+#     the branch, the commit, its time, whether it verifies, *your merge is next*. A board with nothing on its way — a merged
+#     `answer/*`, a tip that carries no answer — is the board it was, byte for byte.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    page_ = lambda: (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    run(root, "--answer", "AP-504", "accept")
+    git(root, "merge", "-q", "--no-ff", "answer/ap-504", "-m", "Merge answer/ap-504"); git(root, "push", "-q", "origin", "HEAD:main")
+    git(root, "switch", "-q", "-c", "answer/ap-505"); (root / "notes.txt").write_text("a seat's note\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a seat's note", "--author=impl <impl@x>"); git(root, "push", "-q", "origin", "answer/ap-505")
+    git(root, "switch", "-q", "main")
+    run(root, "--html-only"); read_ = page_()
+    for ref_ in ("refs/remotes/origin/answer/ap-504", "refs/remotes/origin/answer/ap-505"):
+        saved_ = subprocess.run(["git", "-C", str(root), "rev-parse", ref_], capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "update-ref", "-d", ref_); run(root, "--html-only"); git(root, "update-ref", ref_, saved_)
+    none_ = page_()
+    check("FM-030 · 0.18.6 · a board with nothing on its way is the board it was, byte for byte: a merged `answer/*` and a tip that carries no answer change no byte, and no row gains a cell",
+          read_ == none_ and '"answer/ap-50' not in read_)
+    codes_ = [run(root, *a)[0] for a in (("--answer", "AP-501", "accept"), ("--answer", "AP-502", "reject", "not before the audit"), ("--done", "AP-503", "evidence/AP-503/key.md"))]
+    fm.configure(root); way_ = fm.on_their_way(fm.load_trackers())
+    run(root, "--html-only"); page2_ = page_()
+    at_ = lambda tid: f"answer/{tid.lower()} @ {way_[tid]['commit'][:7]} · {way_[tid]['time'][:16].replace('T', ' ')}"
+    check(f"FM-030 · 0.18.6 · the board's rows carry what is on its way — on those rows alone, and the same bytes built twice (saw {codes_})",
+          codes_ == [0, 0, 0] and f'["answer", "answer/ap-501", "{way_["AP-501"]["tip"]}", ' in page2_ and f'["done", "answer/ap-503", "{way_["AP-503"]["tip"]}", ' in page2_
+          and '"answer/ap-505' not in page2_ and fm.render_html(fm.load_trackers()) == fm.render_html(list(reversed(fm.load_trackers())))
+          and all(f'"{k}"' in page2_ for k in ("way.title", "way.merge", "way.done", "way.answer", "way.signed")))
+    code_o, out_o, _e = run(root, "--owner"); code_s, out_s, _e = run(root, "--standup")
+    ways_ = (f"ON THEIR WAY — yours, signed and pushed, before your merge\n"
+             f"  AP-501 — at seven tomorrow · answered, on its way · {at_('AP-501')} · signed · your merge is next\n       asked: Will you read production at seven?\n"
+             f"  AP-502 — rejected - not before the audit · answered, on its way · {at_('AP-502')} · signed · your merge is next\n       asked: Does the importer ship first?\n"
+             f"  AP-503 — this week · done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next\n       asked: Will you set up the key?\n")
+    check(f"FM-030 · 0.18.6 · `--owner` and `--standup` print the same section: the asks answered on their way leave the queue and the first line counts them, the act done on its way leaves his acts (saw {out_o[:900]!r})",
+          code_o == code_s == 0 and out_o.startswith("1 NEED THE OWNER · oldest 1 day(s) · 3 on their way\n\nAP-505 · ruling · asked 1 day(s) ago\n   Does the report ship first?\n\nON THEIR WAY")
+          and ways_ in out_o and ways_ in out_s and fm.ACTS_TITLE not in out_o + out_s and "Will you read production at seven?\n\n" not in out_o
+          and out_s.startswith("STANDUP · 15 min · 1 item(s) · 3 on their way\n") and "  1. AP-505 — Does the report ship first?" in out_s and "AP-501 — Will you" not in out_s)
+    buf_ = io.StringIO()
+    with redirect_stdout(buf_):
+        fm.owner_digest([t_ for t_ in fm.load_trackers() if t_["id"] != "AP-505"])
+    check(f"FM-030 · 0.18.6 · with nothing else owed his first line is not *nothing needs the Owner*: his merge is next (saw {buf_.getvalue()[:120]!r})",
+          buf_.getvalue().startswith("NO QUESTION FOR THE OWNER · 3 ON THEIR WAY — YOUR MERGE IS NEXT\n") and "NOTHING NEEDS THE OWNER" not in buf_.getvalue())
+    check("FM-030 · 0.18.6 · the board's new words are labels — English built in, German in the table the tool ships",
+          all(k in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")) for k in fm.LABELS if k.startswith("way.")))
+    if _browser("way"):
+        try:
+            dom_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+            box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
+            check(f"FM-030 · 0.18.6 · rendered, the box counts *waiting for you* without the asks answered on their way and lists them, with the act done on its way, under *on their way* — no *done* and no *reschedule* there (saw {box_[:700]!r})",
+                  "waiting for you: 1 · oldest 1 days AP-505 Does the report ship first?" in box_ and "your acts, with their time" not in box_
+                  and f"on their way: 3 AP-501 at seven tomorrow · answered, on its way · {at_('AP-501')} · signed · your merge is next asked: Will you read production at seven?" in box_
+                  and f"AP-502 rejected - not before the audit · answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
+                  and f"AP-503 this week · done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next asked: Will you set up the key?" in box_
+                  and "reschedule" not in box_ and "accept reject" not in box_.split("on their way")[1])
+        except _ChromeFailed as e_:
+            _hung("way", e_)
     rm_git(root)
 fm.configure(HERE)
 

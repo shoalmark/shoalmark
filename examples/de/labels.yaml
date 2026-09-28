@@ -106,6 +106,14 @@ act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
+way.title: unterwegs
+way.merge: Ihr Merge ist als Nächstes dran
+way.done: erledigt, unterwegs
+way.answer: beantwortet, unterwegs
+way.revoked: widerrufen, unterwegs
+way.undone: Erledigung widerrufen, unterwegs
+way.signed: signiert
+way.unverified: "hier nicht geprüft: {0}"
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}

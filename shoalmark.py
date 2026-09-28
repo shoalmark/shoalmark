@@ -1171,21 +1171,45 @@ def on_their_way(trackers):
     return out
 
 
+WAY_TITLE = "ON THEIR WAY — yours, signed and pushed, before your merge"
+
+
+def way_lines(way):
+    """FM-030 — what `--owner` and `--standup` print of `on_their_way`, in the board's words (`way.*`), by id: his promise
+    or his answer first, what it is — *done, on its way* or *answered, on its way* —, the branch, the commit and its time,
+    whether it verifies, *your merge is next*; the question below it, as context. [] where nothing is on its way."""
+    said = lambda w: (LABELS["way.signed"] if w["said"].startswith("merge") else LABELS["way.unverified"].format(re.sub(r"^wait: ", "", w["said"])))
+    return [f"  {tid} — {w['what']} · {LABELS['way.' + w['kind']]}" + (f" — {w['value'].partition(' · ')[2]}" if w["kind"] == "done" else "")
+            + f" · {w['branch']} @ {w['commit'][:7]} · {w['time'][:16].replace('T', ' ')} · {said(w)} · {LABELS['way.merge']}"
+            + (f"\n       {LABELS['acts.asked'].format(w['asked'])}" if w["asked"] else "") for tid, w in sorted(way.items())]
+
+
+def owed_now(trackers, way):
+    """The asks and the acts still his, with `on_their_way` read: an ask whose answer is on its way leaves his queue, an act
+    done on its way leaves his acts — both are in `way_lines` instead. (queue, acts lines)."""
+    return ([r for r in owner_queue(trackers) if not way.get(r[0]["id"], {}).get("answered")],
+            acts_lines([t for t in trackers if way.get(t["id"], {}).get("kind") != "done"]))
+
+
 def owner_digest(trackers):
     """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened. After the
-    asks, the acts he owes, with their time (FM-030)."""
-    q, acts = owner_queue(trackers), acts_lines(trackers)
+    asks, the acts he owes, with their time, and what he did that is on its way to his merge (FM-030)."""
+    way = on_their_way(trackers)
+    (q, acts), ways = owed_now(trackers, way), way_lines(way)
     if not q:
-        print("NOTHING NEEDS THE OWNER." if not acts else f"NO QUESTION FOR THE OWNER · {len(acts)} ACT(S) OWED, WITH THEIR TIME")
+        print("NOTHING NEEDS THE OWNER." if not (acts or ways) else "NO QUESTION FOR THE OWNER" + (f" · {len(acts)} ACT(S) OWED, WITH THEIR TIME" if acts else "")
+              + (f" · {len(ways)} ON THEIR WAY — YOUR MERGE IS NEXT" if ways else ""))
     else:
         ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
         print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
-              + (f" · {line}" if line else ""))
+              + (f" · {line}" if line else "") + (f" · {len(ways)} on their way" if ways else ""))
         for t, a, hs in q:
             print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
             print("   " + t["ask"])
     if acts:
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
+    if ways:
+        print(f"\n{WAY_TITLE}\n" + "\n".join(ways))
     sent_back(trackers)
     line = sessions_digest()
     if line:
@@ -1224,10 +1248,11 @@ def standup(trackers, invite=None):
         pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
-    q, acts = owner_queue(trackers), acts_lines(trackers)
+    way = on_their_way(trackers)
+    (q, acts), ways = owed_now(trackers, way), way_lines(way)
     line = bottleneck(q)
     print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + (f" · {len(acts)} act(s)" if acts else "")
-          + ("" if q or acts else " — nothing needs the Owner today.") + (f"\n{line}" if line else ""))
+          + (f" · {len(ways)} on their way" if ways else "") + ("" if q or acts or ways else " — nothing needs the Owner today.") + (f"\n{line}" if line else ""))
     for kind, title in STANDUP_ORDER:
         rows = sorted((r for r in q if (r[0].get("ask_kind") or "") == kind), key=lambda r: (-len(r[2]), -(r[1] if r[1] is not None else -1), r[0]["id"]))
         if rows:
@@ -1236,6 +1261,8 @@ def standup(trackers, invite=None):
             print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
     if acts:                                                # FM-030: after the asks, what he owes, with its time
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
+    if ways:                                                # …and what he did that is on its way to his merge
+        print(f"\n{WAY_TITLE}\n" + "\n".join(ways))
     sent_back(trackers)
     return EXIT_OK
 
@@ -2333,7 +2360,8 @@ __RUNNING__</footer>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
-//        [the act owed to the Owner: what — for a promise, what he promised —, his answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed]]
+//        [the act owed to the Owner: what — for a promise, what he promised —, his answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
+//        and ONLY where his act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, his promise or his answer, the question, the done: or answer: as written, 1 where the tip carries an answer main lacks]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -2473,14 +2501,21 @@ function draw(){
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
-        `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+        `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])))
     // FM-030: what he owes, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
     +(acts=>acts.length?"\n\n<b class=\""+(acts.some(t=>actstate(t[30])!="due"&&actstate(t[30])!="nodate")?"hot":"")+"\">"+l("acts.title")+": "+acts.length+"</b>\n"+acts.map(t=>{
       const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
       return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
         +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`
         +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`
-        +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length))
+        +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length&&!(t[31]&&t[31][0]=="done")))
+    // FM-030, his signed answer 920970b7: the board reads git. What he did and pushed on `answer/<id>` is here, not in the two
+    // lists above, until his merge — his promise or his answer first, what it is, the branch, the commit, its time, whether it
+    // verifies, and that his merge is next
+    +(way=>way.length?"\n\n<b>"+l("way.title")+": "+way.length+"</b>\n"+way.map(t=>{const w=t[31];
+      return `<a href="#=${t[0]}">${t[0]}</a> ${esc(w[7])}<span class="m"> · <b class="go">${l("way."+w[0])}</b>`+(w[0]=="done"?" — "+esc(w[9].split(" · ").slice(1).join(" · ")):"")
+        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?l("way.signed"):l("way.unverified",w[6].replace(/^wait: /,""))} · ${l("way.merge")}</span>`
+        +(w[8]?`\n<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[31]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
     +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
@@ -2577,6 +2612,9 @@ LABELS = {
     "act.done.hint.promise": "the path to the result of this promise, or where it is",
     "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
     "act.sign.step.due": "writes the new {0}, and the old one into the record under {1}",
+    # FM-030, his signed answer 920970b7: what he did and pushed, before his merge — the board, `--owner` and `--standup`
+    "way.title": "on their way", "way.merge": "your merge is next", "way.done": "done, on its way", "way.answer": "answered, on its way",
+    "way.revoked": "revoked, on its way", "way.undone": "done revoked, on its way", "way.signed": "signed", "way.unverified": "not verified here: {0}",
     "sessions.recent": "sessions · {0} in the last day",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
@@ -3177,6 +3215,10 @@ def render_html(trackers):
 
     epics = {t.get("epic", "—") for t in trackers}
     by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
+    # FM-030: his act or answer on its way — a 32nd cell, on the rows `on_their_way` names and on no other, so a board with
+    # nothing on its way is the board it was, byte for byte
+    way = {k: [w["kind"], w["branch"], w["tip"], w["commit"], w["time"], w["sig"], w["said"], w["what"], w["asked"], w["value"], int(w["answered"])]
+           for k, w in on_their_way(trackers).items()}
     rows = [
         json.dumps(
             [t["id"], t["tier"], t["status"], "—", "—",
@@ -3188,7 +3230,7 @@ def render_html(trackers):
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
               t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
-             list(act_of(t) or [])],
+             list(act_of(t) or [])] + ([way[t["id"]]] if t["id"] in way else []),
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
