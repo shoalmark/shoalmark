@@ -276,6 +276,8 @@ row.
 > To settle in the build: PortDive ignores .claude/ except output styles (an exception there, or a --user install form); which cwd a project statusLine command runs in (test from a subfolder and a worktree).
 > Process: an ask on FM-024, rowed first — options: all three · the status line only · the rule only; no default. Code tier, full loop. The Auditor seals its verification plan before the build.
 
+The paste's own stamp, *≈06:55 CEST*, is its writer's estimate, kept as written; it reached this session at 06:48:37 (the transcript's stamp), the time this record and the ledger's row 56 use.
+
 The Principal's counsel, disclosed as such: the first option — all three, as a slice on this tracker (its problem is the one that bit on 2026-09-28: two sessions of one seat are one author); to settle in the build, as the Auditor names them: PortDive ignores `.claude/` except output styles, and the cwd a project statusLine command runs in. Code tier, the full loop; the Auditor seals its verification plan before the build. Nothing is built before his answer and the pass that judges the slice.
 
 ## Ship log

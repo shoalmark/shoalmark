@@ -83,7 +83,7 @@ refuses an unclaimed id; the number stays a prefix and a count.
 
 ## Raised
 
-- 2026-09-28 02:00:26 and 02:06:06 · two Reviewer seats of one session, each minting "the next free RV id" across both forges (the Principal's briefs said RV-681 onward to both, six minutes apart) · RV-681 minted twice — on shoalmark `e7d16b8` and on PortDive `97fa9ada`; the later renumbered RV-685 before merge. The same evening the Owner's other session took RV-686…690 (`9318ee1b`) and RV-692 while this session's Reviewers minted, and RV-700 crossed this session's own two allocations. The class this tracker names for tracker ids (`--new` on two branches), now for review ids across sessions; RV-473…480 were minted twice on 2026-09-24 as well. The Principal's word, 2026-09-28: a rule is owed — the ask below.
+- 2026-09-28 · Principal seat (8e509911), on its own Reviewers' collision · two Reviewer seats of one session, each minting "the next free RV id" across both forges (the Principal's briefs said RV-681 onward to both, six minutes apart, 02:00:26 and 02:06:06), minted RV-681 twice — on shoalmark `e7d16b8` and on PortDive `97fa9ada`; the later renumbered RV-685 before merge. The same evening the Owner's other session took RV-686…690 (`9318ee1b`) and RV-692 while this session's Reviewers minted, and RV-700 crossed this session's own two allocations. The class this tracker names for tracker ids (`--new` on two branches), now for review ids across sessions; RV-473…480 were minted twice on 2026-09-24 as well · source: the two verdict commits, PortDive's ledger rows 54–55 and FM-027's worksheet row of 2026-09-28 · the Principal's word, 2026-09-28: a rule is owed — the ask below · undermines: no signed rule (none names review ids)
 
 ## Ship log
 
