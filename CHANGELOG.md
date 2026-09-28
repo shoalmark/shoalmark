@@ -53,6 +53,19 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   recorded as given; nothing outside the repository is read, and nothing is guessed. `--due` on an act that was done
   keeps that act in its record, with its facts. The board's *done* dialog stays one field; `--schema` says it under
   `done:`.
+- **A browser check's budget follows a control: the page's own cost, counted beyond Chrome's start** (FM-039, in
+  FM-035's block; the Owner's machine on 2026-09-27 from about 19:30: headless Chrome needed 5.4–5.5 s to dump
+  `about:blank` alone, so the healthy board in FM-035's case — its budget cut to 5 s of wall-clock time — failed on
+  `main`'s own tool, and the pre-commit hook refused every commit that staged a `.py`; the seats' finding of 2026-09-26,
+  469 of 470 at a 1-minute load of 9–27, the same case each time). The suite already runs Chrome on a blank page before
+  a browser block — the control that tells a platform gap from a hang; it now keeps that run's time, and every headless
+  Chrome run's budget is counted beyond it: FM-035's healthy board gets 5 s beyond Chrome's own time, the suite's other
+  pages 60 s beyond it. A page that does not come back is still tried twice and FAILS by name, and the line names both
+  numbers: *headless Chrome did not return index.html within 5 s beyond Chrome's own 5.7 s, tried twice*. A control
+  past 60 s, or a Chrome that cannot start, is the platform gap it was: the block skips by name with the reason. A new
+  check says why: a Chrome made 5 s slower to start — each run of it, its control included — renders the healthy board
+  and passes, where 5 s of wall-clock time is spent before the page begins. A test-only change. *Not shown here:* a
+  1-minute load of 20 or more — none tonight. *Nothing to do on upgrade.*
 
 ## 0.18.5 — 2026-09-27
 
