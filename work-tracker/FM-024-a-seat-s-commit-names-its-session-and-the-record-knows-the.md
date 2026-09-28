@@ -252,6 +252,12 @@ verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
 - Whether the independence count changes a verdict on 09-29 — if every review is a sub-agent of the author's session,
   the count says so and the container question moves up.
 
+## Raised
+
+*One sourced line per raise — the date, who raised it, the fact, its source, what it undermines.*
+
+- 2026-09-28 09:01:54 · Auditor (8b91dba2), through the Owner (his paste headed *To: 8e509911 principal (shoalmark-principal-4)*, four lines, saved word for word, sha256 `a375a843e12228c9229076e9af8b0f6ff22516f16f31156d67f0a75a870118ac`; its point 2 quoted here) · *"The sessions strip, 80%: group the sub-sessions under their parent, e.g. "8e509911 principal (principal-2) · implementer 41, 42, 45 · reviewer 33, 38, 41, 42, 44"; each sub's worktree on expand. Fits FM-024. Yours to file or fold."* — folded here as a line of the slice his answer of 08:11:26 opened (all three: `--statusline`, `--install-statusline`, the AGENTS.md rule with `--whoami`): the sessions strip groups the sub-sessions under their parent session, each sub's worktree on expand · source: the paste; the strip as `board_sessions` renders it at main `eb00e96b` · undermines: no signed rule — a design line for the slice
+
 ## Done when
 
 The Owner has ruled the candidate; a seat commit without a registered open session is refused by the gate; the board
@@ -299,3 +305,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-24 | Asked, kind action: who verifies 0.18.3 — slice 2 (a same-session verdict refused) is unbuilt and 55 of this week's 57 verdicts are one session's own sub-agents (the Auditor seat's AU-17); the parent project's ledger row came first. |
 | 2026-09-24 | Correcting the row above (the Reviewer's R6): the 55 of 57 are *same session* as `--check` counts them — each verdict by its own branch's session, 54 of them this session's sub-agents and one another's — not one session's. |
 | 2026-09-24 | The row of 20:24 above was edited in place before the branch merged (the pass Reviewer's R10); from here, a correction is an appended row. |
+| 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
