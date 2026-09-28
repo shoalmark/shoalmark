@@ -252,6 +252,12 @@ verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
 - Whether the independence count changes a verdict on 09-29 — if every review is a sub-agent of the author's session,
   the count says so and the container question moves up.
 
+## Raised
+
+*One sourced line per raise — the date, who raised it, the fact, its source, what it undermines.*
+
+- 2026-09-28 09:01:54 · Auditor (8b91dba2), through the Owner (his paste headed *To: 8e509911 principal (shoalmark-principal-4)*, four lines, saved word for word, sha256 `a375a843e12228c9229076e9af8b0f6ff22516f16f31156d67f0a75a870118ac`; its point 2 quoted here) · *"The sessions strip, 80%: group the sub-sessions under their parent, e.g. "8e509911 principal (principal-2) · implementer 41, 42, 45 · reviewer 33, 38, 41, 42, 44"; each sub's worktree on expand. Fits FM-024. Yours to file or fold."* — folded here as a line of the slice his answer of 08:11:26 opened (all three: `--statusline`, `--install-statusline`, the AGENTS.md rule with `--whoami`): the sessions strip groups the sub-sessions under their parent session, each sub's worktree on expand · source: the paste; the strip as `board_sessions` renders it at main `eb00e96b` · undermines: no signed rule — a design line for the slice
+
 ## Done when
 
 The Owner has ruled the candidate; a seat commit without a registered open session is refused by the gate; the board
@@ -287,6 +293,7 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 
 | Date | Event |
 |---|---|
+| 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |
