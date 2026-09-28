@@ -29,11 +29,12 @@ pinned `tools/shoalmark/shoalmark.py` as a child process, so a profile targets t
 0.18.5 (`scripts/gen-tracker-index.py`, 507 trackers). Every seat's loop — checkout, commit, verdict — pays it dozens of times a day, and the Owner
 pays it at every button.
 
-Held against (FM-035 and FM-039 by hand — `--related` does not return them): FM-018 (the answer flow's convenience — this is the hook's, not the flow's), FM-025 (a cold start's tokens — a different cost),
+Held against (FM-035, FM-039 and FM-012 by hand — `--related` does not return them; FM-024 on the Auditor's word): FM-018 (the answer flow's convenience — this is the hook's, not the flow's), FM-025 (a cold start's tokens — a different cost),
 FM-034 (a fresh clone's `--check` — the same header path, not its time), FM-035 and FM-039 (the suite's 5 s Chrome budget — a render budget, not the
-regeneration's). None names the regeneration's wall-clock time; a new filing.
+regeneration's). FM-012 (the same kind of cost — its batching fix — a design, not this bug's time) and FM-024 (S6, `294a368`, v0.17.6 — where
+`verdict_reports` and its cost came from). None names the regeneration's wall-clock time; a new filing.
 
-**The two routes, the Owner's, for his ruling once the profile is in:**
+**The two routes, the Owner's, as they stood before the profile (the measurement below chose route a for this bug; route b stays his separate question):**
 - **a. profile the Python path** — `cProfile` of `--html-only` and of the commit's `--print-written` path on both repositories at low load, the number of `git` subprocesses per run, the ten
   functions by cumulative time; then the optimisation that bites (a cache of per-tracker git facts across a run, one `git log` for all files instead
   of one per file, or whatever the profile names). The Principal's counsel, disclosed as such: the cheaper route, and it keeps the single Python file
@@ -71,8 +72,8 @@ post-merge and post-checkout, where it is read); (b) `verdict_reports` cached pe
 (`reviewed_range`'s `rev-list --ancestry-path` is 24.5 s of the 39). **Route b is not this bug's:** the Rust port stays the Owner's separate product
 question and is not asked here. The route ask this tracker foresaw is therefore not filed; the measurement answered it.
 
-The profile (slice 1) was a seat's read-only work and needed no ruling; the route after it is an ask to the Owner, rowed first in the ledger, with the
-profile's numbers as its input and no default.
+The profile (slice 1) was a seat's read-only work and needed no ruling; the route ask it foresaw is not filed — the measurement chose (see the clause
+above), and the Rust port remains the Owner's separate product question, asked on its own tracker if he wants it tracked.
 
 ## Done when
 
@@ -89,3 +90,4 @@ today's for the same trackers.
 | 2026-09-28 | The filing's pass `e7d16b8` READY WITH FINDINGS (RV-681…684, reviewer-40; its own full regeneration 50.84 s real / 18.25 user / 29.50 sys at a 1-minute load of 150 falling to 72). Fixed in the next commit: the hook steps named from `lefthook.yml` (RV-681), the times exact (RV-682), FM-035/FM-039 marked as held by hand (RV-683), the route weighing disclosed as the Principal's counsel (RV-684); the seat's unmeasured code reading added; the profile not run — the permission classifier refused the seat's runner. |
 | 2026-09-28 | The re-check `fd43178` (reviewer-40): RV-682/683 closed; RV-681 and RV-684 open in part, RV-691 new (an approximate time, a docstring's line) — fixed in the next commit: route a profiles `--print-written` too, route b labelled as counsel, the reading's time 02:03:03, the docstring at line 1012 in `recover_relations`. |
 | 2026-09-28 | The Auditor's measurement (02:43–02:47, its own clones, load 7–14), relayed by the Owner 05:24:00 and filed word for word (sha256 `a6cb201b…`): 568 git calls, 96 % in `board_sessions → verdict_reports`, the pre-commit builds the HTML board; the seat's reading struck; FM-012/FM-024 added to `considered:`; the fix's two slices per its counsel (hook code — cold review); the route ask not filed — the Rust port is his separate question. |
+| 2026-09-28 | The filing's pass `cb17819` (reviewer-40) READY WITH FINDINGS: the quoted block byte for byte the paste, `294a368` confirmed as FM-024 S6; RV-694 two lines still announced the route ask — reworded; RV-695 FM-012/FM-024 named in *Held against*. |
