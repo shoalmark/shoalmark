@@ -54,3 +54,34 @@ FM-012 marked as held by hand.
 re-pass.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Re-check on 006e8c8 (2026-09-28 05:39 CEST, the same seat)
+
+**Scope.** `006e8c8` (`006e8c855340dbcafe26ec4fd7b0d1c32fb97123`, the Principal, 05:37:08, confirmed by `ls-remote`)
+is one tracker-only commit on `cb17819`. I read `git diff cb17819 006e8c8` whole: FM-040's file only, 7 lines in
+and 5 out, in four places — the *Held against* line, the routes' heading, the closing paragraph, and a new ship-log
+row, last. Nothing else moved. The quoted block still hashes to `a6cb201b…`.
+
+**Gates.** The tool and both suites are still byte-identical to `origin/main` `24c26f27`, so no suite was run.
+- `--check`: exit 0. *INDEX.md is up to date — 40 trackers*; the Owner's two sections guarded.
+- `--session-check`: exit 0.
+- `git merge-tree --write-tree origin/main HEAD`: clean (`c39ea21`).
+
+**RV-694 — closed.** Neither line announces a route ask any more:
+- the heading reads *"The two routes, the Owner's, as they stood before the profile (the measurement below chose
+  route a for this bug; route b stays his separate question)"*;
+- the closing paragraph reads *"the route ask it foresaw is not filed — the measurement chose (see the clause above),
+  and the Rust port remains the Owner's separate product question, asked on its own tracker if he wants it tracked"*.
+
+Both agree with the clause and the Done-when. No option or default is put to him.
+
+**RV-695 — closed.** *Held against* now opens *"(FM-035, FM-039 and FM-012 by hand — `--related` does not return
+them; FM-024 on the Auditor's word)"*. It names what each was held for: FM-012 *"the same kind of cost — its
+batching fix — a design, not this bug's time"*, and FM-024 *"S6, `294a368`, v0.17.6 — where `verdict_reports` and its
+cost came from"*.
+
+Nothing new is found, so nothing is minted.
+
+**Verdict: READY WITH FINDINGS.** RV-694 and RV-695 are closed; the docs tier takes no further pass.
+
+The Owner lands this by merging; a merge rules nothing.
