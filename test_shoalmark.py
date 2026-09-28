@@ -4993,7 +4993,7 @@ with tempfile.TemporaryDirectory() as tmp:
         tr_.write_text(also(text_) if also else text_, encoding="utf-8")
         git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate")
         return sha()
-    b31_(19); record31_(); d19_ = his31_(due31_); h19_ = review31_(d19_)
+    b31_(19); r19_ = record31_(); d19_ = his31_(due31_); h19_ = review31_(d19_)
     b31_(20); u20_ = his31_(); git(root, "commit", "-q", "--amend", "--no-edit", "--no-gpg-sign"); u20_ = sha(); h20_ = review31_(his31_(done31_))
     b31_(21); f21_ = record31_(lambda x_: x_.replace("next: owner\n", "next: build\n", 1)); h21_ = review31_(his31_(done31_))
     # RV-715 · the Owner's cold re-check of af5a9e2 (P1): the same one refusal-shaped line, unsigned in his name, typed into the
@@ -5014,7 +5014,7 @@ with tempfile.TemporaryDirectory() as tmp:
     def tail31_():
         tr_.write_text(tr_.read_text(encoding="utf-8").rstrip("\n") + "\n\n**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n", encoding="utf-8")
         git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate"); return sha()
-    b31_(26); sections31_(); record31_(); d26_ = his31_(done31_); h26_ = review31_(d26_)
+    b31_(26); sections31_(); r26_ = record31_(); d26_ = his31_(done31_); h26_ = review31_(d26_)
     b31_(27); sections31_(); f27_ = tail31_(); h27_ = review31_(his31_(done31_))
     # the same-session read of the RV-716 fix (reviewer-53): a NEW `## Acts` section sits only where `append_record` puts one — above the
     # ship log, else at the end; one made before another heading (here `## Done when`) is not the tool's and waits; above a ship log it merges
@@ -5026,14 +5026,24 @@ with tempfile.TemporaryDirectory() as tmp:
         tr_.write_text(tr_.read_text(encoding="utf-8").rstrip("\n") + f"\n\n## {fm.HEAD['log']}\n\n| Date | Event |\n|---|---|\n| 2026-09-27 | filed |\n", encoding="utf-8")
         git(root, "add", "-A"); git(root, "commit", "-q", "-S", "-m", "MSR-001: the ship log"); return sha()
     b31_(28); f28_ = midacts31_(); h28_ = review31_(his31_(done31_))
-    b31_(29); shiplog31_(); record31_(); d29_ = his31_(done31_); h29_ = review31_(d29_)
-    rec31_ = {n_: q31_(n_, h_) for n_, h_ in ((19, h19_), (20, h20_), (21, h21_), (25, h25_), (26, h26_), (27, h27_), (28, h28_), (29, h29_))}
-    check(f"FM-031, 0.18.6 · RV-712, RV-715, RV-716 · the tool's own refusal record under his signed act — his, unsigned, one line under `## Acts`, the tracker otherwise byte-identical — reads `merge: your answer`; another unsigned commit in his name waits as `an unverified commit in your name`, never *a seat's*; the same refusal-shaped line typed ABOVE `## Acts` (RV-715, the current truth) or appended inside a later `## Asks` (RV-716) waits too, while the tool's own record before that `## Asks` reads merge; a new `## Acts` made before another heading waits, one made above the ship log (where `append_record` makes it) merges; a refusal record that also changes a front-matter key is no record (saw {rec31_})",
+    b31_(29); shiplog31_(); r29_ = record31_(); d29_ = his31_(done31_); h29_ = review31_(d29_)
+    # the cold session's coverage list on 2185250 (READY at 0842ce8): the RV-715 line under `## What is true now` itself, under his signed `due:`;
+    # and `refusal_record` asserted directly on every shape, not only through the queue's reading
+    def truth31_():
+        tr_.write_text(tr_.read_text(encoding="utf-8").replace("## What is true now\n\n", "## What is true now\n\n**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n\n", 1), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate"); return sha()
+    b31_(30); f30_ = truth31_(); h30_ = review31_(his31_(due31_))
+    fm.configure(root)
+    shapes31_ = {n_: _no_git_env(lambda s_=s_: fm.refusal_record(s_)) for n_, s_ in ((19, r19_), (25, f25_), (26, r26_), (27, f27_), (28, f28_), (29, r29_), (30, f30_))}
+    rec31_ = {n_: q31_(n_, h_) for n_, h_ in ((19, h19_), (20, h20_), (21, h21_), (25, h25_), (26, h26_), (27, h27_), (28, h28_), (29, h29_), (30, h30_))}
+    check(f"FM-031, 0.18.6 · RV-712, RV-715, RV-716 · the tool's own refusal record under his signed act — his, unsigned, one line under `## Acts`, the tracker otherwise byte-identical — reads `merge: your answer`; another unsigned commit in his name waits as `an unverified commit in your name`, never *a seat's*; the same refusal-shaped line typed ABOVE `## Acts` (RV-715, the current truth) or appended inside a later `## Asks` (RV-716) waits too, while the tool's own record before that `## Asks` reads merge; a new `## Acts` made before another heading waits, one made above the ship log (where `append_record` makes it) merges; the RV-715 line under `## What is true now` itself waits under his signed `due:`; `refusal_record` says True for the tool's three placements and False for the four forged ones (saw {shapes31_}); a refusal record that also changes a front-matter key is no record (saw {rec31_})",
           rec31_ == {19: ("merge: your answer", f"signed {d19_[:7]}"), 20: (f"wait: an unverified commit in your name on your answer branch ({u20_[:7]})", ""),
                      21: (f"wait: an unverified commit in your name on your answer branch ({f21_[:7]})", ""),
                      25: (f"wait: an unverified commit in your name on your answer branch ({f25_[:7]})", ""),
                      26: ("merge: your answer", f"signed {d26_[:7]}"), 27: (f"wait: an unverified commit in your name on your answer branch ({f27_[:7]})", ""),
-                     28: (f"wait: an unverified commit in your name on your answer branch ({f28_[:7]})", ""), 29: ("merge: your answer", f"signed {d29_[:7]}")})
+                     28: (f"wait: an unverified commit in your name on your answer branch ({f28_[:7]})", ""), 29: ("merge: your answer", f"signed {d29_[:7]}"),
+                     30: (f"wait: an unverified commit in your name on your answer branch ({f30_[:7]})", "")}
+          and shapes31_ == {19: True, 25: False, 26: True, 27: False, 28: False, 29: True, 30: False})
     # RV-713 · the way out the wait names: the seat's commit lands on the default branch by its own pull request — his act is
     # kept, nothing of his re-given (FM-030 C) — and the answer branch then reads merge; the act commands' refusal says the same
     git(root, "checkout", "-q", "-b", "fm/seat-work", t0); sw22_ = seat31_("impl@seat")
