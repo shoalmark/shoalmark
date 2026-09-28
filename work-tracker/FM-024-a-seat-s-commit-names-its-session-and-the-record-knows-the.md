@@ -8,12 +8,15 @@ triaged: 2026-09-25
 rank: 9
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
-next: owner
+next: build
 ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
 ask-kind: ruling
 ask-since: 2026-09-28
 ask-options: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami | the status line only: --statusline and its install, no rule and no --whoami | the rule only: To: <session> <seat> (<worktree>) in AGENTS.md and --whoami, no status line"
 ask-proposal: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
+answer: "accepted - all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
+answered: 2026-09-28
+answered-by: holgo99
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
