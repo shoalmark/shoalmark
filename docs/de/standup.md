@@ -12,7 +12,8 @@ Er gibt die Tagesordnung eines Standups aus, nach Art geordnet: zuerst **Entsche
 vorläufige Antwort ist eine Antwort), dann was nur **Ihre Hände** tun können, in der Reihenfolge, die am meisten
 Arbeit freigibt, dann was **Belege klären** könnten, ohne Sie, dann **Knöpfe**. Jeder Punkt ist eine Frage, mit der
 Wartezeit und dem, was sie aufhält. Nach den Fragen kommen **Ihre Handlungen, mit ihrer Zeit** — versäumte und
-überfällige zuerst, dann was fällig wird, dann was noch keinen Termin hat.
+überfällige zuerst, dann was fällig wird, dann was noch keinen Termin hat — und zuletzt, was Sie beantwortet oder getan
+haben und was **unterwegs** zu Ihrem Merge ist.
 
 ## Die Einladung
 
@@ -51,6 +52,20 @@ Ergebnis liegt — der Pfad genügt: der Eintrag ergänzt, was das Repository ü
 hat und bei einer Prüfung ihr Urteil —, und gibt Ihnen `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`;
 **verschieben** fragt nach der neuen Zeit und gibt Ihnen `--due AP-007 <Zeit>`. Beides wird signiert und gepusht wie
 eine Antwort.
+
+## Unterwegs — vor Ihrem Merge
+
+Was Sie beantworten oder tun, ist ein signierter Commit auf `answer/<id>`, gepusht; der Standardzweig hat ihn erst nach
+Ihrem Merge. Bis dahin liest die Tafel git, und die Seite, auf die Sie zurückkommen, zeigt es sofort: die Frage verlässt
+*wartet auf Sie*, die Handlung verlässt *Ihre Handlungen*, und beide stehen unter **unterwegs** — Ihre Zusage oder Ihre
+Antwort zuerst, dann was es ist: *beantwortet, unterwegs*, *erledigt, unterwegs — <wo das Ergebnis liegt>*,
+*verschoben, unterwegs — fällig <Zeit>*, *zurückgenommen, unterwegs — <warum>* oder *Erledigung zurückgenommen,
+unterwegs*; der Zweig, der Commit und seine Zeit, ob er signiert ist, und *Ihr Merge ist als Nächstes dran*. Eine
+Antwort oder eine erledigte Handlung trägt einen Knopf, **zurücknehmen**, wo annehmen und ablehnen oder erledigt und
+verschieben standen: er fragt, warum, und gibt Ihnen `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<warum>"` —
+einen neuen signierten Commit darauf, auf demselben Zweig, nie ein Überschreiben. Eine Verschiebung trägt keinen; um sie
+noch einmal zu verschieben, führen Sie `--due` auf ihrem Zweig aus. Nach Ihrem Merge liest jede wieder vom
+Standardzweig; ein anderer Rechner zeigt nach einem Fetch dieselben Zeilen.
 
 Zwei Erinnerungen, wenn Sie wollen. `--invite AP-007` schreibt die Handlung als Kalenderdatei — ihre Zeit, ihr
 Fenster, eine Erinnerung 30 Minuten vorher — neben die Belege des Arbeitspakets; importieren Sie sie. `--notify`

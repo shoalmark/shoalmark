@@ -105,13 +105,14 @@ act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
+act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
 way.title: unterwegs
 way.merge: Ihr Merge ist als Nächstes dran
 way.done: erledigt, unterwegs
 way.answer: beantwortet, unterwegs
 way.revoked: zurückgenommen, unterwegs
 way.undone: Erledigung zurückgenommen, unterwegs
+way.due: verschoben, unterwegs
 way.signed: signiert
 way.unverified: "hier nicht geprüft: {0}"
 way.revoke: zurücknehmen
