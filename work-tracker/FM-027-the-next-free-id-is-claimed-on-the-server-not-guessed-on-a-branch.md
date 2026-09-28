@@ -4,7 +4,7 @@ status: Parked
 considered: FM-008, FM-011, FM-024
 tags: research
 kind-of-problem: complicated
-next: owner
+next: build
 triaged: 2026-09-28
 tier: P3
 ask: "How are review ids (RV-…) allocated across sessions, so that two Reviewers never mint the same id?"
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-09-28
 ask-options: "a block per session, claimed on the server in the review folder: FM-027's design for tracker ids, extended to review ids | each session's Principal allocates ranges to its Reviewers and announces its block in chat; both forges grepped first | as today: the next free id across both forges, read right before writing"
 ask-proposal: "a block per session, claimed on the server in the review folder: FM-027's design for tracker ids, extended to review ids"
+answer: "accepted - a block per session, claimed on the server in the review folder: FM-027's design for tracker ids, extended to review ids"
+answered: 2026-09-28
+answered-by: holgo99
 hook: "`--new` takes the next id it can see on the branch it runs on; two branches that have not merged both get it — it happened twice in one evening. A readable prefix and a counting number stay; the claim moves to the one place that is atomic for everyone, the server"
 ---
 

@@ -346,7 +346,9 @@ def front_matter_schema():
                                                                         "computes the answer's relation to `ask-proposal:` and `ask-options:` and prints it beside it: accepted the proposal · chose option N · "
                                                                         "accepted with a change · rejected · revoked · relation not computable, where there is no proposal to compare it with. "
                                                                         "Never overwritten in place: `--answer <id> revoke \"<reason>\"` makes it `revoked - <reason>`, and `--answer <id> accept|reject \"<option>\" --supersede` replaces it — "
-                                                                        "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*"),
+                                                                        "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*. "
+                                                                        "Until his merge, an answer on an `answer/<id>` not merged into the default branch reads *answered, on its way* on the board, in "
+                                                                        "`--owner` and in `--standup`, and the ask leaves his queue (FM-030); `--revoke <id> \"<why>\"` takes it back there, on top of it"),
         "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
         "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; `--answer`, from an accepted "
@@ -359,16 +361,21 @@ def front_matter_schema():
                             "else this machine's zone; a weekday alone, a month and day with neither year nor weekday, a zone name this machine does not "
                             "carry, a word after the time that is no zone as written (`cest`), a 12-hour time (`9:00 PM`), a fraction of a second "
                             "(`09:00:00.000Z`), or two times are not read — nothing rather than a wrong hour — and the act shows *no date yet*. "
-                            "A `due:` already set is left, and `--answer` says so"),
+                            "A `due:` already set is left, and `--answer` says so. Moved by the Owner's `--due` and not merged yet, the new time is "
+                            "his act on its way: the board, `--owner` and `--standup` read it from `origin/answer/<id>` as *rescheduled, on its way — "
+                            "due <time>*, and the act leaves his list of acts until the merge — a `--due` after a done act too, never *done revoked*"),
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
-        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`",
+        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`; his `--revoke` removes it",
                             "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
                             "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next. The person gives the path; "
                             "the record gathers the facts: for a file in the repository, the commit that added it and its date, and for a review — a file "
                             "that states a verdict — its word, the `Reviewed:` sha and the `Session:` of its last pass: the last line that states a verdict, "
                             "that pass's own lines, else the trailers of the newest commit that touched the file, named as *last pass in* where it is not "
                             "the one that added it; a line anchor after the path (`file.md:12`, `#L1-L9`) is kept as given and not read as its name; "
-                            "a word that names no file there is recorded as given, *not in the repository* beside it; nothing is guessed"),
+                            "a word that names no file there is recorded as given, *not in the repository* beside it; nothing is guessed. The time is when the act "
+                            "was recorded, not the act's own, which is in the evidence its path names. Until his merge, a `done:` on an `answer/<id>` not merged "
+                            "reads *done, on its way* and the act leaves his list (FM-030); `--revoke <id> \"<why>\"` takes it back — `done:` leaves, the "
+                            "revocation is recorded under `## Acts`, the act is owed again — on that branch, on top of it"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
         "tier":            (r"P[0-3]", False, "a triage pass", "how much it matters, judged against the Owner's current path"),
@@ -1101,21 +1108,137 @@ def acts_lines(trackers, now=None):
             + (f"\n       {LABELS['acts.asked'].format(a[5])}" if a[5] else "") for t, a in acts]
 
 
+# FM-030 — THE BOARD READS GIT: an act or an answer he just gave, before his merge. The Owner's signed answer of 2026-09-27
+# 14:56:15 (920970b7), option 1 of the ask of 14:14:18, on his words of 13:57:50 — *they pushed the button, did the answer
+# and expect the page to display that state right away* (spelling normalised). His act or answer is a signed commit on
+# `answer/<id>`, pushed; the default branch knows nothing of it until his merge, and the board, `--owner` and `--standup`
+# were built from the checkout alone. One truth stays, git: after the push the remote-tracking ref holds the sha the tool
+# committed, and another machine has it after a fetch. Nothing is written to remember it, and nothing is fetched to read it.
+
+
+def on_their_way(trackers):
+    """{id: reading} — every `origin/answer/<id>` this clone holds that is NOT merged into the default branch
+    (`default_trunk`; one `git for-each-ref --no-merged` for all of them), whose tracker at the tip carries a `done:`, an
+    `answer:` or a `due:` the default branch's copy lacks — or drops a `done:` the default branch has, where `--revoke` made
+    that change. A merged branch is not read, nor one whose tip carries no such change, nor one for a tracker this checkout
+    does not hold. A reading:
+    - `kind` — `done` · `answer` · `revoked` (an answer that revokes) · `undone` (a `done:` revoked) · `due` (rescheduled);
+      `done` first where the tip carries both. `--due` is his act as `--done` and `--answer` are (the Principal's ruling of
+      2026-09-28 on RV-730): a `due:` the default branch lacks reads *rescheduled, on its way* — and so does a `--due` that
+      opened a new act after a done one and dropped its `done:`. *Done revoked* reads only where the branch's own commit
+      that dropped `done:` is a revocation — `--revoke`'s subject, `REVOKE_DONE_SUBJECT` —, never on a `done:` line gone;
+    - `answered` — the tip carries an answer the default branch lacks: the ask leaves his waiting list, whatever the kind;
+    - `owed` — the act stays on his list of acts: the tip still owes him one (`act_of`) and no new time is on its way for
+      it. Where the tip owes none — done, or a promise revoked — or carries a new time, the act leaves his acts until the
+      merge, and is listed here instead;
+    - `due` — the `due:` at the tip where the default branch lacks it (a reschedule, or a time his promise seeded), else "";
+    - `note` — what follows the label: for `done`, where its result is; for `revoked`, the reason; else "";
+    - `branch`, `tip` — its head;
+    - `commit` — the newest of the branch's OWN commits that changed that line, read from its commits, never from its head
+      alone: a Reviewer's verdict on top of his act is no act (RV-679); `time` its committer time, `sig` its `%G?` against the
+      signers the gate trusts, `said` what `--queue` reads of it — `answer_reading`, the one reader of an answer commit;
+    - `what` — his promise, else the answer as signed; for an act, its line; for an answer revoked, the question it answered
+      (the reason follows the label, RV-734); `asked` the question, as context; `value` the `done:`, `answer:` or `due:` as
+      written — for `undone`, the `done:` it revokes.
+    {} without git, without a default branch, or with nothing on its way. Local: no fetch, no forge — a pull request is not
+    looked up, and every reading says *your merge is next*."""
+    if vcs() != "git" or not trackers:
+        return {}
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    if not trunk:
+        return {}
+    refs = git("for-each-ref", f"--no-merged={trunk}", "--format=%(refname:lstrip=3)%00%(objectname)", "refs/remotes/origin/answer/")
+    by_id, heads = {t["id"]: t for t in trackers}, []
+    for line in refs.stdout.splitlines() if refs.returncode == 0 else []:
+        branch, _, tip = line.partition("\x00")
+        t = by_id.get(branch[len("answer/"):].upper()) if branch.startswith("answer/") else None
+        if t and tip:
+            heads.append((branch, tip, t["id"], (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()))
+    blobs = cat_blobs([spec for _b, tip, _i, rel in heads for spec in (f"{tip}:{rel}", f"{trunk}:{rel}")])
+    out = {}
+    for branch, tip, tid, rel in heads:
+        there, here = blobs.get(f"{tip}:{rel}"), blobs.get(f"{trunk}:{rel}")
+        if there is None:
+            continue
+        at, was = extract(ROOT / rel, there), (extract(ROOT / rel, here) if here is not None else {})
+        answered = bool(at.get("answer")) and at["answer"] != was.get("answer")
+        word = ANSWER_WORD_RE.fullmatch(answer_norm(at.get("answer")))
+        due = at.get("due", "") if at.get("due") and at.get("due") != was.get("due") else ""
+        newest = lambda key: git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?%x00%s", "-G", line_regex(key), tip, "^" + trunk, "--", rel).stdout.strip()
+        log = ""
+        if at.get("done") and at["done"] != was.get("done"):
+            kind, key = "done", "done:"
+        elif answered:
+            kind, key = ("revoked" if word and word.group(1).lower() == "revoked" else "answer"), "answer:"
+        elif was.get("done") and not at.get("done") and (log := newest("done:")).split("\x00")[-1].startswith(REVOKE_DONE_SUBJECT.format(tid)):
+            kind, key = "undone", "done:"                   # `--revoke` dropped it: its own commit says so, not a line gone
+        elif due or (was.get("done") and not at.get("done") and at.get("due")):
+            kind, key, log, due = "due", "due:", "", at.get("due", "")   # `--due`, and `--due` after a done act: a new time, never *done revoked*
+        else:
+            continue
+        log = log or newest(key)
+        if not log:                                         # the line came in through a merge on the branch: its head speaks
+            log = git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?", tip).stdout.strip()
+        commit, when, sig = (log.split("\x00") + ["", "", ""])[:3]
+        if kind in ("done", "undone", "due"):               # the act's line, and its question, as they read while it was owed
+            act = act_of({**at, "done": ""})
+            what, asked = (act[0], act[5]) if act else (at.get("title") or tid, "")
+        elif kind == "revoked":                             # the question he takes his answer back from; the reason follows the label (RV-734)
+            what, asked = at.get("ask") or at.get("title") or tid, ""
+        else:
+            what, asked = promise_of(at) or at["answer"], at.get("ask", "")
+        value = {"undone": was.get("done", ""), "done": at.get("done", ""), "due": due}.get(kind, at.get("answer", ""))
+        note = value.partition(" · ")[2] if kind == "done" else (word.group(2) or "").strip() if kind == "revoked" and word else ""
+        out[tid] = {"kind": kind, "answered": answered, "owed": act_of(at) is not None and not due, "branch": branch, "tip": tip, "commit": commit or tip, "time": when, "sig": sig or "N",
+                    "said": answer_reading(commit or tip)[1], "what": what, "asked": asked if asked != what else "", "value": value, "due": due, "note": note}
+    return out
+
+
+WAY_TITLE = "ON THEIR WAY — yours, signed and pushed, before your merge"
+# the subject `--revoke` gives the commit that takes back an act done — `on_their_way` reads *done revoked* on it, and on nothing else
+REVOKE_DONE_SUBJECT = "{0}: done revoked — "
+
+
+def way_lines(way):
+    """FM-030 — what `--owner` and `--standup` print of `on_their_way`, in the board's words (`way.*`), by id: his promise
+    or his answer first, what it is — *done, on its way* or *answered, on its way* —, the branch, the commit and its time,
+    whether it verifies, *your merge is next*; the question below it, as context. After the label: where the result is, the
+    reason of a revocation, or the new time — *rescheduled, on its way — due <time>*. [] where nothing is on its way."""
+    said = lambda w: (LABELS["way.signed"] if w["said"].startswith("merge") else LABELS["way.unverified"].format(re.sub(r"^wait: ", "", w["said"])))
+    after = lambda w: f" — {w['note']}" if w.get("note") else f" — {LABELS['acts.due'].format(w['due'].replace('T', ' '))}" if w.get("due") else ""
+    return [f"  {tid} — {w['what']} · {LABELS['way.' + w['kind']]}" + after(w)
+            + f" · {w['branch']} @ {w['commit'][:7]} · {w['time'][:16].replace('T', ' ')} · {said(w)} · {LABELS['way.merge']}"
+            + (f"\n       {LABELS['acts.asked'].format(w['asked'])}" if w["asked"] else "") for tid, w in sorted(way.items())]
+
+
+def owed_now(trackers, way):
+    """The asks and the acts still his, with `on_their_way` read: an ask whose answer is on its way leaves his queue, an act
+    the tip no longer owes — done, or a promise revoked — or whose new time is on its way leaves his acts; both are in
+    `way_lines` instead. (queue, acts lines)."""
+    return ([r for r in owner_queue(trackers) if not way.get(r[0]["id"], {}).get("answered")],
+            acts_lines([t for t in trackers if way.get(t["id"], {}).get("owed", True)]))
+
+
 def owner_digest(trackers):
     """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened. After the
-    asks, the acts he owes, with their time (FM-030)."""
-    q, acts = owner_queue(trackers), acts_lines(trackers)
+    asks, the acts he owes, with their time, and what he did that is on its way to his merge (FM-030)."""
+    way = on_their_way(trackers)
+    (q, acts), ways = owed_now(trackers, way), way_lines(way)
     if not q:
-        print("NOTHING NEEDS THE OWNER." if not acts else f"NO QUESTION FOR THE OWNER · {len(acts)} ACT(S) OWED, WITH THEIR TIME")
+        print("NOTHING NEEDS THE OWNER." if not (acts or ways) else "NO QUESTION FOR THE OWNER" + (f" · {len(acts)} ACT(S) OWED, WITH THEIR TIME" if acts else "")
+              + (f" · {len(ways)} ON THEIR WAY — YOUR MERGE IS NEXT" if ways else ""))
     else:
         ages, held, line = [a for _, a, _ in q if a is not None], sorted({h for _, _, hs in q for h in hs}), bottleneck(q)
         print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
-              + (f" · {line}" if line else ""))
+              + (f" · {line}" if line else "") + (f" · {len(ways)} on their way" if ways else ""))
         for t, a, hs in q:
             print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
             print("   " + t["ask"])
     if acts:
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
+    if ways:
+        print(f"\n{WAY_TITLE}\n" + "\n".join(ways))
     sent_back(trackers)
     line = sessions_digest()
     if line:
@@ -1154,10 +1277,11 @@ def standup(trackers, invite=None):
         pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
-    q, acts = owner_queue(trackers), acts_lines(trackers)
+    way = on_their_way(trackers)
+    (q, acts), ways = owed_now(trackers, way), way_lines(way)
     line = bottleneck(q)
     print(f"STANDUP{' — ' + at if at else ''} · {int(CONFIG.get('standup_minutes') or 15)} min · {len(q)} item(s)" + (f" · {len(acts)} act(s)" if acts else "")
-          + ("" if q or acts else " — nothing needs the Owner today.") + (f"\n{line}" if line else ""))
+          + (f" · {len(ways)} on their way" if ways else "") + ("" if q or acts or ways else " — nothing needs the Owner today.") + (f"\n{line}" if line else ""))
     for kind, title in STANDUP_ORDER:
         rows = sorted((r for r in q if (r[0].get("ask_kind") or "") == kind), key=lambda r: (-len(r[2]), -(r[1] if r[1] is not None else -1), r[0]["id"]))
         if rows:
@@ -1166,6 +1290,8 @@ def standup(trackers, invite=None):
             print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
     if acts:                                                # FM-030: after the asks, what he owes, with its time
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
+    if ways:                                                # …and what he did that is on its way to his merge
+        print(f"\n{WAY_TITLE}\n" + "\n".join(ways))
     sent_back(trackers)
     return EXIT_OK
 
@@ -1532,12 +1658,13 @@ def answer_step(tid, n, text, verb="answering"):
     print(f"{verb} {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
 
 
-def answer_cmd(words, trackers, supersede=False):
+def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", verb="answering"):
     """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
     `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes,
     and goes back to the branch it started on. It refuses before touching anything when it cannot end in a verified answer.
     An answer he takes back or changes (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
-    the answer it replaces moves into the ship log, with the commit that wrote it."""
+    the answer it replaces moves into the ship log, with the commit that wrote it. `onto` (FM-030, `--revoke`): the ref of an
+    `answer/<id>` not merged, whose tip `t` was read from — the answer is taken back there, on top of it."""
     if len(words) < 2 or words[1] not in ("accept", "reject", "revoke"):
         print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change. "
               "An answer given already: `--answer <id> revoke \"<reason>\"`, or `--answer <id> accept|reject \"<option>\" --supersede`", file=sys.stderr)
@@ -1588,7 +1715,8 @@ def answer_cmd(words, trackers, supersede=False):
             return (f"{tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
                     f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer")
         if t.get("answer"):
-            replaced.append((t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed"))
+            wrote = (git_out("log", "-1", "--format=%h", "-G", line_regex("answer:"), onto, "--", path.relative_to(ROOT).as_posix()) or "").strip() if onto else ""
+            replaced.append((t["answer"], t.get("answered", ""), wrote or (line_author(path, "answer:")[3] or "")[:7] or "not committed"))
         return ""
 
     def write(lines, me, branch):
@@ -1615,7 +1743,7 @@ def answer_cmd(words, trackers, supersede=False):
         return lines, ""
 
     return owner_change(tid, t, dict(
-        flag="--answer", verb="answering", noun="answer", right="an answer is an `answer` change", check=check_ask, write=write,
+        flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write, onto=bool(onto),
         subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
         again=f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else ""),
         said=lambda branch, pushed: (f"{tid} answered: {answer}\n  signed, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
@@ -1828,7 +1956,8 @@ def owner_change(tid, t, how):
     after anything was written undoes all of it and prints what he gave with the command that gives it again (FM-017).
     `how`: flag · verb (the steps' word) · noun · right (why it is an `answer` change) · check() → why not, before anything
     is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(branch,
-    ", pushed" or why not) → what it prints."""
+    ", pushed" or why not) → what it prints · onto (FM-030, `--revoke`): `answer/<id>` is not merged — his act on its way — and
+    the change commits on top of it there, one branch per exchange, where every other flow refuses it."""
     flag, noun = how["flag"], how["noun"]
     step = lambda n, text: answer_step(tid, n, text, how["verb"])
     for p_ in answerers_problems():                           # a signature the configuration asks for and `[seats]` drops (FM-015)
@@ -1870,6 +1999,7 @@ def owner_change(tid, t, how):
         return EXIT_LINT
     branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
     created = switched = False
+    cut_at = start                                           # where a branch this run made stood when it was made — undo deletes it only there
 
     def undo(what, said=""):
         """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
@@ -1886,7 +2016,7 @@ def owner_change(tid, t, how):
         if switched:
             s_ = git("switch", here) if here else git("switch", "--detach", start)
             back = f"back on `{here or start[:10]}`" if s_.returncode == 0 else f"could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}"
-            if created and s_.returncode == 0 and git("rev-parse", "--verify", "-q", branch).stdout.strip() == start and git("branch", "-D", branch).returncode == 0:
+            if created and s_.returncode == 0 and git("rev-parse", "--verify", "-q", branch).stdout.strip() == cut_at and git("branch", "-D", branch).returncode == 0:
                 gone = f"`{branch}` deleted — it carried no commit"
         print(f"{flag}: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
         print("  undone: " + " · ".join(x for x in (f"restored {', '.join(restored)}" if restored else "", back, gone) if x) if restored or back else "  nothing was changed", file=sys.stderr)
@@ -1928,7 +2058,16 @@ def owner_change(tid, t, how):
         return (f"recorded under `## {HEAD['acts']}` on `{branch}`: `{sha}`, unsigned — " + ("pushed" if p.returncode == 0 else f"NOT pushed: {p.stderr.strip()[-160:]}")
                 + f"; your next `{flag}` on {tid} names this branch — run it there, and it commits on top")
 
-    if here != branch:
+    if here != branch and how.get("onto"):
+        # FM-030, `--revoke`: his act or answer is on its way on `answer/<id>`, not merged — the revocation commits on top of it,
+        # on that branch; where this clone has only `origin`'s, a local one is made from it, tracking it
+        step(2, f"switching to `{branch}` — your act is on its way there, and this commits on top of it")
+        had = git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0
+        r = git("switch", branch) if had else git("switch", "-c", branch, "--track", f"origin/{branch}")
+        if r.returncode:
+            return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
+        created, cut_at, switched = not had, git("rev-parse", "HEAD").stdout.strip(), True
+    elif here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
             # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
             # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for him
@@ -1976,10 +2115,49 @@ def owner_change(tid, t, how):
     print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}"))
     if r.returncode != 0:
         return EXIT_LINT
+    stamp = board_stamp()                                   # the board as the push left it: whatever writes it from here on, it is read below
     if switched:                                             # pushed: back where he started, so his next command does not begin on this one's branch
         s_ = git("switch", here) if here else git("switch", "--detach", start)
         print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
+    said = board_after_act(stamp)
+    if said:
+        print(f"  {said}")
     return EXIT_OK
+
+
+def board_stamp():
+    """The board's file as the system keeps it — (modification time in nanoseconds, size) — or None where there is none."""
+    try:
+        st = HTML_OUT.stat()
+    except OSError:
+        return None
+    return st.st_mtime_ns, st.st_size
+
+
+def board_after_act(stamp):
+    """FM-030, his signed answer 920970b7 — *right after the act* the board shows it: he pressed the button, ran the command,
+    and the page he returns to must say *done, on its way* (his words of 13:57:50). Put back where he started, a checkout hook
+    that rebuilds the board — `--install-hook`'s post-checkout, `--html-only` — has written it already, and it reads the
+    branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or its size —
+    between the push and now. Where it did not — no such hook is installed, the checkout ran none (he ran the command on
+    `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
+    process; but never where the board is tracked by git — `--init` ignores it, and written, a committed board would leave
+    the tree changed and refuse his next command. What it says of it, one line; "" where there is no tracker directory."""
+    if not TRACKER_DIR.is_dir():
+        return ""
+    if board_stamp() != stamp:
+        return "the board was rebuilt by the checkout hook — it reads the branch just pushed"
+    tracked = (git_out("ls-files", "--", HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()) or "").split()
+    if tracked:
+        return f"the board is NOT rebuilt — git tracks {tracked[0]} here, and writing it would leave the tree changed; `{CMD} --html-only` rebuilds it"
+    try:
+        r = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), "--root", str(ROOT), "--html-only"], cwd=ROOT, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", env=nested_git_env(), timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"the board was NOT rebuilt ({type(e).__name__}) — `{CMD} --html-only` rebuilds it"
+    if r.returncode != 0 or board_stamp() == stamp:
+        return f"the board was NOT rebuilt — `{CMD} --html-only` rebuilds it" + (f": {(r.stderr.strip().splitlines() or [''])[-1][:160]}" if r.stderr.strip() else "")
+    return "the board is rebuilt — no checkout hook rebuilt it; it reads the branch just pushed"
 
 
 def refusal_reason(what, said=""):
@@ -2292,7 +2470,8 @@ __RUNNING__</footer>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
-//        [the act owed to the Owner: what — for a promise, what he promised —, his answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed]]
+//        [the act owed to the Owner: what — for a promise, what he promised —, his answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
+//        and ONLY where his act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, his promise or his answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on his list, the due: on its way, what follows the label]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -2403,7 +2582,7 @@ function draw(){
         <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
         <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
         <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-        <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## __ACTS_HEAD__"))}</li>
+        <h4>${l("answer.sign.does")}</h4><ol><li>${kind.startsWith("revoke")?lh("way.sign.step.on",c(br)):lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind.replace("revoke.","")+":"),c("## __ACTS_HEAD__"))}</li>
         <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
         <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  signed, on \`${br}\`, pushed`)}</pre>
         <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
@@ -2429,17 +2608,37 @@ function draw(){
         const iso=(v.length==16?v+":00":v)+z;sign(d,id,`${cmd} --due ${id} ${iso}`,`due: ${iso}`,"due")};
       d.showModal()};
     window.OWE=owe;
+    // FM-030, his signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives
+    // ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of his act, on its branch
+    const rev=t=>{const d=$("dlg"),id=t[0],w=t[31],cmd="__CMD__";
+      d.innerHTML=`<form method="dialog"><h3>${l("way.revoke.title")} · <a href="#=${id}">${id}</a></h3>
+        <p class="dq">${esc(w[7])}</p>${w[8]?`<p class="ddim">${l("acts.asked",w[8])}</p>`:""}<p class="m ddim">${l("way."+w[0])} · ${esc(w[1])} @ ${esc(w[3].slice(0,7))}</p>
+        <textarea name="text" rows="2" placeholder="${l("way.revoke.hint")}" required></textarea>
+        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+      const f=d.querySelector("form");
+      f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const why=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");
+        sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};
+      d.showModal()};
+    window.REV=rev;
     return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
-        `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]))
+        `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])))
     // FM-030: what he owes, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
     +(acts=>acts.length?"\n\n<b class=\""+(acts.some(t=>actstate(t[30])!="due"&&actstate(t[30])!="nodate")?"hot":"")+"\">"+l("acts.title")+": "+acts.length+"</b>\n"+acts.map(t=>{
       const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
       return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
         +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`
         +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`
-        +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length))
+        +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length&&!(t[31]&&!t[31][11])))
+    // FM-030, his signed answer 920970b7: the board reads git. What he did and pushed on `answer/<id>` is here, not in the two
+    // lists above, until his merge — his promise or his answer first, what it is, the branch, the commit, its time, whether it
+    // verifies, and that his merge is next
+    +(way=>way.length?"\n\n<b>"+l("way.title")+": "+way.length+"</b>\n"+way.map(t=>{const w=t[31];
+      return `<a href="#=${t[0]}">${t[0]}</a> ${esc(w[7])}<span class="m"> · <b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")
+        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?l("way.signed"):l("way.unverified",w[6].replace(/^wait: /,""))} · ${l("way.merge")}</span>`
+        +(w[0]=="done"||w[0]=="answer"?` <button class="act" onclick="REV(T.find(x=>x[0]=='${t[0]}'))">${l("way.revoke")}</button>`:"")
+        +(w[8]?`\n<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[31]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
     +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
@@ -2535,7 +2734,14 @@ LABELS = {
     "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "Done — where is the result?", "act.done.hint": "the path to the result, or where it is",
     "act.done.hint.promise": "the path to the result of this promise, or where it is",
     "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
-    "act.sign.step.due": "writes the new {0}, and the old one into the record under {1}",
+    "act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge",
+    # FM-030, his signed answer 920970b7: what he did and pushed, before his merge — the board, `--owner` and `--standup`
+    "way.title": "on their way", "way.merge": "your merge is next", "way.done": "done, on its way", "way.answer": "answered, on its way",
+    "way.revoked": "revoked, on its way", "way.undone": "done revoked, on its way", "way.due": "rescheduled, on its way", "way.signed": "signed", "way.unverified": "not verified here: {0}",
+    "way.revoke": "revoke", "way.revoke.title": "Revoke — why?", "way.revoke.hint": "why you take it back — the record keeps it beside what it revokes",
+    "way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange",
+    "act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again",
+    "act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log",
     "sessions.recent": "sessions · {0} in the last day",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
@@ -3136,6 +3342,10 @@ def render_html(trackers):
 
     epics = {t.get("epic", "—") for t in trackers}
     by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
+    # FM-030: his act or answer on its way — a 32nd cell, on the rows `on_their_way` names and on no other, so a board with
+    # nothing on its way has the rows and the rendered board it had
+    way = {k: [w["kind"], w["branch"], w["tip"], w["commit"], w["time"], w["sig"], w["said"], w["what"], w["asked"], w["value"], int(w["answered"]), int(w["owed"]), w["due"], w["note"]]
+           for k, w in on_their_way(trackers).items()}
     rows = [
         json.dumps(
             [t["id"], t["tier"], t["status"], "—", "—",
@@ -3147,7 +3357,7 @@ def render_html(trackers):
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
               t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
-             list(act_of(t) or [])],
+             list(act_of(t) or [])] + ([way[t["id"]]] if t["id"] in way else []),
             ensure_ascii=False,
         ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -5384,6 +5594,51 @@ def due_cmd(words, trackers):
         said=lambda branch, pushed: f"{tid} due: {when}\n  signed, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
 
 
+def revoke_cmd(words, trackers):
+    """`--revoke <id> "<why>"` (FM-030, his signed answer 920970b7: *revoke* in the place of the buttons) — the Owner takes
+    back what he last did on a tracker, as a new signed commit, never an overwrite. An act done: `done:` leaves the front
+    matter, the revocation is recorded under `## Acts` beside what it revokes, and where his accepted action answer had
+    `--done` hand the move to the seat, `next: owner` is his again — the act is owed. Else his answer, taken back as
+    `--answer <id> revoke` takes it: `revoked - <why>`, the answer it replaces into the ship log with its commit. Where
+    `answer/<id>` is not merged — here or on `origin` — the act is on its way there: the tracker is read at its tip and
+    the revocation commits on top of it, on that branch (one branch per exchange); else `answer/<id>` is cut as for any
+    act of his. Made as `--answer` makes his answer (`owner_change`); the seats that hold `answer` may run it."""
+    tid, why = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
+    t = next((x for x in trackers if x["id"] == tid), None)
+    if not t:
+        print(f"--revoke: no tracker {tid}", file=sys.stderr)
+        return EXIT_LINT
+    if not why:
+        print("--revoke: a revocation carries its reason — the record keeps it beside what it revokes", file=sys.stderr)
+        return EXIT_LINT
+    if vcs() != "git":
+        print("--revoke: this is a git command; under Subversion, write the revocation and `svn commit` — the server signs for you", file=sys.stderr)
+        return EXIT_LINT
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
+    tip = next((ref for ref in (f"refs/heads/{branch}", f"refs/remotes/origin/{branch}") if git("rev-parse", "--verify", "-q", ref).returncode == 0), None)
+    onto = tip if tip and git("branch", "--show-current").stdout.strip() != branch and (not trunk or git("merge-base", "--is-ancestor", tip, trunk).returncode != 0) else None
+    if onto:
+        there = git("show", f"{onto}:{rel}")
+        t = extract(ROOT / rel, there.stdout) if there.returncode == 0 else t
+    if not t.get("done"):
+        if not t.get("answer"):
+            print(f"--revoke: {tid} carries neither `done:` nor `answer:`" + (f" on `{branch}`" if onto else "") + " — there is nothing of yours to revoke", file=sys.stderr)
+            return EXIT_LINT
+        return answer_cmd([tid, "revoke", why], [t if x["id"] == tid else x for x in trackers], onto=onto, flag="--revoke", verb="revoking")
+    today, (was, _, where) = datetime.date.today().isoformat(), t["done"].partition(" · ")
+    act = act_of({**t, "done": ""})
+    what = act[0] if act else t.get("title") or tid
+    # `--done` handed the move to the seat where his accepted action answer had left it his (`next: owner`): taken back, it is his again
+    fields = {"done": None, **({"next": "owner"} if act and act[1] and t.get("next") == "build" else {})}
+    return owner_change(tid, t, dict(
+        flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "", onto=bool(onto),
+        write=lambda lines, me, branch_: (act_record(lines, fields, f"**{today}** · done revoked — {why} · it was done {was} · {where} · {what} · {me}"), ""),
+        subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {tid} "{why}"',
+        said=lambda branch_, pushed: f"{tid} done revoked: {why}\n  signed, on `{branch_}`{pushed}\n  the act is owed again — it is back on your list; "
+                                     f"the revocation is under `## {HEAD['acts']}`" + ("\n  next: owner — the act is yours again" if "next" in fields else "")))
+
+
 def acted_on(trackers):
     """What a seat has acted on since the Owner's last sitting: a tracker whose exchange has moved into the body and
     whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what his answer became.
@@ -5618,6 +5873,10 @@ def parse_args(argv):
     add("--due", nargs=2, metavar=("ID", "TIME"), help="the Owner's act moves (FM-030): `--due <id> 2026-09-26T07:30:00+02:00` writes the new `due:` and records the "
                                                        "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes his answer. The board's "
                                                        "*reschedule* button copies it")
+    add("--revoke", nargs=2, metavar=("ID", "WHY"), help="the Owner takes back what he last did on a tracker (FM-030): `--revoke <id> \"<why>\"` — an act done: "
+                                                          "`done:` leaves the front matter, the revocation is recorded under `## Acts`, the act is owed again; else his "
+                                                          "answer, as `--answer <id> revoke`. Where `answer/<id>` is not merged — on its way — it commits on top of it there. "
+                                                          "Made as --answer makes his answer. The board's *revoke* button copies it")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
                                                "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries — "
                                                "for a record written before 0.18.1, the one the commit that wrote its answer gives")
@@ -6319,7 +6578,7 @@ def main(argv=None):
         return queue_cmd()
     if args.answer:
         answer_step(args.answer[0].upper(), 1, "reading the trackers")
-    for words, verb in ((args.done, "recording"), (args.due, "rescheduling")):
+    for words, verb in ((args.done, "recording"), (args.due, "rescheduling"), (args.revoke, "revoking")):
         if words:
             answer_step(words[0].upper(), 1, "reading the trackers", verb)
     trackers = load_trackers()
@@ -6353,6 +6612,8 @@ def main(argv=None):
         return done_cmd(args.done, trackers)
     if args.due:
         return due_cmd(args.due, trackers)
+    if args.revoke:
+        return revoke_cmd(args.revoke, trackers)
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:

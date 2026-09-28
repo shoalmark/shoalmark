@@ -415,6 +415,8 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "acts": "FM-030 · B · his acts on the board, rendered — no date yet, due, overdue, missed",
     "owe": "FM-030 · C · done and reschedule, rendered — the two buttons and the one command OK gives",
     "promise": "FM-030 · 0.18.6 · a promise on the board and in its dialogs, rendered — what he promised, the question below it",
+    "way": "FM-030 · 0.18.6 · on their way, rendered — the box's counts, his act and his answers before his merge",
+    "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
     "hooks": "FM-002 · the three hooks, rendered — none seen without a theme, each styled by one",
 }
 
@@ -1166,7 +1168,22 @@ act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1}"
+act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
+way.title: unterwegs
+way.merge: Ihr Merge ist als Nächstes dran
+way.done: erledigt, unterwegs
+way.answer: beantwortet, unterwegs
+way.revoked: zurückgenommen, unterwegs
+way.undone: Erledigung zurückgenommen, unterwegs
+way.due: verschoben, unterwegs
+way.signed: signiert
+way.unverified: "hier nicht geprüft: {0}"
+way.revoke: zurücknehmen
+way.revoke.title: Zurücknehmen — warum?
+way.revoke.hint: "warum Sie es zurücknehmen — der Eintrag hält es neben dem fest, was es zurücknimmt"
+way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austausch"
+act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
+act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
@@ -3252,6 +3269,9 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "config", k_, v_)
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     (root / "shoalmark.toml").write_text('name = "c"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    # the board is git-ignored, as `--init` writes it (FM-030, 0.18.6: the board reads git — rebuilt by the checkout hook after an act,
+    # a committed board would differ from its commit and leave the tree changed for his next command)
+    (root / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
     now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
     at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
     since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -3886,6 +3906,321 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · 0.18.6 · `--due` on an act that was done keeps the act before in its record — its time, where its result is, and what the repository says of it (saw {err_.strip()[-160:]!r})",
           code_ == 0 and re.search(r"· scheduled — due %s, a new act — the one before was done %s · %s \(added in %s\) · the act 482 · holgo"
                                    % (re.escape(at_(24 * 60)), fm.DUE_SHAPE, re.escape(r482_), re.escape(added_(r482_))), t482_) is not None)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the board reads git: his signed answer of 2026-09-27 14:56:15 (920970b7), option 1 of the ask of 14:14:18, on
+#     his words of 13:57:50 — *they pushed the button, did the answer and expect the page to display that state right away*. The
+#     reader: every `origin/answer/<id>` not merged into the default branch whose tip carries a `done:` or an `answer:` the default
+#     branch lacks — read from the clone alone; merged ones, and tips that carry no such change, are not read; several at once
+#     are all read; a Reviewer's verdict on top of his commit is no act (RV-679): the branch's commits are read, not its head.
+def _way_repo(base, hooks=False):
+    """A clone of a bare `origin` whose `main` carries five asks and a promise, the owner seat `signed` with an SSH key."""
+    root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, env=_ENV)
+    key = base / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
+    (base / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                   ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x signed"\nreviewer = "reviewer@seat"\n', encoding="utf-8")
+    (root / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q, kind="ruling", prop="yes": f'next: owner\nask: "{q}"\nask-kind: {kind}\nask-since: {since_}\nask-proposal: "{prop}"\n'
+    tracker(root, "AP-501", extra=ask_("Will you read production at seven?", "action", "at seven tomorrow"), title="an action asked")
+    tracker(root, "AP-502", extra=ask_("Does the importer ship first?"), title="a ruling asked")
+    tracker(root, "AP-503", extra=ask_("Will you set up the key?", "action", "this week") + f'answer: "accepted - this week"\nanswered: {since_}\nanswered-by: holgo\n', title="a promise")
+    tracker(root, "AP-504", extra=ask_("Does the exporter ship first?"), title="an answer merged")
+    tracker(root, "AP-505", extra=ask_("Does the report ship first?"), title="a branch that carries no answer")
+    if hooks:
+        run(root, "--install-hook")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the asks", "-S", "--author=holgo <h@x>")
+    git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    return root
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    sha_ = lambda ref: subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+    fm.configure(root)
+    check("FM-030 · 0.18.6 · the reader: nothing on its way — no `answer/*` pushed — reads nothing", fm.on_their_way(fm.load_trackers()) == {})
+    codes_ = [run(root, *a)[0] for a in (("--answer", "AP-501", "accept"), ("--answer", "AP-502", "reject", "not before the audit"),
+                                          ("--done", "AP-503", "evidence/AP-503/key.md"), ("--answer", "AP-504", "accept"))]
+    git(root, "merge", "-q", "--no-ff", "answer/ap-504", "-m", "Merge answer/ap-504"); git(root, "push", "-q", "origin", "HEAD:main")
+    git(root, "switch", "-q", "-c", "answer/ap-505"); (root / "notes.txt").write_text("a seat's note\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a seat's note", "--author=impl <impl@x>"); git(root, "push", "-q", "origin", "answer/ap-505")
+    # a Reviewer's verdict on top of his answer (RV-679): the head is the verdict, the act is the commit below it
+    answer502_ = sha_("origin/answer/ap-502")
+    git(root, "switch", "-q", "answer/ap-502"); (root / "docs/work-tracker/evidence/reviews").mkdir(parents=True)
+    (root / "docs/work-tracker/evidence/reviews/review-ap-502.md").write_text("**Verdict: READY.**\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", f"review: AP-502 at {answer502_[:7]} — READY\n\nReviewed: {answer502_}", "--author=reviewer <reviewer@seat>")
+    git(root, "push", "-q", "origin", "answer/ap-502"); git(root, "switch", "-q", "main")
+    fm.configure(root); way_ = fm.on_their_way(fm.load_trackers())
+    w1_, w2_, w3_ = way_.get("AP-501", {}), way_.get("AP-502", {}), way_.get("AP-503", {})
+    check(f"FM-030 · 0.18.6 · the reader lists every unmerged `origin/answer/<id>` whose tip carries a `done:` or an `answer:` main lacks — several at once — and "
+          f"not a merged one, nor one whose tip carries no such change (saw {sorted(way_)} · {codes_})",
+          codes_ == [0, 0, 0, 0] and sorted(way_) == ["AP-501", "AP-502", "AP-503"])
+    check(f"FM-030 · 0.18.6 · an answer on its way: its kind, the branch, its tip and the commit that wrote it, that commit's time and `%G?`, `--queue`'s own reading "
+          f"of it, and his promise first — the proposal a bare `accepted` took — with the question as context (saw {w1_})",
+          w1_.get("kind") == "answer" and w1_.get("answered") is True and w1_.get("branch") == "answer/ap-501" and w1_.get("tip") == w1_.get("commit") == sha_("origin/answer/ap-501")
+          and re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|[+-]\d\d:\d\d)", w1_.get("time", "")) is not None and w1_.get("sig") == "G"
+          and w1_.get("said") == "merge: your answer" and w1_.get("what") == "at seven tomorrow" and w1_.get("asked") == "Will you read production at seven?"
+          and w1_.get("value") == "accepted")
+    check(f"FM-030 · 0.18.6 · RV-679 · a Reviewer's verdict on top of his answer is no act: the reader names HIS commit below the head, signed, read *merge: your answer* — "
+          f"never *not an answerer* by the head (saw {w2_})",
+          w2_.get("kind") == "answer" and w2_.get("tip") == sha_("origin/answer/ap-502") != answer502_ and w2_.get("commit") == answer502_
+          and w2_.get("said") == "merge: your answer" and w2_.get("sig") == "G" and w2_.get("what") == "rejected - not before the audit")
+    check(f"FM-030 · 0.18.6 · an act done on its way: `done`, its line his promise with the question below it, the `done:` as written, signed (saw {w3_})",
+          w3_.get("kind") == "done" and w3_.get("answered") is False and w3_.get("what") == "this week" and w3_.get("asked") == "Will you set up the key?"
+          and w3_.get("value", "").endswith(" · evidence/AP-503/key.md") and w3_.get("sig") == "G" and w3_.get("said") == "merge: your answer")
+    git(root, "remote", "rename", "origin", "elsewhere"); fm.configure(root)
+    no_trunk_ = fm.on_their_way(fm.load_trackers())
+    git(root, "remote", "rename", "elsewhere", "origin")
+    check("FM-030 · 0.18.6 · the reader reads the clone alone: with no `origin` default branch it reads nothing, and it never fetches", no_trunk_ == {})
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — the board, `--owner` and `--standup` read it: an ask whose answer is on its way leaves *waiting for you*,
+#     an act done on its way leaves his acts, and both join *on their way: n* — his promise or his answer first, what it is,
+#     the branch, the commit, its time, whether it verifies, *your merge is next*. A board with nothing on its way — a merged
+#     `answer/*`, a tip that carries no answer — is the board it was, byte for byte.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    page_ = lambda: (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    run(root, "--answer", "AP-504", "accept")
+    git(root, "merge", "-q", "--no-ff", "answer/ap-504", "-m", "Merge answer/ap-504"); git(root, "push", "-q", "origin", "HEAD:main")
+    git(root, "switch", "-q", "-c", "answer/ap-505"); (root / "notes.txt").write_text("a seat's note\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a seat's note", "--author=impl <impl@x>"); git(root, "push", "-q", "origin", "answer/ap-505")
+    git(root, "switch", "-q", "main")
+    run(root, "--html-only"); read_ = page_()
+    for ref_ in ("refs/remotes/origin/answer/ap-504", "refs/remotes/origin/answer/ap-505"):
+        saved_ = subprocess.run(["git", "-C", str(root), "rev-parse", ref_], capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "update-ref", "-d", ref_); run(root, "--html-only"); git(root, "update-ref", ref_, saved_)
+    none_ = page_()
+    check("FM-030 · 0.18.6 · a board with nothing on its way is the board it was, byte for byte: a merged `answer/*` and a tip that carries no answer change no byte, and no row gains a cell",
+          read_ == none_ and '"answer/ap-50' not in read_)
+    codes_ = [run(root, *a)[0] for a in (("--answer", "AP-501", "accept"), ("--answer", "AP-502", "reject", "not before the audit"), ("--done", "AP-503", "evidence/AP-503/key.md"))]
+    fm.configure(root); way_ = fm.on_their_way(fm.load_trackers())
+    run(root, "--html-only"); page2_ = page_()
+    at_ = lambda tid: f"answer/{tid.lower()} @ {way_[tid]['commit'][:7]} · {way_[tid]['time'][:16].replace('T', ' ')}"
+    check(f"FM-030 · 0.18.6 · the board's rows carry what is on its way — on those rows alone, and the same bytes built twice (saw {codes_})",
+          codes_ == [0, 0, 0] and f'["answer", "answer/ap-501", "{way_["AP-501"]["tip"]}", ' in page2_ and f'["done", "answer/ap-503", "{way_["AP-503"]["tip"]}", ' in page2_
+          and '"answer/ap-505' not in page2_ and fm.render_html(fm.load_trackers()) == fm.render_html(list(reversed(fm.load_trackers())))
+          and all(f'"{k}"' in page2_ for k in ("way.title", "way.merge", "way.done", "way.answer", "way.signed")))
+    code_o, out_o, _e = run(root, "--owner"); code_s, out_s, _e = run(root, "--standup")
+    ways_ = (f"ON THEIR WAY — yours, signed and pushed, before your merge\n"
+             f"  AP-501 — at seven tomorrow · answered, on its way · {at_('AP-501')} · signed · your merge is next\n       asked: Will you read production at seven?\n"
+             f"  AP-502 — rejected - not before the audit · answered, on its way · {at_('AP-502')} · signed · your merge is next\n       asked: Does the importer ship first?\n"
+             f"  AP-503 — this week · done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next\n       asked: Will you set up the key?\n")
+    check(f"FM-030 · 0.18.6 · `--owner` and `--standup` print the same section: the asks answered on their way leave the queue and the first line counts them, the act done on its way leaves his acts (saw {out_o[:900]!r})",
+          code_o == code_s == 0 and out_o.startswith("1 NEED THE OWNER · oldest 1 day(s) · 3 on their way\n\nAP-505 · ruling · asked 1 day(s) ago\n   Does the report ship first?\n\nON THEIR WAY")
+          and ways_ in out_o and ways_ in out_s and fm.ACTS_TITLE not in out_o + out_s and "Will you read production at seven?\n\n" not in out_o
+          and out_s.startswith("STANDUP · 15 min · 1 item(s) · 3 on their way\n") and "  1. AP-505 — Does the report ship first?" in out_s and "AP-501 — Will you" not in out_s)
+    buf_ = io.StringIO()
+    with redirect_stdout(buf_):
+        fm.owner_digest([t_ for t_ in fm.load_trackers() if t_["id"] != "AP-505"])
+    check(f"FM-030 · 0.18.6 · with nothing else owed his first line is not *nothing needs the Owner*: his merge is next (saw {buf_.getvalue()[:120]!r})",
+          buf_.getvalue().startswith("NO QUESTION FOR THE OWNER · 3 ON THEIR WAY — YOUR MERGE IS NEXT\n") and "NOTHING NEEDS THE OWNER" not in buf_.getvalue())
+    check("FM-030 · 0.18.6 · the board's new words are labels — English built in, German in the table the tool ships",
+          all(k in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")) for k in fm.LABELS if k.startswith("way.")))
+    if _browser("way"):
+        try:
+            dom_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+            box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
+            check(f"FM-030 · 0.18.6 · rendered, the box counts *waiting for you* without the asks answered on their way and lists them, with the act done on its way, under *on their way* — no *done* and no *reschedule* there (saw {box_[:700]!r})",
+                  "waiting for you: 1 · oldest 1 days AP-505 Does the report ship first?" in box_ and "your acts, with their time" not in box_
+                  and f"on their way: 3 AP-501 at seven tomorrow · answered, on its way · {at_('AP-501')} · signed · your merge is next revoke asked: Will you read production at seven?" in box_
+                  and f"AP-502 rejected - not before the audit · answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
+                  and f"AP-503 this week · done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next revoke asked: Will you set up the key?" in box_
+                  and "reschedule" not in box_ and "accept reject" not in box_.split("on their way")[1])
+        except _ChromeFailed as e_:
+            _hung("way", e_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — *right after the act*: `--answer`, `--done` and `--due` end where they started, and the board they leave
+#     already shows the act on its way — rebuilt by the checkout hook where one is installed (its file changed between the push
+#     and the switch back), else by the command itself, `--html-only` in its own process. Another machine shows the same after
+#     a fetch: two clones of one bare `origin`.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base, hooks=True)
+    page_ = lambda r: (r / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (r / "docs/work-tracker/index.html").exists() else ""
+    here_ = lambda r: subprocess.run(["git", "-C", str(r), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    tip_ = lambda r, b: subprocess.run(["git", "-C", str(r), "rev-parse", f"origin/{b}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    other = base / "wc2"                                   # another machine: cloned before the act, fetched after it
+    subprocess.run(["git", "clone", "-q", str(base / "origin.git"), str(other)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
+        git(other, "config", k_, v_)
+    code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
+    code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
+    board_ = page_(root)
+    check(f"FM-030 · 0.18.6 · with the checkout hook installed, `--answer` and `--done` end on the branch they started on, the hook has rebuilt the board, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook" in out_a
+          and "the board was rebuilt by the checkout hook" in out_d
+          and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
+    run(other, "--html-only"); before_ = page_(other)
+    git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)
+    code_o, out_o, _e = run(other, "--owner")
+    check(f"FM-030 · 0.18.6 · another machine: before its fetch its board shows nothing on its way; after it, the same rows, the same shas — and `--owner` lists them, signed (saw {out_o[:300]!r})",
+          '"answer/ap-50' not in before_ and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in after_
+          and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in after_ and code_o == 0
+          and "  AP-501 — at seven tomorrow · answered, on its way · answer/ap-501 @ " in out_o and "  AP-503 — this week · done, on its way — evidence/AP-503/key.md · " in out_o
+          and out_o.count("· signed · your merge is next") == 2)
+    rm_git(root); rm_git(other)
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    code_a, out_a, _e = run(root, "--answer", "AP-502", "reject", "not before the audit")
+    board_ = page_(root)
+    when_ = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)).replace(microsecond=0).isoformat()
+    code_u, out_u, _e = run(root, "--due", "AP-503", when_)
+    git(root, "switch", "-q", "answer/ap-503"); stamp_ = (root / "docs/work-tracker/index.html").stat().st_mtime_ns
+    code_w, out_w, _e = run(root, "--due", "AP-503", (datetime.datetime.fromisoformat(when_) + datetime.timedelta(days=1)).isoformat())
+    check(f"FM-030 · 0.18.6 · with no checkout hook, the command rebuilds the board itself after the push — the board's file had not changed — and it shows the answer on its way; `--due` ends where it started too, and run on `answer/<id>` itself, where no checkout happens, it rebuilds as well (saw {out_a.strip()[-160:]!r} · {out_w.strip()[-160:]!r})",
+          code_a == code_u == code_w == 0 and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
+          and f'["answer", "answer/ap-502", "{tip_(root, "answer/ap-502")}", ' in board_ and "\n  back on `main`\n  the board is rebuilt" in out_u
+          and here_(root) == "answer/ap-503" and "back on" not in out_w and "the board is rebuilt — no checkout hook rebuilt it" in out_w
+          and (root / "docs/work-tracker/index.html").stat().st_mtime_ns != stamp_)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — revoke: on what is on its way the board has ONE button, *revoke*, and it copies `--revoke <id> "<why>"` — a
+#     new signed commit, never an overwrite. On an act done, `done:` leaves the front matter, the revocation is recorded under
+#     `## Acts` and the act is owed again; else his answer is taken back, as `--answer <id> revoke` takes it. Where `answer/<id>`
+#     is not merged it commits on top of it there — one branch per exchange; merged, it is cut fresh and the revocation is on its
+#     way in its turn.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    here_ = lambda: subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    tip_ = lambda b: subprocess.run(["git", "-C", str(root), "rev-parse", f"origin/{b}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    show_ = lambda ref, what: subprocess.run(["git", "-C", str(root), "show", f"{ref}:{what}"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+    way_ = lambda: (fm.configure(root), fm.on_their_way(fm.load_trackers()))[1]
+    merge_ = lambda b: (git(root, "merge", "-q", "--no-ff", b, "-m", f"Merge {b}"), git(root, "push", "-q", "origin", "HEAD:main"))
+    code_n, _o, err_n = run(root, "--revoke", "AP-505", "nothing to take back")
+    code_e, _o, err_e = run(root, "--revoke", "AP-503", "   ")
+    git(root, "config", "user.email", "reviewer@seat"); git(root, "config", "user.name", "rev")
+    code_s, _o, err_s = run(root, "--revoke", "AP-503", "a seat's try")
+    git(root, "config", "user.email", "h@x"); git(root, "config", "user.name", "holgo")
+    check(f"FM-030 · 0.18.6 · `--revoke` refuses, before anything is cut: a tracker with neither `done:` nor `answer:`, a revocation without its reason, and a seat that does not hold `answer` (saw {err_n.strip()[-120:]!r} · {err_s.strip()[-160:]!r})",
+          code_n == code_e == code_s == fm.EXIT_LINT and "AP-505 carries neither `done:` nor `answer:` — there is nothing of yours to revoke" in err_n
+          and "a revocation carries its reason" in err_e and "does not hold `answer`" in err_s and err_s.startswith("revoking AP-503 — 1/4 reading the trackers …\n--revoke: an answer is an `answer` change — `reviewer@seat` is the seat `reviewer`")
+          and here_() == "main" and subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", "answer/ap-503"], capture_output=True, env=_ENV).returncode != 0)
+    run(root, "--answer", "AP-502", "accept"); run(root, "--done", "AP-503", "evidence/AP-503/key.md")
+    a502_, a503_ = tip_("answer/ap-502"), tip_("answer/ap-503")
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    if _browser("revoke"):
+        try:
+            def _rev(tid, fill):
+                """the row's *revoke* pressed in the browser, the field filled, OK pressed — the box and the second screen read as rendered."""
+                go = (f'REV(T.find(x=>x[0]=="{tid}"));const D=document.getElementById("dlg"),F=D.querySelector("form");{fill}'
+                      'D.querySelector("button.go").click();') if tid else ""
+                p_ = root / "docs/work-tracker" / f"rev-{tid}.html"
+                p_.write_text(page_ + '<script>Object.defineProperty(navigator,"clipboard",{value:{writeText:()=>Promise.resolve()}});</script>'
+                              + f'<script>setTimeout(()=>{{{go}}},50)</script>', encoding="utf-8")
+                d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", p_.as_uri()]).stdout
+                p_.unlink()
+                return re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_)), re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (d_.split('<dialog id="dlg"') + [""])[1].split("</dialog>")[0]))
+            rows_, _d = _rev("", "")
+            _r, done_ = _rev("AP-503", 'F.text.value="the wrong file";')
+            _r, ans_ = _rev("AP-502", 'F.text.value="asked the wrong question";')
+            check(f"FM-030 · 0.18.6 · rendered, each row on its way has one button, *revoke*, where *done* and *reschedule* or *accept* and *reject* were; OK gives ONE command, `--revoke <id> \"<why>\"`, on the second screen, which says it commits on that branch (saw {done_[:400]!r} · {ans_[:300]!r})",
+                  "your merge is next revoke" in rows_ and "reschedule" not in rows_[rows_.find("on their way"):rows_.find(" id tier status ")]
+                  and "--revoke AP-503 'the wrong file'" in done_ and "Sign your act · AP-503" in done_ and "commits on answer/ap-503, where it is on its way — one branch per exchange" in done_
+                  and "removes done: and records the revocation under ## Acts — the act is owed again" in done_ and "AP-503 done revoked: the wrong file signed, on `answer/ap-503`, pushed" in done_
+                  and "--revoke AP-502 'asked the wrong question'" in ans_ and "writes answer: as revoked — the answer it takes back goes into the ship log" in ans_
+                  and "AP-502 answered: revoked - asked the wrong question signed, on `answer/ap-502`, pushed" in ans_)
+        except _ChromeFailed as e_:
+            _hung("revoke", e_)
+    code_a, out_a, err_a = run(root, "--revoke", "AP-502", "asked the wrong question")
+    code_d, out_d, err_d = run(root, "--revoke", "AP-503", "the wrong file")
+    sigs_ = lambda b: subprocess.run(["git", "-C", str(root), "log", "--format=%G? %ae %s", f"origin/{b}", "^main"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.strip().split("\n")
+    parent_ = lambda b: subprocess.run(["git", "-C", str(root), "rev-parse", f"origin/{b}^"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    t502_, t503_ = show_("origin/answer/ap-502", "docs/work-tracker/AP-502-x.md"), show_("origin/answer/ap-503", "docs/work-tracker/AP-503-x.md")
+    f503_ = fm.parse_frontmatter(t503_)[0]
+    w_ = way_()
+    check(f"FM-030 · 0.18.6 · `--revoke` on an answer on its way commits on top of it, on `answer/<id>` — signed, pushed — writes `revoked - <why>` and moves the answer it takes back into the ship log with its commit; he is back where he started (saw {err_a.strip()[-200:]!r} · {sigs_('answer/ap-502')})",
+          code_a == 0 and here_() == "main" and parent_("answer/ap-502") == a502_ and "switching to `answer/ap-502` — your act is on its way there" in err_a
+          and [s_.split(" ")[0] for s_ in sigs_("answer/ap-502")] == ["G", "G"] and 'answer: "revoked - asked the wrong question"' in t502_
+          and f'Answer of {datetime.date.today().isoformat()} superseded: *"accepted"* ({a502_[:7]}) — revoked: asked the wrong question' in t502_
+          and w_.get("AP-502", {}).get("kind") == "revoked" and w_["AP-502"].get("what") == "Does the importer ship first?" and w_["AP-502"].get("note") == "asked the wrong question"
+          and "revoking AP-502 — 2/4 switching to `answer/ap-502`" in err_a and "answering" not in err_a)
+    check(f"FM-030 · 0.18.6 · `--revoke` on an act done on its way commits on top of it: `done:` leaves the front matter, the revocation is recorded under `## Acts` beside what it revokes, the move is his again — and nothing is on its way for it: the act is owed, on his list (saw {out_d.strip()!r})",
+          code_d == 0 and here_() == "main" and parent_("answer/ap-503") == a503_ and "done" not in f503_ and f503_.get("next") == "owner"
+          and re.search(r"· done revoked — the wrong file · it was done %s · evidence/AP-503/key\.md · this week · holgo" % fm.DUE_SHAPE, t503_) is not None
+          and "AP-503 done revoked: the wrong file\n  signed, on `answer/ap-503`, pushed\n  the act is owed again" in out_d and "AP-503" not in w_
+          and "  AP-503 — this week · no date yet" in run(root, "--owner")[1] and [s_.split(" ")[0] for s_ in sigs_("answer/ap-503")] == ["G", "G"])
+    # his promise itself taken back while it is on its way: it leaves his acts until the merge, and the revocation is what is on its way
+    code_p, _o, _e = run(root, "--revoke", "AP-503", "not this week after all")
+    owner_p_ = run(root, "--owner")[1]; w_ = way_()
+    check(f"FM-030 · 0.18.6 · a promise revoked on its way leaves his acts — the tip owes him nothing — and is listed as *revoked, on its way*, committed on the same branch (saw {owner_p_[:400]!r})",
+          code_p == 0 and w_.get("AP-503", {}).get("kind") == "revoked" and fm.ACTS_TITLE not in owner_p_
+          and "  AP-503 — Will you set up the key? · revoked, on its way — not this week after all · answer/ap-503 @ " in owner_p_ and len(sigs_("answer/ap-503")) == 3)
+    # merged, then revoked: `answer/<id>` is spent, cut fresh, and the revocation is on its way in its turn — an answer, and an act done
+    run(root, "--answer", "AP-504", "accept"); merge_("answer/ap-504")
+    code_m, _o, err_m = run(root, "--revoke", "AP-504", "the exporter waits")
+    run(root, "--answer", "AP-501", "accept"); merge_("answer/ap-501"); run(root, "--done", "AP-501", "evidence/AP-501/read.md"); merge_("answer/ap-501")
+    code_u, out_u, _e = run(root, "--revoke", "AP-501", "the read never ran")
+    w_ = way_(); run(root, "--html-only"); board_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    check(f"FM-030 · 0.18.6 · merged, then revoked: `answer/<id>` is cut fresh and the revocation is on its way — an answer's as *revoked*, an act's as *done revoked*, the act's line first (saw {w_.get('AP-504')} · {w_.get('AP-501')})",
+          code_m == code_u == 0 and "was left by an earlier answer and is merged into `origin/main` — deleted, and cut fresh" in err_m
+          and w_.get("AP-504", {}).get("kind") == "revoked" and w_.get("AP-501", {}).get("kind") == "undone" and w_["AP-501"].get("what") == "at seven tomorrow"
+          and w_["AP-501"].get("value", "").endswith(" · evidence/AP-501/read.md") and f'["undone", "answer/ap-501", "{tip_("answer/ap-501")}", ' in board_
+          and "  AP-501 — at seven tomorrow · done revoked, on its way · answer/ap-501 @ " in run(root, "--owner")[1])
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-030, 0.18.6 — RV-730, the Principal's ruling of 2026-09-28: `--due` is his act as `--done` and `--answer` are — all three
+#     cut `answer/<id>` through `owner_change`. A `due:` the default branch lacks reads *rescheduled, on its way — due <time>*, and
+#     the act leaves his acts until the merge; a `--due` after a done act opens a new act, on its way — never *done revoked*;
+#     *done revoked* reads only where `--revoke` made the change (its commit's subject), never on a `done:` line gone.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _way_repo(base)
+    tip_ = lambda b: subprocess.run(["git", "-C", str(root), "rev-parse", f"origin/{b}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    merge_ = lambda b: (git(root, "merge", "-q", "--no-ff", b, "-m", f"Merge {b}"), git(root, "push", "-q", "origin", "HEAD:main"))
+    at_ = lambda days: (datetime.datetime.now().astimezone() + datetime.timedelta(days=days)).replace(second=0, microsecond=0).isoformat()
+    one_, two_, three_ = at_(1), at_(2), at_(3)
+    run(root, "--answer", "AP-501", "accept"); merge_("answer/ap-501")                              # an act owed: his promise, no date yet
+    run(root, "--done", "AP-503", "evidence/AP-503/key.md"); merge_("answer/ap-503")                 # an act done
+    run(root, "--due", "AP-504", one_); merge_("answer/ap-504")
+    run(root, "--done", "AP-504", "evidence/AP-504/x.md"); merge_("answer/ap-504")                   # a second act done
+    before_ = run(root, "--owner")[1]
+    codes_ = [run(root, "--due", "AP-501", two_)[0], run(root, "--due", "AP-503", three_)[0], run(root, "--revoke", "AP-504", "the wrong file")[0]]
+    fm.configure(root); w_ = fm.on_their_way(fm.load_trackers())
+    w1_, w3_, w4_ = w_.get("AP-501", {}), w_.get("AP-503", {}), w_.get("AP-504", {})
+    code_o, out_o, _e = run(root, "--owner"); code_s, out_s, _e = run(root, "--standup")
+    run(root, "--html-only"); board_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    sp_ = lambda t: t.replace("T", " ")
+    way1_ = f"  AP-501 — at seven tomorrow · rescheduled, on its way — due {sp_(two_)} · answer/ap-501 @ {w1_.get('commit', '')[:7]} · "
+    way3_ = f"  AP-503 — this week · rescheduled, on its way — due {sp_(three_)} · answer/ap-503 @ {w3_.get('commit', '')[:7]} · "
+    way4_ = f" · done revoked, on its way · answer/ap-504 @ {w4_.get('commit', '')[:7]} · "
+    check(f"FM-030 · 0.18.6 · RV-730 · `--due` on an open act is his act on its way: *rescheduled, on its way — due <time>*, his promise first, the commit that wrote the time, signed — and the act leaves his acts until the merge (saw {w1_} · {codes_})",
+          codes_ == [0, 0, 0] and "  AP-501 — at seven tomorrow · no date yet" in before_ and w1_.get("kind") == "due" and w1_.get("due") == w1_.get("value") == two_
+          and w1_.get("owed") is False and w1_.get("answered") is False and w1_.get("what") == "at seven tomorrow" and w1_.get("sig") == "G"
+          and w1_.get("commit") == tip_("answer/ap-501") and way1_ in out_o and way1_ in out_s and "  AP-501 — at seven tomorrow · no date yet" not in out_o)
+    check(f"FM-030 · 0.18.6 · RV-730 · `--due` after `--done` opens a new act, on its way — *rescheduled*, never *done revoked* — though the tip drops the `done:` main carries (saw {w3_})",
+          w3_.get("kind") == "due" and w3_.get("due") == three_ and w3_.get("what") == "this week" and w3_.get("owed") is False
+          and way3_ in out_o and way3_ in out_s and "AP-503 — this week · done revoked" not in out_o)
+    check(f"FM-030 · 0.18.6 · RV-730 · a real `--revoke` still reads *done revoked, on its way*, keyed on its commit — the act owed again at the tip; and no act is on his list: the two reschedules left it, and main still reads the other two done (saw {w4_} · {out_o[:900]!r})",
+          w4_.get("kind") == "undone" and w4_.get("owed") is True and w4_.get("value", "").endswith(" · evidence/AP-504/x.md") and way4_ in out_o and way4_ in out_s
+          and out_o.count("done revoked, on its way") == 1 and fm.ACTS_TITLE not in out_o and fm.ACTS_TITLE not in out_s)
+    check("FM-030 · 0.18.6 · RV-730 · the board's rows carry the three: two *rescheduled* with the new time, one *done revoked* — and the new label in the English and the German table",
+          f'["due", "answer/ap-501", "{tip_("answer/ap-501")}", ' in board_ and f'["due", "answer/ap-503", "{tip_("answer/ap-503")}", ' in board_
+          and f'["undone", "answer/ap-504", "{tip_("answer/ap-504")}", ' in board_ and f', 0, 0, "{two_}", ""]' in board_ and f', 0, 0, "{three_}", ""]' in board_
+          and '"way.due": "rescheduled, on its way"' in board_ and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("way.due") == "verschoben, unterwegs")
+    if _browser("rescheduled"):
+        try:
+            dom_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
+            box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
+            ways_ = box_[box_.find("on their way: 3"):]
+            check(f"FM-030 · 0.18.6 · RV-730 · rendered, *on their way* reads the two reschedules with their time and no button, and the revocation once; *your acts* is empty until the merge (saw {box_[:900]!r})",
+                  f"AP-501 at seven tomorrow · rescheduled, on its way — due {sp_(two_)} · answer/ap-501 @ " in ways_
+                  and f"AP-503 this week · rescheduled, on its way — due {sp_(three_)} · answer/ap-503 @ " in ways_ and ways_.count("done revoked, on its way") == 1
+                  and "your acts, with their time" not in box_ and "revoke" not in ways_.split("AP-503")[1].split("AP-504")[0])
+        except _ChromeFailed as e_:
+            _hung("rescheduled", e_)
     rm_git(root)
 fm.configure(HERE)
 
