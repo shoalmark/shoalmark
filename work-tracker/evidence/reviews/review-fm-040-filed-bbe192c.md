@@ -139,3 +139,30 @@ record*.
 - The filing stays **READY WITH FINDINGS**.
 
 The Owner lands this by merging; a merge rules nothing.
+
+## Re-check on 170b7a5 (2026-09-28 02:36 CEST, the same seat)
+
+**Scope.** `170b7a5` (`170b7a50a9353e55607605a2ac2c9daedcf184bf`, the Principal, 02:33:14, confirmed by `ls-remote`)
+is one tracker-only commit on `fd43178`. I read `git diff fd43178 170b7a5` whole: FM-040's file only, 5 lines in and
+4 out. Nothing moved beyond the four points and the new ship-log row.
+
+**Gates.** The tool and both suites are still byte-identical to `origin/main` `bbbfc0b`, so no suite was run.
+- `--check`: exit 0. *INDEX.md is up to date — 40 trackers*; *21 open … only bug filings*; the Owner's two sections
+  guarded.
+- `--session-check`: exit 0.
+- `git merge-tree --write-tree origin/main HEAD`: clean (`668b118`).
+
+**The findings:**
+- **RV-681 — closed.** Route a now reads *`cProfile` of `--html-only` and of the commit's `--print-written` path on
+  both repositories*.
+- **RV-684 — closed.** Route b now reads *"The Principal's counsel, disclosed as such: a product decision, his, not a
+  performance fix."* Both routes' weighing is labelled. His words stand apart in the quoted Why.
+- **RV-691 — closed.** The reading is timed *reported 2026-09-28 02:03:03*, which I take as the Principal's transcript
+  claim. The docstring is cited *at line 1012, in `recover_relations`*: the tool's text there, checked.
+- **The new ship-log row** records the re-check `fd43178` and this fix, and matches both.
+
+Nothing new is found, so nothing is minted.
+
+**Verdict: READY WITH FINDINGS.** RV-681–684 and RV-691 are all closed. The docs tier takes no further pass.
+
+The Owner lands this by merging; a merge rules nothing.
