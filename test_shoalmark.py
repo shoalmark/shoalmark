@@ -4996,10 +4996,19 @@ with tempfile.TemporaryDirectory() as tmp:
     b31_(19); record31_(); d19_ = his31_(due31_); h19_ = review31_(d19_)
     b31_(20); u20_ = his31_(); git(root, "commit", "-q", "--amend", "--no-edit", "--no-gpg-sign"); u20_ = sha(); h20_ = review31_(his31_(done31_))
     b31_(21); f21_ = record31_(lambda x_: x_.replace("next: owner\n", "next: build\n", 1)); h21_ = review31_(his31_(done31_))
-    rec31_ = {n_: q31_(n_, h_) for n_, h_ in ((19, h19_), (20, h20_), (21, h21_))}
-    check(f"FM-031, 0.18.6 · RV-712 · the tool's own refusal record under his signed act — his, unsigned, one line under `## Acts` — reads `merge: your answer`; another unsigned commit in his name waits as `an unverified commit in your name`, never *a seat's*; a refusal record that also changes a front-matter key is no record (saw {rec31_})",
+    # RV-715 · the Owner's cold re-check of af5a9e2 (P1): the same one refusal-shaped line, unsigned in his name, typed into the
+    # body ABOVE `## Acts` — the current truth — passed the diff alone; `refusal_record` now proves the place from the tracker's text
+    def forged31_():
+        text_ = tr_.read_text(encoding="utf-8"); end_ = text_.index("\n---\n", 4) + len("\n---\n")
+        tr_.write_text(text_[:end_] + "**2026-09-28 16:45** · --due MSR-001 2026-09-29T09:00:00+02:00 refused — the commit was refused: gate\n" + text_[end_:], encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-q", "-m", "MSR-001: --due refused — the commit was refused: gate")
+        return sha()
+    b31_(25); f25_ = forged31_(); h25_ = review31_(his31_(done31_))
+    rec31_ = {n_: q31_(n_, h_) for n_, h_ in ((19, h19_), (20, h20_), (21, h21_), (25, h25_))}
+    check(f"FM-031, 0.18.6 · RV-712, RV-715 · the tool's own refusal record under his signed act — his, unsigned, one line under `## Acts`, the tracker otherwise byte-identical — reads `merge: your answer`; another unsigned commit in his name waits as `an unverified commit in your name`, never *a seat's*; the same refusal-shaped line typed ABOVE `## Acts` (RV-715, the current truth) waits too; a refusal record that also changes a front-matter key is no record (saw {rec31_})",
           rec31_ == {19: ("merge: your answer", f"signed {d19_[:7]}"), 20: (f"wait: an unverified commit in your name on your answer branch ({u20_[:7]})", ""),
-                     21: (f"wait: an unverified commit in your name on your answer branch ({f21_[:7]})", "")})
+                     21: (f"wait: an unverified commit in your name on your answer branch ({f21_[:7]})", ""),
+                     25: (f"wait: an unverified commit in your name on your answer branch ({f25_[:7]})", "")})
     # RV-713 · the way out the wait names: the seat's commit lands on the default branch by its own pull request — his act is
     # kept, nothing of his re-given (FM-030 C) — and the answer branch then reads merge; the act commands' refusal says the same
     git(root, "checkout", "-q", "-b", "fm/seat-work", t0); sw22_ = seat31_("impl@seat")

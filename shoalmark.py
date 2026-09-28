@@ -1455,8 +1455,12 @@ def refusal_record(commit):
     """The tool's own refusal record (FM-030, `record_refusal`), unsigned by design: one parent, the subject `<ID>: --<act>
     refused — …`, ONE file changed — that tracker's —, and a diff that adds the one `**<date> <time>** · … refused — …`
     line and nothing else but the `## Acts` heading it may make and blank lines, and removes blank lines only: no
-    front-matter key, no act. The gate reads no right in it; `--queue` admits it below his act as it admits a review
-    file's commit (RV-712) — a seat that forged one in his name carries in one line that rules nothing."""
+    front-matter key, no act. And, from the tracker's text at the parent and at the commit (RV-715, the Owner's cold
+    re-check of `af5a9e2`, P1: a refusal-shaped line typed into *What is true now* passed the diff alone): the front
+    matter is byte-identical, the body before `## Acts` is byte-identical (trailing blank lines aside), and the section
+    under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
+    `--queue` admits it below his act as it admits a review file's commit (RV-712) — a forged one in his name carries in
+    one line under `## Acts` that rules nothing, and nothing outside it."""
     r = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     head, _, diff = r.stdout.partition("\n")
@@ -1476,9 +1480,45 @@ def refusal_record(commit):
         elif hunk and line[:1] in "+-" and line:
             (added if line[0] == "+" else removed).append(line[1:])
     name = files[0][len(rel) + 1:] if len(files) == 1 and files[0].startswith(rel + "/") else ""
-    return (name.startswith(tid.group(1) + "-") and name.endswith(".md") and "/" not in name and all(not x.strip() for x in removed)
+    if not (name.startswith(tid.group(1) + "-") and name.endswith(".md") and "/" not in name and all(not x.strip() for x in removed)
             and all(not x.strip() or ACTS_HEAD_RE.match(x) or REFUSAL_LINE_RE.match(x) for x in added)
-            and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1)
+            and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1):
+        return False
+    return refusal_record_in_place(parents.strip(), commit, files[0])
+
+
+def refusal_record_in_place(parent, commit, path):
+    """RV-715 — the diff alone said what lines were added, not WHERE: the tracker's text at `parent` and at `commit` must
+    differ in the section under `## Acts` only, by the one refusal line. Front matter byte-identical; the body before
+    the heading byte-identical (trailing blank lines aside — the heading may be new, made at the body's end); the lines
+    under the heading the parent's followed by exactly one refusal line (blank lines aside). Anything else — a line in
+    *What is true now*, a moved heading, a second record — and it is not the tool's record, whatever the diff looked like."""
+    def text_at(ref):
+        r = subprocess.run(["git", "-c", "core.quotePath=false", "show", f"{ref}:{path}"], cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", env=nested_git_env())
+        return r.stdout if r.returncode == 0 else None
+    def split(text):
+        body = parse_frontmatter(text)[1]
+        front = text[: len(text) - len(body)]
+        m = ACTS_HEAD_RE.search(body)
+        return front, (body[: m.start()] if m else body), (body[m.end():] if m else None)
+    old, new = text_at(parent), text_at(commit)
+    if old is None or new is None:
+        return False
+    of, ob, oa = split(old)
+    nf, nb, na = split(new)
+    if of != nf or na is None:
+        return False
+    if oa is None:
+        if nb.rstrip("\n") != ob.rstrip("\n"):
+            return False
+        before = []
+    else:
+        if nb.rstrip("\n") != ob.rstrip("\n"):
+            return False
+        before = [l for l in oa.split("\n") if l.strip()]
+    after = [l for l in na.split("\n") if l.strip()]
+    return after[: len(before)] == before and len(after) == len(before) + 1 and REFUSAL_LINE_RE.match(after[-1]) is not None
 
 
 def stray_below(commit, base, skip=True):
