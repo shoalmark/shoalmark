@@ -1137,6 +1137,9 @@ def on_their_way(trackers):
     - `commit` — the newest of the branch's OWN commits that changed that line, read from its commits, never from its head
       alone: a Reviewer's verdict on top of his act is no act (RV-679); `time` its committer time, `sig` its `%G?` against the
       signers the gate trusts, `said` what `--queue` reads of it — `answer_reading`, the one reader of an answer commit;
+    - `held` — `--queue`'s own line for the branch where it waits on something that commit's reading does not say —
+      `answer_branch_reading` against the default branch: a seat's commit below his act (RV-710), a head past it, a base
+      not here — else "": the board says the wait in place of *your merge is next* (RV-714);
     - `what` — his promise, else the answer as signed; for an act, its line; for an answer revoked, the question it answered
       (the reason follows the label, RV-734); `asked` the question, as context; `value` the `done:`, `answer:` or `due:` as
       written — for `undone`, the `done:` it revokes.
@@ -1190,8 +1193,9 @@ def on_their_way(trackers):
             what, asked = promise_of(at) or at["answer"], at.get("ask", "")
         value = {"undone": was.get("done", ""), "done": at.get("done", ""), "due": due}.get(kind, at.get("answer", ""))
         note = value.partition(" · ")[2] if kind == "done" else (word.group(2) or "").strip() if kind == "revoked" and word else ""
+        said, queue = answer_reading(commit or tip)[1], answer_branch_reading(tip, trunk)[1]     # the act's commit, and `--queue`'s line (RV-714)
         out[tid] = {"kind": kind, "answered": answered, "owed": act_of(at) is not None and not due, "branch": branch, "tip": tip, "commit": commit or tip, "time": when, "sig": sig or "N",
-                    "said": answer_reading(commit or tip)[1], "what": what, "asked": asked if asked != what else "", "value": value, "due": due, "note": note}
+                    "said": said, "held": queue if queue.startswith("wait") and queue != said else "", "what": what, "asked": asked if asked != what else "", "value": value, "due": due, "note": note}
     return out
 
 
@@ -1203,12 +1207,15 @@ REVOKE_DONE_SUBJECT = "{0}: done revoked — "
 def way_lines(way):
     """FM-030 — what `--owner` and `--standup` print of `on_their_way`, in the board's words (`way.*`), by id: his promise
     or his answer first, what it is — *done, on its way* or *answered, on its way* —, the branch, the commit and its time,
-    whether it verifies, *your merge is next*; the question below it, as context. After the label: where the result is, the
-    reason of a revocation, or the new time — *rescheduled, on its way — due <time>*. [] where nothing is on its way."""
+    whether it verifies, *your merge is next* — or, where `--queue` waits on the branch for more than the act's own
+    signature, *your merge waits: <its wait>* (RV-714); the question below it, as context. After the label: where the
+    result is, the reason of a revocation, or the new time — *rescheduled, on its way — due <time>*. [] where nothing is
+    on its way."""
     said = lambda w: (LABELS["way.signed"] if w["said"].startswith("merge") else LABELS["way.unverified"].format(re.sub(r"^wait: ", "", w["said"])))
+    held = lambda w: LABELS["way.held"].format(re.sub(r"^wait: ", "", w["held"])) if w.get("held") else LABELS["way.merge"]
     after = lambda w: f" — {w['note']}" if w.get("note") else f" — {LABELS['acts.due'].format(w['due'].replace('T', ' '))}" if w.get("due") else ""
     return [f"  {tid} — {w['what']} · {LABELS['way.' + w['kind']]}" + after(w)
-            + f" · {w['branch']} @ {w['commit'][:7]} · {w['time'][:16].replace('T', ' ')} · {said(w)} · {LABELS['way.merge']}"
+            + f" · {w['branch']} @ {w['commit'][:7]} · {w['time'][:16].replace('T', ' ')} · {said(w)} · {held(w)}"
             + (f"\n       {LABELS['acts.asked'].format(w['asked'])}" if w["asked"] else "") for tid, w in sorted(way.items())]
 
 
@@ -1413,13 +1420,129 @@ def answers_as_him(commit):
     return may and verified_as(commit, email or None)
 
 
+def review_addendum():
+    """(path, own) → whether a commit may touch `path` and still be a review addendum, as `--queue` reads one (FM-031,
+    0.18.4): the review folder — `[paths] reviews`, `evidence/reviews/` by default, a glob allowed —, the registry
+    `<tracker dir>/sessions.md`, and where `own`, a `review*.md` anywhere under `<tracker dir>/evidence/` — the verdict
+    commit's own file"""
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    folder = str({**DEFAULTS["paths"], **(CONFIG.get("paths") or {})}["reviews"]).strip().strip("/") + "/*"
+    own_review = re.compile(r"^" + re.escape(rel) + r"/evidence/(?:.+/)?review[^/]*\.md$")     # the verdict's own file, anywhere
+    return lambda x, own: ((x.startswith(rel + "/") and fnmatch.fnmatchcase(x[len(rel) + 1:], folder)) or x == f"{rel}/sessions.md"
+                           or bool(own and own_review.match(x)))
+
+
+def addenda_between(r, h, v=None):
+    """every commit from r to h touches only review addenda (`review_addendum`) — the verdict `v` its own review file
+    anywhere under evidence/ too, and with `v` None every commit its own — and none is a merge, which brings a line's
+    files; False where git cannot read the range"""
+    ok = review_addendum()
+    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}"],
+                         cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    for chunk in out.stdout.split("\x00")[1:]:
+        shas, *paths = chunk.strip("\n").split("\n")
+        sha, *parents = shas.split()
+        if len(parents) > 1 or any(x and not ok(x, v in (None, sha)) for x in paths):
+            return False
+    return out.returncode == 0
+
+
+REFUSAL_SUBJECT_RE = re.compile(r"^([A-Z][A-Z0-9]*-\d+): --(?:answer|done|due|revoke) refused — ")   # `record_refusal`'s subject
+REFUSAL_LINE_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\*\* · .+ refused — ")               # … and its one line
+
+
+def refusal_record(commit):
+    """The tool's own refusal record (FM-030, `record_refusal`), unsigned by design: one parent, the subject `<ID>: --<act>
+    refused — …`, ONE file changed — that tracker's —, and a diff that adds the one `**<date> <time>** · … refused — …`
+    line and nothing else but the `## Acts` heading it may make and blank lines, and removes blank lines only: no
+    front-matter key, no act. The gate reads no right in it; `--queue` admits it below his act as it admits a review
+    file's commit (RV-712) — a seat that forged one in his name carries in one line that rules nothing."""
+    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
+                       cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    head, _, diff = r.stdout.partition("\n")
+    parents, _, subject = head.partition("\x00")
+    tid = REFUSAL_SUBJECT_RE.match(subject)
+    if r.returncode != 0 or len(parents.split()) != 1 or not tid:
+        return False
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    files, added, removed, hunk = [], [], [], False
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            hunk = False
+        elif not hunk and line.startswith("+++ "):
+            files.append(line[len("+++ b/"):] if line.startswith("+++ b/") else line)
+        elif line.startswith("@@"):
+            hunk = True
+        elif hunk and line[:1] in "+-" and line:
+            (added if line[0] == "+" else removed).append(line[1:])
+    name = files[0][len(rel) + 1:] if len(files) == 1 and files[0].startswith(rel + "/") else ""
+    return (name.startswith(tid.group(1) + "-") and name.endswith(".md") and "/" not in name and all(not x.strip() for x in removed)
+            and all(not x.strip() or ACTS_HEAD_RE.match(x) or REFUSAL_LINE_RE.match(x) for x in added)
+            and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1)
+
+
+def stray_below(commit, base, skip=True):
+    """FM-031, RV-710 — what an `answer/*` branch's merge would carry in that its reading does not see: the first commit of
+    its own — `git log <commit> ^<base>`, newest first, `commit` itself left out unless `skip` is False — that is not his
+    (`answers_as_him`: may answer, verifies as him), not a review addendum (`review_addendum`, no merge), and not the
+    tool's own refusal record (`refusal_record`), as the wait that names it: `wait: a seat's commit on your answer branch
+    (<sha>, <author>)`, or where its author may answer, `wait: an unverified commit in your name on your answer branch
+    (<sha>)` — never *a seat's* of a commit in his name (RV-712). "" where there is none; None where the walk cannot run —
+    `base` is not here (RV-711): nothing below is proven, and a reader waits."""
+    ok = review_addendum()
+    full = (git_out("rev-parse", "--verify", "--quiet", commit + "^{commit}") or "").strip()
+    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", commit, "^" + base],
+                         cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if out.returncode != 0 or not full:
+        return None
+    for chunk in out.stdout.split("\x00")[1:]:
+        shas, *paths = chunk.strip("\n").split("\n")
+        sha, *parents = shas.split()
+        if (skip and sha == full) or (len(parents) <= 1 and all(not x or ok(x, True) for x in paths)) or answers_as_him(sha):
+            continue
+        may, who, _email = answerer_of(sha)
+        if may and refusal_record(sha):
+            continue
+        return (f"{STRAY_WAITS[1]} ({sha[:7]})" if may else f"{STRAY_WAITS[0]} ({sha[:7]}, {who})")
+    return ""
+
+
+STRAY_WAITS = ("wait: a seat's commit on your answer branch", "wait: an unverified commit in your name on your answer branch")   # `stray_below`'s two
+
+
+def answer_branch_reading(head, base):
+    """THE reading of an `answer/*` branch at `head` against `base` — `--queue`'s action for its pull request, and the
+    board's for his act on its way (`on_their_way`, RV-714): (kind, action, detail). It is read by ONE commit
+    (`answer_reading`): the newest of its own that changed an `answer:`, `done:` or `due:` line in a tracker —
+    `owner_change` cuts the branch for `--answer`, `--done` and `--due` alike — where every commit past it is a review
+    file's only (`addenda_between`, any commit's own `review*.md`) — the parent project's PRs 836, 849 and 853, a
+    Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)* by the head, and its `answer/bug-327`, a
+    Reviewer's verdict on his `--done`, the same (RV-679, 0.18.6); anything else past it, and the head is read, as
+    before. A merge carries every commit below that one too, and `owner_change` cuts `answer/<id>` from the branch he
+    stands on — a seat's, unmerged, carries its commits: *merge: your answer* only where `stray_below` finds none —
+    else its wait, the first such below his, never the head's reading (RV-710, the Owner's cold review of 0.18.6's
+    widening; RV-735, the same below his `answer:` since 0.18.4) — and where `base` is not here, a wait that says so: a
+    reader that cannot see below his act never says merge (RV-711)."""
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    at = (git_out("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel) or "").strip()
+    at = at if at and (at == head or addenda_between(at, head)) else head
+    action = answer_reading(at)
+    if action[0] != "merge":
+        return action
+    stray = stray_below(at, base)
+    if stray is None:
+        return "wait", f"wait: the base {base} is not fetched here — fetch it; the commits below {at[:7]} are unread", ""
+    return ("wait", stray, "") if stray else action
+
+
 def answer_reading(head):
     """An `answer/*` pull request is the Owner's own signed answer, `done:` or `due:`, and needs no Reviewer: `merge: your
     answer` when the author of `head` — his answer, `done:` or `due:` commit, as `queue_actions` finds it — may answer and
     the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an author who may not answer,
     named, whatever the commit's signature (R8 — a signed commit by someone else read *unsigned*, and the impostor is the
-    case the Owner most needs named); else on the signature. `queue_actions` reads a merge here as his only where every
-    commit of the pull request's own below `head` is his too, or a review file's only (RV-710)."""
+    case the Owner most needs named); else on the signature. `answer_branch_reading` reads a merge here as his only where
+    every commit of the branch's own below `head` is his too, a review file's only, or the tool's own refusal record
+    (RV-710)."""
     may, who, email = answerer_of(head)
     if not may:
         return "wait", f"wait: not an answerer ({who})", ""
@@ -1455,8 +1578,9 @@ def queue_actions(prs, branches=()):
     answer, `done:` or `due:` commit, the newest of its own that changed an `answer:`, `done:` or `due:` line, where only
     review files follow it (FM-031, 0.18.4: a Reviewer's docs pass on the answer read *not an answerer* by the head;
     0.18.6, RV-679: on his `--done` or `--due`, too); else on its head — and it reads *merge: your answer* only where
-    every commit of its own below that one is his too, or a review file's only; else `wait: a seat's commit on your answer
-    branch (<sha>, <author>)` (RV-710). For a pull request the first rule that holds is the action:
+    every commit of its own below that one is his too, a review file's only, or the tool's own refusal record; else a wait
+    naming the first that is not (RV-710, RV-712), and a wait where its base is not here (RV-711) —
+    `answer_branch_reading`, the board's reader too (RV-714). For a pull request the first rule that holds is the action:
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
@@ -1474,11 +1598,6 @@ def queue_actions(prs, branches=()):
     `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
-    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    registry = f"{rel}/sessions.md"
-    folder = str({**DEFAULTS["paths"], **(CONFIG.get("paths") or {})}["reviews"]).strip().strip("/") + "/*"
-    in_folder = lambda x: x.startswith(rel + "/") and fnmatch.fnmatchcase(x[len(rel) + 1:], folder)
-    own_review = re.compile(r"^" + re.escape(rel) + r"/evidence/(?:.+/)?review[^/]*\.md$")     # the verdict's own file, anywhere
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
@@ -1531,38 +1650,8 @@ def queue_actions(prs, branches=()):
                 verdicts.append((sha, full, word.group(1)))
 
     def addenda_only(r, h, v):
-        """every commit from r to h touches only the review folder or the registry — the verdict `v` its own review file
-        anywhere under evidence/ too, and with `v` None every commit its own — and none is a merge, which brings a line's files"""
-        def read():
-            out = git("log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}")
-            for chunk in out.stdout.split("\x00")[1:]:
-                shas, *paths = chunk.strip("\n").split("\n")
-                sha, *parents = shas.split()
-                if len(parents) > 1 or any(x and not (in_folder(x) or x == registry or (v in (None, sha) and own_review.match(x))) for x in paths):
-                    return False
-            return out.returncode == 0
-        return cached(("addenda", r, h, v), read)
-
-    def answer_action(p):
-        """an `answer/*` pull request's action. It is read by ONE commit (`answer_reading`): the newest of its own that
-        changed an `answer:`, `done:` or `due:` line in a tracker — `owner_change` cuts the branch for `--answer`, `--done`
-        and `--due` alike — where every commit past it is a review file's only (`addenda_only`, any commit's own
-        `review*.md`) — the parent project's PRs 836, 849 and 853, a Reviewer's docs pass on the answer, read *not an
-        answerer (reviewer@seat)* by the head, and its `answer/bug-327`, a Reviewer's verdict on his `--done`, the same
-        (RV-679, 0.18.6); anything else past it, and the head is read, as before. A merge carries every commit below that
-        one too, and `owner_change` cuts `answer/<id>` from the branch he stands on — a seat's, unmerged, carries its
-        commits: *merge: your answer* only where each commit of its own below the one read is his as well
-        (`answers_as_him`, the same test) or a review file's only; else `wait: a seat's commit on your answer branch
-        (<sha>, <author>)`, the first such below his, and never the head's reading (RV-710, the Owner's cold review of
-        0.18.6's widening; RV-735, the same below his `answer:` since 0.18.4)"""
-        at = git("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head(p), "^" + base(p), "--", rel).stdout.strip()
-        at = at if at and (at == head(p) or addenda_only(at, head(p), None)) else head(p)
-        action = answer_reading(at)
-        if action[0] != "merge":
-            return action
-        below = [c for c in git("rev-list", at, "^" + base(p)).stdout.split() if c != at]       # newest first
-        stray = next((c for c in below if not (addenda_only(c + "^", c, None) or answers_as_him(c))), None)
-        return ("wait", f"wait: a seat's commit on your answer branch ({stray[:7]}, {answerer_of(stray)[1]})", "") if stray else action
+        """`addenda_between`, read once per range"""
+        return cached(("addenda", r, h, v), lambda: addenda_between(r, h, v))
 
     rows = []
     for p in prs:
@@ -1580,7 +1669,7 @@ def queue_actions(prs, branches=()):
         elif (guarded := triage_reading(head(p), base(p))):
             rows.append((p, "wait", *guarded))
         elif p["headRefName"].startswith("answer/"):
-            rows.append((p, *answer_action(p)))
+            rows.append((p, *answer_branch_reading(head(p), base(p))))
         elif last is None:
             rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
         elif last[1] == "NOT READY":
@@ -1769,7 +1858,9 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     """What an unmerged `answer/<id>` asks of the Owner, read from what is on it. Its own commits — those not in `trunk`,
     or with no trunk, on no other branch — that are HIS (his name or his email) are never deleted for him: where the
     tracker's act is open there, `--done`/`--due` are run on it; otherwise it is merged first. `git branch -D` is named
-    only where nothing of his is on it (FM-030 C, as ruled)."""
+    only where nothing of his is on it (FM-030 C, as ruled). Where `--queue` waits on it for a commit not his —
+    `answer_branch_reading`, its own line — the advice says how that clears: the commit lands on the trunk first, by its
+    own pull request; his are kept (RV-713)."""
     span = [branch, "--not", trunk] if trunk else [branch, "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
     own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
     his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
@@ -1777,12 +1868,20 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
         return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {branch}`, "
                 f"then `{how['again']}`")
     said = "; ".join(f"`{sha}` {subject[:60]}" for sha, subject in his[:3]) + (f"; and {len(his) - 3} more" if len(his) > 3 else "")
+    tip = (git("rev-parse", "--verify", "--quiet", branch).stdout or "").strip()
+    reading = answer_branch_reading(tip, trunk)[1] if trunk and tip else ""            # `--queue`'s own line for it
+    stray = reading if reading.startswith(STRAY_WAITS) else ""
+    held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{trunk}` first, by its own pull request, "
+            f"never through yours" if stray else "")
     if how["flag"] in ("--done", "--due"):
         there = git("show", f"{branch}:{rel}")
         t_ = extract(ROOT / rel, there.stdout) if there.returncode == 0 else None
         if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
             return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {branch}`, then "
-                    f"`{how['again']}` — it commits on top, and nothing of yours is deleted")
+                    f"`{how['again']}` — it commits on top, and nothing of yours is deleted" + held)
+    if stray:
+        return (f"it carries your commit(s) — {said} — and nothing of yours is deleted{held}; then merge it (its pull request), "
+                f"then `{how['again']}`; or `git switch {branch}` and run it there")
     return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
             f"or `git switch {branch}` and run it there")
 
@@ -2636,7 +2735,7 @@ function draw(){
     // verifies, and that his merge is next
     +(way=>way.length?"\n\n<b>"+l("way.title")+": "+way.length+"</b>\n"+way.map(t=>{const w=t[31];
       return `<a href="#=${t[0]}">${t[0]}</a> ${esc(w[7])}<span class="m"> · <b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")
-        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?l("way.signed"):l("way.unverified",w[6].replace(/^wait: /,""))} · ${l("way.merge")}</span>`
+        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?l("way.signed"):l("way.unverified",w[6].replace(/^wait: /,""))} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}</span>`
         +(w[0]=="done"||w[0]=="answer"?` <button class="act" onclick="REV(T.find(x=>x[0]=='${t[0]}'))">${l("way.revoke")}</button>`:"")
         +(w[8]?`\n<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[31]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
@@ -2736,7 +2835,7 @@ LABELS = {
     "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
     "act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge",
     # FM-030, his signed answer 920970b7: what he did and pushed, before his merge — the board, `--owner` and `--standup`
-    "way.title": "on their way", "way.merge": "your merge is next", "way.done": "done, on its way", "way.answer": "answered, on its way",
+    "way.title": "on their way", "way.merge": "your merge is next", "way.held": "your merge waits: {0}", "way.done": "done, on its way", "way.answer": "answered, on its way",
     "way.revoked": "revoked, on its way", "way.undone": "done revoked, on its way", "way.due": "rescheduled, on its way", "way.signed": "signed", "way.unverified": "not verified here: {0}",
     "way.revoke": "revoke", "way.revoke.title": "Revoke — why?", "way.revoke.hint": "why you take it back — the record keeps it beside what it revokes",
     "way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange",
@@ -3344,7 +3443,7 @@ def render_html(trackers):
     by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
     # FM-030: his act or answer on its way — a 32nd cell, on the rows `on_their_way` names and on no other, so a board with
     # nothing on its way has the rows and the rendered board it had
-    way = {k: [w["kind"], w["branch"], w["tip"], w["commit"], w["time"], w["sig"], w["said"], w["what"], w["asked"], w["value"], int(w["answered"]), int(w["owed"]), w["due"], w["note"]]
+    way = {k: [w["kind"], w["branch"], w["tip"], w["commit"], w["time"], w["sig"], w["said"], w["what"], w["asked"], w["value"], int(w["answered"]), int(w["owed"]), w["due"], w["note"], w["held"]]
            for k, w in on_their_way(trackers).items()}
     rows = [
         json.dumps(
@@ -5886,7 +5985,7 @@ def parse_args(argv):
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
-                                            "merge: your answer · wait: not an answerer (<author>) · wait: a seat's commit on your answer branch (<sha>, <author>) · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
+                                            "merge: your answer · wait: not an answerer (<author>) · wait: a seat's commit on your answer branch (<sha>, <author>) · wait: an unverified commit in your name on your answer branch (<sha>) · wait: the base <base> is not fetched here — … · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
                                             "merged or closed in the last 24 hours, with their times. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
