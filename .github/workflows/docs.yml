@@ -11,8 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
       - run: pip install -q -r requirements-docs.txt
       - run: python3 scripts/test_check_site.py
@@ -20,7 +20,7 @@ jobs:
       - name: llms.txt — the agents' index of the same source, and a Markdown twin of every page
         run: python3 scripts/llms_txt.py site
       - run: python3 scripts/check_site.py site
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with: {path: site}
   deploy:
     # The public repository lives at shoalmark/shoalmark; keep private forks from deploying.
@@ -30,4 +30,4 @@ jobs:
     environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
