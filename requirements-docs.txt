@@ -1,4 +1,4 @@
 # Verified with the organization migration site build.
 zensical==0.0.66
 # CSS parser for the published font-source check; retains Python 3.9 support.
-tinycss2==1.4.0
+tinycss2==1.5.1
