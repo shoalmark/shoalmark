@@ -47,3 +47,19 @@ main's personal-account links. Consumers get the tool link changes at a future r
 Conclusion: implemented and locally checked; review and PR CI remain. The counterfact is that a
 successful site build did not originally prove the contract rendered; the negative controls now
 reject that failure. No output here grants merge authority or certifies unrun CI.
+
+## Independent review R1 follow-up
+
+The Owner relayed the independent Reviewer's P2: four README links broke in the newly rendered
+agent contract, while the landing-only check passed. README now links AGENTS.md, LICENSE-APACHE,
+LICENSE-MIT and NOTICE to `https://github.com/shoalmark/shoalmark/blob/main/` destinations.
+The checker parses both landing and contract pages, resolving relative site links from each page
+and checking same-repository blob/main files against the source checkout (no network needed in CI).
+
+Validation on 2026-09-29:
+- Pinned Zensical clean build, llms generation and site check passed.
+- All four exact rendered URLs passed `curl --fail --location` HTTP checks.
+- For each URL separately, a temporary `-missing` target in generated contract HTML made the checker
+  fail with `broken repository link`; restoring the original relative AGENTS.html made it fail with
+  `broken link`. Generated HTML was restored in a finally block; the site check passes again.
+- Independent re-verification and full required PR CI remain pending; this is fix evidence, not a verdict.

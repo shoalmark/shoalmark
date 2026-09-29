@@ -4,6 +4,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased
 
+- **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
+  the site check validates local and repository-file destinations in the rendered contract.
+
 - **Commits give quick, visible feedback (FM-006):** staged Python syntax and the focused core suite
   replace the silent two-interpreter full-suite hook. Full suites remain required in PR CI and run on tags.
 
