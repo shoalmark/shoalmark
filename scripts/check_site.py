@@ -2,6 +2,7 @@
 from html.parser import HTMLParser
 from pathlib import Path
 import sys
+import re
 from urllib.parse import unquote, urlsplit
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
@@ -45,9 +46,24 @@ class Links(HTMLParser):
 
 for page in ("index.html", "agents/index.html"):
     Links(page).feed((site / page).read_text(encoding="utf-8"))
+# Font requests must stay on this site. Check emitted CSS, not merely configuration.
+for page in site.rglob("*.css"):
+    css = page.read_text(encoding="utf-8")
+    for value in re.findall(r"url\(\s*['\"]?([^)'\"\s]+)", css):
+        url = urlsplit(value)
+        if url.path.lower().endswith((".woff", ".woff2", ".ttf", ".otf")):
+            if url.scheme or url.netloc:
+                raise SystemExit(f"site check: external font in {page}")
+            target = page.parent / unquote(url.path)
+            if not target.is_file():
+                raise SystemExit(f"site check: missing font in {page}: {value}")
 for page in site.rglob("*"):
-    if page.is_file() and page.suffix in {".html", ".txt", ".md", ".xml"}:
+    if page.is_file() and page.suffix in {".html", ".txt", ".md", ".xml", ".css"}:
         text = page.read_text(encoding="utf-8")
+        if page.suffix in {".html", ".css"} and (
+            "fonts.googleapis.com" in text or "fonts.gstatic.com" in text
+        ):
+            raise SystemExit(f"site check: external Google Fonts reference in {page}")
         if "https://holgo99.github.io/shoalmark" in text or "https://github.com/holgo99/shoalmark" in text:
             raise SystemExit(f"site check: old public URL in {page}")
 print("site check: entry pages, contract inclusion, landing/contract destinations and public URLs passed")

@@ -1,0 +1,174 @@
+{
+  "retrieved": "2026-09-29",
+  "license_revision": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
+  "files": [
+    {
+      "file": "IBM-Plex-Mono-italic-400-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6pfjptAgt5VM-kVkqdyU8n1ioa23dgregdFOFh.woff2",
+      "sha256": "c590f625acd1a18021f23486445b03b8435879b406db1003d3fdd7804e9319fb",
+      "bytes": 9788
+    },
+    {
+      "file": "IBM-Plex-Mono-italic-400-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6pfjptAgt5VM-kVkqdyU8n1ioa1XdgregdFA.woff2",
+      "sha256": "2665f5fbbb334780fa135c7f1dc6e2459061a2d6d44c32b7c1fdbc34cde65ede",
+      "bytes": 11568
+    },
+    {
+      "file": "IBM-Plex-Mono-italic-700-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6sfjptAgt5VM-kVkqdyU8n1ioSblJ1jsoQPttoz6Pz.woff2",
+      "sha256": "b1ba1f6263ace5830469368dd7ea565d55542ab2850faed8b1c8641bbbc5b3a7",
+      "bytes": 9972
+    },
+    {
+      "file": "IBM-Plex-Mono-italic-700-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6sfjptAgt5VM-kVkqdyU8n1ioSblJ1gMoQPttozw.woff2",
+      "sha256": "6b903205e8d5a01239d44ef84848a221b7e4a34d7ac118772907b7160c3fc072",
+      "bytes": 11564
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-400-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F63fjptAgt5VM-kVkqdyU8n1iEq131nj-otFQ.woff2",
+      "sha256": "f1050dc5317b43434c0aeda599d4624c774ffc162e87a8cf204b949b6a85816d",
+      "bytes": 8860
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-400-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F63fjptAgt5VM-kVkqdyU8n1i8q131nj-o.woff2",
+      "sha256": "c36f509c0a8f9f85f29cb44bc8701d8a9e0b14c499e77a884f789ead7093a7ac",
+      "bytes": 10052
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-500-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3twJwl5FgsAXHNlYzg.woff2",
+      "sha256": "77f03e26f981c582bdba3a7abed4baa2d3149211c01366bb3ab3ba7622ec4ae5",
+      "bytes": 8848
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-500-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3twJwlBFgsAXHNk.woff2",
+      "sha256": "a76f53ca6612e7b3828eec2311098675b7f9849ae4169a8bcef6302aec02a6c0",
+      "bytes": 10060
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-600-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3vAOwl5FgsAXHNlYzg.woff2",
+      "sha256": "1b6b18fd0fd240bc6d5850f4df621484722d4b5d3650ebdd1e3a8bbd81c75854",
+      "bytes": 8960
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-600-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3vAOwlBFgsAXHNk.woff2",
+      "sha256": "ad4580d8cb4b5f627c2d18457656732f7f7b070f7837fbc380e08054157e6f6c",
+      "bytes": 10120
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-700-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3pQPwl5FgsAXHNlYzg.woff2",
+      "sha256": "099842414ddad0cb366cf984641b14e75c01a2c6e3f42fa13a6e89d1f4c3fc20",
+      "bytes": 8748
+    },
+    {
+      "file": "IBM-Plex-Mono-normal-700-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3pQPwlBFgsAXHNk.woff2",
+      "sha256": "9e1455e6e9c5866f607e464fffb7855486dcf575b7e69b83a3d234e587fce41b",
+      "bytes": 10128
+    },
+    {
+      "file": "IBM-Plex-Sans-italic-400-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXxKVElMYYaJe8bpLHnCwDKhdTEG46kmUZQCX598fQbGYrYAKRjdNS7Iw.woff2",
+      "sha256": "8e5c23cef16278755c741e7079994506495d44d102890a1842c564b941131ee6",
+      "bytes": 28764
+    },
+    {
+      "file": "IBM-Plex-Sans-italic-400-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXxKVElMYYaJe8bpLHnCwDKhdTEG46kmUZQCX598fQbGYTYAKRjdNQ.woff2",
+      "sha256": "add25efa61ce6904468e321727e4de5d875d8007f4eb00a777182a60a89142ef",
+      "bytes": 44916
+    },
+    {
+      "file": "IBM-Plex-Sans-italic-700-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXxKVElMYYaJe8bpLHnCwDKhdTEG46kmUZQCX598fQbGYrYAKRjdNS7Iw.woff2",
+      "sha256": "8e5c23cef16278755c741e7079994506495d44d102890a1842c564b941131ee6",
+      "bytes": 28764
+    },
+    {
+      "file": "IBM-Plex-Sans-italic-700-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXxKVElMYYaJe8bpLHnCwDKhdTEG46kmUZQCX598fQbGYTYAKRjdNQ.woff2",
+      "sha256": "add25efa61ce6904468e321727e4de5d875d8007f4eb00a777182a60a89142ef",
+      "bytes": 44916
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-400-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxQKYbSB4ZhRNU.woff2",
+      "sha256": "ae1d854fefa1167a79071f1afe01d4d51b60c5840c1be36dd74bd5fe7375b405",
+      "bytes": 25868
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-400-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxeKYbSB4Zh.woff2",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-500-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxQKYbSB4ZhRNU.woff2",
+      "sha256": "ae1d854fefa1167a79071f1afe01d4d51b60c5840c1be36dd74bd5fe7375b405",
+      "bytes": 25868
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-500-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxeKYbSB4Zh.woff2",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-600-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxQKYbSB4ZhRNU.woff2",
+      "sha256": "ae1d854fefa1167a79071f1afe01d4d51b60c5840c1be36dd74bd5fe7375b405",
+      "bytes": 25868
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-600-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxeKYbSB4Zh.woff2",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-700-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxQKYbSB4ZhRNU.woff2",
+      "sha256": "ae1d854fefa1167a79071f1afe01d4d51b60c5840c1be36dd74bd5fe7375b405",
+      "bytes": 25868
+    },
+    {
+      "file": "IBM-Plex-Sans-normal-700-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/ibmplexsans/v23/zYXzKVElMYYaJe8bpLHnCwDKr932-G7dytD-Dmu1syxeKYbSB4Zh.woff2",
+      "sha256": "056e4e2459f57a0033c8c9c844ff19d6e42ac8602027803d4345823bcc939818",
+      "bytes": 40240
+    },
+    {
+      "file": "Silkscreen-normal-400-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/silkscreen/v6/m8JXjfVPf62XiF7kO-i9YL1la0GA1dOkDw.woff2",
+      "sha256": "5ae60a8bb15c2065126fdf5af9912cd548be48fd43f19d543b69b95ee0314240",
+      "bytes": 1116
+    },
+    {
+      "file": "Silkscreen-normal-400-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/silkscreen/v6/m8JXjfVPf62XiF7kO-i9YLNla0GA1dM.woff2",
+      "sha256": "17bb6d80eeea10c69887aa64a1b48e70a3f540de50480da9ec933fac1996bf97",
+      "bytes": 3528
+    },
+    {
+      "file": "Silkscreen-normal-700-latin-ext.woff2",
+      "source": "https://fonts.gstatic.com/s/silkscreen/v6/m8JUjfVPf62XiF7kO-i9aAhAfmKi2PmeBvYdbA.woff2",
+      "sha256": "1bec363fff2816f3a27a015e2bdc8005d2cdab5909ce1208d863ed6482c492cd",
+      "bytes": 1068
+    },
+    {
+      "file": "Silkscreen-normal-700-latin.woff2",
+      "source": "https://fonts.gstatic.com/s/silkscreen/v6/m8JUjfVPf62XiF7kO-i9aAhAfmyi2PmeBvY.woff2",
+      "sha256": "30ad65d8dff39d9154b3e43fedfaeaea9767468238ea633272304b6fc82bdca7",
+      "bytes": 3208
+    }
+  ]
+}

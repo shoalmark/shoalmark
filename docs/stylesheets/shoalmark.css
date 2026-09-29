@@ -4,12 +4,7 @@
    PR 82) — site-monochrome.css, then site-shoalmark.css — every rule as the mock wrote it but one the built site's contrast
    measure added (the foot's link, marked where it stands); no template, no zensical.toml change. The site keeps its
    header; the board's header is inline inside its chart (the Owner, 09:23:58, for the board).
-   ONE import, here at the top, where browsers honour it: the theme loads its code font at 400 and 700 (and their
-   italics) only, so the wordmark's 500 (the Owner's ruling, 2026-09-24) and the headings' and navigation's 600 are
-   fetched here. The rest of the page keeps the theme's text font, IBM Plex Sans. The site still loads IBM Plex from
-   Google Fonts, as it did before this slice — FM-006's open item before the site is ever published: self-host Plex
-   under docs/assets/fonts/, its own slice. */
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=fallback");
+   Fonts are self-hosted by stylesheets/fonts.css; Google Fonts loading is disabled. */
 
 .md-header__ellipsis > .md-header__topic:first-child .md-ellipsis {
   font-family: "IBM Plex Mono", monospace;

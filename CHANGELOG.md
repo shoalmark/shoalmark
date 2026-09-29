@@ -4,6 +4,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased
 
+- **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
+  destinations before upload, and states the project’s last recorded signing tier in English and German.
+
 - **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
   the site check validates local and repository-file destinations in the rendered contract.
 
