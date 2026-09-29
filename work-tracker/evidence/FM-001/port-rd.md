@@ -27,7 +27,7 @@ axis nor the core, because the core was cut by script from a file I read once.
 **The port is feasible and nearly mechanical — and the exploration found the thing that matters more than the port:
 the core was cut out with its code and without most of its tests.** Seven of eight claims held; Q4's method failed
 its own bar and was replaced by a better one. The origin was never written to (0 changed files after every run).
-Everything the port needs is kept in [`port/`](port/): the deriver (161 lines), the wrapper (12), the theme (5), the
+The original port artifacts are preserved in [the historical `port/` tree](https://github.com/shoalmark/shoalmark/tree/80d0811974a1d39b679cfd374c80109ddd62acce/work-tracker/evidence/FM-001/port): the deriver (161 lines), the wrapper (12), the theme (5), the
 configuration (15), and the runner that executes the origin's test file against the core.
 
 | # | Forecast | Outcome | Measured |
