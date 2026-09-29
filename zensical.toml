@@ -1,11 +1,11 @@
 # The documentation site — Zensical (https://zensical.org), the same TOML shape as shoalmark.toml.
 # Two audiences, one source: human pages live here; the agents' document is README.md, rendered, never copied.
 [project]
-site_url = "https://holgo99.github.io/shoalmark/"
+site_url = "https://shoalmark.github.io/shoalmark/"
 site_name = "shoalmark"
 site_description = "Get a better-performing human Owner — a work tracker that puts what needs the Owner first."
-repo_url = "https://github.com/holgo99/shoalmark"
-repo_name = "holgo99/shoalmark"
+repo_url = "https://github.com/shoalmark/shoalmark"
+repo_name = "shoalmark/shoalmark"
 edit_uri = "edit/main/docs/"
 docs_dir = "docs"
 site_dir = "site"
@@ -52,3 +52,7 @@ media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 toggle.icon = "lucide/sun"
 toggle.name = "Switch to light mode"
+
+# Render the agents’ contract from the root README; missing includes fail the build.
+[project.markdown_extensions]
+pymdownx.snippets.check_paths = true

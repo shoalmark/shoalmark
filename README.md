@@ -493,11 +493,11 @@ behaviour on a synthetic corpus; `test_shoalmark.py` pins what was built here. A
 the check is shown to fail without the change. Every consumer-visible change gets a `CHANGELOG.md` entry —
 `--vendor` prints it to the repository that upgrades. This repository tracks itself: `python3 shoalmark.py --next`.
 How a change here is reviewed, what a miss costs, and how the Owner is spoken to are this repository's house rules — the
-Owner's signed answers of 2026-09-24, in [`AGENTS.md`](AGENTS.md).
+Owner's signed answers of 2026-09-24, in [`AGENTS.md`](https://github.com/shoalmark/shoalmark/blob/main/AGENTS.md).
 
 ## Licence
 
-`Apache-2.0 OR MIT`, at your option — [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), [NOTICE](NOTICE).
+`Apache-2.0 OR MIT`, at your option — [LICENSE-APACHE](https://github.com/shoalmark/shoalmark/blob/main/LICENSE-APACHE), [LICENSE-MIT](https://github.com/shoalmark/shoalmark/blob/main/LICENSE-MIT), [NOTICE](https://github.com/shoalmark/shoalmark/blob/main/NOTICE).
 The one bundled file, `vendor/marked-18.0.13.umd.js`, is MIT. All three ship in a vendored copy.
 
 What it is not, on purpose: no sprint, no estimate, no assignee, no comment thread, no editing in the board.

@@ -22,6 +22,10 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-09-29 — independent review R1 (P2), relayed by the Owner:** the rendered README had four broken relative links (AGENTS.md and three licence/notice files), missed by the landing-only destination check. Fixed with public repository URLs and validation of contract destinations, including repository files against the checkout. Fixed in `4c638a8` and independently verified at `910c09f` by Reviewer session `01a0ed68`: **READY, R1 closed**, all four rendered destinations verified, each missing-target control refused on Python 3.9 and 3.14. Evidence: [`review-fm-006-repository-migration-910c09f.md`](evidence/reviews/review-fm-006-repository-migration-910c09f.md). Required CI on the final PR revision and the Owner’s merge remain.
+
+**2026-09-29 — organization migration, on the Owner’s direct instruction.** The repository is public at `shoalmark/shoalmark`; GitHub Pages reports `https://shoalmark.github.io/shoalmark/`. Branch `fm/006-repository-migration` preserves his Zensical commit `d1a269b` unchanged. This slice updates active installation, documentation, signing-help and footer links, keeps historical evidence intact, and makes the Pages build clean without cancelling an active deploy. No version or tag changes. Obsolete: active links to the personal-account home and pre-publication workflow comments. The Owner then explicitly included public-repository hardening: PR triggers for every non-draft revision, a read-only CI token, pinned Zensical 0.0.66, weekly Dependabot configuration, SECURITY/CONTRIBUTING guidance and issue templates. The agents’ HTML contract was found rendering a literal include; snippets are now enabled and landing links target `agents/index.html`. The Pages workflow checks these outputs before upload. Independent critical-code review of `910c09f`, Reviewer session `01a0ed68`: **READY**, R1 closed after fix `4c638a8`; the original NOT READY verdict on `3fe27f3` is preserved at `91ba9f6`. The tracker-named isolated branch passes `--check`, including the preserved Owner commit. Remaining for this slice: green required PR CI, Owner merge and manual Pages deployment from merged main. The tracker’s `next: owner` remains for its standing publication act. Earlier publication prerequisites below remain historical claims, not certified as satisfied by this migration.
+
 **A landing page is a requirement of the v0.18.5 release, alongside the restyle and rebrand of shoalmark's brand identity — the Owner's word in chat, 2026-09-26 10:25:41 (spelling normalised; sha256 `416d54ce…`; not a signed answer): the mock the GtM/Design session filed at `9704140` (PR 82, `evidence/FM-006/landing/`) is its starting point. The seat's reading, marked: the landing page is the site's start page unless he says otherwise; where it ships is decided with the 0.18.5 plan, and its build is judged by a pass before its first build commit (FM-033). The themes' ask moved to FM-002 (raised today on his word) and is answered there (`4e00f85`, PR 90, option 2); this tracker's one ask, *going public*, is answered too (`8defe63`, PR 91, the proposal: after the scoring, gates held), its act not yet recorded. The site is built at a release tag and live only at that act: `.github/workflows/docs.yml` deploys only when `github.event.repository.private == false`, and the repository is private until then — so the Google Fonts item below (IBM Plex, the open item of 2026-09-24; slice L's mock loads Plex Mono and Silkscreen from Google too, `evidence/FM-006/landing/index.html:11`) is due before publication.**
 
 **The themes are filed on the Owner's word (2026-09-25, narrowed 2026-09-26): two, `monochrome` and `shoalmark`, each for the board and the site, each drawing a nautical chart behind the page (muted in `monochrome`); no setting — a theme is a file in a place. Nothing is built. Its drafted ask was re-made on 2026-09-26, on his word through the Auditor seat (AU-24): which theme shoalmark's own board and site wear, and whether the tool ships themes, asked apart, the cheap step first. It moved to FM-002 on 2026-09-26 and is answered there (`4e00f85`, PR 90), as the going-public ask is here (`8defe63`, PR 91); the slices are FM-002's to build, and the line below is the record as filed.**
@@ -69,6 +73,32 @@ leistungsstärkeren menschlichen Eigner.* — in German prose the person is *der
 faces the fleet and provokes the owner at once, and the page below it proves it for both readers. The README keeps its
 own section title: it is the agents' contract, not the pitch. A second, owner-facing claim is open for a GtM screen the
 Owner convenes; no seat writes it.
+
+### Commit-hook split, 2026-09-29
+
+The Owner encountered the silent full-suite pre-commit hook, approved the proposed local/CI split,
+and aborted his pending commit on the seat’s request before this edit. The old hook ran both suites
+under `python3` and `/usr/bin/python3`, hid passing output, and reran a failed suite to print it.
+The replacement compiles staged Python blobs without executing them and runs `test_core.py` once,
+unbuffered. Session, tracker and judgement gates remain; both full suites stay in all five required
+CI matrix jobs and tag runs, now unbuffered too. Full local runs remain available explicitly.
+This removes repeated cross-version work from every commit without claiming syntax/core checks
+replace the full suite. The Principal stopped its own duplicate run; neither interrupted commit
+completed. Its earlier hook had reached the second interpreter, so both suites on the first interpreter
+passed for the initial migration snapshot, not a full-suite certification of the final branch.
+
+### Migration settings verified, 2026-09-29
+
+Principal `01a0ec25`, worktree `shoalmark-principal-migration`; changes authorized in the Owner’s migration request and explicit follow-up to include public-repo hardening. GitHub API reads/writes targeted only `shoalmark/shoalmark`.
+
+- Owner commit `d1a269b` preserved unchanged; local `main` restored to fetched `1c344ed`. `origin` already named the organization repository. No remote main push.
+- Pages: workflow source, URL `https://shoalmark.github.io/shoalmark/`; repository homepage already matches. Deployment awaits merge so main’s old URLs are not republished.
+- Ruleset `24177420`: active, empty bypass; PR required with zero forge approvals, force-push/deletion restrictions retained. Removed `update` (it barred PR merges too), retained `creation`. Added the five existing `suites (OS, Python)` checks, bound to GitHub Actions app 15368. No requirement for Pages `build`/`deploy`, which do not run on PRs.
+- Default Actions token was already read-only and cannot approve PRs. Fork workflow approval changed from first-time contributors to all external contributors.
+- Enabled secret scanning, repository push protection, Dependabot vulnerability alerts/security updates and private vulnerability reporting. Read-back confirms the enabled security states. Secret-scanning API returned zero open alerts on its first page; this is an observation during enablement, not a historical secret or privacy audit.
+- Local Zensical 0.0.66 clean build and `llms_txt.py`: 11 Markdown twins; generated English/German signing pages and agents contract checked. `check_site.py` rejects the observed broken include and a removed signing destination in negative controls. Historical tracker evidence and dated personal-account census prose remain unchanged.
+- Obsolete: active personal-account URLs, unpublished-site workflow comments, unpinned Zensical installation and ready-transition-only CI. No release version or tag changed; consumers receive the tool’s new URLs when they next vendor a release containing this branch.
+
 
 ## Done when
 

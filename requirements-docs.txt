@@ -1,0 +1,2 @@
+# Verified with the organization migration site build.
+zensical==0.0.66

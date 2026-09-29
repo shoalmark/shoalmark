@@ -1,8 +1,25 @@
 pre-commit:
   commands:
-    tests:
+    python-syntax:
       glob: "*.py"
-      run: for py in python3 /usr/bin/python3; do [ -x "$(command -v $py)" ] && { for t in test_shoalmark.py test_core.py; do $py $t >/dev/null || { $py --version; $py $t | grep -v "^  ok"; exit 1; }; done; }; done
+      run: |
+        python3 - <<'PYTHON'
+        import os
+        import subprocess
+        paths = subprocess.check_output([
+            "git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z", "--", "*.py"
+        ]).split(b"\0")
+        count = 0
+        for raw in filter(None, paths):
+            path = os.fsdecode(raw)
+            source = subprocess.check_output(["git", "show", ":" + path])
+            compile(source, path, "exec")
+            count += 1
+        print(f"Python syntax: {count} staged files passed", flush=True)
+        PYTHON
+    core-tests:
+      glob: "*.py"
+      run: python3 -u test_core.py
     session:
       run: python3 shoalmark.py --session-check
     tracker-index:
