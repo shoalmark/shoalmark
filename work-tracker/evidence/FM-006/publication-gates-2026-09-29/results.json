@@ -1,0 +1,40 @@
+{
+  "scanner": "gitleaks 8.30.1",
+  "exit_code": 0,
+  "findings": 0,
+  "reachable_commits": 835,
+  "scanner_reported_commits": 671,
+  "refs": 142,
+  "pull_refs": 121,
+  "shallow": false,
+  "refs_sha256": "4cf6fc30a1290369dca19b6a28018481cd886d00e40e05fc1c3948db9dcc32f6",
+  "report_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "synthetic_deleted_secret_control": "rejected (exit 1)",
+  "ci": {
+    "tag": "v0.18.6",
+    "head": "1c344ed89ca1c0e1dd714c8beb737f92fc2983c4",
+    "url": "https://github.com/shoalmark/shoalmark/actions/runs/36483645765",
+    "jobs": [
+      {
+        "name": "suites (windows-latest, 3.9)",
+        "conclusion": "success"
+      },
+      {
+        "name": "suites (ubuntu-latest, 3.12)",
+        "conclusion": "success"
+      },
+      {
+        "name": "suites (windows-latest, 3.12)",
+        "conclusion": "success"
+      },
+      {
+        "name": "suites (macos-latest, 3.12)",
+        "conclusion": "success"
+      },
+      {
+        "name": "suites (ubuntu-latest, 3.9)",
+        "conclusion": "success"
+      }
+    ]
+  }
+}

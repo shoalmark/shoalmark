@@ -34,6 +34,14 @@ Stufe 3 ist der starke Weg: Er hält auch einen Agenten auf, der Schaden will, u
 einmal gekauft — oder einen Mac mit Touch ID, ohne Kauf. Stufe 0 ist zum Ausprobieren des Werkzeugs — Ihr Beleg wird
 es sagen.
 
+## Die dokumentierte Signaturstufe dieses Projekts
+
+Laut Stand vom 25. September 2026 verwendet der Owner von shoalmark **Stufe 0**, einen
+Software-Schlüssel. Der geplante Wechsel zum Hardware-Schlüssel ist noch nicht als abgeschlossen
+dokumentiert. Eine verifizierte Antwort belegt bis dahin die Nutzung des vertrauten Schlüssels,
+nicht die persönliche Anwesenheit des Owners. Das ist der dokumentierte Projektstand, keine
+Prüfung Ihres Rechners. Siehe [FM-007](https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md).
+
 ## Was Ihr Beleg sagt
 
 Heute sagt das Werkzeug nur, ob sich die Signatur einer Antwort verifizieren lässt: ein Software-Schlüssel und ein

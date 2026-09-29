@@ -31,6 +31,13 @@ inside the Secure Enclave — tier 3.
 strong route: it also stops an agent that means harm, and it needs two security keys, bought once — or a Mac with
 Touch ID and nothing to buy. Tier 0 is for trying the tool — your record will say so.
 
+## This repository’s recorded signing tier
+
+As recorded on 2026-09-25, shoalmark’s own Owner uses **tier 0**, a software key.
+The planned hardware-key move is not recorded as complete. Until that changes, a verified answer
+proves use of the trusted key, not the Owner’s physical presence. This is the project’s recorded
+state, not a measurement of your machine. See [FM-007](https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md).
+
 ## What your record says
 
 Today the tool says only whether an answer's signature verifies: a software key and a hardware key read the same. A

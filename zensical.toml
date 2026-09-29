@@ -9,7 +9,7 @@ repo_name = "shoalmark/shoalmark"
 edit_uri = "edit/main/docs/"
 docs_dir = "docs"
 site_dir = "site"
-extra_css = ["stylesheets/shoalmark.css"]
+extra_css = ["stylesheets/fonts.css", "stylesheets/shoalmark.css"]
 use_directory_urls = false   # links are `setup.html`, not `setup/` — the built site opens from the file system too
 
 nav = [
@@ -29,6 +29,7 @@ nav = [
 ]
 
 [project.theme]
+font = false
 language = "en"
 custom_dir = "overrides"   # .icons/shoalmark/pricke.svg: the logo inlined, so it takes the scheme's colour
 favicon = "assets/favicon.svg"
@@ -36,10 +37,6 @@ features = ["content.code.copy", "content.action.edit", "navigation.footer", "na
 
 [project.theme.icon]
 logo = "shoalmark/pricke"
-
-[project.theme.font]
-text = "IBM Plex Sans"
-code = "IBM Plex Mono"
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme: light)"
