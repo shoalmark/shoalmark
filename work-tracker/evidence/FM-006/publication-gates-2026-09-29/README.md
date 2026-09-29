@@ -65,3 +65,24 @@ Review, required PR CI, Owner merge and Pages deployment remain. The port deleti
 READY branch `fm/006-remove-port-evidence`; this branch does not duplicate that deletion. Once the
 changes are live, verify their disclosure and font requests. The Owner's Board act remains open;
 scoring and its timing cannot be certified by this work.
+
+## Independent preliminary R1 — extensionless external fonts
+
+The Owner relayed the independent Reviewer’s P2: a font loaded from a second origin without a
+filename suffix, while the validator passed. The initial suffix-based check was insufficient.
+The correction parses CSS with pinned tinycss2 1.4.0 (supports Python 3.9), inspects every URL in
+@font-face src declarations, and follows local CSS imports. Nested rules, inline style elements,
+quoted and unquoted URLs, escaped URLs and fallback lists are covered. External sources/imports
+and missing local assets fail regardless of suffix. The obsolete suffix heuristic is removed.
+
+`scripts/test_check_site.py` runs 18 positive/negative scenarios in four test methods; all pass on
+Python 3.9 and 3.14. The Pages workflow runs these controls before building. A control injected into
+the real generated fonts stylesheet passes the original a9703d9 checker and is rejected by the
+fixed checker. The clean pinned build and restored site check pass on both interpreters; Chromium
+again verifies local font loading on five pages. This is fix evidence, not independent closure.
+Independent Reviewer re-verification remains required.
+
+The Owner clarified the operating sequence: obtain READY and its evidence before opening the PR
+(or before marking a draft ready). Current CI skips the matrix for drafts; unassociated branch
+pushes do not trigger it. This avoids repeated expensive runs while review is in progress and does
+not waive required checks on the final revision. No trigger policy changes in this correction.
