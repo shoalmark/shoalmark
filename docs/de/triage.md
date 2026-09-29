@@ -164,7 +164,7 @@ auf seinem Kopf die Belegdatei eines Reviews liegt."* zu *„Ein Pull Request wi
 sind."* `--check` hat auf diesem Branch mit Exit-Code 4 geendet. Das sind die Zeilen der Ablehnung, so wie das
 Werkzeug sie ausgibt. Wie alle seine Meldungen sind sie englisch, nennen aber Ihre deutsche Überschrift. Das Skript
 und seine vollständige Ausgabe liegen in den
-[Belegen zu FM-006](https://github.com/holgo99/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page).
+[Belegen zu FM-006](https://github.com/shoalmark/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page).
 
 ```text
   lint: refused: commit aee039e "AP-001: Zeile 2 des Wegs, kürzer" changes the text under `## Der aktuelle Weg` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`du@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`

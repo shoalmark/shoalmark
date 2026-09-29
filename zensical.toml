@@ -52,3 +52,7 @@ media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 toggle.icon = "lucide/sun"
 toggle.name = "Switch to light mode"
+
+# Render the agents’ contract from the root README; missing includes fail the build.
+[project.markdown_extensions]
+pymdownx.snippets.check_paths = true

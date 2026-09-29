@@ -52,8 +52,8 @@ __version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / 
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
 # how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
 # second screen (a repository with its own page overrides the label `answer.sign.url`)
-SIGNING_PAGE = "https://holgo99.github.io/shoalmark/signing/"
-TOOL_PAGE = "https://github.com/holgo99/shoalmark"          # the running line's links: the tool, and its release at VERSION
+SIGNING_PAGE = "https://shoalmark.github.io/shoalmark/signing.html"
+TOOL_PAGE = "https://github.com/shoalmark/shoalmark"          # the running line's links: the tool, and its release at VERSION
 CONFIG_NAME = "shoalmark.toml"
 DEFAULTS = {
     "name": "",                                  # shown in the board's title; the directory name when empty

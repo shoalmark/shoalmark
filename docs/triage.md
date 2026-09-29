@@ -131,7 +131,7 @@ the village library as its intent, two path lines, an invented owner with his ke
 scratch directory. On its own branch, the seat changed path line 2 from *"A pull request merges only with a review's
 evidence file on its head."* to *"A pull request merges when its tests pass."* `--check` on that branch exited 4, and
 these are the refusal's lines as the tool printed them (the script and its whole output are in
-[FM-006's evidence](https://github.com/holgo99/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page)):
+[FM-006's evidence](https://github.com/shoalmark/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page)):
 
 ```text
   lint: refused: commit 1063448 "LIB-001: path line 2, shorter" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`you@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`

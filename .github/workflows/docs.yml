@@ -1,4 +1,4 @@
-# The documentation site: built from docs/ by Zensical on every push to main, served by GitHub Pages.
+# The documentation site: built from docs/ on release tags or manual dispatch, served by GitHub Pages.
 # The agents' document is README.md, rendered into the site by inclusion — never copied.
 name: docs
 # Runs on a release tag only — CI minutes are paid for. A pull request does not build the site; `zensical build` locally does.
@@ -6,7 +6,7 @@ on:
   push: {tags: ["v*"]}
   workflow_dispatch:
 permissions: {contents: read, pages: write, id-token: write}
-concurrency: {group: pages, cancel-in-progress: true}
+concurrency: {group: pages, cancel-in-progress: false}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,15 +14,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - run: pip install -q zensical
-      - run: zensical build
+      - run: pip install -q -r requirements-docs.txt
+      - run: zensical build --clean
       - name: llms.txt — the agents' index of the same source, and a Markdown twin of every page
         run: python3 scripts/llms_txt.py site
+      - run: python3 scripts/check_site.py site
       - uses: actions/upload-pages-artifact@v3
         with: {path: site}
   deploy:
-    # Pages needs a public repository (or a paid plan). Until the release, the site only BUILDS here — green on every
-    # push — and deploys on the day the repository goes public: flip Settings → Pages → Source to "GitHub Actions" then.
+    # The public repository lives at shoalmark/shoalmark; keep private forks from deploying.
     if: github.event.repository.private == false
     needs: build
     runs-on: ubuntu-latest

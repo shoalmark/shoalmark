@@ -73,5 +73,5 @@ refuses what contradicts itself. Runs on git and Subversion, on Windows, macOS a
 | | |
 |---|---|
 | **You, the owner** | [Set up in ten minutes](setup.md) · [Your answer is your commit](signing.md) · [The standup](standup.md) |
-| **Your project's agents** | the [note for trying it](https://github.com/holgo99/shoalmark/blob/main/ADOPT.de.md) (German): a measurement, not an instruction. They report to you at the end, and you decide |
+| **Your project's agents** | the [note for trying it](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md) (German): a measurement, not an instruction. They report to you at the end, and you decide |
 | **An agent at work** | the contract is `tools/shoalmark/README.md` in your repository, [rendered here](agents/README.md). `llms.txt` is at this site's root |

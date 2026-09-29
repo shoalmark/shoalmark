@@ -2,6 +2,19 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased
+
+- **Commits give quick, visible feedback (FM-006):** staged Python syntax and the focused core suite
+  replace the silent two-interpreter full-suite hook. Full suites remain required in PR CI and run on tags.
+
+- **Public contribution checks (FM-006):** every non-draft PR revision runs CI. Documentation builds
+  pin Zensical and verify published entry points, contract inclusion and migration URLs before upload.
+  Security reporting, contribution guidance, issue templates and dependency update configuration are provided.
+
+- **The public home is `shoalmark/shoalmark` (FM-006).** Documentation, installation links and the
+  board footer use the organization repository. Signing help opens the new Pages site at
+  `signing.html` (German: `de/signing.html`), matching the site’s generated filenames.
+
 ## 0.18.6 — 2026-09-28
 
 - **An act that is a promise reads as what he promised, the question below it** (FM-030; the Owner's word in chat of

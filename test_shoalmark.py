@@ -1222,7 +1222,7 @@ answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem 
 answer.sign.fail: Wenn es scheitert
 answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
 answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
-answer.sign.url: "https://holgo99.github.io/shoalmark/de/signing/"
+answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
 answer.done: Fertig
 col.id: Id
 col.tier: Stufe
@@ -1499,8 +1499,8 @@ with tempfile.TemporaryDirectory() as d:
         _run = lambda page: (re.search(r'</article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
         _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
         check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a wordmark, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
-              all(_links(_run(pg)) == [("https://github.com/holgo99/shoalmark", "shoalmark on GitHub"), (f"https://github.com/holgo99/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
-                  and _run(pg).endswith(f'shoalmark</a> · <a href="https://github.com/holgo99/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
+              all(_links(_run(pg)) == [("https://github.com/shoalmark/shoalmark", "shoalmark on GitHub"), (f"https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
+                  and _run(pg).endswith(f'shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
                   for pg in (plain_page, h_page, de_page, w_page, n_page)))
         check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark",
               f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
@@ -1561,7 +1561,7 @@ with tempfile.TemporaryDirectory() as d:
         (dest / "VERSION").write_text("0.0.1-vendored\n", encoding="utf-8")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client"), "--html-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         check("0.18.2 · a vendored copy's running line names the version IT runs — its own VERSION, its own release page",
-              r.returncode == 0 and '<a href="https://github.com/holgo99/shoalmark/releases/tag/v0.0.1-vendored" target="_blank" rel="noopener" aria-label="release v0.0.1-vendored">v0.0.1-vendored</a></p>'
+              r.returncode == 0 and '<a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.0.1-vendored" target="_blank" rel="noopener" aria-label="release v0.0.1-vendored">v0.0.1-vendored</a></p>'
               in (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8"))
         with redirect_stdout(io.StringIO()):
             fm.brand_report(str(base / "starter"))
@@ -2897,7 +2897,7 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-031 S2 · without the forge `--queue` says so in one line and exits 3 — no `origin`, an `origin` that is not GitHub, no `gh` — and `--owner` leaves the section out; `gh` is never called (saw {err.strip()!r}, {err2.strip()!r}, {err3.strip()!r})",
           (code, code2, code3) == (3, 3, 3) and "`origin` is not set" in err and "not on GitHub" in err2 and "no `gh` on PATH" in err3
           and all(len(e_.strip().splitlines()) == 1 for e_ in (err, err2, err3)) and "PULL REQUESTS" not in owner_ and not any(c_ and c_[0].endswith("gh") for c_ in calls_)
-          and hasattr(fm, "github_remote") and fm.github_remote("git@github.com:holgo99/shoalmark.git") and fm.github_remote("https://github.com/a/b") and fm.github_remote("git@github-work:a/b.git")
+          and hasattr(fm, "github_remote") and fm.github_remote("git@github.com:shoalmark/shoalmark.git") and fm.github_remote("https://github.com/a/b") and fm.github_remote("git@github-work:a/b.git")
           and not fm.github_remote("/tmp/github/b.git") and not fm.github_remote("ssh://git@gitlab.com/a/b") and not fm.github_remote(""))
 fm.configure(HERE)
 

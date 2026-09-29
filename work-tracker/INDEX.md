@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-28 · 41 trackers (41 work).
+> Generated 2026-09-29 · 41 trackers (41 work).
 
 ## Triage — the current path, and what to work on next
 

@@ -159,5 +159,5 @@ answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem 
 answer.sign.fail: Wenn es scheitert
 answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
 answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
-answer.sign.url: "https://holgo99.github.io/shoalmark/de/signing/"
+answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
 answer.done: Fertig

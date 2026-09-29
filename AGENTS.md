@@ -29,11 +29,14 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
 
 - **Never push to `main`.** One branch per tracker (`fm/007-slug`, or `process/…` for the repository's own rules), commits
   stacked on it; the Owner opens and merges the pull request. Open it as a **draft** while working; mark it *ready for
-  review* when done — that is what runs CI.
+  review* when done. CI checks every non-draft PR revision.
 - **A version is a tag.** `VERSION`, `__version__` and the CHANGELOG section change on the branch; the Owner tags `vX.Y.Z`
   on `main` after the merge. The tag runs CI and builds the documentation site. Consumers vendor from a tag.
-- **CI minutes are paid for:** the suites run locally through the pre-commit hook on every commit; CI runs on a ready pull
-  request and on a tag, nowhere else. Say when a tag is due; never create one.
+- **Checks:** Python commits run staged-source syntax checks and the focused core suite locally, once on `python3`,
+  with visible output; session, tracker and judgement gates stay. Run focused checks while developing. Both full
+  suites run in the required GitHub matrix for non-draft PRs when opened, updated, reopened or marked ready,
+  and on release tags (manual dispatch remains available).
+  The Owner authorized these PR triggers and the lighter commit hook on 2026-09-29. Say when a tag is due; never create one.
 
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
