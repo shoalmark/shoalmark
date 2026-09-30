@@ -42,4 +42,7 @@ the check again.
 
 This file adds 45 record lines, no product line: after it the change reads records +685 −33,575, product +548 −9.
 
+The commit of this file, `92daa68`, carries `Session: 8e509911/reviewer-65`: another seat set this worktree's `seat.session` at
+15:44 and I did not re-read it before committing. The verdict is `8e509911/reviewer-59`'s.
+
 path 5 — a merge rules nothing.
