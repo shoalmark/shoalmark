@@ -1314,7 +1314,7 @@ SUPERSEDED_RE = re.compile(r'\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Answer of [^|]*?sup
 # he was the integrator by default. He asked one seat which to merge five times in two hours, and each answer was the
 # forge and `git merge-tree`, read by hand. `--queue` reads the same two and gives every open pull request ONE action, in
 # the order he takes them. A view: it refuses nothing, and where the forge cannot be read it says so in one line.
-QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt"
+QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt,isCrossRepository"
 QUEUE_BRANCH_MAX = 32      # characters of a branch in a queue line: its id and the start of its slug
 QUEUE_ACTION_MAX = 36      # the action column's width at most; a longer action (many paths in conflict) runs on in its own line
 EXIT_NO_FORGE = 3          # `--queue` could not read the forge — no `gh`, offline, no GitHub remote. Never 4: a view fails no hook
@@ -1637,6 +1637,7 @@ def queue_actions(prs, branches=()):
     every commit of its own below that one is his too, a review file's only, or the tool's own refusal record; else a wait
     naming the first that is not (RV-710, RV-712), and a wait where its base is not here (RV-711) —
     `answer_branch_reading`, the board's reader too (RV-714). For a pull request the first rule that holds is the action:
+    - `wait: from a fork, read it yourself` — fork commits supply no verdict or carry-over instruction;
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
@@ -1652,6 +1653,8 @@ def queue_actions(prs, branches=()):
     `<tracker dir>/sessions.md` — and the verdict commit itself, whose own review file counts wherever it sits under
     `<tracker dir>/evidence/` (`review*.md`), as the parent project's review gate reads it: a head that IS the verdict,
     `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
+    forks = [(p, "wait", "wait: from a fork, read it yourself", "") for p in prs if p.get("isCrossRepository")]
+    prs = [p for p in prs if not p.get("isCrossRepository")]
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
@@ -1709,7 +1712,7 @@ def queue_actions(prs, branches=()):
         """`addenda_between`, read once per range"""
         return cached(("addenda", r, h, v), lambda: addenda_between(r, h, v))
 
-    rows = []
+    rows = forks
     for p in prs:
         carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
         paths = conflicts(p) if not (within[num(p)] or carried) else []

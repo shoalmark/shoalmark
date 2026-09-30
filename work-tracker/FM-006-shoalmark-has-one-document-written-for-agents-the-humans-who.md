@@ -23,6 +23,11 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-09-30 — fork queue hardening, code tier, critical review pending.** Reproduced on `2c00aba`: a fork's
+self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
+forks from verdict/carry-over calculations and always says `wait: from a fork, read it yourself`. On the base, five
+provenance/refusal controls fail and the same-repository merge control passes. Critical review remains due.
+
 **2026-09-30 — public hardening executed by the Owner after #127 merged.** Tag rules, merge-only policy, repository Actions, CodeQL success and new-public security defaults verified; organisation Actions is browser-reported with the remaining readback limits stated in the [execution receipt](evidence/FM-006/public-hardening-owner-2026-09-30.md#execution-results--2026-09-30-owner-browser-actions). Existing repository protections remain active; the new default is not attached retroactively.
 
 **2026-09-29 — publication review R1:** the independent Reviewer found that the font validator accepted extensionless cross-origin font sources (P2). Replaced filename inference with CSS parsing, with 18 regression scenarios passing on Python 3.9 and 3.14; independent re-verification pending. Fix proof is appended to the [publication evidence](evidence/FM-006/publication-gates-2026-09-29/README.md). Keep this slice unassociated with a PR, or draft, until its READY evidence is included; then run required PR CI.
