@@ -18,3 +18,6 @@ auditor = "auditor@seat"
 
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
+
+[ratio]            # the records-to-product ratio (FM-032): `--ratio` counts these prefixes as records, every other path as product
+records = ["work-tracker/"]
