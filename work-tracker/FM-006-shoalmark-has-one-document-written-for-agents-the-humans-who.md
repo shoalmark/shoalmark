@@ -336,14 +336,14 @@ first screen first, before the merge.
 **A — the human lead.**
 - **A1, the English landing** (`overrides/landing.html`). The H1 and the `<title>` read *The agents keep the work; the
   person keeps the word.*, and the section subtitle that says it now (`:356`) goes. The lede under the H1 is the job line:
-  *It replaces the ticket system for a repository where agents do the work: one Markdown file per work item, and what needs
-  you first.* The first screen carries one action, *Hand your agents the note*, to the English note (B4). `site_description`
-  (`zensical.toml`) and the page's own `<meta name="description">` read *The agents keep the work; the person keeps the
-  word. It replaces the ticket system for a repository where agents do the work.* The Markdown twin, `docs/index.md`,
-  follows.
+  *Ticket systems were built for people handing work to people. shoalmark is built for agents: state that outlives a
+  session, one source of truth, a gate that refuses a false done — and your signed word.* The first screen carries one
+  action, *Hand your agents the note*, to the English note (B4). `site_description` (`zensical.toml`) and the page's own
+  `<meta name="description">` read *The agents keep the work; the person keeps the word. Ticket systems were built for
+  people; shoalmark is built for agents.* The Markdown twin, `docs/index.md`, follows.
 - **A2, the German start page** (`docs/de/index.md`) leads with *Die Agenten tragen die Arbeit, der Mensch hat das letzte
-  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. The job line follows in German; the
-  one action links `ADOPT.de.md`.
+  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. The same job line follows in German;
+  the one action links `ADOPT.de.md`.
 - **A3, the Owner's card,** is unchanged in both languages.
 
 **B — the tagline, where agents read.**
