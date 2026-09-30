@@ -24,7 +24,7 @@ requirements folder the same day, started with regulatory requirements, the easi
 trial is planned for the weekend, most likely run by an agent.
 
 **Stage 0 — the convention, docs only (this filing's build):** a `requirements/` folder, one line per requirement — a stable
-id, a *shall* statement, its source, an acceptance criterion; trackers cite ids (`satisfies:`), tests name them; changing a
+id, a *shall* statement, its source, an acceptance criterion; trackers cite ids in a body line (`Satisfies: REQ-001`), tests name them; changing a
 requirement is the Owner's signed decision. A regulatory requirement cites its clause (standard, edition, clause number) and
 derives the company's own *shall*; *not applicable* is a signed answer. Never copy a standard's text; never claim compliance.
 It lands in the agent-facing entry — AGENTS.md, README's first screen, ADOPT.de.md — before the v0.19.0 cut, Thursday 2026-10-01 evening (the Owner's release plan of 10:2x), so the
