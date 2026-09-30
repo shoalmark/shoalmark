@@ -23,6 +23,9 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
    tracker if it is real work — not a bundled side-fix.
 7. **`work-tracker/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
+8. **A message a person carries between sessions names its target as the tool prints it:** `To: <session> <seat> (<worktree>)`.
+   A seat's report opens with its own — `python3 shoalmark.py --whoami` prints it, with the model and effort the harness's log
+   names, never the seat's own word for them.
 <!-- END shoalmark -->
 
 ## How this repository ships — the Owner, 2026-09-22
