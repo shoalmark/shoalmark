@@ -1,0 +1,120 @@
+# FM-024 — the seven seat Apps: Owner run sheet, a dry run for Thursday 2026-10-01 before 11:00
+
+Prepared 2026-09-30, 14:47–15:06 CEST, by the GtM seat, session `8e509911/gtm-2` (Claude Opus 5.5), on `fm/024-the-seat-apps-run-sheet` off main `297896b`.
+Scope: seven GitHub Apps owned by the organisation `shoalmark`. **The seat created nothing and changed no setting;** every forge read below is a GET. The
+Owner creates the Apps in GitHub's browser UI, logged in as `holgo99` (org role `admin`, read 14:51). The Owner's plan (normalised): *"seven Apps (principal,
+implementer, reviewer, gtm, auditor, datascientist, designer), no permissions, webhook inactive, no private key, no client secret, not installed, icon
+uploaded. A seat reads the bot ids."* His pre-decision, relayed 2026-09-30 (normalised): *"If a bot id does not resolve after creation, install that App on
+the shoalmark organisation, only select repositories: shoalmark, with its permissions still none, and still no private key and no client secret. The inert
+credential is what the condition protects, not the installation."*
+
+## 1. The names — checked free
+The name is the slug's source. GitHub shows the name *"converted to lowercase, with spaces replaced by `-`"*, caps it at 34 characters, and refuses the name
+of *"an existing GitHub account"* (Sources). So the display name stays `shoalmark <seat>`, since any added word changes the slug. The character lives in the
+description and the icon, and `datascientist` stays one word.
+
+| Seat | Display name → slug | `/apps/<slug>` | `/users/<slug>%5Bbot%5D` | `/users/<slug>` | Free? | Checked at (CEST) |
+|---|---|---|---|---|---|---|
+| principal | shoalmark principal → `shoalmark-principal` | 404 | 404 | 404 | yes | 14:51:15–14:51:39 |
+| implementer | shoalmark implementer → `shoalmark-implementer` | 404 | 404 | 404 | yes | 14:51:16–14:51:39 |
+| reviewer | shoalmark reviewer → `shoalmark-reviewer` | 404 | 404 | 404 | yes | 14:51:17–14:51:40 |
+| gtm | shoalmark gtm → `shoalmark-gtm` | 404 | 404 | 404 | yes | 14:51:18–14:51:40 |
+| auditor | shoalmark auditor → `shoalmark-auditor` | 404 | 404 | 404 | yes | 14:51:18–14:51:41 |
+| datascientist | shoalmark datascientist → `shoalmark-datascientist` | 404 | 404 | 404 | yes | 14:51:19–14:51:41 |
+| designer | shoalmark designer → `shoalmark-designer` | 404 | 404 | 404 | yes | 14:51:20–14:51:42 |
+
+Controls, same token, 14:51:37–14:51:39: `/apps/github-actions` 200, `/users/github-actions%5Bbot%5D` 200 (id 41898282), `/users/dependabot%5Bbot%5D` 200,
+`/orgs/shoalmark` 200. **Limit:** `/apps/<slug>` answers 404 for another account's *private* App as well, so that column is necessary but not sufficient.
+The login and bot-user 404s are the stronger half. **Create GitHub App** is the proof.
+
+## 2. The one-line descriptions — the six gates of `evidence/FM-006/gtm-claim-screen-2026-09-23.md`, adapted to an App's line, by hand
+| Gate | Kills on |
+|---|---|
+| **G0** form | more than one line · over 120 characters (counted in code) · not English · jargon or an internal id · not what the seat does · read aloud, a job ad or a slogan |
+| **G1** language | a native English reader hears a translation, or an idiom slips |
+| **G2** truth | anything the record cannot show today: a promise (speed, safety, quality), a compliance word, another project or product named |
+| **G3** the Owner's never | it makes him a push-a-button, invites rubber-stamping, flatters or insults him |
+| **G4** both ways | beside the fleet's line (`docs/index.md`: a question put to him, his answer one command) and the four rights (README §*Seats*), a seat answers, decides or merges for him |
+| **G5** the bar | beside the other six, it could sit under another seat's name, or it carries no character. The Owner's direction, relayed 2026-09-30: *playful, a little cute* |
+
+| Seat | Line (characters) | G0 | G1 | G2 | G3 | G4 | G5 | Why: what the record shows |
+|---|---|---|---|---|---|---|---|---|
+| principal | I put the fleet's questions to the Owner, one sentence each, and brief each seat I call up. The answers are all his. (116) | pass | pass | pass | pass | pass | pass | README *drafting an ask*: the Principal puts an ask in front of him; `principal` holds no `answer` (§*Seats*) |
+| implementer | I build one change from my brief, in a worktree of my own, one commit at a time. Then a Reviewer gets to poke at it. (116) | pass | pass | pass | pass | pass | pass | `.claude/agents/implementer.md`: one scoped change from the brief, its own worktree; code gets the full loop (AGENTS.md) |
+| reviewer | I read a branch against its brief and write my verdict into the record: READY, or each finding with its exact fix. (114) | pass | pass | pass | pass | pass | pass | `.claude/agents/reviewer.md`: one pass over a tip against the brief; a finding carries its tier and its exact fix text |
+| gtm | I put every public line through six gates and hand the Owner the survivors. Most lines don't make it. I pick none. (114) | pass | pass | pass | pass | pass | pass | the claim screen: G0–G5; in two passes 3 of 13 and 3 of 12 survived; *this seat chooses nothing, ranks nothing* |
+| auditor | I read the record for what it claims but cannot show, and take each finding to the Owner, its source attached. (110) | pass | pass | pass | pass | pass | pass | FM-024 *Raised*: one sourced line per raise; the Auditor's raises reach the record through the Owner |
+| datascientist | Numbers before anyone counts: I set how many readers a study needs and how many reads each line gets. (101) | pass | pass | pass† | pass | pass | pass | `evidence/reviews/review-fm-006-the-human-pages-open-from-a-file.md:471`: *the Data Scientist seat sets the numbers* |
+| designer | I draw the fleet's badges: one shoalmark stake per seat, each wearing a shape of its own. (89) | pass | pass | pass† | pass | pass | pass | FM-024's icon slice: the stake the constant, one shape per seat; *badge* is GitHub's word for an App's icon |
+
+Controls: *"Reviews every pull request so your merges are safe, fast and compliant."* dies at **G2**, on a promise and a compliance word. *"Helps the team get
+its work done."* dies at **G5**, since it could sit under any seat. All seven lines survive, and the controls show that the gates fire. † G2 rests on thin
+record: the Data Scientist's one line, and the Designer's slice on its branch, not pushed at 15:06. Re-read both when the icons land. **Disclosure:** this seat
+wrote the lines and screened them, and no independent reader has read them. G1 is this runtime's English (K). The voice was to match the Designer's
+`brand/seats/README.md`. That file was not pushed at 15:06, so the lines rest on the seat definitions and README §*Seats*.
+
+## 3. The Owner's steps — about 45 minutes (≈ 6 per App), then 10 for the icons; stop on an unexpected screen or value
+**Read-only baseline, first.** No REST endpoint lists the Apps an organisation owns. The GitHub Apps reference has `/apps/{app_slug}`, the app's own `/app…`
+and installations. So the list is the page, and installations are the GET:
+```sh
+open 'https://github.com/organizations/shoalmark/settings/apps'
+gh api /orgs/shoalmark/installations --jq .total_count
+```
+Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App named `shoalmark-…` is there already. Paste back: `apps page empty; installations 0`.
+1. **Create `shoalmark-principal`.** Organisation Settings → Developer settings → GitHub Apps → **New GitHub App**:
+   ```sh
+   open 'https://github.com/organizations/shoalmark/settings/apps/new'
+   ```
+   *GitHub App name* `shoalmark principal` · *Description* the line of §2 · *Homepage URL* `https://shoalmark.github.io/shoalmark/` (200 at 14:53). Leave
+   *Callback URL* and *Setup URL* empty. Clear *Request user authorization (OAuth) during installation* and *Enable Device Flow*. Leave *Expire user
+   authorization tokens* as it comes: it is ignored without user tokens. *Webhook*: clear **Active**. *Permissions*: every dropdown (Repository, Organization,
+   Account) **No access**. *Where can this GitHub App be installed?* **Only on this account**. Click **Create GitHub App**. On the App's page: **generate no
+   private key and no client secret**, and click no *Install App*. A note inviting a key may show; leave it. Expected: `https://github.com/organizations/shoalmark/settings/apps/shoalmark-principal`,
+   with an App ID and no key or secret listed. Stop if: the name is refused, a payment is asked, a permission dialog opens, a key or a secret gets generated.
+   GitHub's own *Confirm access* is its re-authentication, not a stop. Paste back: `shoalmark-principal`, its App ID.
+2. **Read its bot id**, and install only on a 404, as his pre-decision says:
+   ```sh
+   gh api "/users/shoalmark-principal%5Bbot%5D" --jq .id
+   ```
+   Expected: a number. **On 404** (two outside sources say the bot user appears on installation; GitHub's pages do not say, see Sources): left sidebar
+   **Install App** → **Install** beside `shoalmark` → **Only select repositories** → `shoalmark` → **Install**; then the GET again. Stop if: the screen lists any access,
+   *Read access to metadata* included, or asks for a key, a secret or a payment. Paste back: the id, and `installed` or `not installed`.
+3. **The six others:** steps 1–2 again, each with its name, and its line from §2:
+
+   | Seat | implementer | reviewer | gtm | auditor | datascientist | designer |
+   |---|---|---|---|---|---|---|
+   | *GitHub App name* | shoalmark implementer | shoalmark reviewer | shoalmark gtm | shoalmark auditor | shoalmark datascientist | shoalmark designer |
+   | Slug to expect | `shoalmark-implementer` | `shoalmark-reviewer` | `shoalmark-gtm` | `shoalmark-auditor` | `shoalmark-datascientist` | `shoalmark-designer` |
+4. **The icons**, once the Designer's `fm/024-the-seat-icons` carries its READY verdict (due by 11:00). Until then the Apps keep GitHub's identicon:
+   ```sh
+   git fetch && git switch --detach origin/fm/024-the-seat-icons && python3 brand/seats/export.py && open brand/seats/out
+   ```
+   Per App: its page → *Display information* → **Upload a logo** → `brand/seats/out/<seat>-200.png` → **Set new avatar**. GitHub takes a PNG, JPG or GIF under
+   1 MB and recommends 200 × 200 pixels. The badge background colour comes from the Designer's README if it names one; else leave it. Expected: the badge shows
+   the stake. Stop if the export exits 2 (it prints the command it needs): the icons wait and the Apps stand. Paste back: `7 icons set`. Either way, `git switch main`.
+5. **Read back:** the loop of §4, and `gh api /orgs/shoalmark/installations --jq '[.installations[] | .app_slug]'`. Expected: seven ids, and installed only
+   what step 2 installed. Paste back: the seven slugs, their App IDs, their bot ids, and which were installed, to the Principal `8e509911` for FM-024.
+
+## 4. What a seat reads after
+```sh
+for s in principal implementer reviewer gtm auditor datascientist designer; do
+  id=$(gh api "/users/shoalmark-$s%5Bbot%5D" --jq .id) && echo "$s $id+shoalmark-$s[bot]@users.noreply.github.com"
+done
+```
+The address is `<id>+shoalmark-<seat>[bot]@users.noreply.github.com`. The id is the bot **user's**, not the App ID (Sources). **The switch itself is the next
+slice, not this one:** `shoalmark.toml` `[seats]` (today `principal`, `implementer`, `reviewer`, `gtm`), each worktree's `user.email` and `user.name`, one
+test commit per seat, and a Reviewer pass. The parent project needs no installation, because GitHub attributes a commit by its email, across repositories.
+That is the Owner's line, relayed 2026-09-30, and it stays untested until that test commit.
+
+## Agent boundary, recovery, unproven
+Owner decisions only: the creation, the install of step 2, the icons. No key or secret is needed anywhere in this sheet, so an App that shows one is wrong.
+Recovery is on the App's page: the name, description and homepage are editable. An install is removed under the organisation's *GitHub Apps* → *Configure* →
+**Uninstall**. **Unproven:** whether the bot user exists before an install; whether an App with no permissions installs on *Only select repositories*
+without a key; attribution by email; the Designer's export and README; any reader but this runtime for G1.
+
+## Preparation checks and sources
+All five shell blocks passed `zsh -n`. Four ran in `zsh -f` at 15:04, with a stand-in `open` first on PATH and the GETs for real: `0`, and seven bot 404s, as
+expected before creation; both `open` URLs route (302 to login, a bogus path 404). Step 4's block switches a checkout, so it was syntax-checked only.
+[Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app) · [Creating a custom badge](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/creating-a-custom-badge-for-your-github-app) · [REST: GitHub Apps](https://docs.github.com/en/rest/apps/apps) · [REST: org installations](https://docs.github.com/en/rest/orgs/orgs) · the bot user on install, secondary:
+[DEV, agent_paaru](https://dev.to/agent_paaru/each-ai-agent-gets-its-own-github-identity-how-we-gave-every-bot-its-own-bot-commit-signature-1197), [actions/create-github-app-token#172](https://github.com/actions/create-github-app-token/issues/172)
+(a comment: installing resolved the 404) · the id form: [josh-ops](https://josh-ops.com/posts/github-apps-commit-email/). Records: the claim screen; `evidence/FM-006/public-hardening-owner-2026-09-30.md` (the form).
