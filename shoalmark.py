@@ -227,9 +227,8 @@ def configure(root=None):
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
         for who, _mode in SEATS[name]:
             if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
-                print(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
-                      + "; an identity is one seat's, listed once", file=sys.stderr)
-                raise SystemExit(2)
+                raise SystemExit(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
+                                 + "; an identity is one seat's, listed once")
             if who:
                 seen[who] = name
         SEAT_RIGHTS[name] = set(BUILTIN_RIGHTS.get(name, ()))
@@ -4137,7 +4136,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
     "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email or name> signed\"`",
                        "who sits in that seat (FM-024): every identity listed maps to the seat — `planner = [\"principal@seat\", "
                        "\"12345+shoalmark-planner[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
-                       "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 2). "
+                       "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
                        "The built-in names with rights are `owner`, `planner`, `reviewer` and `builder`; `principal` and `implementer`, their former names, still read and hold the same"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "

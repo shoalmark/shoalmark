@@ -20,7 +20,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **A seat has several identities (FM-024).** A `[seats]` value is a string as ever, or a list of them —
   `principal = ["principal@seat", "12345+shoalmark-principal[bot]@users.noreply.github.com"]` — and every identity in it is
   that seat: `seat_of`, the answer, ask and rights gates and the session rule match any of them, `signed` is read per identity,
-  and an identity listed under two seats is refused at configuration, one line naming both (exit 2). A seat can change the
+  and an identity listed under two seats is refused at configuration, one line naming both (exit 1, as every configuration refusal). A seat can change the
   address it commits under while history and the branches in flight keep resolving; the README's *Seat icons on the forge*
   says how a seat's GitHub App shows its icon. A `]` inside a quoted list item now reads (the bot's `[bot]`). With a string
   value nothing changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool

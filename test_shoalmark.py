@@ -741,12 +741,12 @@ with tempfile.TemporaryDirectory() as d:
     code_g, _, err_g = run(root, "--check")
     check(f"FM-024 · an ask at the seat's unsigned identity passes; the same ask at its `signed` identity, unsigned, is refused as the seat (saw {code_u}, {code_g})",
           code_u == 0 and "does not verify" not in err_u and code_g == fm.EXIT_LINT and "does not verify as the seat `principal`" in err_g)
-    # an identity under two seats is refused at configuration, in one line naming both — exit 2
+    # an identity under two seats is refused at configuration, in one line naming both — exit 1, like every configuration refusal
     dup = base_cfg + f'\n[seats]\nowner = "owner@example.org"\nprincipal = ["principal@seat", "{NEW_P}"]\nimplementer = ["implementer@seat", "{NEW_P}"]\n'
     (root / "shoalmark.toml").write_text(dup)
     r_dup = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
-    check(f"FM-024 · an identity listed under two seats refuses at configuration — exit 2, one line, naming the identity and both seats (saw {r_dup.returncode}, {r_dup.stderr.strip()[:200]!r})",
-          r_dup.returncode == 2 and len(r_dup.stderr.strip().splitlines()) == 1 and NEW_P in r_dup.stderr and "`principal` and `implementer`" in r_dup.stderr and r_dup.stdout == "")
+    check(f"FM-024 · an identity listed under two seats refuses at configuration — exit 1, one line, naming the identity and both seats (saw {r_dup.returncode}, {r_dup.stderr.strip()[:200]!r})",
+          r_dup.returncode == 1 and len(r_dup.stderr.strip().splitlines()) == 1 and NEW_P in r_dup.stderr and "`principal` and `implementer`" in r_dup.stderr and r_dup.stdout == "")
     (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = ["o@x signed", "o@x"]\n')
     r_twice = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     check(f"FM-024 · RV-2071 · an identity listed twice under one seat is refused too — `signed` would read two ways — naming it and the seat (saw {r_twice.returncode}, {r_twice.stderr.strip()[:160]!r})",
@@ -834,7 +834,7 @@ with tempfile.TemporaryDirectory() as d:
     (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = "owner@example.org"\nplanner = "planner@seat"\nprincipal = ["planner@seat"]\n')
     r_two = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     check(f"FM-024 · the same address under both spellings is refused at configuration, naming both — an identity is one seat's (saw {r_two.returncode}, {r_two.stderr.strip()[:160]!r})",
-          r_two.returncode == 2 and "`planner@seat` is listed under two seats, `planner` and `principal`" in r_two.stderr)
+          r_two.returncode == 1 and "`planner@seat` is listed under two seats, `planner` and `principal`" in r_two.stderr)
     (root / "shoalmark.toml").write_text(base_cfg)
     check("FM-024 · `--schema` names the built-in seats `planner` and `builder`, with `principal` and `implementer` as their former names",
           (lambda t: "`planner`" in t and "`principal`" in t and "former names" in t)(run(root, "--schema")[1]))
