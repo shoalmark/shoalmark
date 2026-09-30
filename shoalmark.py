@@ -86,7 +86,7 @@ DEFAULTS = {
     "answerers": [],
     # WHO IS AT THE KEYBOARD, and what that seat may change. `[seats]` is a name of the repository's choosing → the
     # identity the version control system reports — `"principal@seat"`, or `"principal@seat signed"` where the commit
-    # must also VERIFY under a key trusted for it. `[rights]` gives a name of your own its rights; the four built-in
+    # must also VERIFY under a key trusted for it — or a LIST of those, several identities for one seat (FM-024). `[rights]` gives a name of your own its rights; the four built-in
     # names have theirs (BUILTIN_RIGHTS). ABSENT, nothing is enforced — this is for a repository that lets in agents
     # which never read its contract. It catches an agent that does not know the rule, not one that lies (README,
     # *Seats*). Under Subversion an identity is the server account and `signed` is refused: the server authenticated it.
@@ -219,10 +219,14 @@ def configure(root=None):
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
-    SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> (identity, "signed" | ""), and seat name -> rights
+    SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> [(identity, "signed" | ""), …], and seat name -> rights
+    seen = {}                                           # identity -> the seat that claimed it first
     for name, value in (CONFIG.get("seats") or {}).items():
-        who, _, mode = str(value).strip().rpartition(" ")
-        SEATS[name] = (who if mode == "signed" else str(value).strip(), "signed" if mode == "signed" else "")
+        SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
+        for who, _mode in SEATS[name]:
+            if who and seen.setdefault(who, name) != name:
+                print(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed under two seats, `{seen[who]}` and `{name}`; an identity is one seat's", file=sys.stderr)
+                raise SystemExit(2)
         SEAT_RIGHTS[name] = set(BUILTIN_RIGHTS.get(name, ()))
     for name, words in (CONFIG.get("rights") or {}).items():
         if isinstance(words, str) or any(w not in RIGHTS for w in words):
@@ -2129,7 +2133,7 @@ def owner_change(tid, t, how):
     if not SEATS and me not in allowed:
         print(f"{flag}: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
         return EXIT_LINT
-    signed = (SEATS[seat][1] if SEATS else allowed.get(me)) == "signed"
+    signed = (seat_mode(seat, pend_name or me, pend_email) if SEATS else allowed.get(me)) == "signed"
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     dirty = changed_paths(git)
     if dirty:
@@ -4122,6 +4126,10 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
                         "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
+    "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email or name> signed\"`",
+                       "who sits in that seat (FM-024): every identity listed maps to the seat — `principal = [\"principal@seat\", "
+                       "\"12345+shoalmark-principal[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
+                       "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 2)"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
@@ -4404,9 +4412,27 @@ def in_this_commit(t):
         return True
 
 
+def seat_identities(value):
+    """A `[seats]` value as its identities, `[(identity, "signed" | ""), …]` (FM-024): a string is one, as ever —
+    `"principal@seat"`, `"you@example.org signed"` — a list is several, each item optionally `… signed`, so the address a
+    seat commits under can change while history and the branches in flight keep resolving to it."""
+    out = []
+    for item in (value if isinstance(value, list) else [value]):
+        who, _, mode = str(item).strip().rpartition(" ")
+        out.append((who if mode == "signed" else str(item).strip(), "signed" if mode == "signed" else ""))
+    return out
+
+
 def seat_of(name, email):
-    """Which seat this author is sitting in — matched on the identity `[seats]` gives it, email or name."""
-    return next((s for s, (who, _m) in SEATS.items() if who and who in (email, name)), None)
+    """Which seat this author is sitting in — matched on any identity `[seats]` gives it, email or name."""
+    return next((s for s, ids in SEATS.items() if any(who and who in (email, name) for who, _m in ids)), None)
+
+
+def seat_mode(seat, name, email):
+    """`"signed"` or `""` for the identity this author wears in that seat — `signed` is read per identity (FM-024). An author
+    that matches none of its identities (a name where the seat lists an email) reads the seat's first."""
+    ids = SEATS[seat]
+    return next((m for who, m in ids if who and who in (email, name)), ids[0][1] if ids else "")
 
 
 def holds(seat, right):
@@ -4422,7 +4448,7 @@ def may_answer():
     names nobody*. The identity is the version control system's, as `[seats]` spells it: git's author email, or the
     account Subversion authenticated; `answerers` always meant the git author NAME, and still does."""
     if SEATS:
-        return {who: mode for seat, (who, mode) in SEATS.items() if who and holds(seat, "answer")}
+        return {who: mode for seat, ids in SEATS.items() if holds(seat, "answer") for who, mode in ids if who}
     return dict(ANSWERERS)
 
 
@@ -4436,16 +4462,19 @@ def answerers_problems():
     if not SEATS:
         return []
     out = []
-    answering = [s for s, (who, _m) in SEATS.items() if who and holds(s, "answer")]
+    answering = [s for s in SEATS if holds(s, "answer") and any(who for who, _m in SEATS[s])]
     for name, mode in ANSWERERS.items():
         if mode != "signed":
             continue
-        same = [s for s in answering if SEATS[s][0] == name]
-        for s in [s for s in (same or answering) if SEATS[s][1] != "signed"]:
-            out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and `[seats] {s} = "{SEATS[s][0]}"` — '
-                       + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
-                       + f' — is not signed. `[seats]` alone decides who may answer (from 0.17.1), so that answer would count unsigned. '
-                       f'Add `signed` to the seat (`{s} = "{SEATS[s][0]} signed"`), or remove `answerers`')
+        same = [s for s in answering if any(who == name for who, _m in SEATS[s])]
+        for s in (same or answering):
+            for who, imode in SEATS[s]:                  # FM-024: each identity of the seat — `signed` is read per identity
+                if not who or imode == "signed" or (same and who != name):
+                    continue
+                out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and `[seats] {s} = "{who}"` — '
+                           + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
+                           + f' — is not signed. `[seats]` alone decides who may answer (from 0.17.1), so that answer would count unsigned. '
+                           f'Add `signed` to the seat (`{s} = "{who} signed"`), or remove `answerers`')
     return out
 
 
@@ -4454,7 +4483,7 @@ def no_seat(name, email, right, what):
     what the repository's seats are. It names the seat and the right — an agent told only *refused* tries again."""
     who = email or name or "nobody the version control system can name"
     seat = seat_of(name, email)
-    known = ", ".join(f"{s} ({SEATS[s][0]})" for s in sorted(SEATS)) or "none"
+    known = ", ".join(f"{s} ({' · '.join(who for who, _m in SEATS[s])})" for s in sorted(SEATS)) or "none"
     if seat is None:
         return (f'{what} — `{who}` is not a seat. The seats are: {known}'
                 + ("" if vcs() == "svn" else ". A seat wears its badge: `git config --worktree user.email <identity>`"))
@@ -4482,7 +4511,7 @@ def seat_problems(t):
     seat = seat_of(name, email)
     if seat is None or not holds(seat, "ask"):
         return [no_seat(name, email, "ask", "`next: owner` puts a question in front of the Owner")]
-    if SEATS[seat][1] == "signed" and how != "svn":
+    if seat_mode(seat, name, email) == "signed" and how != "svn":
         if not commit:
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
         elif not verified_as(commit, email or None):
@@ -4631,7 +4660,7 @@ def rights_problems(trackers):
                 if not holds(seat, right):
                     out.append(f'{t["id"]}: {where}' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
                                                                 if move == "clear" else f'this change is a `{right}`'))
-                elif SEATS[seat][1] == "signed":
+                elif seat_mode(seat, name, email) == "signed":
                     if not commit:
                         print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
                     elif not verified_as(commit, email or None):
@@ -5204,10 +5233,9 @@ def owners_of(cfg):
     seats, rights, out = cfg.get("seats") or {}, cfg.get("rights") if isinstance(cfg.get("rights"), dict) else {}, {}
     if isinstance(seats, dict) and seats:
         for name, value in seats.items():
-            who, _, mode = str(value).strip().rpartition(" ")
             words = rights.get(name, BUILTIN_RIGHTS.get(name, ()))
             if "answer" in ([words] if isinstance(words, str) else words):
-                out[who if mode == "signed" else str(value).strip()] = "signed" if mode == "signed" else ""
+                out.update(seat_identities(value))
         return {w: m for w, m in out.items() if w}
     for a in (cfg.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -5840,8 +5868,8 @@ def lint(trackers, committing=False):
     COMMITTING = committing
     problems = []
     ids = {t["id"] for t in trackers}
-    if vcs() == "svn" and any(mode == "signed" for _who, mode in SEATS.values()):
-        problems.append(f'{CONFIG_NAME}: `[seats]` — {", ".join(sorted(s for s in SEATS if SEATS[s][1] == "signed"))} asks for a signature, and '
+    if vcs() == "svn" and any(mode == "signed" for ids in SEATS.values() for _who, mode in ids):
+        problems.append(f'{CONFIG_NAME}: `[seats]` — {", ".join(sorted(s for s in SEATS if any(mode == "signed" for _who, mode in SEATS[s])))} asks for a signature, and '
                         f'Subversion has none to give: its server authenticates the commit. Name the SVN account alone')
     # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
     # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
@@ -5888,7 +5916,7 @@ def lint(trackers, committing=False):
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
-                elif how == "git" and (SEATS[seat][1] if SEATS else allowed[who]) == "signed":
+                elif how == "git" and (seat_mode(seat, who, email) if SEATS else allowed[who]) == "signed":
                     # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
                     if not verified_as(commit, email if SEATS else None):
