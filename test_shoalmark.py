@@ -802,6 +802,39 @@ with tempfile.TemporaryDirectory() as d:
           (lambda t: "`builder`" in t and "`implementer`" in t)(run(root, "--schema")[1]))
 fm.configure(HERE)
 
+# FM-024 · the Owner's ruling of 2026-09-30: the principal seat is `planner` from 0.19.0 — `principal` stays, as its old spelling, with the same three rights.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    commit_as(root, "someone@example.org", "the start")
+    tracker(root, "MSR-001", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A")
+    held = {}
+    for key, addr in (("principal", "principal@seat"), ("planner", "planner@seat")):
+        (root / "shoalmark.toml").write_text(base_cfg + f'\n[seats]\nowner = "owner@example.org"\n{key} = "{addr}"\n')
+        fm.configure(root)
+        rights_ = sorted(r for r in fm.RIGHTS if fm.holds(key, r))
+        commit_as(root, addr, f"the ask, by the {key}\n\nSession: 1111aaaa")
+        code_p, _, err_p = run(root, "--check")
+        git(root, "reset", "-q", "--soft", "HEAD~1")
+        held[key] = (rights_, code_p, err_p)
+    check(f"FM-024 · `planner` and `principal` hold ask, close and triage — and not answer — and the ask each puts before the Owner passes the gate (saw {held})",
+          all(v[0] == ["ask", "close", "triage"] and v[1] == 0 and "does not hold" not in v[2] for v in held.values()))
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = "owner@example.org"\nplanner = "planner@seat"\nprincipal = "principal@seat"\n')
+    fm.configure(root)
+    check(f"FM-024 · both spellings in one `[seats]` are two seats with the same three rights, each matched from its own address — no seat is doubled (saw {fm.seat_of('x', 'planner@seat')}, {fm.seat_of('x', 'principal@seat')})",
+          fm.seat_of("x", "planner@seat") == "planner" and fm.seat_of("x", "principal@seat") == "principal"
+          and fm.SEAT_RIGHTS["planner"] == fm.SEAT_RIGHTS["principal"] == {"ask", "close", "triage"} and sorted(fm.SEATS) == ["owner", "planner", "principal"])
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = "owner@example.org"\nplanner = "planner@seat"\nprincipal = ["planner@seat"]\n')
+    r_two = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-024 · the same address under both spellings is refused at configuration, naming both — an identity is one seat's (saw {r_two.returncode}, {r_two.stderr.strip()[:160]!r})",
+          r_two.returncode == 2 and "`planner@seat` is listed under two seats, `planner` and `principal`" in r_two.stderr)
+    (root / "shoalmark.toml").write_text(base_cfg)
+    check("FM-024 · `--schema` names the built-in seats `planner` and `builder`, with `principal` and `implementer` as their former names",
+          (lambda t: "`planner`" in t and "`principal`" in t and "former names" in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
 # --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
