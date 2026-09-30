@@ -113,9 +113,8 @@ description and homepage; *GitHub Apps* → *Configure* → **Uninstall** remove
 installing without a key; attribution by email; the Designer's export and README; a reader other than this runtime for G1.
 
 ## Preparation checks and sources
-All five shell blocks passed `zsh -n`. Four ran in `zsh -f` at 15:04, with a stand-in `open` first on PATH and the GETs for real: `0`, and seven bot 404s, as
-expected before creation; the renamed §4 loop ran again at 15:39, seven 404s. Both `open` URLs route (302 to login, a bogus path 404). Step 4's block switches a
-checkout: syntax only.
+All five shell blocks passed `zsh -n`. Four ran in `zsh -f` at 15:04 (the renamed §4 loop again at 15:39), a stand-in `open` first on PATH, the GETs for real:
+`0` and seven bot 404s, as expected before creation. Both `open` URLs route (302 to login; a bogus path 404). Step 4's block switches a checkout: syntax only.
 [Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app) · [Creating a custom badge](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/creating-a-custom-badge-for-your-github-app) · [Installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app) · [REST: GitHub Apps](https://docs.github.com/en/rest/apps/apps) · [REST: org installations](https://docs.github.com/en/rest/orgs/orgs) · the bot user on install, secondary:
 [DEV, agent_paaru](https://dev.to/agent_paaru/each-ai-agent-gets-its-own-github-identity-how-we-gave-every-bot-its-own-bot-commit-signature-1197), [actions/create-github-app-token#172](https://github.com/actions/create-github-app-token/issues/172)
 (a comment: installing resolved the 404) · the id form: [josh-ops](https://josh-ops.com/posts/github-apps-commit-email/). Records: the claim screen; `evidence/FM-006/public-hardening-owner-2026-09-30.md` (the form).
