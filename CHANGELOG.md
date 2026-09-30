@@ -2,7 +2,15 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased
+## Unreleased — 0.18.7
+
+- **`--ratio`: the records-to-product ratio, per Berlin day of the merge (FM-032, the Owner's word of 2026-09-30).** For
+  the merge commits on the default branch's first-parent line it counts the lines added and deleted in records
+  (`[ratio] records` in `shoalmark.toml`) and in product (every other path, `[ratio] exclude` aside) — apart, never
+  netted — reports the ratio per day, the window's total and the rolling seven-day sums, and says `no finite ratio` where
+  no product was added. A submodule pointer is no line, a binary file 0 lines. A repository without `[ratio]` is told so
+  (exit 2). The rule is filed on its own page, `work-tracker/evidence/FM-032/records-to-product-ratio.md`, and the command is
+  its reference.
 
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.
