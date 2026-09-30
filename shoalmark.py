@@ -321,7 +321,7 @@ ASK_OPTION_MAX = 120       # characters per choice — a choice is a phrase, not
 BOTTLENECK = 5             # more asks than this in his queue and the queue itself is the finding, said in the first line
 # the three lines an ask carries besides the question itself, each with what it is FOR — a refusal that only names a
 # key sends the agent to the schema; one that says what the key is for is answerable where it is read.
-ASK_NEEDS = {"ask-kind": "which of his four kinds it is", "ask-since": "the day it was first made — its age is what he sees",
+ASK_NEEDS = {"ask-kind": "which of the four kinds it is", "ask-since": "the day it was first made — its age is what they see",
              "ask-proposal": "the one the seat RECOMMENDS, and would act on"}
 def front_matter_schema():
     return {
@@ -334,26 +334,26 @@ def front_matter_schema():
         "blocked-by":      (rf"(?:{_IDS}|{_OWNER})(?:\s*,\s*(?:{_IDS}|{_OWNER}))*", False, "any seat",
                             "what this open work waits on — tracker ids, and `Owner` or `Owner — <the ruling awaited>`. *Blocked* is derived from it and clears itself; it orders nothing"),
         "considered":      (rf"none|{_IDS}(?:\s*,\s*{_IDS})*", False, "the filing seat", "the existing trackers this filing was held against — listed means LOOKED AT, not merged — or none. Triage at intake: run `--related` first; the gate refuses a new tracker without this line"),
-        "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence he can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
+        "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence they can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
         "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk. "
                                                                         "An ask whose yes needs the Owner's hands is `action`, whatever else it decides"),
         "ask-since":       (r"\d{4}-\d{2}-\d{2}", False, "the seat that needs the Owner", "the day the ask was first made — its age is what the Owner sees"),
         "ask-proposal":    (None, False, "the seat that needs the Owner", "the one the seat RECOMMENDS, and why — one sentence; it is offered first. With `ask-options:` it must be one of them. Never acted on without the answer"),
-        "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes his own under *Other*"),
-        "answer":          (None, False, "the Owner — in his own commit", "his answer to `ask:`, in his words: `accepted`, `accepted - <the option he chose, or his change>`, or `rejected - <why, and how to reword the ask>` "
-                                                                        "(a hand's ` — ` reads as ` - `). Written by him, never by the seat that asked; an answered ask leaves his queue. "
+        "ask-options":     (None, False, "the seat that needs the Owner", "the choices the ask offers, ONE line separated by ` | ` — the Owner picks one, or writes their own under *Other*"),
+        "answer":          (None, False, "the Owner — in their own commit", "their answer to `ask:`, in their words: `accepted`, `accepted - <the option they chose, or their change>`, or `rejected - <why, and how to reword the ask>` "
+                                                                        "(a hand's ` — ` reads as ` - `). Written by them, never by the seat that asked; an answered ask leaves their queue. "
                                                                         "The word is the button's and stays as signed: every reading — the board's tracker view, `--answered`, the record `--clear-ask` writes — "
                                                                         "computes the answer's relation to `ask-proposal:` and `ask-options:` and prints it beside it: accepted the proposal · chose option N · "
                                                                         "accepted with a change · rejected · revoked · relation not computable, where there is no proposal to compare it with. "
                                                                         "Never overwritten in place: `--answer <id> revoke \"<reason>\"` makes it `revoked - <reason>`, and `--answer <id> accept|reject \"<option>\" --supersede` replaces it — "
                                                                         "either moves the answer it replaces into the ship log, with the commit that wrote it, and the board says *supersedes <sha>*. "
-                                                                        "Until his merge, an answer on an `answer/<id>` not merged into the default branch reads *answered, on its way* on the board, in "
-                                                                        "`--owner` and in `--standup`, and the ask leaves his queue (FM-030); `--revoke <id> \"<why>\"` takes it back there, on top of it"),
-        "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day he answered — the commit that carries it is the clock"),
+                                                                        "Until their merge, an answer on an `answer/<id>` not merged into the default branch reads *answered, on its way* on the board, in "
+                                                                        "`--owner` and in `--standup`, and the ask leaves their queue (FM-030); `--revoke <id> \"<why>\"` takes it back there, on top of it"),
+        "answered":        (r"\d{4}-\d{2}-\d{2}", False, "the Owner", "the day they answered — the commit that carries it is the clock"),
         "answered-by":     (None, False, "the Owner", "who answered; the commit's author is the proof, this is the label"),
         "due":             (DUE_SHAPE, False, "the seat that schedules an act owed to the Owner — with the action ask, or when its time is set; `--answer`, from an accepted "
                                            "action answer that names its hour; the Owner's `--due` moves it",
-                            "when the Owner's act falls due (FM-030): an ISO time with its zone, `2026-09-26T07:30:00+02:00`. Until `done:` is written the act is on his "
+                            "when the Owner's act falls due (FM-030): an ISO time with its zone, `2026-09-26T07:30:00+02:00`. Until `done:` is written the act is on their "
                             "board — due, overdue, missed — and in INDEX.md with this time. `--clear-ask` leaves it: the answer is a promise, the act is still owed. "
                             "`--answer` writes it with an accepted action answer whose promise names a date with its hour — `2026-09-26 09:00`, "
                             "`2026-09-26T09:00+02:00`, or the weekday with its month and day, `Sat 09-26 09:00`, the next such day on or after the answer, "
@@ -362,19 +362,19 @@ def front_matter_schema():
                             "carry, a word after the time that is no zone as written (`cest`), a 12-hour time (`9:00 PM`), a fraction of a second "
                             "(`09:00:00.000Z`), or two times are not read — nothing rather than a wrong hour — and the act shows *no date yet*. "
                             "A `due:` already set is left, and `--answer` says so. Moved by the Owner's `--due` and not merged yet, the new time is "
-                            "his act on its way: the board, `--owner` and `--standup` read it from `origin/answer/<id>` as *rescheduled, on its way — "
-                            "due <time>*, and the act leaves his list of acts until the merge — a `--due` after a done act too, never *done revoked*"),
+                            "their act on its way: the board, `--owner` and `--standup` read it from `origin/answer/<id>` as *rescheduled, on its way — "
+                            "due <time>*, and the act leaves their list of acts until the merge — a `--due` after a done act too, never *done revoked*"),
         "window":          (r"\d{1,4}", False, "the seat that schedules the act", f"minutes after `due:` in which the act can still be done — {WINDOW_DEFAULT} where absent; past it with no `done:`, the act is missed"),
-        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`; his `--revoke` removes it",
-                            "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves his list, its record stays under `## Acts`, "
-                            "and where his answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next. The person gives the path; "
+        "done":            (r'"?' + DUE_SHAPE + r' · .+"?', False, "the Owner's `--done`; their `--revoke` removes it",
+                            "the act's result: when, and where it is — `<ISO time> · <a path or a pointer>`; the act leaves their list, its record stays under `## Acts`, "
+                            "and where their answer left `next: owner`, `--done` sets `next: build` — the act done, the seat's move is next. The person gives the path; "
                             "the record gathers the facts: for a file in the repository, the commit that added it and its date, and for a review — a file "
                             "that states a verdict — its word, the `Reviewed:` sha and the `Session:` of its last pass: the last line that states a verdict, "
                             "that pass's own lines, else the trailers of the newest commit that touched the file, named as *last pass in* where it is not "
                             "the one that added it; a line anchor after the path (`file.md:12`, `#L1-L9`) is kept as given and not read as its name; "
                             "a word that names no file there is recorded as given, *not in the repository* beside it; nothing is guessed. The time is when the act "
-                            "was recorded, not the act's own, which is in the evidence its path names. Until his merge, a `done:` on an `answer/<id>` not merged "
-                            "reads *done, on its way* and the act leaves his list (FM-030); `--revoke <id> \"<why>\"` takes it back — `done:` leaves, the "
+                            "was recorded, not the act's own, which is in the evidence its path names. Until their merge, a `done:` on an `answer/<id>` not merged "
+                            "reads *done, on its way* and the act leaves their list (FM-030); `--revoke <id> \"<why>\"` takes it back — `done:` leaves, the "
                             "revocation is recorded under `## Acts`, the act is owed again — on that branch, on top of it"),
         "intent":          (None, False, "the Owner's words only", "for · so that · never — on a story; its chapters inherit it"),
         "triaged":         (r"\d{4}-\d{2}-\d{2}", False, "a triage pass", "the day a pass last gave it a verdict"),
@@ -811,7 +811,7 @@ def ask_problems(t, by_ask=None, provenance=True):
     if ask and (ask.count("?") != 1 or not ask.endswith("?")):
         out.append(f'`ask:` is ONE question — exactly one `?`, at the end; the context goes in the body. Got: {ask[:80]!r}')
     if len(ask) > ASK_MAX:
-        out.append(f'`ask:` is {len(ask)} characters — an ask he answers in a sitting is at most {ASK_MAX}; the detail belongs in the body')
+        out.append(f'`ask:` is {len(ask)} characters — an ask they answer in a sitting is at most {ASK_MAX}; the detail belongs in the body')
     options = t.get("ask_options") or []
     if len(options) > ASK_OPTIONS_MAX:
         out.append(f'`ask-options:` offers {len(options)} choices — at most {ASK_OPTIONS_MAX}; more is a design review, not a question')
@@ -2589,7 +2589,7 @@ tr.c td:first-child{padding-left:20px}
    place of the logo and the name, inline, so its currentColor is the name's ink: the size its height says, else the logo's */
 #H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H .wm{display:flex}#H .wm svg{display:block;flex:none}#H .wm svg:not([height]){height:22px;width:auto}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
-/* an act that is a promise: what he promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
+/* an act that is a promise: what they promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
 #p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
@@ -2625,8 +2625,8 @@ __RUNNING__</footer>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
-//        [the act owed to the Owner: what — for a promise, what he promised —, his answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
-//        and ONLY where his act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, his promise or his answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on his list, the due: on its way, what follows the label]]
+//        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
+//        and ONLY where their act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, their promise or their answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on their list, the due: on its way, what follows the label]]
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
@@ -2699,7 +2699,7 @@ function draw(){
     // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
     const days=t=>t[29][2]?Math.floor((Date.now()-Date.parse(t[29][2]))/864e5):null,old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
-    // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under his login —
+    // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —
     // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
     // Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
     // abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
@@ -2758,13 +2758,13 @@ function draw(){
       const f=d.querySelector("form");
       f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();
         if(kind=="done"){const w=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");return sign(d,id,`${cmd} --done ${id} ${sq(w)}`,`done: ${w}`,"done")}
-        // the time the Owner picks is his machine's; the command carries its zone, so it means the same hour everywhere
+        // the time the Owner picks is their machine's; the command carries its zone, so it means the same hour everywhere
         const v=f.when.value,dt=new Date(v),o=-dt.getTimezoneOffset(),z=(o<0?"-":"+")+String(Math.floor(Math.abs(o)/60)).padStart(2,"0")+":"+String(Math.abs(o)%60).padStart(2,"0");
         const iso=(v.length==16?v+":00":v)+z;sign(d,id,`${cmd} --due ${id} ${iso}`,`due: ${iso}`,"due")};
       d.showModal()};
     window.OWE=owe;
-    // FM-030, his signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives
-    // ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of his act, on its branch
+    // FM-030, their signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives
+    // ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of their act, on its branch
     const rev=t=>{const d=$("dlg"),id=t[0],w=t[31],cmd="__CMD__";
       d.innerHTML=`<form method="dialog"><h3>${l("way.revoke.title")} · <a href="#=${id}">${id}</a></h3>
         <p class="dq">${esc(w[7])}</p>${w[8]?`<p class="ddim">${l("acts.asked",w[8])}</p>`:""}<p class="m ddim">${l("way."+w[0])} · ${esc(w[1])} @ ${esc(w[3].slice(0,7))}</p>
@@ -2779,16 +2779,16 @@ function draw(){
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])))
-    // FM-030: what he owes, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
+    // FM-030: what they owes, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
     +(acts=>acts.length?"\n\n<b class=\""+(acts.some(t=>actstate(t[30])!="due"&&actstate(t[30])!="nodate")?"hot":"")+"\">"+l("acts.title")+": "+acts.length+"</b>\n"+acts.map(t=>{
       const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
       return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
         +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`
         +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`
         +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length&&!(t[31]&&!t[31][11])))
-    // FM-030, his signed answer 920970b7: the board reads git. What he did and pushed on `answer/<id>` is here, not in the two
-    // lists above, until his merge — his promise or his answer first, what it is, the branch, the commit, its time, whether it
-    // verifies, and that his merge is next
+    // FM-030, their signed answer 920970b7: the board reads git. What they did and pushed on `answer/<id>` is here, not in the two
+    // lists above, until their merge — their promise or their answer first, what it is, the branch, the commit, its time, whether it
+    // verifies, and that their merge is next
     +(way=>way.length?"\n\n<b>"+l("way.title")+": "+way.length+"</b>\n"+way.map(t=>{const w=t[31];
       return `<a href="#=${t[0]}">${t[0]}</a> ${esc(w[7])}<span class="m"> · <b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")
         +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?l("way.signed"):l("way.unverified",w[6].replace(/^wait: /,""))} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}</span>`
@@ -3690,8 +3690,8 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
      The LAST filled row in the file is applied; the earlier is left as it is, the record of the first judgement, and
      each run names it: superseded on this sheet by the later row. Never strike the earlier row to make one apply.
   3. The pass is RESUMABLE: whatever carries a `triaged:` date is done. Stop when you must; the next run continues.
-  4. The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row he disagrees
-     with is re-made by the seat on his word, or ruled by his signed answer — a merge rules nothing: an answer is
+  4. The pass is the seat's judgement, dated by its commit; the Owner lands it by merging; a row they disagree
+     with is re-made by the seat on their word, or ruled by their signed answer — a merge rules nothing: an answer is
      written and signed, and a merge is not one.
   5. This worksheet is the pass's one evidence file, and one paragraph
      under *Passes* in {home} says what the pass changed — never touch its *current path*; that is the
@@ -4487,7 +4487,7 @@ def seat_problems(t):
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
         elif not verified_as(commit, email or None):
             return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — '
-                    + unverified(commit, f'`[seats]` asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach him')]
+                    + unverified(commit, f'`[seats]` asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach them')]
     return []
 
 
@@ -5054,18 +5054,18 @@ def commit_msg_check(message_file):
 # (the Auditor seat's AU-19): a signature is verified against the default branch's signers file (`trusted_signers`), and
 # a change to that file is kept like the two sections (`signers_paths`, `kept_changes`).
 GUARDED = ("intent", "path")
-GUARD_WHY = "only the Owner changes his intent and his current path (FM-037)"
+GUARD_WHY = "only the Owner changes their intent and their current path (FM-037)"
 # …and the file his signature is verified against (the Auditor seat's AU-19): a branch that appends its own key under his
 # email to the repository's signers file would otherwise have vouched for itself
-GUARD_WHY_KEYS = "only the Owner changes the keys his signature is verified against (FM-037, AU-19)"
+GUARD_WHY_KEYS = "only the Owner changes the keys their signature is verified against (FM-037, AU-19)"
 # the way through, as the tool already asks a seat to put a question in front of him (`--new`, the contract's `ask:` rule)
-GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can "
+GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence they can "
              "answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`")
-GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)"
+GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on their account holds that key (FM-007)"
 # what it can prove where his seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
 GUARD_AUTHOR_ONLY = "the author only — mark the owner's seat signed to prove the key"
 GUARD_SVN = ("the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so "
-             "nothing here can tell his commit from a seat's")
+             "nothing here can tell their commit from a seat's")
 _GUARD = None
 
 
@@ -5375,15 +5375,15 @@ def triage_guard():
         return _GUARD
     owners = owners_at(trunk)
     if not owners:
-        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s `[seats]` gives no seat `answer`: name his (`owner = \"<email> signed\"`)")
+        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s `[seats]` gives no seat `answer`: name the Owner's (`owner = \"<email> signed\"`)")
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
     refused = guard_lines(verdicts, owners)
     proof = "" if all(m == "signed" for m in owners.values()) else f" ({GUARD_AUTHOR_ONLY})"
     _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
-                       + (f"{len(changed)} change them or his signers file, {len(refused)} refused" if refused
-                          else f"{len(changed)} change them or his signers file, each his own commit" if changed else "none changes them or his signers file"))
+                       + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if refused
+                          else f"{len(changed)} change them or their signers file, each their own commit" if changed else "none changes them or their signers file"))
     return _GUARD
 
 
@@ -6008,13 +6008,13 @@ def parse_args(argv):
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
     add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
-    add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, his hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
+    add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
              "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
              "`--answer <id> accept|reject \"<option>\" --supersede` — the old one moves into the ship log. A failure after it wrote anything undoes it all and "
              "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
-    add("--supersede", action="store_true", help="with --answer, on a tracker he has answered already: the new answer replaces the old one, which moves into the ship log "
+    add("--supersede", action="store_true", help="with --answer, on a tracker they have answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
     add("--invite", metavar="ID", help="an act owed to the Owner as a calendar file (FM-030): `<tracker dir>/evidence/<id>/<id>-act.ics` — its `due:` in "
                                        "UTC, a DURATION of its `window:`, a reminder 30 minutes before; RFC 5545. Import it; after a `--due`, write it again")
@@ -6023,17 +6023,17 @@ def parse_args(argv):
                                               "notified.json, else ~/.local/state/shoalmark on macOS and Linux, %%LOCALAPPDATA%%/shoalmark on Windows. "
                                               "Schedule it yourself: the README has a launchd and a cron line")
     add("--done", nargs=2, metavar=("ID", "WHERE"), help="the Owner's act is done (FM-030): `--done <id> \"<where the result is>\"` writes `done:` — the time and "
-                                                        "where its result is — and its record under `## Acts`; the act leaves his list. Made as --answer makes his answer: on "
-                                                        "`answer/<id>`, signed where his seat is `signed`, pushed. The board's *done* button copies it")
+                                                        "where its result is — and its record under `## Acts`; the act leaves their list. Made as --answer makes their answer: on "
+                                                        "`answer/<id>`, signed where their seat is `signed`, pushed. The board's *done* button copies it")
     add("--due", nargs=2, metavar=("ID", "TIME"), help="the Owner's act moves (FM-030): `--due <id> 2026-09-26T07:30:00+02:00` writes the new `due:` and records the "
-                                                       "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes his answer. The board's "
+                                                       "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes their answer. The board's "
                                                        "*reschedule* button copies it")
-    add("--revoke", nargs=2, metavar=("ID", "WHY"), help="the Owner takes back what he last did on a tracker (FM-030): `--revoke <id> \"<why>\"` — an act done: "
-                                                          "`done:` leaves the front matter, the revocation is recorded under `## Acts`, the act is owed again; else his "
+    add("--revoke", nargs=2, metavar=("ID", "WHY"), help="the Owner takes back what they last did on a tracker (FM-030): `--revoke <id> \"<why>\"` — an act done: "
+                                                          "`done:` leaves the front matter, the revocation is recorded under `## Acts`, the act is owed again; else their "
                                                           "answer, as `--answer <id> revoke`. Where `answer/<id>` is not merged — on its way — it commits on top of it there. "
-                                                          "Made as --answer makes his answer. The board's *revoke* button copies it")
+                                                          "Made as --answer makes their answer. The board's *revoke* button copies it")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
-                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since his last sitting, by commit, with the relation its record carries — "
+                                               "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since their last sitting, by commit, with the relation its record carries — "
                                                "for a record written before 0.18.1, the one the commit that wrote its answer gives")
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
@@ -6056,7 +6056,7 @@ def parse_args(argv):
     add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
                                                       "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
                                                       "and refused before it is made, with the line `--check` prints of it; and, where the default branch's `[seats]` names the "
-                                                      "Owner, a commit that changes his intent or current path in TRIAGE.md is refused before it is made unless he is its author "
+                                                      "Owner, a commit that changes their intent or current path in TRIAGE.md is refused before it is made unless they are its author "
                                                       "(FM-037 — the hook sees the author; `--check` judges the signature)")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
@@ -6383,9 +6383,9 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
 6. **Close out by asking what this made obsolete — and delete it in the same change.** Done means finished
    *and simpler afterwards*, not wider. A defect found on the way gets one line in the tracker, or its own
    tracker if it is real work — not a bundled side-fix.
-7. **What you need from the Owner is an `ask:`** — ONE sentence he can answer, with `ask-kind:` (ruling · action ·
-   determination · ceremony), `ask-since:` and `next: owner`. Write it before his standup; never bury it in the body.
-   He has office hours, you have a budget: **end a session's last message with `{cmd} --owner`.**
+7. **What you need from the Owner is an `ask:`** — ONE sentence they can answer, with `ask-kind:` (ruling · action ·
+   determination · ceremony), `ask-since:` and `next: owner`. Write it before their standup; never bury it in the body.
+   They have office hours, you have a budget: **end a session's last message with `{cmd} --owner`.**
 8. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
 """
