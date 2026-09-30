@@ -11,7 +11,7 @@ Repositorys läuft auseinander.
 
 | id | shall | source | accept |
 |---|---|---|---|
-| REQ-PWR-007 | Das Gerät geht 2 s nach der letzten Eingabe in den Ruhezustand. | die Produktleitung | Eingabe endet: Ruhe in < 2 s |
+| REQ-PWR-007 | Das Gerät muss spätestens 2 s nach der letzten Eingabe in den Ruhezustand wechseln. | die Produktleitung | Eingabe endet: im Ruhezustand nach < 2 s |
 
 Die Zeilenform — die vier Spalten und was jede enthält — steht einmal, in
 [`requirements/README.md`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) (englisch).
