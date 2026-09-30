@@ -4828,7 +4828,7 @@ def svn_ship_verdicts(names, at, records):
     """{name: "" when that revision is a revision behind the change, else why it is not} — one before `at`, the revision being judged
     (any, for a change not yet committed), that changed something under this working copy, with a path outside `records`, which are
     read from the working copy's root. One `svn info`, and one `svn log` for each revision named."""
-    base = "/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")   # the working copy's own path in the repository
+    base = ("/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")).rstrip("/")   # the working copy's own path in the repository — "" at its root
     out = {}
     for n in names:
         entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v")

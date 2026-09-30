@@ -3464,6 +3464,20 @@ if _SVN:
         calls_ = [" ".join(c_) for c_ in argv_of(lambda: run(root, "--check"))]
         check(f"FM-005 S · a run with nothing moved to `Shipped` asks Subversion for the working copy's status and the newest revision, and for no revision's paths (saw {len([c_ for c_ in calls_ if c_.startswith('svn')])} calls)",
               any(c_.startswith("svn status") for c_ in calls_) and any(c_.startswith("svn log -l 1") for c_ in calls_) and not any(re.match(r"svn log -r \d+ ", c_) for c_ in calls_))
+        # RV-2150: a working copy at the repository's root — no `/trunk`, so its own path in the repository is empty and every changed path is made relative to it
+        root = base / "wc2"; svn("checkout", url, str(root)); wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        for n_ in (1, 2):
+            tracker(root, f"C5-{n_:03d}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        commit5_("the trackers, at the repository's root", {})
+        built2_ = commit5_("the feature, at the repository's root", {"src/app.py": "v1\n"})
+        note2_ = commit5_("only a note, at the repository's root", {"docs/work-tracker/evidence/n.md": "a note\n"})
+        code, _, err = moved5_(1, f"a note in r{note2_}")
+        code_b, _, err_b = moved5_(2, f"built in r{built2_}")
+        check("FM-005 S · in a working copy at the repository's root a revision that changed only the records is refused, naming the records and the way through — and the feature's revision passes",
+              code == fm.EXIT_LINT and f"C5-001: moved to `Shipped` with no revision behind it — `r{note2_}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err)
+              and code_b == 0 and "C5-002" not in err_b)
     fm.configure(HERE)
 
 
