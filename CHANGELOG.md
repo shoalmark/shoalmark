@@ -12,6 +12,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   rank then tier; the open unranked stays `backlog`; a raise or a judgement owed keeps `triage`; `done` is unchanged.
   INDEX.md and the dashboard share the one definition, so both move together on the next `--html-only` / commit.
 
+- **The board's verdict reader reads the history once (FM-040).** `verdict_reports` asked git about four times per
+  verdict — 728 subprocesses and 37 s for one `--html-only` on this repository, which every commit, merge and checkout
+  paid through the hooks. It now resolves the reviewed shas in one `git cat-file --batch-check`, reads their history in
+  one `git log`, and answers *is X an ancestor*, the ancestry path, the range and the trailers in memory (`History`);
+  `--html-only` takes about 1 s. The board's reviews line and `--check`'s sessions report are byte for byte what they were
+  — compared old tool against new on this repository and on the parent project's.
+
 ## Unreleased
 
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
