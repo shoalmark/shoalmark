@@ -5,7 +5,7 @@
 Entwicklung und Test arbeiten von einer gemeinsamen Grundlage aus: den Anforderungen, im Repository, neben dem Code.
 Die Testenden prüfen die Anforderung als Vertrag — nach dem, was sie sagt, nicht nach dem, was die Umsetzung zufällig
 tut —, denn ein Testplan, der aus dem Code geschrieben wird, bestätigt nur den Code, und ein Plan außerhalb des
-Repositorys läuft auseinander.
+Repositorys entfernt sich mit der Zeit vom Code.
 
 ## Eine Zeile, eine Anforderung
 
@@ -25,9 +25,9 @@ Sie. *Nicht anwendbar* ist eine signierte Antwort mit ihrer Begründung, nie die
 
 ## Eine regulatorische Anforderung
 
-Nennen Sie die Klausel — Norm, Ausgabe, Klauselnummer — und schreiben Sie das eigene *shall* des Unternehmens, das sich
-aus ihr ableitet. Den Text einer Norm nie ins Repository kopieren. Nie schreiben, das Projekt erfülle sie: eine
-erfüllte Anforderung ist ein bestandener Test, nicht mehr.
+Nennen Sie die Fundstelle — Norm, Ausgabe, Abschnitt — und leiten Sie daraus die eigene Pflicht des Unternehmens ab,
+als Satz in der Spalte `shall`. Den Text einer Norm nie ins Repository kopieren. Nie schreiben, das Projekt erfülle die
+Norm: eine erfüllte Anforderung ist ein bestandener Test, nicht mehr.
 
 ## Wie der Nachweis sie nennt
 
@@ -37,7 +37,7 @@ gibt es von der Anforderung nie eine dritte Fassung. Die Abnahmekriterien stehen
 
 ## Noch nicht gebaut
 
-Jedes ist eine Frage an Sie und beginnt erst mit Ihrem Wort.
+Jede Stufe ist eine Frage an Sie und beginnt erst mit Ihrem Wort.
 
 - **Stufe 1**, nach der Erprobung und einem weiteren Interessenten: Prüfung von Abdeckung und Verweisen; was eine
   Anforderung nennt, wird als veraltet markiert, sobald sie sich ändert; `--trace REQ-<id>`; eine
