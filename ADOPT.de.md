@@ -67,6 +67,16 @@ Dann den Block aus `<klon>/examples/de/headings.toml` an `shoalmark.toml` anhän
   mit einchecken; TortoiseSVN führt das Gate nach `--install-hook` selbst aus und fragt einmal um Erlaubnis.
 - Rückweg: `tools/shoalmark/`, `shoalmark.toml` und den Tracker-Ordner löschen. Die Einträge bleiben lesbares Markdown.
 
+## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)
+
+Legt in `probe/` einen Ordner `requirements/` an (`requirements/README.md` im Klon beschreibt ihn). Eine Anforderung ist
+eine Tabellenzeile: `id` (stabil, nie neu vergeben), `shall` (ein Satz, das System als Subjekt, eine Pflicht), `source`
+(wer oder was sie verlangt), `accept` (das Abnahmekriterium: was ein Test beobachtet). Ein Arbeitspaket nennt sie im Kopf
+mit `satisfies: REQ-001`, ein Test im Namen. Eine Zeile ändert nur der Owner, mit einer unterschriebenen Antwort über die
+Tafel, nie ein Agent. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und trägt einen eigenen
+Satz; der Normtext wird nicht kopiert, und keiner schreibt, das Projekt erfülle die Norm: Ein Nachweis ist ein bestandener
+Test. Der Bericht nennt die Zahl der Zeilen, den Nachweis je Zeile und die Stelle, an der es hakte. Prüfungen gibt es noch nicht.
+
 ## Was nicht bewiesen ist
 
 Dass TortoiseSVN die beiden Hook-Eigenschaften wie beschrieben ausführt, hat noch kein Mensch unter Windows
