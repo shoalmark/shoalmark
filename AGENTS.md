@@ -36,6 +36,7 @@ convention is in [`requirements/README.md`](requirements/README.md); this is Sta
 - **Never change a line yourself.** A requirement changes only by the Owner's signed decision, an answer through the
   board; the id stays, the line changes, git holds the history. A seat that finds one wrong raises it as an ask.
 - **A regulatory requirement cites its clause** — standard, edition, clause number — and carries the company's own *shall*.
+  *Not applicable* is the Owner's signed answer with its reason, never a seat's.
   Never copy a standard's text; never write that the project complies. A requirement met is a test passed, nothing more.
 
 ## How this repository ships — the Owner, 2026-09-22
