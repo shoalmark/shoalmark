@@ -24,8 +24,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   address it commits under while history and the branches in flight keep resolving; the README's *Seat icons on the forge*
   says how a seat's GitHub App shows its icon. A `]` inside a quoted list item now reads (the bot's `[bot]`). With a string
   value nothing changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool
-  before it. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`gtm@seat`, as history
-  has it), `designer` and `auditor`; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
+  before it. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
+  and `auditor` beside the five keys it has, which stay — with their addresses — until one change makes the key rename, the bot
+  addresses and the badges together; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
+- **The seats are `planner` and `builder` (FM-024).** The built-in rights belong to `owner`, `planner` (ask, close, triage),
+  `reviewer` (triage) and `builder` (none). `principal` and `implementer` stay as their old spellings and hold exactly what they
+  held, so a repository's `[seats]` keeps working unchanged; nothing about a commit, a trailer or an address changes.
 
 ## Unreleased
 

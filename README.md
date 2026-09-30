@@ -319,8 +319,8 @@ launders a commit that was made without the hook.
 
 ```toml
 [seats]                                 # a name you choose -> the identity version control reports
-principal   = "principal@seat signed"   # `signed`: the commit must verify under a key trusted for that identity
-implementer = "implementer@seat"
+planner     = "planner@seat signed"     # `signed`: the commit must verify under a key trusted for that identity
+builder     = "builder@seat"
 [rights]
 chef = ["answer", "close"]              # only for a name that is not one of the four
 ```
@@ -345,12 +345,14 @@ key, no client secret, not installed anywhere; only the icon uploaded. The bot's
 seat — so history and the branches in flight keep resolving:
 
 ```toml
-principal = ["principal@seat", "12345+shoalmark-principal[bot]@users.noreply.github.com"]   # each item may end in `signed`
+planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.com"]   # each item may end in `signed`
 ```
 
-Each seat's worktree then takes the new address: `git config --worktree user.email 12345+shoalmark-principal[bot]@users.noreply.github.com`.
+Each seat's worktree then takes the new address: `git config --worktree user.email 12345+shoalmark-planner[bot]@users.noreply.github.com`.
 Nothing else changes: the seat's rights, its `Session:` trailer, and the Owner's signature, which stays theirs. `signed` is read per
-identity; an identity under two seats is refused at configuration, in one line naming both. A seat is *it*, not a person — its texts say
+identity; an identity under two seats is refused at configuration, in one line naming both. The seats are `planner` and `builder`
+from 0.19.0 — `principal` and `implementer` still read, and hold the same; renaming a repository's keys, switching its addresses
+and the badges are one change, made together. A seat is *it*, not a person — its texts say
 *it* on purpose; *they* is for the Owner and any person.
 
 ### Sessions
