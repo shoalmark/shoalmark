@@ -370,7 +370,7 @@ message carries already is left alone, each key on its own.
 
 ```text
 $ python3 shoalmark.py --whoami
-To: 8e509911/implementer-61 implementer (shoalmark-impl) · claude-sonnet-5-5 · xhigh
+To: a9f3c2d1/reviewer-1 reviewer (reviewer-2) · claude-opus-4-8 · high
 ```
 
 A repository

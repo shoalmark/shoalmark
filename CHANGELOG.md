@@ -14,7 +14,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 - **The sessions strip groups by parent** (FM-024; the Owner's word of 2026-09-30 10:40:31, normalised: *FM-024's build and
   FM-041 ride v0.19.0*; the Auditor's briefs of 2026-09-28 and 2026-09-30, through him). One line per parent session with a
-  commit in the last day — `8e509911 principal (shoalmark-principal-4) · implementer 1–6 · reviewer 1–5, 7` — under the
+  commit in the last day — `a9f3c2d1 principal (principal-a9) · implementer 1–6 · reviewer 1–5, 7` — under the
   header *sessions · 3 in the last day (28 with their sub-sessions)*; a run of three or more numbers is `a–b`. A line
   opens on each member's worktree, model and effort, `—` where its commits carried none. A parent that made no commit of
   its own still has its line, derived from its sub-sessions' ids `<parent>/<seat>-<n>`. `--owner`, the digest, groups the
