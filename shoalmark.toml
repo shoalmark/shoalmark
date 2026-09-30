@@ -4,7 +4,7 @@ triage_days = 7
 freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`): at 8 open or more, only bug filings
 judged_before_build = true   # FM-033, the Owner's rule: a pass judges before the first build commit — refused otherwise
 
-[seats]            # who sits where — the Owner answers with his key; seats commit unsigned as <seat>@seat
+[seats]            # who sits where — the Owner answers with their key; seats commit unsigned as <seat>@seat
 owner = "holgoijo@gmail.com signed"
 principal = "principal@seat"
 implementer = "implementer@seat"
