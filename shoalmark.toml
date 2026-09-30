@@ -10,8 +10,9 @@ owner = "holgoijo@gmail.com signed"
 principal = "principal@seat"
 implementer = "implementer@seat"
 reviewer = "reviewer@seat"
+gtm = "gtm@seat"
 research = ["research@seat", "datascientist@seat"]   # the Data Scientist folded into research, 2026-09-30
-go-to-market = "gtm@seat"                            # the seat's name is English; its address is the one history knows
+go-to-market = "go-to-market@seat"                   # the English name; the seat commits as `gtm` above until the one change
 designer = "designer@seat"
 auditor = "auditor@seat"
 
