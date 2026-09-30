@@ -35,23 +35,23 @@ two 404s are the stronger half, and **Create GitHub App** is the proof. The ruli
 | **G2** truth | anything the record cannot show today: a promise (speed, safety, quality), a compliance word, another project or product named |
 | **G3** the Owner's never | it makes him a push-a-button, invites rubber-stamping, flatters or insults him |
 | **G4** both ways | beside the fleet's line (`docs/index.md`: a question put to him, his answer one command) and the four rights (README §*Seats*), a seat answers, decides or merges for him |
-| **G5** the bar | beside the other six, it could sit under another seat's name, or it carries no character. The Owner's direction, relayed 2026-09-30: *playful, a little cute* |
+| **G5** the bar | beside the other six, it could sit under another seat's name, or it does not end with the seat's limit (the Owner's rule 6, relayed 15:29: first person, one line) |
 
 | Seat | Line (characters) | G0 | G1 | G2 | G3 | G4 | G5 | Why: what the record shows |
 |---|---|---|---|---|---|---|---|---|
-| principal | I put the fleet's questions to the Owner, one sentence each, and brief each seat I call up. The answers are all his. (116) | pass | pass | pass | pass | pass | pass | README *drafting an ask*: the Principal puts an ask in front of him; `principal` holds no `answer` (§*Seats*) |
-| implementer | I build one change from my brief, in a worktree of my own, one commit at a time. Then a Reviewer gets to poke at it. (116) | pass | pass | pass | pass | pass | pass | `.claude/agents/implementer.md`: one scoped change from the brief, its own worktree; code gets the full loop (AGENTS.md) |
-| reviewer | I read a branch against its brief and write my verdict into the record: READY, or each finding with its exact fix. (114) | pass | pass | pass | pass | pass | pass | `.claude/agents/reviewer.md`: one pass over a tip against the brief; a finding carries its tier and its exact fix text |
-| gtm | I put public lines through six gates and hand the Owner the survivors. Most lines don't make it. I pick none. (109) | pass | pass | pass | pass | pass | pass | the claim screen: G0–G5; in two passes 3 of 13 and 3 of 12 survived; *this seat chooses nothing, ranks nothing*; not *every* line: FM-042's pages went through a Reviewer (RV-2091) |
-| auditor | I read the record for what it claims but cannot show, and take each finding to the Owner, its source attached. (110) | pass | pass | pass | pass | pass | pass | FM-024 *Raised*: one sourced line per raise; the Auditor's raises reach the record through the Owner |
-| datascientist | Numbers before anyone counts: I set how many readers a study needs and how many reads each line gets. (101) | pass | pass | pass† | pass | pass | pass | `evidence/reviews/review-fm-006-the-human-pages-open-from-a-file.md:471`: *the Data Scientist seat sets the numbers* |
-| designer | I draw the fleet's badges: one shoalmark stake per seat, each wearing a shape of its own. (89) | pass | pass | pass† | pass | pass | pass | FM-024's icon slice: the stake the constant, one shape per seat; *badge* is GitHub's word for an App's icon |
+| principal | I put the agents' open questions to the Owner, one sentence each, and brief each seat I call up. Only the Owner answers. (120) | pass | pass | pass | pass | pass | pass | the Owner's text; README *drafting an ask*: the Principal puts an ask in front of the Owner; `principal` holds no `answer` (§*Seats*) |
+| implementer | I build one change from my brief, in a worktree of my own. A Reviewer reads it; I never judge my own work. (106) | pass | pass | pass | pass | pass | pass | the Owner's text; `.claude/agents/implementer.md`: one scoped change from the brief, its own worktree; code gets a Reviewer's loop (AGENTS.md) |
+| reviewer | I read a branch against its brief and write my verdict into the repository: READY, or what must change. I never merge. (118) | pass | pass | pass | pass | pass | pass | the Owner's text; `.claude/agents/reviewer.md`: one pass, the verdict committed on the branch; AGENTS.md: the Owner merges |
+| research | I check a claim against its sources, or work out what evidence would settle it, before anyone builds. I build nothing. (118) | pass | pass | pass† | pass | pass | pass | G0 cut *on it* (124 → 118); the Owner's rulings 1–2: the Data Scientist folds in; *Type: sources* or *Type: measurement*; may not build |
+| go-to-market | I check public sentences against what the repository can prove and hand the Owner the ones that hold. The Owner picks. (118) | pass | pass | pass | pass | pass | pass | G2 cut *every* (as RV-2091; 123 → 118); the claim screen: G0–G5, *this seat chooses nothing, ranks nothing* |
+| designer | I draw what people see of shoalmark (the board, the brand, these badges) from sources in the repository. No mock-ups. (117) | pass | pass | pass† | pass | pass | pass | the Owner's text; the Owner's ruling 5: *from sources in the repository*, may not *present a mock-up as a render*; the badges on `130fc7c` |
+| auditor | I check what the record claims against what it can show and take each finding, sourced, to the Owner, never to a seat. (118) | pass | pass | pass | pass | pass | pass | G0 cut *straight*, *with its source* → *sourced* (135 → 118); FM-024 *Raised*: one sourced line per raise, through the Owner |
 
 Controls: *"Reviews every pull request so your merges are safe, fast and compliant."* dies at **G2**, on a promise and a compliance word. *"Helps the team get
-its work done."* dies at **G5**, since it could sit under any seat. All seven lines survive, and the controls show that the gates fire. † G2 rests on thin
-record: the Data Scientist's one line, and the Designer's slice on its branch, not pushed at 15:06. Re-read both when the icons land. **Disclosure:** this seat
-wrote the lines and screened them, and no independent reader has read them. G1 is this runtime's English (K). The voice was to match the Designer's
-`brand/seats/README.md`. That file was not pushed at 15:06, so the lines rest on the seat definitions and README §*Seats*.
+its work done."* dies at **G5**, since it could sit under any seat. The seven lines are the Owner's starting points (rule 6, relayed 15:29), kept word for word
+where they pass. Three lost words to a gate, as the table says, and the controls show that the gates fire. † G2 rests on the Owner's rulings, relayed and not
+yet in the repository, and for the designer on the badges of `130fc7c`. **Disclosure:** this seat screened the Owner's lines and made the three cuts; no
+independent reader has read them. G1 is this runtime's English (K). The Designer's `brand/seats/README.md` is not on `130fc7c` yet.
 
 ## 3. The Owner's steps — about 45 minutes (≈ 6 per App), then 10 for the icons; stop on an unexpected screen or value
 **Read-only baseline, first.** No REST endpoint lists the Apps an organisation owns. The GitHub Apps reference has `/apps/{app_slug}`, the app's own `/app…`
