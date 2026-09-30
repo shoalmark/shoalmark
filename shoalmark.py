@@ -4678,11 +4678,11 @@ def sessions_file():
     return TRACKER_DIR / SESSIONS_NAME
 
 
-def session_log(since=None):
+def session_log():
     """Every commit of HEAD's history that carries a `Session:`, oldest first — (short sha, commit time, author email,
-    author name, the trailer block). One `git log`; `since` (seconds) keeps it to the recent ones."""
+    author name, the trailer block). One `git log`."""
     log = git_out("log", "--reverse", "-i", "--grep", "^session:", f"--format=%h%x01%ct%x01%ae%x01%an%x01{TRAILERS}%x02",
-                  *([f"--since={int(since)}"] if since else []), "HEAD") or ""
+                  "HEAD") or ""
     out = []
     for rec in log.split("\x02"):
         sha, stamp, email, name, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
@@ -4691,13 +4691,13 @@ def session_log(since=None):
     return out
 
 
-def session_rows(since=None):
+def session_rows():
     """THE REGISTRY, generated (FM-032 S2): one row per `Session:` id in HEAD's history — its seat (the author through
     `[seats]`, else the raw author), its first and last commit (time, short sha), how many commits carry it, and its
     worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both), and its model and
     effort (the newest `Model:` and `Effort:` trailers, from 0.19.0 on; empty where none) — in the order of the first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
     rows = {}
-    for sha, stamp, email, name, block in session_log(since):
+    for sha, stamp, email, name, block in session_log():
         sid = (trailer_values(block, "Session") or [""])[0]
         if not sid:
             continue
