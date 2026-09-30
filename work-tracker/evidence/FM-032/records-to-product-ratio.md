@@ -37,6 +37,9 @@ the commit that still holds it (`git show <commit>:<path>` — history keeps eve
 `test_shoalmark.py`, switched on by `SHOALMARK_REGENERATE=1`. No CI artifacts, no release assets. An output that does not regenerate from
 git by a committed command stays, and counts.
 
+**The condition, 19:16:21, the Owner's words, normalised:** *"an output is replaced by a summary and a check only where it is larger than the two
+together."* The Jev scorer's output (`jev-gate-test-score-output-2026-09-23.txt`) stays on main as it is, by his word.
+
 ## The baseline — shadow week, 2026-09-22 to 2026-09-29
 
 | | the baseline the Owner relayed, 07:04:27 | the command's own output at this branch's tip |
@@ -62,7 +65,7 @@ outputs of two folders (`073f21f` and `9d10d08`, both 12:02). `test_shoalmark.py
 
 `git diff --numstat origin/main...HEAD` (the three-dot range against `origin/main`, which is `7e7c8ac`; its merge base is the last merge of
 main into this branch, and the merge of main is not the change's), classified by the rule (`work-tracker/` = records), at this change's
-tip. The Reviewer's verdict files count as record lines and stay. The record deletions are the five regenerable check outputs; deleting
+tip. The Reviewer's verdict files count as record lines and stay. The record deletions are the four regenerable check outputs (the Jev scorer's output stays, by the Owner's word of 19:16:21); deleting
 records offsets nothing.
 
 - records added 543 · product added 547 · 1.0:1
