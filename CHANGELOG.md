@@ -4,19 +4,17 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ## Unreleased — 0.19.0
 
-<!-- The heading's name is provisional: another branch carries `## Unreleased — 0.18.7`; the release cut settles which version this section is. -->
+<!-- The heading's name is provisional; the release cut settles which version this section is. -->
 
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
   pull request or tell the Owner to close work carried into that fork. Nor can a fork's base hide another pull
   request's verdict: a same-repository pull request reads as it would with no fork open.
-
 - **A ranked open tracker sits in `progress`, whatever its status (FM-041).** `board()` placed by status alone, so a
   ranked `Proposed` tracker fell into the backlog while the section's caption reads *kept by triage — by rank, then
   tier*. Now open work with a rank — `In Progress` or `Proposed`, the two a rank may stand on — is `progress`, ordered by
   rank then tier; the open unranked stays `backlog`; a raise or a judgement owed keeps `triage`; `done` is unchanged.
   INDEX.md and the dashboard share the one definition, so both move together on the next `--html-only` / commit.
-
 - **The sessions strip groups by parent** (FM-024; the Owner's word of 2026-09-30 10:40:31, normalised: *FM-024's build and
   FM-041 ride v0.19.0*; the Auditor's briefs of 2026-09-28 and 2026-09-30, through him). One line per parent session with a
   commit in the last day — `a9f3c2d1 principal (principal-a9) · implementer 1–6 · reviewer 1–5, 7` — under the
@@ -40,23 +38,32 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   goes on. `--schema` lists the three worktree settings. The status line (`--statusline`) is not in this release.
 - **The addressing rule ships with the contract** (FM-024, his answer of 2026-09-28: the rule with `--whoami`). A message a
   person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's
-  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it.
-
-## Unreleased
-
+  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it
+- **`--ratio`: the records-to-product ratio, per Berlin day of the merge (FM-032, the Owner's word of 2026-09-30).** For
+  the merge commits on the default branch's first-parent line it counts the lines added and deleted in records
+  (`[ratio] records` in `shoalmark.toml`) and in product (every other path, `[ratio] exclude` aside) — apart, never
+  netted — reports the ratio per day, the window's total and the rolling seven-day sums, and says `no finite ratio` where
+  no product was added. A submodule pointer is no line, a binary file 0 lines. A repository without `[ratio]` is told so
+  (exit 2); `records` defaults to the tracker directory (`tracker_dir`), a `records` or `exclude` that is no list is refused in
+  one line (exit 2), and the merges are read from the default branch as `origin/HEAD` names it. The rule is filed on its own page,
+  `work-tracker/evidence/FM-032/records-to-product-ratio.md`, and the command is
+  its reference.
+- **A check output that regenerates is kept as its summary (FM-032, the Owner's ruling of 2026-09-30):** the start page's
+  `checks.json`, `checks-r3-before.json` and `facts.json` and slice A's `checks.json` are replaced, in their READMEs, by the command,
+  the tested commit, the environment, the counts and failing ids, the deleted file's sha256 and the commit that holds it, and a
+  machine-readable block; an output that does not regenerate from git by a committed command stays, and so does one that is not larger than its summary and its
+  check together (the Owner, 19:16:21: the Jev scorer's output stays). `test_shoalmark.py` proves
+  the regeneration: `facts.mjs` on every run where Node and the history are here, the browser checks (rebuilt sites, `checks.mjs`,
+  the READMEs' thresholds) behind `SHOALMARK_REGENERATE=1` where Chrome and `uvx` are; every skip prints its reason.
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.
-
 - **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
   the site check validates local and repository-file destinations in the rendered contract.
-
 - **Commits give quick, visible feedback (FM-006):** staged Python syntax and the focused core suite
   replace the silent two-interpreter full-suite hook. Full suites remain required in PR CI and run on tags.
-
 - **Public contribution checks (FM-006):** every non-draft PR revision runs CI. Documentation builds
   pin Zensical and verify published entry points, contract inclusion and migration URLs before upload.
   Security reporting, contribution guidance, issue templates and dependency update configuration are provided.
-
 - **The public home is `shoalmark/shoalmark` (FM-006).** Documentation, installation links and the
   board footer use the organization repository. Signing help opens the new Pages site at
   `signing.html` (German: `de/signing.html`), matching the site’s generated filenames.

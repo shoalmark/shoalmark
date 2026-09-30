@@ -41,7 +41,7 @@ is published at the go-public act; in a local build they leave the build. Not ch
 ## (a) The facts, dated
 
 Read with `facts.mjs` (git only; its first run was a Python form of the same reading, which the Node script reproduces
-field for field — `facts.json` is that 18:00:51 reading), and the board rendered in Chrome from `git archive bef2a1e`
+field for field — `facts.json` was that 18:00:51 reading, replaced by its summary below on 2026-09-30), and the board rendered in Chrome from `git archive bef2a1e`
 (`python3 shoalmark.py --html-only`) at 18:01.
 
 | On the page | Read from `main` at `bef2a1e`, 18:00:51 CEST |
@@ -183,6 +183,8 @@ pairs are `9307cf8`'s and `ab69afb`'s builds, as the slice made them.
 
 ## Checked — `checks.json`, on the tip's build
 
+`checks.json` held every measurement until 2026-09-30; its summary is the *Summary* below, and `08798a8` holds the file.
+
 Of the slice's tip `cb49101`, not re-run at the cut: the same-session pass on `0612dfe` ran `checks.mjs` on the release's
 build and read the same summary but the page's height, 5819 → 5837.
 
@@ -196,6 +198,86 @@ build and read the same summary but the page's height, 5819 → 5837.
 - **Contrast**: above, (c).
 
 **Not verified**, as the mock's README lists: Firefox, Safari, a screen reader, print.
+
+## Summary — the check output, regenerable
+
+**The Owner's ruling of 2026-09-30 (07:04:27, *normalised*): *"If a check output regenerates, keep only its summary; if it doesn't, it stays in
+git."*** The three outputs of this folder regenerate from git by the commands of *Rebuild* below, so they are replaced by this summary; each
+is in git, byte for byte, at `08798a8` (`git show 08798a8:<path>`). Regeneration is judged by the checks' results by this README's thresholds,
+never by bytes: the files carry an `at` stamp and Chrome's pixel measures move.
+
+| | `checks.json` | `checks-r3-before.json` | `facts.json` |
+|---|---|---|---|
+| tested | `cb49101`, the page as slice L leaves it | `9307cf8`, the mock as it is (item 1) | `bef2a1e`, `main` on 26 September 2026 |
+| command as run | the *Rebuild* lines: `git archive cb49101`, `uvx zensical@0.0.65 build`, `checks.mjs stage-cb49101/site … landing/index.html` | the same for `9307cf8`, `checks.mjs stage-9307cf8/site …`, its chart part kept | `node facts.mjs bef2a1e work-tracker/evidence/FM-006/landing/index.html` |
+| environment, original run | Chrome 154 headless, Zensical 0.0.65, Node 22 or later (26 September 2026, 16:10 UTC) | the same (16:11 UTC) | git and Node 22 or later (18:00:51 CEST) |
+| environment, fresh run | node v26.7.0, Google Chrome 154.0.8037.58, zensical 0.0.65 (uvx zensical@0.0.65, uv 0.10.4), macOS Darwin 25.6.0, 2026-09-30 07:29-07:34 CEST | the same run | the same, 07:29 CEST |
+| original: checks · failing checks · failing texts | 18 · 2 · 3, three chart texts under the title's own text (in two checks), as *Not changed* above says | 4 · 4 · 68, all four chart checks fail, on the mock's texts below 4.5 (19 + 13 + 20 + 16 by method and width) | no verdict: 24 wrecks read, 26 September 18:00:51 |
+| fresh: checks · failing checks · failing texts | 18 · 2 · 3, the same ids | 4 · 4 · 68, the same ids | no verdict: 24 wrecks; every field equal but `read`; sha256 without `read` equal |
+| deleted file's sha256 | `02122dec1e6aa760f0ec317cdc343172a06a55ea30962c160ac517c77e86cb5d` | `6726f85dae11409a69d3daee6ab4da2fcf2337506868fbd0fad566072caa6246` | `b76a1d93a09233716cb838c6c562ea276298bd3aa85bcd8f3c95f8ffa0ec79e0` |
+| held at | `08798a8` | `08798a8` | `08798a8` |
+
+The failing ids are `chart <width> <method> <text>` (R the Reviewer's method, S the seat's) with the measure left out, as the checks
+name a text; the other checks (flat texts, script errors, sideways scroll, the accessibility tree, reduced motion, the scheme, the fonts) failed
+nothing. The blocks below are what `test_shoalmark.py` compares a fresh run against (`SHOALMARK_REGENERATE=1`; `facts.mjs` on every run
+where Node exists).
+
+```json
+{
+  "file": "work-tracker/evidence/FM-006/landing/start-page/checks.json",
+  "tested": "cb49101",
+  "command": "git archive cb49101 | tar -x -C stage-cb49101 && (cd stage-cb49101 && uvx zensical@0.0.65 build); node work-tracker/evidence/FM-006/landing/start-page/checks.mjs stage-cb49101/site checks.json work-tracker/evidence/FM-006/landing/index.html",
+  "checks": 18,
+  "failing": [
+    "chart 1440 R 54°10'N (under the title)", "chart 1440 S 54°00'N (under the title)",
+    "chart 1440 S 54°10'N (under the title)"
+  ],
+  "generated_by": "node work-tracker/evidence/FM-006/landing/start-page/checks.mjs"
+}
+```
+
+```json
+{
+  "file": "work-tracker/evidence/FM-006/landing/start-page/checks-r3-before.json",
+  "tested": "9307cf8",
+  "command": "git archive 9307cf8 | tar -x -C stage-9307cf8 && (cd stage-9307cf8 && uvx zensical@0.0.65 build); node work-tracker/evidence/FM-006/landing/start-page/checks.mjs stage-9307cf8/site checks-r3-before.json",
+  "checks": 4,
+  "failing": [
+    "chart 1024 R 53°30'N", "chart 1024 R 53°30'N", "chart 1024 R 53°40'N", "chart 1024 R 53°40'N",
+    "chart 1024 R 54°10'N", "chart 1024 R 54°10'N", "chart 1024 R 7°00'E", "chart 1024 R 7°00'E",
+    "chart 1024 R 7°20'E", "chart 1024 R 8°20'E", "chart 1024 R 8°40'E", "chart 1024 R 8°40'E",
+    "chart 1024 R BUTJADINGEN", "chart 1024 R Bremerhaven", "chart 1024 R DITHMARSCHEN", "chart 1024 R Ems",
+    "chart 1024 R LAND WURSTEN", "chart 1024 R Norddeich", "chart 1024 R OSTFRIESLAND", "chart 1024 S 53°30'N",
+    "chart 1024 S 53°30'N", "chart 1024 S 53°40'N", "chart 1024 S 53°40'N", "chart 1024 S 54°10'N",
+    "chart 1024 S 7°00'E", "chart 1024 S 8°20'E", "chart 1024 S 8°40'E", "chart 1024 S BUTJADINGEN",
+    "chart 1024 S Bremerhaven", "chart 1024 S DITHMARSCHEN", "chart 1024 S LAND WURSTEN", "chart 1024 S Norddeich",
+    "chart 1440 R 53°30'N", "chart 1440 R 53°30'N", "chart 1440 R 53°40'N", "chart 1440 R 53°40'N",
+    "chart 1440 R 54°10'N", "chart 1440 R 54°10'N (under the title)", "chart 1440 R 7°00'E", "chart 1440 R 7°00'E",
+    "chart 1440 R 7°20'E", "chart 1440 R 8°00'E", "chart 1440 R 8°20'E", "chart 1440 R 8°40'E",
+    "chart 1440 R 8°40'E", "chart 1440 R BUTJADINGEN", "chart 1440 R Bremerhaven", "chart 1440 R DITHMARSCHEN",
+    "chart 1440 R Ems", "chart 1440 R LAND WURSTEN", "chart 1440 R Norddeich", "chart 1440 R OSTFRIESLAND",
+    "chart 1440 S 53°30'N", "chart 1440 S 53°30'N", "chart 1440 S 53°40'N", "chart 1440 S 53°40'N",
+    "chart 1440 S 54°00'N (under the title)", "chart 1440 S 54°10'N", "chart 1440 S 54°10'N (under the title)",
+    "chart 1440 S 7°00'E", "chart 1440 S 7°20'E", "chart 1440 S 8°20'E", "chart 1440 S 8°40'E",
+    "chart 1440 S BUTJADINGEN", "chart 1440 S Bremerhaven", "chart 1440 S DITHMARSCHEN", "chart 1440 S LAND WURSTEN",
+    "chart 1440 S Norddeich"
+  ],
+  "generated_by": "node work-tracker/evidence/FM-006/landing/start-page/checks.mjs (chart part)"
+}
+```
+
+```json
+{
+  "file": "work-tracker/evidence/FM-006/landing/start-page/facts.json",
+  "tested": "bef2a1e",
+  "command": "node work-tracker/evidence/FM-006/landing/start-page/facts.mjs bef2a1e work-tracker/evidence/FM-006/landing/index.html",
+  "wrecks": 24,
+  "failing": [],
+  "generated_by": "node work-tracker/evidence/FM-006/landing/start-page/facts.mjs",
+  "fields": {"sha": "bef2a1e2b84565f2533bc4acb9903e9de206252f", "release": "0.18.4", "counts": {"In Progress": 5, "Proposed": 3, "Shipped": 15, "Closed": 1}, "wrecks": 24},
+  "sha256_without_read": "0ed4effe2d20b8d54f2409e8d62d2b18fb42a190cc77622f9226465d91946dd8"
+}
+```
 
 ## Rebuild
 
