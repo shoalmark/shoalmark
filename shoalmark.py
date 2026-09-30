@@ -44,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
 # The version is the `VERSION` file and nothing else. It ships in TOOL_FILES, so a vendored copy carries it, and
@@ -4714,6 +4715,180 @@ def rights_problems(trackers):
     return out
 
 
+# --- the Shipped rule (FM-005, the Owner's ruling of 2026-09-30) ---------------------------------------------------------
+# The claim is *a gate that refuses a done without a commit behind it*. A change that moves a tracker to `Shipped` — its status
+# classifies as Shipped after and did not before, a new tracker included — is refused unless the tracker's ship log, as that
+# change leaves it, names a commit that is (a) in the change's history (an ancestor of the commit being judged: a commit being made
+# cannot name itself) and (b) changes at least one path outside the records. It judges exactly the changes the gate already
+# judges (`changes_under_review`), so a `Shipped` tracker no change moves is never read. It holds for every author, the Owner
+# included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged.
+GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,40}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more
+SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
+
+
+def is_shipped(text):
+    """Does this tracker's `status:` classify as Shipped, as the gate reads it elsewhere — False for no text, a file that was not there."""
+    status = (parse_frontmatter(text)[0].get("status") or "") if text is not None else ""
+    return bool(status) and classify_status(status) == "Shipped"
+
+
+def ship_log_rows(text):
+    """The rows of a tracker's ship log as one string — "" where it has no log, or a heading with no table under it."""
+    lines = parse_frontmatter(text)[1].split("\n")
+    log = ship_log_table(lines)
+    return "\n".join(lines[log[1] + 1:log[2] + 1]) if log and log[1] is not None else ""
+
+
+def commits_named(rows):
+    """The commits a ship log's rows name, once each in the order written: git hashes, or on Subversion `r<N>` revisions."""
+    return list(dict.fromkeys((SVN_NAME_RE if vcs() == "svn" else GIT_NAME_RE).findall(rows)))
+
+
+def ship_records():
+    """The prefixes that are the records for this rule — `[ratio] records` where that section is set, as `--ratio` reads it, else the
+    tracker directory, written from the top of the repository (git). A ValueError with the line to print where `[ratio]` is malformed."""
+    section = CONFIG.get("ratio")
+    if isinstance(section, dict):
+        return ratio_paths(section)[0]
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if vcs() == "git" else ""
+    return [prefix + p for p in ratio_defaults()["records"]]
+
+
+def git_ship_verdicts(names, bases, records):
+    """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
+    parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
+    At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
+    git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotepath=off", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}^{{commit}}\n" for n in names))
+    shas = {n: line.partition(" ")[0] for n, line in zip(names, found.stdout.split("\n")) if line.partition(" ")[2] == "commit"}
+    behind, changed = {}, {}
+    if shas:
+        beyond = git("rev-list", *dict.fromkeys(shas.values()), "--not", *bases)          # what the candidates reach that the parents do not
+        unreached = set(beyond.stdout.split()) if beyond.returncode == 0 else set(shas.values())      # no parent (a first commit): nothing is behind it
+        behind = {n: s for n, s in shas.items() if s not in unreached}
+    if behind:
+        log = git("log", "--no-walk=unsorted", "-m", "--first-parent", "--no-renames", "--name-only", "--format=%x00%H", *dict.fromkeys(behind.values()))
+        for record in log.stdout.split("\x00")[1:]:
+            sha, _, files = record.partition("\n")
+            changed[sha.strip()] = [f for f in files.split("\n") if f]
+    out = {}
+    for n in names:
+        if n not in behind:
+            out[n] = "is not in the history" + ("" if n in shas else " (no such commit)")
+        elif any(ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
+            out[n] = ""
+        else:
+            out[n] = f"changes nothing outside the records ({', '.join(records)})"
+    return out
+
+
+def svn_run(*args, xml=False):
+    """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where svn is not there, fails or is silent."""
+    import xml.etree.ElementTree as ET
+    try:
+        done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        return (ET.fromstring(done.stdout) if xml else done.stdout) if done.returncode == 0 and done.stdout.strip() else None
+    except (OSError, ET.ParseError):
+        return None
+
+
+def svn_entry(*args):
+    """The one `<logentry>` that `svn log <args> .` prints for the working copy, or None."""
+    log = svn_run("log", *args, ".", xml=True)
+    return log.find("logentry") if log is not None else None
+
+
+def svn_shipped_moves(rels):
+    """Subversion's reading of "what this run is judging", the one git's is: the change NOT YET COMMITTED — the trackers the working
+    copy has modified, added or not yet `svn add`ed — else the NEWEST revision, at HEAD, that changed anything under the working
+    copy, read against the one before it. The rights read the `status:` line's last author by `svn blame`, which judges a STATE: read so, every
+    Shipped tracker there ever was would be a move, and each one shipped before this rule would be refused for ever. Only the change in
+    front of the run is a move here. The calls: `svn status`, else `svn log -l 1`, and one `svn cat` for each tracker that is Shipped after."""
+    status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
+    for e in (status.iter("entry") if status is not None else []):
+        wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
+        if rel in rels and wc is not None and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
+            pending[rel] = wc.get("item") != "modified"                     # is it new to the repository
+    at, touched = None, {}
+    if pending:
+        touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
+        was = lambda rel: None if pending[rel] else svn_run("cat", "-r", "BASE", rel)
+    else:
+        newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")                  # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+        at = int(newest.get("revision")) if newest is not None else None
+        paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
+        touched = {rel: svn_run("cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
+        was = lambda rel: svn_run("cat", "-r", str(at - 1), rel)
+    for rel, now in touched.items():
+        if is_shipped(now) and not is_shipped(was(rel)):
+            yield rels[rel], "", ship_log_rows(now), lambda names, records, at=at: svn_ship_verdicts(names, at, records)
+
+
+def svn_ship_verdicts(names, at, records):
+    """{name: "" when that revision is a revision behind the change, else why it is not} — one before `at`, the revision being judged
+    (any, for a change not yet committed), that changed something under this working copy, with a path outside `records`, which are
+    read from the working copy's root. One `svn info`, and one `svn log` for each revision named."""
+    base = "/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")   # the working copy's own path in the repository
+    out = {}
+    for n in names:
+        entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v")
+        inside = [p.text[len(base) + 1:] if p.text.startswith(base + "/") else p.text for p in entry.iter("path") if p.text] if entry is not None else []
+        out[n] = ("is not in the history" if entry is None
+                  else "" if any(ratio_class(p, records, []) == "product" for p in inside) else f"changes nothing outside the records ({', '.join(records)})")
+    return out
+
+
+def shipped_moves(rels):
+    """Every move to Shipped the run is judging: (the tracker, where the change is said to be, the rows of its ship log as the change
+    leaves them, and what tells the commits those rows name apart). Git: each change `changes_under_review` lists — the ship log read
+    from the working tree for the commit being made, from the commit otherwise — and a move is one the tracker makes against EVERY
+    parent. Only a tracker that is Shipped after is read on the other side."""
+    if vcs() == "svn":
+        yield from svn_shipped_moves(rels)
+        return
+    for bases, files, _name, _email, _commit, result, label in changes_under_review():
+        touched = sorted(files & set(rels))
+        if not touched:
+            continue
+        spec = lambda rev, rel: f"{rev}:./{rel}"                            # `./`: from the working directory, which is ROOT — as `--relative` made the paths
+        if result is None:
+            now = {rel: (TRACKER_DIR / rels[rel]["file"]).read_text(encoding="utf-8") for rel in touched}
+        else:
+            texts = cat_blobs([spec(result, rel) for rel in touched])      # one call for every tracker the change touches
+            now = {rel: texts.get(spec(result, rel)) for rel in touched}
+        shipped = [rel for rel in touched if is_shipped(now.get(rel))]
+        before = cat_blobs([spec(base, rel) for rel in shipped for base in bases])
+        for rel in shipped:
+            if not any(is_shipped(before.get(spec(base, rel))) for base in bases):
+                yield rels[rel], (label + " — " if label else ""), ship_log_rows(now[rel]), lambda names, records, bases=bases: git_ship_verdicts(names, bases, records)
+
+
+def ship_problems(trackers):
+    """THE SHIPPED RULE's refusals, one line for each tracker a change moves to Shipped without a commit behind it: which tracker,
+    what is missing — no commit named · not in the history · nothing changed outside the records — and the way through."""
+    if vcs() not in ("git", "svn"):
+        return []
+    rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers if t.get("file")}
+    if not rels:
+        return []                                        # no tracker read from a file: nothing a change could have moved
+    records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
+    for t, where, rows, judge in shipped_moves(rels):
+        names = commits_named(rows)
+        try:
+            records = records or ship_records()
+        except ValueError as bad:
+            out.append(f'{t["id"]}: {where}moved to `Shipped`, which needs the records told from the product — {bad}')
+            continue
+        verdicts = judge(names, records) if names else {}
+        if "" in verdicts.values():
+            continue
+        found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
+        out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
+                   + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
+                   + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+    return out
+
+
 # --- sessions (FM-024, FM-032): a seat's commit names its session, and the registry is a report of the trailers --------
 # Seat = author: WHO MAY, read by the rights above. Session = which RUN: a `Session: <id>` trailer on every seat commit,
 # appended by the prepare-commit-msg hook from the worktree's `seat.session`, with `Worktree: <the checkout's directory>`
@@ -6376,6 +6551,7 @@ def lint(trackers, committing=False):
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
     problems += rights_problems(trackers)
+    problems += ship_problems(trackers)              # FM-005: no move to Shipped without a commit behind it, every author
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     problems += triage_guard()[0]                    # FM-037: only the Owner changes his intent and his current path
