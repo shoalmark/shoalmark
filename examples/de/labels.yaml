@@ -122,7 +122,7 @@ way.revoke.hint: "warum Sie es zurücknehmen — der Eintrag hält es neben dem 
 way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austausch"
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
-sessions.recent: Sitzungen · {0} am letzten Tag
+sessions.recent: "Sitzungen · {0} am letzten Tag ({1} mit ihren Untersitzungen)"
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}

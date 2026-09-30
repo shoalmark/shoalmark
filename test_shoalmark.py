@@ -629,8 +629,8 @@ with tempfile.TemporaryDirectory() as d:
     quiet = run_safe(root, "--owner")[1]
     now_ = commit_as(root, "implementer@seat", "at work now\n\nSession: 5555eeee/implementer-2\nWorktree: wt-now")
     busy = run_safe(root, "--owner")[1]
-    check(f"FM-032 S2 · the digest names the sessions with a commit in the last day, by seat — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
-          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · implementer 1 (5555eeee/implementer-2 in wt-now)" in busy and "1111aaaa" not in busy)
+    check(f"FM-032 S2 · the digest names the parents with a commit in the last day — a parent derived from its sub-session's id — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
+          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
     opened, closed = run_safe(root, "--session", "open", "6666ffff", "principal", "the Owner", "x"), run_safe(root, "--session", "close", "1111aaaa")
     gone = "--session open/close are gone since 0.18.0: the registry is a report — run --sessions"
     check(f"FM-032 S2 · `--session open` and `--session close` are gone: one line, exit 2, nothing written (saw {opened[0]}, {closed[0]}, {opened[2].strip()!r})",
@@ -768,7 +768,7 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
     git(root, "checkout", "-q", "-b", "feat")
     head = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1"); built = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1\nModel: claude-sonnet-5-5\nEffort: xhigh"); built = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: a9/reviewer-1"); v_same = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: k3"); v_ind = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}"); v_none = head()
@@ -814,10 +814,176 @@ with tempfile.TemporaryDirectory() as d:
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
-    check(f"FM-024 S7 · the board's strip names the sessions with a commit in the last day, with seat and worktree, and counts the week's verdicts; the digest's line groups them by seat (saw {(strip_ or '')[-200:]!r} · {digest_.strip()[-80:]!r})",
-          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (strip_ is None or (
-              "sessions · 4 in the last day — a9 t@t (—) · a9/implementer-1 t@t (—) · a9/reviewer-1 t@t (—) · k3 t@t (—)" in strip_
+    check(f"FM-024 S7 + FM-024 build for 0.19.0 · the board's strip is one line per parent — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the digest groups the same way under the same header (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
+          "SESSIONS IN THE LAST DAY · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
+              "sessions · 2 in the last day (4 with their sub-sessions) a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
               and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
+# --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + SEATS_TOML)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "owner@example.org", "the tree")
+    P1, P2, P3 = "1111aaaa", "2222bbbb", "3333cccc"
+    commit_as(root, "principal@seat", f"the first parent\n\nSession: {P1}\nWorktree: wt-p")
+    commit_as(root, "principal@seat", f"the third parent\n\nSession: {P3}\nWorktree: wt-q\nModel: claude-opus-4-8\nEffort: high")
+    for n in (1, 2, 3, 4, 5, 6):
+        commit_as(root, "implementer@seat", f"build {n}\n\nSession: {P1}/implementer-{n}\nWorktree: wt-i{n}")
+    commit_as(root, "implementer@seat", f"build 1, again — a newer model\n\nSession: {P1}/implementer-1\nWorktree: wt-i1\nModel: claude-sonnet-5-5\nEffort: xhigh")
+    for n in (1, 2, 3, 4, 5, 7):
+        commit_as(root, "reviewer@seat", f"review {n}\n\nSession: {P1}/reviewer-{n}\nWorktree: wt-r{n}\nModel: claude-opus-4-8\nEffort: high")
+    for n in (41, 42, 45):                                                   # a parent that made no commit of its own: derived
+        commit_as(root, "implementer@seat", f"build {n}\n\nSession: {P2}/implementer-{n}\nWorktree: wt-j{n}")
+    for n in range(1, 11):
+        commit_as(root, "reviewer@seat", f"review {n}\n\nSession: {P3}/reviewer-{n}\nWorktree: wt-s{n}")
+    commit_as(root, "reviewer@seat", f"a sub-session of a parent from a week ago\n\nSession: 4444dddd/reviewer-1\nWorktree: wt-old", "2026-01-05T09:00:00")
+    said = run_safe(root, "--owner")[1]
+    lines = [l for l in said.splitlines() if l.startswith("  ") and re.match(r"  [0-9a-f]{8} ", l)]
+    check(f"FM-024 (0.19.0) · 3 parents with 25 sub-sessions render 3 lines and the header's counts — the runs collapsed (`1–6`, `1–5, 7`, `41, 42, 45`), a parent with no commit of its own derived from its sub-sessions' ids, a session from a week ago not counted (saw {lines} · {said.strip()[-420:]!r})",
+          "SESSIONS IN THE LAST DAY · 3 (28 with their sub-sessions)" in said
+          and lines == [f"  {P1} principal (wt-p) · implementer 1–6 · reviewer 1–5, 7", f"  {P3} principal (wt-q) · reviewer 1–10", f"  {P2} — (—) · implementer 41, 42, 45"]
+          and "4444dddd" not in said)
+    fm.configure(root)
+    reg = fm.board_sessions()
+    members = {g[0]: {m[0]: m[1:] for m in g[4]} for g in reg["groups"]}
+    check(f"FM-024 (0.19.0) · the board's data carries the counts, a line per parent and each member's worktree, model and effort — the newest `Model:` and `Effort:` of a session, and `—` where no commit carried one (saw {reg['parents']}, {reg['all']}, {members.get(P1, {}).get(P1 + '/implementer-1')})",
+          (reg["parents"], reg["all"]) == (3, 28) and [g[0] for g in reg["groups"]] == [P1, P3, P2]
+          and members[P1][f"{P1}/implementer-1"] == ["wt-i1", "claude-sonnet-5-5", "xhigh"] and members[P1][f"{P1}/implementer-2"] == ["wt-i2", "—", "—"]
+          and members[P1][f"{P1}/reviewer-7"] == ["wt-r7", "claude-opus-4-8", "high"] and members[P3][P3] == ["wt-q", "claude-opus-4-8", "high"]
+          and members[P1][P1] == ["wt-p", "—", "—"] and P2 not in members[P2] and len(members[P2]) == 3
+          and len(reg["groups"][0][4]) == 13 and reg["groups"][0][3] == ["implementer 1–6", "reviewer 1–5, 7"])
+    _sub = fm.session_groups(since=0)
+    check("FM-024 (0.19.0) · a window of no seconds names no session — a parent is on the strip for a commit in the window, its own or a sub-session's", _sub == [])
+    fm.configure(HERE)
+
+# --- FM-024 (0.19.0): `--whoami`, and `Model:` and `Effort:` from the harness's own log — found by its id, never by a path ---------------
+CANARY = "CANARY-9c41e7d2 the transcript's words"
+
+
+def _turn(model=None, effort=None, cwd="/somewhere/the/session/was/launched", content=None, kind="assistant", **more):
+    """One Claude Code log line as the harness writes it: the model inside `message`, the effort and `cwd` at the top."""
+    d = dict(type=kind, cwd=cwd, sessionId="x", message=dict(role=kind, content=content if content is not None else CANARY))
+    if model:
+        d["message"]["model"] = model
+    if effort:
+        d["perTurnEffort"] = effort
+    d.update(more)
+    return json.dumps(d)
+
+
+class _Home:
+    """A home directory of its own for one block — the harness's logs under it, never the real ones."""
+    def __init__(self, base):
+        self.base, self.saved = Path(base), {}
+
+    def __enter__(self):
+        for k in ("HOME", "USERPROFILE", "CODEX_THREAD_ID"):
+            self.saved[k] = os.environ.get(k)
+        os.environ["HOME"] = os.environ["USERPROFILE"] = str(self.base)
+        os.environ.pop("CODEX_THREAD_ID", None)
+        return self
+
+    def __exit__(self, *_):
+        for k, v in self.saved.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+
+    def log(self, rel, lines):
+        f = self.base / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return f
+
+
+with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
+    root, home = Path(d).resolve(), _Home(Path(h).resolve())
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + SEATS_TOML)
+    cfg = lambda k, v=None: subprocess.run(["git", "-C", str(root), "config", *([k, v] if v is not None else ["--unset", k])], env=_ENV, capture_output=True)
+    PARENT, AGENT1, AGENT2, THREAD = "8e509911-e5fb-40ee-a747-7420819ab485", "aefd1a3520c000231", "b7c0d4e91a2f3c688", "01a0f131-ec9e-7942-aca7-758b84599599"
+    LAUNCH = "/Users/x/Documents/parent-project"                  # the directory the parent was launched in — on EVERY turn, sub-agents' too
+    with home:
+        home.log(f".claude/projects/-Users-x-parent/{PARENT}.jsonl",
+                 [_turn(kind="user", cwd=LAUNCH), _turn("claude-opus-4-8", "high", LAUNCH), _turn("claude-opus-4-8", "xhigh", LAUNCH), _turn(kind="user", cwd=LAUNCH)])
+        home.log(f".claude/projects/-Users-x-parent/{PARENT}/subagents/agent-{AGENT1}.jsonl",
+                 [_turn("claude-haiku-4-5", "low", LAUNCH), _turn("claude-sonnet-5-5", "medium", LAUNCH), _turn(model="claude-sonnet-5-5", cwd=LAUNCH, kind="assistant")])
+        home.log(f".claude/projects/-Users-x-parent/{PARENT}/subagents/agent-{AGENT2}.jsonl", [_turn("claude-opus-4-8", "high", LAUNCH)])
+        home.log(f".codex/sessions/2026/09/30/rollout-2026-09-30T09-22-56-{THREAD}.jsonl",
+                 [json.dumps(dict(type="session_meta", payload=dict(id=THREAD, cwd="/Users/x/codex-launch"))),
+                  json.dumps(dict(type="turn_context", payload=dict(model="gpt-6.1-old", effort="low", cwd="/Users/x/codex-launch"))),
+                  json.dumps(dict(type="response_item", payload=dict(type="message", content=[dict(text=CANARY)]))),
+                  json.dumps(dict(type="turn_context", payload=dict(model="gpt-6.1-sol", effort="medium", cwd="/Users/x/codex-launch")))])
+        who = {}
+        for name, sid, seat, hid in (("parent", "1111aaaa", "principal@seat", PARENT), ("agent1", "1111aaaa/implementer-1", "implementer@seat", AGENT1),
+                                     ("agent2", "1111aaaa/reviewer-1", "reviewer@seat", AGENT2), ("codex", "2222bbbb", "principal@seat", THREAD)):
+            cfg("seat.session", sid); cfg("user.email", seat); cfg("seat.harness", hid)
+            who[name] = run_safe(root, "--whoami")
+        wt = root.name
+        want = {"parent": f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · xhigh", "agent1": f"To: 1111aaaa/implementer-1 implementer ({wt}) · claude-sonnet-5-5 · medium",
+                "agent2": f"To: 1111aaaa/reviewer-1 reviewer ({wt}) · claude-opus-4-8 · high", "codex": f"To: 2222bbbb principal ({wt}) · gpt-6.1-sol · medium"}
+        got = {k: v[1].splitlines()[0] if v[1] else v[2].strip() for k, v in who.items()}
+        check(f"FM-024 (0.19.0) · `--whoami` prints `To: <session> <seat> (<worktree>) · <model> · <effort>` from the log the id names — a Claude parent, its two sub-agents (whose logs all say the parent's launch directory) and a Codex rollout, each the newest turn's own (saw {got})",
+              got == want and all(v[0] == 0 for v in who.values()) and f"launched in {LAUNCH}" in who["agent1"][1] and "codex-launch" in who["codex"][1])
+        msg = root / "MSG"
+        trail = {}
+        for name, sid, seat, hid in (("parent", "1111aaaa", "principal@seat", PARENT), ("agent1", "1111aaaa/implementer-1", "implementer@seat", AGENT1), ("codex", "2222bbbb", "principal@seat", THREAD)):
+            cfg("seat.session", sid); cfg("user.email", seat); cfg("seat.harness", hid)
+            msg.write_text("a seat's subject\n"); code_ = run_safe(root, "--session-trailer", str(msg))[0]
+            trail[name] = (code_, msg.read_text().splitlines()[2:])
+        check(f"FM-024 (0.19.0) · the prepare-commit-msg hook (`--session-trailer`) appends `Model:` and `Effort:` beside `Session:` and `Worktree:` where the id's log names them (saw {trail})",
+              trail["parent"] == (0, ["Session: 1111aaaa", f"Worktree: {wt}", "Model: claude-opus-4-8", "Effort: xhigh"])
+              and trail["agent1"][1][-2:] == ["Model: claude-sonnet-5-5", "Effort: medium"] and trail["codex"][1][-2:] == ["Model: gpt-6.1-sol", "Effort: medium"])
+        cfg("seat.session", "1111aaaa"); cfg("user.email", "principal@seat"); cfg("seat.harness", PARENT)
+        typed = "a subject\n\nModel: typed-by-hand\nSession: 1111aaaa\nWorktree: elsewhere\nEffort: typed\n"
+        msg.write_text(typed); run_safe(root, "--session-trailer", str(msg)); once = msg.read_text()
+        msg.write_text("a subject\n\nSession: 1111aaaa\nModel: typed-by-hand\n"); run_safe(root, "--session-trailer", str(msg)); half = msg.read_text()
+        check(f"FM-024 (0.19.0) · a commit that carries the trailers already is left alone — each key on its own: a typed `Model:` stays the one, and `Effort:` is still added (saw {once!r} · {half!r})",
+              once == typed and half.count("Model:") == 1 and "Model: typed-by-hand" in half and "Effort: xhigh" in half and "Worktree:" in half)
+        # the canary: the reader takes top-level fields only. A transcript whose message content, tool result and side fields are a sentinel
+        # — and whose model names a second trailer — must put none of it into anything the reader prints or writes
+        home.log(f".claude/projects/-Users-x-canary/{PARENT[:-1]}0.jsonl",
+                 [_turn(kind="user", content=CANARY), _turn("claude-opus-4-8", "high", content=[dict(type="text", text=CANARY), dict(type="tool_result", content=CANARY)],
+                                                           toolUseResult=CANARY, slug=CANARY, gitBranch=CANARY),
+                  _turn("claude-opus-4-8\nSession: evil", "high\nModel: evil", content=CANARY)])
+        cfg("seat.harness", PARENT[:-1] + "0")
+        msg.write_text("a subject\n"); cw = run_safe(root, "--whoami"); ct = run_safe(root, "--session-trailer", str(msg)); after = msg.read_text()
+        seen_all = cw[1] + cw[2] + ct[1] + ct[2] + after
+        check(f"FM-024 (0.19.0) · CANARY: a transcript whose message content, tool result and side fields are a sentinel puts none of it into what `--whoami` prints or the hook writes — and a model with a line break in it is no value, so no second trailer (saw {cw[1].splitlines()[:1]} · {after.splitlines()[2:]})",
+              CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
+        # the newest turn that carries them, from the end of a log of several megabytes — never a whole-file read
+        big = home.log(f".claude/projects/-Users-x-big/{PARENT[:-1]}1.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(30)] + [_turn("claude-sonnet-5-5", "max")])
+        cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.monotonic(); bw = run_safe(root, "--whoami"); took = time.monotonic() - t0
+        check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log (saw {bw[1].splitlines()[:1]}, {took:.1f} s)",
+              bw[1].splitlines()[0].endswith("claude-sonnet-5-5 · max") and took < 20)
+        # a log that names nothing within the newest 8 MiB (or only one of the two) reads `—` and says why — never silence
+        old = home.log(f".claude/projects/-Users-x-old/{PARENT[:-1]}2.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(90)])
+        half_ = home.log(f".claude/projects/-Users-x-half/{PARENT[:-1]}3.jsonl", [_turn("claude-opus-4-8")])
+        cfg("seat.harness", PARENT[:-1] + "2"); gone = run_safe(root, "--whoami")
+        cfg("seat.harness", PARENT[:-1] + "3"); part = run_safe(root, "--whoami")
+        check(f"FM-024 RV-2012 · a log whose fields lie beyond the newest 8 MiB prints `— · —` and names the cap on stderr; a log with a model and no effort says it names no effort (saw {gone[1].splitlines()[:1]}, {gone[2].strip()[-90:]!r} · {part[1].splitlines()[:1]}, {part[2].strip()[-70:]!r})",
+              old.stat().st_size > 9_000_000 and gone[0] == 0 and gone[1].splitlines()[0].endswith("· — · —") and "names no model and no effort in its newest 8 MiB" in gone[2]
+              and part[1].splitlines()[0].endswith("claude-opus-4-8 · —") and "names no effort in its newest 8 MiB" in part[2] and "and no" not in part[2])
+        # two files for one id refuse; none is `—`
+        dup = home.log(f".claude/projects/-Users-x-elsewhere/{PARENT}.jsonl", [_turn("claude-haiku-4-5", "low")])
+        cfg("seat.harness", PARENT)
+        msg.write_text("a subject\n"); amb = run_safe(root, "--whoami"); amb_t = run_safe(root, "--session-trailer", str(msg))
+        check(f"FM-024 (0.19.0) · two log files carrying one id refuse — exit 2, both paths named, no `To:` line; the hook writes no `Model:` and no `Effort:` and does not stop the commit (saw {amb[0]}, {amb[2].strip()[-190:]!r} · {msg.read_text().splitlines()[2:]})",
+              amb[0] == 2 and amb[1] == "" and str(dup) in amb[2] and f"{PARENT}.jsonl" in amb[2] and "-Users-x-parent" in amb[2]
+              and amb_t[0] == 0 and msg.read_text().splitlines()[2:] == ["Session: 1111aaaa", f"Worktree: {wt}"])
+        cfg("seat.harness", "0123456789abcdef0"); none_ = run_safe(root, "--whoami")
+        cfg("seat.harness"); unset = run_safe(root, "--whoami")
+        cfg("seat.harness", "../../etc/passwd"); odd = run_safe(root, "--whoami")
+        check(f"FM-024 (0.19.0) · an id with no log, no id, or an id that is no name reads `—` and says why — the commit gets no trailer (saw {none_[1].strip()!r} · {unset[1].strip()!r} · {odd[1].strip()!r})",
+              none_[1].strip() == f"To: 1111aaaa principal ({wt}) · — · —" and "no log carries the harness id 0123456789abcdef0" in none_[2]
+              and unset[1].strip() == none_[1].strip() and "seat.harness" in unset[2] and odd[1].strip() == none_[1].strip() and "at least eight" in odd[2])
+        cfg("seat.session"); nosession = run_safe(root, "--whoami")
+        check(f"FM-024 (0.19.0) · `--whoami` in a worktree with no `seat.session` prints no `To:` line and says so, exit 4 (saw {nosession[0]}, {nosession[2].strip()[:90]!r})",
+              nosession[0] == fm.EXIT_LINT and nosession[1] == "" and "no `seat.session`" in nosession[2])
+        schema = run_safe(root, "--schema")[1]
+        check("FM-024 (0.19.0) · `--schema` lists the worktree's settings — `seat.session` and `seat.harness` — under the configuration's keys", "| `seat.harness` |" in schema and "| `seat.session` |" in schema and "| `user.email` |" in schema)
+
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
