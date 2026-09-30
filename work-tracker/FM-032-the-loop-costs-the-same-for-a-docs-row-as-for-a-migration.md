@@ -131,6 +131,25 @@ Each takes effect on the Owner's answer, never on a default.
     the freeze.
   - The number is the Owner's to set: 15 were open before this filing.
 
+## The records-to-product ratio — the Owner's concern of 2026-09-30
+
+The Owner, 2026-09-30, *normalised*: 06:54:04 *"The records-to-code ratio shall become our main concern now. These numbers must even
+out or invert."*; 07:04:27 *"We shall track added lines vs deletions — so separately."* and *"If a check output regenerates, keep
+only its summary; if it doesn't, it stays in git."*; 07:14:05 *"We split."*; 07:21:58 *"Go, freeze excepted."* The definition is
+filed on its own page, public and with no other project's numbers: `work-tracker/evidence/FM-032/records-to-product-ratio.md`.
+
+**Decisions**, graded by the Principal and taken by the Owner (decisions, not quotations):
+- The ruling is applied here: the summary of a regenerable check output is the command, the tested commit, the environment, the
+  pass and fail counts and the failing check ids, plus a committed check that proves regeneration; an output that does not
+  regenerate stays and counts.
+- D9 is in force: a verdict names the reviewed commit, base, tier and checks, through the `Reviewed:` trailer that FM-024's S6 reads.
+- D1 (no review file outside a critical tier) changes S1, the Owner's signed rule, so it waits as an ask on this tracker — not built here.
+
+**What this slice builds:** the page; `--ratio`, his explicit exception to the filing freeze (*"Go, freeze excepted."*); the ruling
+applied to the regenerable outputs, each replaced by its summary in its README; and the committed regeneration check
+(`SHOALMARK_REGENERATE=1`). **What stays in git, and why:** `browser-fonts.json` (no committed command), `results.json` (a CI
+read-back), `scanned-refs.txt` and the `jev-*` files (an external service's exchange) do not regenerate from git, so they stay and count.
+
 ## Done when
 
 - A docs change merges with one Reviewer pass.
@@ -151,6 +170,7 @@ Each takes effect on the Owner's answer, never on a default.
 
 | Date | Event |
 |---|---|
+| 2026-09-30 07:4x CEST | **Filed on the Owner's concern of 06:54:04 and his ruling of 07:04:27**, as one change on `fm/032-the-ratio-command-and-the-check-outputs-rule` — an explicit exception to the freeze (his 07:21:58): the definition page (`work-tracker/evidence/FM-032/records-to-product-ratio.md`) and this section; `--ratio`, the check outputs replaced by their summaries and the regeneration check follow on the branch. |
 | 2026-09-24 12:45 CEST | The two 0.18.0 branches merged by the Principal: S2 (`a2956a5`, the registry as a report) with `--queue`, the freeze and `--tags`, the rules in AGENTS.md, `--answer` after an earlier answer and revoke/supersede (`66f4b7b`). Conflicts: the dispatch in `shoalmark.py`, README §5's refusal table, FM-031's ship log, INDEX regenerated, `sessions.md` stays deleted. Gates and both suites green on the merged tree. The ask cleared as acted on, next move `build`: the Owner tags, the parent project vendors. The Reviewer takes the code loop next. |
 | 2026-09-24 11:43 CEST | **S2 built** for 0.18.0 at `3c0754f` (docs `6a14704`, VERSION and CHANGELOG `2fcd15b`) on `fm/032-0-18-0-the-registry-becomes-a-report` — by the Owner's two answers of 2026-09-24 (here *all four now*, on FM-031 *all three rules now, S1 then S2*) it is FM-031's S1 as well, one design. **The report:** `--sessions` reads the `Session:` trailers of the checkout's history (`git log` of HEAD) — per id its seat through `[seats]`, first and last commit, how many commits, and its worktree from a `Worktree:` trailer the hook now appends beside `Session:` (`—` before); the board's strip and the digest read it (the sessions with a commit in the last day). `work-tracker/sessions.md` is deleted; `--check` warns where one is left. **The gate** keeps one rule: a seat's commit carries a `Session:` of the shape `<8 hex>[/<seat>-<n>]` whose seat part is its own; a commit whose history has no `Session:` is not judged (adoption moved from the file to the first trailer). **Removed:** `--session open` and `close` (one line, exit 2), the open-row check, the worktree clash, the removal, drop and re-open judgement, abandoned rows in `--check` and `--triage`. Checks 264 + 148 → 266 + 148. |
 | 2026-09-24 09:48 CEST | Verified READY WITH FINDINGS at `db15a31` (R1–R5, all P3); closed in the text before the ask reaches him because two touch what he answers: R3 — the freeze's number is 8, half of today's 16, carried by *all four now*; R4 — FM-031's S1 is read as this S2, one design; R1 the -15 instance; R2 the parent's hash gone; R5 *a fifth, like for like*. One more pass, the last. |
