@@ -4890,7 +4890,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and said37_["ap/037-signed"][0] == f"wait: no verdict on {c_sig_[:7]}" and said37_["ap/037-passes"][0] == f"wait: no verdict on {c_pass_[:7]}"
           and said37_["ap/037-path"][0] == f"wait: no pull request — TRIAGE.md changed unsigned ({c_path_[:7]})")
     # the Owner is the DEFAULT branch's: a branch that names itself the Owner still judges nothing of its own
-    c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
+    c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\nimplementer = "implementer@seat"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
     git(root, "push", "-q", "origin", "ap/037-self"); c_st_, _g = made37_("ap/037-stacked", "AP-037: the path, on a stacked branch", text37_("2. Nothing merges unreviewed.", "2. The seat merges."), SEAT_, frm="ap/037-self")
     q_st_ = _no_git_env(lambda: fm.queue_actions([{"number": 9, "title": "s", "headRefName": "ap/037-stacked", "headRefOid": c_st_, "baseRefName": "ap/037-self",
                                                   "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": "2026-09-25T09:00:00Z"}]))
