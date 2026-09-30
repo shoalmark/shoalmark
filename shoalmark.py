@@ -5031,8 +5031,9 @@ def harness_reading(hid):
 
 
 def whoami():
-    """`--whoami`: who this session is, in the form a message between sessions names its target (AGENTS.md) —
-    `To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]` by the
+    """`--whoami`: who this session is, as the line a seat's report opens with (AGENTS.md) —
+    `From: <session> <seat> (<worktree>) · <model> · <effort>`; a message a person carries between sessions names its target
+    by the same identity after `To:`. The session is from `seat.session`, the seat from `[seats]` by the
     worktree's `user.email`, the worktree's folder, and the model and effort from the harness's log by `seat.harness`
     (`—` where there is none). A second line names the log and the directory its session was launched in, for a person to
     read. Exit 4 (the lint code) without a `seat.session`; exit 2 where two logs carry the id."""
@@ -5046,7 +5047,7 @@ def whoami():
     if reading is None and problem.startswith("two logs"):
         print(f"--whoami: {problem}", file=sys.stderr)
         return 2
-    print(f"To: {sid} {seat_of(name, email) or email or name or '—'} ({pathlib.Path(top).name if top else ROOT.name}) · "
+    print(f"From: {sid} {seat_of(name, email) or email or name or '—'} ({pathlib.Path(top).name if top else ROOT.name}) · "
           f"{(reading or {}).get('model') or '—'} · {(reading or {}).get('effort') or '—'}")
     if reading:
         print(f"    read from {reading['path']}" + (f" — its session was launched in {reading['cwd']}" if reading["cwd"] else ""))
@@ -6572,8 +6573,9 @@ def parse_args(argv):
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — and `Model:` and `Effort:` where `seat.harness` "
                                                             "names a log that carries them (`--whoami`) — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
-    add("--whoami", action="store_true", help="who this session is, as a message between sessions names its target (AGENTS.md): "
-                                              "`To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]`, the "
+    add("--whoami", action="store_true", help="who this session is — the line a seat's report opens with (AGENTS.md): "
+                                              "`From: <session> <seat> (<worktree>) · <model> · <effort>`; a message's target is the same identity after `To:` "
+                                              "— the session from `seat.session`, the seat from `[seats]`, the "
                                               "worktree's folder, and the model and effort from the harness's own log, found by the id in `seat.harness` "
                                               "(`—` where there is none). Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
