@@ -49,3 +49,11 @@
 - Not run: the core, integration, browser and build suites, which are CI's on PR 138.
 - **Quality read:** R1–R6 are wording and cross-references. No product line changed; INDEX was regenerated faithfully.
   This pass: records +51, product +0.
+
+## R1 closure — at dbf7512 (2026-09-30 19:33 CEST, the same pass and seat)
+
+- **Reviewed:** `dbf751227875ebd2900cd4da00cee3d5cc661ed9` (tree `fded9d1a3a899bdfb35e57ead3ec33cdd24ed53c`). **Base:** `c97d6be96bb009e6b486bf7ff92c9a0668bf3d76`.
+  Delta from `35bbdde`: the Owner's `22481b2` (signed; Good against the tracked `allowed_signers`, unchanged; exit 0) and his merge `dbf7512` (unsigned, clean, carrying this file unchanged).
+- **R1 closed.** In both `TRIAGE.md` and `INDEX.md`, line 1 changes from *10.5:1* to *4.2:1*, which is the page's measured baseline (+1 −1 each). No other tracked change.
+- R2–R6 stay P3, for a later change. **Verdict: READY WITH FINDINGS.**
+- Checks: `git diff --check 35bbdde dbf7512` exit 0; `--check` at this tip exit 0. The suites were not rerun; the prior witness stands.
