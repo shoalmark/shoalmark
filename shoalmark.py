@@ -1647,7 +1647,7 @@ def queue_actions(prs, branches=()):
     - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
     - `wait: no verdict on <head>` — no verdict names its head;
     - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
-    A verdict is a commit among the pull requests' own that carries `Reviewed: <sha>`, as `--check` reads one, with its
+    A verdict is a commit among the same-repository pull requests' own and the pushed branches' that carries `Reviewed: <sha>`, as `--check` reads one, with its
     word in its subject. It names a head that is <sha>, or that only review addenda follow <sha> to — commits touching
     nothing but the review folder (`[paths] reviews`, `evidence/reviews/` by default, a glob allowed) and
     `<tracker dir>/sessions.md` — and the verdict commit itself, whose own review file counts wherever it sits under
@@ -6042,7 +6042,7 @@ def parse_args(argv):
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
-    add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
+    add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — wait: from a fork, read it yourself (first) · merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
                                             "merge: your answer · wait: not an answerer (<author>) · wait: a seat's commit on your answer branch (<sha>, <author>) · wait: an unverified commit in your name on your answer branch (<sha>) · wait: the base <base> is not fetched here — … · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "

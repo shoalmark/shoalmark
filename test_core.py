@@ -742,6 +742,19 @@ with tempfile.TemporaryDirectory() as _qd:
         [dict(_qpr, headRefOid=_qgit("rev-parse", "HEAD")), _qown])}
     check("FM-006: an unrelated fork's fabricated verdict cannot promote another PR",
           _qrows[2] == ("wait", f"wait: no verdict on {_qh[:7]}"))
+    _qgit("checkout", "-q", "-b", "wraps-fork", _qh)
+    (_qr / "own.txt").write_text("own\n"); _qgit("add", "-A"); _qgit("commit", "-qm", "own work on the fork's head")
+    _qrows = {p["number"]: (kind, action) for p, kind, action, _ in gti.queue_actions(
+        [dict(_qpr, headRefOid=_qh), dict(_qown, number=3, headRefOid=_qgit("rev-parse", "HEAD"))])}
+    check("FM-006: a fork inside another PR's head waits for the Owner, never closes with it", _qrows[1] == ("wait", _qwait))
+    _qgit("checkout", "-q", "-b", "conflict-fork", _qb)
+    (_qr / "base.txt").write_text("fork\n"); _qgit("add", "-A"); _qgit("commit", "-qm", "fork edits base")
+    _qcf = _qgit("rev-parse", "HEAD")
+    _qgit("checkout", "-q", "--detach", _qb)
+    (_qr / "base.txt").write_text("main\n"); _qgit("add", "-A"); _qgit("commit", "-qm", "main edits base")
+    _qgit("update-ref", "refs/remotes/origin/main", _qgit("rev-parse", "HEAD"))
+    check("FM-006: a conflicting fork waits for the Owner's reading, not on its conflict",
+          gti.queue_actions([dict(_qpr, headRefOid=_qcf)])[0][1:3] == ("wait", _qwait))
 gti.configure(ROOT)
 
 # `last_worked_on` and `repos_naming` read git; their fixture repository lives in test_shoalmark.py.

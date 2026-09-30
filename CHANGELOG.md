@@ -8,7 +8,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
-  pull request or tell the Owner to close work carried into that fork.
+  pull request or tell the Owner to close work carried into that fork. Nor can a fork's base hide another pull
+  request's verdict: a same-repository pull request reads as it would with no fork open.
 
 - **A ranked open tracker sits in `progress`, whatever its status (FM-041).** `board()` placed by status alone, so a
   ranked `Proposed` tracker fell into the backlog while the section's caption reads *kept by triage — by rank, then

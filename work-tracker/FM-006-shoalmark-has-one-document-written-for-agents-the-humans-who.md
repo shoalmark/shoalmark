@@ -27,6 +27,7 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
 forks from verdict/carry-over calculations and always says `wait: from a fork, read it yourself`. On the base, five
 provenance/refusal controls fail and the same-repository merge control passes. Critical review remains due.
+Left ([review R3](evidence/reviews/review-fm-006-fork-queue-c2027d2.md), pre-existing): forks can hide same-repository pushed branches by name, containment or a closed pull head; fix `pushed_branches` using open/closed PR provenance in a separate bug slice.
 
 **2026-09-30 — public hardening executed by the Owner after #127 merged.** Tag rules, merge-only policy, repository Actions, CodeQL success and new-public security defaults verified; organisation Actions is browser-reported with the remaining readback limits stated in the [execution receipt](evidence/FM-006/public-hardening-owner-2026-09-30.md#execution-results--2026-09-30-owner-browser-actions). Existing repository protections remain active; the new default is not attached retroactively.
 
