@@ -22,8 +22,8 @@ One line per requirement, in a Markdown table with four columns:
 
 ## How the record cites it
 
-A tracker's front matter names what it satisfies: `satisfies: REQ-001, REQ-004`. The tool tolerates the key today and
-reads it in Stage 1. A test names the id in its name or docstring. A requirement replaces a restated behaviour: the
+A tracker names what it satisfies in one line of its body: `Satisfies: REQ-001, REQ-004`. The gate refuses a front-matter
+key it does not know; a `satisfies:` key is Stage 1's ask. A test names the id in its name or docstring. A requirement replaces a restated behaviour: the
 tracker cites the id instead of repeating the sentence, never a third copy.
 
 ## Who changes one

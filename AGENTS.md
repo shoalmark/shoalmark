@@ -31,8 +31,8 @@ Where a repository has a `requirements/` folder, read it before you build or tes
 `shall`, `source`, `accept` — and the developer and the tester both work from it, not from each other's code. The
 convention is in [`requirements/README.md`](requirements/README.md); this is Stage 0, the convention only.
 
-- **Cite the id.** A tracker says `satisfies: REQ-001` in its front matter (the tool tolerates the key today and reads it
-  in Stage 1); a test names the id in its name or docstring. Cite the id instead of restating the behaviour.
+- **Cite the id.** A tracker says `Satisfies: REQ-001` in one line of its body (the gate refuses the key in the front matter;
+  the key is Stage 1's ask); a test names the id in its name or docstring. Cite the id instead of restating the behaviour.
 - **Never change a line yourself.** A requirement changes only by the Owner's signed decision, an answer through the
   board; the id stays, the line changes, git holds the history. A seat that finds one wrong raises it as an ask.
 - **A regulatory requirement cites its clause** — standard, edition, clause number — and carries the company's own *shall*.

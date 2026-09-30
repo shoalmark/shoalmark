@@ -71,8 +71,8 @@ Dann den Block aus `<klon>/examples/de/headings.toml` an `shoalmark.toml` anhän
 
 Legt in `probe/` einen Ordner `requirements/` an (`requirements/README.md` im Klon beschreibt ihn). Eine Anforderung ist
 eine Tabellenzeile: `id` (stabil, nie neu vergeben), `shall` (ein Satz, das System als Subjekt, eine Pflicht), `source`
-(wer oder was sie verlangt), `accept` (das Abnahmekriterium: was ein Test beobachtet). Ein Arbeitspaket nennt sie im Kopf
-mit `satisfies: REQ-001`, ein Test im Namen. Eine Zeile ändert nur der Owner, mit einer unterschriebenen Antwort über die
+(wer oder was sie verlangt), `accept` (das Abnahmekriterium: was ein Test beobachtet). Ein Arbeitspaket nennt sie in einer Zeile unter dem
+Kopf, `Satisfies: REQ-001` (im Kopf lehnt das Gate den Schlüssel ab), ein Test in seinem Namen. Eine Zeile ändert nur der Owner, mit einer unterschriebenen Antwort über die
 Tafel, nie ein Agent. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und trägt einen eigenen
 Satz; der Normtext wird nicht kopiert, und keiner schreibt, das Projekt erfülle die Norm: Ein Nachweis ist ein bestandener
 Test. Der Bericht nennt die Zahl der Zeilen, den Nachweis je Zeile und die Stelle, an der es hakte. Prüfungen gibt es noch nicht.
