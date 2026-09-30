@@ -5493,6 +5493,358 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-032 · `--ratio`: records added : product added, per Europe/Berlin day of the merge --------------------------------------
+def _ratio_g(root, *a, when=None):
+    """One git call in the scratch repository; `when` dates the commit or merge it makes (author and committer, an explicit offset)."""
+    env = dict(_ENV, **({"GIT_COMMITTER_DATE": when, "GIT_AUTHOR_DATE": when} if when else {}))
+    return subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *a],
+                          check=True, capture_output=True, text=True, env=env).stdout.strip()
+
+
+def _ratio_merge(root, name, when, files, gone=(), pointer=False):
+    """A pull request as the forge merges it: a branch with one commit, then `--no-ff` into main, the merge dated `when`."""
+    _ratio_g(root, "switch", "-q", "-c", name, "main")
+    for rel, data in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_bytes(data)
+    for rel in gone:
+        _ratio_g(root, "rm", "-q", rel)
+    if pointer:                                   # a submodule pointer: mode 160000, whatever commit it names
+        _ratio_g(root, "update-index", "--add", "--cacheinfo", f"160000,{_ratio_g(root, 'rev-parse', 'HEAD')},sub")
+    _ratio_g(root, "add", "-A")
+    _ratio_g(root, "commit", "-q", "-m", name, when=when)
+    _ratio_g(root, "switch", "-q", "main")
+    _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge " + name, name, when=when)
+
+
+def _lines(n, word="x"):
+    return ("".join(f"{word} {i}\n" for i in range(n))).encode()
+
+
+_zone_ok = fm.ratio_zone()[1]
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "work-tracker"\n\n[ratio]\nrecords = ["work-tracker/", "NOTES.txt"]\nexclude = ["vendor/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"work-tracker/a.md": _lines(3), "src/a.py": _lines(5)})
+    # 23:30 UTC on the 22nd is 01:30 on the 23rd in Berlin: the day is Berlin's, not UTC's
+    _ratio_merge(root, "two", "2026-09-22T23:30:00+00:00",
+                 {"work-tracker/b.md": _lines(4), "NOTES.txt": _lines(2), "vendor/x.js": _lines(100), "src/b.py": _lines(7), "bin.dat": b"\0\1\2\0"},
+                 gone=("work-tracker/a.md",), pointer=True)
+    _ratio_merge(root, "three", "2026-09-24T12:00:00+02:00", {"work-tracker/c.md": _lines(2)})
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-24")
+    day_ = lambda s: next((l for l in out_.splitlines() if l.startswith(s)), "")      # a line of the latest `out_`
+    check("FM-032 · `--ratio` counts the four numbers per day of a planted trunk — records and product added and deleted, a plain path a record, an `exclude` prefix "
+          f"in neither, the submodule pointer no line, the deletion never subtracted (saw {out_!r})",
+          code_ == 0 and day_("2026-09-22") == ("2026-09-22  records +3 \u22120  product +5 \u22120  0.6:1  (1 merge)" if _zone_ok else
+                                                "2026-09-22  records +9 \u22123  product +12 \u22120  0.8:1  (2 merges, 1 binary)")   # no tz database: 23:30 UTC stays the 22nd
+          and day_("window") == "window      records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)")
+    if _zone_ok:
+        check("FM-032 · the day is the merge's committer date in Europe/Berlin — 23:30 UTC on the 22nd is the 23rd — and a binary file is 0 lines and counted as a file",
+              day_("2026-09-23") == "2026-09-23  records +6 \u22123  product +7 \u22120  0.9:1  (1 merge, 1 binary)" and "NOT: no time zone database" not in out_)
+    else:
+        SKIPS.append(("FM-032 · the Berlin day", 1, "no tz database for Europe/Berlin here (zoneinfo cannot load it)"))
+        print("  skip  FM-032 · the Berlin day — no tz database for Europe/Berlin here; 1 check(s) did not run")
+        check("FM-032 · without a tz database the header says the day is the merge's own offset", "NOT: no time zone database" in out_)
+    check("FM-032 · a day with no product added prints its counts and `no finite ratio`, never a division",
+          day_("2026-09-24") == "2026-09-24  records +2 \u22120  product +0 \u22120  no finite ratio  (1 merge)")
+    code_, out_, _ = run(root, "--ratio", "--since", "2026-09-24", "--until", "2026-09-24")
+    sums_ = out_.split("day sums")[1].splitlines() if "day sums" in out_ else []
+    check(f"FM-032 · the seven-day sums reach back before `--since`: a window of the 24th alone still sums the two merges before it (saw {sums_[-1:]})",
+          code_ == 0 and day_("window").startswith("window      records +2 \u22120  product +0 \u22120") and any(l.startswith("2026-09-24  records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)") for l in sums_)
+          and not any(l.startswith("2026-09-23") for l in sums_))
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-25", "--until", "2026-09-24")
+    code2_, _, err2_ = run(root, "--since", "2026-09-22")
+    check("FM-032 · `--since` after `--until` is refused, and so are `--since`/`--until` without `--ratio`", code_ == 2 and "after --until" in err_ and code2_ == 2 and "go with --ratio" in err2_)
+    rm_git(root)
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "work-tracker"\n')
+    code_, out_, err_ = run(root, "--ratio")
+    check(f"FM-032 · a repository without a `[ratio]` section says so and exits 2 — it has no ratio to count (saw {err_.strip()!r})", code_ == 2 and "no [ratio] section" in err_ and out_ == "")
+    rm_git(root)
+# RV-726: the default `records` is the tracker directory the tool is configured with, not shoalmark's own `work-tracker/`
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\n')          # no `tracker_dir` (the tool's default, docs/work-tracker), `[ratio]` with no keys
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"docs/work-tracker/FM-1.md": _lines(2), "src/x.py": _lines(1)})
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-22")
+    check(f"FM-032 · `[ratio]` alone counts the configured tracker directory (`docs/work-tracker/`, no `tracker_dir` key) as records, the other path as product (saw {out_!r})",
+          code_ == 0 and "records: docs/work-tracker/" in out_ and "2026-09-22  records +2 \u22120  product +1 \u22120  2.0:1  (1 merge)" in out_)
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "notes/tracker/"\n')
+    code_, out_, err_ = run(root, "--ratio")
+    check(f"FM-032 · the refusal without `[ratio]` advises the configured tracker directory, not shoalmark's own (saw {err_.strip()!r})",
+          code_ == 2 and 'records = ["notes/tracker/"]' in err_ and "work-tracker/\"]" not in err_.replace("notes/tracker/", ""))
+    # RV-727 a: a `records` or `exclude` that is no list is one refused line, exit 2, never a traceback
+    _bad = {}
+    for _val in ("5", "true", '"work-tracker/"'):
+        for _key in ("records", "exclude"):
+            (root / "shoalmark.toml").write_text(f'name = "r"\n\n[ratio]\n{_key} = {_val}\n')
+            _bad[(_key, _val)] = run(root, "--ratio")
+    check(f"FM-032 · a scalar `records` or `exclude` (5, true, a string) is refused in one line, exit 2, no traceback (saw {_bad[('records', '5')][2]!r})",
+          all(c == 2 and o == "" and "Traceback" not in e and len(e.strip().splitlines()) == 1 and f"`[ratio] {k}` is a list" in e for (k, _), (c, o, e) in _bad.items()))
+    rm_git(root)
+# RV-727 b: the trunk is origin's default branch as this clone fetched it — `origin/HEAD`'s target — before a local branch that may be behind
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"src/a.py": _lines(2)})
+    _ratio_g(root, "branch", "behind", "HEAD~1")                       # a local `master` that lags: the start, no merge
+    _ratio_merge(root, "two", "2026-09-23T12:00:00+02:00", {"src/b.py": _lines(3)})
+    _ratio_g(root, "update-ref", "refs/remotes/origin/develop", "main")
+    _ratio_g(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop")
+    _ratio_g(root, "branch", "-m", "main", "master"); _ratio_g(root, "update-ref", "refs/heads/master", "behind")
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-23")
+    check(f"FM-032 · the trunk is `origin/HEAD`'s target (`origin/develop`) when the clone has one, not a local `master` that is behind (saw {out_.splitlines()[:2]!r} {err_!r})",
+          code_ == 0 and "trunk origin/develop " in out_ and "window      records +0 \u22120  product +5 \u22120" in out_ and "(2 merges)" in out_)
+    rm_git(root)
+# RV-727 c: the first-parent line — a merge inside a branch that then merges into main is one merge, its lines counted once — and the default window
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _today = datetime.datetime.now(fm.ratio_zone()[0]).date() if _zone_ok else datetime.date.today()
+    _at = lambda back: f"{_today - datetime.timedelta(days=back)}T12:00:00+02:00"
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when=_at(9))
+    _ratio_merge(root, "outside", _at(7), {"src/old.py": _lines(50)})            # the day before the window: not in it
+    _ratio_merge(root, "first", _at(6), {"src/first.py": _lines(4)})             # the window's first day
+    # a branch that carries a merge of its own: side -> feature (--no-ff) -> main
+    _ratio_g(root, "switch", "-q", "-c", "feature", "main")
+    (root / "src").mkdir(exist_ok=True); (root / "src/f.py").write_bytes(_lines(6)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "f", when=_at(1))
+    _ratio_g(root, "switch", "-q", "-c", "side", "feature")
+    (root / "src/s.py").write_bytes(_lines(9)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "s", when=_at(1))
+    _ratio_g(root, "switch", "-q", "feature"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge side", "side", when=_at(1))
+    _ratio_g(root, "switch", "-q", "main"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge feature", "feature", when=_at(1))
+    code_, out_, err_ = run(root, "--ratio")
+    _win = next((l for l in out_.splitlines() if l.startswith("window")), "")
+    check(f"FM-032 · a merge inside a merged branch is not on the first-parent line: that day is `(1 merge)` with the branch's 15 lines counted once (saw {_win!r})",
+          code_ == 0 and f"{_today - datetime.timedelta(days=1)}  records +0 \u22120  product +15 \u22120  0.0:1  (1 merge)" in out_)
+    check(f"FM-032 · with no dates the window is the seven Berlin days ending today — the header says {_today - datetime.timedelta(days=6)} to {_today}, "
+          f"the merge dated the day before it is left out and the one on its first day is in (saw {_win!r})",
+          f"\u00b7 {_today - datetime.timedelta(days=6)} to {_today} \u00b7" in out_
+          and _win.startswith("window      records +0 \u22120  product +19 \u22120") and "(2 merges)" in _win)
+    rm_git(root)
+fm.configure(HERE)
+check("FM-032 · `--schema` lists both `[ratio]` keys", "`[ratio] records`" in fm.render_schema() and "`[ratio] exclude`" in fm.render_schema())
+_shallow = _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
+_trunk_here = subprocess.run(["git", "-C", str(HERE), "rev-parse", "--verify", "-q", "origin/main^{commit}"], capture_output=True, env=_ENV).returncode == 0
+if _shallow != "false" or not _trunk_here or not _zone_ok:
+    _why = ("this clone is shallow" if _shallow != "false" else "origin/main is not here (CI, or a clone without it)" if not _trunk_here
+            else "no tz database for Europe/Berlin here, so the days would not be Berlin's")
+    SKIPS.append(("FM-032 · the reproduction on this repository", 1, _why))
+    print(f"  skip  FM-032 · the reproduction on this repository — {_why}; 1 check(s) did not run")
+else:
+    _code, _out, _err = run(HERE, "--ratio", "--since", "2026-09-22", "--until", "2026-09-29")
+    check("FM-032 · the reproduction: `--ratio --since 2026-09-22 --until 2026-09-29` on this repository prints the window the definition page states — "
+          f"records +65,711 \u2212972, product +15,713 \u22121,764 (saw {next((l for l in _out.splitlines() if l.startswith('window')), _err)!r})",
+          _code == 0 and next((l for l in _out.splitlines() if l.startswith("window")), "").startswith("window      records +65,711 \u2212972  product +15,713 \u22121,764  4.2:1  "))
+fm.configure(HERE)
+
+# --- FM-032 · a check output that regenerates is kept as its summary, and the summary is proved -----------------------------------
+# The Owner's ruling of 2026-09-30: *if a check output regenerates, keep only its summary; if it doesn't, it stays in git.* Each
+# README's `## Summary — the check output, regenerable` holds a machine-readable block per output — the command, the tested commit,
+# the number of checks, the failing ids. Here they are read back: `facts.mjs` (git and Node only) on every run where it can; the
+# browser checks — a rebuilt site, `checks.mjs` in Chrome, the same thresholds as the READMEs — behind `SHOALMARK_REGENERATE=1`. A
+# difference in the results fails with both listed; a run that cannot happen here says why and is counted as skipped, never passed.
+_FM6_DIR, _FM2_DIR, _ZENSICAL = "work-tracker/evidence/FM-006/landing/start-page", "work-tracker/evidence/FM-002/slice-a", "0.0.65"
+_SUMMARY_HEAD = "## Summary \u2014 the check output, regenerable"
+
+
+def _summary_blocks(readme):
+    """{file name: its block} of a README's summary section."""
+    section = (HERE / readme).read_text().split(_SUMMARY_HEAD, 1)[1].split("\n## ", 1)[0]
+    return {Path(b["file"]).name: b for b in map(json.loads, re.findall(r"```json\n(.*?)\n```", section, re.S))}
+
+
+def _strip_measure(text):
+    """`3.99 54\u00b010'N (under the title)` -> `54\u00b010'N (under the title)`: the measure moves from run to run, the text does not."""
+    return re.sub(r"^\d+(?:\.\d+)? ", "", text)
+
+
+def _derive_landing(doc, chart_only=False):
+    """FM-006 slice L's `checks.mjs` output -> (checks run, failing ids), by its README's thresholds: per width and method (R, S) the
+    chart texts below 4.5:1; per width the flat texts below 4.5:1 and the sideways scroll; the page's script errors, its accessibility
+    tree, reduced motion, the scheme and the fonts. A chart-only output (the mock's, of which the README keeps the chart part) has four."""
+    s, failing, n = doc["summary"], [], 0
+    for c in s["chart"]:
+        for method, key in (("R", "belowReviewer"), ("S", "belowSeat")):
+            n += 1
+            failing += [f"chart {c['width']} {method} {_strip_measure(x)}" for x in c[key]]
+    if not chart_only:
+        for f in s["flat"]:
+            n += 2
+            failing += [f"flat {f['width']} {_strip_measure(x)}" for x in f["below"]]
+            failing += [f"scroll {f['width']}"] * (f["scroll"][0] != f["scroll"][1])
+        n += len(s["tree"]) + len(s["scheme"]) + 3
+        failing += [f"tree {x['width']}" for x in s["tree"]
+                    if x["focusable"] != x["wrecks"] or not x["canvasDescribed"] or x["figuresRead"] or x["chartNamesRead"]]
+        failing += ["errors"] * bool(s["errors"])
+        failing += ["motion"] * (not s["motion"]["reduced"]["identical"])
+        failing += [f"scheme {w}" for w, v in s["scheme"].items() if not v["identical"]]
+        failing += ["fonts"] * (s["sameFacesAsMock"] is False)
+    return n, sorted(failing)
+
+
+def _derive_board(doc):
+    """FM-002 slice A's `checks.mjs` output -> (checks run, failing ids): per scheme the text pairs below 4.5:1, named by where each was
+    seen; AU-16 per page and scheme, no chart figure and no marker read; AU-18 per scheme, the longest line no longer than the box holds;
+    the tracker view's alignment per scheme, the built page where the mock puts it. The counts of measurements move with the board's
+    clock (it writes what is owed now) and are not compared."""
+    failing, n = [], 0
+    for scheme in ("light", "dark"):
+        n += 1
+        failing += [f"contrast {scheme} {'/'.join(p['where'])} {p['fg']} on {p['ground']}" for p in doc["pairs"] if p["scheme"] == scheme and p["ratio"] < 4.5]
+    for page, v in doc["summary"]["au16"].items():
+        n += 1
+        failing += [f"AU-16 {page}"] * bool(v["figures"] or v["markers"])
+    for scheme, v in doc["au18"].items():
+        n += 1
+        failing += [f"AU-18 {scheme}"] * (v["longestLine"] > v["chars"])
+    for scheme in ("light", "dark"):
+        n += 1
+        failing += [f"alignment {scheme}"] * (doc["alignment"][f"after {scheme}"] != doc["alignment"][f"mock {scheme}"])
+    ctl = doc["control"]                         # the README's own controls: a check that cannot see what it reports as absent is no check (RV-728 c)
+    for scheme in ("light", "dark"):
+        n += 2
+        pipe = ctl.get(f"contrast {scheme}")     # `#767676` on `#ffffff` must read WCAG's 4.54
+        failing += [f"control contrast {scheme}"] * (not (isinstance(pipe, dict) and abs(pipe["ratio"] - 4.542) < 0.01))
+        failing += [f"control dialog open {scheme}"] * (ctl.get(f"dialog open {scheme}") is not True)
+        for page in ("board", "tracker view", "site"):   # the alt texts removed: the same tree must read figures and markers
+            n += 1
+            read = ctl.get(f"ax {page} {scheme}")
+            failing += [f"control ax {page} {scheme}"] * (not (isinstance(read, dict) and read["figures"] > 0 and read["markers"] > 0))
+    return n, sorted(failing)
+
+
+def _facts_fingerprint(doc):
+    """`facts.mjs`'s reading without its time stamp: the fields the README records, and a sha256 of all the rest."""
+    doc = {k: v for k, v in doc.items() if k != "read"}
+    return {"sha": doc["sha"], "release": doc["release"]["version"], "counts": doc["counts"], "wrecks": len(doc["wrecks"]),
+            "sha256_without_read": hashlib.sha256(json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()}
+
+
+def _regen_skip(name, n, why):
+    SKIPS.append((name, n, why))
+    print(f"  skip  {name} \u2014 {why}; {n} check(s) did not run")
+
+
+_b6, _b2 = _summary_blocks(_FM6_DIR + "/README.md"), _summary_blocks(_FM2_DIR + "/README.md")
+_KEYS = {"file", "tested", "command", "failing", "generated_by"}      # and a count: `checks` (verdicts), or `wrecks` where the output is a reading, not a verdict
+check("FM-032 \u00b7 each README's summary holds one machine-readable block per replaced output \u2014 the command, the tested commit, how many checks, "
+      "which failed \u2014 and the summary of a regenerable output is kept where the file was",
+      set(_b6) == {"checks.json", "checks-r3-before.json", "facts.json"} and set(_b2) == {"checks.json"}
+      and all(_KEYS <= set(b) and isinstance(b["failing"], list) and isinstance(b["wrecks" if "wrecks" in b else "checks"], int) and ("wrecks" in b) != ("checks" in b)
+              for b in (*_b6.values(), *_b2.values()))
+      and "wrecks" in _b6["facts.json"] and all("checks" in b for k, b in (*_b6.items(), *_b2.items()) if k != "facts.json"))
+_good_ctl = {**{f"{k} {sc}": v for sc in ("light", "dark") for k, v in (("contrast", {"ratio": 4.542}), ("dialog open", True))},
+             **{f"ax {pg} {sc}": {"figures": 261, "markers": 18} for pg in ("board", "tracker view", "site") for sc in ("light", "dark")}}
+_board_doc = lambda ctl: {"pairs": [], "summary": {"au16": {"board light": {"figures": 0, "markers": 0}}}, "au18": {"light": {"longestLine": 1, "chars": 2}},
+                          "alignment": {f"{w} {sc}": 1 for w in ("after", "mock") for sc in ("light", "dark")}, "control": ctl}
+check("FM-032 \u00b7 slice A's derivation counts the README's controls \u2014 the contrast pipeline at 4.542, the dialog open, the alt-text-removed run reading figures and markers "
+      "\u2014 ten checks beside the fourteen, and a control that fails is a failing check (`control ax board dark` with no figures read)",
+      _derive_board(_board_doc(_good_ctl)) == (16, [])
+      and _derive_board(_board_doc({**_good_ctl, "ax board dark": {"figures": 0, "markers": 18}, "contrast light": {"ratio": 4.2}, "dialog open dark": False}))
+      == (16, ["control ax board dark", "control contrast light", "control dialog open dark"]))
+_derived_ok = (_derive_landing({"summary": {"chart": [{"width": 1, "belowReviewer": ["3.99 a (under the title)"], "belowSeat": []}], "flat": [], "tree": [], "scheme": {},
+                                            "errors": 0, "motion": {"reduced": {"identical": True}}, "sameFacesAsMock": True}}) == (5, ["chart 1 R a (under the title)"]))
+check("FM-032 \u00b7 the derivation drops the measure and keeps the check's own id, and counts its verdicts", _derived_ok)
+
+_have_node, _shallow32 = shutil.which("node"), _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
+_held = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+_tagged = subprocess.run(["git", "-C", str(HERE), "rev-parse", "-q", "--verify", "refs/tags/v0.18.4"], capture_output=True, env=_ENV).returncode == 0
+_why = ("no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "this clone does not hold bef2a1e" if not _held("bef2a1e")
+        else "no tz database for Europe/Berlin here (facts.mjs writes each filing's day and the tag's time in Berlin; git cannot take that zone by name where there is none)" if not _zone_ok
+        else "this clone has no tag v0.18.4 (facts.mjs reads it)" if not _tagged else "")
+if _why:
+    _regen_skip("FM-032 \u00b7 facts.mjs reproduces the summary", 1, _why)
+else:
+    _out32 = subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "work-tracker/evidence/FM-006/landing/index.html")],
+                            cwd=str(HERE), env=_ENV, capture_output=True, text=True, encoding="utf-8", timeout=300)
+    _want32 = {k: v for k, v in _b6["facts.json"]["fields"].items()}
+    _want32["sha256_without_read"] = _b6["facts.json"]["sha256_without_read"]
+    _saw32 = _facts_fingerprint(json.loads(_out32.stdout)) if _out32.returncode == 0 else {"exit": _out32.returncode, "stderr": _out32.stderr[-300:]}
+    check(f"FM-032 \u00b7 `node facts.mjs bef2a1e` regenerates facts.json \u2014 every field the README's block records, and the rest by its sha256, `read` apart "
+          f"(the block says {_want32}; a fresh run says {_saw32})", _saw32 == _want32)
+
+_RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
+_uvx, _npm = shutil.which("uvx"), shutil.which("npm")
+_why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
+        else "no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "")
+_needed = [c for b in (*_b6.values(), *_b2.values()) for c in [b["tested"]] if b["file"].endswith("checks.json") or b["file"].endswith("checks-r3-before.json")] + ["2a9f7eb", "70fedd3"]
+_why = _why or next((f"this clone does not hold {c}" for c in _needed if not _held(c)), "")
+if _why:
+    _regen_skip("FM-032 \u00b7 the browser checks reproduce their summaries", 3, _why)
+else:
+    import tarfile
+
+    def _stage(commit, into):
+        """`git archive commit` extracted into `into` \u2014 a tree without .git, as the READMEs' rebuilds build it."""
+        into.mkdir(parents=True)
+        tar = subprocess.run(["git", "-C", str(HERE), "archive", commit], capture_output=True, check=True, env=_ENV).stdout
+        with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
+            tf.extractall(into, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+
+    def _build(stage):
+        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+
+    def _checks_mjs(script, stage_dir, out, *extra):
+        r = subprocess.run([_have_node, str(HERE / script), str(stage_dir), str(out), *extra], cwd=str(HERE), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME))
+        return json.loads(Path(out).read_text()) if r.returncode == 0 and Path(out).exists() else None
+
+    def _same(name, got, block, derived):
+        want = (block["checks"], sorted(block["failing"]))
+        check(f"FM-032 \u00b7 {name} regenerates by its results \u2014 {want[0]} checks, {len(want[1])} failing ids, the same ids (a fresh run: {derived if got else 'no output'}; "
+              f"the README's block: {want})", bool(got) and derived == want)
+
+    with tempfile.TemporaryDirectory() as d:
+        work = Path(d).resolve()
+        mock_html = str(HERE / "work-tracker/evidence/FM-006/landing/index.html")
+        for name, block, chart_only, mock in (("the start page's checks.json", _b6["checks.json"], False, mock_html),
+                                              ("checks-r3-before.json", _b6["checks-r3-before.json"], True, None)):
+            stage = work / block["tested"]
+            _stage(block["tested"], stage); _build(stage)
+            got = _checks_mjs(_FM6_DIR + "/checks.mjs", stage / "site", work / (block["tested"] + ".json"), *([mock] if mock else []))
+            _same(name, got, block, _derive_landing(got, chart_only) if got else None)
+        if not _npm:
+            _regen_skip("FM-032 \u00b7 slice A's checks.json", 1, "no npm here to fetch @ibm/plex-mono 1.1.0 \u2014 the mock part does not regenerate")
+        else:
+            plex = work / "plex"; plex.mkdir()
+            packed = subprocess.run([_npm, "pack", "@ibm/plex-mono@1.1.0", "--silent"], cwd=str(plex), capture_output=True, text=True, timeout=300, env=_ENV)
+            if packed.returncode != 0:
+                _regen_skip("FM-032 \u00b7 slice A's checks.json", 1, "@ibm/plex-mono 1.1.0 could not be fetched (offline?) \u2014 the mock part does not regenerate")
+            else:
+                with tarfile.open(plex / packed.stdout.strip().splitlines()[-1]) as tf:
+                    tf.extractall(plex, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+                src, stages = work / "a-src", work / "a"
+                _stage("361336a", src)
+                for step in ("before", "after"):
+                    rev = "2a9f7eb" if step == "before" else "70fedd3"
+                    for rel in ("work-tracker/brand/theme.css", "docs/stylesheets/shoalmark.css"):
+                        (src / rel).write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
+                    subprocess.run([sys.executable, "shoalmark.py", "--html-only"], cwd=str(src), check=True, capture_output=True, env=_ENV)
+                    _build(src)
+                    (stages / step).mkdir(parents=True)
+                    shutil.copy(src / "work-tracker/index.html", stages / step / "board.html")
+                    for rel in ("work-tracker/brand", "work-tracker/view", "site"):
+                        shutil.copytree(src / rel, stages / step / Path(rel).name)
+                    if step == "before":                     # the mock is built from the *before* board and site, as the README's rebuild has it
+                        subprocess.run([sys.executable, "work-tracker/evidence/FM-006/themes/build-mocks.py", str(stages / "mock"), "--plex",
+                                        str(plex / "package/fonts/split/woff2")], cwd=str(src), check=True, capture_output=True, env=_ENV)
+                got = _checks_mjs(_FM2_DIR + "/checks.mjs", stages, work / "board.json")
+                _same("slice A's checks.json", got, _b2["checks.json"], _derive_board(got) if got else None)
+fm.configure(HERE)
+
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",
