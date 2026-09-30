@@ -2588,6 +2588,7 @@ tr.c td:first-child{padding-left:20px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 /* an act that is a promise: what he promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
 #p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
+#p summary{cursor:pointer}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
 #dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
@@ -2793,8 +2794,10 @@ function draw(){
         +(w[8]?`\n<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[31]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
-    +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
-      +(REG.reviews?(REG.recent.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"");   // the box keeps its title in every view (FM-002 R2)
+    +(REG?(REG.groups.length?"\n\n<b>"+l("sessions.recent",REG.parents,REG.all)+"</b>\n"
+        +REG.groups.map(g=>`<details><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].map(x=>" · "+esc(x)).join("")}</summary>`
+          +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""):"")
+      +(REG.reviews?(REG.groups.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"");   // the box keeps its title in every view (FM-002 R2)
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -2894,7 +2897,7 @@ LABELS = {
     "way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange",
     "act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again",
     "act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log",
-    "sessions.recent": "sessions · {0} in the last day",
+    "sessions.recent": "sessions · {0} in the last day ({1} with their sub-sessions)",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -4675,14 +4678,18 @@ def session_log(since=None):
 def session_rows(since=None):
     """THE REGISTRY, generated (FM-032 S2): one row per `Session:` id in HEAD's history — its seat (the author through
     `[seats]`, else the raw author), its first and last commit (time, short sha), how many commits carry it, and its
-    worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both) — in the order of the
-    first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
+    worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both), and its model and
+    effort (the newest `Model:` and `Effort:` trailers, from 0.19.0 on; empty where none) — in the order of the first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
     rows = {}
     for sha, stamp, email, name, block in session_log(since):
         sid = (trailer_values(block, "Session") or [""])[0]
         if not sid:
             continue
-        r = rows.setdefault(sid, dict(id=sid, seats=[], first=(stamp, sha), last=(stamp, sha), commits=0, worktrees=[]))
+        r = rows.setdefault(sid, dict(id=sid, seats=[], first=(stamp, sha), last=(stamp, sha), commits=0, worktrees=[], model="", effort="", _at={}))
+        for key in ("model", "effort"):                                            # the newest commit that carries one, else nothing (shown as —)
+            v = (trailer_values(block, key) or [""])[0]
+            if v and stamp >= r["_at"].get(key, -1):
+                r[key], r["_at"][key] = v, stamp
         seat, where = seat_of(name, email) or email or name, (trailer_values(block, "Worktree") or [""])[0]
         r["seats"] += [seat] if seat not in r["seats"] else []
         r["worktrees"] += [where] if where and where not in r["worktrees"] else []
@@ -5459,29 +5466,88 @@ def sessions_report():
     return lines
 
 
+def collapse_runs(numbers):
+    """`[1, 2, 3, 4, 5, 7]` → `1–5, 7`: a run of three or more is `a–b`, a run of two is both, a lone number is itself."""
+    nums, out, i = sorted(set(numbers)), [], 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        out += [f"{nums[i]}–{nums[j]}"] if j - i >= 2 else [str(n) for n in nums[i:j + 1]]
+        i = j + 1
+    return ", ".join(out)
+
+
+def session_groups(since=SESSION_RECENT):
+    """THE STRIP, grouped by parent (FM-024): one entry per parent session with a commit in the last `since` seconds — its
+    own or a sub-session's. `id` is the parent; `seat` and `worktree` its own commits' (`—` for a parent that made none:
+    it is derived from its sub-sessions' ids, `<parent>/<seat>-<n>`); `runs` the sub-sessions' seats with their numbers,
+    runs collapsed (`implementer 1–6`, `reviewer 1–5, 7`); `subs` how many sub-sessions are in the window; `members` the
+    parent first where it has commits, then each sub-session in the window, as (id, worktree, model, effort) — `—` where
+    no commit carried one. Read from the trailers alone, never from a transcript."""
+    cutoff = datetime.datetime.now().timestamp() - since
+    groups = {}
+    for r in session_rows():
+        parent, _, hand = r["id"].partition("/")
+        g = groups.setdefault(parent, dict(own=None, subs=[], first=r["first"][0]))
+        g["first"] = min(g["first"], r["first"][0])
+        if hand:
+            g["subs"].append(r)
+        else:
+            g["own"] = r
+    show = lambda v: v or "—"
+    out = []
+    for parent, g in sorted(groups.items(), key=lambda kv: kv[1]["first"]):
+        subs, own = [r for r in g["subs"] if r["last"][0] >= cutoff], g["own"]
+        if not subs and not (own and own["last"][0] >= cutoff):
+            continue
+        numbers = {}                                    # seat -> its sub-sessions' numbers, in the order the seats first appear
+        for r in subs:
+            m = re.fullmatch(r"(.+)-(\d+)", r["id"].partition("/")[2])
+            numbers.setdefault(m[1] if m else r["id"].partition("/")[2], []).extend([int(m[2])] if m else [])
+        out.append(dict(id=parent, seat=", ".join(own["seats"]) if own and own["seats"] else "—", subs=len(subs),
+                        worktree=", ".join(own["worktrees"]) if own and own["worktrees"] else "—",
+                        runs=[f"{name} {collapse_runs(nums)}".rstrip() for name, nums in numbers.items()],
+                        members=[(r["id"], show(", ".join(r["worktrees"])), show(r["model"]), show(r["effort"])) for r in ([own] if own else []) + subs]))
+    return out
+
+
+def group_line(g):
+    """One parent's line, the board's and the digest's alike: `<parent> <seat> (<worktree>) · implementer 1–6 · reviewer 1–5, 7`."""
+    return f"{g['id']} {g['seat']} ({g['worktree']})" + "".join(f" · {run}" for run in g["runs"])
+
+
+def group_counts(groups):
+    """(parents, all) — the header's two numbers: the parents with a commit in the last day, and them with their sub-sessions."""
+    return len(groups), len(groups) + sum(g["subs"] for g in groups)
+
+
 def board_sessions():
-    """The report as the board shows it — the sessions with a commit in the last day (id, seat, worktree) and this week's
-    verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
+    """The report as the board shows it — the parents with a commit in the last day (each: id, seat, worktree, its
+    sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, and this
+    week's verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
     if vcs() != "git":
         return None
-    recent = session_rows(since=datetime.datetime.now().timestamp() - SESSION_RECENT)
+    groups = session_groups()
     reps = verdict_reports()
-    if not recent and not reps:
+    if not groups and not reps:
         return None
     count = collections.Counter(w for *_x, w in reps)
-    return {"recent": [[r["id"], ", ".join(r["seats"]), ", ".join(r["worktrees"]) or "—"] for r in recent],
+    parents, everyone = group_counts(groups)
+    return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
+            "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"]] if reps else None}
 
 
 def sessions_digest():
-    """The digest's one line: the sessions with a commit in the last day, by seat — or nothing where there is none."""
-    reg = board_sessions()
-    if not reg or not reg["recent"]:
+    """The digest's lines, grouped as the board's strip is: a header with the two counts, then one line per parent with a
+    commit in the last day — or nothing where there is none. It reads git for the sessions alone, never the verdicts."""
+    groups = session_groups() if vcs() == "git" else []
+    if not groups:
         return ""
-    by = collections.defaultdict(list)
-    for sid, seat, w in reg["recent"]:
-        by[seat].append(sid + (f" in {w}" if w and w != "—" else ""))
-    return "SESSIONS IN THE LAST DAY · " + " · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items())
+    parents, everyone = group_counts(groups)
+    return "\n".join([f"SESSIONS IN THE LAST DAY · {parents} ({everyone} with their sub-sessions)"] + [f"  {group_line(g)}" for g in groups])
+
 
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
@@ -6568,7 +6634,7 @@ def init(key=None):
     print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
           f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
-          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one)")
+          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one))")
     return EXIT_OK
 
 

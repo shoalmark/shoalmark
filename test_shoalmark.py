@@ -624,8 +624,8 @@ with tempfile.TemporaryDirectory() as d:
     quiet = run_safe(root, "--owner")[1]
     now_ = commit_as(root, "implementer@seat", "at work now\n\nSession: 5555eeee/implementer-2\nWorktree: wt-now")
     busy = run_safe(root, "--owner")[1]
-    check(f"FM-032 S2 · the digest names the sessions with a commit in the last day, by seat — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
-          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · implementer 1 (5555eeee/implementer-2 in wt-now)" in busy and "1111aaaa" not in busy)
+    check(f"FM-032 S2 · the digest names the parents with a commit in the last day — a parent derived from its sub-session's id — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
+          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
     opened, closed = run_safe(root, "--session", "open", "6666ffff", "principal", "the Owner", "x"), run_safe(root, "--session", "close", "1111aaaa")
     gone = "--session open/close are gone since 0.18.0: the registry is a report — run --sessions"
     check(f"FM-032 S2 · `--session open` and `--session close` are gone: one line, exit 2, nothing written (saw {opened[0]}, {closed[0]}, {opened[2].strip()!r})",
@@ -705,7 +705,7 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
     git(root, "checkout", "-q", "-b", "feat")
     head = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1"); built = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1\nModel: claude-sonnet-5-5\nEffort: xhigh"); built = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: a9/reviewer-1"); v_same = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: k3"); v_ind = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}"); v_none = head()
@@ -751,10 +751,49 @@ with tempfile.TemporaryDirectory() as d:
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
-    check(f"FM-024 S7 · the board's strip names the sessions with a commit in the last day, with seat and worktree, and counts the week's verdicts; the digest's line groups them by seat (saw {(strip_ or '')[-200:]!r} · {digest_.strip()[-80:]!r})",
-          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (strip_ is None or (
-              "sessions · 4 in the last day — a9 t@t (—) · a9/implementer-1 t@t (—) · a9/reviewer-1 t@t (—) · k3 t@t (—)" in strip_
+    check(f"FM-024 S7 + FM-024 build for 0.19.0 · the board's strip is one line per parent — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the digest groups the same way under the same header (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
+          "SESSIONS IN THE LAST DAY · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
+              "sessions · 2 in the last day (4 with their sub-sessions) a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
               and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
+# --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + SEATS_TOML)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "owner@example.org", "the tree")
+    P1, P2, P3 = "1111aaaa", "2222bbbb", "3333cccc"
+    commit_as(root, "principal@seat", f"the first parent\n\nSession: {P1}\nWorktree: wt-p")
+    commit_as(root, "principal@seat", f"the third parent\n\nSession: {P3}\nWorktree: wt-q\nModel: claude-opus-4-8\nEffort: high")
+    for n in (1, 2, 3, 4, 5, 6):
+        commit_as(root, "implementer@seat", f"build {n}\n\nSession: {P1}/implementer-{n}\nWorktree: wt-i{n}")
+    commit_as(root, "implementer@seat", f"build 1, again — a newer model\n\nSession: {P1}/implementer-1\nWorktree: wt-i1\nModel: claude-sonnet-5-5\nEffort: xhigh")
+    for n in (1, 2, 3, 4, 5, 7):
+        commit_as(root, "reviewer@seat", f"review {n}\n\nSession: {P1}/reviewer-{n}\nWorktree: wt-r{n}\nModel: claude-opus-4-8\nEffort: high")
+    for n in (41, 42, 45):                                                   # a parent that made no commit of its own: derived
+        commit_as(root, "implementer@seat", f"build {n}\n\nSession: {P2}/implementer-{n}\nWorktree: wt-j{n}")
+    for n in range(1, 11):
+        commit_as(root, "reviewer@seat", f"review {n}\n\nSession: {P3}/reviewer-{n}\nWorktree: wt-s{n}")
+    commit_as(root, "reviewer@seat", f"a sub-session of a parent from a week ago\n\nSession: 4444dddd/reviewer-1\nWorktree: wt-old", "2026-01-05T09:00:00")
+    said = run_safe(root, "--owner")[1]
+    lines = [l for l in said.splitlines() if l.startswith("  ") and re.match(r"  [0-9a-f]{8} ", l)]
+    check(f"FM-024 (0.19.0) · 3 parents with 25 sub-sessions render 3 lines and the header's counts — the runs collapsed (`1–6`, `1–5, 7`, `41, 42, 45`), a parent with no commit of its own derived from its sub-sessions' ids, a session from a week ago not counted (saw {lines} · {said.strip()[-420:]!r})",
+          "SESSIONS IN THE LAST DAY · 3 (28 with their sub-sessions)" in said
+          and lines == [f"  {P1} principal (wt-p) · implementer 1–6 · reviewer 1–5, 7", f"  {P3} principal (wt-q) · reviewer 1–10", f"  {P2} — (—) · implementer 41, 42, 45"]
+          and "4444dddd" not in said)
+    fm.configure(root)
+    reg = fm.board_sessions()
+    members = {g[0]: {m[0]: m[1:] for m in g[4]} for g in reg["groups"]}
+    check(f"FM-024 (0.19.0) · the board's data carries the counts, a line per parent and each member's worktree, model and effort — the newest `Model:` and `Effort:` of a session, and `—` where no commit carried one (saw {reg['parents']}, {reg['all']}, {members.get(P1, {}).get(P1 + '/implementer-1')})",
+          (reg["parents"], reg["all"]) == (3, 28) and [g[0] for g in reg["groups"]] == [P1, P3, P2]
+          and members[P1][f"{P1}/implementer-1"] == ["wt-i1", "claude-sonnet-5-5", "xhigh"] and members[P1][f"{P1}/implementer-2"] == ["wt-i2", "—", "—"]
+          and members[P1][f"{P1}/reviewer-7"] == ["wt-r7", "claude-opus-4-8", "high"] and members[P3][P3] == ["wt-q", "claude-opus-4-8", "high"]
+          and members[P1][P1] == ["wt-p", "—", "—"] and P2 not in members[P2] and len(members[P2]) == 3
+          and len(reg["groups"][0][4]) == 13 and reg["groups"][0][3] == ["implementer 1–6", "reviewer 1–5, 7"])
+    _sub = fm.session_groups(since=0)
+    check("FM-024 (0.19.0) · a window of no seconds names no session — a parent is on the strip for a commit in the window, its own or a sub-session's", _sub == [])
+    fm.configure(HERE)
+
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
