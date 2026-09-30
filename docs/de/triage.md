@@ -40,12 +40,12 @@ In einem deutsch eingerichteten Repository heißen die Überschriften `## Die Ab
 **Ein erster Entwurf: die Dorfbücherei.** Die deutsche Vorlage `examples/de/TRIAGE.md`, die Ihre Agenten vor `--init`
 kopieren ([Einrichtung](setup.md), Schritt 2), bringt ein Beispiel in Kursivschrift mit. Dieses Beispiel ist mit
 Absicht ein ganzes Produkt. Der Eigner von shoalmark hat einmal einen ersten Entwurf geschrieben, der nur so groß wie
-ein einzelnes Feature war, weil ein Agent zuvor ein Beispiel dieser Größe gezeigt hatte (FM-022). Deshalb lautet
+ein einzelnes Feature war, weil ein Agent dem Eigner zuvor ein Beispiel dieser Größe gezeigt hatte (FM-022). Deshalb lautet
 das Beispiel so:
 
 > - **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*
 > - **damit** — *z. B. ein Mitglied ein Buch und die Bibliothekarin ein Mitglied mit einem Blick findet, und nichts Verliehenes verloren geht*
-> - **niemals** — *z. B. verleihen, was der Katalog nicht führt, oder die Akte eines Mitglieds löschen, bevor die letzte Ausleihe zurück ist*
+> - **niemals** — *z. B. verleihen, was der Katalog nicht führt, oder die Akte eines Mitglieds löschen, bevor seine letzte Ausleihe zurück ist*
 
 Überschreiben Sie es mit Ihren eigenen Worten.
 
