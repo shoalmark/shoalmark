@@ -55,7 +55,7 @@ reviewer    = "reviewer@seat"
 Unter Subversion steht für den Eigner (`owner`) Ihr Server-Konto, ohne `signed`: Der Server kennt Sie schon. Jeder Sitz committet unter
 seiner eigenen Identität, einmal in seinem eigenen Worktree eingestellt
 (`git config --worktree user.email implementer@seat`), und hat nur seine eigenen Rechte: Der Eigner (`owner`) antwortet, der
-Principal fragt, schließt und sichtet, der Reviewer sichtet, der Implementer baut. Das ältere
+Planner fragt, schließt und sichtet, der Reviewer sichtet, der Builder baut. Die Sitze heißen im Text Planner und Builder; ihre `[seats]`-Schlüssel `principal` und `implementer` behalten ihre Namen, bis Schlüsselumbenennung, Bot-Identitäten und Badges gemeinsam umgestellt werden. Das ältere
 `answerers = ["ihrname signed"]` gilt weiter, wo es kein `[seats]` gibt.
 
 **Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
