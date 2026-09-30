@@ -163,8 +163,10 @@ Scan-job results used `gh run view 36703911408 --repo shoalmark/shoalmark --json
 These live observations are retained here because a later API read cannot reproduce the historical settings.
 
 The setup UI differed from the prepared navigation: Configurations → Set up → Custom configuration opened the form.
-The Owner used Public repositories as the new-repository default and Don't enforce; the five listed features were enabled,
-other feature controls left Not set. The page-timeout symptom did not prevent the repository Actions save.
+The saved scope is Public repositories with Don't enforce. The instructions requested other feature controls Not set;
+full API readback additionally reports `advanced_security`, `secret_scanning_validity_checks` and
+`secret_scanning_extended_metadata` enabled in the new-public configuration. Record the actual settings, not the requested
+UI selections; this does not change the existing repository's disabled validity checks. The page-timeout symptom did not prevent the repository Actions save.
 No tag was created, moved or deleted to test enforcement; no history rewrite occurred. PR #119's tree-only deletion remains as above.
 The non-member-input rule landed with #127. Restricted agent credentials and no-reply email remain separate Owner decisions.
 Remaining verification limits: repository team Write grant and organisation external-pattern list require explicit browser readback
