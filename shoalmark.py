@@ -1314,7 +1314,7 @@ SUPERSEDED_RE = re.compile(r'\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Answer of [^|]*?sup
 # he was the integrator by default. He asked one seat which to merge five times in two hours, and each answer was the
 # forge and `git merge-tree`, read by hand. `--queue` reads the same two and gives every open pull request ONE action, in
 # the order he takes them. A view: it refuses nothing, and where the forge cannot be read it says so in one line.
-QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt"
+QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt,isCrossRepository"
 QUEUE_BRANCH_MAX = 32      # characters of a branch in a queue line: its id and the start of its slug
 QUEUE_ACTION_MAX = 36      # the action column's width at most; a longer action (many paths in conflict) runs on in its own line
 EXIT_NO_FORGE = 3          # `--queue` could not read the forge — no `gh`, offline, no GitHub remote. Never 4: a view fails no hook
@@ -1637,6 +1637,7 @@ def queue_actions(prs, branches=()):
     every commit of its own below that one is his too, a review file's only, or the tool's own refusal record; else a wait
     naming the first that is not (RV-710, RV-712), and a wait where its base is not here (RV-711) —
     `answer_branch_reading`, the board's reader too (RV-714). For a pull request the first rule that holds is the action:
+    - `wait: from a fork, read it yourself` — fork commits supply no verdict or carry-over instruction;
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
@@ -1646,12 +1647,14 @@ def queue_actions(prs, branches=()):
     - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
     - `wait: no verdict on <head>` — no verdict names its head;
     - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
-    A verdict is a commit among the pull requests' own that carries `Reviewed: <sha>`, as `--check` reads one, with its
+    A verdict is a commit among the same-repository pull requests' own and the pushed branches' that carries `Reviewed: <sha>`, as `--check` reads one, with its
     word in its subject. It names a head that is <sha>, or that only review addenda follow <sha> to — commits touching
     nothing but the review folder (`[paths] reviews`, `evidence/reviews/` by default, a glob allowed) and
     `<tracker dir>/sessions.md` — and the verdict commit itself, whose own review file counts wherever it sits under
     `<tracker dir>/evidence/` (`review*.md`), as the parent project's review gate reads it: a head that IS the verdict,
     `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
+    forks = [(p, "wait", "wait: from a fork, read it yourself", "") for p in prs if p.get("isCrossRepository")]
+    prs = [p for p in prs if not p.get("isCrossRepository")]
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
@@ -1709,7 +1712,7 @@ def queue_actions(prs, branches=()):
         """`addenda_between`, read once per range"""
         return cached(("addenda", r, h, v), lambda: addenda_between(r, h, v))
 
-    rows = []
+    rows = forks
     for p in prs:
         carried = [q for q in siblings(p) if holds(q, p) and not (holds(p, q) and age(p) < age(q))] if not within[num(p)] else []
         paths = conflicts(p) if not (within[num(p)] or carried) else []
@@ -6039,7 +6042,7 @@ def parse_args(argv):
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
-    add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — merge · closes with PR N · "
+    add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — wait: from a fork, read it yourself (first) · merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
                                             "merge: your answer · wait: not an answerer (<author>) · wait: a seat's commit on your answer branch (<sha>, <author>) · wait: an unverified commit in your name on your answer branch (<sha>) · wait: the base <base> is not fetched here — … · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
