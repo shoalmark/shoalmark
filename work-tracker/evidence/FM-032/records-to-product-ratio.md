@@ -71,6 +71,8 @@ check outputs. `test_shoalmark.py` asserts the window's four numbers above.
 
 ## This change's own numbers
 
-Records added, product added, record deletions and product deletions of `git diff --numstat origin/main...HEAD`,
-classified by
-the rule: to be filled last.
+`git diff --numstat origin/main...HEAD`, classified by the rule (`work-tracker/` = records), at this change's tip. The record
+deletions are the four regenerable check outputs; deleting records offsets nothing.
+
+- records added 219 · product added 435 · 0.5:1
+- record deletions 33,530 · product deletions 2
