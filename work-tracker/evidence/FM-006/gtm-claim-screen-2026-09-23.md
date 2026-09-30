@@ -584,30 +584,8 @@ judges otherwise. The Owner's rule calls it the question, and the ledger will sa
 
 - **Kept raw:** `jev-gate-test-response-run1-2026-09-23.json` and `…-run2-…`, as returned.
 - **Checked here (E):** every answer's type and legend match the committed request, 102 of 102 in each run.
-- **The scorer's output** regenerates from git, so under the Owner's ruling of 2026-09-30 (*"If a check output regenerates, keep only its
-  summary; if it doesn't, it stays in git."*) and his word of 2026-09-30, 11:3x, that it goes, only its summary is kept here. The script and
-  the rule are as committed in `e6518e8`, before either call. **Command**, from this folder, on the two committed responses: `python3
-  jev-gate-test-score.py jev-gate-test-response-run1-2026-09-23.json jev-gate-test-response-run2-2026-09-23.json`. **Environment:** byte for
-  byte the same on Python 3.14.3 and 3.9.6 (macOS Darwin 25.6.0). **Counts:** 17 lines, 102 answers a run; first fatal gate, run 1: G0 2 ·
-  G1 9 · G2 3 · G4 2 · survives 1, agreeing with the ledger on 1 of 17; run 2: G0 6 · G1 6 · G2 2 · G4 1 · survives 2, agreeing on 2 of 17;
-  the controls failed in both runs; the repeat: max |p_pass run 1 − run 2| = 0.110 at C2 G4, 101 of 102 within 0.1, first fatal gate
-  identical on 12 of 17 lines → FAILS; **VERDICT: noise — the record blames the MODEL: the identical question gave different numbers.** The
-  deleted file (44 lines) has sha256 `a75fe8d11bcbc2d209bccc2a6c6f2b083b1b7fe33dd68f376938024f8849d5ea`, git blob `e6fa25f84400a5723d477ff33c0f1a69f126c78c`,
-  and is held at `65d5d43` (`git show 65d5d43:work-tracker/evidence/FM-006/jev-gate-test-score-output-2026-09-23.txt`). `test_shoalmark.py`
-  runs the scorer on every run and compares its stdout's sha256 with the block below.
-
-```json
-{
-  "file": "work-tracker/evidence/FM-006/jev-gate-test-score-output-2026-09-23.txt",
-  "tested": "e6518e8",
-  "command": "python3 jev-gate-test-score.py jev-gate-test-response-run1-2026-09-23.json jev-gate-test-response-run2-2026-09-23.json",
-  "sha256": "a75fe8d11bcbc2d209bccc2a6c6f2b083b1b7fe33dd68f376938024f8849d5ea",
-  "blob": "e6fa25f84400a5723d477ff33c0f1a69f126c78c",
-  "held_at": "65d5d43",
-  "lines": 17,
-  "verdict": "VERDICT: noise \u2014 the record blames the MODEL: the identical question gave different numbers"
-}
-```
+- **The scorer's output** is `jev-gate-test-score-output-2026-09-23.txt`. The script and the rule are as committed in
+  `e6518e8`, before either call.
 
 **The controls failed, in both runs.**
 

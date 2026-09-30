@@ -5717,18 +5717,6 @@ else:
     check(f"FM-032 \u00b7 `node facts.mjs bef2a1e` regenerates facts.json \u2014 every field the README's block records, and the rest by its sha256, `read` apart "
           f"(the block says {_want32}; a fresh run says {_saw32})", _saw32 == _want32)
 
-_jev = re.search(r"```json\n(\{[^`]*?jev-gate-test-score-output[^`]*?\})\n```", (HERE / "work-tracker/evidence/FM-006/gtm-claim-screen-2026-09-23.md").read_text(), re.S)
-_jev = json.loads(_jev.group(1)) if _jev else {}
-_jev_dir = (HERE / "work-tracker/evidence/FM-006")
-_jev_run = subprocess.run([sys.executable, *_jev.get("command", "x").split()[1:]], cwd=str(_jev_dir), capture_output=True,
-                      env=dict(_ENV, PYTHONIOENCODING="utf-8")) if _jev else None      # its stdout is UTF-8 on Windows too (there a pipe is cp1252)
-_jev_sha = hashlib.sha256(_jev_run.stdout.replace(b"\r\n", b"\n")).hexdigest() if _jev_run else None      # a variable: a backslash may not sit in an f-string before 3.12
-check("FM-032 \u00b7 the Jev gate test's score output regenerates \u2014 the committed scorer on the two committed responses prints the UTF-8 bytes (line ends normalised to LF: Windows' text mode writes CRLF) whose sha256 the claim-screen "
-      f"record's block keeps (the block says {_jev.get('sha256')}; a fresh run says {_jev_sha if _jev_run else 'no block'}), "
-      "and the file itself is gone",
-      bool(_jev_run) and _jev_run.returncode == 0 and _jev_sha == _jev["sha256"]
-      and not (_jev_dir / "jev-gate-test-score-output-2026-09-23.txt").exists())
-
 _RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
 _uvx, _npm = shutil.which("uvx"), shutil.which("npm")
 _why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
