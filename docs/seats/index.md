@@ -1,7 +1,7 @@
 # The seats — one home
 
 These are the seats shoalmark's own repository uses: seven development seats, and the Owner, who is not a seat. The tool
-itself knows four names with rights — `owner`, `principal`, `reviewer`, `implementer` ([README §*Seats*](../agents/README.md#seats)); any other seat is the
+itself knows four names that carry their rights built in — `owner`, `planner`, `reviewer`, and `builder` (none) — `principal` and `implementer` are their former names and still work ([README §*Seats*](../agents/README.md#seats)); any other seat is the
 adopter's choice, named in `[seats]` as it likes. Each seat is six lines — its name, its virtue, its shadow, what it takes, what
 it signs, what it may not do — and one practice line; nothing more: a seat without a page of its own is legitimate and works
 from its row. A seat is *it*: seats are not people, so their texts are not corrected to they/them; a person — the Owner, a

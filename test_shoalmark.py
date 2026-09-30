@@ -687,6 +687,160 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-032 S2 · a merge's commits are each judged by their own trailer — one from before the history's first `Session:` is not, one after it is (saw {old_[0]}, {new_[0]})",
           old_[0] == 0 and new_[0] == fm.EXIT_LINT and "which the merge brings" in new_[2] and "carries no Session: trailer" in new_[2] and "the merge brings" not in old_[2])
 
+# --- FM-024: a seat has several identities — `[seats]` takes a string as ever, or a list, old address and new --------------
+NEW_P = "12345+shoalmark-principal[bot]@users.noreply.github.com"
+old = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()      # the ask-since the FM-024 checks below stamp
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    (root / "shoalmark.toml").write_text(base_cfg + f'\n[seats]\nowner = "owner@example.org"\nprincipal = ["principal@seat", "{NEW_P}"]\nreviewer = "reviewer@seat"\n')
+    fm.configure(root)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "principal@seat", "the first session, at the old address\n\nSession: 1111aaaa\nWorktree: wt-p", "2026-09-20T09:00:00")
+    commit_as(root, NEW_P, "the same seat, at the new address\n\nSession: 1111aaaa\nWorktree: wt-p", "2026-09-21T09:00:00")
+    # each assertion below fails on origin/main's tool: it reads `str(["principal@seat", …])` as the one identity, so neither address is a seat
+    check(f"FM-024 · `seat_of` maps the old address and the new to the one seat, and an address in no list to none (saw {fm.seat_of('x', 'principal@seat')}, {fm.seat_of('x', NEW_P)}, {fm.seat_of('x', 'other@seat')})",
+          fm.seat_of("x", "principal@seat") == "principal" and fm.seat_of("x", NEW_P) == "principal" and fm.seat_of("x", "other@seat") is None
+          and fm.seat_of("x", "reviewer@seat") == "reviewer")
+    code_s, said_s, _ = run_safe(root, "--sessions")
+    row_s = [l for l in said_s.splitlines() if l.startswith("| 1111aaaa ")]
+    check(f"FM-024 · `--sessions` reads a session's two commits, one at each address, as one seat and two commits — no raw email in the row (saw {row_s})",
+          code_s == 0 and len(row_s) == 1 and "| principal |" in row_s[0] and "| 2 |" in row_s[0] and "users.noreply" not in row_s[0])
+    passed = {}
+    for sid, who in (("1111aaaa", "principal@seat"), ("1111aaaa", NEW_P), ("1111aaaa/reviewer-1", "principal@seat"), ("1111aaaa/reviewer-1", NEW_P)):
+        subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True)
+        passed[(sid, who)] = run_safe(root, "--session-check", git_env=AS(who))
+    subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
+    check(f"FM-024 · the session rule judges a commit at either address as the seat's: `1111aaaa` passes at both, `<id>/reviewer-1` is refused at both, naming the seat principal (saw {[v[0] for v in passed.values()]})",
+          passed[("1111aaaa", "principal@seat")][0] == 0 and passed[("1111aaaa", NEW_P)][0] == 0
+          and all(passed[("1111aaaa/reviewer-1", w)][0] == fm.EXIT_LINT and "is the seat principal, and its Session: 1111aaaa/reviewer-1 names the seat reviewer" in passed[("1111aaaa/reviewer-1", w)][2]
+                  for w in ("principal@seat", NEW_P)))
+    said_no = fm.no_seat("m", "mallory@seat", "ask", "x")
+    check(f"FM-024 · the refusal that lists the seats names every identity of a seat — `principal (principal@seat · <the bot's address>)` (saw {said_no[-160:]!r})",
+          f"principal ({'principal@seat'} · {NEW_P})" in said_no and "reviewer (reviewer@seat)" in said_no)
+    # a string value changes nothing: the shape the gate has always read
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = "you@example.org signed"\nprincipal = "principal@seat"\nreviewer = "reviewer@seat"\n')
+    fm.configure(root)
+    check(f"FM-024 · a string value reads as it always did — one identity, `signed` on it, `may_answer()` the same (saw {fm.SEATS['owner']}, {fm.may_answer()})",
+          fm.SEATS["principal"] == [("principal@seat", "")] and fm.SEATS["owner"] == [("you@example.org", "signed")]
+          and fm.may_answer() == {"you@example.org": "signed"} and fm.seat_of("x", "principal@seat") == "principal")
+    (root / "shoalmark.toml").write_text(base_cfg + f'\n[seats]\nowner = ["you@example.org signed", "you@example.com"]\nprincipal = ["principal@seat", "{NEW_P} signed"]\n')
+    fm.configure(root)
+    check(f"FM-024 · `signed` is read per identity, on a list: `may_answer()` says which of the Owner's two addresses is signed (saw {fm.may_answer()})",
+          fm.may_answer() == {"you@example.org": "signed", "you@example.com": ""} and fm.seat_mode("owner", "x", "you@example.com") == ""
+          and fm.seat_mode("owner", "x", "you@example.org") == "signed" and fm.seat_mode("principal", "x", NEW_P) == "signed")
+    # …and the gate reads it where it judges an ask: unsigned at the old address passes, unsigned at the signed one is refused
+    seats_cfg = base_cfg + f'\n[seats]\nowner = "owner@example.org"\nprincipal = ["principal@seat", "{NEW_P} signed"]\n'
+    (root / "shoalmark.toml").write_text(seats_cfg)
+    fm.configure(root)
+    tracker(root, "MSR-002", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    (root / "shoalmark.toml").write_text(base_cfg); run(root); (root / "shoalmark.toml").write_text(seats_cfg); git(root, "add", "-A")
+    commit_as(root, "principal@seat", "the ask, at the unsigned old address\n\nSession: 1111aaaa\nWorktree: wt-p")
+    code_u, _, err_u = run(root, "--check")
+    git(root, "commit", "-q", "--amend", "--no-edit", f"--author=p <{NEW_P}>")
+    code_g, _, err_g = run(root, "--check")
+    check(f"FM-024 · an ask at the seat's unsigned identity passes; the same ask at its `signed` identity, unsigned, is refused as the seat (saw {code_u}, {code_g})",
+          code_u == 0 and "does not verify" not in err_u and code_g == fm.EXIT_LINT and "does not verify as the seat `principal`" in err_g)
+    # an identity under two seats is refused at configuration, in one line naming both — exit 1, like every configuration refusal
+    dup = base_cfg + f'\n[seats]\nowner = "owner@example.org"\nprincipal = ["principal@seat", "{NEW_P}"]\nimplementer = ["implementer@seat", "{NEW_P}"]\n'
+    (root / "shoalmark.toml").write_text(dup)
+    r_dup = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-024 · an identity listed under two seats refuses at configuration — exit 1, one line, naming the identity and both seats (saw {r_dup.returncode}, {r_dup.stderr.strip()[:200]!r})",
+          r_dup.returncode == 1 and len(r_dup.stderr.strip().splitlines()) == 1 and NEW_P in r_dup.stderr and "`principal` and `implementer`" in r_dup.stderr and r_dup.stdout == "")
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = ["o@x signed", "o@x"]\n')
+    r_twice = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-024 · RV-2071 · an identity listed twice under one seat is refused too — `signed` would read two ways — naming it and the seat (saw {r_twice.returncode}, {r_twice.stderr.strip()[:160]!r})",
+          r_twice.returncode != 0 and "`o@x` is listed twice under `owner`" in r_twice.stderr and len(r_twice.stderr.strip().splitlines()) == 1)
+    (root / "shoalmark.toml").write_text(base_cfg); fm.configure(root)
+    check("FM-024 · `--schema` documents the form — `[seats] <seat>`, a string or a list, `signed` per identity, the refusal",
+          (lambda t: "| `[seats] <seat>` | one identity, or a list of them" in t and "`signed` is read per identity" in t and "under two seats is refused" in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
+# FM-024 · the Owner's ruling of 2026-09-30: a seat's name is English, and `go-to-market` has hyphens — the parser, `seat_of` and the
+# session rule's `<parent>/<seat>-<n>` form all carry it, and `research` keeps its old address beside the one it is given.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text()
+                                         + '\n[seats]\nowner = "owner@example.org"\nresearch = ["research@seat", "datascientist@seat"]\ngo-to-market = "gtm@seat"\ndesigner = "designer@seat"\nauditor = "auditor@seat"\n')
+    fm.configure(root)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "gtm@seat", "the go-to-market seat, at the address history knows\n\nSession: 2222bbbb/go-to-market-1\nWorktree: wt-g")
+    seen_h = {}
+    for name, sid, who in (("own hyphenated id", "2222bbbb/go-to-market-1", "gtm@seat"), ("the old short name", "2222bbbb/gtm-1", "gtm@seat"),
+                           ("a sub-agent of the parent", "2222bbbb", "gtm@seat"), ("research at the old address", "3333cccc/research-2", "datascientist@seat"),
+                           ("research at its own", "3333cccc/research-2", "research@seat")):
+        subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True)
+        seen_h[name] = run_safe(root, "--session-check", git_env=AS(who))
+    subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
+    check(f"FM-024 · a seat named with hyphens: `[seats] go-to-market` reads, `gtm@seat` is that seat, and `<id>/go-to-market-<n>` is the session id the rule accepts for it (saw {fm.seat_of('x', 'gtm@seat')}, {[v[0] for v in seen_h.values()]})",
+          fm.seat_of("x", "gtm@seat") == "go-to-market" and fm.SEATS["go-to-market"] == [("gtm@seat", "")]
+          and seen_h["own hyphenated id"][0] == 0 and seen_h["a sub-agent of the parent"][0] == 0
+          and seen_h["the old short name"][0] == fm.EXIT_LINT and "is the seat go-to-market, and its Session: 2222bbbb/gtm-1 names the seat gtm" in seen_h["the old short name"][2])
+    check(f"FM-024 · `research` keeps `datascientist@seat` beside `research@seat`: both are the seat, and each passes the rule with `<id>/research-<n>` (saw {fm.seat_of('x', 'datascientist@seat')}, {fm.seat_of('x', 'research@seat')})",
+          fm.seat_of("x", "datascientist@seat") == "research" and fm.seat_of("x", "research@seat") == "research"
+          and seen_h["research at the old address"][0] == 0 and seen_h["research at its own"][0] == 0
+          and fm.seat_of("x", "designer@seat") == "designer" and fm.seat_of("x", "auditor@seat") == "auditor")
+fm.configure(HERE)
+
+# FM-024 · the Owner's ruling of 2026-09-30: the implementer seat is `builder` from 0.19.0 — `builder` and `implementer` both hold no right, so a
+# repository that keeps `implementer` reads exactly as before, and one that says `builder` reads the same.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    commit_as(root, "someone@example.org", "the start")
+    tracker(root, "MSR-001", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A")
+    verdicts = {}
+    for key, addr in (("implementer", "implementer@seat"), ("builder", "builder@seat")):
+        (root / "shoalmark.toml").write_text(base_cfg + f'\n[seats]\nowner = "owner@example.org"\n{key} = "{addr}"\n')
+        fm.configure(root)
+        rights_ = {r: fm.holds(key, r) for r in fm.RIGHTS}
+        commit_as(root, addr, f"the ask, by the {key}\n\nSession: 1111aaaa")
+        code_b, _, err_b = run(root, "--check")
+        git(root, "reset", "-q", "--soft", "HEAD~1")
+        verdicts[key] = (rights_, code_b, err_b, fm.seat_of("x", addr))
+    check(f"FM-024 · `builder` and `implementer` read alike: each is its own seat, holds none of the four rights, and its ask is refused — `<addr>` is the seat `<name>`, which does not hold `ask` (saw {[(k, v[1]) for k, v in verdicts.items()]})",
+          all(not any(v[0].values()) and v[1] == fm.EXIT_LINT and f"is the seat `{k}`, which does not hold `ask`" in v[2] and v[3] == k for k, v in verdicts.items()))
+    check("FM-024 · `--schema` names the built-in seats `builder` and `implementer` (its former name)",
+          (lambda t: "`builder`" in t and "`implementer`" in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
+# FM-024 · the Owner's ruling of 2026-09-30: the principal seat is `planner` from 0.19.0 — `principal` stays, as its old spelling, with the same three rights.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    commit_as(root, "someone@example.org", "the start")
+    tracker(root, "MSR-001", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A")
+    held = {}
+    for key, addr in (("principal", "principal@seat"), ("planner", "planner@seat")):
+        (root / "shoalmark.toml").write_text(base_cfg + f'\n[seats]\nowner = "owner@example.org"\n{key} = "{addr}"\n')
+        fm.configure(root)
+        rights_ = sorted(r for r in fm.RIGHTS if fm.holds(key, r))
+        commit_as(root, addr, f"the ask, by the {key}\n\nSession: 1111aaaa")
+        code_p, _, err_p = run(root, "--check")
+        git(root, "reset", "-q", "--soft", "HEAD~1")
+        held[key] = (rights_, code_p, err_p)
+    check(f"FM-024 · `planner` and `principal` hold ask, close and triage — and not answer — and the ask each puts before the Owner passes the gate (saw {held})",
+          all(v[0] == ["ask", "close", "triage"] and v[1] == 0 and "does not hold" not in v[2] for v in held.values()))
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = "owner@example.org"\nplanner = "planner@seat"\nprincipal = "principal@seat"\n')
+    fm.configure(root)
+    check(f"FM-024 · both spellings in one `[seats]` are two seats with the same three rights, each matched from its own address — no seat is doubled (saw {fm.seat_of('x', 'planner@seat')}, {fm.seat_of('x', 'principal@seat')})",
+          fm.seat_of("x", "planner@seat") == "planner" and fm.seat_of("x", "principal@seat") == "principal"
+          and fm.SEAT_RIGHTS["planner"] == fm.SEAT_RIGHTS["principal"] == {"ask", "close", "triage"} and sorted(fm.SEATS) == ["owner", "planner", "principal"])
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = "owner@example.org"\nplanner = "planner@seat"\nprincipal = ["planner@seat"]\n')
+    r_two = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-024 · the same address under both spellings is refused at configuration, naming both — an identity is one seat's (saw {r_two.returncode}, {r_two.stderr.strip()[:160]!r})",
+          r_two.returncode == 1 and "`planner@seat` is listed under two seats, `planner` and `principal`" in r_two.stderr)
+    (root / "shoalmark.toml").write_text(base_cfg)
+    check("FM-024 · `--schema` names the built-in seats `planner` and `builder`, with `principal` and `implementer` as their former names",
+          (lambda t: "`planner`" in t and "`principal`" in t and "former names" in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
 # --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -4961,7 +5115,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and said37_["ap/037-signed"][0] == f"wait: no verdict on {c_sig_[:7]}" and said37_["ap/037-passes"][0] == f"wait: no verdict on {c_pass_[:7]}"
           and said37_["ap/037-path"][0] == f"wait: no pull request — TRIAGE.md changed unsigned ({c_path_[:7]})")
     # the Owner is the DEFAULT branch's: a branch that names itself the Owner still judges nothing of its own
-    c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
+    c_self_, g_self_ = made37_("ap/037-self", "AP-037: the seat, the Owner", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\nimplementer = "implementer@seat"', 'owner = "implementer@seat"')), text37_("lose a loan", "lose nothing")()), SEAT_)
     git(root, "push", "-q", "origin", "ap/037-self"); c_st_, _g = made37_("ap/037-stacked", "AP-037: the path, on a stacked branch", text37_("2. Nothing merges unreviewed.", "2. The seat merges."), SEAT_, frm="ap/037-self")
     q_st_ = _no_git_env(lambda: fm.queue_actions([{"number": 9, "title": "s", "headRefName": "ap/037-stacked", "headRefOid": c_st_, "baseRefName": "ap/037-self",
                                                   "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": "2026-09-25T09:00:00Z"}]))

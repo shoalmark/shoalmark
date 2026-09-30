@@ -5,11 +5,16 @@ freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`)
 judged_before_build = true   # FM-033, the Owner's rule: a pass judges before the first build commit — refused otherwise
 
 [seats]            # who sits where — the Owner answers with their key; seats commit unsigned as <seat>@seat
+                   # (FM-024: a seat's value may be a list — every identity in it is that seat; a bot address is added beside the old one)
 owner = "holgoijo@gmail.com signed"
 principal = "principal@seat"
 implementer = "implementer@seat"
 reviewer = "reviewer@seat"
 gtm = "gtm@seat"
+research = ["research@seat", "datascientist@seat"]   # the Data Scientist folded into research, 2026-09-30
+go-to-market = "go-to-market@seat"                   # the English name; the seat commits as `gtm` above until the one change
+designer = "designer@seat"
+auditor = "auditor@seat"
 
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
