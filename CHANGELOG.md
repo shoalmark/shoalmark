@@ -6,6 +6,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 <!-- The heading's name is provisional: another branch carries `## Unreleased — 0.18.7`; the release cut settles which version this section is. -->
 
+- **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
+  The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
+  and AGENTS.md says so in one sentence so nobody "fixes" a seat's text. README, AGENTS.md, `docs/` (English and German,
+  where the German keeps the English seat names and "Sie") and the tool's printed text are reworded; quotes of the Owner
+  and every shipped record stay as they were. The seats are Planner and Builder in prose; the `[seats]` keys
+  `principal` and `implementer` and their addresses follow with the bot identities, in one change.
+
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
   pull request or tell the Owner to close work carried into that fork. Nor can a fork's base hide another pull
