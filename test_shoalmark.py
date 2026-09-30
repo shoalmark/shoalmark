@@ -688,6 +688,7 @@ with tempfile.TemporaryDirectory() as d:
 
 # --- FM-024: a seat has several identities — `[seats]` takes a string as ever, or a list, old address and new --------------
 NEW_P = "12345+shoalmark-principal[bot]@users.noreply.github.com"
+old = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()      # the ask-since the FM-024 checks below stamp
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); run(root, "--init", "--key", "msr")
