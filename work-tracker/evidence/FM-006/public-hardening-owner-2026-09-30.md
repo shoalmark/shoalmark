@@ -129,3 +129,45 @@ Workflow references and the historical deletion were inspected from Git; setting
 - [Actions policy and its local-action exception](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
 - [CodeQL default setup](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/configure-code-scanning/configure-code-scanning)
 - [Security configuration defaults](https://docs.github.com/en/rest/code-security/configurations)
+
+## Execution results — 2026-09-30, Owner browser actions
+
+Filed by Principal `01a0ec25` on the Owner's instruction: "file the execution results."
+Preparation merged in PR #127 at `f243be84888cda58239af6ad3ef4e2a0fa821462`.
+The Owner applied the settings in his browser and reported completion; this seat used read-only API verification.
+This is an execution receipt, not a new signed answer or a replacement of the Owner's existing publication act.
+
+| Control | Observed result and verification |
+|---|---|
+| Release team | `release-owner`, ID `19807493`, visible (`privacy: closed`), no parent, sole member `holgo99`; API verified. Owner reported the team step done; repository Write grant could not be independently read with this credential. |
+| Tag immutability | Ruleset `24240393`, active, `refs/tags/v*`, no exclusions/bypass; update, deletion and non-fast-forward restrictions. API verified. |
+| Tag creation | Ruleset `24240474`, active, same scope; creation restriction only; sole bypass team `19807493`, always. API verified. |
+| Merge methods | Repository merge=true, squash=false, rebase=false; main ruleset `24177420` allows `[merge]`, retains five required suites and empty bypass. API verified. |
+| Repository Actions | Enabled, selected actions; GitHub-owned=true, verified=false, external patterns empty. API verified despite browser timeout. |
+| Organisation Actions | Owner reopened the page and confirmed the selected-actions policy and GitHub-owned checkbox, verified creators unchecked. External-pattern emptiness was requested but not explicitly restated in his readback. Organisation policy API reads returned 403 (missing scope); do not label this API-verified. |
+| CodeQL | Default setup configured, default query suite, standard runners, weekly schedule; Actions, JavaScript/TypeScript and Python scan jobs all succeeded in [run 36703911408](https://github.com/shoalmark/shoalmark/actions/runs/36703911408), head `7e7c8ace28105f0b18c9d33b450b053c3a653031`. Overall run success; Adjust Configuration skipped. This proves scans ran, not absence of vulnerabilities. |
+| New public repositories | `public-repository-defaults`, ID `280045`, default scope `public`, enforcement `unenforced`; dependency graph, Dependabot alerts/security updates, secret scanning and push protection enabled. API verified after a second save: the first created the configuration but left defaults empty. |
+
+Existing `shoalmark/shoalmark` was not attached to the new configuration (`GET code-security-configuration`: HTTP 204).
+Independent repository settings at 10:57 UTC confirm secret scanning, push protection and Dependabot security updates enabled;
+Dependabot alerts returned HTTP 204 (enabled), private vulnerability reporting returned `enabled: true`, and the dependency-graph
+SBOM returned seven packages. CodeQL was enabled during this execution; those other protections already existed.
+Generic/non-provider secret patterns and secret validity checks remain disabled. No paid/private-repository coverage was activated.
+The new-public default therefore does not retroactively change this repository's settings.
+
+Readbacks used `gh api` under `repos/shoalmark/shoalmark/`: `rulesets/{id}`, repository metadata,
+`actions/permissions` and `/selected-actions`, `code-scanning/default-setup`, `vulnerability-alerts`,
+`private-vulnerability-reporting`, `dependency-graph/sbom`, and `code-security-configuration`;
+organisation endpoints were `orgs/shoalmark/teams/release-owner` and `/members`, and `code-security/configurations/defaults`.
+Scan-job results used `gh run view 36703911408 --repo shoalmark/shoalmark --json status,conclusion,jobs`.
+These live observations are retained here because a later API read cannot reproduce the historical settings.
+
+The setup UI differed from the prepared navigation: Configurations → Set up → Custom configuration opened the form.
+The saved scope is Public repositories with Don't enforce. The instructions requested other feature controls Not set;
+full API readback additionally reports `advanced_security`, `secret_scanning_validity_checks` and
+`secret_scanning_extended_metadata` enabled in the new-public configuration. Record the actual settings, not the requested
+UI selections; this does not change the existing repository's disabled validity checks. The page-timeout symptom did not prevent the repository Actions save.
+No tag was created, moved or deleted to test enforcement; no history rewrite occurred. PR #119's tree-only deletion remains as above.
+The non-member-input rule landed with #127. Restricted agent credentials and no-reply email remain separate Owner decisions.
+Remaining verification limits: repository team Write grant and organisation external-pattern list require explicit browser readback
+or appropriately scoped read-only access; no agent expanded token permissions to obtain it. FM-006 consolidation remains with `8e509911`.
