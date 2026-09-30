@@ -28,6 +28,10 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**2026-09-30 — a report opens with `From:`, a bug new in 0.19.0, fixed before the tag.** The Owner's ruling is filed below, in
+*A report opens with From: — v0.19.0*. It is built on `fm/024-a-report-opens-with-from`, cut from main `1197e80`, by one Builder,
+in its own pull request beside FM-005's done fix; the Reviewer of that fix judges it after that verdict, at code tier. Next: build.
+
 **Slice 2 built 2026-09-30 on `fm/024-a-seat-has-several-identities`, for 0.19.0 — the Owner's word of 14:42, normalised: *"the seat icons ride v0.19.0"*; open for the Reviewer's pass.**
 `[seats]` takes a string or a list per seat, so a seat keeps its old address and gains a GitHub App's bot address (`seat_of`, the gates and the session rule match any; `signed` per identity; a duplicate — under two seats, or twice under one — refuses, exit 1); the README's *Seat icons on the forge*; `research` (with `datascientist@seat`), `go-to-market`, `designer` and `auditor` added to `shoalmark.toml` beside the five keys, which stay until the one change on Thursday (their addresses are the Owner's ruling of 15:29; none is in history yet but `designer@seat`, whose ten commits from PR 137 carry `Session: 8e509911/designer-1` and now resolve to the seat); `planner` and `builder` in the built-in rights, `principal` and `implementer` their old spellings; 18 checks, each failing on `origin/main`'s tool except the builder's, which is the point.
 
@@ -295,6 +299,20 @@ Postponed on his word of 06:38:10; the task he named as waiting comes first.
 - 2026-09-30 06:11:21 · Auditor (8b91dba2), through the Owner (his paste headed *To: 8e509911 principal (shoalmark-principal-4)*, five lines, saved word for word, sha256 `8e8f77ce3ec60e8b09efb94095c1dc4651665a9fcfbd8312c76cc39a7ad82c12`; quoted whole in the section above) · a change brief for the answered slice: the strip grouped by parent (the line of 2026-09-28 above, extended), each session's model and reasoning effort from the harness's logs as `Model:` and `Effort:` trailers, `--whoami` matching the live log by its `cwd` · graded by the Principal the same morning, the section above: the grouping and the principle accepted, the `cwd` match rejected on a measured fact (a match by the harness's ids proposed), the code loop not one pass; nothing built, postponed on the Owner's word of 06:38:10 · source: the paste; the strip as `board_sessions` renders it at main `792dbca` · undermines: no signed rule — a design brief for the slice
 - 2026-09-30 09:12:44 · the Owner, in chat · *"Version `.claude/agents/implementer.md` (and a `reviewer.md`) in both repositories. Currently these are excluded by .gitignore."* (normalised) — this repository had no `.claude/` and no ignore rule for it; the two seat definitions now ship in `.claude/agents/` (the Implementer on Sonnet at effort xhigh, the Reviewer on Opus — his words of 08:5x), a project-level definition the harness ranks above a user's own; the parent project's side — its ignore exception and the same two files — is its own Principal's to commit, one author per repository · source: his word; the harness's subagents page (frontmatter `model`, `effort`) · undermines: no signed rule — a slice of the answered slice (the harness's settings ship with the tool); a seat definition carries the prompt every seat follows and can grant tools, so its review is critical tier: an independent session's Reviewer, never one same-session docs pass
 
+## A report opens with From: — v0.19.0
+
+**The Owner's ruling, 2026-09-30 — a bug new in 0.19.0, fixed before the tag in its own pull request.** A report opens with
+*To: <itself>*: `--whoami` prints `To: …` (`shoalmark.py:5049`), and AGENTS.md rule 8 says a report opens with that line.
+
+- **`--whoami` prints `From: <session> <seat> (<worktree>) · <model> · <effort>`.**
+- **Rule 8** says a report opens with that `From:` line, and a message names its target with `To:` and the same identity — in
+  AGENTS.md and in the contract `--init` writes between its markers, which stay one text.
+- **What follows it:** the README's example (`:394`), the two Unreleased CHANGELOG bullets that show the line, and the test
+  expectations (`test_shoalmark.py:1078–1133`).
+- **Records already written stay as they are.**
+- **How it is built:** one Builder in its own worktree from main `1197e80`, which pushes and stops; the Reviewer of FM-005's done
+  fix judges it after that verdict, at code tier; the Owner opens the pull request.
+
 ## Done when
 
 The Owner has ruled the candidate; a seat commit without a registered open session is refused by the gate; the board
@@ -356,3 +374,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-30 | **The planner's icon, beside the builder's** (the Owner renames the principal seat planner in v0.19.0, relayed by the Principal, normalised: *"planner.svg; the skipper character stays"*), by the Designer seat (`8e509911/designer-1`) on `fm/024-the-builder-icon`, which now carries both renames: `principal.svg` is `planner.svg`, the skipper and its drawing unchanged, `export.py` writing `out/planner-200.png`; `implementer.svg` is `builder.svg`, the shipwright (the row above). One render covers both: `evidence/FM-024/seat-icons-preview-2026-09-30-renamed.png` — the row above's `…-builder.png`, moved and re-rendered in `03a62bc`; the two renders on main stay, and the records keep their words. Four numbers at this tip: records +2, product +19, records deletions 0, product deletions 19 (one PNG besides). |
 | 2026-09-30 | **Slice 2 built — a seat has several identities** (for 0.19.0; the Owner's word 14:42 and their rulings of 15:29 on the seven seats): `[seats]` reads a list per seat; the golden comparison of `--check` and `--owner` against `origin/main`'s tool, string values, is byte-identical; the list pattern of `read_config` took a `]` inside a quoted item after the first commit's tests found the bot's `[bot]` refused; `research`, `go-to-market`, `designer`, `auditor` added to `shoalmark.toml`. Not built: the bot addresses themselves — configuration, when each App exists. |
 | 2026-09-30 | **Slice 2 corrected and widened by the Owner's rulings of 15:29 onward** (relayed by the Principal): the five `[seats]` keys and their addresses stay until one change on Thursday, so `gtm` is back and `go-to-market` has its own address; the built-in rights are `planner` and `builder`, `principal` and `implementer` their old spellings — a test each. Not built: the key rename, the bot addresses, the badges. |
+| 2026-09-30 | **A report opens with `From:` — filed** by the Planner on the Owner's ruling of that day, a bug new in 0.19.0: `--whoami` prints `To: …` and rule 8 says a report opens with that line, so a report opens with *To: <itself>*; `--whoami` prints `From: …`, rule 8 says so and keeps `To:` for a message's target, the README example, the two Unreleased CHANGELOG bullets and the tests follow; records already written stay. |
