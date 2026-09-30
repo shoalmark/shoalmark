@@ -60,9 +60,10 @@ outputs of two folders (`073f21f` and `9d10d08`, both 12:02). `test_shoalmark.py
 
 ## This change's own numbers
 
-`git diff --numstat origin/main...HEAD` (the three-dot range against `origin/main` at `bd34852`: the merge of main is not the change's),
-classified by the rule (`work-tracker/` = records), at this change's tip. The Reviewer's verdict file counts as record lines and stays. The
-record deletions are the four regenerable check outputs; deleting records offsets nothing.
+`git diff --numstat origin/main...HEAD` (the three-dot range against `origin/main`, which is `7e7c8ac`; its merge base is the last merge of
+main into this branch, and the merge of main is not the change's), classified by the rule (`work-tracker/` = records), at this change's
+tip. The Reviewer's verdict files count as record lines and stay. The record deletions are the five regenerable check outputs; deleting
+records offsets nothing.
 
-- records added 432 · product added 536 · 0.8:1
-- record deletions 33,529 · product deletions 2
+- records added 543 · product added 547 · 1.0:1
+- record deletions 33,575 · product deletions 2

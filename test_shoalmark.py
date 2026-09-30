@@ -5711,6 +5711,16 @@ else:
     check(f"FM-032 \u00b7 `node facts.mjs bef2a1e` regenerates facts.json \u2014 every field the README's block records, and the rest by its sha256, `read` apart "
           f"(the block says {_want32}; a fresh run says {_saw32})", _saw32 == _want32)
 
+_jev = re.search(r"```json\n(\{[^`]*?jev-gate-test-score-output[^`]*?\})\n```", (HERE / "work-tracker/evidence/FM-006/gtm-claim-screen-2026-09-23.md").read_text(), re.S)
+_jev = json.loads(_jev.group(1)) if _jev else {}
+_jev_dir = (HERE / "work-tracker/evidence/FM-006")
+_jev_run = subprocess.run([sys.executable, *_jev.get("command", "x").split()[1:]], cwd=str(_jev_dir), capture_output=True, env=_ENV) if _jev else None
+check("FM-032 \u00b7 the Jev gate test's score output regenerates \u2014 the committed scorer on the two committed responses prints the bytes whose sha256 the claim-screen "
+      f"record's block keeps (the block says {_jev.get('sha256')}; a fresh run says {hashlib.sha256(_jev_run.stdout).hexdigest() if _jev_run else 'no block'}), "
+      "and the file itself is gone",
+      bool(_jev_run) and _jev_run.returncode == 0 and hashlib.sha256(_jev_run.stdout).hexdigest() == _jev["sha256"]
+      and not (_jev_dir / "jev-gate-test-score-output-2026-09-23.txt").exists())
+
 _RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
 _uvx, _npm = shutil.which("uvx"), shutil.which("npm")
 _why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
@@ -5739,7 +5749,7 @@ else:
 
     def _same(name, got, block, derived):
         want = (block["checks"], sorted(block["failing"]))
-        check(f"FM-032 \u00b7 {name} regenerates by its results \u2014 {want[0]} checks, {len(want[1])} failing, the same ids (a fresh run: {derived if got else 'no output'}; "
+        check(f"FM-032 \u00b7 {name} regenerates by its results \u2014 {want[0]} checks, {len(want[1])} failing ids, the same ids (a fresh run: {derived if got else 'no output'}; "
               f"the README's block: {want})", bool(got) and derived == want)
 
     with tempfile.TemporaryDirectory() as d:
