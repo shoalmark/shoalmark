@@ -114,7 +114,7 @@ lists the 8 mock renders too (below); those are not committed.
 ## The checks carried — measured on the built files
 
 `checks.mjs` here, on the same built files as the renders (the after board and site at `361336a`), both schemes;
-`checks.json` holds every measurement. Chrome, offline as the renders. Four pages: the board and the site's start page
+`checks.json` held every measurement until 2026-09-30 (its summary is the *Summary* below; `11faa03` holds the file). Chrome, offline as the renders. Four pages: the board and the site's start page
 at 1440 and 390 px; the tracker view (`#=FM-002`) and the dialog (the owner's box's first *done*, opened as he would) at
 1440.
 
@@ -218,7 +218,7 @@ lowest is 5.98:1**, a row's tags `#90a3b1` on the zebra `#152535`; under a chart
 | `#ffffff` | `#15293d` | 14.83 | — | 2 | `div.md-header__topic > span.md-ellipsis` | site |
 
 The pairs merge the board's, the site's, the tracker view's and the dialog's where their colours are the same, hovered
-states included; `checks.json`'s `pairs` has every place each was seen. Decorative lines — the chart's graticule, its
+states included; `checks.json`'s `pairs` had every place each was seen (at `11faa03`). Decorative lines — the chart's graticule, its
 border, the boxes' borders — are not text and are not measured; the search box's border is an input's boundary, FM-006's
 3:1.
 
@@ -226,6 +226,39 @@ border, the boxes' borders — are not text and are not measured; the search box
 on today's board — it sits inside `#B`, which the view hides); the view starts at (283, 62), 874 px wide, its first
 heading at (283, 420) — **after and mock the same** in both schemes. Before: (186, 39), 900 px, the heading at
 (186, 407).
+
+## Summary — the check output, regenerable
+
+**The Owner's ruling of 2026-09-30 (07:04:27, *normalised*): *"If a check output regenerates, keep only its summary; if it doesn't, it stays in
+git."*** `checks.json` regenerates from git by the *Rebuild* commands below, so it is replaced by this summary; it is in git, byte for byte,
+at `11faa03` (`git show 11faa03:work-tracker/evidence/FM-002/slice-a/checks.json`). Regeneration is judged by the checks' results by the thresholds above, never by bytes.
+
+| | `checks.json` |
+|---|---|
+| tested | `361336a`'s tree: *before* `2a9f7eb`'s two files, *after* `70fedd3`'s; the mock by `build-mocks.py` |
+| command as run | the *Rebuild* block below, run from `git archive 361336a` with `uvx zensical@0.0.65 build` and `@ibm/plex-mono 1.1.0` from `npm pack` |
+| environment, original run | not recorded (Chrome headless, offline; 26 September 2026, 15:38) |
+| environment, fresh run | node v26.7.0, Google Chrome 154.0.8037.58, zensical 0.0.65 (uvx zensical@0.0.65, uv 0.10.4), macOS Darwin 25.6.0, 2026-09-30 07:29-07:34 CEST |
+| original | 14 checks, 0 failing: contrast below 4.5:1, 0 of 746 measured by day, 0 of 746 by night (29 and 31 pairs, lowest 5.76 and 5.98); AU-16 0 figures and 0 markers on all 8; AU-18 99 of 99.8 characters; the view aligned as the mock |
+| fresh | 14 checks, 0 failing: contrast below 4.5:1, 0 of 740 measured in each scheme (29 and 32 pairs, lowest 5.76 and 5.98); AU-16 the same 0 on all 8; AU-18 98 of 99.8; the view aligned as the mock |
+| deleted file's sha256 | `92ab6696cc5c10f843c4d083561b16adb29c2db1cb55dc5bfff42f346e9eff83` |
+| held at | `11faa03` |
+
+**What moved, and why it is not a difference in the results:** the board writes the clock — the Owner's box holds what is owed *now* — so a
+rebuild days later measures 740 texts, not 746, one more pair by night, and an owner's box of 34 lines with its longest at 98 characters, not 56
+and 99. Each stays under its threshold; the counts of measurements are not compared, the verdicts are: 14 checks, none failing, in both runs.
+The block below is what `test_shoalmark.py` compares a fresh run against (`SHOALMARK_REGENERATE=1`).
+
+```json
+{
+  "file": "work-tracker/evidence/FM-002/slice-a/checks.json",
+  "tested": "361336a",
+  "command": "before: 2a9f7eb's brand/theme.css and docs/stylesheets/shoalmark.css; python3 shoalmark.py --html-only; uvx zensical@0.0.65 build; after: 70fedd3's two files, the same; python3 work-tracker/evidence/FM-006/themes/build-mocks.py mock --plex <@ibm/plex-mono 1.1.0>/fonts/split/woff2; node work-tracker/evidence/FM-002/slice-a/checks.mjs STAGE checks.json",
+  "checks": 14,
+  "failing": [],
+  "generated_by": "node work-tracker/evidence/FM-002/slice-a/checks.mjs"
+}
+```
 
 ## Rebuild
 

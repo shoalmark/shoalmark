@@ -51,11 +51,23 @@ assets. An output that does not regenerate from git by a committed command stays
 
 | | the baseline the Owner relayed, 07:04:27 | the command's own output at this branch's tip |
 |---|---|---|
-| records added : product added | 66,550 : 15,968 (4.2:1) | to be filled from the command, as it lands |
-| records deleted / product deleted | 1,015 / 1,784 (relayed, not remeasured) | to be filled from the command, as it lands |
+| records added : product added | 66,550 : 15,968 (4.2:1) | 65,711 : 15,713 (4.2:1) |
+| records deleted / product deleted | 1,015 / 1,784 (relayed, not remeasured) | 972 / 1,764 |
 
-The per-day table, 09-22 to 09-29 (the 09-27 day carries the two check outputs), is the command's own and is filled with
-it.
+The command's per-day lines for the window (`--ratio --since 2026-09-22 --until 2026-09-29`), 111 merges; the 09-27 day
+carries the two
+check outputs. `test_shoalmark.py` asserts the window's four numbers above.
+
+| day | records +added −deleted | product +added −deleted | ratio | merges |
+|---|---|---|---|---|
+| 09-22 | +441 −11 | +1,671 −167 | 0.3:1 | 10 |
+| 09-23 | +9,373 −88 | +2,312 −207 | 4.1:1 | 12 |
+| 09-24 | +6,459 −245 | +2,061 −533 | 3.1:1 | 33 |
+| 09-25 | +4,248 −110 | +3,349 −476 | 1.3:1 | 18 |
+| 09-26 | +4,348 −38 | +1,418 −92 | 3.1:1 | 12 |
+| 09-27 | +36,778 −87 | +1,833 −83 | 20.1:1 | 9 |
+| 09-28 | +2,831 −55 | +1,969 −145 | 1.4:1 | 14 |
+| 09-29 | +1,233 −338 | +1,100 −61 | 1.1:1 | 3 |
 
 ## This change's own numbers
 
