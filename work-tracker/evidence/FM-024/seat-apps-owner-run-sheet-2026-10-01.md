@@ -1,11 +1,11 @@
 # FM-024 — the seven seat Apps: Owner run sheet, a dry run for Thursday 2026-10-01 before 11:00
 
 Prepared 2026-09-30, 14:47–15:06 CEST, by the GtM seat, session `8e509911/gtm-2` (Claude Opus 5.5), on `fm/024-the-seat-apps-run-sheet` off main `297896b`.
-Scope: seven GitHub Apps owned by the organisation `shoalmark`. **The seat created nothing and changed no setting;** every forge read below is a GET. The
-Owner creates the Apps in GitHub's browser UI, logged in as `holgo99` (org role `admin`, read 14:51). The Owner's plan (normalised): *"seven Apps (principal,
-implementer, reviewer, gtm, auditor, datascientist, designer), no permissions, webhook inactive, no private key, no client secret, not installed, icon
-uploaded. A seat reads the bot ids."* His pre-decision, relayed 2026-09-30 (normalised): *"If a bot id does not resolve after creation, install that App on
-the shoalmark organisation, only select repositories: shoalmark, with its permissions still none, and still no private key and no client secret. The inert
+Scope: seven GitHub Apps owned by the organisation `shoalmark`. **The seat created nothing and changed no setting;** every forge read below is a GET. The Owner
+creates the Apps in GitHub's browser UI, logged in as `holgo99` (org role `admin`, read 14:51). The Owner's plan (normalised): *"seven Apps (principal,
+implementer, reviewer, gtm, auditor, datascientist, designer), no permissions, webhook inactive, no private key, no client secret, not installed, icon uploaded.
+A seat reads the bot ids."* Their pre-decision, relayed 2026-09-30 (normalised): *"If a bot id does not resolve after creation, install that App on the
+shoalmark organisation, only select repositories: shoalmark, with its permissions still none, and still no private key and no client secret. The inert
 credential is what the condition protects, not the installation."* Their rulings on seats (15:29, relayed) rename two Apps: research, go-to-market.
 
 ## 1. The names — checked free
@@ -33,8 +33,8 @@ two 404s are the stronger half, and **Create GitHub App** is the proof. The ruli
 | **G0** form | more than one line · over 120 characters (counted in code) · not English · jargon or an internal id · not what the seat does · read aloud, a job ad or a slogan |
 | **G1** language | a native English reader hears a translation, or an idiom slips |
 | **G2** truth | anything the record cannot show today: a promise (speed, safety, quality), a compliance word, another project or product named |
-| **G3** the Owner's never | it makes him a push-a-button, invites rubber-stamping, flatters or insults him |
-| **G4** both ways | beside the fleet's line (`docs/index.md`: a question put to him, his answer one command) and the four rights (README §*Seats*), a seat answers, decides or merges for him |
+| **G3** the Owner's never | it makes them a push-a-button, invites rubber-stamping, flatters or insults them |
+| **G4** both ways | beside the fleet's line (`docs/index.md`: a question put to them, their answer one command) and the four rights (README §*Seats*), a seat answers, decides or merges for them |
 | **G5** the bar | beside the other six, it could sit under another seat's name, or it does not end with the seat's limit (the Owner's rule 6, relayed 15:29: first person, one line) |
 
 | Seat | Line (characters) | G0 | G1 | G2 | G3 | G4 | G5 | Why: what the record shows |
@@ -72,13 +72,13 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    App's page: **generate no private key and no client secret**, and click no *Install App*. A note inviting a key may show; leave it. Expected:
    `https://github.com/organizations/shoalmark/settings/apps/shoalmark-principal`, with an App ID and no key or secret listed. Stop on a refused name, a payment, a
    permission dialog, a key or a secret generated; *Confirm access* (GitHub's re-authentication) is no stop. Paste back: `shoalmark-principal`, its App ID.
-2. **Read its bot id**, and install only on a 404, as his pre-decision says:
+2. **Read its bot id**, and install only on a 404, as their pre-decision says:
    ```sh
    gh api "/users/shoalmark-principal%5Bbot%5D" --jq .id
    ```
    Expected: a number. **On 404**: **Install App** → **Install** beside `shoalmark` → **Only select repositories** → `shoalmark` where the screen offers it (GitHub
-   omits it for an App with no repository permission, see Sources) → **Install**; then the GET again. His pre-decision names that choice, so the Principal asks him
-   before 09:00 whether it holds when the screen offers none, and his word goes here. Without it, a screen with no repository choice is a stop: paste back
+   omits it for an App with no repository permission, see Sources) → **Install**; then the GET again. Their pre-decision names that choice, so the Principal asks them
+   before 09:00 whether it holds when the screen offers none, and their word goes here. Without it, a screen with no repository choice is a stop: paste back
    `no repository choice`. Stop too on any access listed (*Read access to metadata* included), a key, a secret or a payment. Paste back: the id, `installed` or not.
 3. **The six others:** steps 1–2 again, each with its name, and its line from §2:
 
