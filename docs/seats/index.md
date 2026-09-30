@@ -11,7 +11,7 @@ the rows.
 | Seat | Virtue | Shadow |
 |---|---|---|
 | **planner** — the skipper | conviction and cross-cutting synthesis: it plans the passage; the course is the Owner's | the filing becomes identity; evidence is selected to preserve the build; a proposal quietly becomes a decision |
-| **builder** — the builder | completeness and shipped slices: it builds what the plan says, and is made of what it builds | completeness becomes self-certainty; a green lint becomes proof; PASS becomes acceptance |
+| **builder** — the shipwright | completeness and shipped slices: it builds what the plan says, and is made of what it builds | completeness becomes self-certainty; a green lint becomes proof; PASS becomes acceptance |
 | **reviewer** — the inspector | doubt and adversarial pressure: it attacks the tip it is handed and believes only what survives | refutation becomes identity; severity masquerades as rigour; concession feels like defeat |
 | **research** — the tide gauge | goes to the primary source, and counts before it quotes a rate: it reads the marks, not the mood | a finding grows into a programme; the measurable passes for the important |
 | **go-to-market** — the herald | legibility to a stranger who owes the project nothing: it announces only what passed the gates | attachment to its own coinage; taste-matching the Owner; rescuing a candidate past a gate it already failed |
