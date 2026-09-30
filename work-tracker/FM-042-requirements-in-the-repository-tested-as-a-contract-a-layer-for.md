@@ -27,7 +27,7 @@ trial is planned for the weekend, most likely run by an agent.
 id, a *shall* statement, its source, an acceptance criterion; trackers cite ids (`satisfies:`), tests name them; changing a
 requirement is the Owner's signed decision. A regulatory requirement cites its clause (standard, edition, clause number) and
 derives the company's own *shall*; *not applicable* is a signed answer. Never copy a standard's text; never claim compliance.
-It lands in the agent-facing entry — AGENTS.md, README's first screen, ADOPT.de.md — before Friday 2026-10-02 evening, so the
+It lands in the agent-facing entry — AGENTS.md, README's first screen, ADOPT.de.md — before the v0.19.0 cut, Thursday 2026-10-01 evening (the Owner's release plan of 10:2x), so the
 trial can use it, and passes FM-006's claim screen.
 
 **Stage 1 — an ask later, after the trial and one more prospect:** coverage and citation checks; stale-marking on a changed
@@ -37,7 +37,7 @@ requirement; `--trace REQ-<id>`; a traceability matrix per release, generated fr
 relabelled as product. Requirements replace records: a tracker cites ids instead of restating behaviour, never a third copy.
 The `[ratio]` line that lists the folder follows when `--ratio` (FM-032) lands.
 
-**A cold run before the weekend:** a fresh session, given only the public repository's address and a small C or C++
+**A cold run before the tag:** a fresh session, given only the public repository's address and a small C or C++
 repository, adopts shoalmark with `requirements/` per Stage 0 and reports where it stalls.
 
 ## Done when
@@ -50,3 +50,4 @@ their ask answered, then built.
 | Date | Event |
 |---|---|
 | 2026-09-30 | Filed on the Owner's go, an explicit freeze exception; judged by the pass of the same day. |
+| 2026-09-30 | **Stage 0 built** — the convention in `requirements/README.md`, AGENTS.md, README's first screen, ADOPT.de.md; the signal under FM-006; the claim screen applied by hand by the Reviewer; done on the Owner's word. Lines of this change, `f3d19dd..HEAD`: by the Owner's rule (`requirements/` as records) 51 records added, 27 product added, 2 deleted; as `--ratio` will count it until FM-032's toml line lands (`requirements/` as product) 8 records added, 70 product added, 2 deleted. |
