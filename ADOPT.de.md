@@ -69,7 +69,7 @@ Dann den Block aus `<klon>/examples/de/headings.toml` an `shoalmark.toml` anhän
 
 ## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)
 
-Legt in `probe/` einen Ordner `requirements/` an (`requirements/README.md` im Klon beschreibt ihn). Eine Anforderung ist
+Legt in `probe/` einen Ordner `requirements/` an (`requirements/README.md` auf `main` des Repositorys beschreibt ihn). Eine Anforderung ist
 eine Tabellenzeile: `id` (stabil, nie neu vergeben), `shall` (ein Satz, das System als Subjekt, eine Pflicht), `source`
 (wer oder was sie verlangt), `accept` (das Abnahmekriterium: was ein Test beobachtet). Ein Arbeitspaket nennt sie in einer Zeile unter dem
 Kopf, `Satisfies: REQ-001` (im Kopf lehnt das Gate den Schlüssel ab), ein Test in seinem Namen. Eine Zeile ändert nur der Owner, mit einer signierten Antwort über die
