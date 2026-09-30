@@ -212,8 +212,8 @@ never by bytes: the files carry an `at` stamp and Chrome's pixel measures move.
 | command as run | the *Rebuild* lines: `git archive cb49101`, `uvx zensical@0.0.65 build`, `checks.mjs stage-cb49101/site … landing/index.html` | the same for `9307cf8`, `checks.mjs stage-9307cf8/site …`, its chart part kept | `node facts.mjs bef2a1e work-tracker/evidence/FM-006/landing/index.html` |
 | environment, original run | Chrome 154 headless, Zensical 0.0.65, Node 22 or later (26 September 2026, 16:10 UTC) | the same (16:11 UTC) | git and Node 22 or later (18:00:51 CEST) |
 | environment, fresh run | node v26.7.0, Google Chrome 154.0.8037.58, zensical 0.0.65 (uvx zensical@0.0.65, uv 0.10.4), macOS Darwin 25.6.0, 2026-09-30 07:29-07:34 CEST | the same run | the same, 07:29 CEST |
-| original: checks · failing | 18 · 3, three chart texts under the title's own text, as *Not changed* above says | 4 · 68, the mock's texts below 4.5 (19 + 13 + 20 + 16 by method and width) | 24 wrecks read, 26 September 18:00:51 |
-| fresh: checks · failing | 18 · 3, the same ids | 4 · 68, the same ids | 24 wrecks; every field equal but `read`; sha256 without `read` equal |
+| original: checks · failing checks · failing texts | 18 · 2 · 3, three chart texts under the title's own text (in two checks), as *Not changed* above says | 4 · 4 · 68, all four chart checks fail, on the mock's texts below 4.5 (19 + 13 + 20 + 16 by method and width) | no verdict: 24 wrecks read, 26 September 18:00:51 |
+| fresh: checks · failing checks · failing texts | 18 · 2 · 3, the same ids | 4 · 4 · 68, the same ids | no verdict: 24 wrecks; every field equal but `read`; sha256 without `read` equal |
 | deleted file's sha256 | `02122dec1e6aa760f0ec317cdc343172a06a55ea30962c160ac517c77e86cb5d` | `6726f85dae11409a69d3daee6ab4da2fcf2337506868fbd0fad566072caa6246` | `b76a1d93a09233716cb838c6c562ea276298bd3aa85bcd8f3c95f8ffa0ec79e0` |
 | held at | `08798a8` | `08798a8` | `08798a8` |
 
@@ -271,7 +271,7 @@ where Node exists).
   "file": "work-tracker/evidence/FM-006/landing/start-page/facts.json",
   "tested": "bef2a1e",
   "command": "node work-tracker/evidence/FM-006/landing/start-page/facts.mjs bef2a1e work-tracker/evidence/FM-006/landing/index.html",
-  "checks": 24,
+  "wrecks": 24,
   "failing": [],
   "generated_by": "node work-tracker/evidence/FM-006/landing/start-page/facts.mjs",
   "fields": {"sha": "bef2a1e2b84565f2533bc4acb9903e9de206252f", "release": "0.18.4", "counts": {"In Progress": 5, "Proposed": 3, "Shipped": 15, "Closed": 1}, "wrecks": 24},

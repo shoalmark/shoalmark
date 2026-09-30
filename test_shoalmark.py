@@ -5649,6 +5649,16 @@ def _derive_board(doc):
     for scheme in ("light", "dark"):
         n += 1
         failing += [f"alignment {scheme}"] * (doc["alignment"][f"after {scheme}"] != doc["alignment"][f"mock {scheme}"])
+    ctl = doc["control"]                         # the README's own controls: a check that cannot see what it reports as absent is no check (RV-728 c)
+    for scheme in ("light", "dark"):
+        n += 2
+        pipe = ctl.get(f"contrast {scheme}")     # `#767676` on `#ffffff` must read WCAG's 4.54
+        failing += [f"control contrast {scheme}"] * (not (isinstance(pipe, dict) and abs(pipe["ratio"] - 4.542) < 0.01))
+        failing += [f"control dialog open {scheme}"] * (ctl.get(f"dialog open {scheme}") is not True)
+        for page in ("board", "tracker view", "site"):   # the alt texts removed: the same tree must read figures and markers
+            n += 1
+            read = ctl.get(f"ax {page} {scheme}")
+            failing += [f"control ax {page} {scheme}"] * (not (isinstance(read, dict) and read["figures"] > 0 and read["markers"] > 0))
     return n, sorted(failing)
 
 
@@ -5665,11 +5675,22 @@ def _regen_skip(name, n, why):
 
 
 _b6, _b2 = _summary_blocks(_FM6_DIR + "/README.md"), _summary_blocks(_FM2_DIR + "/README.md")
-_KEYS = {"file", "tested", "command", "checks", "failing", "generated_by"}
+_KEYS = {"file", "tested", "command", "failing", "generated_by"}      # and a count: `checks` (verdicts), or `wrecks` where the output is a reading, not a verdict
 check("FM-032 \u00b7 each README's summary holds one machine-readable block per replaced output \u2014 the command, the tested commit, how many checks, "
       "which failed \u2014 and the summary of a regenerable output is kept where the file was",
       set(_b6) == {"checks.json", "checks-r3-before.json", "facts.json"} and set(_b2) == {"checks.json"}
-      and all(_KEYS <= set(b) and isinstance(b["failing"], list) and isinstance(b["checks"], int) for b in (*_b6.values(), *_b2.values())))
+      and all(_KEYS <= set(b) and isinstance(b["failing"], list) and isinstance(b["wrecks" if "wrecks" in b else "checks"], int) and ("wrecks" in b) != ("checks" in b)
+              for b in (*_b6.values(), *_b2.values()))
+      and "wrecks" in _b6["facts.json"] and all("checks" in b for k, b in (*_b6.items(), *_b2.items()) if k != "facts.json"))
+_good_ctl = {**{f"{k} {sc}": v for sc in ("light", "dark") for k, v in (("contrast", {"ratio": 4.542}), ("dialog open", True))},
+             **{f"ax {pg} {sc}": {"figures": 261, "markers": 18} for pg in ("board", "tracker view", "site") for sc in ("light", "dark")}}
+_board_doc = lambda ctl: {"pairs": [], "summary": {"au16": {"board light": {"figures": 0, "markers": 0}}}, "au18": {"light": {"longestLine": 1, "chars": 2}},
+                          "alignment": {f"{w} {sc}": 1 for w in ("after", "mock") for sc in ("light", "dark")}, "control": ctl}
+check("FM-032 \u00b7 slice A's derivation counts the README's controls \u2014 the contrast pipeline at 4.542, the dialog open, the alt-text-removed run reading figures and markers "
+      "\u2014 ten checks beside the fourteen, and a control that fails is a failing check (`control ax board dark` with no figures read)",
+      _derive_board(_board_doc(_good_ctl)) == (16, [])
+      and _derive_board(_board_doc({**_good_ctl, "ax board dark": {"figures": 0, "markers": 18}, "contrast light": {"ratio": 4.2}, "dialog open dark": False}))
+      == (16, ["control ax board dark", "control contrast light", "control dialog open dark"]))
 _derived_ok = (_derive_landing({"summary": {"chart": [{"width": 1, "belowReviewer": ["3.99 a (under the title)"], "belowSeat": []}], "flat": [], "tree": [], "scheme": {},
                                             "errors": 0, "motion": {"reduced": {"identical": True}}, "sameFacesAsMock": True}}) == (5, ["chart 1 R a (under the title)"]))
 check("FM-032 \u00b7 the derivation drops the measure and keeps the check's own id, and counts its verdicts", _derived_ok)

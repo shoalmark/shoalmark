@@ -147,8 +147,14 @@ filed on its own page, public and with no other project's numbers: `work-tracker
 
 **What this slice builds:** the page; `--ratio`, his explicit exception to the filing freeze (*"Go, freeze excepted."*); the ruling
 applied to the regenerable outputs, each replaced by its summary in its README; and the committed regeneration check
-(`SHOALMARK_REGENERATE=1`). **What stays in git, and why:** `browser-fonts.json` (no committed command), `results.json` (a CI
-read-back), `scanned-refs.txt` and the `jev-*` files (an external service's exchange) do not regenerate from git, so they stay and count.
+(`SHOALMARK_REGENERATE=1`). **What stays in git, and why:** `browser-fonts.json` (no committed command), `results.json` (a CI read-back), `scanned-refs.txt`, the six
+`jev-*` request, response and key files (an external service's exchange), the two `requests.json` (FM-002 slice A's and the start page's:
+`render.mjs` writes them from a Chrome run, but no committed check regenerates them and they hold that run's network and page measures, so
+they stay until one does) and the triage page's `demo.out` and `demo-de.out` (`demo.sh` makes fresh keys and times on every run, so a run
+never repeats its ids, and the script's own header says `docs/triage.md` quotes them) do not regenerate from git, so they stay and count. **One output the ruling reaches
+is not yet applied here:** `jev-gate-test-score-output-2026-09-23.txt` regenerates byte for byte from the committed scorer and the two
+committed responses (`python3 jev-gate-test-score.py` on them, in its folder; the Reviewer's RV-728 a), so it goes under the ruling — its
+replacement by a summary in FM-006's claim-screen page, and a check that re-runs the scorer, are the next change's.
 
 ## Done when
 
