@@ -2,7 +2,34 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased
+## Unreleased — 0.19.0
+
+- **The sessions strip groups by parent** (FM-024; the Owner's word of 2026-09-30 10:40:31, normalised: *FM-024's build and
+  FM-041 ride v0.19.0*; the Auditor's briefs of 2026-09-28 and 2026-09-30, through him). One line per parent session with a
+  commit in the last day — `8e509911 principal (shoalmark-principal-4) · implementer 1–6 · reviewer 1–5, 7` — under the
+  header *sessions · 3 in the last day (28 with their sub-sessions)*; a run of three or more numbers is `a–b`. A line
+  opens on each member's worktree, model and effort, `—` where its commits carried none. A parent that made no commit of
+  its own still has its line, derived from its sub-sessions' ids `<parent>/<seat>-<n>`. `--owner`, the digest, groups the
+  same way: a header with the two counts, then one line per parent. Read from the commits' trailers, never from a
+  transcript. *On upgrade:* the label `sessions.recent` gains `{1}` (the count with sub-sessions) — a `labels.yaml` that
+  sets it without `{1}` shows the parents only; `examples/de/labels.yaml` carries the German.
+- **`Model:` and `Effort:` from the harness's own log, by its id** (FM-024). A third per-worktree setting beside
+  `user.email` and `seat.session`: `git config --worktree seat.harness <id>` — the id the harness gave the seat, written
+  by whoever spawns it: Claude Code's session id or a sub-agent's agent id, Codex's thread id (`CODEX_THREAD_ID` where
+  the setting is unset). **`--whoami`** opens the one log file whose *name* carries the id (`~/.claude/projects/*/<id>.jsonl`,
+  `…/<session>/subagents/agent-<id>.jsonl`, `~/.codex/sessions/…/rollout-*-<id>.jsonl`) and prints
+  `To: <session> <seat> (<worktree>) · <model> · <effort>`; the prepare-commit-msg hook appends `Model:` and `Effort:` beside
+  `Session:` and `Worktree:`, each left alone where the message has it. Never matched by the transcript's `cwd` — that
+  is the directory the session was launched in on every turn, sub-agents included (measured 2026-09-30). Only top-level
+  fields of the newest turn that has them are read (`message.model` and `perTurnEffort`; `turn_context`'s `model` and
+  `effort`), never a message or a tool's result, and only a one-word value is taken, so a transcript cannot add a trailer.
+  Two files for one id: `--whoami` refuses (exit 2, both paths named); the hook writes neither trailer and the commit
+  goes on. `--schema` lists the three worktree settings. The status line (`--statusline`) is not in this release.
+- **The addressing rule ships with the contract** (FM-024, his answer of 2026-09-28: the rule with `--whoami`). A message a
+  person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's
+  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it.
+- *(This heading's name is provisional: another branch carries `## Unreleased — 0.18.7`; the release cut settles which
+  section is which.)*
 
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.

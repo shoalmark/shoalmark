@@ -273,6 +273,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
 | `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
+| a seat's worktree | three per-worktree git settings (`git config --worktree`), read by the tool and never by hand: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists them). **`--whoami`** prints `To: <session> <seat> (<worktree>) · <model> · <effort>` — the line a message between sessions names its target by |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
@@ -342,12 +343,33 @@ git config --worktree user.email principal@seat      # the seat — read by the 
 git config --worktree seat.session a9f3c2d1          # the session — the harness's session id, its first eight hex characters;
                                                      # a sub-agent derives its id from its parent's: a9f3c2d1/reviewer-1;
                                                      # a session with no parent and a harness with no id: `<cmd> --session new`
+git config --worktree seat.harness aefd1a3520c000231 # the id the HARNESS gave this seat, written by whoever spawns it from the spawn's
+                                                     # result — Claude Code's session id, or a sub-agent's agent id; Codex's thread id
 ```
 
 **The trailers:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` and
 `Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message
 carries already is left alone. A repository with no `seat.session` (the Owner's checkout) gets nothing appended: his
-signature is his id. Read them back with `git log --format='%h %ae %(trailers:key=Session,valueonly)'`. A repository
+signature is his id. Read them back with `git log --format='%h %ae %(trailers:key=Session,valueonly)'`.
+
+**The model and the effort** are appended beside them — `Model:` and `Effort:` — from the harness's own log, never from
+what the seat says of itself. The log is found by the id in `seat.harness` and by nothing else: the one file whose
+*name* carries it, `~/.claude/projects/<slug>/<id>.jsonl` for a session, `~/.claude/projects/<slug>/<session>/subagents/agent-<id>.jsonl`
+for a sub-agent, `~/.codex/sessions/…/rollout-*-<id>.jsonl` for Codex (`CODEX_THREAD_ID` is read where `seat.harness` is
+unset). Not the log's `cwd` — a transcript names the directory its session was *launched* in on every turn, sub-agents
+included, so a seat working in its own worktree would match none, and one working in the launch directory would match
+them all. From the file the tool reads only top-level fields of the newest turn that has them — Claude Code's
+`message.model` and `perTurnEffort`, Codex's `turn_context` model and effort — never a message, never a tool's result.
+Two files for one id: `--whoami` refuses (exit 2, both paths named) and the hook writes no `Model:` and no `Effort:`
+(and does not stop the commit). No file, or no `seat.harness`: no trailers, and the board shows `—`. A trailer the
+message carries already is left alone, each key on its own.
+
+```text
+$ python3 shoalmark.py --whoami
+To: 8e509911/implementer-61 implementer (shoalmark-impl) · claude-sonnet-5-5 · xhigh
+```
+
+A repository
 with its own hook runner adds three entries — with lefthook, the session rule on every commit, the trailers, and the
 judgement of the commit with its message:
 
@@ -413,11 +435,14 @@ trunk — not a branch verdict** when the tip is on the trunk's own first-parent
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
 
-**Seen:** the board's first lines carry the strip — *sessions · 2 in the last day — a9f3c2d1 principal
-(principal-a9) · a9f3c2d1/reviewer-1 reviewer (reviewer-2)* — and *reviews this week · independent n · same session
-m*; `--owner`, the digest, carries one line, the sessions of the last day by seat, each with its worktree, and ends with
-the queue where `gh` reads the forge (*what to merge*, above). Four labels, `sessions.recent`
-and `reviews.*` (§9).
+**Seen:** the board's strip is one line per **parent** session with a commit in the last day, its sub-sessions folded
+into it — *sessions · 2 in the last day (9 with their sub-sessions)*, then *a9f3c2d1 principal (principal-a9) ·
+implementer 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
+effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
+worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
+*reviews this week · independent n · same session m*. `--owner`, the digest, carries the same grouping — a header with
+the two counts, then one line per parent — and ends with the queue where `gh` reads the forge (*what to merge*, above).
+Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `reviews.*` (§9).
 
 ## 7. The one seam: a deriver
 

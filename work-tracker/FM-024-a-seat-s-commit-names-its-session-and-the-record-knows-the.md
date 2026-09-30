@@ -28,6 +28,10 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**Built 2026-09-30 for 0.19.0, on `fm/024-the-sessions-strip-groups-by-parent-with-model-and-effort` — open for review, not merged** (the Owner's word of 10:40:31, normalised: *FM-024's build and FM-041 ride v0.19.0*): the strip and the digest grouped by parent (header with both counts; a parent without a commit of its own derived from its sub-sessions' ids; each member's worktree, model and effort on expand), `seat.harness`, `--whoami` (`To: <session> <seat> (<worktree>) · <model> · <effort>`), the hook's `Model:` and `Effort:` from the harness's log by its id — never by `cwd`, top-level fields only, a canary in the suite — `--schema`'s worktree keys, and the AGENTS.md rule (contract item 9, in the template `--init` writes too). Each check fails on 0.18.6: `--whoami` is no flag there, and the strip has no group.
+
+**What stays:** `--statusline` and `--install-statusline` — the status line and its install for Claude and Codex — are NOT in this build, and the Principal writes `seat.harness` at spawn time from the spawn result (the tool never guesses it); until a seat has one, its commits carry no `Model:` and the board shows `—`.
+
 **Slice 1 built 2026-09-23 on `fix/0.17.6-a-seats-commit-names-its-session-and-the-record-knows-the-session`, for
 0.17.6, verified with findings closed; open for the merge, not merged.** S1–S8 as ruled below, one commit per row, then
 one per review finding (R1–R7): `seat.session` and `--session new` (S1); the `prepare-commit-msg` hook and
@@ -338,3 +342,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
 | 2026-09-30 | **Graded, not built:** the Auditor's change brief through the Owner (06:11:21; sha256 `8e8f77ce…`) — the strip grouped by parent (accepted), model and effort from the harness's logs as trailers (the principle accepted; its `cwd` match rejected, P1 on a measured fact: a transcript's `cwd` is the session's launch directory on every turn, sub-agents included; a match by the harness's ids proposed), the code loop instead of one pass. Postponed on the Owner's word of 06:38:10; the build comes after the task he named. |
 | 2026-09-30 | **The seat definitions ship** (the Owner's word, 09:12:44): `.claude/agents/implementer.md` (Sonnet, xhigh) and `reviewer.md` (Opus) added; nothing else changed. Critical tier — an independent session's review before the merge. |
+| 2026-09-30 | **Built for 0.19.0** (the Owner's word of 10:40:31, normalised: *FM-024's build and FM-041 ride v0.19.0*): the strip and the digest grouped by parent, `seat.harness`, `--whoami`, `Model:` and `Effort:` from the harness's log by its id (a match by the id, not the transcript's `cwd`), the AGENTS.md addressing rule. Code tier, the full loop; the status line is not in this build. |
