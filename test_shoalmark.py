@@ -751,6 +751,33 @@ with tempfile.TemporaryDirectory() as d:
           (lambda t: "| `[seats] <seat>` | one identity, or a list of them" in t and "`signed` is read per identity" in t and "under two seats is refused" in t)(run(root, "--schema")[1]))
 fm.configure(HERE)
 
+# FM-024 · the Owner's ruling of 2026-09-30: a seat's name is English, and `go-to-market` has hyphens — the parser, `seat_of` and the
+# session rule's `<parent>/<seat>-<n>` form all carry it, and `research` keeps its old address beside the one it is given.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text()
+                                         + '\n[seats]\nowner = "owner@example.org"\nresearch = ["research@seat", "datascientist@seat"]\ngo-to-market = "gtm@seat"\ndesigner = "designer@seat"\nauditor = "auditor@seat"\n')
+    fm.configure(root)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "gtm@seat", "the go-to-market seat, at the address history knows\n\nSession: 2222bbbb/go-to-market-1\nWorktree: wt-g")
+    seen_h = {}
+    for name, sid, who in (("own hyphenated id", "2222bbbb/go-to-market-1", "gtm@seat"), ("the old short name", "2222bbbb/gtm-1", "gtm@seat"),
+                           ("a sub-agent of the parent", "2222bbbb", "gtm@seat"), ("research at the old address", "3333cccc/research-2", "datascientist@seat"),
+                           ("research at its own", "3333cccc/research-2", "research@seat")):
+        subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True)
+        seen_h[name] = run_safe(root, "--session-check", git_env=AS(who))
+    subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
+    check(f"FM-024 · a seat named with hyphens: `[seats] go-to-market` reads, `gtm@seat` is that seat, and `<id>/go-to-market-<n>` is the session id the rule accepts for it (saw {fm.seat_of('x', 'gtm@seat')}, {[v[0] for v in seen_h.values()]})",
+          fm.seat_of("x", "gtm@seat") == "go-to-market" and fm.SEATS["go-to-market"] == [("gtm@seat", "")]
+          and seen_h["own hyphenated id"][0] == 0 and seen_h["a sub-agent of the parent"][0] == 0
+          and seen_h["the old short name"][0] == fm.EXIT_LINT and "is the seat go-to-market, and its Session: 2222bbbb/gtm-1 names the seat gtm" in seen_h["the old short name"][2])
+    check(f"FM-024 · `research` keeps `datascientist@seat` beside `research@seat`: both are the seat, and each passes the rule with `<id>/research-<n>` (saw {fm.seat_of('x', 'datascientist@seat')}, {fm.seat_of('x', 'research@seat')})",
+          fm.seat_of("x", "datascientist@seat") == "research" and fm.seat_of("x", "research@seat") == "research"
+          and seen_h["research at the old address"][0] == 0 and seen_h["research at its own"][0] == 0
+          and fm.seat_of("x", "designer@seat") == "designer" and fm.seat_of("x", "auditor@seat") == "auditor")
+fm.configure(HERE)
+
 # --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
