@@ -53,16 +53,18 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   by whoever spawns it: Claude Code's session id or a sub-agent's agent id, Codex's thread id (`CODEX_THREAD_ID` where
   the setting is unset). **`--whoami`** opens the one log file whose *name* carries the id (`~/.claude/projects/*/<id>.jsonl`,
   `…/<session>/subagents/agent-<id>.jsonl`, `~/.codex/sessions/…/rollout-*-<id>.jsonl`) and prints
-  `To: <session> <seat> (<worktree>) · <model> · <effort>`; the prepare-commit-msg hook appends `Model:` and `Effort:` beside
+  `From: <session> <seat> (<worktree>) · <model> · <effort>`; the prepare-commit-msg hook appends `Model:` and `Effort:` beside
   `Session:` and `Worktree:`, each left alone where the message has it. Never matched by the transcript's `cwd` — that
   is the directory the session was launched in on every turn, sub-agents included (measured 2026-09-30). Only top-level
   fields of the newest turn that has them are read (`message.model` and `perTurnEffort`; `turn_context`'s `model` and
   `effort`), never a message or a tool's result, and only a one-word value is taken, so a transcript cannot add a trailer.
   Two files for one id: `--whoami` refuses (exit 2, both paths named); the hook writes neither trailer and the commit
   goes on. `--schema` lists the three worktree settings. The status line (`--statusline`) is not in this release.
-- **The addressing rule ships with the contract** (FM-024, their answer of 2026-09-28: the rule with `--whoami`). A message a
-  person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's
-  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it.
+- **The addressing rule ships with the contract** (FM-024, their answer of 2026-09-28: the rule with `--whoami`; the Owner's
+  ruling filed in FM-024, *A report opens with From:*). A seat's report opens with its identity as the tool prints it,
+  `From: <session> <seat> (<worktree>)` — `--whoami` prints it, with the model and effort the harness's log names; a message
+  a person carries between sessions names its target with `To:` and the same identity. Item 9 of the contract `--init`
+  writes between its markers — run `--init` again to take it.
 - **The board's verdict reader reads the history once (FM-040).** `verdict_reports` asked git about four times per
   verdict — 728 subprocesses and 37 s for one `--html-only` on this repository, which every commit, merge and checkout
   paid through the hooks. It now resolves the reviewed shas in one `git cat-file --batch-check`, reads their history in

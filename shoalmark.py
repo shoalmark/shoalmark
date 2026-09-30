@@ -6905,9 +6905,9 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
    They have office hours, you have a budget: **end a session's last message with `{cmd} --owner`.**
 8. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
-9. **A message a person carries between sessions names its target as the tool prints it:** `To: <session> <seat> (<worktree>)`.
-   A seat's report opens with its own — `{cmd} --whoami` prints it, with the model and effort the harness's log
-   names, never the seat's own word for them.
+9. **A seat's report opens with its identity as the tool prints it:** `From: <session> <seat> (<worktree>)` —
+   `{cmd} --whoami` prints it, with the model and effort the harness's log names, never the seat's own
+   word for them. A message a person carries between sessions names its target with `To:` and the same identity.
 """
 
 CONFIG_TEMPLATE = """\

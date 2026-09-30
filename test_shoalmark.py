@@ -1138,6 +1138,22 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
         schema = run_safe(root, "--schema")[1]
         check("FM-024 (0.19.0) · `--schema` lists the worktree's settings — `seat.session` and `seat.harness` — under the configuration's keys", "| `seat.harness` |" in schema and "| `seat.session` |" in schema and "| `user.email` |" in schema)
 
+# FM-024, A report opens with From: — rule 8 is one text in two places: AGENTS.md's and the contract `--init` writes; its number and its `{cmd}`
+# differ, nothing else. (The rest of AGENTS.md's block is the repository's own and is not held equal here.)
+def _report_rule(text, cmd):
+    """The rule that says what a report opens with: from its bold opening to the next rule or the block's end, the command read as `{cmd}`."""
+    m = re.search(r"^\d+\. (\*\*A seat's report opens.*?)(?=<!-- END shoalmark -->|\n\d+\. )", text, re.S | re.M)
+    return m.group(1).strip().replace(cmd, "{cmd}") if m else None
+
+
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    written, ours = _report_rule((root / "AGENTS.md").read_text(), fm.CMD), _report_rule((HERE / "AGENTS.md").read_text(), "python3 shoalmark.py")
+    check(f"FM-024, A report opens with From: · rule 8 is one text — AGENTS.md's equals the contract `--init` writes, its number and its `{{cmd}}` aside — and it says a report opens with `From:` and a message names its target with `To:` (saw {written and written[:70]!r})",
+          written is not None and written == ours and written.startswith("**A seat's report opens with its identity as the tool prints it:** `From: <session> <seat> (<worktree>)`")
+          and written.endswith("A message a person carries between sessions names its target with `To:` and the same identity.") and "`{cmd} --whoami` prints it" in written)
+
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
