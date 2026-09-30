@@ -14,8 +14,9 @@ hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after 
 
 ## What is true now
 
-**2026-09-30 — evidence-checked done, its first slice: a shipped tracker names its commit (v0.19.0).** The Owner's ruling is
-filed below, in *A shipped tracker names its commit — v0.19.0*. It is built on `fm/005-a-shipped-tracker-names-its-commit`,
+**2026-09-30 — evidence-checked done, its first slice: a shipped tracker names its commit, and the board stops counting
+`Closed` as done (v0.19.0).** The Owner's ruling is filed below, in *A shipped tracker names its commit — v0.19.0*. It is built
+on `fm/005-a-shipped-tracker-names-its-commit`,
 cut from main `1197e80`, by one Builder; one Reviewer judges the pushed tip at code tier; the Owner opens the pull request and
 merges at 9/9. Next: build.
 
@@ -70,6 +71,11 @@ reproduced by the Planner in a scratch repository on 2026-09-30. Evidence-checke
 - **How it is built.** One Builder in its own worktree from main `1197e80`, which pushes and stops; one Reviewer at code tier on
   the pushed tip; no screen round. The Owner opens the pull request and merges at 9/9.
 - **From the merge, this repository obeys it:** every tracker moved to `Shipped` at the cut names its commit.
+- **The board stops counting `Closed` as done, in the same pull request.** The story line counts every chapter that is not open
+  as *done* (`shoalmark.py:2700`, label `story.done`), `Closed` included; it counts shipped and closed apart instead — e.g.
+  *3 chapters: 1 shipped · 1 closed · 1 open*. The same goes for any other place the board or a printed text calls a `Closed`
+  tracker *done*; the Reviewer greps for them. A test covers the count. With this, the claim's *done* means `Shipped`
+  everywhere a stranger reads.
 
 *The Planner's reading, for the Reviewer to judge:* a commit is named by its git hash (seven hex characters or more) or its
 Subversion revision (`r123`); *in the history* means an ancestor of the commit being judged; *the records* are the
