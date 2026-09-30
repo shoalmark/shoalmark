@@ -261,7 +261,7 @@ What lives where, by convention — no setting names any of it:
 
 | Path | What |
 |---|---|
-| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `freeze_at` (0, off — the filing freeze, §2) · `freeze_tag` (`bug`, the tag that passes it) · `judged_before_build` (false — a pass judges before the first build commit, §5) · `[paths]` `reviews` (`evidence/reviews/` — where the Reviewer's files sit, a glob allowed; `--queue` reads it) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` · `[rights]` (§*Seats*) · `[headings]` the ten section names the tool reads and writes (`state` `why` `done` `log` `asks` `raised` `acts` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
+| `shoalmark.toml` | optional. `name` · `tracker_dir` (default `docs/work-tracker`) · `blob` (forge URL prefix) · `triage_days` (7) · `freeze_at` (0, off — the filing freeze, §2) · `freeze_tag` (`bug`, the tag that passes it) · `judged_before_build` (false — a pass judges before the first build commit, §5) · `[paths]` `reviews` (`evidence/reviews/` — where the Reviewer's files sit, a glob allowed; `--queue` reads it) · `[kinds]` id prefix → INDEX section · `[considered_from]` · `[tags]` · `[seats]` (a string, or a list of identities — §*Seat icons on the forge*) · `[rights]` (§*Seats*) · `[headings]` the ten section names the tool reads and writes (`state` `why` `done` `log` `asks` `raised` `acts` in a tracker, `intent` `path` `passes` in `TRIAGE.md`) — for a repository that is not in English; the English names stay understood |
 | git · Subversion · Windows | `--install-hook` wires what the system has: git hooks, or on Subversion the TortoiseSVN hook properties and `svn:ignore`. **`svn commit` on the command line runs no hook — run the tool first.** On Windows the command is `python`. CI proves all three systems |
 | what an ask must be | ONE question — one `?`, at the end, at most 300 characters — with `ask-kind:`, `ask-since:` and `ask-proposal:`, and never the same question as another open tracker's. At most five `ask-options:`, 120 characters each. The gate refuses the rest, and the board shows what got in anyway as *N asks sent back — not for you* |
 | drafting an ask | an `ask:` with `next: review` is a **draft**: any seat writes one (the question and its `ask-options:`), it needs no proposal and the Owner never sees it. The Principal rewrites it, orders the options, sets `ask-proposal:`, `ask-since:` and `next: owner` — that is what puts it in front of him |
@@ -335,6 +335,23 @@ environment (a container, or its own Windows user), never the Owner's cached one
 credential store); the svn command line runs no hook, so the server's own `pre-commit` hook running `<cmd> --check` is
 the layer that refuses and the board's *sent back* group is the backstop. A seat's **charter** — how it thinks, a bold
 Principal against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
+
+### Seat icons on the forge
+
+A commit whose author email is a GitHub App's bot address, `<id>+<slug>[bot]@users.noreply.github.com`, shows that App's icon on the
+forge — so each seat can wear its own. Per seat, one GitHub App owned by the organisation: no permissions, webhook inactive, no private
+key, no client secret, not installed anywhere; only the icon uploaded. The bot's id is `id` in `GET /users/<slug>%5Bbot%5D`. Then
+`[seats]` lists the new address **beside the old one** — a seat's value is a string as ever, or a list, and every identity in it is that
+seat — so history and the branches in flight keep resolving:
+
+```toml
+principal = ["principal@seat", "12345+shoalmark-principal[bot]@users.noreply.github.com"]   # each item may end in `signed`
+```
+
+Each seat's worktree then takes the new address: `git config --worktree user.email 12345+shoalmark-principal[bot]@users.noreply.github.com`.
+Nothing else changes: the seat's rights, its `Session:` trailer, and the Owner's signature, which stays theirs. `signed` is read per
+identity; an identity under two seats is refused at configuration, in one line naming both. A seat is *it*, not a person — its texts say
+*it* on purpose; *they* is for the Owner and any person.
 
 ### Sessions
 
