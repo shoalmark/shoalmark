@@ -25,6 +25,20 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
 <!-- END shoalmark -->
 
+## Requirements — one ground truth for developer and tester
+
+Where a repository has a `requirements/` folder, read it before you build or test: one line per requirement — `id`,
+`shall`, `source`, `accept` — and the developer and the tester both work from it, not from each other's code. The
+convention is in [`requirements/README.md`](requirements/README.md); this is Stage 0, the convention only.
+
+- **Cite the id.** A tracker says `Satisfies: REQ-001` in one line of its body (the gate refuses the key in the front matter;
+  the key is Stage 1's ask); a test names the id in its name or docstring. Cite the id instead of restating the behaviour.
+- **Never change a line yourself.** A requirement changes only by the Owner's signed decision, an answer through the
+  board; the id stays, the line changes, git holds the history. A seat that finds one wrong raises it as an ask.
+- **A regulatory requirement cites its clause** — standard, edition, clause number — and carries the company's own *shall*.
+  *Not applicable* is the Owner's signed answer with its reason, never a seat's.
+  Never copy a standard's text; never write that the project complies. A requirement met is a test passed, nothing more.
+
 ## How this repository ships — the Owner, 2026-09-22
 
 - **Never push to `main`.** One branch per tracker (`fm/007-slug`, or `process/…` for the repository's own rules), commits

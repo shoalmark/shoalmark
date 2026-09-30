@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-30 · 41 trackers (41 work).
+> Generated 2026-09-30 · 42 trackers (42 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -38,7 +38,7 @@
 | 7 | P2 | review | *complicated* | intended | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
 | 9 | P2 | build | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
-| 10 | P2 | build | — | intended, kind | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress |
+| 10 | P2 | build | complicated | intended | [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | In Progress |
 
 ### Acts owed to the Owner — with their time
 
@@ -53,6 +53,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | P2 | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | In Progress | progress | 2026-09-30 |
 | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | P2 | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress | progress | 2026-09-27 |
 | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | P1 | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress | progress | 2026-09-25 |
 | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | P2 | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress | progress | 2026-09-25 |
@@ -70,7 +71,7 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | — | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | Proposed | triage | — |
+| [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | Proposed | backlog | 2026-09-30 |
 | [FM-040](FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md) | P2 | the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it | Proposed | backlog | 2026-09-28 |
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
 | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | P2 | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed | backlog | 2026-09-25 |
