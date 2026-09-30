@@ -18,6 +18,8 @@ nav = [
   { "Your answer is your commit" = "signing.md" },
   { "Your word in TRIAGE.md" = "triage.md" },
   { "The standup" = "standup.md" },
+  { "Requirements" = "requirements.md" },
+  { "The seats" = "seats/index.md" },
   { "For agents — the contract" = "agents/README.md" },
   { "Deutsch" = [
     { "Start" = "de/index.md" },
@@ -25,6 +27,7 @@ nav = [
     { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
     { "Ihr Wort in der TRIAGE.md" = "de/triage.md" },
     { "Der Standup" = "de/standup.md" },
+    { "Anforderungen" = "de/requirements.md" },
   ] },
 ]
 
