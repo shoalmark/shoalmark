@@ -226,9 +226,12 @@ def configure(root=None):
     for name, value in (CONFIG.get("seats") or {}).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
         for who, _mode in SEATS[name]:
-            if who and seen.setdefault(who, name) != name:
-                print(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed under two seats, `{seen[who]}` and `{name}`; an identity is one seat's", file=sys.stderr)
+            if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
+                print(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
+                      + "; an identity is one seat's, listed once", file=sys.stderr)
                 raise SystemExit(2)
+            if who:
+                seen[who] = name
         SEAT_RIGHTS[name] = set(BUILTIN_RIGHTS.get(name, ()))
     for name, words in (CONFIG.get("rights") or {}).items():
         if isinstance(words, str) or any(w not in RIGHTS for w in words):

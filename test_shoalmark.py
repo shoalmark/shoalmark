@@ -747,6 +747,10 @@ with tempfile.TemporaryDirectory() as d:
     r_dup = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     check(f"FM-024 · an identity listed under two seats refuses at configuration — exit 2, one line, naming the identity and both seats (saw {r_dup.returncode}, {r_dup.stderr.strip()[:200]!r})",
           r_dup.returncode == 2 and len(r_dup.stderr.strip().splitlines()) == 1 and NEW_P in r_dup.stderr and "`principal` and `implementer`" in r_dup.stderr and r_dup.stdout == "")
+    (root / "shoalmark.toml").write_text(base_cfg + '\n[seats]\nowner = ["o@x signed", "o@x"]\n')
+    r_twice = subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-024 · RV-2071 · an identity listed twice under one seat is refused too — `signed` would read two ways — naming it and the seat (saw {r_twice.returncode}, {r_twice.stderr.strip()[:160]!r})",
+          r_twice.returncode != 0 and "`o@x` is listed twice under `owner`" in r_twice.stderr and len(r_twice.stderr.strip().splitlines()) == 1)
     (root / "shoalmark.toml").write_text(base_cfg); fm.configure(root)
     check("FM-024 · `--schema` documents the form — `[seats] <seat>`, a string or a list, `signed` per identity, the refusal",
           (lambda t: "| `[seats] <seat>` | one identity, or a list of them" in t and "`signed` is read per identity" in t and "under two seats is refused" in t)(run(root, "--schema")[1]))
