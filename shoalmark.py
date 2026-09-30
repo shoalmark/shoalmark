@@ -127,7 +127,7 @@ def read_config(text):
         if head:
             table = out.setdefault(head.group(1), {})
             continue
-        m = re.fullmatch(r'([A-Za-z0-9_-]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+)|(true|false)|(\[[^\]]*\]))\s*(?:#.*)?', line)
+        m = re.fullmatch(r'([A-Za-z0-9_-]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+)|(true|false)|(\[(?:"(?:[^"\\]|\\.)*"|[^\]"])*\]))\s*(?:#.*)?', line)
         if not m:
             raise SystemExit(f"{CONFIG_NAME}:{n}: not understood — {raw.strip()!r}. A line is `key = \"text\"`, `key = 123`, `key = true`, `key = [\"a\", \"b\"]` or `[table]`")
         key, text_value, number, flag, items = m.groups()
