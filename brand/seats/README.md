@@ -8,12 +8,12 @@ rectangles, at most 40 lines; nothing but the stake's foot and the water leaves 
 
 | Seat | Its character, and why it fits the job | At 20 px, grey included — the Designer's judgment |
 |---|---|---|
-| principal | the skipper: a captain's cap, a level gaze — it plans the passage; the course is the Owner's | the flat, banded cap: clear |
+| planner | the skipper: a captain's cap, a level gaze — it plans the passage; the course is the Owner's | the flat, banded cap: clear |
 | builder | the shipwright: a yellow hard hat on the stake's own green — it builds what the plan says, plank by plank, as a yard builds the fleet | dome and brim: clear; in grey the brim carries it |
 | reviewer | the inspector: a monocle, the other eye squinting — it attacks a tip and believes what survives | the ring at the right edge: the clearest of the seven |
 | research | the tide gauge: a graduated staff, eyes wide — it checks and measures, the marks, not the mood | the tall, narrow body: clear; its marks are one pixel |
 | go-to-market | the herald: a horn, eyes open on the stranger — it announces only what passed its screen | the horn out to the right: clear |
-| designer | the painter: a tilted beret on a pear of a head — it draws the chart, the marks and these seven | the pear's narrow top: told from the principal's cap by outline |
+| designer | the painter: a tilted beret on a pear of a head — it draws the chart, the marks and these seven | the pear's narrow top: told from the planner's cap by outline |
 | auditor | the owl: spectacles and ear tufts, wide awake — it seals its plan first, then checks what was missed | tufts and two rings: clear |
 
 **Export:** `python3 brand/seats/export.py` writes `out/<seat>-20.png`, `-200.png` and `-400.png` (`out/` is git-ignored).
