@@ -1,6 +1,6 @@
 ---
 id: FM-040
-status: Proposed
+status: In Progress
 considered: FM-018, FM-025, FM-034, FM-035, FM-039, FM-012, FM-024
 tags: bug
 triaged: 2026-09-28
@@ -14,7 +14,16 @@ hook: "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDiv
 
 ## What is true now
 
-**Filed 2026-09-28; nothing is built.**
+**Slice (b) is built on `fm/040-the-history-reader-and-verdict-reports-in-memory` (2026-09-30, implementer-64); the rest of the Done-when waits on the Owner's acceptance of the time.**
+`verdict_reports` no longer calls git per verdict: one `git cat-file --batch-check` resolves the reviewed shas, one `git log` reads their history, and
+`History` answers ancestor, ancestry path, the range and the trailers in memory. The Owner's refactor rule (his word of 2026-09-30) was followed:
+the reader is its own commit with `verdict_reports` untouched, and the switch is a second commit proved by the golden comparison — the old tool
+(origin/main, 3feaf28) against the new one on shoalmark and on a scratch clone of the parent project (4,172 commits): `verdict_reports()`'s tuples,
+`sessions_report()`, the board's reviews counts and the whole `--check` output byte for byte identical (`diff` empty), no existing test edited.
+Before: `--html-only` real **37.2 s** (728 git subprocesses, 36.5 s of 37.6 s under cProfile in `verdict_reports`, `reviewed_range` 23.9 s), load 3, 2026-09-30.
+After: **0.98 s, 0.96 s, 0.97 s**; `--print-written` (the pre-commit's step) 2.5 s; the parent project's board 4.8 s. What is not done: the pre-commit still builds the
+board (counsel (a)) and `--html-only` is not backgrounded (the raise's point 3) — at about 1 s neither bites, and the Done-when's wall-clock time is the Owner's to
+accept; the hook summaries he pastes are the check (before: 25.88 s and 14.48 s).
 
 ## Why
 
@@ -103,3 +112,4 @@ today's for the same trackers.
 | 2026-09-28 | The filing's pass `cb17819` (reviewer-40) READY WITH FINDINGS: the quoted block byte for byte the paste, `294a368` confirmed as FM-024 S6; RV-694 two lines still announced the route ask — reworded; RV-695 FM-012/FM-024 named in *Held against*. |
 | 2026-09-28 | **Raised, 12:49:43** (the Auditor through the Owner, paste sha256 `dd56f6a2f0a9422bd831b04568708fef2b3a32e1f19350de849230df05f12946`): the Owner hit the wait again on `--done`; four points recorded above — the checkout switch pays `post-checkout` twice (70 %), the cache of `verdict_reports` per commit sha (80 %), `--html-only` in the background with a temp-file rename (75 %), a temporary worktree for `--done` (55 %, the Principal's judgement) — and the Rust port named a product decision, not this fix. Point 2 is the design's counsel (b); point 3 joins (a) as a candidate at the build's design (P2 #4; critical, the Owner's cold review); point 1 is measured before it; the Done-when unchanged. |
 | 2026-09-28 | RV-757 and RV-758 (the docs pass `992fb5d` on `3a417db`): the raise's reading corrected in place before the merge — point 2 is counsel (b), point 3 a candidate beside (a) at the build's design, the Done-when unchanged; the Owner's words inside the quote marked as the Auditor's quotation. |
+| 2026-09-30 | **Built** on `fm/040-the-history-reader-and-verdict-reports-in-memory` (implementer-64): the history reader as its own no-behaviour-change commit (`33e0f47`), `verdict_reports` switched onto it (`9c87f6c`), the golden comparison byte-identical on shoalmark and on the parent project's clone; `--html-only` 37.2 s → about 1 s. The Owner's acceptance of the time and the cold review are next. |

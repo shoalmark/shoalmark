@@ -39,6 +39,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **The addressing rule ships with the contract** (FM-024, his answer of 2026-09-28: the rule with `--whoami`). A message a
   person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's
   report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it
+- **The board's verdict reader reads the history once (FM-040).** `verdict_reports` asked git about four times per
+  verdict — 728 subprocesses and 37 s for one `--html-only` on this repository, which every commit, merge and checkout
+  paid through the hooks. It now resolves the reviewed shas in one `git cat-file --batch-check`, reads their history in
+  one `git log`, and answers *is X an ancestor*, the ancestry path, the range and the trailers in memory (`History`);
+  `--html-only` takes about 1 s. The board's reviews line and `--check`'s sessions report are byte for byte what they were
+  — compared old tool against new on this repository and on the parent project's.
 - **`--ratio`: the records-to-product ratio, per Berlin day of the merge (FM-032, the Owner's word of 2026-09-30).** For
   the merge commits on the default branch's first-parent line it counts the lines added and deleted in records
   (`[ratio] records` in `shoalmark.toml`) and in product (every other path, `[ratio] exclude` aside) — apart, never
@@ -67,7 +73,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **The public home is `shoalmark/shoalmark` (FM-006).** Documentation, installation links and the
   board footer use the organization repository. Signing help opens the new Pages site at
   `signing.html` (German: `de/signing.html`), matching the site’s generated filenames.
-
+  
 ## 0.18.6 — 2026-09-28
 
 - **An act that is a promise reads as what he promised, the question below it** (FM-030; the Owner's word in chat of
