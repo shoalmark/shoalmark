@@ -25,11 +25,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **A seat has several identities (FM-024).** A `[seats]` value is a string as ever, or a list of them —
   `planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.com"]` — and every identity in it is
   that seat: `seat_of`, the answer, ask and rights gates and the session rule match any of them, `signed` is read per identity,
-  and an identity listed under two seats is refused at configuration, one line naming both (exit 1, as every configuration refusal). A seat can change the
+  and an identity listed under two seats, or twice under one, is refused at configuration in one line (exit 1, as every configuration refusal). A seat can change the
   address it commits under while history and the branches in flight keep resolving; the README's *Seat icons on the forge*
   says how a seat's GitHub App shows its icon. A `]` inside a quoted list item now reads (the bot's `[bot]`). With a string
-  value nothing changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool
-  before it. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
+  value nothing else changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool
+  before it. *On upgrade:* a `[seats]` that names one identity under two seats — `owner = "you@example.org"` beside
+  `implementer = "you@example.org"` — read as the first seat's before; now every command, and a commit through the installed
+  hook, stops at it until it is listed once. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
   and `auditor` beside the five keys it has, which stay — with their addresses — until one change makes the key rename, the bot
   addresses and the badges together; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
 - **The seats are `planner` and `builder` (FM-024).** The built-in rights belong to `owner`, `planner` (ask, close, triage),
@@ -83,9 +85,6 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   check together. `test_shoalmark.py` proves
   the regeneration: `facts.mjs` on every run where Node and the history are here, the browser checks (rebuilt sites, `checks.mjs`,
   the READMEs' thresholds) behind `SHOALMARK_REGENERATE=1` where Chrome and `uvx` are; every skip prints its reason.
-
-## Unreleased
-
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.
 - **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
