@@ -45,13 +45,13 @@ two 404s are the stronger half, and **Create GitHub App** is the proof. The ruli
 | research | I check a claim against its sources, or work out what evidence would settle it, before anyone builds. I build nothing. (118) | pass | pass | pass† | pass | pass | pass | G0 cut *on it* (124 → 118); the Owner's rulings 1–2: the Data Scientist folds in; *Type: sources* or *Type: measurement*; may not build |
 | go-to-market | I check public sentences against what the repository can prove and hand the Owner the ones that hold. The Owner picks. (118) | pass | pass | pass | pass | pass | pass | G2 cut *every* (as RV-2091; 123 → 118); the claim screen: G0–G5, *this seat chooses nothing, ranks nothing*. **Character, named by this seat for the Designer's README: the herald — it announces only what passed.** |
 | designer | I draw what people see of shoalmark (the board, the brand, these badges) from sources in the repository. No mock-ups. (117) | pass | pass | pass† | pass | pass | pass | the Owner's text; the Owner's ruling 5: *from sources in the repository*, may not *present a mock-up as a render*; the badges on `130fc7c` |
-| auditor | I check what the record claims against what it can show and take each finding, sourced, to the Owner, never to a seat. (118) | pass | pass | pass | pass | pass | pass | G0 cut *straight*, *with its source* → *sourced* (135 → 118); FM-024 *Raised*: one sourced line per raise, through the Owner |
+| auditor | I check what the record claims against what it can show and take each finding, sourced, only to the Owner. (106) | pass | pass | pass | pass | pass | pass | the Owner's correction (relayed 15:5x): the trim's *never to a seat* failed G2, since findings reach seats through the Owner's relay; FM-024 *Raised*: one sourced line per raise, through the Owner |
 
 Controls: *"Reviews every pull request so your merges are safe, fast and compliant."* dies at **G2**, on a promise and a compliance word. *"Helps the team get
-its work done."* dies at **G5**, since it could sit under any seat. The seven lines are the Owner's starting points (rule 6, relayed 15:29), kept word for word
-where they pass. Three lost words to a gate, as the table says, and the controls show that the gates fire. † G2 rests on the Owner's rulings, relayed and not
-yet in the repository, and for the designer on the badges of `130fc7c`. **Disclosure:** this seat screened the Owner's lines and made the three cuts; no
-independent reader has read them. G1 is this runtime's English (K). The Designer's `brand/seats/README.md` is not on `130fc7c` yet.
+its work done."* dies at **G5**, since it could sit under any seat. The seven lines are the Owner's starting points (rule 6, relayed 15:29), word for word where
+they pass; two lost words to a gate, and the auditor's is the Owner's own correction. † G2 rests on the Owner's rulings, relayed and not yet in the repository,
+and for the designer on its badges. **Disclosure:** this seat screened the Owner's lines and made the two cuts; no independent reader has read them. G1 is this
+runtime's English (K). The Designer's README (`d72b8e0`, 15:39) names the same herald.
 
 ## 3. The Owner's steps — about 45 minutes (≈ 6 per App), then 10 for the icons; stop on an unexpected screen or value
 **Read-only baseline, first.** No REST endpoint lists the Apps an organisation owns. The GitHub Apps reference has `/apps/{app_slug}`, the app's own `/app…`
