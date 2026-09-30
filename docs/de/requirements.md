@@ -39,7 +39,7 @@ gibt es von der Anforderung nie eine dritte Fassung. Die Abnahmekriterien stehen
 
 Jedes ist eine Frage an Sie und beginnt erst mit Ihrem Wort.
 
-- **Stufe 1**, nach der Erprobung und einem weiteren Interessenten: Prüfung von Abdeckung und Verweisen; Markierung
-  dessen, was eine Anforderung nennt, sobald sie sich ändert; `--trace REQ-<id>`; eine Rückverfolgbarkeitsmatrix je
-  Release, aus Git erzeugt.
+- **Stufe 1**, nach der Erprobung und einem weiteren Interessenten: Prüfung von Abdeckung und Verweisen; was eine
+  Anforderung nennt, wird als veraltet markiert, sobald sie sich ändert; `--trace REQ-<id>`; eine
+  Rückverfolgbarkeitsmatrix je Release, aus Git erzeugt.
 - **Stufe 2:** ein Testsitz, der die Anforderungen liest und nicht die Umsetzung.
