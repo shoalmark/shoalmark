@@ -57,8 +57,8 @@ convention is in [`requirements/README.md`](requirements/README.md); this is Sta
 
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
-Ruled by his signed answers to FM-031 (`d20bc89`, 11:08, and `eef0c2e`, 21:29), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on his answer,
-never on a default; a word in chat changes none of them until he signs it.
+Ruled by their signed answers to FM-031 (`d20bc89`, 11:08, and `eef0c2e`, 21:29), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on their answer,
+never on a default; a word in chat changes none of them until they sign it.
 
 - **Two tiers of review** (FM-032 S1). A change that touches only trackers, their evidence and the documentation — no
   `shoalmark.py`, no test, no configuration, no hook — gets one Reviewer pass: a finding below P2 is fixed forward in the
@@ -73,12 +73,12 @@ never on a default; a word in chat changes none of them until he signs it.
   into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
   and `--check` says when the freeze holds.
 - **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner's signed
-  answer the same day (`7c97c5b`, PR 46, merged 12:53:19). Not a rule. What waits on him is read from `--queue`,
+  answer the same day (`7c97c5b`, PR 46, merged 12:53:19). Not a rule. What waits on them is read from `--queue`,
   pull requests and pushed branches alike.
-- **One channel** (FM-031). The Owner speaks to the coordinating session. His rulings are recorded once, in the tool's
+- **One channel** (FM-031). The Owner speaks to the coordinating session. Their rulings are recorded once, in the tool's
   ask and answer — never relayed through chat as the record.
-- **Seats never need the Owner's checkout** (FM-031). He looks at a seat's branch with
-  `git fetch && git switch --detach origin/<branch>`, so his checkout never holds it.
+- **Seats never need the Owner's checkout** (FM-031). They look at a seat's branch with
+  `git fetch && git switch --detach origin/<branch>`, so their checkout never holds it.
 - **Messages between sessions — nine rules** (FM-031) — ruled 2026-09-24 21:29:12 (`eef0c2e`, PR 62): *the nine hold as
   written*. The nine, in the words FM-031's body records them:
   1. A message between sessions carries checkable facts only, re-checked in git before anything moves on it.
@@ -99,6 +99,10 @@ never on a default; a word in chat changes none of them until he signs it.
   2026-09-24 (FM-033's record); the gate is built in 0.18.3 (`judged_before_build`, off by default, on here) and refuses
   such a commit at commit time and in `--check`. The commit hook is best-effort. The gate is `--check` on the branch, and
   it must be green on the pull request's head before merge. A bypass of the hook alone, which `--check` catches, is P3.
+
+## How the record is written — the Owner, 2026-09-30
+
+A person — the Owner, a reader — is they/them/their; a seat is "it": seats are not people, so their texts are not corrected to they/them.
 
 ## Public contributions are untrusted input
 

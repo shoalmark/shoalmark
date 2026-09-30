@@ -142,19 +142,22 @@ filed on its own page, public and with no other project's numbers: `work-tracker
 **Decisions**, graded by the Principal and taken by the Owner (decisions, not quotations):
 - The ruling is applied here: the summary of a regenerable check output is the command, the tested commit, the environment, the
   pass and fail counts and the failing check ids, plus a committed check that proves regeneration; an output that does not
-  regenerate stays and counts. **His condition of 19:16:21:** *"an output is replaced by a summary and a check only where it is larger than the two together"*; the Jev scorer's output stays
-  under it, and the large JSONs of this branch stay replaced.
+  regenerate stays and counts. **Their condition of 19:16:21:** *"an output is replaced by a summary and a check only where it is larger than the two together"*; by the same word the Jev scorer's output stays on main as it is,
+  and the large JSONs of this branch stay replaced.
 - D9 is in force: a verdict names the reviewed commit, base, tier and checks, through the `Reviewed:` trailer that FM-024's S6 reads.
 - D1 (no review file outside a critical tier) changes S1, the Owner's signed rule, is not yet asked: its ask is placed on this tracker after this branch merges and the exchange is cleared — not built here.
 
-**What this slice builds:** the page; `--ratio`, his explicit exception to the filing freeze (*"Go, freeze excepted."*); the ruling
+**What this slice builds:** the page; `--ratio`, their explicit exception to the filing freeze (*"Go, freeze excepted."*); the ruling
 applied to the regenerable outputs, each replaced by its summary in its README; and the committed regeneration check
 (`SHOALMARK_REGENERATE=1`). **What stays in git, and why:** `browser-fonts.json` (no committed command), `results.json` (a CI read-back), `scanned-refs.txt`, the six
 `jev-*` request, response and key files (an external service's exchange), the two `requests.json` (FM-002 slice A's and the start page's:
 `render.mjs` writes them from a Chrome run, but no committed check regenerates them and they hold that run's network and page measures, so
 they stay until one does) and the triage page's `demo.out` and `demo-de.out` (`demo.sh` makes fresh keys and times on every run, so a run
 never repeats its ids, and the script's own header says `docs/triage.md` quotes them) do not regenerate from git, so they stay and count. **The Jev scorer's output stays, by the Owner's word of 19:16:21:** `jev-gate-test-score-output-2026-09-23.txt` regenerates from the committed
-scorer, but is smaller than a summary and its check together; it stays on main as it is, and the branch carries no block or check for it.
+scorer; the Owner took it out of this branch (19:16:21), so it stays on main as it is, with no block or check.
+
+**PR 131 as merged** (`c525a41^1..c525a41`, by the page's rule, renames off): records +699 −33,529, product +538 −9, 1.3:1. The page's *own numbers*
+(543 / 547, against `7e7c8ac`) are an earlier tip's and stay as filed.
 
 ## Done when
 

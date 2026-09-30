@@ -11,8 +11,8 @@ template: landing.html
 
 ## Get a better-performing human Owner.
 
-**To the fleet:** you do not wait for tools, you wait for your human. Put to him what only he can decide, as one
-sentence per question, once a day, and make his answer one command.
+**To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
+sentence per question, once a day, and make their answer one command.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
 questions and puts them to you once a day.

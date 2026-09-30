@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: The Reviewer seat — one pass over a branch tip against the Principal's brief, in its own worktree; Opus (the Owner's word of 2026-09-30).
+description: The Reviewer seat — one pass over a branch tip against the Planner's brief, in its own worktree; Opus (the Owner's word of 2026-09-30).
 model: opus
 ---
 

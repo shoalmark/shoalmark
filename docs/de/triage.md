@@ -40,7 +40,7 @@ In einem deutsch eingerichteten Repository heißen die Überschriften `## Die Ab
 **Ein erster Entwurf: die Dorfbücherei.** Die deutsche Vorlage `examples/de/TRIAGE.md`, die Ihre Agenten vor `--init`
 kopieren ([Einrichtung](setup.md), Schritt 2), bringt ein Beispiel in Kursivschrift mit. Dieses Beispiel ist mit
 Absicht ein ganzes Produkt. Der Eigner von shoalmark hat einmal einen ersten Entwurf geschrieben, der nur so groß wie
-ein einzelnes Feature war, weil ihm ein Agent zuvor ein Beispiel dieser Größe gezeigt hatte (FM-022). Deshalb lautet
+ein einzelnes Feature war, weil ein Agent dem Eigner zuvor ein Beispiel dieser Größe gezeigt hatte (FM-022). Deshalb lautet
 das Beispiel so:
 
 > - **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*
@@ -86,7 +86,7 @@ gibt sie aus, wie die ersten beiden Punkte unten zeigen. Dafür braucht es weder
 Der Beleg von shoalmark ist englisch geführt. Die Zitate bleiben deshalb im Wortlaut.
 
 **Zeile 3 des Wegs, neu geschrieben.** Am 25. September 2026 um 10:37 Uhr hat der Eigner Zeile 3 in einem eigenen,
-signierten Commit neu gefasst (`fe36cc0`, `%G?` G). Im selben Commit hat er die Zeilen 1, 2 und 5 umformuliert und
+signierten Commit neu gefasst (`fe36cc0`, `%G?` G). Im selben Commit wurden die Zeilen 1, 2 und 5 umformuliert und
 Zeile 6 hinzugefügt. Vorher stand in Zeile 3:
 
 > 3\. A pull request without an independent review's evidence file cannot merge - checked, not asked.
@@ -133,7 +133,7 @@ Wegs und die signierte Antwort des Eigners zu FM-033. Am selben Abend hat eine S
 line 5: an answer is written and signed, and the raise shows the signature proves the account, not the hand"*. Die
 Signatur beweist also das Konto, nicht die Hand.
 
-- **Nur der Text.** Dass neu eingestuft wird, noch am selben Tag, ist die Regel des Eigners, seine signierte Antwort zu
+- **Nur der Text.** Dass neu eingestuft wird, noch am selben Tag, ist die Regel des Eigners, die signierte Antwort zu
   FM-033. Eine Sichtung hält sie ein, indem sie an diesem Tag noch läuft.
 - **Das Werkzeug**, seit 0.18.3: Ein Einwand, der eine Zeile nennt, die Ihr Weg hat, stellt das Arbeitspaket unter
   *triage*, bis eine Sichtung es neu eingestuft hat. Am 24. September konnte das Werkzeug ein solches Arbeitspaket
@@ -183,14 +183,14 @@ Sind Sie einverstanden, ändern Sie die Zeile selbst: Datei bearbeiten, `git com
 `git log -1 --format='%G? %GS %ae'` ein `G` und zweimal Ihre E-Mail aus. Das ist die Probe auf der
 [Signaturseite](signing.md).
 
-**Die Grenze** steht in den Worten, mit denen FM-006 sie erfasst hat: *a commit signed with the Owner's key passes,
-and at tier 0 any process on his account holds that key.* Ein Commit, der mit dem Schlüssel des Eigners signiert ist,
-geht also durch, und auf Stufe 0 hat jeder Prozess unter seinem Konto diesen Schlüssel. Das Werkzeug gibt diesen Satz
+**Die Grenze** steht in den Worten, die das Werkzeug ausgibt: *a commit signed with the Owner's key passes;
+at tier 0 any process on their account holds that key (FM-007)*. Ein Commit, der mit dem Schlüssel des Eigners signiert ist,
+geht also durch, und auf Stufe 0 hat jeder Prozess unter Ihrem Konto diesen Schlüssel. Das Werkzeug gibt diesen Satz
 nach jeder Ablehnung aus.
 
 - **Das Werkzeug** kann den Unterschied nicht erkennen. Auf Stufe 0 heißt *nur Sie* in Wahrheit *nur Ihr Konto*. Im
   Scratch-Repository ging ein Commit, der mit dem Schlüssel des Eigners ohne Passphrase signiert war, genauso durch
-  `--check` wie sein eigener. Eine Passphrase bei jeder Signatur (Stufe 2) fängt eine verirrte Signatur ab, aber ein
+  `--check` wie ein eigener. Eine Passphrase bei jeder Signatur (Stufe 2) fängt eine verirrte Signatur ab, aber ein
   Agent, der Schaden will, kann die Abfrage fälschen und die Passphrase mitlesen. Die [Signaturseite](signing.md) sagt
   es so: *Stufe 2 hält den Agenten auf, der aus Versehen signiert; Stufe 3 auch den, der es absichtlich tut.* Stufe 3
   ist ein Hardware-Schlüssel mit PIN und Berührung oder ein Schlüssel in der Secure Enclave eines Macs mit Touch ID;

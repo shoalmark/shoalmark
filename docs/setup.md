@@ -53,8 +53,8 @@ reviewer    = "reviewer@seat"
 
 Under Subversion the owner is your server account, without `signed`: the server authenticates you already. Each seat
 commits under its own identity, set once in its own worktree (`git config --worktree user.email implementer@seat`),
-and holds only its own rights: the owner answers; the principal asks, closes and triages; the reviewer triages; the
-implementer builds. The older `answerers = ["yourname signed"]` still works where there is no `[seats]`.
+and holds only its own rights: the owner answers; the planner asks, closes and triages; the reviewer triages; the
+builder builds. The seats are called Planner and Builder in prose; their `[seats]` keys, `principal` and `implementer`, keep their names until the key rename, the bot identities and the badges switch together. The older `answerers = ["yourname signed"]` still works where there is no `[seats]`.
 
 **Sessions.** Beside its seat, every agent's worktree carries `seat.session`, the run it belongs to, and the hook that
 `--install-hook` wrote adds it to every commit as `Session: <id>`, with the worktree beside it. The gate refuses a

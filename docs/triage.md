@@ -30,7 +30,7 @@ two of them are yours.
 - **Passes.** One paragraph per triage pass, written by the seat that ran it. This section belongs to your agents.
 
 **A first draft: the village library.** `--init` writes an example in italics, and it is a whole product on purpose.
-The owner's own first draft once came out the size of one feature, after a seat had shown him a feature-sized example
+The owner's own first draft once came out the size of one feature, after a seat had shown them a feature-sized example
 (FM-022). So the example looks like this:
 
 > - **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*
@@ -69,7 +69,7 @@ points below say. You don't need a meeting or a message.
 
 ### From shoalmark's own record
 
-**Path line 3, rewritten.** On 25 September 2026 at 10:37, the owner rewrote line 3 in his own signed commit
+**Path line 3, rewritten.** On 25 September 2026 at 10:37, the owner rewrote line 3 in their own signed commit
 (`fe36cc0`, `%G?` G), which also reworded lines 1, 2 and 5 and added line 6. Line 3 before:
 
 > 3\. A pull request without an independent review's evidence file cannot merge - checked, not asked.
@@ -107,7 +107,7 @@ of the path and the owner's signed answer on FM-033. The same evening a pass jud
 (`29466fc`). Re-made on its Reviewer's findings (`c5696c5`), it set P1: *"on the current path, line 5: an answer is
 written and signed, and the raise shows the signature proves the account, not the hand"*.
 
-- **The text alone,** for *the same day*: that is the owner's rule, his signed answer on FM-033, and a pass keeps it
+- **The text alone,** for *the same day*: that is the owner's rule, their signed answer on FM-033, and a pass keeps it
   by running.
 - **The tool,** since 0.18.3: a raise that names a line your path has puts the tracker under *triage* until a pass
   has judged it again. On 24 September the tool couldn't list a raised tracker yet, so the seat wrote the row by hand.
@@ -127,7 +127,7 @@ written and signed, and the raise shows the signature proves the account, not th
 - **The tool.** *Passes* stays open to the seats that record a pass.
 
 **Shown.** We ran this in a scratch repository with the tool from shoalmark's `main` (`88c7b0c`). The repository had
-the village library as its intent, two path lines, an invented owner with his key, and a seat. Nothing of it left the
+the village library as its intent, two path lines, an invented owner with their key, and a seat. Nothing of it left the
 scratch directory. On its own branch, the seat changed path line 2 from *"A pull request merges only with a review's
 evidence file on its head."* to *"A pull request merges when its tests pass."* `--check` on that branch exited 4, and
 these are the refusal's lines as the tool printed them (the script and its whole output are in
@@ -148,11 +148,11 @@ an `ask:` in its tracker, `ask-kind: ruling`. You answer on your board. If you a
 edit the file, `git commit -S`, push. `git log -1 --format='%G? %GS %ae'` then prints `G` and your email twice. That
 is the check on [the signing page](signing.md).
 
-**The limit,** in the words FM-006 filed it with: *a commit signed with the Owner's key passes, and at tier 0 any
-process on his account holds that key.* The tool prints it after every refusal.
+**The limit,** in the words the tool prints after every refusal: *a commit signed with the Owner's key passes; at tier 0 any
+process on their account holds that key (FM-007)*.
 
 - **The tool** cannot tell the difference. At tier 0, *only you* means *only your account*. In the scratch
-  repository, a commit made with the owner's key, which had no passphrase, passed `--check` exactly like his own. A
+  repository, a commit made with the owner's key, which had no passphrase, passed `--check` exactly like their own. A
   passphrase at every signature (tier 2) stops a stray signature, but an agent that means harm can fake the prompt and
   catch it. As [the signing page](signing.md) says: *Tier 2 stops the agent that signs by mistake; tier 3 also stops
   the one that means to.* Tier 3 is a hardware key with a PIN and a touch, or a key in a Mac's Secure Enclave with

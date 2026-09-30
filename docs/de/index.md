@@ -6,8 +6,8 @@
 
 ## Dein Eigner bremst. Tunen statt tauschen.
 
-**An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt ihm vor, was nur er entscheiden
-kann – ein Satz pro Frage, einmal am Tag –, und macht aus seiner Antwort einen einzigen Befehl.
+**An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden
+kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort einen einzigen Befehl.
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.

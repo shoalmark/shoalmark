@@ -6,6 +6,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 <!-- The heading's name is provisional; the release cut settles which version this section is. -->
 
+- **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
+  The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
+  and AGENTS.md says so in one sentence so nobody "fixes" a seat's text. README, AGENTS.md, `docs/` (English and German,
+  where the German keeps the English seat names and "Sie") and the tool's printed text are reworded; quotes of the Owner
+  and every shipped record stay as they were. The seats are Planner and Builder in prose; the `[seats]` keys
+  `principal` and `implementer` and their addresses follow with the bot identities, in one change.
+
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
   pull request or tell the Owner to close work carried into that fork. Nor can a fork's base hide another pull
@@ -18,11 +25,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **A seat has several identities (FM-024).** A `[seats]` value is a string as ever, or a list of them —
   `planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.com"]` — and every identity in it is
   that seat: `seat_of`, the answer, ask and rights gates and the session rule match any of them, `signed` is read per identity,
-  and an identity listed under two seats is refused at configuration, one line naming both (exit 1, as every configuration refusal). A seat can change the
+  and an identity listed under two seats, or twice under one, is refused at configuration in one line (exit 1, as every configuration refusal). A seat can change the
   address it commits under while history and the branches in flight keep resolving; the README's *Seat icons on the forge*
   says how a seat's GitHub App shows its icon. A `]` inside a quoted list item now reads (the bot's `[bot]`). With a string
-  value nothing changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool
-  before it. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
+  value nothing else changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool
+  before it. *On upgrade:* a `[seats]` that names one identity under two seats — `owner = "you@example.org"` beside
+  `implementer = "you@example.org"` — read as the first seat's before; now every command, and a commit through the installed
+  hook, stops at it until it is listed once. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
   and `auditor` beside the five keys it has, which stay — with their addresses — until one change makes the key rename, the bot
   addresses and the badges together; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
 - **The seats are `planner` and `builder` (FM-024).** The built-in rights belong to `owner`, `planner` (ask, close, triage),
@@ -31,7 +40,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   a repository whose `[seats]` already has a `planner` of its own, without a `[rights]` line, gains ask, close and triage for it;
   `[rights] planner = []` keeps it as it was.
 - **The sessions strip groups by parent** (FM-024; the Owner's word of 2026-09-30 10:40:31, normalised: *FM-024's build and
-  FM-041 ride v0.19.0*; the Auditor's briefs of 2026-09-28 and 2026-09-30, through him). One line per parent session with a
+  FM-041 ride v0.19.0*; the Auditor's briefs of 2026-09-28 and 2026-09-30, through them). One line per parent session with a
   commit in the last day — `a9f3c2d1 principal (principal-a9) · implementer 1–6 · reviewer 1–5, 7` — under the
   header *sessions · 3 in the last day (28 with their sub-sessions)*; a run of three or more numbers is `a–b`. A line
   opens on each member's worktree, model and effort, `—` where its commits carried none. A parent that made no commit of
@@ -51,9 +60,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `effort`), never a message or a tool's result, and only a one-word value is taken, so a transcript cannot add a trailer.
   Two files for one id: `--whoami` refuses (exit 2, both paths named); the hook writes neither trailer and the commit
   goes on. `--schema` lists the three worktree settings. The status line (`--statusline`) is not in this release.
-- **The addressing rule ships with the contract** (FM-024, his answer of 2026-09-28: the rule with `--whoami`). A message a
+- **The addressing rule ships with the contract** (FM-024, their answer of 2026-09-28: the rule with `--whoami`). A message a
   person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's
-  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it
+  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it.
 - **The board's verdict reader reads the history once (FM-040).** `verdict_reports` asked git about four times per
   verdict — 728 subprocesses and 37 s for one `--html-only` on this repository, which every commit, merge and checkout
   paid through the hooks. It now resolves the reviewed shas in one `git cat-file --batch-check`, reads their history in
@@ -73,12 +82,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   `checks.json`, `checks-r3-before.json` and `facts.json` and slice A's `checks.json` are replaced, in their READMEs, by the command,
   the tested commit, the environment, the counts and failing ids, the deleted file's sha256 and the commit that holds it, and a
   machine-readable block; an output that does not regenerate from git by a committed command stays, and so does one that is not larger than its summary and its
-  check together (the Owner, 19:16:21: the Jev scorer's output stays). `test_shoalmark.py` proves
+  check together. `test_shoalmark.py` proves
   the regeneration: `facts.mjs` on every run where Node and the history are here, the browser checks (rebuilt sites, `checks.mjs`,
   the READMEs' thresholds) behind `SHOALMARK_REGENERATE=1` where Chrome and `uvx` are; every skip prints its reason.
-
-## Unreleased
-
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.
 - **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
@@ -91,7 +97,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **The public home is `shoalmark/shoalmark` (FM-006).** Documentation, installation links and the
   board footer use the organization repository. Signing help opens the new Pages site at
   `signing.html` (German: `de/signing.html`), matching the site’s generated filenames.
-  
+
 ## 0.18.6 — 2026-09-28
 
 - **An act that is a promise reads as what he promised, the question below it** (FM-030; the Owner's word in chat of
