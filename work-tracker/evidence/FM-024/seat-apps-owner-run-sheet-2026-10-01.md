@@ -76,10 +76,10 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    ```sh
    gh api "/users/shoalmark-principal%5Bbot%5D" --jq .id
    ```
-   Expected: a number. **On 404**: **Install App** → **Install** beside `shoalmark` → **Only select repositories** → `shoalmark` where the screen offers it (GitHub
-   omits it for an App with no repository permission, see Sources) → **Install**; then the GET again. Their pre-decision names that choice, so the Principal asks them
-   before 09:00 whether it holds when the screen offers none, and their word goes here. Without it, a screen with no repository choice is a stop: paste back
-   `no repository choice`. Stop too on any access listed (*Read access to metadata* included), a key, a secret or a payment. Paste back: the id, `installed` or not.
+   Expected: a number. **On 404**: **Install App** → **Install** beside `shoalmark` → **Only select repositories** → `shoalmark` where the screen offers it →
+   **Install**; where it offers none (GitHub omits it for an App with no repository permission, see Sources), click **Install** anyway, as the Owner ruled: no
+   permissions and no private key leave nothing that can act through the installation, and **Uninstall** reverses it. Then the GET again. Stop on any access listed
+   (*Read access to metadata* included), a key, a secret or a payment. Paste back: the id, `installed` or not.
 3. **The six others:** steps 1–2 again, each with its name, and its line from §2:
 
    | Seat | implementer | reviewer | research | go-to-market | designer | auditor |
