@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-30 · 42 trackers (42 work).
+> Generated 2026-10-01 · 42 trackers (42 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -33,7 +33,7 @@
 | 6 | P2 | build | — | intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
 | 7 | P2 | review | *complicated* | intended | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
-| 9 | P2 | build | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
+| 9 | P2 | review | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
 | 10 | P2 | build | complicated | intended | [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | In Progress |
 
 ### Acts owed to the Owner — with their time

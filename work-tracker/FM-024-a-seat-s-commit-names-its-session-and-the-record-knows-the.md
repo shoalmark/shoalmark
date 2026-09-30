@@ -8,7 +8,7 @@ triaged: 2026-09-25
 rank: 9
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
-next: build
+next: review
 ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
 ask-kind: ruling
 ask-since: 2026-09-28
@@ -28,9 +28,17 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
-**2026-09-30 — a report opens with `From:`, a bug new in 0.19.0, fixed before the tag.** The Owner's ruling is filed below, in
-*A report opens with From: — v0.19.0*. It is built on `fm/024-a-report-opens-with-from`, cut from main `1197e80`, by one Builder,
-in its own pull request beside FM-005's done fix; the Reviewer of that fix judges it after that verdict, at code tier. Next: build.
+**2026-09-30 — a report opens with `From:`, a bug new in 0.19.0, fixed before the tag — built 2026-10-01.** The Owner's ruling is
+filed below, in *A report opens with From: — v0.19.0*. It is built on `fm/024-a-report-opens-with-from`, cut from main `1197e80`,
+by one Builder (`b3bdb000/implementer-75`), in its own pull request beside FM-005's done fix. `544aac6`: `--whoami` prints
+`From: <session> <seat> (<worktree>) · <model> · <effort>`, its docstring and `--help` say why, and the checks that read the line
+expect it. `3648319`: rule 8 says a report opens with that line and a message names its target with `To:` and the same
+identity, in AGENTS.md and in the contract `--init` writes; one check runs `--init` and holds the rule's text equal in the two;
+the README's example and table row and the two Unreleased 0.19.0 CHANGELOG bullets that show the line follow, `To:` staying
+where it names a message's target. Records already written are as they were. **What is left:** the Reviewer of FM-005's done fix
+judges this after that verdict, at code tier; the Owner opens the pull request; CI's full pass on its final tree. Found on the
+way, not fixed here (rule 6): AGENTS.md's contract block already differs from what `--init` writes — it has no `ask:` rule (the
+template's 7) and wraps its opening paragraph differently — so only rule 8's text is held equal. Next: review.
 
 **Slice 2 built 2026-09-30 on `fm/024-a-seat-has-several-identities`, for 0.19.0 — the Owner's word of 14:42, normalised: *"the seat icons ride v0.19.0"*; open for the Reviewer's pass.**
 `[seats]` takes a string or a list per seat, so a seat keeps its old address and gains a GitHub App's bot address (`seat_of`, the gates and the session rule match any; `signed` per identity; a duplicate — under two seats, or twice under one — refuses, exit 1); the README's *Seat icons on the forge*; `research` (with `datascientist@seat`), `go-to-market`, `designer` and `auditor` added to `shoalmark.toml` beside the five keys, which stay until the one change on Thursday (their addresses are the Owner's ruling of 15:29; none is in history yet but `designer@seat`, whose ten commits from PR 137 carry `Session: 8e509911/designer-1` and now resolve to the seat); `planner` and `builder` in the built-in rights, `principal` and `implementer` their old spellings; 18 checks, each failing on `origin/main`'s tool except the builder's, which is the point.
@@ -375,3 +383,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-30 | **Slice 2 built — a seat has several identities** (for 0.19.0; the Owner's word 14:42 and their rulings of 15:29 on the seven seats): `[seats]` reads a list per seat; the golden comparison of `--check` and `--owner` against `origin/main`'s tool, string values, is byte-identical; the list pattern of `read_config` took a `]` inside a quoted item after the first commit's tests found the bot's `[bot]` refused; `research`, `go-to-market`, `designer`, `auditor` added to `shoalmark.toml`. Not built: the bot addresses themselves — configuration, when each App exists. |
 | 2026-09-30 | **Slice 2 corrected and widened by the Owner's rulings of 15:29 onward** (relayed by the Principal): the five `[seats]` keys and their addresses stay until one change on Thursday, so `gtm` is back and `go-to-market` has its own address; the built-in rights are `planner` and `builder`, `principal` and `implementer` their old spellings — a test each. Not built: the key rename, the bot addresses, the badges. |
 | 2026-09-30 | **A report opens with `From:` — filed** by the Planner on the Owner's ruling of that day, a bug new in 0.19.0: `--whoami` prints `To: …` and rule 8 says a report opens with that line, so a report opens with *To: <itself>*; `--whoami` prints `From: …`, rule 8 says so and keeps `To:` for a message's target, the README example, the two Unreleased CHANGELOG bullets and the tests follow; records already written stay. |
+| 2026-10-01 | **A report opens with `From:` — built** for 0.19.0 on the Owner's ruling of 2026-09-30 (filed above), by the Builder seat (`b3bdb000/implementer-75`) on `fm/024-a-report-opens-with-from`: `544aac6` — `--whoami` prints `From: <session> <seat> (<worktree>) · <model> · <effort>`, its docstring, `--help` and checks follow; `3648319` — rule 8 in AGENTS.md and in the template `--init` writes says a report opens with that line and a message names its target with `To:` and the same identity, one check holds the two texts equal, the README and the two Unreleased CHANGELOG bullets follow. Records already written stay. Code tier: the Reviewer's pass, the pull request and CI remain. |
