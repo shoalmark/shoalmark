@@ -4479,10 +4479,12 @@ def answerers_problems():
             for who, imode in SEATS[s]:                  # FM-024: each identity of the seat — `signed` is read per identity
                 if not who or imode == "signed" or (same and who != name):
                     continue
-                out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and `[seats] {s} = "{who}"` — '
+                shown = f'`[seats] {s} = "{who}"`' if len(SEATS[s]) == 1 else f'`[seats] {s}` lists `"{who}"`'       # a list seat: the item, not the whole seat
+                advice = f'Add `signed` to the seat (`{s} = "{who} signed"`)' if len(SEATS[s]) == 1 else f'Add `signed` to that item (`"{who} signed"`)'
+                out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and {shown} — '
                            + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
                            + f' — is not signed. `[seats]` alone decides who may answer (from 0.17.1), so that answer would count unsigned. '
-                           f'Add `signed` to the seat (`{s} = "{who} signed"`), or remove `answerers`')
+                           f'{advice}, or remove `answerers`')
     return out
 
 
