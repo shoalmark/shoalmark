@@ -11,6 +11,7 @@ Markdown trackers with a small front matter, and one command that reads them all
                                    refuses the file until `considered:` says what it was held against
     shoalmark.py --triage        a triage pass: the seat judges a worksheet, the command applies it
     shoalmark.py --schema        every front-matter key, its shape, who writes it
+    shoalmark.py --ratio         records added : product added, per Berlin day of the merge (FM-032)
     shoalmark.py --init          scaffold the tracker directory, TRIAGE.md and shoalmark.toml
     shoalmark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
@@ -4125,6 +4126,11 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
                         "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
+    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default (the default where `[ratio]` is present)",
+                        "the records-to-product ratio (FM-032): what `--ratio` counts as a record — a prefix with a trailing slash is a directory, a plain "
+                        "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
+    "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
+                        "prefixes `--ratio` leaves out of both sides — neither a record nor product (a vendored copy, a generated tree)"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
@@ -4714,6 +4720,153 @@ def sessions_cmd():
     twice = [r for r in rows if len(r["worktrees"]) > 1]
     if twice:
         print("\n" + "\n".join(f"- one id, {len(r['worktrees'])} worktrees: {r['id']} ({', '.join(r['worktrees'])})" for r in twice))
+    return EXIT_OK
+
+
+# --- the records-to-product ratio (FM-032) -----------------------------------------------------------------------------
+# The rule is filed on its own page (work-tracker/evidence/FM-032/records-to-product-ratio.md); this is the command that page
+# names as the reference, and a difference between the two is a bug against the page. Merged pull requests are the merge
+# commits on the default branch's first-parent line, each compared with its first parent; a day is the merge's committer date
+# in Europe/Berlin; added and deleted lines are counted apart and never netted; a submodule pointer is no line, a binary file
+# is 0 lines and one file.
+RATIO_DAYS = 7          # the window when `--since` is not given, and the rolling sum's length
+
+
+def ratio_defaults():
+    """`[ratio]`'s defaults as `DEFAULTS` keeps every other: `records` is the tracker directory this tool is configured with
+    (`tracker_dir`, wherever a repository keeps it), `exclude` is empty."""
+    return {"records": [str(CONFIG["tracker_dir"]).strip("/") + "/"], "exclude": []}
+
+
+def ratio_paths(section):
+    """(records, exclude): `[ratio]`'s two lists, checked; a ValueError with the one line to print where one is no list of prefixes."""
+    out = []
+    for key, default in ratio_defaults().items():
+        value = section.get(key, default)
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of repository-relative prefixes, each a non-empty string — "
+                             f"`{key} = {json.dumps(default)}`. Got {value!r}")
+        out.append([v.strip() for v in value])
+    return out
+
+
+def ratio_class(path, records, exclude):
+    """"skip" for a path left out, "records", or "product" — a prefix with a trailing slash is a directory, a plain one is that file."""
+    hit = lambda prefixes: any(path.startswith(p) if p.endswith("/") else path == p for p in prefixes)
+    return "skip" if hit(exclude) else "records" if hit(records) else "product"
+
+
+def ratio_merge(merge, records, exclude):
+    """One merge against its first parent: {"records": [added, deleted], "product": [added, deleted], "binary": files}."""
+    tot = {"records": [0, 0], "product": [0, 0], "binary": 0}
+    raw = (git_out("diff", "--raw", "--no-renames", "-z", f"{merge}^1", merge) or "").split("\0")
+    pointers = {raw[i + 1] for i in range(0, len(raw) - 1, 2) if "160000" in raw[i].lstrip(":").split()[:2]}       # ":100644 160000 <sha> <sha> M"
+    for entry in (git_out("diff", "--numstat", "--no-renames", "-z", f"{merge}^1", merge) or "").split("\0"):
+        if not entry:
+            continue
+        added, deleted, path = entry.split("\t", 2)
+        kind = ratio_class(path, records, exclude)
+        if path in pointers or kind == "skip":
+            continue
+        if added == "-":                                  # binary: no lines, one file
+            tot["binary"] += 1
+        else:
+            tot[kind][0] += int(added)
+            tot[kind][1] += int(deleted)
+    return tot
+
+
+def ratio_zone():
+    """(the zone as datetime's tzinfo or None, whether it is Europe/Berlin): where no tz database is installed, None."""
+    try:
+        import zoneinfo
+        return zoneinfo.ZoneInfo("Europe/Berlin"), True
+    except Exception:                                     # no zoneinfo module, or no tzdata on this machine
+        return None, False
+
+
+def ratio_line(label, tot, merges=None):
+    """One day's line — the four counts, the ratio (records added : product added, or why there is none), and the merges."""
+    (ra, rd), (pa, pd) = tot["records"], tot["product"]
+    ratio = f"{ra / pa:.1f}:1" if pa else "no finite ratio"
+    tail = "" if merges is None else f"  ({merges} merge{'' if merges == 1 else 's'}" + (f", {tot['binary']} binary" if tot["binary"] else "") + ")"
+    return f"{label}  records +{ra:,} \u2212{rd:,}  product +{pa:,} \u2212{pd:,}  {ratio}{tail}"
+
+
+def ratio_cmd(since=None, until=None):
+    """`--ratio`: records added : product added per Berlin day of the merge, and the rolling seven-day sums. Exit 0; 2 where
+    there is nothing to read (no `[ratio]`, no git, no default branch, a date that is none)."""
+    section = CONFIG.get("ratio")
+    if not isinstance(section, dict):
+        print(f"--ratio: {CONFIG_NAME} has no [ratio] section, so there is no ratio to count — add `[ratio]` with `records = {json.dumps(ratio_defaults()['records'])}` "
+              "(the prefixes that are records; everything else is product)", file=sys.stderr)
+        return 2
+    try:
+        records, exclude = ratio_paths(section)
+    except ValueError as e:
+        print(f"--ratio: {e}", file=sys.stderr)
+        return 2
+    if vcs() != "git":
+        print("--ratio: the merges are read from git's first-parent history — this is no git repository", file=sys.stderr)
+        return 2
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git) or trunk_ref()             # origin's default as this clone fetched it (as `--answer` and the gate read it), else the local one
+    if trunk is None:
+        print("--ratio: no default branch (origin/HEAD, origin/main, origin/master, main or master) to read the merges from", file=sys.stderr)
+        return 2
+    zone, berlin = ratio_zone()
+    parse = lambda s: datetime.date.fromisoformat(s)
+    try:
+        today = datetime.datetime.now(zone).date() if zone else datetime.date.today()
+        last = parse(until) if until else today
+        first = parse(since) if since else last - datetime.timedelta(days=RATIO_DAYS - 1)
+    except ValueError:
+        print("--ratio: --since and --until are days, YYYY-MM-DD", file=sys.stderr)
+        return 2
+    if first > last:
+        print(f"--ratio: --since {first} is after --until {last}", file=sys.stderr)
+        return 2
+    log = git_out("log", "--first-parent", "--merges", "--format=%H%x00%cI", trunk)
+    if log is None:
+        print(f"--ratio: git could not read {trunk}", file=sys.stderr)
+        return 2
+    lo = first - datetime.timedelta(days=RATIO_DAYS - 1)           # the sums of the window's first days reach back before it
+    days = {}
+    for row in log.splitlines():
+        sha, _, stamp = row.partition("\0")
+        when = datetime.datetime.fromisoformat(stamp[:-1] + "+00:00" if stamp.endswith("Z") else stamp)     # 3.9 reads no `Z`
+        day = (when.astimezone(zone) if zone else when).date()     # no zone database: the commit's own offset
+        if lo <= day <= last:
+            tot = days.setdefault(day, {"records": [0, 0], "product": [0, 0], "binary": 0, "merges": 0})
+            one = ratio_merge(sha, records, exclude)
+            for k in ("records", "product"):
+                tot[k][0] += one[k][0]
+                tot[k][1] += one[k][1]
+            tot["binary"] += one["binary"]
+            tot["merges"] += 1
+    empty = lambda: {"records": [0, 0], "product": [0, 0], "binary": 0, "merges": 0}
+    def add(a, b):
+        return {"records": [a["records"][0] + b["records"][0], a["records"][1] + b["records"][1]],
+                "product": [a["product"][0] + b["product"][0], a["product"][1] + b["product"][1]],
+                "binary": a["binary"] + b["binary"], "merges": a["merges"] + b["merges"]}
+    span = lambda a, b: [a + datetime.timedelta(days=i) for i in range((b - a).days + 1)]
+    print(f"records-to-product ratio \u2014 records: {', '.join(records)}"
+          + (f" (left out: {', '.join(exclude)})" if exclude else "") + "; product: every other path; a submodule pointer is no line, a binary file 0 lines")
+    print(f"trunk {trunk} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
+          + ("" if berlin else " \u2014 NOT: no time zone database here, so each day is the merge's own UTC offset"))
+    print("added and deleted lines are apart, never netted; the ratio is records added : product added\n")
+    whole = empty()
+    for day in span(first, last):
+        one = days.get(day, empty())
+        whole = add(whole, one)
+        print(ratio_line(str(day), one, one["merges"]))
+    print("\n" + ratio_line("window    ", whole, whole["merges"]))
+    print(f"\n{RATIO_DAYS}-day sums \u2014 each day and the {RATIO_DAYS - 1} before it, read from the repository, not only the window")
+    for day in span(first, last):
+        run = empty()
+        for back in span(day - datetime.timedelta(days=RATIO_DAYS - 1), day):
+            run = add(run, days.get(back, empty()))
+        print(ratio_line(str(day), run, run["merges"]))
     return EXIT_OK
 
 
@@ -6052,6 +6205,12 @@ def parse_args(argv):
         help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
              "its first eight hex characters; a sub-agent's is its parent's and its hand, `<parent>/<seat>-<n>`. `--session new` prints an id no commit carries, for a session "
              "with no parent and a harness with no id. `open` and `close` are gone since 0.18.0: the registry is a report, `--sessions`")
+    add("--ratio", action="store_true", help="the records-to-product ratio (FM-032): per Europe/Berlin day of the merge, the lines added and deleted in records "
+                                            "(`[ratio] records` in the configuration) and in product (every other path), counted apart, for the merge commits on "
+                                            "the default branch's first-parent line — then the rolling seven-day sums. The rule is "
+                                            "work-tracker/evidence/FM-032/records-to-product-ratio.md. Read-only; exit 2 without a `[ratio]` section")
+    add("--since", metavar="YYYY-MM-DD", help="with --ratio: the first day of the window (default: six days before --until)")
+    add("--until", metavar="YYYY-MM-DD", help="with --ratio: the last day of the window (default: today, Europe/Berlin)")
     add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
@@ -6732,6 +6891,11 @@ def main(argv=None):
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone
         return sessions_cmd()
+    if args.ratio:                                          # FM-032: a report of git's first-parent history — no tracker is read
+        return ratio_cmd(args.since, args.until)
+    if args.since or args.until:
+        print("--since and --until go with --ratio", file=sys.stderr)
+        return 2
     if args.queue:                                          # FM-031 S2: the forge's queue — no tracker is read
         return queue_cmd()
     if args.answer:
