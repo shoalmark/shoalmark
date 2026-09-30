@@ -1,17 +1,17 @@
 # FM-024 — the seven seat Apps: Owner run sheet, a dry run for Thursday 2026-10-01 before 11:00
 
-Prepared 2026-09-30, 14:47–15:06 CEST, by the GtM seat, session `8e509911/gtm-2` (Claude Opus 5.5), on `fm/024-the-seat-apps-run-sheet` off main `297896b`.
-Scope: seven GitHub Apps owned by the organisation `shoalmark`. **The seat created nothing and changed no setting;** every forge read below is a GET. The Owner
-creates the Apps in GitHub's browser UI, logged in as `holgo99` (org role `admin`, read 14:51). The Owner's plan (normalised): *"seven Apps (principal,
-implementer, reviewer, gtm, auditor, datascientist, designer), no permissions, webhook inactive, no private key, no client secret, not installed, icon uploaded.
-A seat reads the bot ids."* Their pre-decision, relayed 2026-09-30 (normalised): *"If a bot id does not resolve after creation, install that App on the
-shoalmark organisation, only select repositories: shoalmark, with its permissions still none, and still no private key and no client secret. The inert
+Prepared 2026-09-30, 14:47–15:06 CEST, by the go-to-market seat (`gtm@seat`), session `8e509911/gtm-2` (Claude Opus 5.5), on `fm/024-the-seat-apps-run-sheet`
+off main `297896b`. Scope: seven GitHub Apps owned by the organisation `shoalmark`. **The seat created nothing and changed no setting;** every forge read below
+is a GET. The Owner creates the Apps in GitHub's browser UI, logged in as `holgo99` (org role `admin`, read 14:51). The Owner's plan (normalised): *"seven Apps
+(principal, implementer, reviewer, gtm, auditor, datascientist, designer), no permissions, webhook inactive, no private key, no client secret, not installed,
+icon uploaded. A seat reads the bot ids."* Their pre-decision, relayed 2026-09-30 (normalised): *"If a bot id does not resolve after creation, install that App
+on the shoalmark organisation, only select repositories: shoalmark, with its permissions still none, and still no private key and no client secret. The inert
 credential is what the condition protects, not the installation."* Their rulings on seats (15:29, relayed) rename two Apps: research, go-to-market.
 
 ## 1. The names — checked free
-The name is the slug's source. GitHub shows the name *"converted to lowercase, with spaces replaced by `-`"*, caps it at 34 characters, and refuses the name
-of *"an existing GitHub account"* (Sources). So the display name stays `shoalmark <seat>`, since any added word changes the slug. The character lives in the
-description and the icon, and `go-to-market` keeps its hyphens.
+The name is the slug's source. GitHub shows the name *"converted to lowercase, with spaces replaced by `-`"*, caps it at 34 characters, and refuses the name of
+*"an existing GitHub account"* (Sources). So the display name stays `shoalmark <seat>`, with the seat's English name (the Owner's rule 3), and the slug stays
+plain, since any added word changes it. The character lives in the description and the icon, and `go-to-market` keeps its hyphens.
 
 | Seat | Display name → slug | `/apps/<slug>` | `/users/<slug>%5Bbot%5D` | `/users/<slug>` | Free? | Checked at (CEST) |
 |---|---|---|---|---|---|---|
