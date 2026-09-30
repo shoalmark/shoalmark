@@ -32,7 +32,7 @@ desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vo
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
 desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
-desc.ended: ausgeliefert, oder ohne Auslieferung geschlossen
+desc.ended: ausgeliefert oder ohne Auslieferung geschlossen
 group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen

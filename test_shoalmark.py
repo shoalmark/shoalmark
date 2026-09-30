@@ -1663,7 +1663,7 @@ desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vo
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
 desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
-desc.ended: ausgeliefert, oder ohne Auslieferung geschlossen
+desc.ended: ausgeliefert oder ohne Auslieferung geschlossen
 group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
@@ -3257,7 +3257,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # a new tracker filed as Shipped is a move to it
     tracker(root, "AP-520", status="Shipped", body=nothing5_, title="filed as shipped"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-520: filed")
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
-    check("FM-005 · a new tracker filed as `Shipped` is a move to it: refused the same", code == fm.EXIT_LINT and "AP-520: moved to `Shipped` with no commit behind it" in err)
+    check("FM-005 · a new tracker filed as `Shipped` is a move to it: refused the same", code == fm.EXIT_LINT and "AP-520: moved to `Shipped` with no commit behind it" in err and way5_(err))
     tracker(root, "AP-521", status="Shipped", body=nothing5_ + f"| 2026-09-30 | built in {built5_[:7]} |\n", title="filed as shipped, and built"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-521: filed")
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
     check("FM-005 · …and passes where its log names a commit that built it", code == 0 and "AP-521" not in err)
@@ -3268,7 +3268,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code_p, _, err_p = made5_(507, f"built in {built5_[:7]}", by="holgo <h@x>")
     (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
     check("FM-005 · the Owner's own move to `Shipped` is refused as any author's is — the rule reads no seat and no right — and passes with a commit named",
-          code == fm.EXIT_LINT and "AP-507: moved to `Shipped` with no commit behind it" in err and "does not hold" not in err and code_p == 0 and "AP-507" not in err_p)
+          code == fm.EXIT_LINT and "AP-507: moved to `Shipped` with no commit behind it" in err and way5_(err) and "does not hold" not in err and code_p == 0 and "AP-507" not in err_p)
     # what the gate reads: the two sides of a change, in batches — and a commit's history only for a tracker moved to `Shipped`
     calls5_ = lambda f_: [" ".join(c_) for c_ in argv_of(f_)]
     names5_ = lambda cs_: [c_ for c_ in cs_ if "--batch-check=" in c_ or ("--no-walk=unsorted" in c_ and "--first-parent" in c_) or ("rev-list" in c_ and " --not " in c_)]
@@ -3298,7 +3298,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", trunk5_); commit5_("meanwhile", {"notes/meanwhile.txt": "trunk\n"}); merged5_("merge", "--no-ff", "-q", "pr5a", "-m", "Merge pull request from pr5a")
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
     check("FM-005 · a merge brings a commit that moves a tracker to `Shipped` with nothing behind it — refused, naming THAT commit, not the merge that brought it",
-          code == fm.EXIT_LINT and f"AP-513: in `{x5_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it" in err and sha5_()[:10] not in err)
+          code == fm.EXIT_LINT and f"AP-513: in `{x5_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it" in err and way5_(err) and sha5_()[:10] not in err)
     git(root, "switch", "-q", "-c", "pr5u"); move5_(600); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-600 shipped, no hook", "--author=holgo <h@x>"); xu5_ = sha5_()
     git(root, "switch", "-q", trunk5_); commit5_("meanwhile, for the quoted name", {"notes/meanwhile.txt": "trunk, quoted\n"}); merged5_("merge", "--no-ff", "-q", "pr5u", "-m", "Merge pull request from pr5u")
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
@@ -3314,7 +3314,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", trunk5_); commit5_("meanwhile once more", {"notes/meanwhile.txt": "trunk once more\n"}); merged5_("merge", "--no-ff", "-q", "pr5c", "-m", "Merge pull request from pr5c")
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
     check("FM-005 · a commit the pull request brings AFTER the one that names it is not in that commit's history, though it is in the merge's — the history is the commit's own",
-          code == fm.EXIT_LINT and f"AP-515: in `{x5c_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it — `{y5_[:7]}` is not in the history" in err)
+          code == fm.EXIT_LINT and f"AP-515: in `{x5c_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it — `{y5_[:7]}` is not in the history" in err and way5_(err))
     rm_git(root)
 fm.configure(HERE)
 
@@ -3463,7 +3463,7 @@ if _SVN:
         code_s, _, err_s = moved5_(3, f"built in r{head_ + 2}")                                           # the revision this very commit is: a commit cannot name itself
         check("FM-005 S · a revision that does not exist, and the revision the move itself is, are not in the history — refused, naming each and the way through",
               code == fm.EXIT_LINT and "C5-002: moved to `Shipped` with no revision behind it — `r9999` is not in the history. " in err and way5_(err)
-              and code_s == fm.EXIT_LINT and f"`r{head_ + 2}` is not in the history. " in err_s and "C5-003" in err_s)
+              and code_s == fm.EXIT_LINT and f"`r{head_ + 2}` is not in the history. " in err_s and "C5-003" in err_s and way5_(err_s))
         code, _, err = moved5_(4, f"a note in r{note_}")
         check("FM-005 S · a revision that changed only the records misses — refused, naming the records and the way through",
               code == fm.EXIT_LINT and f"C5-004: moved to `Shipped` with no revision behind it — `r{note_}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err))
@@ -3481,7 +3481,7 @@ if _SVN:
         check("FM-005 S · …and the same move naming the feature's revision passes, uncommitted", code == 0 and "C5-009" not in err)
         svn("revert", str(next(wt_.glob("C5-009-*.md"))), cwd=root)
         tracker(root, "C5-012", status="Shipped", body=nothing_, title="filed as shipped"); code, _, err = run(root)
-        check("FM-005 S · a new tracker filed as `Shipped` — not yet `svn add`ed — is a move to it: refused", code == fm.EXIT_LINT and "C5-012: moved to `Shipped` with no revision behind it" in err)
+        check("FM-005 S · a new tracker filed as `Shipped` — not yet `svn add`ed — is a move to it: refused", code == fm.EXIT_LINT and "C5-012: moved to `Shipped` with no revision behind it" in err and way5_(err))
         next(wt_.glob("C5-012-*.md")).unlink()
         calls_ = [" ".join(c_) for c_ in argv_of(lambda: run(root, "--check"))]
         check(f"FM-005 S · a run with nothing moved to `Shipped` asks Subversion for the working copy's status and the newest revision, and for no revision's paths (saw {len([c_ for c_ in calls_ if c_.startswith('svn')])} calls)",

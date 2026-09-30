@@ -2500,7 +2500,7 @@ def mark_raised(trackers):
     current path in TRIAGE.md (`path 5`, `TRIAGE.md path 5` — a number the path has), or a tracker's signed answer
     (`FM-033's answer` — a tracker with an answer that is not revoked, or an answered record under `## Asks`). Such a
     tracker is owed a pass and sits under *triage*. Clock-free: every input is a committed file, and a day decides — a raise
-    written after the same day's pass is re-judged by that seat's own re-run, not by this rule. A done tracker's raise
+    written after the same day's pass is re-judged by that seat's own re-run, not by this rule. A shipped or closed tracker's raise
     changes nothing here."""
     lines = {int(n) for n in re.findall(r"^\s*(\d+)\.\s", triage_home()["path"], re.M)}
     answered = {t["id"] for t in trackers if (t.get("answer") and (answer_relation(t) or ("",))[0] != "revoked") or t.get("asks_relation")}
@@ -3778,8 +3778,8 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
     """The worksheet of a triage pass: `In Progress` trackers no pass has dated in TRIAGE_DAYS, oldest work first —
     and every NEW FILING: open work filed under the `considered:` rule that no pass has ever dated, whatever its
     status. A fresh `Proposed` tracker used to meet no second reader at all, and `considered: none` nobody. Its row
-    prints what the filing says it was held against beside the three closest trackers the machine finds, done ones
-    included — shipped work is prior art too. The seat judges; no score decides, and no gate turns red because
+    prints what the filing says it was held against beside the three closest trackers the machine finds, shipped and
+    closed ones included — shipped work is prior art too. The seat judges; no score decides, and no gate turns red because
     someone else filed. `earlier` is today's worksheet if one exists: a re-run keeps every row whose Verdict is filled."""
     judged = [l for _tid, _v, l, _e in sheet_rows(earlier)]
     done = {tid for tid, _v, _l, _e in sheet_rows(earlier) if tid}
@@ -3934,7 +3934,7 @@ def apply_worksheet(sheet, sheet_is_todays, trackers, today, superseded=None):
         if not t or (t.get("triaged") and not sheet_is_todays):
             continue
         if t.get("status") not in OPEN_STATUSES:          # it shipped or closed since its verdict: a same-day re-run must not
-            continue                                      # rank or re-date done work, nor refuse the run over it
+            continue                                      # rank or re-date ended work, nor refuse the run over it
         path = TRACKER_DIR / t["file"]
         old = path.read_text(encoding="utf-8")
         new, hand, error = apply_verdict(old, verdict, today, by_id.keys() - {tid})
@@ -4802,7 +4802,8 @@ def svn_shipped_moves(rels):
     copy has modified, added or not yet `svn add`ed — else the NEWEST revision, at HEAD, that changed anything under the working
     copy, read against the one before it. The rights read the `status:` line's last author by `svn blame`, which judges a STATE: read so, every
     Shipped tracker there ever was would be a move, and each one shipped before this rule would be refused for ever. Only the change in
-    front of the run is a move here. The calls: `svn status`, else `svn log -l 1`, and one `svn cat` for each tracker that is Shipped after."""
+    front of the run is a move here. The calls: `svn status`; where nothing is pending, `svn log -l 1` and one `svn cat` for each tracker the
+    newest revision changed; and one more `svn cat` for each that is Shipped after."""
     status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
     for e in (status.iter("entry") if status is not None else []):
         wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
