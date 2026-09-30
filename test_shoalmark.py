@@ -5720,9 +5720,10 @@ else:
 _jev = re.search(r"```json\n(\{[^`]*?jev-gate-test-score-output[^`]*?\})\n```", (HERE / "work-tracker/evidence/FM-006/gtm-claim-screen-2026-09-23.md").read_text(), re.S)
 _jev = json.loads(_jev.group(1)) if _jev else {}
 _jev_dir = (HERE / "work-tracker/evidence/FM-006")
-_jev_run = subprocess.run([sys.executable, *_jev.get("command", "x").split()[1:]], cwd=str(_jev_dir), capture_output=True, env=_ENV) if _jev else None
+_jev_run = subprocess.run([sys.executable, *_jev.get("command", "x").split()[1:]], cwd=str(_jev_dir), capture_output=True,
+                      env=dict(_ENV, PYTHONIOENCODING="utf-8")) if _jev else None      # its stdout is UTF-8 on Windows too (there a pipe is cp1252)
 _jev_sha = hashlib.sha256(_jev_run.stdout.replace(b"\r\n", b"\n")).hexdigest() if _jev_run else None      # a variable: a backslash may not sit in an f-string before 3.12
-check("FM-032 \u00b7 the Jev gate test's score output regenerates \u2014 the committed scorer on the two committed responses prints the bytes (line ends normalised to LF: Windows' text mode writes CRLF) whose sha256 the claim-screen "
+check("FM-032 \u00b7 the Jev gate test's score output regenerates \u2014 the committed scorer on the two committed responses prints the UTF-8 bytes (line ends normalised to LF: Windows' text mode writes CRLF) whose sha256 the claim-screen "
       f"record's block keeps (the block says {_jev.get('sha256')}; a fresh run says {_jev_sha if _jev_run else 'no block'}), "
       "and the file itself is gone",
       bool(_jev_run) and _jev_run.returncode == 0 and _jev_sha == _jev["sha256"]
