@@ -10,8 +10,8 @@ Blocking and stamping have one root — a person asked for many small decisions 
 
 So the human is asked **once, earlier, and in writing**: what the work is for, what it must never do, what *done* has
 to prove. They see what waits for them, how long, and what it blocks — first, above everything else. The agents get what
-they need to run start to finish: state that outlives a session, one source of truth, a gate that refuses a false
-*done*. **Less work and distraction for the human; more throughput and less friction for the agents.**
+they need to run start to finish: state that outlives a session, one source of truth, a gate that refuses a *done*
+without a commit behind it. **Less work and distraction for the human; more throughput and less friction for the agents.**
 
 **What exists today:** the tracker, the gate, the board with *waiting for you* on top, `next: owner`, a cold-start
 answer in one command (`--next`) — on git and Subversion, on Windows, macOS and Linux, in any language.
@@ -115,7 +115,8 @@ The next session starts cold. Before you stop:
 - On a `build`, with the tracker open, set **`kind-of-problem:`** — `obvious` (a script could do it) ·
   `complicated` (found by reading) · `complex` (found only by running) · `chaos` (harm now).
 - Waiting on something? **`blocked-by: MSR-009, Owner — the ruling awaited`**. *Blocked* is derived and clears itself.
-- Done? `status: Shipped` (merged — not deployed) and remove `rank:`. **A story stays open while a chapter is.**
+- Done? `status: Shipped` (merged — not deployed), with the commit that built it named in a ship-log row — the gate refuses the
+  move without one (§5) — and remove `rank:`. Nothing was built? `status: Closed`. **A story stays open while a chapter is.**
 
 ## 4. Triage — you judge, the command applies
 
@@ -183,6 +184,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `changes the signers file …` (FM-037, AU-19) | the keys their signature is verified against are theirs too: a seat proposes a key as an ask, and they commit it, signed |
 | `wait: TRIAGE.md changed unsigned` (`--queue`) | a commit on that branch changes their intent or current path and is not their signed commit — the refusal above, read on the pull request: do not merge it |
 | `names no tracker` · `not judged` · `Parked` · `not In Progress` (`judged_before_build`) | a commit that changes a path outside the tracker directory is built under a tracker a pass has kept `In Progress` — at the commit's parent. Name it: the id in the subject, or a branch `<kind>/<NNN>-…`; ask for the pass if it is not judged. Never write `triaged:` by hand, and never build first and judge after |
+| `` moved to `Shipped` with no commit behind it `` — *its ship log names no commit* · *`abc1234` is not in the history* · *`abc1234` changes nothing outside the records* (FM-005) | a move to `Shipped` names the commit that built it, in a row of the tracker's ship log: a git hash (seven characters or more) or, on Subversion, `r<N>` — one that is in the history of that change and changes a path outside the records (`[ratio] records`, else the tracker directory). The refusal prints the command that finds it: `git log --oneline -- . ':(exclude,top)<tracker dir>/'`, on Subversion `svn log -v -l 20`. A commit being made cannot name itself: ship in a later commit. Nothing was built? The tracker is `Closed`, not `Shipped` — a move to `Closed` is not judged. It holds for every author, the Owner included, with or without `[seats]`, and judges only the change that moves the status: a tracker shipped before, and left alone, is never read. On Subversion the change is the uncommitted one, else the newest revision |
 | `A story is open while a chapter is` | keep the story `In Progress` with `next: wait`, or move the chapters first |
 | `… differs from its PIN` | someone edited the vendored tool in place. Never do that: change it upstream, vendor again |
 

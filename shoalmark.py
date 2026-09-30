@@ -337,7 +337,7 @@ def front_matter_schema():
     return {
         "id":              (_IDS, "all", "the filing seat", "the tracker's id — the filename's, checked against it"),
         "status":          ("|".join(OPEN_STATUSES[:-1] + ("Shipped", "Closed")), "all", "the seat that changes it",
-                            "the code lifecycle, one word — `Shipped` means merged, not deployed; a date belongs in the body"),
+                            "the code lifecycle, one word — `Shipped` means merged, not deployed, and a move to it names the commit that built it in the ship log (the gate refuses one that does not); a date belongs in the body"),
         "hook":            (None, "open", "the filing seat", "the problem as filed, in two or three sentences — the INDEX row"),
         "epic":            (_IDS, False, "the filing seat, or a triage pass", "the STORY this tracker is a chapter of — a tracker id; chapters inherit its `intent:`"),
         "tags":            (None, False, "the filing seat", "at most %d from the vocabulary in the configuration's [tags]" % MAX_TAGS),
