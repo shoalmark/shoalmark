@@ -34,7 +34,7 @@
 | 3 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
 | 4 | P2 | build | — | intended, kind | [FM-040](FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md) | the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it | Proposed |
 | 5 | P1 | wait | *complex* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
-| 6 | P2 | owner | *complicated* | intended | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
+| 6 | P2 | build | — | intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
 | 7 | P2 | review | *complicated* | intended | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
 | 9 | P2 | build | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
@@ -46,7 +46,6 @@
 
 | ID | Act | Promised | Due | Window |
 |----|-----|----------|-----|--------|
-| [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | 2026-09-26: accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | no date yet | 60 min |
 | [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
 
 
