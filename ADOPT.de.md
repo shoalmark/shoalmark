@@ -35,8 +35,8 @@ python <klon>/shoalmark.py --root probe --vendor probe/tools/shoalmark
 cd probe
 ```
 
-Vor `--init` die vier deutschen Dateien aus `<klon>/examples/de/` kopieren: `shoalmark.toml` nach `probe/shoalmark.toml`
-(die deutschen Abschnittsnamen, der Schlüssel `AP`; den Namen anpassen), `TEMPLATE.md` und `TRIAGE.md` nach
+Vor `--init` die vier deutschen Dateien aus `<klon>/examples/de/` kopieren. Die Zielordner vorher anlegen. `shoalmark.toml`
+nach `shoalmark.toml` (die deutschen Abschnittsnamen, der Schlüssel `AP`; den Namen anpassen), `TEMPLATE.md` und `TRIAGE.md` nach
 `docs/work-tracker/` und `labels.yaml` nach `docs/work-tracker/brand/labels.yaml` — damit sind Einträge und Tafel deutsch.
 Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nichts.
 
