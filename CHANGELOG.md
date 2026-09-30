@@ -18,7 +18,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   INDEX.md and the dashboard share the one definition, so both move together on the next `--html-only` / commit.
 
 - **A seat has several identities (FM-024).** A `[seats]` value is a string as ever, or a list of them —
-  `principal = ["principal@seat", "12345+shoalmark-principal[bot]@users.noreply.github.com"]` — and every identity in it is
+  `planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.com"]` — and every identity in it is
   that seat: `seat_of`, the answer, ask and rights gates and the session rule match any of them, `signed` is read per identity,
   and an identity listed under two seats is refused at configuration, one line naming both (exit 1, as every configuration refusal). A seat can change the
   address it commits under while history and the branches in flight keep resolving; the README's *Seat icons on the forge*
@@ -29,7 +29,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   addresses and the badges together; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
 - **The seats are `planner` and `builder` (FM-024).** The built-in rights belong to `owner`, `planner` (ask, close, triage),
   `reviewer` (triage) and `builder` (none). `principal` and `implementer` stay as their old spellings and hold exactly what they
-  held, so a repository's `[seats]` keeps working unchanged; nothing about a commit, a trailer or an address changes.
+  held, so a repository's `[seats]` keeps working unchanged; nothing about a commit, a trailer or an address changes. One exception:
+  a repository whose `[seats]` already has a `planner` of its own, without a `[rights]` line, gains ask, close and triage for it;
+  `[rights] planner = []` keeps it as it was.
 
 ## Unreleased
 
