@@ -88,11 +88,11 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    | Slug to expect | `shoalmark-implementer` | `shoalmark-reviewer` | `shoalmark-gtm` | `shoalmark-auditor` | `shoalmark-datascientist` | `shoalmark-designer` |
 4. **The icons**, once the Designer's `fm/024-the-seat-icons` carries its READY verdict (due by 11:00). Until then the Apps keep GitHub's identicon:
    ```sh
-   git fetch && git switch --detach origin/fm/024-the-seat-icons && python3 brand/seats/export.py && open brand/seats/out
+   git fetch && git switch --detach origin/fm/024-the-seat-icons && rm -rf brand/seats/out && python3 brand/seats/export.py && open brand/seats/out
    ```
    Per App: its page → *Display information* → **Upload a logo** → `brand/seats/out/<seat>-200.png` → **Set new avatar**. GitHub takes a PNG, JPG or GIF under
-   1 MB and recommends 200 × 200 pixels. The badge background colour comes from the Designer's README if it names one; else leave it. Expected: the badge shows
-   the stake. Stop if the export exits 2 (it prints the command it needs): the icons wait and the Apps stand. Paste back: `7 icons set`. Either way, `git switch main`.
+   1 MB and recommends 200 × 200 pixels. Expected: the badge shows the stake. Stop if the export exits 1 or 2 (it prints why): the icons wait, the Apps stand.
+   Paste back: `7 icons set`. Either way, `rm -rf brand/seats/out; git switch main`: main does not ignore `out/` yet, so its 21 PNGs would stay untracked.
 5. **Read back:** the loop of §4, and `gh api /orgs/shoalmark/installations --jq '[.installations[] | {app_slug, repository_selection}]'`. Expected: seven ids;
    installed, only what step 2 installed. Paste back: slugs, App IDs, bot ids, each install's `repository_selection`, to the Principal for FM-024.
 
