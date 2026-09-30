@@ -3,6 +3,9 @@ id: FM-041
 status: Proposed
 considered: FM-036, FM-002, FM-021, FM-033
 tags: bug
+triaged: 2026-09-30
+next: build
+tier: P3
 hook: "the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order"
 ---
 
