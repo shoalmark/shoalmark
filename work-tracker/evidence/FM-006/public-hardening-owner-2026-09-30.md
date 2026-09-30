@@ -79,17 +79,18 @@ Do not test protection by pushing a disposable `v*` tag: it would trigger releas
    Expected: configured default setup and completed successful initial analyses for selected languages.
    Stop on policy/permission errors or missing supported language coverage. Paste back: `CodeQL configured` plus analysis URL(s)/result.
 
-6. In organisation Settings → Code security → Configurations, create a custom configuration `public-repository-defaults`.
-   Enable dependency graph, Dependabot alerts and security updates, secret scanning and push protection.
-   Set it as the default for **new public repositories**; do not attach it to all existing repositories or enable paid products.
+6. In organisation Settings → Advanced Security → Configurations, choose *New configuration* and name it `public-repository-defaults`.
+   Enable Secret Protection (paid only for private repositories) with secret scanning and push protection; enable dependency graph,
+   Dependabot alerts and security updates; leave Code Security unset. Under *Use as default for newly created repositories* choose
+   **Public**; apply it to no existing repository.
    If the UI exposes individual “automatically enable for new repositories” controls instead, set those five defaults.
    Private repositories need a separate plan/entitlement decision; do not claim the public configuration covers them.
 
    ```sh
-   open 'https://github.com/organizations/shoalmark/settings/security_analysis'
+   open 'https://github.com/organizations/shoalmark/settings/security_products'
    ```
-   Expected: saved default for new public repositories with those five features enabled.
-   Stop if unavailable on the current Free plan or if payment is requested. Paste back: configuration name/ID, public default and five enabled features.
+   Expected: the Configurations page; a saved configuration set as the default for new public repositories.
+   Stop if payment or a licence is requested, or if the page is unavailable on the current Free plan. Paste back: configuration name/ID, public default and five enabled features.
    Dependabot **version** updates additionally need `.github/dependabot.yml` in each new repository; an org toggle does not supply that file.
 
 7. Hand the completion lines to Principal `8e509911` to record in FM-006, including any incomplete step.
