@@ -4422,12 +4422,18 @@ def checkout_lines(problems):
     return [f"  checkout: {why}" + (f" — {len(items)} signed commit(s) it could not check: {', '.join(items.values())}" if items else "") for why, items in groups.items()]
 
 
+def index_env():
+    """The environment for a git call that reads the index of the commit being made: `commit -a` and `commit <path>` hand the hook an
+    index of their own (`GIT_INDEX_FILE`), which `nested_git_env` strips — so the hook would judge `.git/index` and the working tree."""
+    return dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
+
+
 def staged_now():
     """What the commit being made is about to carry — read once. The gate's version-control calls cost real seconds in
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
         _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
@@ -4721,7 +4727,7 @@ def rights_problems(trackers):
 # cannot name itself) and (b) changes at least one path outside the records. It judges exactly the changes the gate already
 # judges (`changes_under_review`), so a `Shipped` tracker no change moves is never read. It holds for every author, the Owner
 # included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged.
-GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,40}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more
+GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more, up to a SHA-256 hash's 64
 SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
 
 
@@ -4758,8 +4764,10 @@ def git_ship_verdicts(names, bases, records):
     parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
     At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
     git = lambda *a, **k: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
-    found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}^{{commit}}\n" for n in names))
-    shas = {n: line.partition(" ")[0] for n, line in zip(names, found.stdout.split("\n")) if line.partition(" ")[2] == "commit"}
+    found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}\n{n}^{{commit}}\n" for n in names))     # each name twice: as written, where git says *ambiguous*, and peeled to its commit
+    lines = found.stdout.split("\n") + [""] * (2 * len(names))
+    shas = {n: lines[2 * i + 1].partition(" ")[0] for i, n in enumerate(names) if lines[2 * i + 1].partition(" ")[2] == "commit"}
+    ambiguous = {n for i, n in enumerate(names) if n not in shas and lines[2 * i].endswith(" ambiguous")}
     behind, changed = {}, {}
     if shas:
         beyond = git("rev-list", *dict.fromkeys(shas.values()), "--not", *bases)          # what the candidates reach that the parents do not
@@ -4772,7 +4780,9 @@ def git_ship_verdicts(names, bases, records):
             changed[sha.strip()] = [f for f in files.lstrip("\n").split("\x00") if f]
     out = {}
     for n in names:
-        if n not in behind:
+        if n in ambiguous:
+            out[n] = "names more than one commit — write more of its hash"
+        elif n not in behind:
             out[n] = "is not in the history" + ("" if n in shas else " (no such commit)")
         elif any(ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
             out[n] = ""
@@ -4851,13 +4861,20 @@ def shipped_moves(rels):
         if not touched:
             continue
         spec = lambda rev, rel: f"{rev}:./{rel}"                            # `./`: from the working directory, which is ROOT — as `--relative` made the paths
-        if result is None:
+        if result is None and COMMITTING:
+            texts = cat_blobs([f":./{rel}" for rel in touched], index_env())         # the commit being made is what its index holds, not the working tree
+            now = {rel: texts.get(f":./{rel}") for rel in touched}
+        elif result is None:
             now = {rel: (TRACKER_DIR / rels[rel]["file"]).read_text(encoding="utf-8") for rel in touched}
         else:
             texts = cat_blobs([spec(result, rel) for rel in touched])      # one call for every tracker the change touches
             now = {rel: texts.get(spec(result, rel)) for rel in touched}
         shipped = [rel for rel in touched if is_shipped(now.get(rel))]
         before = cat_blobs([spec(base, rel) for rel in shipped for base in bases])
+        for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
+            d = pathlib.PurePath(rel).parent.as_posix()
+            was = next((n for n in (git_out("ls-tree", "-z", "--name-only", f"{base}:./{d}") or "").split("\x00") if n.startswith(rels[rel]["id"] + "-") and n.endswith(".md")), None)
+            before[spec(base, rel)] = cat_blobs([f"{base}:./{d}/{was}"]).get(f"{base}:./{d}/{was}") if was else None
         for rel in shipped:
             if not any(is_shipped(before.get(spec(base, rel))) for base in bases):
                 yield rels[rel], (label + " — " if label else ""), ship_log_rows(now[rel]), lambda names, records, bases=bases: git_ship_verdicts(names, bases, records)
@@ -4868,7 +4885,12 @@ def ship_problems(trackers):
     what is missing — no commit named · not in the history · nothing changed outside the records — and the way through."""
     if vcs() not in ("git", "svn"):
         return []
-    rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers if t.get("file")}
+    rels = {}
+    for t in trackers:
+        try:
+            rels[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
+        except (KeyError, ValueError):
+            continue                                     # no file, or a link to one outside the repository — as `in_this_commit` reads it
     if not rels:
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
