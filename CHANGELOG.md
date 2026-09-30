@@ -9,7 +9,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   (`[ratio] records` in `shoalmark.toml`) and in product (every other path, `[ratio] exclude` aside) — apart, never
   netted — reports the ratio per day, the window's total and the rolling seven-day sums, and says `no finite ratio` where
   no product was added. A submodule pointer is no line, a binary file 0 lines. A repository without `[ratio]` is told so
-  (exit 2). The rule is filed on its own page, `work-tracker/evidence/FM-032/records-to-product-ratio.md`, and the command is
+  (exit 2); `records` defaults to the tracker directory (`tracker_dir`), a `records` or `exclude` that is no list is refused in
+  one line (exit 2), and the merges are read from the default branch as `origin/HEAD` names it. The rule is filed on its own page, `work-tracker/evidence/FM-032/records-to-product-ratio.md`, and the command is
   its reference.
 
 - **A check output that regenerates is kept as its summary (FM-032, the Owner's ruling of 2026-09-30):** the start page's

@@ -4120,7 +4120,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
                         "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
-    "[ratio] records": ("a list of repository-relative prefixes; `[\"work-tracker/\"]` (the default where `[ratio]` is present)",
+    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default (the default where `[ratio]` is present)",
                         "the records-to-product ratio (FM-032): what `--ratio` counts as a record — a prefix with a trailing slash is a directory, a plain "
                         "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
     "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
@@ -4726,14 +4726,20 @@ def sessions_cmd():
 RATIO_DAYS = 7          # the window when `--since` is not given, and the rolling sum's length
 
 
+def ratio_defaults():
+    """`[ratio]`'s defaults as `DEFAULTS` keeps every other: `records` is the tracker directory this tool is configured with
+    (`tracker_dir`, wherever a repository keeps it), `exclude` is empty."""
+    return {"records": [str(CONFIG["tracker_dir"]).strip("/") + "/"], "exclude": []}
+
+
 def ratio_paths(section):
-    """(records, exclude): `[ratio]`'s two lists, checked."""
+    """(records, exclude): `[ratio]`'s two lists, checked; a ValueError with the one line to print where one is no list of prefixes."""
     out = []
-    for key, default in (("records", ["work-tracker/"]), ("exclude", [])):
+    for key, default in ratio_defaults().items():
         value = section.get(key, default)
-        if isinstance(value, str) or not all(isinstance(v, str) and v.strip() for v in value):
-            raise SystemExit(f"{CONFIG_NAME}: `[ratio] {key}` is a list of repository-relative prefixes, each a non-empty string — "
-                             f"`{key} = [\"work-tracker/\"]`. Got {value!r}")
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of repository-relative prefixes, each a non-empty string — "
+                             f"`{key} = {json.dumps(default)}`. Got {value!r}")
         out.append([v.strip() for v in value])
     return out
 
@@ -4786,16 +4792,21 @@ def ratio_cmd(since=None, until=None):
     there is nothing to read (no `[ratio]`, no git, no default branch, a date that is none)."""
     section = CONFIG.get("ratio")
     if not isinstance(section, dict):
-        print(f"--ratio: {CONFIG_NAME} has no [ratio] section, so there is no ratio to count — add `[ratio]` with `records = [\"work-tracker/\"]` "
+        print(f"--ratio: {CONFIG_NAME} has no [ratio] section, so there is no ratio to count — add `[ratio]` with `records = {json.dumps(ratio_defaults()['records'])}` "
               "(the prefixes that are records; everything else is product)", file=sys.stderr)
         return 2
-    records, exclude = ratio_paths(section)
+    try:
+        records, exclude = ratio_paths(section)
+    except ValueError as e:
+        print(f"--ratio: {e}", file=sys.stderr)
+        return 2
     if vcs() != "git":
         print("--ratio: the merges are read from git's first-parent history — this is no git repository", file=sys.stderr)
         return 2
-    trunk = trunk_ref()
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git) or trunk_ref()             # origin's default as this clone fetched it (as `--answer` and the gate read it), else the local one
     if trunk is None:
-        print("--ratio: no default branch (origin/main, main or master) to read the merges from", file=sys.stderr)
+        print("--ratio: no default branch (origin/HEAD, origin/main, origin/master, main or master) to read the merges from", file=sys.stderr)
         return 2
     zone, berlin = ratio_zone()
     parse = lambda s: datetime.date.fromisoformat(s)

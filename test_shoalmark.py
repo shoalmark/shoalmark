@@ -5502,6 +5502,74 @@ with tempfile.TemporaryDirectory() as d:
     code_, out_, err_ = run(root, "--ratio")
     check(f"FM-032 · a repository without a `[ratio]` section says so and exits 2 — it has no ratio to count (saw {err_.strip()!r})", code_ == 2 and "no [ratio] section" in err_ and out_ == "")
     rm_git(root)
+# RV-726: the default `records` is the tracker directory the tool is configured with, not shoalmark's own `work-tracker/`
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\n')          # no `tracker_dir` (the tool's default, docs/work-tracker), `[ratio]` with no keys
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"docs/work-tracker/FM-1.md": _lines(2), "src/x.py": _lines(1)})
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-22")
+    check(f"FM-032 · `[ratio]` alone counts the configured tracker directory (`docs/work-tracker/`, no `tracker_dir` key) as records, the other path as product (saw {out_!r})",
+          code_ == 0 and "records: docs/work-tracker/" in out_ and "2026-09-22  records +2 \u22120  product +1 \u22120  2.0:1  (1 merge)" in out_)
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "notes/tracker/"\n')
+    code_, out_, err_ = run(root, "--ratio")
+    check(f"FM-032 · the refusal without `[ratio]` advises the configured tracker directory, not shoalmark's own (saw {err_.strip()!r})",
+          code_ == 2 and 'records = ["notes/tracker/"]' in err_ and "work-tracker/\"]" not in err_.replace("notes/tracker/", ""))
+    # RV-727 a: a `records` or `exclude` that is no list is one refused line, exit 2, never a traceback
+    _bad = {}
+    for _val in ("5", "true", '"work-tracker/"'):
+        for _key in ("records", "exclude"):
+            (root / "shoalmark.toml").write_text(f'name = "r"\n\n[ratio]\n{_key} = {_val}\n')
+            _bad[(_key, _val)] = run(root, "--ratio")
+    check(f"FM-032 · a scalar `records` or `exclude` (5, true, a string) is refused in one line, exit 2, no traceback (saw {_bad[('records', '5')][2]!r})",
+          all(c == 2 and o == "" and "Traceback" not in e and len(e.strip().splitlines()) == 1 and f"`[ratio] {k}` is a list" in e for (k, _), (c, o, e) in _bad.items()))
+    rm_git(root)
+# RV-727 b: the trunk is origin's default branch as this clone fetched it — `origin/HEAD`'s target — before a local branch that may be behind
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"src/a.py": _lines(2)})
+    _ratio_g(root, "branch", "behind", "HEAD~1")                       # a local `master` that lags: the start, no merge
+    _ratio_merge(root, "two", "2026-09-23T12:00:00+02:00", {"src/b.py": _lines(3)})
+    _ratio_g(root, "update-ref", "refs/remotes/origin/develop", "main")
+    _ratio_g(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop")
+    _ratio_g(root, "branch", "-m", "main", "master"); _ratio_g(root, "update-ref", "refs/heads/master", "behind")
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-23")
+    check(f"FM-032 · the trunk is `origin/HEAD`'s target (`origin/develop`) when the clone has one, not a local `master` that is behind (saw {out_.splitlines()[:2]!r} {err_!r})",
+          code_ == 0 and "trunk origin/develop " in out_ and "window      records +0 \u22120  product +5 \u22120" in out_ and "(2 merges)" in out_)
+    rm_git(root)
+# RV-727 c: the first-parent line — a merge inside a branch that then merges into main is one merge, its lines counted once — and the default window
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _today = datetime.datetime.now(fm.ratio_zone()[0]).date() if _zone_ok else datetime.date.today()
+    _at = lambda back: f"{_today - datetime.timedelta(days=back)}T12:00:00+02:00"
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when=_at(9))
+    _ratio_merge(root, "outside", _at(7), {"src/old.py": _lines(50)})            # the day before the window: not in it
+    _ratio_merge(root, "first", _at(6), {"src/first.py": _lines(4)})             # the window's first day
+    # a branch that carries a merge of its own: side -> feature (--no-ff) -> main
+    _ratio_g(root, "switch", "-q", "-c", "feature", "main")
+    (root / "src").mkdir(exist_ok=True); (root / "src/f.py").write_bytes(_lines(6)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "f", when=_at(1))
+    _ratio_g(root, "switch", "-q", "-c", "side", "feature")
+    (root / "src/s.py").write_bytes(_lines(9)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "s", when=_at(1))
+    _ratio_g(root, "switch", "-q", "feature"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge side", "side", when=_at(1))
+    _ratio_g(root, "switch", "-q", "main"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge feature", "feature", when=_at(1))
+    code_, out_, err_ = run(root, "--ratio")
+    _win = next((l for l in out_.splitlines() if l.startswith("window")), "")
+    check(f"FM-032 · a merge inside a merged branch is not on the first-parent line: that day is `(1 merge)` with the branch's 15 lines counted once (saw {_win!r})",
+          code_ == 0 and f"{_today - datetime.timedelta(days=1)}  records +0 \u22120  product +15 \u22120  0.0:1  (1 merge)" in out_)
+    check(f"FM-032 · with no dates the window is the seven Berlin days ending today — the header says {_today - datetime.timedelta(days=6)} to {_today}, "
+          f"the merge dated the day before it is left out and the one on its first day is in (saw {_win!r})",
+          f"\u00b7 {_today - datetime.timedelta(days=6)} to {_today} \u00b7" in out_
+          and _win.startswith("window      records +0 \u22120  product +19 \u22120") and "(2 merges)" in _win)
+    rm_git(root)
 fm.configure(HERE)
 check("FM-032 · `--schema` lists both `[ratio]` keys", "`[ratio] records`" in fm.render_schema() and "`[ratio] exclude`" in fm.render_schema())
 _shallow = _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
