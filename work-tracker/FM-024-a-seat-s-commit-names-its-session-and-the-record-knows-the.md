@@ -28,6 +28,9 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**Slice 2 built 2026-09-30 on `fm/024-a-seat-has-several-identities`, for 0.19.0 — the Owner's word of 14:42, *"the seat icons ride v0.19.0"*; open for the Reviewer's pass.**
+`[seats]` takes a string or a list per seat, so a seat keeps its old address and gains a GitHub App's bot address (`seat_of`, the gates and the session rule match any; `signed` per identity; a duplicate refuses, exit 2); the README's *Seat icons on the forge*; the seven seats in `shoalmark.toml` (`research` with `datascientist@seat`, `go-to-market` for `gtm@seat`, `designer`, `auditor` — their addresses are the Owner's ruling of 15:29, none is in history yet); 11 checks, each failing on `origin/main`'s tool.
+
 **Slice 1 built 2026-09-23 on `fix/0.17.6-a-seats-commit-names-its-session-and-the-record-knows-the-session`, for
 0.17.6, verified with findings closed; open for the merge, not merged.** S1–S8 as ruled below, one commit per row, then
 one per review finding (R1–R7): `seat.session` and `--session new` (S1); the `prepare-commit-msg` hook and
@@ -338,3 +341,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
 | 2026-09-30 | **Graded, not built:** the Auditor's change brief through the Owner (06:11:21; sha256 `8e8f77ce…`) — the strip grouped by parent (accepted), model and effort from the harness's logs as trailers (the principle accepted; its `cwd` match rejected, P1 on a measured fact: a transcript's `cwd` is the session's launch directory on every turn, sub-agents included; a match by the harness's ids proposed), the code loop instead of one pass. Postponed on the Owner's word of 06:38:10; the build comes after the task he named. |
 | 2026-09-30 | **The seat definitions ship** (the Owner's word, 09:12:44): `.claude/agents/implementer.md` (Sonnet, xhigh) and `reviewer.md` (Opus) added; nothing else changed. Critical tier — an independent session's review before the merge. |
+| 2026-09-30 | **Slice 2 built — a seat has several identities** (for 0.19.0; the Owner's word 14:42 and their rulings of 15:29 on the seven seats): `[seats]` reads a list per seat; the golden comparison of `--check` and `--owner` against `origin/main`'s tool, string values, is byte-identical; the list pattern of `read_config` took a `]` inside a quoted item after the first commit's tests found the bot's `[bot]` refused; `research`, `go-to-market`, `designer`, `auditor` added to `shoalmark.toml`. Not built: the bot addresses themselves — configuration, when each App exists. |
