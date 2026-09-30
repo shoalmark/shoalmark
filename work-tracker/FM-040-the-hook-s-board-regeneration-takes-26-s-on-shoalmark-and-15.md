@@ -1,6 +1,6 @@
 ---
 id: FM-040
-status: Proposed
+status: In Progress
 considered: FM-018, FM-025, FM-034, FM-035, FM-039, FM-012, FM-024
 tags: bug
 triaged: 2026-09-28
