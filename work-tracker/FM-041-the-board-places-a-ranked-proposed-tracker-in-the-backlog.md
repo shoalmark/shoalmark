@@ -1,6 +1,6 @@
 ---
 id: FM-041
-status: Proposed
+status: In Progress
 considered: FM-036, FM-002, FM-021, FM-033
 tags: bug
 hook: "the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order"
