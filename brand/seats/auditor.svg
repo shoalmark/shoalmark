@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">
+<title>auditor — the owl</title>
+<rect width="20" height="20" fill="#15293d"/>
+<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->
+<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->
+<path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><!-- the ear tufts -->
+<path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><!-- the head -->
+<path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><!-- the eyes, wide awake -->
+<path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><!-- the spectacles -->
+<path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><!-- the pupils -->
+<path fill="#f1d47a" d="M9 11h2v2h-2Z"/><!-- the beak -->
+</svg>

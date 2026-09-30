@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">
+<title>principal — the skipper</title>
+<rect width="20" height="20" fill="#15293d"/>
+<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->
+<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->
+<path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><!-- the head -->
+<path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><!-- the cap's crown -->
+<path fill="#5b83a3" d="M6 6h8v1h-8Z"/><!-- its band -->
+<path fill="#f1d47a" d="M9 6h2v1h-2Z"/><!-- its badge -->
+<path fill="#07111b" d="M6 7h8v1h-8Z"/><!-- its peak -->
+<path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><!-- the eyes, level -->
+<path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/><!-- the blush -->
+</svg>
