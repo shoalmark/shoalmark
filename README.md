@@ -20,8 +20,8 @@ evidence-checked *done*, the digest — explored, with what would kill each clai
 (`FM-005`, `docs/work-tracker/evidence/FM-005/design.md` in its repository). Trust is earned there from the Owner's
 own answers before anything runs unattended.
 
-**A convention, Stage 0:** a [`requirements/`](requirements/README.md) folder holds one line per requirement — id, *shall*,
-source, acceptance criterion — one text for developer and tester; a tracker cites the id. The repository has the
+**A convention, Stage 0:** a [`requirements/`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) folder holds one line per requirement — id, *shall*,
+source, acceptance criterion — one text for developer and tester; a tracker cites the id. shoalmark has the
 convention only: checks and traceability are later.
 
 *A shoal mark is a mark set to show shallow water — a stake or a buoy. It tells a shoal where not to run aground.*
