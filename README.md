@@ -340,7 +340,8 @@ Principal against a steady one — is `<tracker dir>/seats/<name>.md`, read by t
 
 A commit whose author email is a GitHub App's bot address, `<id>+<slug>[bot]@users.noreply.github.com`, shows that App's icon on the
 forge — so each seat can wear its own. Per seat, one GitHub App owned by the organisation: no permissions, webhook inactive, no private
-key, no client secret, not installed anywhere; only the icon uploaded. The bot's id is `id` in `GET /users/<slug>%5Bbot%5D`. Then
+key, no client secret; only the icon uploaded. The bot's id is `id` in `GET /users/<slug>%5Bbot%5D`; if that answers 404, install the App on the
+organisation — only the repository where the screen offers a choice, and anyway where it offers none: with no permissions and no key, nothing can act through it. Then
 `[seats]` lists the new address **beside the old one** — a seat's value is a string as ever, or a list, and every identity in it is that
 seat — so history and the branches in flight keep resolving:
 
@@ -348,7 +349,7 @@ seat — so history and the branches in flight keep resolving:
 planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.com"]   # each item may end in `signed`
 ```
 
-Each seat's worktree then takes the new address: `git config --worktree user.email 12345+shoalmark-planner[bot]@users.noreply.github.com`.
+Each seat's worktree then takes the new address: `git config --worktree user.email '12345+shoalmark-planner[bot]@users.noreply.github.com'`.
 Nothing else changes: the seat's rights, its `Session:` trailer, and the Owner's signature, which stays theirs. `signed` is read per
 identity; an identity under two seats is refused at configuration, in one line naming both. The seats are `planner` and `builder`
 from 0.19.0 — `principal` and `implementer` still read, and hold the same; renaming a repository's keys, switching its addresses
