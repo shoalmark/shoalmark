@@ -15,6 +15,21 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   tier*. Now open work with a rank — `In Progress` or `Proposed`, the two a rank may stand on — is `progress`, ordered by
   rank then tier; the open unranked stays `backlog`; a raise or a judgement owed keeps `triage`; `done` is unchanged.
   INDEX.md and the dashboard share the one definition, so both move together on the next `--html-only` / commit.
+- **A seat has several identities (FM-024).** A `[seats]` value is a string as ever, or a list of them —
+  `planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.com"]` — and every identity in it is
+  that seat: `seat_of`, the answer, ask and rights gates and the session rule match any of them, `signed` is read per identity,
+  and an identity listed under two seats is refused at configuration, one line naming both (exit 1, as every configuration refusal). A seat can change the
+  address it commits under while history and the branches in flight keep resolving; the README's *Seat icons on the forge*
+  says how a seat's GitHub App shows its icon. A `]` inside a quoted list item now reads (the bot's `[bot]`). With a string
+  value nothing changes: `--check` and `--owner` on this repository print the same bytes, exit codes included, as the tool
+  before it. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
+  and `auditor` beside the five keys it has, which stay — with their addresses — until one change makes the key rename, the bot
+  addresses and the badges together; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
+- **The seats are `planner` and `builder` (FM-024).** The built-in rights belong to `owner`, `planner` (ask, close, triage),
+  `reviewer` (triage) and `builder` (none). `principal` and `implementer` stay as their old spellings and hold exactly what they
+  held, so a repository's `[seats]` keeps working unchanged; nothing about a commit, a trailer or an address changes. One exception:
+  a repository whose `[seats]` already has a `planner` of its own, without a `[rights]` line, gains ask, close and triage for it;
+  `[rights] planner = []` keeps it as it was.
 - **The sessions strip groups by parent** (FM-024; the Owner's word of 2026-09-30 10:40:31, normalised: *FM-024's build and
   FM-041 ride v0.19.0*; the Auditor's briefs of 2026-09-28 and 2026-09-30, through him). One line per parent session with a
   commit in the last day — `a9f3c2d1 principal (principal-a9) · implementer 1–6 · reviewer 1–5, 7` — under the
@@ -61,6 +76,9 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   check together (the Owner, 19:16:21: the Jev scorer's output stays). `test_shoalmark.py` proves
   the regeneration: `facts.mjs` on every run where Node and the history are here, the browser checks (rebuilt sites, `checks.mjs`,
   the READMEs' thresholds) behind `SHOALMARK_REGENERATE=1` where Chrome and `uvx` are; every skip prints its reason.
+
+## Unreleased
+
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.
 - **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
