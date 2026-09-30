@@ -215,6 +215,10 @@ with tempfile.TemporaryDirectory() as d:
           [b(status="Shipped"), b(status="In Progress"), b(status="In Progress", triaged="2026-01-01"), b(status="Parked", triaged="2026-01-01"), b()]
           == ["done", "triage", "progress", "backlog", "triage"]
           and fm.board(dict(base, kind="OLD")) == "backlog")
+    check("FM-041: open work with a rank sits in progress whatever its status — ranked Proposed progress, unranked Proposed backlog, ranked In Progress unchanged, a raise keeps triage",
+          [b(status="Proposed", triaged="2026-01-01", rank=3), b(status="Proposed", triaged="2026-01-01", rank=0), b(status="In Progress", triaged="2026-01-01", rank=3),
+           b(status="Proposed", triaged="2026-01-01", rank=3, raised="2026-01-02"), b(status="Shipped", triaged="2026-01-01", rank=3)]
+          == ["progress", "backlog", "progress", "triage", "done"])
     row = lambda i, **kw: {**dict(id=i, num=int(i[-1]), kind="FEAT", file=f"{i}-x.md", status="In Progress", links=[], considered=["none"], tags=[], blocked_by=[]), **kw}
     check("a story is open while a chapter is — a done tracker that open work names in `epic:` is refused",
           any("A story is open" in p for p in fm.lint([row("FEAT-001", status="Shipped"), row("FEAT-002", epic="FEAT-001")]))
