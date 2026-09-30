@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">
-<title>implementer — the builder</title>
+<title>builder — the shipwright</title>
 <rect width="20" height="20" fill="#15293d"/>
 <path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->
 <path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->
