@@ -381,6 +381,16 @@ check("one board definition — done · triage · progress · backlog — printe
       and "| progress | 2026-09-20 |" in gti.render([dict(_live[0], status="In Progress", triaged="2026-09-20", tier="P1")], "Features")
       and '"2026-09-20", 0, "progress", [' in gti.render_html([dict(_live[0], status="In Progress", triaged="2026-09-20")])
       and '"triage":t[19]]' in _tri and "order.indexOf(k)>1" in _tri and 't[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])' in _tri and "?\"progress\":\"backlog\"" not in _tri)
+# FM-041 — a status is what a seat set, a rank is what a pass judged: ranked open work sits in `progress` by rank, whatever its status.
+# On origin/main 2eb803b this fails at `return "progress" if t["status"] == "In Progress" else "backlog"`: the ranked Proposed one is `backlog`.
+_r = lambda **kw: gti.board({**dict(_live[0], triaged="2026-09-20"), **kw})
+check("FM-041: a ranked Proposed tracker is in progress; an unranked Proposed one in backlog; a ranked In Progress one stays; triage and done keep their rules",
+      [_r(status="Proposed", rank=3), _r(status="Proposed", rank=0), _r(status="In Progress", rank=3), _r(status="In Progress", rank=0),
+       _r(status="Proposed", rank=3, raised="2026-09-21"), _r(status="Proposed", rank=3, triaged="", num=90001, kind="FEAT"), _r(status="Shipped", rank=3), _r(status="Parked", rank=0)]
+      == ["progress", "backlog", "progress", "progress", "triage", "triage", "done", "backlog"]
+      and "| progress | 2026-09-20 |" in gti.render([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=3, tier="P1")], "Features")
+      and "| backlog | 2026-09-20 |" in gti.render([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=0, tier="P1")], "Features")
+      and '"2026-09-20", 3, "progress", [' in gti.render_html([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=3)]))
 check("the board always shows its five sections — an empty `progress` is an answer — and a path id opens its tracker",
       "for(const k of order)groups.set(k,groups.get(k)||[])" in _tri and '`<a href="#=${i}">${i}</a>`:i)' in _tri)
 check("`triaged:` is a date and nothing else",
