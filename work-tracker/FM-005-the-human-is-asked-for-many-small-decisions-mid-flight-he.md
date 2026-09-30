@@ -3,7 +3,7 @@ id: FM-005
 status: In Progress
 considered: FM-004, FM-001
 tags: research
-next: build
+next: review
 triaged: 2026-09-25
 tier: P1
 rank: 5
@@ -14,11 +14,14 @@ hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after 
 
 ## What is true now
 
-**2026-09-30 — evidence-checked done, its first slice: a shipped tracker names its commit, and the board stops counting
-`Closed` as done (v0.19.0).** The Owner's ruling is filed below, in *A shipped tracker names its commit — v0.19.0*. It is built
-on `fm/005-a-shipped-tracker-names-its-commit`,
-cut from main `1197e80`, by one Builder; one Reviewer judges the pushed tip at code tier; the Owner opens the pull request and
-merges at 9/9. Next: build.
+**2026-10-01 — evidence-checked done, its first slice: built and pushed, waiting for the Reviewer (v0.19.0).** The Owner's ruling is
+filed below, in *A shipped tracker names its commit — v0.19.0*. Built on `fm/005-a-shipped-tracker-names-its-commit`, cut from
+main `1197e80`, by one Builder: the rule (`ship_problems`, on git and on Subversion, with 30 new checks and their controls), the board
+counting `Closed` apart from `Shipped` (*3 chapters: 1 shipped · 1 closed · 1 open*; the board's fifth section and INDEX.md's Board
+value are `ended`, not `done`), the claim in README.md and on the landing page, §5's row and the CHANGELOG. **Left:** one Reviewer's
+pass on the pushed tip at code tier; the pull request, which the Owner opens, and CI's full pass on its final tree; the Owner merges at
+9/9. Two rendered checks of the suite fail between 00:00 and 02:00 CEST, on the pristine tip as on this one — FM-028's clocks, not this
+change. Next: review.
 
 **Explored and pre-registered 2026-09-21; nothing is built.** The Owner's direction: *how to get a better-performing
 human owner* — less work and distraction for humans, more throughput and less friction for agents; workflows the human
@@ -94,3 +97,4 @@ it, so a new tracker filed as `Shipped` moves to it.
 | 2026-09-21 | Filed; the exploration, the mock and the claims written before any code. |
 | 2026-09-21 | P0a prepared in the origin (its FEAT-190); the real queue read — four kinds of waiting (§3.7). |
 | 2026-09-30 | **A shipped tracker names its commit — filed** by the Planner on the Owner's ruling of that day, a must for v0.19.0: the claim *a gate that refuses a false done* is untrue at `1197e80` (a `Shipped` tracker with nothing built passes the hook and `--check`, reproduced in a scratch repository), so a move to `Shipped` is refused unless the ship log names a commit in the history that changes a path outside the records — every author, git and Subversion, judged on the commit that changes the status. |
+| 2026-10-01 | **Built and pushed for the Reviewer** by one Builder on `fm/005-a-shipped-tracker-names-its-commit`, in four commits and this record: `047d3e1` (`changes_under_review` read once per run, outputs unchanged), `5562476` (the rule and its tests, git and Subversion), `3bb9251` (the board counts `Closed` apart), `1467792` (the claim, §5's row, the CHANGELOG). Nothing on the branch moves a tracker to `Shipped`; one Reviewer at code tier, then the Owner opens the pull request. |
