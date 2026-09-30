@@ -1,6 +1,6 @@
 ---
 id: FM-042
-status: Proposed
+status: In Progress
 considered: FM-006, FM-005, FM-023, FM-033
 tags: research
 kind-of-problem: complicated
