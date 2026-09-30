@@ -19,6 +19,7 @@ nav = [
   { "Your word in TRIAGE.md" = "triage.md" },
   { "The standup" = "standup.md" },
   { "Requirements" = "requirements.md" },
+  { "The seats" = "seats.md" },
   { "For agents — the contract" = "agents/README.md" },
   { "Deutsch" = [
     { "Start" = "de/index.md" },
