@@ -65,13 +65,13 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    ```sh
    open 'https://github.com/organizations/shoalmark/settings/apps/new'
    ```
-   *GitHub App name* `shoalmark principal` · *Description* the line of §2 · *Homepage URL* `https://shoalmark.github.io/shoalmark/` (200 at 14:53). Leave *Callback
-   URL* and *Setup URL* empty. Clear *Request user authorization (OAuth) during installation* and *Enable Device Flow*. *Expire user authorization tokens* as it
-   comes. *Webhook*: clear **Active**. *Permissions*: every dropdown in every group the form shows (Repository, Organization, Account, and Enterprise if listed) **No
-   access**, as they come: a GitHub App has none by default. *Where can this GitHub App be installed?* **Only on this account**. Click **Create GitHub App**. On the
-   App's page: **generate no private key and no client secret**, and click no *Install App*. A note inviting a key may show; leave it. Expected:
-   `https://github.com/organizations/shoalmark/settings/apps/shoalmark-principal`, with an App ID and no key or secret listed. Stop on a refused name, a payment, a
-   permission dialog, a key or a secret generated; *Confirm access* (GitHub's re-authentication) is no stop. Paste back: `shoalmark-principal`, its App ID.
+   *GitHub App name* `shoalmark principal` · *Description* the line of §2 · *Homepage URL* `https://shoalmark.github.io/shoalmark/seats/`: it goes live with the
+   v0.19.0 tag (404 at 15:47), and the gap until Friday is the Owner's accepted choice. Leave *Callback URL* and *Setup URL* empty. Clear *Request user authorization
+   (OAuth) during installation* and *Enable Device Flow*. *Expire user authorization tokens* as it comes. *Webhook*: clear **Active**. *Permissions*: every dropdown
+   in every group the form shows (Repository, Organization, Account, and Enterprise if listed) **No access**, as they come: a GitHub App has none by default. *Where
+   can this GitHub App be installed?* **Only on this account**. Click **Create GitHub App**. On the App's page: **generate no private key and no client secret**, and
+   click no *Install App*. Expected: the App's page, `…/settings/apps/shoalmark-principal`, with an App ID and no key or secret listed. Stop on a refused name, a
+   payment, a permission dialog, a key or a secret generated; *Confirm access* is no stop. Paste back: `shoalmark-principal`, its App ID.
 2. **Read its bot id**, and install only on a 404, as their pre-decision says:
    ```sh
    gh api "/users/shoalmark-principal%5Bbot%5D" --jq .id
