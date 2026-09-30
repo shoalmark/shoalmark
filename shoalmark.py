@@ -240,8 +240,8 @@ def configure(root=None):
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
     COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
-    global _BUILD
-    _BUILD = None                                       # FM-033's judgement of this run, read once
+    global _BUILD, _CHANGES
+    _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -4602,7 +4602,20 @@ def merge_heads():
     return f.read_text(encoding="utf-8").split() if f is not None and f.is_file() else []
 
 
+_CHANGES = None
+
+
 def changes_under_review():
+    """`read_changes`, read ONCE per run: the rights, the sessions and the Shipped rule judge the same changes, and each reading is
+    several version-control calls — 0.07 s in the pre-commit run and 0.13 s on a clean tree, in the repository this tool was cut from.
+    The answer depends on `COMMITTING`, so a run that asks both ways reads twice. No reader changes what it is given."""
+    global _CHANGES
+    if _CHANGES is None or _CHANGES[0] != COMMITTING:
+        _CHANGES = (COMMITTING, read_changes())
+    return _CHANGES[1]
+
+
+def read_changes():
     """WHAT THIS RUN IS JUDGING, once — a list of changes, each (the revisions it is read against, the tracker files it
     touches, author name, author email, the commit or "" when it is not made yet, the revision that holds its result or
     None for the working tree, a label that names it). The commit being made — staged, or simply not committed yet —
