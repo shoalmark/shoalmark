@@ -5543,27 +5543,141 @@ def triage_guard():
     return _GUARD
 
 
+class History:
+    """FM-040 — the history reader: a repository's commits with their parents and trailers, read by ONE `git log` and answered
+    in memory. It answers what `verdict_reports` used to ask git one subprocess at a time (about four per verdict, 33 ms
+    each): is X an ancestor of Y (`git merge-base --is-ancestor`), the ancestry path from a tip to the trunk
+    (`git rev-list --ancestry-path <tip>..<trunk>`), the trunk's first-parent line (`git rev-list --first-parent`), the
+    commits `<tip> ^<stop> --no-merges` names, and a commit's trailers. A commit is immutable, so the answers cannot go
+    stale within a run. Built by `read_history`; every sha here is a full one."""
+
+    def __init__(self, log=""):
+        self.parents, self.blocks = {}, {}       # sha -> its parents, in order · sha -> its TRAILERS block
+        self._ancestors, self._children, self._line = {}, None, {}
+        for rec in log.split("\x02"):
+            sha, _, rest = rec.strip("\n").partition("\x01")
+            parents, _, block = rest.partition("\x01")
+            if sha:
+                self.parents[sha], self.blocks[sha] = tuple(parents.split()), block
+
+    def trailers(self, sha, name):
+        """Every value of the trailer `name` on one commit, in order — `trailers_of`, without the subprocess."""
+        return trailer_values(self.blocks.get(sha, ""), name)
+
+    def ancestors(self, sha):
+        """Every commit reachable from `sha`, itself included."""
+        got = self._ancestors.get(sha)
+        if got is None:
+            got, todo = {sha}, [sha]
+            while todo:
+                for parent in self.parents.get(todo.pop(), ()):
+                    if parent not in got:
+                        got.add(parent)
+                        todo.append(parent)
+            self._ancestors[sha] = got
+        return got
+
+    def is_ancestor(self, sha, of):
+        """`git merge-base --is-ancestor <sha> <of>` — true also where the two are one commit."""
+        return sha in self.ancestors(of)
+
+    def first_parents(self, tip):
+        """`git rev-list --first-parent <tip>`: the tip, its first parent, and so on down — newest first."""
+        line = self._line.get(tip)
+        if line is None:
+            line, at = [], tip
+            while at:
+                line.append(at)
+                at = (self.parents.get(at) or (None,))[0]
+            self._line[tip] = line
+        return line
+
+    def ancestry_path(self, tip, trunk):
+        """`git rev-list --ancestry-path <tip>..<trunk>`: the commits the trunk reaches and the tip does not, that stand
+        above the tip — its descendants below the trunk."""
+        if self._children is None:
+            self._children = {}
+            for sha, parents in self.parents.items():
+                for parent in parents:
+                    self._children.setdefault(parent, []).append(sha)
+        reach, found, todo = self.ancestors(trunk), set(), [tip]
+        while todo:
+            for child in self._children.get(todo.pop(), ()):
+                if child in reach and child not in found:
+                    found.add(child)
+                    todo.append(child)
+        return found - self.ancestors(tip)
+
+    def commits(self, tip, stop=None):
+        """`git rev-list <tip> ^<stop> --no-merges`: what the tip reaches and `stop` does not, less the merges (a commit
+        with more than one parent). With no `stop`, everything the tip reaches."""
+        gone = self.ancestors(stop) if stop else ()
+        out, seen, todo = set(), {tip}, [tip]
+        while todo:
+            sha = todo.pop()
+            if sha in gone:
+                continue
+            parents = self.parents.get(sha, ())
+            if len(parents) < 2:
+                out.add(sha)
+            for parent in parents:
+                if parent not in seen:
+                    seen.add(parent)
+                    todo.append(parent)
+        return out
+
+    def reviewed_commits(self, tip, trunk):
+        """The reviewed branch's OWN commits (R2) — the range as R2 defined it — `git rev-list <tip> ^<trunk> --no-merges`, a set of
+        shas (until FM-040 `reviewed_range` built the arguments of a `git log` for it). A tip the trunk has since merged is measured against the
+        trunk as it stood before the merge that brought it (`^M^1`), so the report does not change when the branch lands. None:
+        the tip is on the trunk's own first-parent line — not a branch verdict. `trunk` None: no trunk to measure from."""
+        if not trunk:
+            return self.commits(tip)
+        if not self.is_ancestor(tip, trunk):
+            return self.commits(tip, trunk)
+        line = self.first_parents(trunk)
+        if tip in set(line):
+            return None
+        after = self.ancestry_path(tip, trunk)          # the trunk's first-parent commits that contain the tip are a prefix
+        landed = list(itertools.takewhile(lambda c: c in after, line))       # of its line; the oldest brought it
+        if not landed:
+            return self.commits(tip, trunk)
+        first = self.parents.get(landed[-1])
+        return self.commits(tip, first[0]) if first else set()      # `^<root>^1` is no revision: git reads nothing
+
+
+def resolve_commits(names):
+    """{name: the full sha of the commit it names, or ""} — `git rev-parse --verify --quiet <name>^{commit}` for each name, in one
+    `git cat-file --batch-check`. A name git could not take on a line of its own (a newline in it) is asked one call at a time."""
+    names = list(dict.fromkeys(names))
+    got = {n: "" for n in names}
+    lines = [n for n in names if n and "\n" not in n and "\r" not in n]
+    if lines:
+        r = subprocess.run(["git", "cat-file", "--batch-check"], cwd=ROOT, input="".join(f"{n}^{{commit}}\n" for n in lines), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        answers = r.stdout.split("\n") if r.returncode == 0 else []
+        if len(answers) >= len(lines):
+            for name, answer in zip(lines, answers):
+                hit = re.fullmatch(r"([0-9a-f]{40}|[0-9a-f]{64}) commit \d+", answer)
+                got[name] = hit[1] if hit else ""
+        else:
+            lines = []
+    for name in names:
+        if name and name not in lines:
+            got[name] = (git_out("rev-parse", "--verify", "--quiet", f"{name}^{{commit}}") or "").strip()
+    return got
+
+
+def read_history(*revs):
+    """The History of everything `revs` reach — one `git log`, full shas. Nothing reads no history: `git log` with no revision
+    would read HEAD."""
+    revs = [r for r in revs if r]
+    return History(git_out("log", f"--format=%H%x01%P%x01{TRAILERS}%x02", *revs) or "" if revs else "")
+
+
 def trunk_ref():
     """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master`."""
     return next((ref for ref in ("origin/main", "main", "master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
-
-
-def reviewed_range(tip, trunk, first_parents, on_line):
-    """The reviewed branch's OWN commits (R2): `git rev-list <tip> ^<trunk> --no-merges` — what the trunk brought in by a
-    merge is not the branch's. A tip the trunk has since merged is measured against the trunk as it stood before the merge
-    that brought it (`^M^1`), so the report does not change when the branch lands. None: the tip is on the trunk's own
-    first-parent line — not a branch verdict. Returned as the arguments of the `git log` that reads the range."""
-    if not trunk:
-        return ["--no-merges", tip]
-    if git_out("merge-base", "--is-ancestor", tip, trunk) is None:
-        stop = trunk
-    elif tip in on_line:
-        return None
-    else:                                                   # the trunk's first-parent commits that contain the tip are a
-        after = set((git_out("rev-list", "--ancestry-path", f"{tip}..{trunk}") or "").split())     # prefix of its line;
-        landed = [c for c in itertools.takewhile(lambda c: c in after, first_parents)]            # the oldest brought it
-        stop = f"{landed[-1]}^1" if landed else trunk
-    return ["--no-merges", tip, f"^{stop}"]
 
 
 def verdict_reports(days=None):
@@ -5571,7 +5685,7 @@ def verdict_reports(days=None):
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
     range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
     is on the trunk's first-parent line (not a branch verdict). The range is the branch's own commits, less other
-    verdicts (`reviewed_range`). A report, never a refusal (slice 2 refuses, after a week of counts)."""
+    verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
     found = []
@@ -5583,18 +5697,17 @@ def verdict_reports(days=None):
     if not found:
         return []
     trunk = trunk_ref()
-    first_parents = (git_out("rev-list", "--first-parent", trunk) or "").split() if trunk else []      # newest first
-    on_line = set(first_parents)
+    shas = resolve_commits([reviewed for _v, reviewed, _s in found] + ([trunk] if trunk else []))       # FM-040: the window's history,
+    history = read_history(*sorted({s for s in shas.values() if s}))       # read once — every question below is answered from it
+    trunk_sha = shas[trunk] if trunk else ""
     out = []
     for verdict, reviewed, sid in found:
-        tip = (git_out("rev-parse", "--verify", "--quiet", f"{reviewed}^{{commit}}") or "").strip()
-        own = reviewed_range(tip, trunk, first_parents, on_line) if tip else []
+        tip = shas[reviewed]
+        own = history.reviewed_commits(tip, trunk_sha or None) if tip else set()          # None: the tip is on the trunk's line
         ranged = set()
-        if own:
-            rng = git_out("log", f"--format={TRAILERS}%x02", *own) or ""
-            for block in rng.split("\x02"):
-                if not trailer_values(block, "Reviewed"):
-                    ranged |= set(trailer_values(block, "Session"))
+        for sha in own or ():
+            if not history.trailers(sha, "Reviewed"):
+                ranged |= set(history.trailers(sha, "Session"))
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")

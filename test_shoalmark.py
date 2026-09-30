@@ -7,6 +7,7 @@ in-process with an argv list, so a non-zero exit is observable without a subproc
 import hashlib
 import importlib.util
 import io
+import itertools
 import json
 import os
 import re
@@ -701,6 +702,64 @@ with tempfile.TemporaryDirectory() as d:
     trailer_ = fm.trailer_values(subprocess.run(["git", "-C", str(root), "log", "-1", f"--format={fm.TRAILERS}"], capture_output=True, text=True, env=_ENV).stdout.strip("\n"), "Session")
     check(f"FM-024 R4 · the installed pre-commit hook refuses a seat's code-only commit with no session — no tracker staged — and lets it through with its session (saw {refused_.returncode}, {passed_.returncode}, {trailer_!r})",
           refused_.returncode != 0 and "carries no Session: trailer" in refused_.stderr + refused_.stdout and passed_.returncode == 0 and trailer_ == ["0a0a0a0a/implementer-1"])
+
+# --- FM-040: the history reader answers in memory what git answers one subprocess at a time — each shape asserted against live git --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    commit_ = lambda subject, session=None: (git(root, "commit", "-q", "--allow-empty", "-m", subject + (f"\n\nSession: {session}" if session else "")), out_("rev-parse", "HEAD"))[1]
+    git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0"); t0 = out_("rev-parse", "HEAD")
+    shapes_ = {}
+    git(root, "checkout", "-q", "-b", "straight"); commit_("one", "s1"); commit_("two", "s1/implementer-1"); shapes_["a straight branch"] = commit_("three", "s1")
+    git(root, "checkout", "-q", "main"); git(root, "checkout", "-q", "-b", "merged", t0); shapes_["a branch the trunk merged"] = commit_("m1", "m1")
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges m", "merged")
+    git(root, "checkout", "-q", "-b", "again", t0); commit_("n1a", "n1"); git(root, "merge", "-q", "--no-ff", "-m", "the trunk merged in\n\nSession: n1", "main")
+    shapes_["a merge commit (a verdict on a merge)"] = out_("rev-parse", "HEAD")
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges n", "again")
+    git(root, "checkout", "-q", "-b", "sessionless", "main"); commit_("no session here"); shapes_["an untraced range (no session anywhere in it)"] = commit_("still none")
+    git(root, "checkout", "-q", "main"); shapes_["a tip that IS the trunk"] = out_("rev-parse", "HEAD"); shapes_["a commit on the trunk's own line"] = t0
+    fm.configure(root)
+    trunk_ = fm.trunk_ref()
+    line_ = (fm.git_out("rev-list", "--first-parent", trunk_) or "").split()
+    hist_ = fm.read_history(trunk_, *shapes_.values())
+
+    def git_range_(tip):
+        """The reviewed range as git itself answers it — R2's formula, one live command at a time (what `reviewed_range` asked until FM-040)."""
+        if fm.git_out("merge-base", "--is-ancestor", tip, trunk_) is None:
+            stop = trunk_
+        elif tip in line_:
+            return None
+        else:
+            after = set((fm.git_out("rev-list", "--ancestry-path", f"{tip}..{trunk_}") or "").split())
+            landed = [c for c in itertools.takewhile(lambda c: c in after, line_)]
+            stop = f"{landed[-1]}^1" if landed else trunk_
+        return set((fm.git_out("rev-list", "--no-merges", tip, f"^{stop}") or "").split())
+    say_ = {}
+    for what_, tip_ in shapes_.items():
+        wrong_ = []
+        if hist_.is_ancestor(tip_, out_("rev-parse", trunk_)) != (subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", tip_, trunk_], env=_ENV).returncode == 0):
+            wrong_.append("is_ancestor")
+        if hist_.first_parents(out_("rev-parse", trunk_)) != line_:
+            wrong_.append("first_parents")
+        if hist_.is_ancestor(tip_, out_("rev-parse", trunk_)) and hist_.ancestry_path(tip_, out_("rev-parse", trunk_)) != set((fm.git_out("rev-list", "--ancestry-path", f"{tip_}..{trunk_}") or "").split()):
+            wrong_.append("ancestry_path")
+        want_ = git_range_(tip_)
+        got_ = hist_.reviewed_commits(tip_, out_("rev-parse", trunk_))
+        if got_ != want_:
+            wrong_.append("reviewed_commits")
+        if hist_.trailers(tip_, "Session") != fm.trailers_of(tip_, "Session"):
+            wrong_.append("trailers")
+        say_[what_] = (wrong_, None if got_ is None else len(got_))
+        check(f"FM-040 · the history reader agrees with git on {what_} — ancestor, first-parent line, ancestry path, the reviewed range, trailers (wrong: {wrong_ or 'none'}; range {say_[what_][1]})", not wrong_)
+    check(f"FM-040 · the shapes really differ: a tip on the trunk's line is no branch verdict; a landed branch keeps its own range; a straight branch has its 3 commits (saw {[v[1] for v in say_.values()]})",
+          say_["a tip that IS the trunk"][1] is None and say_["a commit on the trunk's own line"][1] is None and say_["a straight branch"][1] == 3
+          and say_["a branch the trunk merged"][1] == 1 and say_["an untraced range (no session anywhere in it)"][1] == 2)
+    names_ = [shapes_["a straight branch"], shapes_["a straight branch"][:7], "straight", "main~1", "no-such-ref", "abc", trunk_, "HEAD^{tree}"]
+    check("FM-040 · resolve_commits names the same commits `git rev-parse --verify --quiet <name>^{commit}` does, unresolved names as empty",
+          fm.resolve_commits(names_) == {n: out_("rev-parse", "--verify", "--quiet", f"{n}^{{commit}}") for n in names_})
+    check("FM-040 · the reader reads nothing where it is given nothing (not HEAD by default)", fm.read_history().parents == {} and fm.read_history("", None).parents == {})
+    fm.configure(HERE)
 
 # --- FM-024 S6: each verdict reported as independent or same session — the reviewed range's sessions against its own --
 with tempfile.TemporaryDirectory() as d:
