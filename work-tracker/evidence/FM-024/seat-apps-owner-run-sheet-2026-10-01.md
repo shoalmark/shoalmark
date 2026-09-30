@@ -76,9 +76,10 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    ```sh
    gh api "/users/shoalmark-principal%5Bbot%5D" --jq .id
    ```
-   Expected: a number. **On 404** (two outside sources say the bot user appears on installation; GitHub's pages do not say, see Sources): left sidebar
-   **Install App** → **Install** beside `shoalmark` → **Only select repositories** → `shoalmark` → **Install**; then the GET again. Stop if: the screen lists any access,
-   *Read access to metadata* included, or asks for a key, a secret or a payment. Paste back: the id, and `installed` or `not installed`.
+   Expected: a number. **On 404**: **Install App** → **Install** beside `shoalmark` → **Only select repositories** → `shoalmark` where the screen offers it (GitHub
+   omits it for an App with no repository permission, see Sources) → **Install**; then the GET again. His pre-decision names that choice, so the Principal asks him
+   before 09:00 whether it holds when the screen offers none, and his word goes here. Without it, a screen with no repository choice is a stop: paste back
+   `no repository choice`. Stop too on any access listed (*Read access to metadata* included), a key, a secret or a payment. Paste back: the id, `installed` or not.
 3. **The six others:** steps 1–2 again, each with its name, and its line from §2:
 
    | Seat | implementer | reviewer | gtm | auditor | datascientist | designer |
@@ -92,8 +93,8 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    Per App: its page → *Display information* → **Upload a logo** → `brand/seats/out/<seat>-200.png` → **Set new avatar**. GitHub takes a PNG, JPG or GIF under
    1 MB and recommends 200 × 200 pixels. The badge background colour comes from the Designer's README if it names one; else leave it. Expected: the badge shows
    the stake. Stop if the export exits 2 (it prints the command it needs): the icons wait and the Apps stand. Paste back: `7 icons set`. Either way, `git switch main`.
-5. **Read back:** the loop of §4, and `gh api /orgs/shoalmark/installations --jq '[.installations[] | .app_slug]'`. Expected: seven ids, and installed only
-   what step 2 installed. Paste back: the seven slugs, their App IDs, their bot ids, and which were installed, to the Principal `8e509911` for FM-024.
+5. **Read back:** the loop of §4, and `gh api /orgs/shoalmark/installations --jq '[.installations[] | {app_slug, repository_selection}]'`. Expected: seven ids;
+   installed, only what step 2 installed. Paste back: slugs, App IDs, bot ids, each install's `repository_selection`, to the Principal for FM-024.
 
 ## 4. What a seat reads after
 ```sh
@@ -107,14 +108,13 @@ test commit per seat, and a Reviewer pass. The parent project needs no installat
 That is the Owner's line, relayed 2026-09-30, and it stays untested until that test commit.
 
 ## Agent boundary, recovery, unproven
-Owner decisions only: the creation, the install of step 2, the icons. No key or secret is needed anywhere in this sheet, so an App that shows one is wrong.
-Recovery is on the App's page: the name, description and homepage are editable. An install is removed under the organisation's *GitHub Apps* → *Configure* →
-**Uninstall**. **Unproven:** whether the bot user exists before an install; whether an App with no permissions installs on *Only select repositories*
-without a key; attribution by email; the Designer's export and README; any reader but this runtime for G1.
+Owner decisions only: the creation, the install of step 2, the icons; an App showing a key or a secret is wrong. Recovery: the App's page edits name,
+description and homepage; *GitHub Apps* → *Configure* → **Uninstall** removes an install. **Unproven:** the bot user before an install; a no-permission App
+installing without a key; attribution by email; the Designer's export and README; a reader other than this runtime for G1.
 
 ## Preparation checks and sources
 All five shell blocks passed `zsh -n`. Four ran in `zsh -f` at 15:04, with a stand-in `open` first on PATH and the GETs for real: `0`, and seven bot 404s, as
 expected before creation; both `open` URLs route (302 to login, a bogus path 404). Step 4's block switches a checkout, so it was syntax-checked only.
-[Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app) · [Creating a custom badge](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/creating-a-custom-badge-for-your-github-app) · [REST: GitHub Apps](https://docs.github.com/en/rest/apps/apps) · [REST: org installations](https://docs.github.com/en/rest/orgs/orgs) · the bot user on install, secondary:
+[Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app) · [Creating a custom badge](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/creating-a-custom-badge-for-your-github-app) · [Installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app) · [REST: GitHub Apps](https://docs.github.com/en/rest/apps/apps) · [REST: org installations](https://docs.github.com/en/rest/orgs/orgs) · the bot user on install, secondary:
 [DEV, agent_paaru](https://dev.to/agent_paaru/each-ai-agent-gets-its-own-github-identity-how-we-gave-every-bot-its-own-bot-commit-signature-1197), [actions/create-github-app-token#172](https://github.com/actions/create-github-app-token/issues/172)
 (a comment: installing resolved the 404) · the id form: [josh-ops](https://josh-ops.com/posts/github-apps-commit-email/). Records: the claim screen; `evidence/FM-006/public-hardening-owner-2026-09-30.md` (the form).
