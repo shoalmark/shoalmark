@@ -6,10 +6,11 @@ Filed 2026-09-30 on the Owner's words, one line each, *normalised* (spelling and
 - 07:04:27, the definition — *"We shall track added lines vs deletions — so separately."*
 - 07:04:27, the ruling — *"If a check output regenerates, keep only its summary; if it doesn't, it stays in git."*
 - 07:14:05, the split — *"We split."* This repository is public: the rule lives here, with no other project's numbers or paths.
-- 07:21:58, the go — *"Go, freeze excepted."* `--ratio` is his explicit exception to the filing freeze.
-- 07:23:33, his ruling (2), in substance: `--ratio` and the check-output rule as ONE combined PR on FM-032, an explicit exception to
+- 07:21:58, the go — *"Go, freeze excepted."* `--ratio` is their explicit exception to the filing freeze.
+- 07:23:33, their ruling (2), in substance: `--ratio` and the check-output rule as ONE combined PR on FM-032, an explicit exception to
   the freeze; the public definition page folded into it; Implementer on Sonnet, Reviewer on Opus; report per Berlin day, judge on
   rolling seven-day sums; the page names the command as the reference.
+- 19:16:21, the condition — *"An output is replaced by a summary and a check only where it is larger than the two together."*
 
 ## The rule
 
@@ -38,7 +39,7 @@ the commit that still holds it (`git show <commit>:<path>` — history keeps eve
 git by a committed command stays, and counts.
 
 **The condition, 19:16:21, the Owner's words, normalised:** *"an output is replaced by a summary and a check only where it is larger than the two
-together."* The Jev scorer's output (`jev-gate-test-score-output-2026-09-23.txt`) stays on main as it is, by his word.
+together."* The Jev scorer's output (`jev-gate-test-score-output-2026-09-23.txt`) stays on main as it is, by their word.
 
 ## The baseline — shadow week, 2026-09-22 to 2026-09-29
 
@@ -63,10 +64,8 @@ outputs of two folders (`073f21f` and `9d10d08`, both 12:02). `test_shoalmark.py
 
 ## This change's own numbers
 
-`git diff --numstat origin/main...HEAD` (the three-dot range against `origin/main`, which is `7e7c8ac`; its merge base is the last merge of
-main into this branch, and the merge of main is not the change's), classified by the rule (`work-tracker/` = records), at this change's
-tip. The Reviewer's verdict files count as record lines and stay. The record deletions are the four regenerable check outputs (the Jev scorer's output stays, by the Owner's word of 19:16:21); deleting
+PR 131 as merged: the merge commit `c525a41` against its first parent `c97d6be` (`git diff --numstat --no-renames c525a41^1 c525a41`), classified by the rule (`work-tracker/` = records). The Reviewer's verdict files count as record lines and stay. The record deletions are the four regenerable check outputs (the Jev scorer's output stays, by the Owner's word of 19:16:21); deleting
 records offsets nothing.
 
-- records added 543 · product added 547 · 1.0:1
-- record deletions 33,575 · product deletions 2
+- records added 699 · product added 538 · 1.3:1
+- record deletions 33,529 · product deletions 9
