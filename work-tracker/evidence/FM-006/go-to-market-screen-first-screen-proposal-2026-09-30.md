@@ -1,10 +1,10 @@
-# Go-to-market screen — the first-screen proposal for v0.19.0 (2026-09-30)
-
 To: 8b77530d gtm (shoalmark-go-to-market-2) · claude-fable-5-1 · xhigh
+
+# Go-to-market screen — the first-screen proposal for v0.19.0 (2026-09-30)
 
 **Read:** main `e5e7197`; the wording branch `fm/006-they-them-and-english-seat-names` @ `c6678a8` (the proposal read `131d5c3`, five commits
 behind it: PR 141 merged, so README §*Seats*, the seats page and the tool already say `planner`/`builder`); the proposal itself; the live site
-and `llms.txt` (both 200, 2026-09-30 20:00 UTC); the earlier screen `a410aef` — read only after the findings below were written.
+and `llms.txt` (both 200, 2026-09-30 20:00 UTC); the earlier screen `a410aef` — read only after the findings below were written; it screened the seat names and the App lines, not these texts.
 **Method:** the brief's ladder L0–L5, knockout first; the first fatal gate is recorded and nothing more. F = form measurement, K = knowledge
 anyone can reproduce, E = executed here. Lines marked *mine* are this seat's proposals and went through the same ladder. Nothing here selects.
 
@@ -49,28 +49,28 @@ D1: yes, with F5. The `docs/index.md` twin that `llms.txt` lists *For the Owner*
 
 1. **P1 · C, all four lines · L5.** *brief(s)* and *permissions* are not the product's words: the landing, README and seats page say *tracker* and
    *rights*; a stranger meets *brief* nowhere else. Replacements in the ledger (*C mine*). 70 % — the App lines (`.claude/agents/builder.md`) do
-   say *from the Planner's brief*, so the seats' own texts disagree with each other already; the stranger never reads those.
+   say *from the Planner's brief*, so the seats' own texts disagree with each other already; the stranger never reads those. — **new**; the earlier screen's Q5 accepts *briefs* as charter-anchored in the App lines: **contradicts** it for a stranger's page.
 2. **P1 · A2 placement · L3.** The German claim dies anywhere on the human start page; its home is the German note for agents, where the English
    tagline dies at L1 (B3). Proposal (mine): `ADOPT.de.md` opens *Euer Owner bremst. Tunen statt tauschen.*; `docs/de/index.md` leads with DE-a and
-   carries no claim. 65 % — ruling 1's reason (a 09-23 line, meant for agents) covers this line too, but the Owner ruled it for the English one.
-3. **P1 · A2 DE-b · L1.** *Das Wort hat der Mensch* says the human has the floor (*Sie haben das Wort*), not the last word. Off the list. 80 %.
-4. **P2 · D1 · L2.** *three seats with built-in rights — planner, reviewer, builder*: `builder` holds none at every tree. Say so, as README:316 does. 90 %.
+   carries no claim. 65 % — ruling 1's reason (a 09-23 line, meant for agents) covers this line too, but the Owner ruled it for the English one. — **new**.
+3. **P1 · A2 DE-b · L1.** *Das Wort hat der Mensch* says the human has the floor (*Sie haben das Wort*), not the last word. Off the list. 80 %. — **new**.
+4. **P2 · D1 · L2.** *three seats with built-in rights — planner, reviewer, builder*: `builder` holds none at every tree. Say so, as README:316 does. 90 %. — **new**.
 5. **P2 · D1 against D2's fallback · L5.** If D2 slips to 0.19.1, *the Owner is not a seat* stands over `[seats] owner = …`, which `docs/setup.md:53`
    tells the adopter to write, and the tool's refusal (`shoalmark.py:4520` @ `c6678a8`) still lists the Owner under *The seats are:*. One line for
-   the fallback: *the Owner, whose identity `[seats]` still carries as `owner` until 0.19.1*. 75 %.
+   the fallback: *the Owner, whose identity `[seats]` still carries as `owner` until 0.19.1*. 75 %. — **new**; its Q4 marks the key rename a transition, not this.
 6. **P2 · C, "All seats →" links `/seats/` · placement.** Root-relative, that is `shoalmark.github.io/seats/` — 404 (E 20:05:55 UTC); the project site
    lives under `/shoalmark/` and `use_directory_urls = false` (`zensical.toml:13`). Write it as the landing's other links do:
-   `https://shoalmark.github.io/shoalmark/seats/index.html` — 404 today too, the site builds at the tag. 60 % that `/seats/` is meant literally.
-7. **P2 · E's public count.** The landing carries six gendered pronouns, not four: `:411` one *his*, `:463` *he* and four *his* (E, `grep -w`). 95 %.
+   `https://shoalmark.github.io/shoalmark/seats/index.html` — 404 today too, the site builds at the tag. 60 % that `/seats/` is meant literally. — **new**.
+7. **P2 · E's public count.** The landing carries six gendered pronouns, not four: `:411` one *his*, `:463` *he* and four *his* (E, `grep -w`). 95 %. — **agrees with** its T5 on `:411`/`:463`; the count against the proposal is new.
 8. **P2 · A3 OC-1, if picked.** The card's second sentence (`:382`) already says *puts them to you once a day*; OC-1 says it again. Change both or
-   neither; the control names the pain OC-1 drops (*mid-flight*, the root README:9 names). 85 %.
+   neither; the control names the pain OC-1 drops (*mid-flight*, the root README:9 names). 85 %. — **new**.
 9. **P3 · B1–B3 · L3 edge.** The tagline survives only where the agent is addressed, yet the landing hands the README to the Owner as *the contract,
-   rendered here* (`:449`). The Owner reads that they underperform anyway; ruling 1 accepts this, the record should say so. 60 %.
+   rendered here* (`:449`). The Owner reads that they underperform anyway; ruling 1 accepts this, the record should say so. 60 %. — **new**.
 10. **P3 · A1 form.** Under the claim line (`:313` *…keeps the fleet in the channel.*) the H1 makes three *keep*s in two lines; *keeps the word*
     reads first as a promise kept, the say arrives by the parallel. `<title>` with the site's prefix is 64 chars. The page's own `<meta
-    name="description">` (`:12`) is untouched while `site_description` changes: two descriptions of one page. 50 %.
+    name="description">` (`:12`) is untouched while `site_description` changes: two descriptions of one page. 50 %. — **new**.
 11. **P3 · L5 in German.** The Owner is *Eigner* on `docs/de/index.md` (7) and `de/setup.md` (2), *Owner* in `ADOPT.de.md` (10), both on `de/signing.md`
-    and `de/triage.md` (E, word counts @ `e5e7197`). FM-006 records the Owner's word: *in German prose the person is der Eigner* (`:87`). 80 %.
+    and `de/triage.md` (E, word counts @ `e5e7197`). FM-006 records the Owner's word: *in German prose the person is der Eigner* (`:87`). 80 %. — **new**; its Q3 covers *Sie*, not the noun.
 
 **Verdict.** Survivors — A1: the proposed line and description; A2: DE-a alone; A3: both openings, in both languages; B1, B2: the tagline, narrowly;
 B3: the `:5` fix, not the English opening; C: *Specialists* as written, the other four only as reworded; D1: only as reworded. Three P1s before the build.
