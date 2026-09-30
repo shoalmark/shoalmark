@@ -746,12 +746,15 @@ def owed_a_pass(t):
 def board(t):
     """the ONE definition of where a tracker sits on the board; INDEX.md and the dashboard both
     print it. Clock-free, so a committed file never changes because a day passed. The one clock rule — a
-    judgement older than TRIAGE_DAYS counts as `triage` again — lives in the page and in the worksheet."""
+    judgement older than TRIAGE_DAYS counts as `triage` again — lives in the page and in the worksheet.
+    Open work with a rank sits in `progress` whatever its status (`In Progress` or `Proposed`, the two a rank may stand on — `lint`); the
+    open unranked is `backlog`, `triage` keeps its precedence over both, and the sections sort by rank, then tier."""
     if t["status"] not in ("In Progress", "Parked", "Proposed", "Reserved", "?"):
         return "done"
     if t.get("raised") or (not t.get("triaged") and owed_a_pass(t)):     # a raise on a signed rule re-judges it (FM-033)
         return "triage"
-    return "progress" if t["status"] == "In Progress" else "backlog"
+    # a status is what a seat set; a rank is what a pass judged (FM-041) — the ranked open work is the working set, whatever its status
+    return "progress" if t["status"] == "In Progress" or (t.get("rank") and t["status"] == "Proposed") else "backlog"
 
 
 def blocked_now(t, by_id):
