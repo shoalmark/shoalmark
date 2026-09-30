@@ -5479,7 +5479,8 @@ with tempfile.TemporaryDirectory() as d:
     day_ = lambda s: next((l for l in out_.splitlines() if l.startswith(s)), "")      # a line of the latest `out_`
     check("FM-032 · `--ratio` counts the four numbers per day of a planted trunk — records and product added and deleted, a plain path a record, an `exclude` prefix "
           f"in neither, the submodule pointer no line, the deletion never subtracted (saw {out_!r})",
-          code_ == 0 and day_("2026-09-22") == "2026-09-22  records +3 \u22120  product +5 \u22120  0.6:1  (1 merge)"
+          code_ == 0 and day_("2026-09-22") == ("2026-09-22  records +3 \u22120  product +5 \u22120  0.6:1  (1 merge)" if _zone_ok else
+                                                "2026-09-22  records +9 \u22123  product +12 \u22120  0.8:1  (2 merges, 1 binary)")   # no tz database: 23:30 UTC stays the 22nd
           and day_("window") == "window      records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)")
     if _zone_ok:
         check("FM-032 · the day is the merge's committer date in Europe/Berlin — 23:30 UTC on the 22nd is the 23rd — and a binary file is 0 lines and counted as a file",
@@ -5703,6 +5704,7 @@ _have_node, _shallow32 = shutil.which("node"), _ratio_g(HERE, "rev-parse", "--is
 _held = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
 _tagged = subprocess.run(["git", "-C", str(HERE), "rev-parse", "-q", "--verify", "refs/tags/v0.18.4"], capture_output=True, env=_ENV).returncode == 0
 _why = ("no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "this clone does not hold bef2a1e" if not _held("bef2a1e")
+        else "no tz database for Europe/Berlin here (facts.mjs writes each filing's day and the tag's time in Berlin; git cannot take that zone by name where there is none)" if not _zone_ok
         else "this clone has no tag v0.18.4 (facts.mjs reads it)" if not _tagged else "")
 if _why:
     _regen_skip("FM-032 \u00b7 facts.mjs reproduces the summary", 1, _why)
@@ -5719,10 +5721,10 @@ _jev = re.search(r"```json\n(\{[^`]*?jev-gate-test-score-output[^`]*?\})\n```", 
 _jev = json.loads(_jev.group(1)) if _jev else {}
 _jev_dir = (HERE / "work-tracker/evidence/FM-006")
 _jev_run = subprocess.run([sys.executable, *_jev.get("command", "x").split()[1:]], cwd=str(_jev_dir), capture_output=True, env=_ENV) if _jev else None
-check("FM-032 \u00b7 the Jev gate test's score output regenerates \u2014 the committed scorer on the two committed responses prints the bytes whose sha256 the claim-screen "
-      f"record's block keeps (the block says {_jev.get('sha256')}; a fresh run says {hashlib.sha256(_jev_run.stdout).hexdigest() if _jev_run else 'no block'}), "
+check("FM-032 \u00b7 the Jev gate test's score output regenerates \u2014 the committed scorer on the two committed responses prints the bytes (line ends normalised to LF: Windows' text mode writes CRLF) whose sha256 the claim-screen "
+      f"record's block keeps (the block says {_jev.get('sha256')}; a fresh run says {hashlib.sha256(_jev_run.stdout.replace(b"\r\n", b"\n")).hexdigest() if _jev_run else 'no block'}), "
       "and the file itself is gone",
-      bool(_jev_run) and _jev_run.returncode == 0 and hashlib.sha256(_jev_run.stdout).hexdigest() == _jev["sha256"]
+      bool(_jev_run) and _jev_run.returncode == 0 and hashlib.sha256(_jev_run.stdout.replace(b"\r\n", b"\n")).hexdigest() == _jev["sha256"]
       and not (_jev_dir / "jev-gate-test-score-output-2026-09-23.txt").exists())
 
 _RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
