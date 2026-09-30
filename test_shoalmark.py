@@ -5518,6 +5518,179 @@ else:
           _code == 0 and next((l for l in _out.splitlines() if l.startswith("window")), "").startswith("window      records +65,711 \u2212972  product +15,713 \u22121,764  4.2:1  "))
 fm.configure(HERE)
 
+# --- FM-032 · a check output that regenerates is kept as its summary, and the summary is proved -----------------------------------
+# The Owner's ruling of 2026-09-30: *if a check output regenerates, keep only its summary; if it doesn't, it stays in git.* Each
+# README's `## Summary — the check output, regenerable` holds a machine-readable block per output — the command, the tested commit,
+# the number of checks, the failing ids. Here they are read back: `facts.mjs` (git and Node only) on every run where it can; the
+# browser checks — a rebuilt site, `checks.mjs` in Chrome, the same thresholds as the READMEs — behind `SHOALMARK_REGENERATE=1`. A
+# difference in the results fails with both listed; a run that cannot happen here says why and is counted as skipped, never passed.
+_FM6_DIR, _FM2_DIR, _ZENSICAL = "work-tracker/evidence/FM-006/landing/start-page", "work-tracker/evidence/FM-002/slice-a", "0.0.65"
+_SUMMARY_HEAD = "## Summary \u2014 the check output, regenerable"
+
+
+def _summary_blocks(readme):
+    """{file name: its block} of a README's summary section."""
+    section = (HERE / readme).read_text().split(_SUMMARY_HEAD, 1)[1].split("\n## ", 1)[0]
+    return {Path(b["file"]).name: b for b in map(json.loads, re.findall(r"```json\n(.*?)\n```", section, re.S))}
+
+
+def _strip_measure(text):
+    """`3.99 54\u00b010'N (under the title)` -> `54\u00b010'N (under the title)`: the measure moves from run to run, the text does not."""
+    return re.sub(r"^\d+(?:\.\d+)? ", "", text)
+
+
+def _derive_landing(doc, chart_only=False):
+    """FM-006 slice L's `checks.mjs` output -> (checks run, failing ids), by its README's thresholds: per width and method (R, S) the
+    chart texts below 4.5:1; per width the flat texts below 4.5:1 and the sideways scroll; the page's script errors, its accessibility
+    tree, reduced motion, the scheme and the fonts. A chart-only output (the mock's, of which the README keeps the chart part) has four."""
+    s, failing, n = doc["summary"], [], 0
+    for c in s["chart"]:
+        for method, key in (("R", "belowReviewer"), ("S", "belowSeat")):
+            n += 1
+            failing += [f"chart {c['width']} {method} {_strip_measure(x)}" for x in c[key]]
+    if not chart_only:
+        for f in s["flat"]:
+            n += 2
+            failing += [f"flat {f['width']} {_strip_measure(x)}" for x in f["below"]]
+            failing += [f"scroll {f['width']}"] * (f["scroll"][0] != f["scroll"][1])
+        n += len(s["tree"]) + len(s["scheme"]) + 3
+        failing += [f"tree {x['width']}" for x in s["tree"]
+                    if x["focusable"] != x["wrecks"] or not x["canvasDescribed"] or x["figuresRead"] or x["chartNamesRead"]]
+        failing += ["errors"] * bool(s["errors"])
+        failing += ["motion"] * (not s["motion"]["reduced"]["identical"])
+        failing += [f"scheme {w}" for w, v in s["scheme"].items() if not v["identical"]]
+        failing += ["fonts"] * (s["sameFacesAsMock"] is False)
+    return n, sorted(failing)
+
+
+def _derive_board(doc):
+    """FM-002 slice A's `checks.mjs` output -> (checks run, failing ids): per scheme the text pairs below 4.5:1, named by where each was
+    seen; AU-16 per page and scheme, no chart figure and no marker read; AU-18 per scheme, the longest line no longer than the box holds;
+    the tracker view's alignment per scheme, the built page where the mock puts it. The counts of measurements move with the board's
+    clock (it writes what is owed now) and are not compared."""
+    failing, n = [], 0
+    for scheme in ("light", "dark"):
+        n += 1
+        failing += [f"contrast {scheme} {'/'.join(p['where'])} {p['fg']} on {p['ground']}" for p in doc["pairs"] if p["scheme"] == scheme and p["ratio"] < 4.5]
+    for page, v in doc["summary"]["au16"].items():
+        n += 1
+        failing += [f"AU-16 {page}"] * bool(v["figures"] or v["markers"])
+    for scheme, v in doc["au18"].items():
+        n += 1
+        failing += [f"AU-18 {scheme}"] * (v["longestLine"] > v["chars"])
+    for scheme in ("light", "dark"):
+        n += 1
+        failing += [f"alignment {scheme}"] * (doc["alignment"][f"after {scheme}"] != doc["alignment"][f"mock {scheme}"])
+    return n, sorted(failing)
+
+
+def _facts_fingerprint(doc):
+    """`facts.mjs`'s reading without its time stamp: the fields the README records, and a sha256 of all the rest."""
+    doc = {k: v for k, v in doc.items() if k != "read"}
+    return {"sha": doc["sha"], "release": doc["release"]["version"], "counts": doc["counts"], "wrecks": len(doc["wrecks"]),
+            "sha256_without_read": hashlib.sha256(json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()}
+
+
+def _regen_skip(name, n, why):
+    SKIPS.append((name, n, why))
+    print(f"  skip  {name} \u2014 {why}; {n} check(s) did not run")
+
+
+_b6, _b2 = _summary_blocks(_FM6_DIR + "/README.md"), _summary_blocks(_FM2_DIR + "/README.md")
+_KEYS = {"file", "tested", "command", "checks", "failing", "generated_by"}
+check("FM-032 \u00b7 each README's summary holds one machine-readable block per replaced output \u2014 the command, the tested commit, how many checks, "
+      "which failed \u2014 and the summary of a regenerable output is kept where the file was",
+      set(_b6) == {"checks.json", "checks-r3-before.json", "facts.json"} and set(_b2) == {"checks.json"}
+      and all(_KEYS <= set(b) and isinstance(b["failing"], list) and isinstance(b["checks"], int) for b in (*_b6.values(), *_b2.values())))
+_derived_ok = (_derive_landing({"summary": {"chart": [{"width": 1, "belowReviewer": ["3.99 a (under the title)"], "belowSeat": []}], "flat": [], "tree": [], "scheme": {},
+                                            "errors": 0, "motion": {"reduced": {"identical": True}}, "sameFacesAsMock": True}}) == (5, ["chart 1 R a (under the title)"]))
+check("FM-032 \u00b7 the derivation drops the measure and keeps the check's own id, and counts its verdicts", _derived_ok)
+
+_have_node, _shallow32 = shutil.which("node"), _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
+_held = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+_tagged = subprocess.run(["git", "-C", str(HERE), "rev-parse", "-q", "--verify", "refs/tags/v0.18.4"], capture_output=True, env=_ENV).returncode == 0
+_why = ("no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "this clone does not hold bef2a1e" if not _held("bef2a1e")
+        else "this clone has no tag v0.18.4 (facts.mjs reads it)" if not _tagged else "")
+if _why:
+    _regen_skip("FM-032 \u00b7 facts.mjs reproduces the summary", 1, _why)
+else:
+    _out32 = subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "work-tracker/evidence/FM-006/landing/index.html")],
+                            cwd=str(HERE), env=_ENV, capture_output=True, text=True, encoding="utf-8", timeout=300)
+    _want32 = {k: v for k, v in _b6["facts.json"]["fields"].items()}
+    _want32["sha256_without_read"] = _b6["facts.json"]["sha256_without_read"]
+    _saw32 = _facts_fingerprint(json.loads(_out32.stdout)) if _out32.returncode == 0 else {"exit": _out32.returncode, "stderr": _out32.stderr[-300:]}
+    check(f"FM-032 \u00b7 `node facts.mjs bef2a1e` regenerates facts.json \u2014 every field the README's block records, and the rest by its sha256, `read` apart "
+          f"(the block says {_want32}; a fresh run says {_saw32})", _saw32 == _want32)
+
+_RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
+_uvx, _npm = shutil.which("uvx"), shutil.which("npm")
+_why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
+        else "no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "")
+_needed = [c for b in (*_b6.values(), *_b2.values()) for c in [b["tested"]] if b["file"].endswith("checks.json") or b["file"].endswith("checks-r3-before.json")] + ["2a9f7eb", "70fedd3"]
+_why = _why or next((f"this clone does not hold {c}" for c in _needed if not _held(c)), "")
+if _why:
+    _regen_skip("FM-032 \u00b7 the browser checks reproduce their summaries", 3, _why)
+else:
+    import tarfile
+
+    def _stage(commit, into):
+        """`git archive commit` extracted into `into` \u2014 a tree without .git, as the READMEs' rebuilds build it."""
+        into.mkdir(parents=True)
+        tar = subprocess.run(["git", "-C", str(HERE), "archive", commit], capture_output=True, check=True, env=_ENV).stdout
+        with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
+            tf.extractall(into, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+
+    def _build(stage):
+        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+
+    def _checks_mjs(script, stage_dir, out, *extra):
+        r = subprocess.run([_have_node, str(HERE / script), str(stage_dir), str(out), *extra], cwd=str(HERE), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME))
+        return json.loads(Path(out).read_text()) if r.returncode == 0 and Path(out).exists() else None
+
+    def _same(name, got, block, derived):
+        want = (block["checks"], sorted(block["failing"]))
+        check(f"FM-032 \u00b7 {name} regenerates by its results \u2014 {want[0]} checks, {len(want[1])} failing, the same ids (a fresh run: {derived if got else 'no output'}; "
+              f"the README's block: {want})", bool(got) and derived == want)
+
+    with tempfile.TemporaryDirectory() as d:
+        work = Path(d).resolve()
+        mock_html = str(HERE / "work-tracker/evidence/FM-006/landing/index.html")
+        for name, block, chart_only, mock in (("the start page's checks.json", _b6["checks.json"], False, mock_html),
+                                              ("checks-r3-before.json", _b6["checks-r3-before.json"], True, None)):
+            stage = work / block["tested"]
+            _stage(block["tested"], stage); _build(stage)
+            got = _checks_mjs(_FM6_DIR + "/checks.mjs", stage / "site", work / (block["tested"] + ".json"), *([mock] if mock else []))
+            _same(name, got, block, _derive_landing(got, chart_only) if got else None)
+        if not _npm:
+            _regen_skip("FM-032 \u00b7 slice A's checks.json", 1, "no npm here to fetch @ibm/plex-mono 1.1.0 \u2014 the mock part does not regenerate")
+        else:
+            plex = work / "plex"; plex.mkdir()
+            packed = subprocess.run([_npm, "pack", "@ibm/plex-mono@1.1.0", "--silent"], cwd=str(plex), capture_output=True, text=True, timeout=300, env=_ENV)
+            if packed.returncode != 0:
+                _regen_skip("FM-032 \u00b7 slice A's checks.json", 1, "@ibm/plex-mono 1.1.0 could not be fetched (offline?) \u2014 the mock part does not regenerate")
+            else:
+                with tarfile.open(plex / packed.stdout.strip().splitlines()[-1]) as tf:
+                    tf.extractall(plex, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+                src, stages = work / "a-src", work / "a"
+                _stage("361336a", src)
+                for step in ("before", "after"):
+                    rev = "2a9f7eb" if step == "before" else "70fedd3"
+                    for rel in ("work-tracker/brand/theme.css", "docs/stylesheets/shoalmark.css"):
+                        (src / rel).write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
+                    subprocess.run([sys.executable, "shoalmark.py", "--html-only"], cwd=str(src), check=True, capture_output=True, env=_ENV)
+                    _build(src)
+                    (stages / step).mkdir(parents=True)
+                    shutil.copy(src / "work-tracker/index.html", stages / step / "board.html")
+                    for rel in ("work-tracker/brand", "work-tracker/view", "site"):
+                        shutil.copytree(src / rel, stages / step / Path(rel).name)
+                    if step == "before":                     # the mock is built from the *before* board and site, as the README's rebuild has it
+                        subprocess.run([sys.executable, "work-tracker/evidence/FM-006/themes/build-mocks.py", str(stages / "mock"), "--plex",
+                                        str(plex / "package/fonts/split/woff2")], cwd=str(src), check=True, capture_output=True, env=_ENV)
+                got = _checks_mjs(_FM2_DIR + "/checks.mjs", stages, work / "board.json")
+                _same("slice A's checks.json", got, _b2["checks.json"], _derive_board(got) if got else None)
+fm.configure(HERE)
+
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",

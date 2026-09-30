@@ -12,6 +12,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   (exit 2). The rule is filed on its own page, `work-tracker/evidence/FM-032/records-to-product-ratio.md`, and the command is
   its reference.
 
+- **A check output that regenerates is kept as its summary (FM-032, the Owner's ruling of 2026-09-30):** the start page's
+  `checks.json`, `checks-r3-before.json` and `facts.json` and slice A's `checks.json` are replaced, in their READMEs, by the command,
+  the tested commit, the environment, the counts and failing ids, the deleted file's sha256 and the commit that holds it, and a
+  machine-readable block; an output that does not regenerate from git by a committed command stays. `test_shoalmark.py` proves
+  the regeneration: `facts.mjs` on every run where Node and the history are here, the browser checks (rebuilt sites, `checks.mjs`,
+  the READMEs' thresholds) behind `SHOALMARK_REGENERATE=1` where Chrome and `uvx` are; every skip prints its reason.
+
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their
   destinations before upload, and states the project’s last recorded signing tier in English and German.
 
