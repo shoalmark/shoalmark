@@ -6,6 +6,8 @@ on:
   pull_request: {types: [opened, synchronize, reopened, ready_for_review]}
   workflow_dispatch:
 permissions: {contents: read}
+# A new push to a pull request cancels that pull request's run still in flight; a tag's run and a manual dispatch are never cancelled.
+concurrency: {group: "ci-${{ github.event.pull_request.number || github.ref }}", cancel-in-progress: "${{ github.event_name == 'pull_request' }}"}
 jobs:
   suites:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
