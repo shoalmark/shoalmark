@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">
+<title>datascientist — the tide gauge</title>
+<rect width="20" height="20" fill="#15293d"/>
+<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->
+<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->
+<path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><!-- the staff -->
+<path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><!-- the eyes, wide open -->
+<path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><!-- the marks it reads -->
+<path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/><!-- the blush -->
+</svg>

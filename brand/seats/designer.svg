@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">
+<title>designer — the painter</title>
+<rect width="20" height="20" fill="#15293d"/>
+<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->
+<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->
+<path fill="#f1d47a" d="M6 7h8v1h-8ZM5 8h10v6h-10ZM6 14h8v1h-8Z"/><!-- the head -->
+<path fill="#f38a80" d="M9 4h1v1h-1ZM6 5h6v1h-6ZM5 6h10v1h-10Z"/><!-- the beret -->
+<path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><!-- the eyes, on its drawing -->
+<path fill="#f38a80" d="M13 12h1v1h-1Z"/><!-- the blush -->
+</svg>
