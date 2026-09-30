@@ -252,11 +252,40 @@ verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
 - Whether the independence count changes a verdict on 09-29 — if every review is a sub-agent of the author's session,
   the count says so and the container question moves up.
 
+## The Auditor's change brief of 2026-09-30, graded — the strip grouped by parent, model and effort from the harness's logs
+
+**2026-09-30 06:11:21** (the transcript's stamp) · the Auditor (8b91dba2), through the Owner — his paste headed *To: 8e509911
+principal (shoalmark-principal-4)*, five lines, saved word for word, sha256 `8e8f77ce3ec60e8b09efb94095c1dc4651665a9fcfbd8312c76cc39a7ad82c12`,
+quoted here whole:
+
+> To: 8e509911 principal (shoalmark-principal-4)
+> The Auditor — the open relay of 2026-09-28 09:01:54 (folded into FM-024 under Raised; not built at main 792dbca, board_sessions shoalmark.py:5462), now with the Owner's addition: each session's model and reasoning effort. A change brief, yours to grade:
+> 1. Group the sessions strip by parent: one line per parent, "<parent> <seat> (<worktree>) · implementer 1–6 · reviewer 1–5, 7", header "sessions · <parents> in the last day (<all> with their sub-sessions)"; each sub-session's worktree, model and effort on expand; a parent without a commit of its own still gets its line; the plain-text line groups the same way.
+> 2. Model and effort come from the harness logs, never self-report: Claude Code transcripts (~/.claude/projects/<slug>/<id>.jsonl, sub-agents under <id>/subagents/) record message.model, perTurnEffort and cwd per turn; Codex rollouts (~/.codex/sessions/…) record session_meta id+cwd and turn_context model+effort. --whoami finds the live log whose cwd is the committing worktree (unique under one worktree per session; two matches → refuse) and the seat's commit carries git trailers Session:, Model:, Effort: (parsed with git interpret-trailers). The board reads the trailers; it never reads transcripts. The reader takes those fields only, never message content.
+> Done when: fixtures of a Claude parent with sub-agents and a Codex session yield the right trailers; an ambiguous cwd refuses; a commit without trailers shows "—"; 3 parents with 25 sub-sessions render 3 lines; the board suites stay green. Scope: FM-024's answered slice; no new ask. One Reviewer pass.
+
+Graded by the Principal the same morning and reported to the Owner; filed on his word of 06:38:10 — *"Let's file this. Work
+is postponed after another task that is waiting for you."* (normalised). **Nothing is built.** FM-024 stays *In Progress*,
+`next: build`; the brief widens the slice his answer of 2026-09-28 opened (all three: `--statusline`, `--install-statusline`,
+the AGENTS.md rule with `--whoami`) and extends the raise of 2026-09-28 09:01:54 under *Raised*.
+
+| The brief's point | Grade | Confidence | Why |
+|---|---|---|---|
+| 1 — the strip grouped by parent: one line per parent with its sub-sessions' seats and numbers, each sub-session's worktree, model and effort on expand, a parent without a commit of its own still on the strip, the plain-text line grouped the same way | accept | 90 % | derivable from the `Session:` trailers the strip already reads (`<parent>/<seat>-<n>`, S3); the folded raise of 2026-09-28 asked the same without model and effort |
+| 2 — model and effort from the harness's logs, never self-report; the seat's commit carries `Model:` and `Effort:` beside `Session:`; the board reads trailers only, never a transcript; the reader takes those fields only, never message content | accept the principle | 85 % | the fields exist, measured 2026-09-30 06:5x on this machine (the logs grow): this session's Claude Code transcript carries `message.model` and `perTurnEffort` on 5,587 turns each; 387 Codex rollouts sit under `~/.codex/sessions/`, the newest with `session_meta` and `turn_context` naming model and effort, as the brief says |
+| 2 — the mechanism: `--whoami` finds the live log whose `cwd` is the committing worktree; two matches refuse | **reject — P1 on the brief** | 99 % | measured on this session's own transcript: `cwd` is the directory the session was launched in, on every turn — 15,175 turns carry that one directory (a parent project's checkout), 110 the directory of a relaunch, none a seat worktree, though this session committed in several; the 155 sub-agent logs under `<id>/subagents/` carry the parent's launch directory on all 68,904 of their turns while those seats committed in their own worktrees. A match on `cwd` finds no log for a seat worktree, or every log of the session for its launch directory: *two matches → refuse* refuses every commit of a session that has run one sub-agent |
+| the fix — the Principal's, for the build | proposal | 85 % | match by the harness's own ids, never by a path: the harness names a sub-agent's log `agent-<id>.jsonl` and returns that id to the spawning session, so the Principal writes it into the seat worktree's configuration beside `seat.session` (S1), and `--whoami` opens exactly `<root>.jsonl` or `<root>/subagents/agent-<id>.jsonl` and reads the newest `message.model` and `perTurnEffort` — no search, nothing to disambiguate; for Codex, `CODEX_THREAD_ID` names the rollout. A suite check plants a transcript whose message content is a sentinel and asserts the reader's output never carries it |
+| *one Reviewer pass* | the code loop | 90 % | the change is to `shoalmark.py`, its tests and the hook's trailer — the code tier's full loop by AGENTS.md (the Reviewer's RV-724 on FM-041 refused one pass for a code change); same-session Reviewers, their independence reported by S6 as every verdict's is |
+
+Cost, if the Owner says go: about two hours on Sonnet seats — a build, the hook's suites, the loop, the Principal's gate.
+Postponed on his word of 06:38:10; the task he named as waiting comes first.
+
 ## Raised
 
 *One sourced line per raise — the date, who raised it, the fact, its source, what it undermines.*
 
 - 2026-09-28 09:01:54 · Auditor (8b91dba2), through the Owner (his paste headed *To: 8e509911 principal (shoalmark-principal-4)*, four lines, saved word for word, sha256 `a375a843e12228c9229076e9af8b0f6ff22516f16f31156d67f0a75a870118ac`; its point 2 quoted here) · *"The sessions strip, 80%: group the sub-sessions under their parent, e.g. "8e509911 principal (principal-2) · implementer 41, 42, 45 · reviewer 33, 38, 41, 42, 44"; each sub's worktree on expand. Fits FM-024. Yours to file or fold."* — folded here as a line of the slice his answer of 08:11:26 opened (all three: `--statusline`, `--install-statusline`, the AGENTS.md rule with `--whoami`): the sessions strip groups the sub-sessions under their parent session, each sub's worktree on expand · source: the paste; the strip as `board_sessions` renders it at main `eb00e96b` · undermines: no signed rule — a design line for the slice
+- 2026-09-30 06:11:21 · Auditor (8b91dba2), through the Owner (his paste headed *To: 8e509911 principal (shoalmark-principal-4)*, five lines, saved word for word, sha256 `8e8f77ce3ec60e8b09efb94095c1dc4651665a9fcfbd8312c76cc39a7ad82c12`; quoted whole in the section above) · a change brief for the answered slice: the strip grouped by parent (the line of 2026-09-28 above, extended), each session's model and reasoning effort from the harness's logs as `Model:` and `Effort:` trailers, `--whoami` matching the live log by its `cwd` · graded by the Principal the same morning, the section above: the grouping and the principle accepted, the `cwd` match rejected on a measured fact (a match by the harness's ids proposed), the code loop not one pass; nothing built, postponed on the Owner's word of 06:38:10 · source: the paste; the strip as `board_sessions` renders it at main `792dbca` · undermines: no signed rule — a design brief for the slice
 
 ## Done when
 
@@ -306,3 +335,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-24 | Correcting the row above (the Reviewer's R6): the 55 of 57 are *same session* as `--check` counts them — each verdict by its own branch's session, 54 of them this session's sub-agents and one another's — not one session's. |
 | 2026-09-24 | The row of 20:24 above was edited in place before the branch merged (the pass Reviewer's R10); from here, a correction is an appended row. |
 | 2026-09-28 | **Folded:** the Auditor's sessions-strip line through the Owner (09:01:54; sha256 `a375a843…`) — group the sub-sessions under their parent, each sub's worktree on expand — a line of the answered slice, under *Raised*; nothing built. |
+| 2026-09-30 | **Graded, not built:** the Auditor's change brief through the Owner (06:11:21; sha256 `8e8f77ce…`) — the strip grouped by parent (accepted), model and effort from the harness's logs as trailers (the principle accepted; its `cwd` match rejected, P1 on a measured fact: a transcript's `cwd` is the session's launch directory on every turn, sub-agents included; a match by the harness's ids proposed), the code loop instead of one pass. Postponed on the Owner's word of 06:38:10; the build comes after the task he named. |
