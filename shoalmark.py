@@ -760,7 +760,7 @@ def board(t):
     Open work with a rank sits in `progress` whatever its status (`In Progress` or `Proposed`, the two a rank may stand on — `lint`); the
     open unranked is `backlog`, `triage` keeps its precedence over both, and the sections sort by rank, then tier."""
     if t["status"] not in ("In Progress", "Parked", "Proposed", "Reserved", "?"):
-        return "done"
+        return "ended"                                               # shipped or closed — a closed tracker is not "done" (FM-005)
     if t.get("raised") or (not t.get("triaged") and owed_a_pass(t)):     # a raise on a signed rule re-judges it (FM-033)
         return "triage"
     # a status is what a seat set; a rank is what a pass judged (FM-041) — the ranked open work is the working set, whatever its status
@@ -2661,7 +2661,7 @@ vcmp=(a,b)=>{if(a=="—"||b=="—")return(a=="—")-(b=="—");const x=ver(a),y=
 GROUPS=[["board",t=>board(t)],["epic",t=>t[13]!="—"?t[13]:EPICS.has(t[0])?t[0]:"—"],...COLS.map(c=>[c.toLowerCase(),t=>xv(t,c)])],   // board · story · then every derived column is a view
 // blocked is derived, never typed: open work whose named blocker is still open (or is the Owner)
 blocked=t=>OPEN.has(t[2])&&t[16].some(b=>b.startsWith("Owner")||byId.has(b)&&OPEN.has(byId.get(b)[2])),
-// the board — the generator puts every tracker in exactly one of progress · triage · backlog · done (the same
+// the board — the generator puts every tracker in exactly one of progress · triage · backlog · ended (the same
 // word INDEX.md prints); `triaged` repeats the
 // newest pass under `triage`. A judgement on work in progress holds __DAYS__ days, then it is back in `triage`; parked work does not go stale.
 LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
@@ -2675,7 +2675,7 @@ actstate=a=>!a[3]?"nodate":(now=>now<Date.parse(a[3])?"due":now<Date.parse(a[3])
 // has a pass run? ONE answer for every line that asks: the newest date a pass left on a tracker, or else the date of the
 // newest pass TRIAGE.md records. `progress` holds only what a pass kept — until a first pass it is empty by rule and says so (FM-021)
 PASSED=LAST||(HOME.last.match(/\d{4}-\d\d-\d\d/)||[""])[0],
-BOARD={progress:PASSED?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
+BOARD={progress:PASSED?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none"),backlog:l("desc.backlog"),ended:l("desc.ended")},
 board=t=>[...(recent(t)?["triaged"]:[]),untriaged(t)?"triage":t[19]],   // t[19] is the generator's; staleness is the one clock rule, and only work in progress goes stale
 MARK={"In Progress":"b","Shipped":"t","Parked":"y","Closed":"z"},mark=t=>blocked(t)?"r":t[2].startsWith("Shipped")?"t":MARK[t[2]]||"",
 ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">${i}</a>`:i),   // TRIAGE.md — an id opens its tracker rendered, as in a row
@@ -2697,8 +2697,8 @@ function draw(){
   for(const k of keys)if((gname=="epic"||gname=="board"&&order.indexOf(k)>1)&&!q&&!touched.has(gname+k))shut.add(gname+k);
   $("b").innerHTML=keys.map(k=>{
     const g=groups.get(k);
-    const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),folded=shut.has(gname+k)&&!q;
-    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${kids.length-open.length} ${l("story.done")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
+    const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),shipped=kids.filter(t=>t[2]=="Shipped").length,closed=kids.filter(t=>t[2]=="Closed").length,folded=shut.has(gname+k)&&!q;
+    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
@@ -2843,7 +2843,7 @@ ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
-<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>!OPEN.has(x[2])).length} ${l("story.done")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
     if(m&&byId.has(m[1]))a.href="#="+m[1];else if(h[0]=="#"&&h[1]!="="){a.removeAttribute("href");a.dataset.s=dec(h.slice(1))}else if(!/^[a-z]+:/i.test(h)&&h[0]!="#")a.href=BLOB+h}
   // headings get GitHub's slug, so a tracker's own `#section` links work; a long tracker gets its sections listed.
@@ -2883,12 +2883,12 @@ LABELS = {
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
     "status.Proposed": "Proposed", "status.In Progress": "In Progress", "status.Parked": "Parked", "status.Reserved": "Reserved",
     "status.Shipped": "Shipped", "status.Closed": "Closed", "status.Blocked": "Blocked",
-    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.done": "done",
+    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.ended": "ended",
     "desc.progress": "kept by triage — by rank, then tier",
     "desc.progress.none": "empty until a first triage pass has run — --triage",
     "desc.triage": "what the next --triage lists — in progress and unjudged or judged over {0} days ago, and new filings",
     "desc.triaged": "judged {0} — each also sits in its own section", "desc.triaged.none": "no triage pass has run yet",
-    "desc.backlog": "waiting — P0 to P3, then untiered, then parked", "desc.done": "shipped or closed",
+    "desc.backlog": "waiting — P0 to P3, then untiered, then parked", "desc.ended": "shipped, or closed without shipping",
     "group.none": "no {0}",
     "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.id": "tracker · {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
@@ -2935,7 +2935,7 @@ LABELS = {
     "answer.sign.page": "the signing page", "answer.sign.url": SIGNING_PAGE,
     "answer.done": "Done",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
-    "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
+    "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
     "word.missing": "missing", "word.stated": "stated",
     "viewer.board": "← board", "viewer.neighbours": "neighbours", "viewer.file": "file", "viewer.forge": "forge",
@@ -3685,7 +3685,7 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
              write none. A merge, a close or a fix names none.
      NEW FILINGS: a row marked NEW FILING was filed since the last pass and has met no second reader — this pass
              is that reader, whatever the row's status. Its Closest cell holds what the filing says it was held
-             against (`considered:`) beside the three trackers the machine finds closest, done ones included.
+             against (`considered:`) beside the three trackers the machine finds closest, shipped and closed ones included.
              OPEN every one marked NOT considered. The same work: `merge ID`. Otherwise judge the row like any other.
      RAISED: a row marked RAISED carries a raise — a line under the tracker's `## Raised` — dated after its last
              judgement and naming a signed rule it undermines: a line of the current path, or a tracker's signed
@@ -7550,7 +7550,7 @@ def main(argv=None):
         "> (or its `# title`). Rows are *pointers* — the detail lives in the tracker, never duplicated here.\n>\n"
         "> **Status** = code lifecycle; `Shipped` means merged, **not** a production claim.\n>\n"
         "> **Tier · Board · Triaged** = the triage picture — the same one the board (`index.html`) shows, from the\n"
-        "> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `done`.\n"
+        "> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `ended` shipped or closed.\n"
         f"> One rule this file cannot show, because it has no clock: a judgement on work in progress older than {TRIAGE_DAYS} days\n"
         "> counts as `triage` again.\n>\n"
         + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)

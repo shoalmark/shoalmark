@@ -215,12 +215,12 @@ with tempfile.TemporaryDirectory() as d:
     b = lambda **kw: fm.board(dict(base, **kw))
     check("one board definition: `triage` is exactly what the next pass lists — work in progress and new filings; older undated work is backlog",
           [b(status="Shipped"), b(status="In Progress"), b(status="In Progress", triaged="2026-01-01"), b(status="Parked", triaged="2026-01-01"), b()]
-          == ["done", "triage", "progress", "backlog", "triage"]
+          == ["ended", "triage", "progress", "backlog", "triage"]
           and fm.board(dict(base, kind="OLD")) == "backlog")
     check("FM-041: open work with a rank sits in progress whatever its status — ranked Proposed progress, unranked Proposed backlog, ranked In Progress unchanged, a raise keeps triage",
           [b(status="Proposed", triaged="2026-01-01", rank=3), b(status="Proposed", triaged="2026-01-01", rank=0), b(status="In Progress", triaged="2026-01-01", rank=3),
            b(status="Proposed", triaged="2026-01-01", rank=3, raised="2026-01-02"), b(status="Shipped", triaged="2026-01-01", rank=3)]
-          == ["progress", "backlog", "progress", "triage", "done"])
+          == ["progress", "backlog", "progress", "triage", "ended"])
     row = lambda i, **kw: {**dict(id=i, num=int(i[-1]), kind="FEAT", file=f"{i}-x.md", status="In Progress", links=[], considered=["none"], tags=[], blocked_by=[]), **kw}
     check("a story is open while a chapter is — a done tracker that open work names in `epic:` is refused",
           any("A story is open" in p for p in fm.lint([row("FEAT-001", status="Shipped"), row("FEAT-002", epic="FEAT-001")]))
@@ -410,6 +410,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "hang": "FM-035 · a page that never comes back fails the suite",
     "control": "FM-039 · a Chrome slow to start, the board's budget counted beyond its control",
     "board": "the board, rendered in a browser",
+    "story": "FM-005 · a story's header counts its chapters shipped, closed and open apart, rendered",
     "search": "FM-020 · a whole id searched, rendered",
     "progress": "FM-021 · the empty progress section, rendered",
     "cell": "the board's cell shows the display form, rendered",
@@ -1290,6 +1291,38 @@ if _browser("control"):
     check(f"FM-039 · a Chrome 5 s slower to start than this one — its control on a blank page took {_own} s — renders the healthy board and passes: the budget is 5 s beyond the control, the page's own cost, not 5 s of wall-clock time, which Chrome's start alone would spend (saw {_late.stdout.strip()[-260:]!r})",
           _own >= 5 and _late.returncode == 0 and _late.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _late.stdout)
 
+# --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
+if _browser("story"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            import html as _html, json as _json
+            root = Path(d).resolve()
+            run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", title="A story")
+            tracker(root, "MSR-002", status="Shipped", extra="epic: MSR-001\n", title="a chapter that shipped")
+            tracker(root, "MSR-003", status="Closed", extra="epic: MSR-001\n", title="a chapter that was closed")
+            tracker(root, "MSR-004", extra="epic: MSR-001\n", title="a chapter still open")
+            wt_ = root / "docs/work-tracker"
+            heads_ = {}
+            for lang_ in ("en", "de"):
+                if lang_ == "de":
+                    (wt_ / "brand").mkdir(exist_ok=True); (wt_ / "brand/labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+                run(root)
+                probe = '<script>{gi=GROUPS.findIndex(g=>g[0]=="epic");draw();document.body.dataset.probe=JSON.stringify([...document.querySelectorAll("#b tr.g")].map(r=>r.textContent.replace(/\\s+/g," ").trim()))}</script>'
+                (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()]).stdout
+                heads_[lang_] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "[]"])[1]))
+            check(f"FM-005 · a story with one shipped, one closed and one open chapter reads *3 chapters: 1 shipped · 1 closed · 1 open* — the closed one is counted apart, and nothing says *done* (saw {heads_['en']})",
+                  any(h_.endswith("3 chapters: 1 shipped · 1 closed · 1 open") for h_ in heads_["en"]) and not any("done" in h_ for h_ in heads_["en"]))
+            check(f"FM-005 · …and in the German table the tool ships: *3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen* (saw {heads_['de']})",
+                  any(h_.endswith("3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen") for h_ in heads_["de"]) and not any("erledigt" in h_ for h_ in heads_["de"]))
+            (wt_ / "brand/labels.yaml").unlink(); run(root)
+            story_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "index.html").as_uri() + "#=MSR-001"]).stdout))
+            check("FM-005 · the story's own page counts its chapters the same way: *1 shipped · 1 closed* — never *2 done*",
+                  re.search(r"chapters — 3: .*? · 0 parked · 1 shipped · 1 closed", story_) is not None and " done" not in story_[story_.find("chapters —"):story_.find("chapters —") + 200])
+    except _ChromeFailed as e_:
+        _hung("story", e_)
+
 # --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
 if _browser("search"):
     try:
@@ -1623,14 +1656,14 @@ section.progress: in Arbeit
 section.triage: zu sichten
 section.triaged: gesichtet
 section.backlog: Vorrat
-section.done: erledigt
+section.ended: beendet
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
 desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
 desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
-desc.done: ausgeliefert oder geschlossen
+desc.ended: ausgeliefert, oder ohne Auslieferung geschlossen
 group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
@@ -1645,7 +1678,8 @@ waiting.title: wartet auf Sie
 waiting.detail: offene Arbeit, deren nächster Schritt beim Eigner liegt
 story.chapter: Kapitel
 story.chapters: Kapitel
-story.done: erledigt
+story.shipped: ausgeliefert
+story.closed: geschlossen
 story.open: offen
 story.parked: geparkt
 word.triaged: gesichtet
@@ -1747,7 +1781,7 @@ with tempfile.TemporaryDirectory() as d:
                 text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
                 chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
                 shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
-                english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "trackers", "proposed", "shipped",
+                english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
                                               "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
                                   if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
                 check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
@@ -3719,7 +3753,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and [r_["undermines"] for r_ in by_["AP-201"]["raises"]] == [["TRIAGE.md path 5", "AP-210's answer"]])
     check("FM-033 · and nothing else does: a raise naming no signed rule, one dated before the judgement, one on the judgement's own day (a day decides), a path line or an answer that is not there, a raise on done work",
           all(not fm.owed_a_pass(by_[k]) for k in ("AP-202", "AP-203", "AP-204", "AP-205")) and boards_["AP-202"] == boards_["AP-203"] == boards_["AP-204"] == boards_["AP-205"] == "backlog"
-          and boards_["AP-206"] == "done" and not by_["AP-206"]["raised"])
+          and boards_["AP-206"] == "ended" and not by_["AP-206"]["raised"])
     check("FM-033 · the raise line is keyed on its date and its `undermines:` token wherever it sits — never on a count of fields — and a wrapped bullet is read whole",
           boards_["AP-207"] == "triage" and by_["AP-207"]["raises"][0]["undermines"] == ["path 1"] and by_["AP-207"]["raises"][0]["line"].endswith("not tagged · git tag -l"))
     code_, out_, _ = run(root, "--triage")
