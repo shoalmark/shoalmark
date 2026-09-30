@@ -23,6 +23,13 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-09-30 — what a stranger meets first in v0.19.0: filed, building.** The Owner's ruling is filed below, in *What a
+stranger meets first — v0.19.0*: one slice on `fm/006-what-a-stranger-meets-first`, cut from main `1197e80`, with the two
+screens it follows merged in (`a410aef`, `87985b6`). A, B, C, D1 and E are built tonight by two Builders — the English texts
+with the tool's printed line; the German texts with the English note — and the Designer, who builds the landing and renders
+it. D2 goes into the `[seats]` change of 2026-10-01. Next: the Designer's render to the Owner, the phone's first screen
+first; the Reviewer's pass, code tier (`shoalmark.py`, `scripts/llms_txt.py`, `zensical.toml`); the pull request and its CI.
+
 **2026-09-30 — fork queue hardening, code tier, critical review pending.** Reproduced on `2c00aba`: a fork's
 self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
 forks from verdict/carry-over calculations and always says `wait: from a fork, read it yourself`. On the base, five
@@ -316,6 +323,81 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
   are the Owner's to rule; nothing is drafted for the board while FM-006's asks wait. The statuses on the page are a
   snapshot of 2026-09-26.
 
+## What a stranger meets first — v0.19.0
+
+**The Owner's ruling, 2026-09-30.** One slice before the v0.19.0 tag (2026-10-02, 09:00 CEST): the branch
+`fm/006-what-a-stranger-meets-first`, cut from main `1197e80`, carries the two screens this ruling follows — [the
+seats'](evidence/FM-024/go-to-market-screen-v0-19-0-seats-2026-09-30.md) (`a410aef`) and [the first-screen
+proposal's](evidence/FM-006/go-to-market-screen-first-screen-proposal-2026-09-30.md) (`87985b6`) — so their records land with
+the change they justify, in one pull request. No further screen round. The Reviewer checks every new line for its truth
+against the tool at the tree and for its language, English and German. The Owner judges the Designer's render, the phone's
+first screen first, before the merge.
+
+**A — the human lead.**
+- **A1, the English landing** (`overrides/landing.html`). The H1 and the `<title>` read *The agents keep the work; the
+  person keeps the word.*, and the section subtitle that says it now (`:356`) goes. The lede under the H1 is the job line:
+  *It replaces the ticket system for a repository where agents do the work: one Markdown file per work item, and what needs
+  you first.* The first screen carries one action, *Hand your agents the note*, to the English note (B4). `site_description`
+  (`zensical.toml`) and the page's own `<meta name="description">` read *The agents keep the work; the person keeps the
+  word. It replaces the ticket system for a repository where agents do the work.* The Markdown twin, `docs/index.md`,
+  follows.
+- **A2, the German start page** (`docs/de/index.md`) leads with *Die Agenten tragen die Arbeit, der Mensch hat das letzte
+  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. The job line follows in German; the
+  one action links `ADOPT.de.md`.
+- **A3, the Owner's card,** is unchanged in both languages.
+
+**B — the tagline, where agents read.**
+- **B1** The README's opening heading reads *Get a better-performing human Owner.*
+- **B2** The summary line of `llms.txt` (`scripts/llms_txt.py`) opens with *Get a better-performing human Owner.*
+- **B3** `ADOPT.de.md`, the note the Owner hands their agents, opens with *Euer Owner bremst. Tunen statt tauschen.*, and its
+  line 5 reads *…und **euer Owner entscheidet***.
+- **B4** `ADOPT.md`, the English note: a translation of `ADOPT.de.md` with the same fix (*your Owner decides*), opening with
+  *Get a better-performing human Owner.* The landing links it as the note for trying it, with *(Deutsch)* beside it for
+  `ADOPT.de.md`.
+
+**C — the fleet, a section of its own on the landing,** placed early by the Designer and headed *The fleet*. Its first
+line: *A seat is a role an agent takes, with its duties and its rights written down.* Below it four tiles, each with its
+badge from `brand/seats/`, its name, its character from `brand/seats/README.md` and one line:
+- **Planner**, the skipper: turns the Owner's direction into trackers, and puts the agents' open questions to the Owner,
+  one sentence each.
+- **Builder**, the shipwright: builds one change from its tracker, in a worktree of its own, and never accepts its own work.
+- **Reviewer**, the inspector: reads a branch against its tracker and writes READY, or what must change. It never merges.
+- **Specialists (customizable):** called in when the work needs them. Name your own in `[seats]`, with the rights
+  `[rights]` gives them. The tile shows the four specialist badges — research, go-to-market, designer, auditor — small and
+  unnamed.
+
+The agents' card keeps its command list. *All seats* links `https://shoalmark.github.io/shoalmark/seats/`, absolute like
+the page's other links: a root-relative `/seats/` 404s on the project site. The Designer renders desktop and phone.
+
+**Acceptance.** The section sells the rights model, not agents: the tool ships no agents and enforces no duties. It makes
+plain that the gate enforces the rights, that the tool knows three seats, and that everything else is practice the adopter
+writes — in the README's own words (§*Seats*) where a clause is needed, not a new line. The characters are the seats'
+brand, not features. On a phone the chart falls below the fold, so the H1 in the pixel face, the job line and the one action
+carry the first screen alone: the render the Owner judges shows all three at phone width, above the fold.
+
+**D — the Owner is not a seat.**
+- **D1** The seats page (`docs/seats/index.md:3–4`), README §*Seats* and the tool's printed text read: *the Owner, and
+  three seats with their rights built in — planner ask · close · triage, reviewer triage, builder none*. The seats page
+  groups its rows under *The core seats* and *Specialists*, and carries C's definition.
+- **D2** — attempted, not in this slice: the Owner's identity is configured outside `[seats]`, and `[seats] owner` is still
+  read as its old spelling. It goes into the one `[seats]` change of 2026-10-01, after the Apps (11:00). If it threatens
+  the 15:00 cut, D1 adds one line — *the Owner, whose identity `[seats]` still carries as `owner` until 0.19.1* — and the
+  same fallback covers `docs/setup.md:53` and the refusal at `shoalmark.py:4520`, which lists the Owner under *The seats
+  are:*.
+
+**E — pronouns and wording.** `overrides/landing.html:411` (one *his*) and `:463` (*he* and four *his*);
+`docs/requirements.md:39` (*his go*); `README.md:269` (*below their:* becomes *theirs*, or a noun); `AGENTS.md:86` (*he
+said yes* becomes *they said yes*); the seats page's *as it likes* becomes *as the adopter chooses*. They stay, as history:
+the eight in the landing's embedded tracker titles (`WRECKS`), which quote records, and the template's comment at `:3`.
+
+**Ruled with it:** the App lines keep *brief* when the Apps are made on 2026-10-01 — they describe how a seat works, and the
+landing names the product's unit; both are revisited after the tag.
+
+**After the tag:** a decision flow near the top of the landing; what the measured counts measure; *Eigner* against *Owner*
+in German prose (*One claim, the Owner's*, above, records *der Eigner*; `ADOPT.de.md` says *Owner* ten times); the App
+lines' *brief*; a light scheme — the page is dark only; a picture of the board itself; the incident panel's cycle; how many
+seats and review passes a one-Owner product carries.
+
 ## Signals
 
 - 2026-09-30 · the Owner's first pitch, through the Principal (paraphrased, no names) · a firmware developer took one idea from it: developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading the implementation, because test plans drift; the same day a requirements folder went into that firmware repository, regulatory requirements first, the easiest to formulate, and two defects came out of it; a trial is planned for the weekend, most likely run by an agent · source: the Owner's word of 2026-09-30 · the layer is FM-042, Stage 0 its convention
@@ -327,6 +409,7 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
 
 | Date | Event |
 |---|---|
+| 2026-09-30 | **What a stranger meets first in v0.19.0 — filed** by the Planner on the Owner's ruling of that day, as one slice of this tracker (*What a stranger meets first — v0.19.0*): the human lead on the landing and the German start page, the tagline where agents read, an English note beside the German one, the fleet as a section of its own, the Owner not a seat — D2 with the `[seats]` change of 2026-10-01 — and the last gendered pronouns on current pages. The two screens it follows are merged into the branch (`a410aef`, `87985b6`). |
 | 2026-09-30 | **Wording pass built — rewording, not product growth** (the Owner's rulings 3 and 4 and the renames that followed, 16:51 CEST): they/them/their for the Owner and any person; seats stay *it*, one sentence in AGENTS.md; seat names English only; Planner and Builder in prose, the `[seats]` keys and addresses unchanged. Lines of the Implementer's change `origin/main..77f7722`, records left out: product 140 added, 136 deleted (the tool and its test 62 of each, string assertions only; AGENTS.md's one sentence and three setup/README sentences on the keys the only new prose); records +8 (the CHANGELOG bullet 7, this row 1). |
 | 2026-09-30 | **A signal filed** under *Signals*: the first pitch's one idea, requirements in the repository tested as a contract; the layer is FM-042, Stage 0 its convention. Nothing on the ask changes. |
 | 2026-09-30 | The check outputs `checks.json`, `checks-r3-before.json` and `facts.json` of the start page replaced by their summaries under the Owner's ruling of 2026-09-30 (*if a check output regenerates, keep only its summary*): each regenerated by its results and is held at `08798a8`; FM-032's page names the rule. |
