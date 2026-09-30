@@ -3,7 +3,7 @@ id: FM-006
 status: In Progress
 considered: FM-005, FM-003
 tags: process
-next: owner
+next: build
 triaged: 2026-09-26
 rank: 6
 tier: P2
@@ -15,12 +15,21 @@ ask-proposal: "this repository, client names and the parent's traces public, the
 answer: "accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held"
 answered: 2026-09-26
 answered-by: holgo99
+done: "2026-09-30T08:14:56+02:00 · Public repository: https://github.com/shoalmark/shoalmark/ · Documentation: https://shoalmark.github.io/shoalmark/ · Migration merged: 80d0811974a1d39b679cfd374c80109ddd62acce · Independent migration review: 5e26a88e75b992c243148c2786e44f443e0f7437 · Port-evidence cleanup merged: b041cb2dca136623ee9160d74ae5b39b0f1a7ba2 · Publication gates merged and deployed: 792dbca9caa74629d12645dcc5ae7f55a2bb2340 · Independent publication review: b9b3971c21f3b84f332249bbc976fe9af7580f0d · Scoring completed; publication preceded scoring under my previously recorded risk acceptance."
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
 
 # FM-006 — shoalmark has one document, written for agents — the humans who own the repositories have no page of their own
 
 ## What is true now
+
+**2026-09-30 — fork queue hardening, code tier, critical review pending.** Reproduced on `2c00aba`: a fork's
+self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
+forks from verdict/carry-over calculations and always says `wait: from a fork, read it yourself`. On the base, five
+provenance/refusal controls fail and the same-repository merge control passes. Critical review remains due.
+Left ([review R3](evidence/reviews/review-fm-006-fork-queue-c2027d2.md), pre-existing): forks can hide same-repository pushed branches by name, containment or a closed pull head; fix `pushed_branches` using open/closed PR provenance in a separate bug slice.
+
+**2026-09-30 — public hardening executed by the Owner after #127 merged.** Tag rules, merge-only policy, repository Actions, CodeQL success and new-public security defaults verified; organisation Actions is browser-reported with the remaining readback limits stated in the [execution receipt](evidence/FM-006/public-hardening-owner-2026-09-30.md#execution-results--2026-09-30-owner-browser-actions). Existing repository protections remain active; the new default is not attached retroactively.
 
 **2026-09-29 — publication review R1:** the independent Reviewer found that the font validator accepted extensionless cross-origin font sources (P2). Replaced filename inference with CSS parsing, with 18 regression scenarios passing on Python 3.9 and 3.14; independent re-verification pending. Fix proof is appended to the [publication evidence](evidence/FM-006/publication-gates-2026-09-29/README.md). Keep this slice unassociated with a PR, or draft, until its READY evidence is included; then run required PR CI.
 
@@ -307,10 +316,18 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
   are the Owner's to rule; nothing is drafted for the board while FM-006's asks wait. The statuses on the page are a
   snapshot of 2026-09-26.
 
+## Signals
+
+- 2026-09-30 · the Owner's first pitch, through the Principal (paraphrased, no names) · a firmware developer took one idea from it: developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading the implementation, because test plans drift; the same day a requirements folder went into that firmware repository, regulatory requirements first, the easiest to formulate, and two defects came out of it; a trial is planned for the weekend, most likely run by an agent · source: the Owner's word of 2026-09-30 · the layer is FM-042, Stage 0 its convention
+
+## Acts
+
+**2026-09-30** · done — Public repository: https://github.com/shoalmark/shoalmark/ · Documentation: https://shoalmark.github.io/shoalmark/ · Migration merged: 80d0811974a1d39b679cfd374c80109ddd62acce · Independent migration review: 5e26a88e75b992c243148c2786e44f443e0f7437 · Port-evidence cleanup merged: b041cb2dca136623ee9160d74ae5b39b0f1a7ba2 · Publication gates merged and deployed: 792dbca9caa74629d12645dcc5ae7f55a2bb2340 · Independent publication review: b9b3971c21f3b84f332249bbc976fe9af7580f0d · Scoring completed; publication preceded scoring under my previously recorded risk acceptance. · this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held · holgo99
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-09-30 | **A signal filed** under *Signals*: the first pitch's one idea, requirements in the repository tested as a contract; the layer is FM-042, Stage 0 its convention. Nothing on the ask changes. |
 | 2026-09-26 | **Slice L built — the landing page is the site's start page**, by the GtM seat on `fm/006-the-landing-page` (off slice A's verdict tip `b9644b7`; main merged at `bef2a1e`, PR 93), on the Owner's word of 10:25:41 and his rule of 16:0x, *the mock as-is*: `9307cf8` the mock as a template `docs/index.md` selects, full-bleed, no site chrome, byte for byte; `ab69afb` R3 (`.name` and `.fig` above `.crt`: 0.93 % of the chart's pixels at 1440 px, the smallest change that meets 4.5:1 — his to strike, rendered before and after) and R4 (18 of 23 reports now their hook's first sentences, verbatim); `e26c648` the facts dated — the release (v0.18.4), the wrecks (24: FM-038 filed after the mock, placed by rule; FM-034 to FM-036 raised) and the board's excerpt read from main at `bef2a1e`, 18:00 CEST, said in the page's foot; `a0daf0c` the fonts in one Google Fonts load, the family from `[project.theme.font]`, the mock's six faces, the same pixels; `cb49101` the German start page's one line; `08798a8` the renders at 1440, 1024 and 390 px, the checks and the evidence README (`evidence/FM-006/landing/start-page/`, not `site/`, which the root `.gitignore` matches). No workflow, no `shoalmark.py`, no `brand/`, slice A's stylesheet untouched. One Reviewer pass due (docs tier); the Owner opens the pull request. |
 | 2026-09-26 | **The home at the flip filed** — the Owner's word, through the Auditor seat, as pasted at 11:05:27, word for word in *Going public* (sha256 `19ca39d1794c67cf15e26399667d392cadc65fdb1c5c5d22fe44993277ad4ec5`): shoalmark is a tool, not a company; its home becomes a GitHub organisation `shoalmark`, the Owner its only owner, created by him now, free and empty. What it adds to the plan: at the flip, `holgo99/shoalmark` transfers into the organisation — the history, the signed commits and the pull refs move with it, and GitHub redirects the old URLs — and the same slice updates the vendoring sources and pins in PortDive, msr-lager and fb-sondermasch, `shoalmark.toml`'s blob links, the docs site's address (with the domain the GtM line settles), CI, and each seat's remote; then branch protection on main. Nothing moves before the flip; the ask and its options are unchanged. |
 | 2026-09-26 | **The landing page made a requirement of v0.18.5 by the Owner's word (10:25:41), alongside the restyle; the themes' ask moved to FM-002** (raised the same hour on his *go*), so this tracker keeps its one ask, going public, which he answers now that v0.18.4 has landed. The seat's reading that the landing page is the site's start page is marked as such; where it ships is the 0.18.5 plan's. |

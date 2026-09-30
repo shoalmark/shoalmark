@@ -2,6 +2,21 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased — 0.19.0
+
+<!-- The heading's name is provisional: another branch carries `## Unreleased — 0.18.7`; the release cut settles which version this section is. -->
+
+- **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
+  *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
+  pull request or tell the Owner to close work carried into that fork. Nor can a fork's base hide another pull
+  request's verdict: a same-repository pull request reads as it would with no fork open.
+
+- **A ranked open tracker sits in `progress`, whatever its status (FM-041).** `board()` placed by status alone, so a
+  ranked `Proposed` tracker fell into the backlog while the section's caption reads *kept by triage — by rank, then
+  tier*. Now open work with a rank — `In Progress` or `Proposed`, the two a rank may stand on — is `progress`, ordered by
+  rank then tier; the open unranked stays `backlog`; a raise or a judgement owed keeps `triage`; `done` is unchanged.
+  INDEX.md and the dashboard share the one definition, so both move together on the next `--html-only` / commit.
+
 ## Unreleased
 
 - **Publication disclosure and fonts (FM-006):** the site serves its fonts locally, checks their

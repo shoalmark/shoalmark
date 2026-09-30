@@ -24,20 +24,21 @@ die gelesenen Dateien und Schritte: (a) Wo steht Arbeitspaket 37? (b) Was ist de
 (c) Was wartet gerade auf den Owner? (d) Was ist blockiert, und wodurch? (e) Woran erkennt man, dass Paket 12
 fertig ist?
 
-**2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.12.0` in einen Ordner **außerhalb** eurer
+**2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.18.6` in einen Ordner **außerhalb** eurer
 Arbeitskopie. Die Datei `shoalmark.py` hat — mit `\n`-Zeilenenden — den SHA-256
-`814597f6fb38985bfcf52acafe522eff0a44a016d6099c3ea5507a50548d920f`. Es ist eine Datei; lest sie, bevor ihr sie startet.
+`5330ee0679ee9937a88c91ae3b36a9416f7003c706983ff0bd4e2a0bbfa971ee`. Es ist eine Datei; lest sie, bevor ihr sie startet.
 
 **3. Aufsetzen.** In einem leeren Wegwerf-Ordner `probe/` (auf Windows `python`, sonst `python3`):
 
 ```
 python <klon>/shoalmark.py --root probe --vendor probe/tools/shoalmark
 cd probe
-python tools/shoalmark/shoalmark.py --init --key AP
 ```
 
-Dann den Block aus `<klon>/examples/de/headings.toml` an `shoalmark.toml` anhängen und
-`<klon>/examples/de/labels.yaml` nach `docs/work-tracker/brand/labels.yaml` kopieren — damit sind Einträge und Tafel deutsch.
+Vor `--init` die vier deutschen Dateien aus `<klon>/examples/de/` kopieren. Die Zielordner vorher anlegen. `shoalmark.toml`
+nach `shoalmark.toml` (die deutschen Abschnittsnamen, der Schlüssel `AP`; den Namen anpassen), `TEMPLATE.md` und `TRIAGE.md` nach
+`docs/work-tracker/` und `labels.yaml` nach `docs/work-tracker/brand/labels.yaml` — damit sind Einträge und Tafel deutsch.
+Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nichts.
 
 **4. Fünf echte Pakete eintragen.** Ein Eintrag für den Plan als Ganzes, fünf für Pakete aus eurem Plan
 (`python tools/shoalmark/shoalmark.py --new "…"`), jeweils mit `epic: AP-001`, ehrlichem `status:`, `next:`
@@ -66,6 +67,16 @@ Dann den Block aus `<klon>/examples/de/headings.toml` an `shoalmark.toml` anhän
   Kommandozeile kennt keinen Client-Hook — vor jedem `svn commit` das Werkzeug laufen lassen und die `INDEX.md`
   mit einchecken; TortoiseSVN führt das Gate nach `--install-hook` selbst aus und fragt einmal um Erlaubnis.
 - Rückweg: `tools/shoalmark/`, `shoalmark.toml` und den Tracker-Ordner löschen. Die Einträge bleiben lesbares Markdown.
+
+## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)
+
+Legt in `probe/` einen Ordner `requirements/` an (`requirements/README.md` auf `main` des Repositorys beschreibt ihn). Eine Anforderung ist
+eine Tabellenzeile: `id` (stabil, nie neu vergeben), `shall` (ein Satz, das System als Subjekt, eine Pflicht), `source`
+(wer oder was sie verlangt), `accept` (das Abnahmekriterium: was ein Test beobachtet). Ein Arbeitspaket nennt sie in einer Zeile unter dem
+Kopf, `Satisfies: REQ-001` (im Kopf lehnt das Gate den Schlüssel ab), ein Test in seinem Namen. Eine Zeile ändert nur der Owner, mit einer signierten Antwort über die
+Tafel, nie ein Agent. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und leitet daraus einen
+eigenen Satz ab; *Nicht anwendbar* ist eine signierte Antwort des Owners, mit Begründung. Der Normtext wird nicht kopiert,
+und keiner schreibt, das Projekt erfülle die Norm: Ein Nachweis ist ein bestandener Test. Der Bericht nennt die Zahl der Zeilen, den Nachweis je Zeile und die Stelle, an der es hakte. Prüfungen gibt es noch nicht.
 
 ## Was nicht bewiesen ist
 

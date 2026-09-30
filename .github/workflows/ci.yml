@@ -21,9 +21,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       # the whole history: a check judges FM-033's five builds at their own parents in this repository's own record
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {fetch-depth: 0}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: {python-version: "${{ matrix.python }}"}
       - name: Subversion (Linux)
         if: runner.os == 'Linux'

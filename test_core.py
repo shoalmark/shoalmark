@@ -15,6 +15,7 @@ import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 # The SUITE reads and writes UTF-8 whatever the machine's locale is (a Windows runner's is cp1252). The TOOL never
 # relies on this: it names its encoding on every read and write — a check below holds it to that.
@@ -381,6 +382,16 @@ check("one board definition — done · triage · progress · backlog — printe
       and "| progress | 2026-09-20 |" in gti.render([dict(_live[0], status="In Progress", triaged="2026-09-20", tier="P1")], "Features")
       and '"2026-09-20", 0, "progress", [' in gti.render_html([dict(_live[0], status="In Progress", triaged="2026-09-20")])
       and '"triage":t[19]]' in _tri and "order.indexOf(k)>1" in _tri and 't[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])' in _tri and "?\"progress\":\"backlog\"" not in _tri)
+# FM-041 — a status is what a seat set, a rank is what a pass judged: ranked open work sits in `progress` by rank, whatever its status.
+# On origin/main 2eb803b this fails at `return "progress" if t["status"] == "In Progress" else "backlog"`: the ranked Proposed one is `backlog`.
+_r = lambda **kw: gti.board({**dict(_live[0], triaged="2026-09-20"), **kw})
+check("FM-041: a ranked Proposed tracker is in progress; an unranked Proposed one in backlog; a ranked In Progress one stays; triage and done keep their rules",
+      [_r(status="Proposed", rank=3), _r(status="Proposed", rank=0), _r(status="In Progress", rank=3), _r(status="In Progress", rank=0),
+       _r(status="Proposed", rank=3, raised="2026-09-21"), _r(status="Proposed", rank=3, triaged="", num=90001, kind="FEAT"), _r(status="Shipped", rank=3), _r(status="Parked", rank=0)]
+      == ["progress", "backlog", "progress", "progress", "triage", "triage", "done", "backlog"]
+      and "| progress | 2026-09-20 |" in gti.render([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=3, tier="P1")], "Features")
+      and "| backlog | 2026-09-20 |" in gti.render([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=0, tier="P1")], "Features")
+      and '"2026-09-20", 3, "progress", [' in gti.render_html([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=3)]))
 check("the board always shows its five sections — an empty `progress` is an answer — and a path id opens its tracker",
       "for(const k of order)groups.set(k,groups.get(k)||[])" in _tri and '`<a href="#=${i}">${i}</a>`:i)' in _tri)
 check("`triaged:` is a date and nothing else",
@@ -677,6 +688,74 @@ check("the page is never in the staging list (it is git-ignored)", "index.html" 
 gti.OUT.write_text(_index_before_html, encoding="utf-8")
 if _html_before is None:
     gti.HTML_OUT.unlink(missing_ok=True)
+
+# --- FM-006: a fork cannot supply the queue's verdict or carry another PR ------------------------------------
+with tempfile.TemporaryDirectory() as _qd:
+    _qr = Path(_qd).resolve()
+    def _qgit(*args):
+        return subprocess.run(["git", "-C", str(_qr), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
+                              check=True, capture_output=True, text=True, encoding="utf-8", env=_GIT_ENV).stdout.strip()
+    _qgit("init", "-q", "-b", "main")
+    (_qr / "base.txt").write_text("base\n")
+    _qgit("add", "-A"); _qgit("commit", "-qm", "base")
+    _qb = _qgit("rev-parse", "HEAD")
+    _qgit("update-ref", "refs/remotes/origin/main", _qb)
+    (_qr / "feature.txt").write_text("feature\n")
+    _qgit("add", "-A"); _qgit("commit", "-qm", "feature")
+    _qh = _qgit("rev-parse", "HEAD")
+    _qreview = _qr / "docs/work-tracker/evidence/reviews/fork.md"
+    _qreview.parent.mkdir(parents=True); _qreview.write_text("self-declared READY\n")
+    _qgit("add", "-A"); _qgit("commit", "-qm", f"review: READY\n\nReviewed: {_qh}")
+    _qv = _qgit("rev-parse", "HEAD")
+    gti.configure(_qr)
+    _qpr = dict(number=1, title="contribution", headRefName="feature", headRefOid=_qv, baseRefName="main",
+                mergeable="MERGEABLE", mergeStateStatus="CLEAN", createdAt="2026-09-30T10:00:00Z", isCrossRepository=True)
+    _qgit("remote", "add", "origin", "https://github.com/example/synthetic.git")
+    _qrun = subprocess.run
+    def _qforge(cmd, **kwargs):
+        if cmd[0] == "synthetic-gh":
+            fields = cmd[cmd.index("--json") + 1].split(",")
+            return subprocess.CompletedProcess(cmd, 0, json.dumps([{k: _qpr[k] for k in fields}]), "")
+        if cmd[:3] == ["git", "fetch", "--quiet"]:
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        return _qrun(cmd, **kwargs)
+    with patch.object(gti.shutil, "which", return_value="synthetic-gh"), patch.object(gti.subprocess, "run", side_effect=_qforge):
+        _qprs, _qerr = gti.forge_prs()
+    check("FM-006: the forge read preserves whether the PR comes from a fork",
+          _qerr is None and _qprs[0].get("isCrossRepository") is True)
+    _qwait = "wait: from a fork, read it yourself"
+    _qrow = gti.queue_actions([_qpr])[0]
+    check("FM-006: a fork's self-declared READY stays a wait, even with clean merge status",
+          _qrow[1:] == ("wait", _qwait, ""))
+    check("FM-006: the same reviewed tip from this repository keeps its merge action",
+          gti.queue_actions([dict(_qpr, isCrossRepository=False)])[0][1] == "merge")
+    check("FM-006: an answer-named fork still requires the Owner's reading",
+          gti.queue_actions([dict(_qpr, headRefName="answer/fm-006")])[0][1:3] == ("wait", _qwait))
+    _qown = dict(_qpr, number=2, headRefOid=_qh, isCrossRepository=False)
+    _qrows = {p["number"]: (kind, action) for p, kind, action, _ in gti.queue_actions([_qpr, _qown])}
+    check("FM-006: a fork containing another PR cannot tell the Owner to close that PR",
+          _qrows[2] == ("wait", f"wait: no verdict on {_qh[:7]}"))
+    _qgit("checkout", "-q", "-b", "unrelated-fork", _qb)
+    _qreview.parent.mkdir(parents=True, exist_ok=True); _qreview.write_text("READY for someone else's tip\n")
+    _qgit("add", "-A"); _qgit("commit", "-qm", f"review: READY\n\nReviewed: {_qh}")
+    _qrows = {p["number"]: (kind, action) for p, kind, action, _ in gti.queue_actions(
+        [dict(_qpr, headRefOid=_qgit("rev-parse", "HEAD")), _qown])}
+    check("FM-006: an unrelated fork's fabricated verdict cannot promote another PR",
+          _qrows[2] == ("wait", f"wait: no verdict on {_qh[:7]}"))
+    _qgit("checkout", "-q", "-b", "wraps-fork", _qh)
+    (_qr / "own.txt").write_text("own\n"); _qgit("add", "-A"); _qgit("commit", "-qm", "own work on the fork's head")
+    _qrows = {p["number"]: (kind, action) for p, kind, action, _ in gti.queue_actions(
+        [dict(_qpr, headRefOid=_qh), dict(_qown, number=3, headRefOid=_qgit("rev-parse", "HEAD"))])}
+    check("FM-006: a fork inside another PR's head waits for the Owner, never closes with it", _qrows[1] == ("wait", _qwait))
+    _qgit("checkout", "-q", "-b", "conflict-fork", _qb)
+    (_qr / "base.txt").write_text("fork\n"); _qgit("add", "-A"); _qgit("commit", "-qm", "fork edits base")
+    _qcf = _qgit("rev-parse", "HEAD")
+    _qgit("checkout", "-q", "--detach", _qb)
+    (_qr / "base.txt").write_text("main\n"); _qgit("add", "-A"); _qgit("commit", "-qm", "main edits base")
+    _qgit("update-ref", "refs/remotes/origin/main", _qgit("rev-parse", "HEAD"))
+    check("FM-006: a conflicting fork waits for the Owner's reading, not on its conflict",
+          gti.queue_actions([dict(_qpr, headRefOid=_qcf)])[0][1:3] == ("wait", _qwait))
+gti.configure(ROOT)
 
 # `last_worked_on` and `repos_naming` read git; their fixture repository lives in test_shoalmark.py.
 
