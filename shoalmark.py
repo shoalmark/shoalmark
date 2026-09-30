@@ -4833,7 +4833,9 @@ def harness_reading(hid):
         return None, f"two logs carry the harness id {hid}: {logs[0]} and {logs[1]}" + (f" (and {len(logs) - 2} more)" if len(logs) > 2 else "") + " — refusing to pick one"
     if not logs:
         return None, f"no log carries the harness id {hid} under ~/.claude/projects or ~/.codex/sessions — no model or effort"
-    return dict(read_harness_log(logs[0]), path=str(logs[0])), ""
+    found = dict(read_harness_log(logs[0]), path=str(logs[0]))
+    gone = [k for k in ("model", "effort") if not found[k]]
+    return found, (f"{logs[0]} names no {' and no '.join(gone)} in its newest {LOG_SCAN >> 20} MiB" if gone else "")
 
 
 def whoami():
@@ -4856,7 +4858,7 @@ def whoami():
           f"{(reading or {}).get('model') or '—'} · {(reading or {}).get('effort') or '—'}")
     if reading:
         print(f"    read from {reading['path']}" + (f" — its session was launched in {reading['cwd']}" if reading["cwd"] else ""))
-    else:
+    if problem:
         print(f"--whoami: {problem}", file=sys.stderr)
     return EXIT_OK
 
@@ -4875,7 +4877,7 @@ def session_trailer(message_file):
     hid = harness_id()
     reading, problem = harness_reading(hid) if hid else (None, "")
     if problem:
-        print(f"--session-trailer: {problem} — no Model: or Effort: on this commit", file=sys.stderr)
+        print(f"--session-trailer: {problem}" + (" — no Model: or Effort: on this commit" if reading is None else ""), file=sys.stderr)
     trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
     r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())

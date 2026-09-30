@@ -898,6 +898,14 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
         cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.monotonic(); bw = run_safe(root, "--whoami"); took = time.monotonic() - t0
         check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log (saw {bw[1].splitlines()[:1]}, {took:.1f} s)",
               bw[1].splitlines()[0].endswith("claude-sonnet-5-5 · max") and took < 20)
+        # a log that names nothing within the newest 8 MiB (or only one of the two) reads `—` and says why — never silence
+        old = home.log(f".claude/projects/-Users-x-old/{PARENT[:-1]}2.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(90)])
+        half_ = home.log(f".claude/projects/-Users-x-half/{PARENT[:-1]}3.jsonl", [_turn("claude-opus-4-8")])
+        cfg("seat.harness", PARENT[:-1] + "2"); gone = run_safe(root, "--whoami")
+        cfg("seat.harness", PARENT[:-1] + "3"); part = run_safe(root, "--whoami")
+        check(f"FM-024 RV-2012 · a log whose fields lie beyond the newest 8 MiB prints `— · —` and names the cap on stderr; a log with a model and no effort says it names no effort (saw {gone[1].splitlines()[:1]}, {gone[2].strip()[-90:]!r} · {part[1].splitlines()[:1]}, {part[2].strip()[-70:]!r})",
+              old.stat().st_size > 9_000_000 and gone[0] == 0 and gone[1].splitlines()[0].endswith("· — · —") and "names no model and no effort in its newest 8 MiB" in gone[2]
+              and part[1].splitlines()[0].endswith("claude-opus-4-8 · —") and "names no effort in its newest 8 MiB" in part[2] and "and no" not in part[2])
         # two files for one id refuse; none is `—`
         dup = home.log(f".claude/projects/-Users-x-elsewhere/{PARENT}.jsonl", [_turn("claude-haiku-4-5", "low")])
         cfg("seat.harness", PARENT)
