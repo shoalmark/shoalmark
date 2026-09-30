@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>shoalmark — the seat icons, a proposal</title>
+<title>shoalmark — the seat icons</title>
 <!-- FM-024: the seven seat icons at 200 px and at 20 px, circle-cropped by CSS, on the site's night and on its paper.
      Open it from a checkout: the icons are the SVGs beside it, the face is the board's own Plex Mono. -->
 <style>
@@ -23,6 +23,7 @@ main{max-width:1376px;margin:0 auto;padding:28px 32px 40px}
 .strip{display:flex;gap:28px;margin:0 0 30px}
 .strip div{display:flex;gap:10px;padding:14px 16px;border:1px solid var(--contour)}
 .strip .paper{background:var(--paper);border-color:var(--paper)}
+.strip .gray{filter:grayscale(1)}
 .strip img{width:20px;height:20px;border-radius:50%}
 .strip p{margin:0;align-self:center;color:var(--mute);font-size:12px}
 table{border-collapse:collapse;width:100%}
@@ -45,7 +46,7 @@ footer{margin-top:24px;color:var(--mute);font-size:12px}
 </head>
 <body>
 <header><svg viewBox="0 0 16 16" fill="#d9e4ec" shape-rendering="crispEdges" aria-hidden="true"><path d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/></svg>
-<b>shoalmark</b><span>· the seat icons — a proposal, FM-024</span></header>
+<b>shoalmark</b><span>· the seat icons — FM-024</span></header>
 <main>
 <p class="rule"><b>One family.</b> Every seat stands on the Pricke's stake, in the Watt's green, at the same place and in the same
 water, on the site's night ground: a head, two eyes, a blush, and the one thing its job holds. The shape carries the seat;
@@ -53,9 +54,10 @@ the colour, from the site's palette, is never the only carrier. A 20-unit grid �
 but the stake's foot and the water leaves the safe circle, 10 % inside the circle a crop cuts.</p>
 
 <div class="strip" aria-label="The seven at 20 px, in a row">
-  <div><img src="principal.svg" alt="principal"><img src="implementer.svg" alt="implementer"><img src="reviewer.svg" alt="reviewer"><img src="gtm.svg" alt="gtm"><img src="auditor.svg" alt="auditor"><img src="datascientist.svg" alt="datascientist"><img src="designer.svg" alt="designer"></div>
-  <div class="paper"><img src="principal.svg" alt="principal"><img src="implementer.svg" alt="implementer"><img src="reviewer.svg" alt="reviewer"><img src="gtm.svg" alt="gtm"><img src="auditor.svg" alt="auditor"><img src="datascientist.svg" alt="datascientist"><img src="designer.svg" alt="designer"></div>
-  <p>the seven at 20 px, in a row — on the night, on the paper</p>
+  <div><img src="principal.svg" alt="principal"><img src="implementer.svg" alt="implementer"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"></div>
+  <div class="paper"><img src="principal.svg" alt="principal"><img src="implementer.svg" alt="implementer"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"></div>
+  <div class="gray"><img src="principal.svg" alt="principal"><img src="implementer.svg" alt="implementer"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"></div>
+  <p>the seven at 20 px, in a row: on the night, on the paper, and without colour</p>
 </div>
 
 <table>
@@ -63,28 +65,28 @@ but the stake's foot and the water leaves the safe circle, 10 % inside the circl
 <tbody>
 <tr><td class="g night"><span><img class="c200" src="principal.svg" alt=""><img class="c20" src="principal.svg" alt=""></span></td>
   <td class="g paper"><span><img class="c200" src="principal.svg" alt=""><img class="c20" src="principal.svg" alt=""></span></td>
-  <td class="who"><h2>principal <i>the skipper</i></h2><p class="job">plans and adjudicates</p><p>A captain's cap with a gold badge, a level gaze: it plans the passage and has the last word on board.</p></td></tr>
+  <td class="who"><h2>principal <i>the skipper</i></h2><p class="job">plans and adjudicates</p><p>A captain's cap with a gold badge, a level gaze: it plans the passage; the course is the Owner's.</p></td></tr>
 <tr><td class="g night"><span><img class="c200" src="implementer.svg" alt=""><img class="c20" src="implementer.svg" alt=""></span></td>
   <td class="g paper"><span><img class="c200" src="implementer.svg" alt=""><img class="c20" src="implementer.svg" alt=""></span></td>
   <td class="who"><h2>implementer <i>the builder</i></h2><p class="job">builds</p><p>A yellow hard hat on a head of the stake's own green: it builds what the plan says, and is made of what it builds.</p></td></tr>
 <tr><td class="g night"><span><img class="c200" src="reviewer.svg" alt=""><img class="c20" src="reviewer.svg" alt=""></span></td>
   <td class="g paper"><span><img class="c200" src="reviewer.svg" alt=""><img class="c20" src="reviewer.svg" alt=""></span></td>
   <td class="who"><h2>reviewer <i>the inspector</i></h2><p class="job">attacks and verifies</p><p>A monocle over one wide eye, the other squinting: it attacks the tip it is handed and believes only what survives.</p></td></tr>
-<tr><td class="g night"><span><img class="c200" src="gtm.svg" alt=""><img class="c20" src="gtm.svg" alt=""></span></td>
-  <td class="g paper"><span><img class="c200" src="gtm.svg" alt=""><img class="c20" src="gtm.svg" alt=""></span></td>
-  <td class="who"><h2>gtm <i>the barker</i></h2><p class="job">pitches and screens claims</p><p>A megaphone and glad, closed eyes: it pitches out loud — and screens every claim before it goes through the horn.</p></td></tr>
+<tr><td class="g night"><span><img class="c200" src="research.svg" alt=""><img class="c20" src="research.svg" alt=""></span></td>
+  <td class="g paper"><span><img class="c200" src="research.svg" alt=""><img class="c20" src="research.svg" alt=""></span></td>
+  <td class="who"><h2>research <i>the tide gauge</i></h2><p class="job">checks and measures</p><p>A graduated staff with wide-open eyes, the stake that measures: it checks and measures, and reads the marks, not the mood.</p></td></tr>
+<tr><td class="g night"><span><img class="c200" src="go-to-market.svg" alt=""><img class="c20" src="go-to-market.svg" alt=""></span></td>
+  <td class="g paper"><span><img class="c200" src="go-to-market.svg" alt=""><img class="c20" src="go-to-market.svg" alt=""></span></td>
+  <td class="who"><h2>go-to-market <i>the herald</i></h2><p class="job">pitches and screens claims</p><p>A horn, and eyes open on the stranger it speaks to: it announces only what passed its screen.</p></td></tr>
+<tr><td class="g night"><span><img class="c200" src="designer.svg" alt=""><img class="c20" src="designer.svg" alt=""></span></td>
+  <td class="g paper"><span><img class="c200" src="designer.svg" alt=""><img class="c20" src="designer.svg" alt=""></span></td>
+  <td class="who"><h2>designer <i>the painter</i></h2><p class="job">draws</p><p>A coral beret tilted on a pear of a head, eyes on its drawing: it draws the chart, the marks, and these seven.</p></td></tr>
 <tr><td class="g night"><span><img class="c200" src="auditor.svg" alt=""><img class="c20" src="auditor.svg" alt=""></span></td>
   <td class="g paper"><span><img class="c200" src="auditor.svg" alt=""><img class="c20" src="auditor.svg" alt=""></span></td>
   <td class="who"><h2>auditor <i>the owl</i></h2><p class="job">seals its plan and checks</p><p>Spectacles, ear tufts, wide awake: it seals its plan before it looks, then checks in the dark what the others missed.</p></td></tr>
-<tr><td class="g night"><span><img class="c200" src="datascientist.svg" alt=""><img class="c20" src="datascientist.svg" alt=""></span></td>
-  <td class="g paper"><span><img class="c200" src="datascientist.svg" alt=""><img class="c20" src="datascientist.svg" alt=""></span></td>
-  <td class="who"><h2>datascientist <i>the tide gauge</i></h2><p class="job">measures</p><p>A graduated staff with wide-open eyes — the stake that measures: it reads the marks, not the mood.</p></td></tr>
-<tr><td class="g night"><span><img class="c200" src="designer.svg" alt=""><img class="c20" src="designer.svg" alt=""></span></td>
-  <td class="g paper"><span><img class="c200" src="designer.svg" alt=""><img class="c20" src="designer.svg" alt=""></span></td>
-  <td class="who"><h2>designer <i>the painter</i></h2><p class="job">draws</p><p>A coral beret, eyes on its drawing: it draws — the chart, the marks, and these seven.</p></td></tr>
 </tbody>
 </table>
-<footer>The sources are the seven SVGs beside this page; <code>python3 brand/seats/export.py</code> writes the PNGs GitHub takes. A proposal for the Owner's word — nothing here is final.</footer>
+<footer>The sources are the seven SVGs beside this page; <code>python3 brand/seats/export.py</code> writes the PNGs GitHub takes. The family the Owner approved on 2026-09-30, with the changes they asked for.</footer>
 </main>
 </body>
 </html>

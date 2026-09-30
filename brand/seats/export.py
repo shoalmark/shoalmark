@@ -93,12 +93,11 @@ def main():
         try:
             grid = raster(svg)
         except External as e:
-            print(f"{svg.name}: {e} — needs a renderer outside the standard library, e.g.\n"
+            print(f"{svg.name}: {e} — needs a renderer outside the standard library, one of:\n"
                   f"  rsvg-convert -w 200 -h 200 -o {out / svg.stem}-200.png {svg}\n"
-                  f"  \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --window-size=200,200 "
-                  f"--screenshot={out / svg.stem}-200.png {svg.as_uri()}", file=sys.stderr)
+                  f"  cairosvg {svg} -o {out / svg.stem}-200.png --output-width 200 --output-height 200", file=sys.stderr)
             return 2
-        except ValueError as e:
+        except (ValueError, ET.ParseError) as e:
             problems = [str(e)]
         else:
             problems = rule(svg, grid)
