@@ -7,6 +7,7 @@ in-process with an argv list, so a non-zero exit is observable without a subproc
 import hashlib
 import importlib.util
 import io
+import itertools
 import json
 import os
 import re
@@ -722,6 +723,18 @@ with tempfile.TemporaryDirectory() as d:
     trunk_ = fm.trunk_ref()
     line_ = (fm.git_out("rev-list", "--first-parent", trunk_) or "").split()
     hist_ = fm.read_history(trunk_, *shapes_.values())
+
+    def git_range_(tip):
+        """The reviewed range as git itself answers it — R2's formula, one live command at a time (what `reviewed_range` asked until FM-040)."""
+        if fm.git_out("merge-base", "--is-ancestor", tip, trunk_) is None:
+            stop = trunk_
+        elif tip in line_:
+            return None
+        else:
+            after = set((fm.git_out("rev-list", "--ancestry-path", f"{tip}..{trunk_}") or "").split())
+            landed = [c for c in itertools.takewhile(lambda c: c in after, line_)]
+            stop = f"{landed[-1]}^1" if landed else trunk_
+        return set((fm.git_out("rev-list", "--no-merges", tip, f"^{stop}") or "").split())
     say_ = {}
     for what_, tip_ in shapes_.items():
         wrong_ = []
@@ -731,8 +744,7 @@ with tempfile.TemporaryDirectory() as d:
             wrong_.append("first_parents")
         if hist_.is_ancestor(tip_, out_("rev-parse", trunk_)) and hist_.ancestry_path(tip_, out_("rev-parse", trunk_)) != set((fm.git_out("rev-list", "--ancestry-path", f"{tip_}..{trunk_}") or "").split()):
             wrong_.append("ancestry_path")
-        args_ = fm.reviewed_range(tip_, trunk_, line_, set(line_))
-        want_ = None if args_ is None else set((fm.git_out("rev-list", *args_) or "").split())
+        want_ = git_range_(tip_)
         got_ = hist_.reviewed_commits(tip_, out_("rev-parse", trunk_))
         if got_ != want_:
             wrong_.append("reviewed_commits")

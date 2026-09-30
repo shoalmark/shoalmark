@@ -5471,8 +5471,8 @@ class History:
         return out
 
     def reviewed_commits(self, tip, trunk):
-        """The reviewed branch's OWN commits (R2) — `reviewed_range`'s answer, as a set of shas rather than the arguments of a
-        `git log`: `<tip> ^<trunk> --no-merges`, the trunk's merges out. A tip the trunk has since merged is measured against the
+        """The reviewed branch's OWN commits (R2) — the range as R2 defined it — `git rev-list <tip> ^<trunk> --no-merges`, a set of
+        shas (until FM-040 `reviewed_range` built the arguments of a `git log` for it). A tip the trunk has since merged is measured against the
         trunk as it stood before the merge that brought it (`^M^1`), so the report does not change when the branch lands. None:
         the tip is on the trunk's own first-parent line — not a branch verdict. `trunk` None: no trunk to measure from."""
         if not trunk:
@@ -5524,30 +5524,12 @@ def trunk_ref():
     return next((ref for ref in ("origin/main", "main", "master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
-def reviewed_range(tip, trunk, first_parents, on_line):
-    """The reviewed branch's OWN commits (R2): `git rev-list <tip> ^<trunk> --no-merges` — what the trunk brought in by a
-    merge is not the branch's. A tip the trunk has since merged is measured against the trunk as it stood before the merge
-    that brought it (`^M^1`), so the report does not change when the branch lands. None: the tip is on the trunk's own
-    first-parent line — not a branch verdict. Returned as the arguments of the `git log` that reads the range."""
-    if not trunk:
-        return ["--no-merges", tip]
-    if git_out("merge-base", "--is-ancestor", tip, trunk) is None:
-        stop = trunk
-    elif tip in on_line:
-        return None
-    else:                                                   # the trunk's first-parent commits that contain the tip are a
-        after = set((git_out("rev-list", "--ancestry-path", f"{tip}..{trunk}") or "").split())     # prefix of its line;
-        landed = [c for c in itertools.takewhile(lambda c: c in after, first_parents)]            # the oldest brought it
-        stop = f"{landed[-1]}^1" if landed else trunk
-    return ["--no-merges", tip, f"^{stop}"]
-
-
 def verdict_reports(days=None):
     """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
     range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
     is on the trunk's first-parent line (not a branch verdict). The range is the branch's own commits, less other
-    verdicts (`reviewed_range`). A report, never a refusal (slice 2 refuses, after a week of counts)."""
+    verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
     found = []
@@ -5559,18 +5541,17 @@ def verdict_reports(days=None):
     if not found:
         return []
     trunk = trunk_ref()
-    first_parents = (git_out("rev-list", "--first-parent", trunk) or "").split() if trunk else []      # newest first
-    on_line = set(first_parents)
+    shas = resolve_commits([reviewed for _v, reviewed, _s in found] + ([trunk] if trunk else []))       # FM-040: the window's history,
+    history = read_history(*sorted({s for s in shas.values() if s}))       # read once — every question below is answered from it
+    trunk_sha = shas[trunk] if trunk else ""
     out = []
     for verdict, reviewed, sid in found:
-        tip = (git_out("rev-parse", "--verify", "--quiet", f"{reviewed}^{{commit}}") or "").strip()
-        own = reviewed_range(tip, trunk, first_parents, on_line) if tip else []
+        tip = shas[reviewed]
+        own = history.reviewed_commits(tip, trunk_sha or None) if tip else set()          # None: the tip is on the trunk's line
         ranged = set()
-        if own:
-            rng = git_out("log", f"--format={TRAILERS}%x02", *own) or ""
-            for block in rng.split("\x02"):
-                if not trailer_values(block, "Reviewed"):
-                    ranged |= set(trailer_values(block, "Session"))
+        for sha in own or ():
+            if not history.trailers(sha, "Reviewed"):
+                ranged |= set(history.trailers(sha, "Session"))
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
