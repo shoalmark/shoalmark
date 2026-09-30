@@ -4137,12 +4137,25 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
 }
 
 
+WORKTREE_KEYS = {         # a seat's worktree carries its identity in git's own per-worktree settings, `git config --worktree` — `--schema` prints them last
+    "user.email": ("the seat's address in `[seats]`", "who may: the gate reads a commit's rights from its author; the badge of the worktree"),
+    "seat.session": ("eight hex characters, or `<parent>/<seat>-<n>` for a sub-agent",
+                     "which run: the prepare-commit-msg hook appends it as the `Session:` trailer of every commit made here; `--session new` prints an id"),
+    "seat.harness": ("the id the harness gave this seat: Claude Code's session id, or a sub-agent's agent id; Codex's thread id",
+                     "which log: whoever spawns the seat writes it, from the spawn's result. `--whoami` opens the one log file whose name carries the id — "
+                     "`~/.claude/projects/<slug>/<id>.jsonl`, `…/<session>/subagents/agent-<id>.jsonl`, or `~/.codex/sessions/…/rollout-*-<id>.jsonl` — "
+                     "and reads its newest model and effort, top-level fields only; the hook appends them as `Model:` and `Effort:`. Two files for one id refuse; none is `—`"),
+}
+
+
 def render_schema():
     rows = [f"| `{k}:`{' — required' + (' on open work' if required == 'open' else '') if required else ''} | {shape_words(shape) if shape else 'free text'} | {who} | {says} |"
             for k, (shape, required, who, says) in FRONT_MATTER.items()]
     return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows
                      + ["", f"`{CONFIG_NAME}`, at its top level:", "", "| Key | Value | Says |", "|---|---|---|"]
                      + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()]
+                     + ["", "A seat's worktree, `git config --worktree <key> <value>`:", "", "| Key | Value | Says |", "|---|---|---|"]
+                     + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in WORKTREE_KEYS.items()]
                      + ["", "No key chooses the board's look: a brand is files in its places, the later one winning (`--brand` says which gave "
                             "what). `--brand DIR --from THEME` writes a starter from a theme the tool ships in `brand/themes/`: "
                             + (" · ".join(f"`{n}`" for n in shipped_themes()) or "none in this copy") + "."])
@@ -4733,16 +4746,135 @@ def session_cmd(words):
     return EXIT_LINT
 
 
+# --- the harness's own log (FM-024, 0.19.0): what model, at what effort, ran this seat -----------------------------------
+# A seat cannot be asked what it runs on — it would answer from its prompt. The harness writes a log of every turn, and the
+# log names the model and the effort. Which log is this seat's is never a path: a transcript's `cwd` is the directory the
+# session was LAUNCHED in, on every turn, sub-agents included (measured 2026-09-30) — so a seat committing in its own
+# worktree matches no log, and one committing in the launch directory matches every sub-agent's. The match is by the id
+# the harness gave this seat, written into its worktree by whoever spawned it — `git config --worktree seat.harness <id>`:
+# Claude Code's session id for a top-level session (`<slug>/<id>.jsonl`) or the agent id of a sub-agent
+# (`<slug>/<session>/subagents/agent-<id>.jsonl`); Codex's thread id (`CODEX_THREAD_ID`, its rollout
+# `sessions/Y/M/D/rollout-<time>-<id>.jsonl`). The one file whose NAME carries the id is read, and from it only TOP-LEVEL
+# fields of the newest turn that has them — never `message.content`, never a tool's result.
+HARNESS_ID_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z-]{7,}")                  # an id is a name: no separator, no glob character
+LOG_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,63}")            # a model or an effort as a trailer: one word — no space, no line break
+LOG_SCAN = 8 << 20                                                          # bytes, newest first: a log whose fields are older than this names none
+
+
+def harness_id():
+    """This seat's harness id: `seat.harness` of its worktree, else the thread id Codex puts in the environment. A
+    Claude Code session's environment names its PARENT's id inside a sub-agent, so it is never read."""
+    return (git_out("config", "--get", "seat.harness") or "").strip() or os.environ.get("CODEX_THREAD_ID", "").strip()
+
+
+def harness_logs(hid):
+    """Every log file whose name carries `hid`, under the harness's own folders in the home directory — sorted."""
+    home = pathlib.Path(os.path.expanduser("~"))
+    claude, codex = home / ".claude" / "projects", home / ".codex" / "sessions"
+    return sorted({*claude.glob(f"*/{hid}.jsonl"), *claude.glob(f"*/*/subagents/agent-{hid}.jsonl"), *codex.glob(f"*/*/*/rollout-*-{hid}.jsonl")})
+
+
+def log_lines_newest_first(path, budget=LOG_SCAN):
+    """The lines of a file, last first, reading from its end in blocks — at most `budget` bytes."""
+    with open(path, "rb") as f:
+        pos, seen, rest = f.seek(0, 2), 0, b""
+        while pos > 0 and seen < budget:
+            step = min(1 << 20, pos)
+            pos -= step
+            f.seek(pos)
+            parts = (f.read(step) + rest).split(b"\n")
+            seen += step
+            rest, done = (parts[0], parts[1:]) if pos > 0 else (b"", parts)
+            yield from reversed(done)
+
+
+def read_harness_log(path):
+    """{model, effort, cwd} from the newest turns that carry them — top-level fields only. Claude Code: `message.model`, the
+    top-level `perTurnEffort` and `cwd`; Codex: `turn_context`'s `model` and `effort`, and `cwd`. `message.content`, a
+    tool's result and every other field are never looked at, and the values that come back are single words — a value
+    with a space or a line break is no value, so nothing a transcript says reaches a commit message as a second trailer."""
+    got = {}
+    for raw in log_lines_newest_first(path):
+        try:
+            turn = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(turn, dict):
+            continue
+        message, payload = turn.get("message"), turn.get("payload")
+        found = {}
+        if isinstance(message, dict):
+            found = {"model": message.get("model"), "effort": turn.get("perTurnEffort"), "cwd": turn.get("cwd")}
+        elif turn.get("type") == "turn_context" and isinstance(payload, dict):
+            found = {"model": payload.get("model"), "effort": payload.get("effort"), "cwd": payload.get("cwd")}
+        elif turn.get("type") == "session_meta" and isinstance(payload, dict):
+            found = {"cwd": payload.get("cwd")}
+        for key, value in found.items():
+            ok = isinstance(value, str) and (LOG_WORD_RE.fullmatch(value) if key != "cwd" else 0 < len(value) < 400 and value.isprintable())
+            if ok and key not in got:
+                got[key] = value
+        if len(got) == 3:
+            break
+    return {"model": got.get("model", ""), "effort": got.get("effort", ""), "cwd": got.get("cwd", "")}
+
+
+def harness_reading(hid):
+    """(reading, problem) for a harness id: reading is {path, model, effort, cwd} or None where there is no id or no log by
+    that id; problem says why there is none, or that two files carry the id — never a guess between them."""
+    if not hid:
+        return None, "`seat.harness` is not set in this worktree — no model or effort"
+    if not HARNESS_ID_RE.fullmatch(hid):
+        return None, f"`seat.harness` is {hid!r} — an id is letters, digits and hyphens, at least eight"
+    logs = harness_logs(hid)
+    if len(logs) > 1:
+        return None, f"two logs carry the harness id {hid}: {logs[0]} and {logs[1]}" + (f" (and {len(logs) - 2} more)" if len(logs) > 2 else "") + " — refusing to pick one"
+    if not logs:
+        return None, f"no log carries the harness id {hid} under ~/.claude/projects or ~/.codex/sessions — no model or effort"
+    return dict(read_harness_log(logs[0]), path=str(logs[0])), ""
+
+
+def whoami():
+    """`--whoami`: who this session is, in the form a message between sessions names its target (AGENTS.md) —
+    `To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]` by the
+    worktree's `user.email`, the worktree's folder, and the model and effort from the harness's log by `seat.harness`
+    (`—` where there is none). A second line names the log and the directory its session was launched in, for a person to
+    read. Exit 4 (the lint code) without a `seat.session`; exit 2 where two logs carry the id."""
+    sid = (git_out("config", "--get", "seat.session") or "").strip()
+    if not sid:
+        print("--whoami: this worktree has no `seat.session` — a seat's worktree carries one (`git config --worktree seat.session <id>`; the Owner's checkout none)", file=sys.stderr)
+        return EXIT_LINT
+    email, name = (git_out("config", "--get", "user.email") or "").strip(), (git_out("config", "--get", "user.name") or "").strip()
+    top = (git_out("rev-parse", "--show-toplevel") or "").strip()
+    reading, problem = harness_reading(harness_id())
+    if reading is None and problem.startswith("two logs"):
+        print(f"--whoami: {problem}", file=sys.stderr)
+        return 2
+    print(f"To: {sid} {seat_of(name, email) or email or name or '—'} ({pathlib.Path(top).name if top else ROOT.name}) · "
+          f"{(reading or {}).get('model') or '—'} · {(reading or {}).get('effort') or '—'}")
+    if reading:
+        print(f"    read from {reading['path']}" + (f" — its session was launched in {reading['cwd']}" if reading["cwd"] else ""))
+    else:
+        print(f"--whoami: {problem}", file=sys.stderr)
+    return EXIT_OK
+
+
 def session_trailer(message_file):
     """What the prepare-commit-msg hook calls: append `Session: <seat.session>` and `Worktree: <the checkout's directory>`
-    to the message being written. Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's
-    clone); a trailer the message carries already is left alone — an amend, a rebase, a seat that typed it."""
+    to the message being written — and `Model:` and `Effort:` where the harness's log, found by `seat.harness`, names them
+    (`whoami`'s reading). Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's clone); a
+    trailer the message carries already is left alone — an amend, a rebase, a seat that typed it. A log that cannot be
+    read, or two that carry the id, costs the commit its two trailers and a line on stderr — never the commit."""
     sid = (git_out("config", "--get", "seat.session") or "").strip()
     if not sid or not message_file:
         return EXIT_OK
     top = (git_out("rev-parse", "--show-toplevel") or "").strip()
     worktree = pathlib.Path(top).name if top else ROOT.name
-    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", "--trailer", f"Worktree: {worktree}", message_file],
+    hid = harness_id()
+    reading, problem = harness_reading(hid) if hid else (None, "")
+    if problem:
+        print(f"--session-trailer: {problem} — no Model: or Effort: on this commit", file=sys.stderr)
+    trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
+    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if r.returncode:
         print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
@@ -6122,8 +6254,13 @@ def parse_args(argv):
                                                       "Owner, a commit that changes his intent or current path in TRIAGE.md is refused before it is made unless he is its author "
                                                       "(FM-037 — the hook sees the author; `--check` judges the signature)")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
-                                                            "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
+                                                            "and `Worktree: <the checkout's directory>` to a seat's commit — and `Model:` and `Effort:` where `seat.harness` "
+                                                            "names a log that carries them (`--whoami`) — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
+    add("--whoami", action="store_true", help="who this session is, as a message between sessions names its target (AGENTS.md): "
+                                              "`To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]`, the "
+                                              "worktree's folder, and the model and effort from the harness's own log, found by the id in `seat.harness` "
+                                              "(`—` where there is none). Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -6634,7 +6771,7 @@ def init(key=None):
     print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
           f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
-          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one))")
+          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one); `seat.harness` (the id the harness gave the seat, for its `Model:` and `Effort:`) is `{CMD} --whoami`'s")
     return EXIT_OK
 
 
@@ -6784,6 +6921,8 @@ def main(argv=None):
         return install_hook()
     if args.session_trailer:                                # every commit runs this: it reads one git setting, never the trackers
         return session_trailer(args.session_trailer[0])
+    if args.whoami:                                         # who this session is: git's settings and the harness's own log, no tracker
+        return whoami()
     if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
         return session_check()
     if args.commit_msg:                                     # …and this, once the message exists: no build commit before a judgement (FM-033), the Owner's two sections (FM-037)
