@@ -4427,8 +4427,8 @@ def staged_now():
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-        _STAGED = set(out.stdout.split("\n")) if out.returncode == 0 else set()
+        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
 
@@ -4633,33 +4633,32 @@ def read_changes():
     seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
     merge brings are read only when there is a merge: one `git log` for all of them."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    names = lambda r: set(r.stdout.split("\n")) - {""} if r.returncode == 0 else set()
+    names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
     def brought(tips, first):
         """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
         if not tips:
             return []
         out = []
-        log = git("log", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x00%H%x00%an%x00%ae", *tips, "--not", first)
-        records = log.stdout.split("\x00")[1:]          # hash · name · email, then the files --name-only lists under it
-        for i in range(0, len(records) - 2, 3):
-            c, an, rest = records[i], records[i + 1], records[i + 2]
-            ae, _, files = rest.partition("\n")
-            out.append(([f"{c}^1"], set(files.split("\n")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+        log = git("log", "-z", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%an%x02%ae", *tips, "--not", first)
+        for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
+            head, _, files = record.partition("\x00")
+            c, an, ae = (head.split("\x02") + ["", ""])[:3]
+            out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
         return out
 
     heads = merge_heads()
     if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
-        files = set(staged_now()) if COMMITTING else names(git("diff", "--name-only", "--relative", "HEAD"))
+        files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "HEAD"))
         for h in heads:
-            files &= names(git("diff", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
+            files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
         return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
     if not parents:
         return []                                        # a root commit has no parent to compare with
     files = None
     for parent in parents:
-        got = names(git("diff", "--name-only", "--relative", parent, "HEAD"))
+        got = names(git("diff", "-z", "--name-only", "--relative", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     return (brought(parents[1:], parents[0]) if len(parents) > 1 else []) + [(parents, files, name, email, commit, "HEAD", "")]
@@ -4758,7 +4757,7 @@ def git_ship_verdicts(names, bases, records):
     """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
     parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
     At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
-    git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotepath=off", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    git = lambda *a, **k: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}^{{commit}}\n" for n in names))
     shas = {n: line.partition(" ")[0] for n, line in zip(names, found.stdout.split("\n")) if line.partition(" ")[2] == "commit"}
     behind, changed = {}, {}
@@ -4767,10 +4766,10 @@ def git_ship_verdicts(names, bases, records):
         unreached = set(beyond.stdout.split()) if beyond.returncode == 0 else set(shas.values())      # no parent (a first commit): nothing is behind it
         behind = {n: s for n, s in shas.items() if s not in unreached}
     if behind:
-        log = git("log", "--no-walk=unsorted", "-m", "--first-parent", "--no-renames", "--name-only", "--format=%x00%H", *dict.fromkeys(behind.values()))
-        for record in log.stdout.split("\x00")[1:]:
-            sha, _, files = record.partition("\n")
-            changed[sha.strip()] = [f for f in files.split("\n") if f]
+        log = git("log", "-z", "--no-walk=unsorted", "-m", "--first-parent", "--no-renames", "--name-only", "--format=%x01%H", *dict.fromkeys(behind.values()))
+        for record in log.stdout.split("\x01")[1:]:         # NUL-separated names: a `"` or a tab in a name is no quoted name here (RV-2151)
+            sha, _, files = record.partition("\x00")
+            changed[sha.strip()] = [f for f in files.lstrip("\n").split("\x00") if f]
     out = {}
     for n in names:
         if n not in behind:
@@ -7146,7 +7145,7 @@ HOOKS = {
     "pre-commit": """#!/bin/sh
 {mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
 {cmd} --session-check || exit $?
-if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)'; then
+if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^"?({dir}/.*\\.md|{config}|{tool}/)'; then
   written=$({cmd} --print-written) || exit $?
   printf '%s\\n' "$written" | git add --pathspec-from-file=-
 fi

@@ -3177,6 +3177,10 @@ with tempfile.TemporaryDirectory() as tmp:
     for n_ in range(500, 520):
         tracker(root, f"AP-{n_}", body=nothing5_, title="nothing built")
     tracker(root, "AP-508", status="Shipped", body=nothing5_, title="shipped before the rule")   # in the first commit, which no change judges: old work, never read again
+    odd5_ = [(600, "AP-600-über.md")] + ([] if os.name == "nt" else [(601, 'AP-601-say "hi".md')])       # names git quotes in `--name-only` (RV-2151); Windows names no file with a `"` in it
+    for n_, name_ in odd5_:
+        p_ = tracker(root, f"AP-{n_}", body=nothing5_, title="nothing built"); p_.rename(p_.with_name(name_))
+    tracker(root, "AP-602", body=nothing5_, title="nothing built")
     (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers")
     sha5_ = lambda rev_="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev_], capture_output=True, text=True, env=_ENV).stdout.strip()
@@ -3190,6 +3194,7 @@ with tempfile.TemporaryDirectory() as tmp:
     built5_ = commit5_("the feature", {"src/app.py": "v1\n"})                                   # product: a path outside the records
     note5_ = commit5_("only a note", {"docs/work-tracker/evidence/n.md": "a note\n"})         # …and one that touches only the records
     notes5_ = commit5_("a note elsewhere", {"docs/notes/n.md": "a note\n"})                     # …and one under a prefix only `[ratio]` calls records
+    quote5_ = commit5_("only a note, its name holds a quote", {'docs/work-tracker/evidence/say "hi".md': "a note\n"}) if os.name != "nt" else ""
     def move5_(n_, *rows_, to="Shipped"):
         p_ = next(wt5_.glob(f"AP-{n_}-*.md"))
         p_.write_text(p_.read_text().replace("status: In Progress", f"status: {to}") + "".join(f"| 2026-09-30 | {r_} |\n" for r_ in rows_), encoding="utf-8")
@@ -3230,6 +3235,18 @@ with tempfile.TemporaryDirectory() as tmp:
           code == 0 and "AP-504" not in err and code_s == 0 and "AP-504" not in err_s)
     code, _, err = made5_(505, f"at {other5_[:8]}", f"a note, {note5_[:8]}", "deadbeefdead", f"the feature, {built5_[:8]}")
     check("FM-005 · one such commit named is enough: three that miss and one that built it pass", code == 0 and "AP-505" not in err)
+    # RV-2151: a name git quotes — a non-ASCII byte, a `"` — is read as it is: the tracker's own, and the records' in a commit a ship log names
+    for n_, name_ in odd5_:
+        move5_(n_); git(root, "add", "-A"); head_ = sha5_()
+        hooked_ = subprocess.run(["git", "-C", str(root), "commit", "-qm", f"AP-{n_}: shipped"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        git(root, "reset", "-q", "--hard"); code, _, err = made5_(n_)
+        check(f"FM-005 · RV-2151 · {name_}, a name git quotes, moved to `Shipped` with nothing named is refused by the installed hook and by `--check`, naming the way through (saw {hooked_.returncode}, {code})",
+              hooked_.returncode != 0 and sha5_() == head_ and f"AP-{n_}: moved to `Shipped` with no commit behind it" in hooked_.stderr and way5_(hooked_.stderr)
+              and code == fm.EXIT_LINT and f"AP-{n_}: moved to `Shipped` with no commit behind it" in err and way5_(err))
+    if quote5_:
+        code, _, err = made5_(602, f"a note in {quote5_[:9]}")
+        check("FM-005 · RV-2151 · a commit that changed only `evidence/say \"hi\".md` changes nothing outside the records — refused, not read as product because git quoted its name",
+              code == fm.EXIT_LINT and f"`{quote5_[:9]}` changes nothing outside the records (docs/work-tracker/)" in err and way5_(err))
     # what is not judged: a tracker no change moves, a move to `Closed`
     p508_ = next(wt5_.glob("AP-508-*.md")); p508_.write_text(p508_.read_text().replace("Nothing is built.", "Nothing is built; a note."), encoding="utf-8")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-508: a note"); code, _, err = run(root, "--check")
@@ -3282,6 +3299,11 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
     check("FM-005 · a merge brings a commit that moves a tracker to `Shipped` with nothing behind it — refused, naming THAT commit, not the merge that brought it",
           code == fm.EXIT_LINT and f"AP-513: in `{x5_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it" in err and sha5_()[:10] not in err)
+    git(root, "switch", "-q", "-c", "pr5u"); move5_(600); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-600 shipped, no hook", "--author=holgo <h@x>"); xu5_ = sha5_()
+    git(root, "switch", "-q", trunk5_); commit5_("meanwhile, for the quoted name", {"notes/meanwhile.txt": "trunk, quoted\n"}); merged5_("merge", "--no-ff", "-q", "pr5u", "-m", "Merge pull request from pr5u")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · RV-2151 · a merge brings the move of a tracker whose name git quotes — refused, naming THAT commit, like any other",
+          code == fm.EXIT_LINT and f"AP-600: in `{xu5_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it" in err and way5_(err))
     git(root, "switch", "-q", "-c", "pr5b"); p5_ = commit5_("the pull request builds it", {"src/b.py": "b\n"}); move5_(514, f"built in {p5_[:7]}"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-514 shipped")
     git(root, "switch", "-q", trunk5_); commit5_("meanwhile again", {"notes/meanwhile.txt": "trunk again\n"}); merged5_("merge", "--no-ff", "-q", "pr5b", "-m", "Merge pull request from pr5b")
     code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
