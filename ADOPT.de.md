@@ -33,11 +33,12 @@ Arbeitskopie. Die Datei `shoalmark.py` hat — mit `\n`-Zeilenenden — den SHA-
 ```
 python <klon>/shoalmark.py --root probe --vendor probe/tools/shoalmark
 cd probe
-python tools/shoalmark/shoalmark.py --init --key AP
 ```
 
-Dann den Block aus `<klon>/examples/de/headings.toml` an `shoalmark.toml` anhängen und
-`<klon>/examples/de/labels.yaml` nach `docs/work-tracker/brand/labels.yaml` kopieren — damit sind Einträge und Tafel deutsch.
+Vor `--init` die vier deutschen Dateien aus `<klon>/examples/de/` kopieren: `shoalmark.toml` nach `probe/shoalmark.toml`
+(die deutschen Abschnittsnamen, der Schlüssel `AP`; den Namen anpassen), `TEMPLATE.md` und `TRIAGE.md` nach
+`docs/work-tracker/` und `labels.yaml` nach `docs/work-tracker/brand/labels.yaml` — damit sind Einträge und Tafel deutsch.
+Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nichts.
 
 **4. Fünf echte Pakete eintragen.** Ein Eintrag für den Plan als Ganzes, fünf für Pakete aus eurem Plan
 (`python tools/shoalmark/shoalmark.py --new "…"`), jeweils mit `epic: AP-001`, ehrlichem `status:`, `next:`
