@@ -185,7 +185,8 @@ RIGHTS = ("answer",      # writing `answer:` `answered:` `answered-by:` — the 
           "close",       # setting a terminal status — saying work is over
           "triage")      # writing `considered:`, `kind-of-problem:`, `tier:`, `rank:`, `triaged:` — the judgement
 # the four names that need no `[rights]` line, because the seats mean the same thing in every repository that runs this
-BUILTIN_RIGHTS = {"owner": set(RIGHTS), "principal": {"ask", "close", "triage"}, "reviewer": {"triage"}, "implementer": set()}
+BUILTIN_RIGHTS = {"owner": set(RIGHTS), "principal": {"ask", "close", "triage"}, "reviewer": {"triage"}, "builder": set(),
+                  "implementer": set()}          # FM-024: `builder` is the seat's name from 0.19.0; `implementer`, its old spelling, holds the same — none
 TRIAGE_KEYS = ("kind-of-problem", "tier", "rank", "triaged")     # `considered:` too — except on a filing, which is the rule, not a verdict
 
 
@@ -4132,7 +4133,8 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
     "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email or name> signed\"`",
                        "who sits in that seat (FM-024): every identity listed maps to the seat — `principal = [\"principal@seat\", "
                        "\"12345+shoalmark-principal[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
-                       "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 2)"),
+                       "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 2). "
+                       "The built-in names with rights are `owner`, `principal`, `reviewer` and `builder`; `implementer`, the builder's former name, still reads and holds the same"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "

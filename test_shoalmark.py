@@ -778,6 +778,30 @@ with tempfile.TemporaryDirectory() as d:
           and fm.seat_of("x", "designer@seat") == "designer" and fm.seat_of("x", "auditor@seat") == "auditor")
 fm.configure(HERE)
 
+# FM-024 · the Owner's ruling of 2026-09-30: the implementer seat is `builder` from 0.19.0 — `builder` and `implementer` both hold no right, so a
+# repository that keeps `implementer` reads exactly as before, and one that says `builder` reads the same.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    commit_as(root, "someone@example.org", "the start")
+    tracker(root, "MSR-001", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    run(root); git(root, "add", "-A")
+    verdicts = {}
+    for key, addr in (("implementer", "implementer@seat"), ("builder", "builder@seat")):
+        (root / "shoalmark.toml").write_text(base_cfg + f'\n[seats]\nowner = "owner@example.org"\n{key} = "{addr}"\n')
+        fm.configure(root)
+        rights_ = {r: fm.holds(key, r) for r in fm.RIGHTS}
+        commit_as(root, addr, f"the ask, by the {key}\n\nSession: 1111aaaa")
+        code_b, _, err_b = run(root, "--check")
+        git(root, "reset", "-q", "--soft", "HEAD~1")
+        verdicts[key] = (rights_, code_b, err_b, fm.seat_of("x", addr))
+    check(f"FM-024 · `builder` and `implementer` read alike: each is its own seat, holds none of the four rights, and its ask is refused — `<addr>` is the seat `<name>`, which does not hold `ask` (saw {[(k, v[1]) for k, v in verdicts.items()]})",
+          all(not any(v[0].values()) and v[1] == fm.EXIT_LINT and f"is the seat `{k}`, which does not hold `ask`" in v[2] and v[3] == k for k, v in verdicts.items()))
+    check("FM-024 · `--schema` names the built-in seats `builder` and `implementer` (its former name)",
+          (lambda t: "`builder`" in t and "`implementer`" in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
 # --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
