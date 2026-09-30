@@ -6,26 +6,26 @@ Owner creates the Apps in GitHub's browser UI, logged in as `holgo99` (org role 
 implementer, reviewer, gtm, auditor, datascientist, designer), no permissions, webhook inactive, no private key, no client secret, not installed, icon
 uploaded. A seat reads the bot ids."* His pre-decision, relayed 2026-09-30 (normalised): *"If a bot id does not resolve after creation, install that App on
 the shoalmark organisation, only select repositories: shoalmark, with its permissions still none, and still no private key and no client secret. The inert
-credential is what the condition protects, not the installation."*
+credential is what the condition protects, not the installation."* Their rulings on seats (15:29, relayed) rename two Apps: research, go-to-market.
 
 ## 1. The names — checked free
 The name is the slug's source. GitHub shows the name *"converted to lowercase, with spaces replaced by `-`"*, caps it at 34 characters, and refuses the name
 of *"an existing GitHub account"* (Sources). So the display name stays `shoalmark <seat>`, since any added word changes the slug. The character lives in the
-description and the icon, and `datascientist` stays one word.
+description and the icon, and `go-to-market` keeps its hyphens.
 
 | Seat | Display name → slug | `/apps/<slug>` | `/users/<slug>%5Bbot%5D` | `/users/<slug>` | Free? | Checked at (CEST) |
 |---|---|---|---|---|---|---|
 | principal | shoalmark principal → `shoalmark-principal` | 404 | 404 | 404 | yes | 14:51:15–14:51:39 |
 | implementer | shoalmark implementer → `shoalmark-implementer` | 404 | 404 | 404 | yes | 14:51:16–14:51:39 |
 | reviewer | shoalmark reviewer → `shoalmark-reviewer` | 404 | 404 | 404 | yes | 14:51:17–14:51:40 |
-| gtm | shoalmark gtm → `shoalmark-gtm` | 404 | 404 | 404 | yes | 14:51:18–14:51:40 |
-| auditor | shoalmark auditor → `shoalmark-auditor` | 404 | 404 | 404 | yes | 14:51:18–14:51:41 |
-| datascientist | shoalmark datascientist → `shoalmark-datascientist` | 404 | 404 | 404 | yes | 14:51:19–14:51:41 |
+| research | shoalmark research → `shoalmark-research` | 404 | 404 | 404 | yes | 15:32:44–15:32:45 |
+| go-to-market | shoalmark go-to-market → `shoalmark-go-to-market` | 404 | 404 | 404 | yes | 15:32:46–15:32:47 |
 | designer | shoalmark designer → `shoalmark-designer` | 404 | 404 | 404 | yes | 14:51:20–14:51:42 |
+| auditor | shoalmark auditor → `shoalmark-auditor` | 404 | 404 | 404 | yes | 14:51:18–14:51:41 |
 
-Controls, same token, 14:51:37–14:51:39: `/apps/github-actions` 200, `/users/github-actions%5Bbot%5D` 200 (id 41898282), `/users/dependabot%5Bbot%5D` 200,
-`/orgs/shoalmark` 200. **Limit:** `/apps/<slug>` answers 404 for another account's *private* App as well, so that column is necessary but not sufficient.
-The login and bot-user 404s are the stronger half. **Create GitHub App** is the proof.
+Controls, same token, 14:51:37–14:51:39 and 15:32:47: `/apps/github-actions`, `/users/github-actions%5Bbot%5D` (id 41898282), `/users/dependabot%5Bbot%5D`,
+`/orgs/shoalmark`: 200. **Limit:** `/apps/<slug>` answers 404 for another account's *private* App too, so that column is necessary, not sufficient; the other
+two 404s are the stronger half, and **Create GitHub App** is the proof. The rulings retire `shoalmark-gtm` and `shoalmark-datascientist` (free at 14:51).
 
 ## 2. The one-line descriptions — the six gates of `evidence/FM-006/gtm-claim-screen-2026-09-23.md`, adapted to an App's line, by hand
 | Gate | Kills on |
@@ -82,30 +82,30 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    `no repository choice`. Stop too on any access listed (*Read access to metadata* included), a key, a secret or a payment. Paste back: the id, `installed` or not.
 3. **The six others:** steps 1–2 again, each with its name, and its line from §2:
 
-   | Seat | implementer | reviewer | gtm | auditor | datascientist | designer |
+   | Seat | implementer | reviewer | research | go-to-market | designer | auditor |
    |---|---|---|---|---|---|---|
-   | *GitHub App name* | shoalmark implementer | shoalmark reviewer | shoalmark gtm | shoalmark auditor | shoalmark datascientist | shoalmark designer |
-   | Slug to expect | `shoalmark-implementer` | `shoalmark-reviewer` | `shoalmark-gtm` | `shoalmark-auditor` | `shoalmark-datascientist` | `shoalmark-designer` |
+   | *GitHub App name* | shoalmark implementer | shoalmark reviewer | shoalmark research | shoalmark go-to-market | shoalmark designer | shoalmark auditor |
+   | Slug to expect | `shoalmark-implementer` | `shoalmark-reviewer` | `shoalmark-research` | `shoalmark-go-to-market` | `shoalmark-designer` | `shoalmark-auditor` |
 4. **The icons**, once the Designer's `fm/024-the-seat-icons` carries its READY verdict (due by 11:00). Until then the Apps keep GitHub's identicon:
    ```sh
    git fetch && git switch --detach origin/fm/024-the-seat-icons && rm -rf brand/seats/out && python3 brand/seats/export.py && open brand/seats/out
    ```
-   Per App: its page → *Display information* → **Upload a logo** → `brand/seats/out/<seat>-200.png` → **Set new avatar**. GitHub takes a PNG, JPG or GIF under
-   1 MB and recommends 200 × 200 pixels. Expected: the badge shows the stake. Stop if the export exits 1 or 2 (it prints why): the icons wait, the Apps stand.
-   Paste back: `7 icons set`. Either way, `rm -rf brand/seats/out; git switch main`: main does not ignore `out/` yet, so its 21 PNGs would stay untracked.
+   Per App: its page → *Display information* → **Upload a logo** → that App's `<seat>-200.png` from the Designer → **Set new avatar**. GitHub takes a PNG, JPG
+   or GIF under 1 MB and recommends 200 × 200 pixels. Expected: the badge shows the stake. Stop if the export exits 1 or 2 (it prints why): the icons wait, the
+   Apps stand. Paste back: `7 icons set`. Either way, `rm -rf brand/seats/out; git switch main`: main does not ignore its 21 PNGs yet.
 5. **Read back:** the loop of §4, and `gh api /orgs/shoalmark/installations --jq '[.installations[] | {app_slug, repository_selection}]'`. Expected: seven ids;
    installed, only what step 2 installed. Paste back: slugs, App IDs, bot ids, each install's `repository_selection`, to the Principal for FM-024.
 
 ## 4. What a seat reads after
 ```sh
-for s in principal implementer reviewer gtm auditor datascientist designer; do
+for s in principal implementer reviewer research go-to-market designer auditor; do
   id=$(gh api "/users/shoalmark-$s%5Bbot%5D" --jq .id) && echo "$s $id+shoalmark-$s[bot]@users.noreply.github.com"
 done
 ```
-The address is `<id>+shoalmark-<seat>[bot]@users.noreply.github.com`. The id is the bot **user's**, not the App ID (Sources). **The switch itself is the next
-slice, not this one:** `shoalmark.toml` `[seats]` (today `principal`, `implementer`, `reviewer`, `gtm`), each worktree's `user.email` and `user.name`, one
-test commit per seat, and a Reviewer pass. The parent project needs no installation, because GitHub attributes a commit by its email, across repositories.
-That is the Owner's line, relayed 2026-09-30, and it stays untested until that test commit.
+The address is `<id>+shoalmark-<seat>[bot]@users.noreply.github.com`, with the bot **user's** id, not the App ID (Sources). **The switch itself is the next
+slice:** `[seats]` (today `principal`, `implementer`, `reviewer`, `gtm`; the rulings add `research@seat` and `datascientist@seat` for research, with its bot
+address, and give `gtm@seat` the App `shoalmark-go-to-market`), each worktree's `user.email` and `user.name`, one test commit per seat, a Reviewer pass. The
+parent project needs no installation: GitHub attributes a commit by its email, across repositories (the Owner's line, untested until that test commit).
 
 ## Agent boundary, recovery, unproven
 Owner decisions only: the creation, the install of step 2, the icons; an App showing a key or a secret is wrong. Recovery: the App's page edits name,
