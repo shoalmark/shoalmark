@@ -90,9 +90,9 @@ Expected: no GitHub App listed, and `0` (read `0` at 14:51:51). Stop if an App n
    ```sh
    git fetch && git switch --detach origin/fm/024-the-seat-icons && rm -rf brand/seats/out && python3 brand/seats/export.py && open brand/seats/out
    ```
-   Per App: its page → *Display information* → **Upload a logo** → that App's `<seat>-200.png` from the Designer → **Set new avatar**. GitHub takes a PNG, JPG
-   or GIF under 1 MB and recommends 200 × 200 pixels. Expected: the badge shows the stake. Stop if the export exits 1 or 2 (it prints why): the icons wait, the
-   Apps stand. Paste back: `7 icons set`. Either way, `rm -rf brand/seats/out; git switch main`: main does not ignore its 21 PNGs yet.
+   Per App: its page → *Display information* → **Upload a logo** → that App's `<seat>-200.png` → **Set new avatar**; *Badge background color* `#15293d` (the
+   Designer's README). GitHub takes a PNG, JPG or GIF under 1 MB, 200 × 200 pixels recommended. Expected: the badge shows the stake. Stop if the export exits 1 or 2
+   (it prints why): the icons wait, the Apps stand. Paste back: `7 icons set`. Either way, `rm -rf brand/seats/out; git switch main`: main does not ignore `out/` yet.
 5. **Read back:** the loop of §4, and `gh api /orgs/shoalmark/installations --jq '[.installations[] | {app_slug, repository_selection}]'`. Expected: seven ids;
    installed, only what step 2 installed. Paste back: slugs, App IDs, bot ids, each install's `repository_selection`, to the Principal for FM-024.
 
