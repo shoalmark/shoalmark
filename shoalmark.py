@@ -11,6 +11,7 @@ Markdown trackers with a small front matter, and one command that reads them all
                                    refuses the file until `considered:` says what it was held against
     shoalmark.py --triage        a triage pass: the seat judges a worksheet, the command applies it
     shoalmark.py --schema        every front-matter key, its shape, who writes it
+    shoalmark.py --ratio         records added : product added, per Berlin day of the merge (FM-032)
     shoalmark.py --init          scaffold the tracker directory, TRIAGE.md and shoalmark.toml
     shoalmark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
@@ -2594,6 +2595,7 @@ tr.c td:first-child{padding-left:20px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 /* an act that is a promise: what they promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
 #p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
+#p summary{cursor:pointer}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
 #dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
@@ -2799,8 +2801,10 @@ function draw(){
         +(w[8]?`\n<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[31]))
     +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
     // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
-    +(REG?(REG.recent.length?"\n\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "+REG.recent.map(r=>`${esc(r[0])} ${esc(r[1])} (${esc(r[2])})`).join(" · "):"")
-      +(REG.reviews?(REG.recent.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"");   // the box keeps its title in every view (FM-002 R2)
+    +(REG?(REG.groups.length?"\n\n<b>"+l("sessions.recent",REG.parents,REG.all)+"</b>\n"
+        +REG.groups.map(g=>`<details><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].map(x=>" · "+esc(x)).join("")}</summary>`
+          +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""):"")
+      +(REG.reviews?(REG.groups.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"");   // the box keeps its title in every view (FM-002 R2)
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -2900,7 +2904,7 @@ LABELS = {
     "way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange",
     "act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again",
     "act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log",
-    "sessions.recent": "sessions · {0} in the last day",
+    "sessions.recent": "sessions · {0} in the last day ({1} with their sub-sessions)",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -4125,6 +4129,11 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
                         "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
+    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default (the default where `[ratio]` is present)",
+                        "the records-to-product ratio (FM-032): what `--ratio` counts as a record — a prefix with a trailing slash is a directory, a plain "
+                        "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
+    "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
+                        "prefixes `--ratio` leaves out of both sides — neither a record nor product (a vendored copy, a generated tree)"),
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
@@ -4140,12 +4149,25 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
 }
 
 
+WORKTREE_KEYS = {         # a seat's worktree carries its identity in git's own per-worktree settings, `git config --worktree` — `--schema` prints them last
+    "user.email": ("the seat's address in `[seats]`", "who may: the gate reads a commit's rights from its author; the badge of the worktree"),
+    "seat.session": ("eight hex characters, or `<parent>/<seat>-<n>` for a sub-agent",
+                     "which run: the prepare-commit-msg hook appends it as the `Session:` trailer of every commit made here; `--session new` prints an id"),
+    "seat.harness": ("the id the harness gave this seat: Claude Code's session id, or a sub-agent's agent id; Codex's thread id",
+                     "which log: whoever spawns the seat writes it, from the spawn's result. `--whoami` opens the one log file whose name carries the id — "
+                     "`~/.claude/projects/<slug>/<id>.jsonl`, `…/<session>/subagents/agent-<id>.jsonl`, or `~/.codex/sessions/…/rollout-*-<id>.jsonl` — "
+                     "and reads its newest model and effort, top-level fields only; the hook appends them as `Model:` and `Effort:`. Two files for one id refuse; none is `—`"),
+}
+
+
 def render_schema():
     rows = [f"| `{k}:`{' — required' + (' on open work' if required == 'open' else '') if required else ''} | {shape_words(shape) if shape else 'free text'} | {who} | {says} |"
             for k, (shape, required, who, says) in FRONT_MATTER.items()]
     return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows
                      + ["", f"`{CONFIG_NAME}`, at its top level:", "", "| Key | Value | Says |", "|---|---|---|"]
                      + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()]
+                     + ["", "A seat's worktree, `git config --worktree <key> <value>`:", "", "| Key | Value | Says |", "|---|---|---|"]
+                     + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in WORKTREE_KEYS.items()]
                      + ["", "No key chooses the board's look: a brand is files in its places, the later one winning (`--brand` says which gave "
                             "what). `--brand DIR --from THEME` writes a starter from a theme the tool ships in `brand/themes/`: "
                             + (" · ".join(f"`{n}`" for n in shipped_themes()) or "none in this copy") + "."])
@@ -4665,11 +4687,11 @@ def sessions_file():
     return TRACKER_DIR / SESSIONS_NAME
 
 
-def session_log(since=None):
+def session_log():
     """Every commit of HEAD's history that carries a `Session:`, oldest first — (short sha, commit time, author email,
-    author name, the trailer block). One `git log`; `since` (seconds) keeps it to the recent ones."""
+    author name, the trailer block). One `git log`."""
     log = git_out("log", "--reverse", "-i", "--grep", "^session:", f"--format=%h%x01%ct%x01%ae%x01%an%x01{TRAILERS}%x02",
-                  *([f"--since={int(since)}"] if since else []), "HEAD") or ""
+                  "HEAD") or ""
     out = []
     for rec in log.split("\x02"):
         sha, stamp, email, name, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
@@ -4678,17 +4700,21 @@ def session_log(since=None):
     return out
 
 
-def session_rows(since=None):
+def session_rows():
     """THE REGISTRY, generated (FM-032 S2): one row per `Session:` id in HEAD's history — its seat (the author through
     `[seats]`, else the raw author), its first and last commit (time, short sha), how many commits carry it, and its
-    worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both) — in the order of the
-    first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
+    worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both), and its model and
+    effort (the newest `Model:` and `Effort:` trailers, from 0.19.0 on; empty where none) — in the order of the first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
     rows = {}
-    for sha, stamp, email, name, block in session_log(since):
+    for sha, stamp, email, name, block in session_log():
         sid = (trailer_values(block, "Session") or [""])[0]
         if not sid:
             continue
-        r = rows.setdefault(sid, dict(id=sid, seats=[], first=(stamp, sha), last=(stamp, sha), commits=0, worktrees=[]))
+        r = rows.setdefault(sid, dict(id=sid, seats=[], first=(stamp, sha), last=(stamp, sha), commits=0, worktrees=[], model="", effort="", _at={}))
+        for key in ("model", "effort"):                                            # the newest commit that carries one, else nothing (shown as —)
+            v = (trailer_values(block, key) or [""])[0]
+            if v and stamp >= r["_at"].get(key, -1):
+                r[key], r["_at"][key] = v, stamp
         seat, where = seat_of(name, email) or email or name, (trailer_values(block, "Worktree") or [""])[0]
         r["seats"] += [seat] if seat not in r["seats"] else []
         r["worktrees"] += [where] if where and where not in r["worktrees"] else []
@@ -4717,6 +4743,153 @@ def sessions_cmd():
     return EXIT_OK
 
 
+# --- the records-to-product ratio (FM-032) -----------------------------------------------------------------------------
+# The rule is filed on its own page (work-tracker/evidence/FM-032/records-to-product-ratio.md); this is the command that page
+# names as the reference, and a difference between the two is a bug against the page. Merged pull requests are the merge
+# commits on the default branch's first-parent line, each compared with its first parent; a day is the merge's committer date
+# in Europe/Berlin; added and deleted lines are counted apart and never netted; a submodule pointer is no line, a binary file
+# is 0 lines and one file.
+RATIO_DAYS = 7          # the window when `--since` is not given, and the rolling sum's length
+
+
+def ratio_defaults():
+    """`[ratio]`'s defaults as `DEFAULTS` keeps every other: `records` is the tracker directory this tool is configured with
+    (`tracker_dir`, wherever a repository keeps it), `exclude` is empty."""
+    return {"records": [str(CONFIG["tracker_dir"]).strip("/") + "/"], "exclude": []}
+
+
+def ratio_paths(section):
+    """(records, exclude): `[ratio]`'s two lists, checked; a ValueError with the one line to print where one is no list of prefixes."""
+    out = []
+    for key, default in ratio_defaults().items():
+        value = section.get(key, default)
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of repository-relative prefixes, each a non-empty string — "
+                             f"`{key} = {json.dumps(default)}`. Got {value!r}")
+        out.append([v.strip() for v in value])
+    return out
+
+
+def ratio_class(path, records, exclude):
+    """"skip" for a path left out, "records", or "product" — a prefix with a trailing slash is a directory, a plain one is that file."""
+    hit = lambda prefixes: any(path.startswith(p) if p.endswith("/") else path == p for p in prefixes)
+    return "skip" if hit(exclude) else "records" if hit(records) else "product"
+
+
+def ratio_merge(merge, records, exclude):
+    """One merge against its first parent: {"records": [added, deleted], "product": [added, deleted], "binary": files}."""
+    tot = {"records": [0, 0], "product": [0, 0], "binary": 0}
+    raw = (git_out("diff", "--raw", "--no-renames", "-z", f"{merge}^1", merge) or "").split("\0")
+    pointers = {raw[i + 1] for i in range(0, len(raw) - 1, 2) if "160000" in raw[i].lstrip(":").split()[:2]}       # ":100644 160000 <sha> <sha> M"
+    for entry in (git_out("diff", "--numstat", "--no-renames", "-z", f"{merge}^1", merge) or "").split("\0"):
+        if not entry:
+            continue
+        added, deleted, path = entry.split("\t", 2)
+        kind = ratio_class(path, records, exclude)
+        if path in pointers or kind == "skip":
+            continue
+        if added == "-":                                  # binary: no lines, one file
+            tot["binary"] += 1
+        else:
+            tot[kind][0] += int(added)
+            tot[kind][1] += int(deleted)
+    return tot
+
+
+def ratio_zone():
+    """(the zone as datetime's tzinfo or None, whether it is Europe/Berlin): where no tz database is installed, None."""
+    try:
+        import zoneinfo
+        return zoneinfo.ZoneInfo("Europe/Berlin"), True
+    except Exception:                                     # no zoneinfo module, or no tzdata on this machine
+        return None, False
+
+
+def ratio_line(label, tot, merges=None):
+    """One day's line — the four counts, the ratio (records added : product added, or why there is none), and the merges."""
+    (ra, rd), (pa, pd) = tot["records"], tot["product"]
+    ratio = f"{ra / pa:.1f}:1" if pa else "no finite ratio"
+    tail = "" if merges is None else f"  ({merges} merge{'' if merges == 1 else 's'}" + (f", {tot['binary']} binary" if tot["binary"] else "") + ")"
+    return f"{label}  records +{ra:,} \u2212{rd:,}  product +{pa:,} \u2212{pd:,}  {ratio}{tail}"
+
+
+def ratio_cmd(since=None, until=None):
+    """`--ratio`: records added : product added per Berlin day of the merge, and the rolling seven-day sums. Exit 0; 2 where
+    there is nothing to read (no `[ratio]`, no git, no default branch, a date that is none)."""
+    section = CONFIG.get("ratio")
+    if not isinstance(section, dict):
+        print(f"--ratio: {CONFIG_NAME} has no [ratio] section, so there is no ratio to count — add `[ratio]` with `records = {json.dumps(ratio_defaults()['records'])}` "
+              "(the prefixes that are records; everything else is product)", file=sys.stderr)
+        return 2
+    try:
+        records, exclude = ratio_paths(section)
+    except ValueError as e:
+        print(f"--ratio: {e}", file=sys.stderr)
+        return 2
+    if vcs() != "git":
+        print("--ratio: the merges are read from git's first-parent history — this is no git repository", file=sys.stderr)
+        return 2
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git) or trunk_ref()             # origin's default as this clone fetched it (as `--answer` and the gate read it), else the local one
+    if trunk is None:
+        print("--ratio: no default branch (origin/HEAD, origin/main, origin/master, main or master) to read the merges from", file=sys.stderr)
+        return 2
+    zone, berlin = ratio_zone()
+    parse = lambda s: datetime.date.fromisoformat(s)
+    try:
+        today = datetime.datetime.now(zone).date() if zone else datetime.date.today()
+        last = parse(until) if until else today
+        first = parse(since) if since else last - datetime.timedelta(days=RATIO_DAYS - 1)
+    except ValueError:
+        print("--ratio: --since and --until are days, YYYY-MM-DD", file=sys.stderr)
+        return 2
+    if first > last:
+        print(f"--ratio: --since {first} is after --until {last}", file=sys.stderr)
+        return 2
+    log = git_out("log", "--first-parent", "--merges", "--format=%H%x00%cI", trunk)
+    if log is None:
+        print(f"--ratio: git could not read {trunk}", file=sys.stderr)
+        return 2
+    lo = first - datetime.timedelta(days=RATIO_DAYS - 1)           # the sums of the window's first days reach back before it
+    days = {}
+    for row in log.splitlines():
+        sha, _, stamp = row.partition("\0")
+        when = datetime.datetime.fromisoformat(stamp[:-1] + "+00:00" if stamp.endswith("Z") else stamp)     # 3.9 reads no `Z`
+        day = (when.astimezone(zone) if zone else when).date()     # no zone database: the commit's own offset
+        if lo <= day <= last:
+            tot = days.setdefault(day, {"records": [0, 0], "product": [0, 0], "binary": 0, "merges": 0})
+            one = ratio_merge(sha, records, exclude)
+            for k in ("records", "product"):
+                tot[k][0] += one[k][0]
+                tot[k][1] += one[k][1]
+            tot["binary"] += one["binary"]
+            tot["merges"] += 1
+    empty = lambda: {"records": [0, 0], "product": [0, 0], "binary": 0, "merges": 0}
+    def add(a, b):
+        return {"records": [a["records"][0] + b["records"][0], a["records"][1] + b["records"][1]],
+                "product": [a["product"][0] + b["product"][0], a["product"][1] + b["product"][1]],
+                "binary": a["binary"] + b["binary"], "merges": a["merges"] + b["merges"]}
+    span = lambda a, b: [a + datetime.timedelta(days=i) for i in range((b - a).days + 1)]
+    print(f"records-to-product ratio \u2014 records: {', '.join(records)}"
+          + (f" (left out: {', '.join(exclude)})" if exclude else "") + "; product: every other path; a submodule pointer is no line, a binary file 0 lines")
+    print(f"trunk {trunk} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
+          + ("" if berlin else " \u2014 NOT: no time zone database here, so each day is the merge's own UTC offset"))
+    print("added and deleted lines are apart, never netted; the ratio is records added : product added\n")
+    whole = empty()
+    for day in span(first, last):
+        one = days.get(day, empty())
+        whole = add(whole, one)
+        print(ratio_line(str(day), one, one["merges"]))
+    print("\n" + ratio_line("window    ", whole, whole["merges"]))
+    print(f"\n{RATIO_DAYS}-day sums \u2014 each day and the {RATIO_DAYS - 1} before it, read from the repository, not only the window")
+    for day in span(first, last):
+        run = empty()
+        for back in span(day - datetime.timedelta(days=RATIO_DAYS - 1), day):
+            run = add(run, days.get(back, empty()))
+        print(ratio_line(str(day), run, run["merges"]))
+    return EXIT_OK
+
+
 def session_cmd(words):
     """`--session new` prints an id no `Session:` in this history carries. `open` and `close` are gone since 0.18.0."""
     verb = words[0]
@@ -4732,16 +4905,137 @@ def session_cmd(words):
     return EXIT_LINT
 
 
+# --- the harness's own log (FM-024, 0.19.0): what model, at what effort, ran this seat -----------------------------------
+# A seat cannot be asked what it runs on — it would answer from its prompt. The harness writes a log of every turn, and the
+# log names the model and the effort. Which log is this seat's is never a path: a transcript's `cwd` is the directory the
+# session was LAUNCHED in, on every turn, sub-agents included (measured 2026-09-30) — so a seat committing in its own
+# worktree matches no log, and one committing in the launch directory matches every sub-agent's. The match is by the id
+# the harness gave this seat, written into its worktree by whoever spawned it — `git config --worktree seat.harness <id>`:
+# Claude Code's session id for a top-level session (`<slug>/<id>.jsonl`) or the agent id of a sub-agent
+# (`<slug>/<session>/subagents/agent-<id>.jsonl`); Codex's thread id (`CODEX_THREAD_ID`, its rollout
+# `sessions/Y/M/D/rollout-<time>-<id>.jsonl`). The one file whose NAME carries the id is read, and from it only TOP-LEVEL
+# fields of the newest turn that has them — never `message.content`, never a tool's result.
+HARNESS_ID_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z-]{7,}")                  # an id is a name: no separator, no glob character
+LOG_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,63}")            # a model or an effort as a trailer: one word — no space, no line break
+LOG_SCAN = 8 << 20                                                          # bytes, newest first: a log whose fields are older than this names none
+
+
+def harness_id():
+    """This seat's harness id: `seat.harness` of its worktree, else the thread id Codex puts in the environment. A
+    Claude Code session's environment names its PARENT's id inside a sub-agent, so it is never read."""
+    return (git_out("config", "--get", "seat.harness") or "").strip() or os.environ.get("CODEX_THREAD_ID", "").strip()
+
+
+def harness_logs(hid):
+    """Every log file whose name carries `hid`, under the harness's own folders in the home directory — sorted."""
+    home = pathlib.Path(os.path.expanduser("~"))
+    claude, codex = home / ".claude" / "projects", home / ".codex" / "sessions"
+    return sorted({*claude.glob(f"*/{hid}.jsonl"), *claude.glob(f"*/*/subagents/agent-{hid}.jsonl"), *codex.glob(f"*/*/*/rollout-*-{hid}.jsonl")})
+
+
+def log_lines_newest_first(path, budget=LOG_SCAN):
+    """The lines of a file, last first, reading from its end in blocks — at most `budget` bytes."""
+    with open(path, "rb") as f:
+        pos, seen, rest = f.seek(0, 2), 0, b""
+        while pos > 0 and seen < budget:
+            step = min(1 << 20, pos)
+            pos -= step
+            f.seek(pos)
+            parts = (f.read(step) + rest).split(b"\n")
+            seen += step
+            rest, done = (parts[0], parts[1:]) if pos > 0 else (b"", parts)
+            yield from reversed(done)
+
+
+def read_harness_log(path):
+    """{model, effort, cwd} from the newest turns that carry them — top-level fields only. Claude Code: `message.model`, the
+    top-level `perTurnEffort` and `cwd`; Codex: `turn_context`'s `model` and `effort`, and `cwd`. `message.content`, a
+    tool's result and every other field are never looked at, and the values that come back are single words — a value
+    with a space or a line break is no value, so nothing a transcript says reaches a commit message as a second trailer."""
+    got = {}
+    for raw in log_lines_newest_first(path):
+        try:
+            turn = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(turn, dict):
+            continue
+        message, payload = turn.get("message"), turn.get("payload")
+        found = {}
+        if isinstance(message, dict):
+            found = {"model": message.get("model"), "effort": turn.get("perTurnEffort"), "cwd": turn.get("cwd")}
+        elif turn.get("type") == "turn_context" and isinstance(payload, dict):
+            found = {"model": payload.get("model"), "effort": payload.get("effort"), "cwd": payload.get("cwd")}
+        elif turn.get("type") == "session_meta" and isinstance(payload, dict):
+            found = {"cwd": payload.get("cwd")}
+        for key, value in found.items():
+            ok = isinstance(value, str) and (LOG_WORD_RE.fullmatch(value) if key != "cwd" else 0 < len(value) < 400 and value.isprintable())
+            if ok and key not in got:
+                got[key] = value
+        if len(got) == 3:
+            break
+    return {"model": got.get("model", ""), "effort": got.get("effort", ""), "cwd": got.get("cwd", "")}
+
+
+def harness_reading(hid):
+    """(reading, problem) for a harness id: reading is {path, model, effort, cwd} or None where there is no id or no log by
+    that id; problem says why there is none, or that two files carry the id — never a guess between them."""
+    if not hid:
+        return None, "`seat.harness` is not set in this worktree — no model or effort"
+    if not HARNESS_ID_RE.fullmatch(hid):
+        return None, f"`seat.harness` is {hid!r} — an id is letters, digits and hyphens, at least eight"
+    logs = harness_logs(hid)
+    if len(logs) > 1:
+        return None, f"two logs carry the harness id {hid}: {logs[0]} and {logs[1]}" + (f" (and {len(logs) - 2} more)" if len(logs) > 2 else "") + " — refusing to pick one"
+    if not logs:
+        return None, f"no log carries the harness id {hid} under ~/.claude/projects or ~/.codex/sessions — no model or effort"
+    found = dict(read_harness_log(logs[0]), path=str(logs[0]))
+    gone = [k for k in ("model", "effort") if not found[k]]
+    return found, (f"{logs[0]} names no {' and no '.join(gone)} in its newest {LOG_SCAN >> 20} MiB" if gone else "")
+
+
+def whoami():
+    """`--whoami`: who this session is, in the form a message between sessions names its target (AGENTS.md) —
+    `To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]` by the
+    worktree's `user.email`, the worktree's folder, and the model and effort from the harness's log by `seat.harness`
+    (`—` where there is none). A second line names the log and the directory its session was launched in, for a person to
+    read. Exit 4 (the lint code) without a `seat.session`; exit 2 where two logs carry the id."""
+    sid = (git_out("config", "--get", "seat.session") or "").strip()
+    if not sid:
+        print("--whoami: this worktree has no `seat.session` — a seat's worktree carries one (`git config --worktree seat.session <id>`; the Owner's checkout none)", file=sys.stderr)
+        return EXIT_LINT
+    email, name = (git_out("config", "--get", "user.email") or "").strip(), (git_out("config", "--get", "user.name") or "").strip()
+    top = (git_out("rev-parse", "--show-toplevel") or "").strip()
+    reading, problem = harness_reading(harness_id())
+    if reading is None and problem.startswith("two logs"):
+        print(f"--whoami: {problem}", file=sys.stderr)
+        return 2
+    print(f"To: {sid} {seat_of(name, email) or email or name or '—'} ({pathlib.Path(top).name if top else ROOT.name}) · "
+          f"{(reading or {}).get('model') or '—'} · {(reading or {}).get('effort') or '—'}")
+    if reading:
+        print(f"    read from {reading['path']}" + (f" — its session was launched in {reading['cwd']}" if reading["cwd"] else ""))
+    if problem:
+        print(f"--whoami: {problem}", file=sys.stderr)
+    return EXIT_OK
+
+
 def session_trailer(message_file):
     """What the prepare-commit-msg hook calls: append `Session: <seat.session>` and `Worktree: <the checkout's directory>`
-    to the message being written. Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's
-    clone); a trailer the message carries already is left alone — an amend, a rebase, a seat that typed it."""
+    to the message being written — and `Model:` and `Effort:` where the harness's log, found by `seat.harness`, names them
+    (`whoami`'s reading). Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's clone); a
+    trailer the message carries already is left alone — an amend, a rebase, a seat that typed it. A log that cannot be
+    read, or two that carry the id, costs the commit its two trailers and a line on stderr — never the commit."""
     sid = (git_out("config", "--get", "seat.session") or "").strip()
     if not sid or not message_file:
         return EXIT_OK
     top = (git_out("rev-parse", "--show-toplevel") or "").strip()
     worktree = pathlib.Path(top).name if top else ROOT.name
-    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", "--trailer", f"Session: {sid}", "--trailer", f"Worktree: {worktree}", message_file],
+    hid = harness_id()
+    reading, problem = harness_reading(hid) if hid else (None, "")
+    if problem:
+        print(f"--session-trailer: {problem}" + (" — no Model: or Effort: on this commit" if reading is None else ""), file=sys.stderr)
+    trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
+    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if r.returncode:
         print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
@@ -5390,27 +5684,141 @@ def triage_guard():
     return _GUARD
 
 
+class History:
+    """FM-040 — the history reader: a repository's commits with their parents and trailers, read by ONE `git log` and answered
+    in memory. It answers what `verdict_reports` used to ask git one subprocess at a time (about four per verdict, 33 ms
+    each): is X an ancestor of Y (`git merge-base --is-ancestor`), the ancestry path from a tip to the trunk
+    (`git rev-list --ancestry-path <tip>..<trunk>`), the trunk's first-parent line (`git rev-list --first-parent`), the
+    commits `<tip> ^<stop> --no-merges` names, and a commit's trailers. A commit is immutable, so the answers cannot go
+    stale within a run. Built by `read_history`; every sha here is a full one."""
+
+    def __init__(self, log=""):
+        self.parents, self.blocks = {}, {}       # sha -> its parents, in order · sha -> its TRAILERS block
+        self._ancestors, self._children, self._line = {}, None, {}
+        for rec in log.split("\x02"):
+            sha, _, rest = rec.strip("\n").partition("\x01")
+            parents, _, block = rest.partition("\x01")
+            if sha:
+                self.parents[sha], self.blocks[sha] = tuple(parents.split()), block
+
+    def trailers(self, sha, name):
+        """Every value of the trailer `name` on one commit, in order — `trailers_of`, without the subprocess."""
+        return trailer_values(self.blocks.get(sha, ""), name)
+
+    def ancestors(self, sha):
+        """Every commit reachable from `sha`, itself included."""
+        got = self._ancestors.get(sha)
+        if got is None:
+            got, todo = {sha}, [sha]
+            while todo:
+                for parent in self.parents.get(todo.pop(), ()):
+                    if parent not in got:
+                        got.add(parent)
+                        todo.append(parent)
+            self._ancestors[sha] = got
+        return got
+
+    def is_ancestor(self, sha, of):
+        """`git merge-base --is-ancestor <sha> <of>` — true also where the two are one commit."""
+        return sha in self.ancestors(of)
+
+    def first_parents(self, tip):
+        """`git rev-list --first-parent <tip>`: the tip, its first parent, and so on down — newest first."""
+        line = self._line.get(tip)
+        if line is None:
+            line, at = [], tip
+            while at:
+                line.append(at)
+                at = (self.parents.get(at) or (None,))[0]
+            self._line[tip] = line
+        return line
+
+    def ancestry_path(self, tip, trunk):
+        """`git rev-list --ancestry-path <tip>..<trunk>`: the commits the trunk reaches and the tip does not, that stand
+        above the tip — its descendants below the trunk."""
+        if self._children is None:
+            self._children = {}
+            for sha, parents in self.parents.items():
+                for parent in parents:
+                    self._children.setdefault(parent, []).append(sha)
+        reach, found, todo = self.ancestors(trunk), set(), [tip]
+        while todo:
+            for child in self._children.get(todo.pop(), ()):
+                if child in reach and child not in found:
+                    found.add(child)
+                    todo.append(child)
+        return found - self.ancestors(tip)
+
+    def commits(self, tip, stop=None):
+        """`git rev-list <tip> ^<stop> --no-merges`: what the tip reaches and `stop` does not, less the merges (a commit
+        with more than one parent). With no `stop`, everything the tip reaches."""
+        gone = self.ancestors(stop) if stop else ()
+        out, seen, todo = set(), {tip}, [tip]
+        while todo:
+            sha = todo.pop()
+            if sha in gone:
+                continue
+            parents = self.parents.get(sha, ())
+            if len(parents) < 2:
+                out.add(sha)
+            for parent in parents:
+                if parent not in seen:
+                    seen.add(parent)
+                    todo.append(parent)
+        return out
+
+    def reviewed_commits(self, tip, trunk):
+        """The reviewed branch's OWN commits (R2) — the range as R2 defined it — `git rev-list <tip> ^<trunk> --no-merges`, a set of
+        shas (until FM-040 `reviewed_range` built the arguments of a `git log` for it). A tip the trunk has since merged is measured against the
+        trunk as it stood before the merge that brought it (`^M^1`), so the report does not change when the branch lands. None:
+        the tip is on the trunk's own first-parent line — not a branch verdict. `trunk` None: no trunk to measure from."""
+        if not trunk:
+            return self.commits(tip)
+        if not self.is_ancestor(tip, trunk):
+            return self.commits(tip, trunk)
+        line = self.first_parents(trunk)
+        if tip in set(line):
+            return None
+        after = self.ancestry_path(tip, trunk)          # the trunk's first-parent commits that contain the tip are a prefix
+        landed = list(itertools.takewhile(lambda c: c in after, line))       # of its line; the oldest brought it
+        if not landed:
+            return self.commits(tip, trunk)
+        first = self.parents.get(landed[-1])
+        return self.commits(tip, first[0]) if first else set()      # `^<root>^1` is no revision: git reads nothing
+
+
+def resolve_commits(names):
+    """{name: the full sha of the commit it names, or ""} — `git rev-parse --verify --quiet <name>^{commit}` for each name, in one
+    `git cat-file --batch-check`. A name git could not take on a line of its own (a newline in it) is asked one call at a time."""
+    names = list(dict.fromkeys(names))
+    got = {n: "" for n in names}
+    lines = [n for n in names if n and "\n" not in n and "\r" not in n]
+    if lines:
+        r = subprocess.run(["git", "cat-file", "--batch-check"], cwd=ROOT, input="".join(f"{n}^{{commit}}\n" for n in lines), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        answers = r.stdout.split("\n") if r.returncode == 0 else []
+        if len(answers) >= len(lines):
+            for name, answer in zip(lines, answers):
+                hit = re.fullmatch(r"([0-9a-f]{40}|[0-9a-f]{64}) commit \d+", answer)
+                got[name] = hit[1] if hit else ""
+        else:
+            lines = []
+    for name in names:
+        if name and name not in lines:
+            got[name] = (git_out("rev-parse", "--verify", "--quiet", f"{name}^{{commit}}") or "").strip()
+    return got
+
+
+def read_history(*revs):
+    """The History of everything `revs` reach — one `git log`, full shas. Nothing reads no history: `git log` with no revision
+    would read HEAD."""
+    revs = [r for r in revs if r]
+    return History(git_out("log", f"--format=%H%x01%P%x01{TRAILERS}%x02", *revs) or "" if revs else "")
+
+
 def trunk_ref():
     """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master`."""
     return next((ref for ref in ("origin/main", "main", "master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
-
-
-def reviewed_range(tip, trunk, first_parents, on_line):
-    """The reviewed branch's OWN commits (R2): `git rev-list <tip> ^<trunk> --no-merges` — what the trunk brought in by a
-    merge is not the branch's. A tip the trunk has since merged is measured against the trunk as it stood before the merge
-    that brought it (`^M^1`), so the report does not change when the branch lands. None: the tip is on the trunk's own
-    first-parent line — not a branch verdict. Returned as the arguments of the `git log` that reads the range."""
-    if not trunk:
-        return ["--no-merges", tip]
-    if git_out("merge-base", "--is-ancestor", tip, trunk) is None:
-        stop = trunk
-    elif tip in on_line:
-        return None
-    else:                                                   # the trunk's first-parent commits that contain the tip are a
-        after = set((git_out("rev-list", "--ancestry-path", f"{tip}..{trunk}") or "").split())     # prefix of its line;
-        landed = [c for c in itertools.takewhile(lambda c: c in after, first_parents)]            # the oldest brought it
-        stop = f"{landed[-1]}^1" if landed else trunk
-    return ["--no-merges", tip, f"^{stop}"]
 
 
 def verdict_reports(days=None):
@@ -5418,7 +5826,7 @@ def verdict_reports(days=None):
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
     range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
     is on the trunk's first-parent line (not a branch verdict). The range is the branch's own commits, less other
-    verdicts (`reviewed_range`). A report, never a refusal (slice 2 refuses, after a week of counts)."""
+    verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
     found = []
@@ -5430,18 +5838,17 @@ def verdict_reports(days=None):
     if not found:
         return []
     trunk = trunk_ref()
-    first_parents = (git_out("rev-list", "--first-parent", trunk) or "").split() if trunk else []      # newest first
-    on_line = set(first_parents)
+    shas = resolve_commits([reviewed for _v, reviewed, _s in found] + ([trunk] if trunk else []))       # FM-040: the window's history,
+    history = read_history(*sorted({s for s in shas.values() if s}))       # read once — every question below is answered from it
+    trunk_sha = shas[trunk] if trunk else ""
     out = []
     for verdict, reviewed, sid in found:
-        tip = (git_out("rev-parse", "--verify", "--quiet", f"{reviewed}^{{commit}}") or "").strip()
-        own = reviewed_range(tip, trunk, first_parents, on_line) if tip else []
+        tip = shas[reviewed]
+        own = history.reviewed_commits(tip, trunk_sha or None) if tip else set()          # None: the tip is on the trunk's line
         ranged = set()
-        if own:
-            rng = git_out("log", f"--format={TRAILERS}%x02", *own) or ""
-            for block in rng.split("\x02"):
-                if not trailer_values(block, "Reviewed"):
-                    ranged |= set(trailer_values(block, "Session"))
+        for sha in own or ():
+            if not history.trailers(sha, "Reviewed"):
+                ranged |= set(history.trailers(sha, "Session"))
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
@@ -5465,29 +5872,88 @@ def sessions_report():
     return lines
 
 
+def collapse_runs(numbers):
+    """`[1, 2, 3, 4, 5, 7]` → `1–5, 7`: a run of three or more is `a–b`, a run of two is both, a lone number is itself."""
+    nums, out, i = sorted(set(numbers)), [], 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        out += [f"{nums[i]}–{nums[j]}"] if j - i >= 2 else [str(n) for n in nums[i:j + 1]]
+        i = j + 1
+    return ", ".join(out)
+
+
+def session_groups(since=SESSION_RECENT):
+    """THE STRIP, grouped by parent (FM-024): one entry per parent session with a commit in the last `since` seconds — its
+    own or a sub-session's. `id` is the parent; `seat` and `worktree` its own commits' (`—` for a parent that made none:
+    it is derived from its sub-sessions' ids, `<parent>/<seat>-<n>`); `runs` the sub-sessions' seats with their numbers,
+    runs collapsed (`implementer 1–6`, `reviewer 1–5, 7`); `subs` how many sub-sessions are in the window; `members` the
+    parent first where it has commits, then each sub-session in the window, as (id, worktree, model, effort) — `—` where
+    no commit carried one. Read from the trailers alone, never from a transcript."""
+    cutoff = datetime.datetime.now().timestamp() - since
+    groups = {}
+    for r in session_rows():
+        parent, _, hand = r["id"].partition("/")
+        g = groups.setdefault(parent, dict(own=None, subs=[], first=r["first"][0]))
+        g["first"] = min(g["first"], r["first"][0])
+        if hand:
+            g["subs"].append(r)
+        else:
+            g["own"] = r
+    show = lambda v: v or "—"
+    out = []
+    for parent, g in sorted(groups.items(), key=lambda kv: kv[1]["first"]):
+        subs, own = [r for r in g["subs"] if r["last"][0] >= cutoff], g["own"]
+        if not subs and not (own and own["last"][0] >= cutoff):
+            continue
+        numbers = {}                                    # seat -> its sub-sessions' numbers, in the order the seats first appear
+        for r in subs:
+            m = re.fullmatch(r"(.+)-(\d+)", r["id"].partition("/")[2])
+            numbers.setdefault(m[1] if m else r["id"].partition("/")[2], []).extend([int(m[2])] if m else [])
+        out.append(dict(id=parent, seat=", ".join(own["seats"]) if own and own["seats"] else "—", subs=len(subs),
+                        worktree=", ".join(own["worktrees"]) if own and own["worktrees"] else "—",
+                        runs=[f"{name} {collapse_runs(nums)}".rstrip() for name, nums in numbers.items()],
+                        members=[(r["id"], show(", ".join(r["worktrees"])), show(r["model"]), show(r["effort"])) for r in ([own] if own else []) + subs]))
+    return out
+
+
+def group_line(g):
+    """One parent's line, the board's and the digest's alike: `<parent> <seat> (<worktree>) · implementer 1–6 · reviewer 1–5, 7`."""
+    return f"{g['id']} {g['seat']} ({g['worktree']})" + "".join(f" · {run}" for run in g["runs"])
+
+
+def group_counts(groups):
+    """(parents, all) — the header's two numbers: the parents with a commit in the last day, and them with their sub-sessions."""
+    return len(groups), len(groups) + sum(g["subs"] for g in groups)
+
+
 def board_sessions():
-    """The report as the board shows it — the sessions with a commit in the last day (id, seat, worktree) and this week's
-    verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
+    """The report as the board shows it — the parents with a commit in the last day (each: id, seat, worktree, its
+    sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, and this
+    week's verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
     if vcs() != "git":
         return None
-    recent = session_rows(since=datetime.datetime.now().timestamp() - SESSION_RECENT)
+    groups = session_groups()
     reps = verdict_reports()
-    if not recent and not reps:
+    if not groups and not reps:
         return None
     count = collections.Counter(w for *_x, w in reps)
-    return {"recent": [[r["id"], ", ".join(r["seats"]), ", ".join(r["worktrees"]) or "—"] for r in recent],
+    parents, everyone = group_counts(groups)
+    return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
+            "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"]] if reps else None}
 
 
 def sessions_digest():
-    """The digest's one line: the sessions with a commit in the last day, by seat — or nothing where there is none."""
-    reg = board_sessions()
-    if not reg or not reg["recent"]:
+    """The digest's lines, grouped as the board's strip is: a header with the two counts, then one line per parent with a
+    commit in the last day — or nothing where there is none. It reads git for the sessions alone, never the verdicts."""
+    groups = session_groups() if vcs() == "git" else []
+    if not groups:
         return ""
-    by = collections.defaultdict(list)
-    for sid, seat, w in reg["recent"]:
-        by[seat].append(sid + (f" in {w}" if w and w != "—" else ""))
-    return "SESSIONS IN THE LAST DAY · " + " · ".join(f"{seat} {len(ids)} ({', '.join(ids)})" for seat, ids in by.items())
+    parents, everyone = group_counts(groups)
+    return "\n".join([f"SESSIONS IN THE LAST DAY · {parents} ({everyone} with their sub-sessions)"] + [f"  {group_line(g)}" for g in groups])
+
 
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
 
@@ -6052,6 +6518,12 @@ def parse_args(argv):
         help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
              "its first eight hex characters; a sub-agent's is its parent's and its hand, `<parent>/<seat>-<n>`. `--session new` prints an id no commit carries, for a session "
              "with no parent and a harness with no id. `open` and `close` are gone since 0.18.0: the registry is a report, `--sessions`")
+    add("--ratio", action="store_true", help="the records-to-product ratio (FM-032): per Europe/Berlin day of the merge, the lines added and deleted in records "
+                                            "(`[ratio] records` in the configuration) and in product (every other path), counted apart, for the merge commits on "
+                                            "the default branch's first-parent line — then the rolling seven-day sums. The rule is "
+                                            "work-tracker/evidence/FM-032/records-to-product-ratio.md. Read-only; exit 2 without a `[ratio]` section")
+    add("--since", metavar="YYYY-MM-DD", help="with --ratio: the first day of the window (default: six days before --until)")
+    add("--until", metavar="YYYY-MM-DD", help="with --ratio: the last day of the window (default: today, Europe/Berlin)")
     add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
@@ -6062,8 +6534,13 @@ def parse_args(argv):
                                                       "Owner, a commit that changes their intent or current path in TRIAGE.md is refused before it is made unless they are its author "
                                                       "(FM-037 — the hook sees the author; `--check` judges the signature)")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "
-                                                            "and `Worktree: <the checkout's directory>` to a seat's commit — nothing without `seat.session`; "
+                                                            "and `Worktree: <the checkout's directory>` to a seat's commit — and `Model:` and `Effort:` where `seat.harness` "
+                                                            "names a log that carries them (`--whoami`) — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
+    add("--whoami", action="store_true", help="who this session is, as a message between sessions names its target (AGENTS.md): "
+                                              "`To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]`, the "
+                                              "worktree's folder, and the model and effort from the harness's own log, found by the id in `seat.harness` "
+                                              "(`—` where there is none). Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -6391,6 +6868,9 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
    They have office hours, you have a budget: **end a session's last message with `{cmd} --owner`.**
 8. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
+9. **A message a person carries between sessions names its target as the tool prints it:** `To: <session> <seat> (<worktree>)`.
+   A seat's report opens with its own — `{cmd} --whoami` prints it, with the model and effort the harness's log
+   names, never the seat's own word for them.
 """
 
 CONFIG_TEMPLATE = """\
@@ -6574,7 +7054,7 @@ def init(key=None):
     print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
     print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
           f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
-          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one)")
+          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one); `seat.harness` (the id the harness gave the seat, for its `Model:` and `Effort:`) is `{CMD} --whoami`'s")
     return EXIT_OK
 
 
@@ -6724,6 +7204,8 @@ def main(argv=None):
         return install_hook()
     if args.session_trailer:                                # every commit runs this: it reads one git setting, never the trackers
         return session_trailer(args.session_trailer[0])
+    if args.whoami:                                         # who this session is: git's settings and the harness's own log, no tracker
+        return whoami()
     if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
         return session_check()
     if args.commit_msg:                                     # …and this, once the message exists: no build commit before a judgement (FM-033), the Owner's two sections (FM-037)
@@ -6732,6 +7214,11 @@ def main(argv=None):
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone
         return sessions_cmd()
+    if args.ratio:                                          # FM-032: a report of git's first-parent history — no tracker is read
+        return ratio_cmd(args.since, args.until)
+    if args.since or args.until:
+        print("--since and --until go with --ratio", file=sys.stderr)
+        return 2
     if args.queue:                                          # FM-031 S2: the forge's queue — no tracker is read
         return queue_cmd()
     if args.answer:

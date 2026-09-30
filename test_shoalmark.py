@@ -7,6 +7,7 @@ in-process with an argv list, so a non-zero exit is observable without a subproc
 import hashlib
 import importlib.util
 import io
+import itertools
 import json
 import os
 import re
@@ -628,8 +629,8 @@ with tempfile.TemporaryDirectory() as d:
     quiet = run_safe(root, "--owner")[1]
     now_ = commit_as(root, "implementer@seat", "at work now\n\nSession: 5555eeee/implementer-2\nWorktree: wt-now")
     busy = run_safe(root, "--owner")[1]
-    check(f"FM-032 S2 · the digest names the sessions with a commit in the last day, by seat — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
-          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · implementer 1 (5555eeee/implementer-2 in wt-now)" in busy and "1111aaaa" not in busy)
+    check(f"FM-032 S2 · the digest names the parents with a commit in the last day — a parent derived from its sub-session's id — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
+          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
     opened, closed = run_safe(root, "--session", "open", "6666ffff", "principal", "the Owner", "x"), run_safe(root, "--session", "close", "1111aaaa")
     gone = "--session open/close are gone since 0.18.0: the registry is a report — run --sessions"
     check(f"FM-032 S2 · `--session open` and `--session close` are gone: one line, exit 2, nothing written (saw {opened[0]}, {closed[0]}, {opened[2].strip()!r})",
@@ -702,6 +703,64 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 R4 · the installed pre-commit hook refuses a seat's code-only commit with no session — no tracker staged — and lets it through with its session (saw {refused_.returncode}, {passed_.returncode}, {trailer_!r})",
           refused_.returncode != 0 and "carries no Session: trailer" in refused_.stderr + refused_.stdout and passed_.returncode == 0 and trailer_ == ["0a0a0a0a/implementer-1"])
 
+# --- FM-040: the history reader answers in memory what git answers one subprocess at a time — each shape asserted against live git --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    commit_ = lambda subject, session=None: (git(root, "commit", "-q", "--allow-empty", "-m", subject + (f"\n\nSession: {session}" if session else "")), out_("rev-parse", "HEAD"))[1]
+    git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0"); t0 = out_("rev-parse", "HEAD")
+    shapes_ = {}
+    git(root, "checkout", "-q", "-b", "straight"); commit_("one", "s1"); commit_("two", "s1/implementer-1"); shapes_["a straight branch"] = commit_("three", "s1")
+    git(root, "checkout", "-q", "main"); git(root, "checkout", "-q", "-b", "merged", t0); shapes_["a branch the trunk merged"] = commit_("m1", "m1")
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges m", "merged")
+    git(root, "checkout", "-q", "-b", "again", t0); commit_("n1a", "n1"); git(root, "merge", "-q", "--no-ff", "-m", "the trunk merged in\n\nSession: n1", "main")
+    shapes_["a merge commit (a verdict on a merge)"] = out_("rev-parse", "HEAD")
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges n", "again")
+    git(root, "checkout", "-q", "-b", "sessionless", "main"); commit_("no session here"); shapes_["an untraced range (no session anywhere in it)"] = commit_("still none")
+    git(root, "checkout", "-q", "main"); shapes_["a tip that IS the trunk"] = out_("rev-parse", "HEAD"); shapes_["a commit on the trunk's own line"] = t0
+    fm.configure(root)
+    trunk_ = fm.trunk_ref()
+    line_ = (fm.git_out("rev-list", "--first-parent", trunk_) or "").split()
+    hist_ = fm.read_history(trunk_, *shapes_.values())
+
+    def git_range_(tip):
+        """The reviewed range as git itself answers it — R2's formula, one live command at a time (what `reviewed_range` asked until FM-040)."""
+        if fm.git_out("merge-base", "--is-ancestor", tip, trunk_) is None:
+            stop = trunk_
+        elif tip in line_:
+            return None
+        else:
+            after = set((fm.git_out("rev-list", "--ancestry-path", f"{tip}..{trunk_}") or "").split())
+            landed = [c for c in itertools.takewhile(lambda c: c in after, line_)]
+            stop = f"{landed[-1]}^1" if landed else trunk_
+        return set((fm.git_out("rev-list", "--no-merges", tip, f"^{stop}") or "").split())
+    say_ = {}
+    for what_, tip_ in shapes_.items():
+        wrong_ = []
+        if hist_.is_ancestor(tip_, out_("rev-parse", trunk_)) != (subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", tip_, trunk_], env=_ENV).returncode == 0):
+            wrong_.append("is_ancestor")
+        if hist_.first_parents(out_("rev-parse", trunk_)) != line_:
+            wrong_.append("first_parents")
+        if hist_.is_ancestor(tip_, out_("rev-parse", trunk_)) and hist_.ancestry_path(tip_, out_("rev-parse", trunk_)) != set((fm.git_out("rev-list", "--ancestry-path", f"{tip_}..{trunk_}") or "").split()):
+            wrong_.append("ancestry_path")
+        want_ = git_range_(tip_)
+        got_ = hist_.reviewed_commits(tip_, out_("rev-parse", trunk_))
+        if got_ != want_:
+            wrong_.append("reviewed_commits")
+        if hist_.trailers(tip_, "Session") != fm.trailers_of(tip_, "Session"):
+            wrong_.append("trailers")
+        say_[what_] = (wrong_, None if got_ is None else len(got_))
+        check(f"FM-040 · the history reader agrees with git on {what_} — ancestor, first-parent line, ancestry path, the reviewed range, trailers (wrong: {wrong_ or 'none'}; range {say_[what_][1]})", not wrong_)
+    check(f"FM-040 · the shapes really differ: a tip on the trunk's line is no branch verdict; a landed branch keeps its own range; a straight branch has its 3 commits (saw {[v[1] for v in say_.values()]})",
+          say_["a tip that IS the trunk"][1] is None and say_["a commit on the trunk's own line"][1] is None and say_["a straight branch"][1] == 3
+          and say_["a branch the trunk merged"][1] == 1 and say_["an untraced range (no session anywhere in it)"][1] == 2)
+    names_ = [shapes_["a straight branch"], shapes_["a straight branch"][:7], "straight", "main~1", "no-such-ref", "abc", trunk_, "HEAD^{tree}"]
+    check("FM-040 · resolve_commits names the same commits `git rev-parse --verify --quiet <name>^{commit}` does, unresolved names as empty",
+          fm.resolve_commits(names_) == {n: out_("rev-parse", "--verify", "--quiet", f"{n}^{{commit}}") for n in names_})
+    check("FM-040 · the reader reads nothing where it is given nothing (not HEAD by default)", fm.read_history().parents == {} and fm.read_history("", None).parents == {})
+    fm.configure(HERE)
+
 # --- FM-024 S6: each verdict reported as independent or same session — the reviewed range's sessions against its own --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -709,7 +768,7 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
     git(root, "checkout", "-q", "-b", "feat")
     head = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1"); built = head()
+    git(root, "commit", "-q", "--allow-empty", "-m", "the build\n\nSession: a9"); git(root, "commit", "-q", "--allow-empty", "-m", "more of it\n\nSession: a9/implementer-1\nModel: claude-sonnet-5-5\nEffort: xhigh"); built = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: a9/reviewer-1"); v_same = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}\nSession: k3"); v_ind = head()
     git(root, "commit", "-q", "--allow-empty", "-m", f"review: READY\n\nReviewed: {built}"); v_none = head()
@@ -755,10 +814,176 @@ with tempfile.TemporaryDirectory() as d:
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
-    check(f"FM-024 S7 · the board's strip names the sessions with a commit in the last day, with seat and worktree, and counts the week's verdicts; the digest's line groups them by seat (saw {(strip_ or '')[-200:]!r} · {digest_.strip()[-80:]!r})",
-          "SESSIONS IN THE LAST DAY · t@t 4 (a9, a9/implementer-1, a9/reviewer-1, k3)" in digest_ and (strip_ is None or (
-              "sessions · 4 in the last day — a9 t@t (—) · a9/implementer-1 t@t (—) · a9/reviewer-1 t@t (—) · k3 t@t (—)" in strip_
+    check(f"FM-024 S7 + FM-024 build for 0.19.0 · the board's strip is one line per parent — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the digest groups the same way under the same header (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
+          "SESSIONS IN THE LAST DAY · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
+              "sessions · 2 in the last day (4 with their sub-sessions) a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
               and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
+# --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + SEATS_TOML)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "owner@example.org", "the tree")
+    P1, P2, P3 = "1111aaaa", "2222bbbb", "3333cccc"
+    commit_as(root, "principal@seat", f"the first parent\n\nSession: {P1}\nWorktree: wt-p")
+    commit_as(root, "principal@seat", f"the third parent\n\nSession: {P3}\nWorktree: wt-q\nModel: claude-opus-4-8\nEffort: high")
+    for n in (1, 2, 3, 4, 5, 6):
+        commit_as(root, "implementer@seat", f"build {n}\n\nSession: {P1}/implementer-{n}\nWorktree: wt-i{n}")
+    commit_as(root, "implementer@seat", f"build 1, again — a newer model\n\nSession: {P1}/implementer-1\nWorktree: wt-i1\nModel: claude-sonnet-5-5\nEffort: xhigh")
+    for n in (1, 2, 3, 4, 5, 7):
+        commit_as(root, "reviewer@seat", f"review {n}\n\nSession: {P1}/reviewer-{n}\nWorktree: wt-r{n}\nModel: claude-opus-4-8\nEffort: high")
+    for n in (41, 42, 45):                                                   # a parent that made no commit of its own: derived
+        commit_as(root, "implementer@seat", f"build {n}\n\nSession: {P2}/implementer-{n}\nWorktree: wt-j{n}")
+    for n in range(1, 11):
+        commit_as(root, "reviewer@seat", f"review {n}\n\nSession: {P3}/reviewer-{n}\nWorktree: wt-s{n}")
+    commit_as(root, "reviewer@seat", f"a sub-session of a parent from a week ago\n\nSession: 4444dddd/reviewer-1\nWorktree: wt-old", "2026-01-05T09:00:00")
+    said = run_safe(root, "--owner")[1]
+    lines = [l for l in said.splitlines() if l.startswith("  ") and re.match(r"  [0-9a-f]{8} ", l)]
+    check(f"FM-024 (0.19.0) · 3 parents with 25 sub-sessions render 3 lines and the header's counts — the runs collapsed (`1–6`, `1–5, 7`, `41, 42, 45`), a parent with no commit of its own derived from its sub-sessions' ids, a session from a week ago not counted (saw {lines} · {said.strip()[-420:]!r})",
+          "SESSIONS IN THE LAST DAY · 3 (28 with their sub-sessions)" in said
+          and lines == [f"  {P1} principal (wt-p) · implementer 1–6 · reviewer 1–5, 7", f"  {P3} principal (wt-q) · reviewer 1–10", f"  {P2} — (—) · implementer 41, 42, 45"]
+          and "4444dddd" not in said)
+    fm.configure(root)
+    reg = fm.board_sessions()
+    members = {g[0]: {m[0]: m[1:] for m in g[4]} for g in reg["groups"]}
+    check(f"FM-024 (0.19.0) · the board's data carries the counts, a line per parent and each member's worktree, model and effort — the newest `Model:` and `Effort:` of a session, and `—` where no commit carried one (saw {reg['parents']}, {reg['all']}, {members.get(P1, {}).get(P1 + '/implementer-1')})",
+          (reg["parents"], reg["all"]) == (3, 28) and [g[0] for g in reg["groups"]] == [P1, P3, P2]
+          and members[P1][f"{P1}/implementer-1"] == ["wt-i1", "claude-sonnet-5-5", "xhigh"] and members[P1][f"{P1}/implementer-2"] == ["wt-i2", "—", "—"]
+          and members[P1][f"{P1}/reviewer-7"] == ["wt-r7", "claude-opus-4-8", "high"] and members[P3][P3] == ["wt-q", "claude-opus-4-8", "high"]
+          and members[P1][P1] == ["wt-p", "—", "—"] and P2 not in members[P2] and len(members[P2]) == 3
+          and len(reg["groups"][0][4]) == 13 and reg["groups"][0][3] == ["implementer 1–6", "reviewer 1–5, 7"])
+    _sub = fm.session_groups(since=0)
+    check("FM-024 (0.19.0) · a window of no seconds names no session — a parent is on the strip for a commit in the window, its own or a sub-session's", _sub == [])
+    fm.configure(HERE)
+
+# --- FM-024 (0.19.0): `--whoami`, and `Model:` and `Effort:` from the harness's own log — found by its id, never by a path ---------------
+CANARY = "CANARY-9c41e7d2 the transcript's words"
+
+
+def _turn(model=None, effort=None, cwd="/somewhere/the/session/was/launched", content=None, kind="assistant", **more):
+    """One Claude Code log line as the harness writes it: the model inside `message`, the effort and `cwd` at the top."""
+    d = dict(type=kind, cwd=cwd, sessionId="x", message=dict(role=kind, content=content if content is not None else CANARY))
+    if model:
+        d["message"]["model"] = model
+    if effort:
+        d["perTurnEffort"] = effort
+    d.update(more)
+    return json.dumps(d)
+
+
+class _Home:
+    """A home directory of its own for one block — the harness's logs under it, never the real ones."""
+    def __init__(self, base):
+        self.base, self.saved = Path(base), {}
+
+    def __enter__(self):
+        for k in ("HOME", "USERPROFILE", "CODEX_THREAD_ID"):
+            self.saved[k] = os.environ.get(k)
+        os.environ["HOME"] = os.environ["USERPROFILE"] = str(self.base)
+        os.environ.pop("CODEX_THREAD_ID", None)
+        return self
+
+    def __exit__(self, *_):
+        for k, v in self.saved.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+
+    def log(self, rel, lines):
+        f = self.base / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return f
+
+
+with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
+    root, home = Path(d).resolve(), _Home(Path(h).resolve())
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text() + SEATS_TOML)
+    cfg = lambda k, v=None: subprocess.run(["git", "-C", str(root), "config", *([k, v] if v is not None else ["--unset", k])], env=_ENV, capture_output=True)
+    PARENT, AGENT1, AGENT2, THREAD = "8e509911-e5fb-40ee-a747-7420819ab485", "aefd1a3520c000231", "b7c0d4e91a2f3c688", "01a0f131-ec9e-7942-aca7-758b84599599"
+    LAUNCH = "/Users/x/Documents/parent-project"                  # the directory the parent was launched in — on EVERY turn, sub-agents' too
+    with home:
+        home.log(f".claude/projects/-Users-x-parent/{PARENT}.jsonl",
+                 [_turn(kind="user", cwd=LAUNCH), _turn("claude-opus-4-8", "high", LAUNCH), _turn("claude-opus-4-8", "xhigh", LAUNCH), _turn(kind="user", cwd=LAUNCH)])
+        home.log(f".claude/projects/-Users-x-parent/{PARENT}/subagents/agent-{AGENT1}.jsonl",
+                 [_turn("claude-haiku-4-5", "low", LAUNCH), _turn("claude-sonnet-5-5", "medium", LAUNCH), _turn(model="claude-sonnet-5-5", cwd=LAUNCH, kind="assistant")])
+        home.log(f".claude/projects/-Users-x-parent/{PARENT}/subagents/agent-{AGENT2}.jsonl", [_turn("claude-opus-4-8", "high", LAUNCH)])
+        home.log(f".codex/sessions/2026/09/30/rollout-2026-09-30T09-22-56-{THREAD}.jsonl",
+                 [json.dumps(dict(type="session_meta", payload=dict(id=THREAD, cwd="/Users/x/codex-launch"))),
+                  json.dumps(dict(type="turn_context", payload=dict(model="gpt-6.1-old", effort="low", cwd="/Users/x/codex-launch"))),
+                  json.dumps(dict(type="response_item", payload=dict(type="message", content=[dict(text=CANARY)]))),
+                  json.dumps(dict(type="turn_context", payload=dict(model="gpt-6.1-sol", effort="medium", cwd="/Users/x/codex-launch")))])
+        who = {}
+        for name, sid, seat, hid in (("parent", "1111aaaa", "principal@seat", PARENT), ("agent1", "1111aaaa/implementer-1", "implementer@seat", AGENT1),
+                                     ("agent2", "1111aaaa/reviewer-1", "reviewer@seat", AGENT2), ("codex", "2222bbbb", "principal@seat", THREAD)):
+            cfg("seat.session", sid); cfg("user.email", seat); cfg("seat.harness", hid)
+            who[name] = run_safe(root, "--whoami")
+        wt = root.name
+        want = {"parent": f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · xhigh", "agent1": f"To: 1111aaaa/implementer-1 implementer ({wt}) · claude-sonnet-5-5 · medium",
+                "agent2": f"To: 1111aaaa/reviewer-1 reviewer ({wt}) · claude-opus-4-8 · high", "codex": f"To: 2222bbbb principal ({wt}) · gpt-6.1-sol · medium"}
+        got = {k: v[1].splitlines()[0] if v[1] else v[2].strip() for k, v in who.items()}
+        check(f"FM-024 (0.19.0) · `--whoami` prints `To: <session> <seat> (<worktree>) · <model> · <effort>` from the log the id names — a Claude parent, its two sub-agents (whose logs all say the parent's launch directory) and a Codex rollout, each the newest turn's own (saw {got})",
+              got == want and all(v[0] == 0 for v in who.values()) and f"launched in {LAUNCH}" in who["agent1"][1] and "codex-launch" in who["codex"][1])
+        msg = root / "MSG"
+        trail = {}
+        for name, sid, seat, hid in (("parent", "1111aaaa", "principal@seat", PARENT), ("agent1", "1111aaaa/implementer-1", "implementer@seat", AGENT1), ("codex", "2222bbbb", "principal@seat", THREAD)):
+            cfg("seat.session", sid); cfg("user.email", seat); cfg("seat.harness", hid)
+            msg.write_text("a seat's subject\n"); code_ = run_safe(root, "--session-trailer", str(msg))[0]
+            trail[name] = (code_, msg.read_text().splitlines()[2:])
+        check(f"FM-024 (0.19.0) · the prepare-commit-msg hook (`--session-trailer`) appends `Model:` and `Effort:` beside `Session:` and `Worktree:` where the id's log names them (saw {trail})",
+              trail["parent"] == (0, ["Session: 1111aaaa", f"Worktree: {wt}", "Model: claude-opus-4-8", "Effort: xhigh"])
+              and trail["agent1"][1][-2:] == ["Model: claude-sonnet-5-5", "Effort: medium"] and trail["codex"][1][-2:] == ["Model: gpt-6.1-sol", "Effort: medium"])
+        cfg("seat.session", "1111aaaa"); cfg("user.email", "principal@seat"); cfg("seat.harness", PARENT)
+        typed = "a subject\n\nModel: typed-by-hand\nSession: 1111aaaa\nWorktree: elsewhere\nEffort: typed\n"
+        msg.write_text(typed); run_safe(root, "--session-trailer", str(msg)); once = msg.read_text()
+        msg.write_text("a subject\n\nSession: 1111aaaa\nModel: typed-by-hand\n"); run_safe(root, "--session-trailer", str(msg)); half = msg.read_text()
+        check(f"FM-024 (0.19.0) · a commit that carries the trailers already is left alone — each key on its own: a typed `Model:` stays the one, and `Effort:` is still added (saw {once!r} · {half!r})",
+              once == typed and half.count("Model:") == 1 and "Model: typed-by-hand" in half and "Effort: xhigh" in half and "Worktree:" in half)
+        # the canary: the reader takes top-level fields only. A transcript whose message content, tool result and side fields are a sentinel
+        # — and whose model names a second trailer — must put none of it into anything the reader prints or writes
+        home.log(f".claude/projects/-Users-x-canary/{PARENT[:-1]}0.jsonl",
+                 [_turn(kind="user", content=CANARY), _turn("claude-opus-4-8", "high", content=[dict(type="text", text=CANARY), dict(type="tool_result", content=CANARY)],
+                                                           toolUseResult=CANARY, slug=CANARY, gitBranch=CANARY),
+                  _turn("claude-opus-4-8\nSession: evil", "high\nModel: evil", content=CANARY)])
+        cfg("seat.harness", PARENT[:-1] + "0")
+        msg.write_text("a subject\n"); cw = run_safe(root, "--whoami"); ct = run_safe(root, "--session-trailer", str(msg)); after = msg.read_text()
+        seen_all = cw[1] + cw[2] + ct[1] + ct[2] + after
+        check(f"FM-024 (0.19.0) · CANARY: a transcript whose message content, tool result and side fields are a sentinel puts none of it into what `--whoami` prints or the hook writes — and a model with a line break in it is no value, so no second trailer (saw {cw[1].splitlines()[:1]} · {after.splitlines()[2:]})",
+              CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
+        # the newest turn that carries them, from the end of a log of several megabytes — never a whole-file read
+        big = home.log(f".claude/projects/-Users-x-big/{PARENT[:-1]}1.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(30)] + [_turn("claude-sonnet-5-5", "max")])
+        cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.monotonic(); bw = run_safe(root, "--whoami"); took = time.monotonic() - t0
+        check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log (saw {bw[1].splitlines()[:1]}, {took:.1f} s)",
+              bw[1].splitlines()[0].endswith("claude-sonnet-5-5 · max") and took < 20)
+        # a log that names nothing within the newest 8 MiB (or only one of the two) reads `—` and says why — never silence
+        old = home.log(f".claude/projects/-Users-x-old/{PARENT[:-1]}2.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(90)])
+        half_ = home.log(f".claude/projects/-Users-x-half/{PARENT[:-1]}3.jsonl", [_turn("claude-opus-4-8")])
+        cfg("seat.harness", PARENT[:-1] + "2"); gone = run_safe(root, "--whoami")
+        cfg("seat.harness", PARENT[:-1] + "3"); part = run_safe(root, "--whoami")
+        check(f"FM-024 RV-2012 · a log whose fields lie beyond the newest 8 MiB prints `— · —` and names the cap on stderr; a log with a model and no effort says it names no effort (saw {gone[1].splitlines()[:1]}, {gone[2].strip()[-90:]!r} · {part[1].splitlines()[:1]}, {part[2].strip()[-70:]!r})",
+              old.stat().st_size > 9_000_000 and gone[0] == 0 and gone[1].splitlines()[0].endswith("· — · —") and "names no model and no effort in its newest 8 MiB" in gone[2]
+              and part[1].splitlines()[0].endswith("claude-opus-4-8 · —") and "names no effort in its newest 8 MiB" in part[2] and "and no" not in part[2])
+        # two files for one id refuse; none is `—`
+        dup = home.log(f".claude/projects/-Users-x-elsewhere/{PARENT}.jsonl", [_turn("claude-haiku-4-5", "low")])
+        cfg("seat.harness", PARENT)
+        msg.write_text("a subject\n"); amb = run_safe(root, "--whoami"); amb_t = run_safe(root, "--session-trailer", str(msg))
+        check(f"FM-024 (0.19.0) · two log files carrying one id refuse — exit 2, both paths named, no `To:` line; the hook writes no `Model:` and no `Effort:` and does not stop the commit (saw {amb[0]}, {amb[2].strip()[-190:]!r} · {msg.read_text().splitlines()[2:]})",
+              amb[0] == 2 and amb[1] == "" and str(dup) in amb[2] and f"{PARENT}.jsonl" in amb[2] and "-Users-x-parent" in amb[2]
+              and amb_t[0] == 0 and msg.read_text().splitlines()[2:] == ["Session: 1111aaaa", f"Worktree: {wt}"])
+        cfg("seat.harness", "0123456789abcdef0"); none_ = run_safe(root, "--whoami")
+        cfg("seat.harness"); unset = run_safe(root, "--whoami")
+        cfg("seat.harness", "../../etc/passwd"); odd = run_safe(root, "--whoami")
+        check(f"FM-024 (0.19.0) · an id with no log, no id, or an id that is no name reads `—` and says why — the commit gets no trailer (saw {none_[1].strip()!r} · {unset[1].strip()!r} · {odd[1].strip()!r})",
+              none_[1].strip() == f"To: 1111aaaa principal ({wt}) · — · —" and "no log carries the harness id 0123456789abcdef0" in none_[2]
+              and unset[1].strip() == none_[1].strip() and "seat.harness" in unset[2] and odd[1].strip() == none_[1].strip() and "at least eight" in odd[2])
+        cfg("seat.session"); nosession = run_safe(root, "--whoami")
+        check(f"FM-024 (0.19.0) · `--whoami` in a worktree with no `seat.session` prints no `To:` line and says so, exit 4 (saw {nosession[0]}, {nosession[2].strip()[:90]!r})",
+              nosession[0] == fm.EXIT_LINT and nosession[1] == "" and "no `seat.session`" in nosession[2])
+        schema = run_safe(root, "--schema")[1]
+        check("FM-024 (0.19.0) · `--schema` lists the worktree's settings — `seat.session` and `seat.harness` — under the configuration's keys", "| `seat.harness` |" in schema and "| `seat.session` |" in schema and "| `user.email` |" in schema)
+
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
@@ -5432,6 +5657,358 @@ with tempfile.TemporaryDirectory() as tmp:
           code_ == fm.EXIT_LINT and '--answer AP-296 revoke "the audit comes first"' in err_ and '--answer AP-296 revoke "the audit comes first" --supersede' not in err_
           and '--answer AP-297 reject "not this quarter" --supersede' in err_)
     rm_git(root)
+fm.configure(HERE)
+
+# --- FM-032 · `--ratio`: records added : product added, per Europe/Berlin day of the merge --------------------------------------
+def _ratio_g(root, *a, when=None):
+    """One git call in the scratch repository; `when` dates the commit or merge it makes (author and committer, an explicit offset)."""
+    env = dict(_ENV, **({"GIT_COMMITTER_DATE": when, "GIT_AUTHOR_DATE": when} if when else {}))
+    return subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *a],
+                          check=True, capture_output=True, text=True, env=env).stdout.strip()
+
+
+def _ratio_merge(root, name, when, files, gone=(), pointer=False):
+    """A pull request as the forge merges it: a branch with one commit, then `--no-ff` into main, the merge dated `when`."""
+    _ratio_g(root, "switch", "-q", "-c", name, "main")
+    for rel, data in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_bytes(data)
+    for rel in gone:
+        _ratio_g(root, "rm", "-q", rel)
+    if pointer:                                   # a submodule pointer: mode 160000, whatever commit it names
+        _ratio_g(root, "update-index", "--add", "--cacheinfo", f"160000,{_ratio_g(root, 'rev-parse', 'HEAD')},sub")
+    _ratio_g(root, "add", "-A")
+    _ratio_g(root, "commit", "-q", "-m", name, when=when)
+    _ratio_g(root, "switch", "-q", "main")
+    _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge " + name, name, when=when)
+
+
+def _lines(n, word="x"):
+    return ("".join(f"{word} {i}\n" for i in range(n))).encode()
+
+
+_zone_ok = fm.ratio_zone()[1]
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "work-tracker"\n\n[ratio]\nrecords = ["work-tracker/", "NOTES.txt"]\nexclude = ["vendor/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"work-tracker/a.md": _lines(3), "src/a.py": _lines(5)})
+    # 23:30 UTC on the 22nd is 01:30 on the 23rd in Berlin: the day is Berlin's, not UTC's
+    _ratio_merge(root, "two", "2026-09-22T23:30:00+00:00",
+                 {"work-tracker/b.md": _lines(4), "NOTES.txt": _lines(2), "vendor/x.js": _lines(100), "src/b.py": _lines(7), "bin.dat": b"\0\1\2\0"},
+                 gone=("work-tracker/a.md",), pointer=True)
+    _ratio_merge(root, "three", "2026-09-24T12:00:00+02:00", {"work-tracker/c.md": _lines(2)})
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-24")
+    day_ = lambda s: next((l for l in out_.splitlines() if l.startswith(s)), "")      # a line of the latest `out_`
+    check("FM-032 · `--ratio` counts the four numbers per day of a planted trunk — records and product added and deleted, a plain path a record, an `exclude` prefix "
+          f"in neither, the submodule pointer no line, the deletion never subtracted (saw {out_!r})",
+          code_ == 0 and day_("2026-09-22") == ("2026-09-22  records +3 \u22120  product +5 \u22120  0.6:1  (1 merge)" if _zone_ok else
+                                                "2026-09-22  records +9 \u22123  product +12 \u22120  0.8:1  (2 merges, 1 binary)")   # no tz database: 23:30 UTC stays the 22nd
+          and day_("window") == "window      records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)")
+    if _zone_ok:
+        check("FM-032 · the day is the merge's committer date in Europe/Berlin — 23:30 UTC on the 22nd is the 23rd — and a binary file is 0 lines and counted as a file",
+              day_("2026-09-23") == "2026-09-23  records +6 \u22123  product +7 \u22120  0.9:1  (1 merge, 1 binary)" and "NOT: no time zone database" not in out_)
+    else:
+        SKIPS.append(("FM-032 · the Berlin day", 1, "no tz database for Europe/Berlin here (zoneinfo cannot load it)"))
+        print("  skip  FM-032 · the Berlin day — no tz database for Europe/Berlin here; 1 check(s) did not run")
+        check("FM-032 · without a tz database the header says the day is the merge's own offset", "NOT: no time zone database" in out_)
+    check("FM-032 · a day with no product added prints its counts and `no finite ratio`, never a division",
+          day_("2026-09-24") == "2026-09-24  records +2 \u22120  product +0 \u22120  no finite ratio  (1 merge)")
+    code_, out_, _ = run(root, "--ratio", "--since", "2026-09-24", "--until", "2026-09-24")
+    sums_ = out_.split("day sums")[1].splitlines() if "day sums" in out_ else []
+    check(f"FM-032 · the seven-day sums reach back before `--since`: a window of the 24th alone still sums the two merges before it (saw {sums_[-1:]})",
+          code_ == 0 and day_("window").startswith("window      records +2 \u22120  product +0 \u22120") and any(l.startswith("2026-09-24  records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)") for l in sums_)
+          and not any(l.startswith("2026-09-23") for l in sums_))
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-25", "--until", "2026-09-24")
+    code2_, _, err2_ = run(root, "--since", "2026-09-22")
+    check("FM-032 · `--since` after `--until` is refused, and so are `--since`/`--until` without `--ratio`", code_ == 2 and "after --until" in err_ and code2_ == 2 and "go with --ratio" in err2_)
+    rm_git(root)
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "work-tracker"\n')
+    code_, out_, err_ = run(root, "--ratio")
+    check(f"FM-032 · a repository without a `[ratio]` section says so and exits 2 — it has no ratio to count (saw {err_.strip()!r})", code_ == 2 and "no [ratio] section" in err_ and out_ == "")
+    rm_git(root)
+# RV-726: the default `records` is the tracker directory the tool is configured with, not shoalmark's own `work-tracker/`
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\n')          # no `tracker_dir` (the tool's default, docs/work-tracker), `[ratio]` with no keys
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"docs/work-tracker/FM-1.md": _lines(2), "src/x.py": _lines(1)})
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-22")
+    check(f"FM-032 · `[ratio]` alone counts the configured tracker directory (`docs/work-tracker/`, no `tracker_dir` key) as records, the other path as product (saw {out_!r})",
+          code_ == 0 and "records: docs/work-tracker/" in out_ and "2026-09-22  records +2 \u22120  product +1 \u22120  2.0:1  (1 merge)" in out_)
+    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "notes/tracker/"\n')
+    code_, out_, err_ = run(root, "--ratio")
+    check(f"FM-032 · the refusal without `[ratio]` advises the configured tracker directory, not shoalmark's own (saw {err_.strip()!r})",
+          code_ == 2 and 'records = ["notes/tracker/"]' in err_ and "work-tracker/\"]" not in err_.replace("notes/tracker/", ""))
+    # RV-727 a: a `records` or `exclude` that is no list is one refused line, exit 2, never a traceback
+    _bad = {}
+    for _val in ("5", "true", '"work-tracker/"'):
+        for _key in ("records", "exclude"):
+            (root / "shoalmark.toml").write_text(f'name = "r"\n\n[ratio]\n{_key} = {_val}\n')
+            _bad[(_key, _val)] = run(root, "--ratio")
+    check(f"FM-032 · a scalar `records` or `exclude` (5, true, a string) is refused in one line, exit 2, no traceback (saw {_bad[('records', '5')][2]!r})",
+          all(c == 2 and o == "" and "Traceback" not in e and len(e.strip().splitlines()) == 1 and f"`[ratio] {k}` is a list" in e for (k, _), (c, o, e) in _bad.items()))
+    rm_git(root)
+# RV-727 b: the trunk is origin's default branch as this clone fetched it — `origin/HEAD`'s target — before a local branch that may be behind
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
+    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"src/a.py": _lines(2)})
+    _ratio_g(root, "branch", "behind", "HEAD~1")                       # a local `master` that lags: the start, no merge
+    _ratio_merge(root, "two", "2026-09-23T12:00:00+02:00", {"src/b.py": _lines(3)})
+    _ratio_g(root, "update-ref", "refs/remotes/origin/develop", "main")
+    _ratio_g(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop")
+    _ratio_g(root, "branch", "-m", "main", "master"); _ratio_g(root, "update-ref", "refs/heads/master", "behind")
+    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-23")
+    check(f"FM-032 · the trunk is `origin/HEAD`'s target (`origin/develop`) when the clone has one, not a local `master` that is behind (saw {out_.splitlines()[:2]!r} {err_!r})",
+          code_ == 0 and "trunk origin/develop " in out_ and "window      records +0 \u22120  product +5 \u22120" in out_ and "(2 merges)" in out_)
+    rm_git(root)
+# RV-727 c: the first-parent line — a merge inside a branch that then merges into main is one merge, its lines counted once — and the default window
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    _today = datetime.datetime.now(fm.ratio_zone()[0]).date() if _zone_ok else datetime.date.today()
+    _at = lambda back: f"{_today - datetime.timedelta(days=back)}T12:00:00+02:00"
+    _ratio_g(root, "init", "-q", "-b", "main")
+    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
+    (root / "README.md").write_text("start\n")
+    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when=_at(9))
+    _ratio_merge(root, "outside", _at(7), {"src/old.py": _lines(50)})            # the day before the window: not in it
+    _ratio_merge(root, "first", _at(6), {"src/first.py": _lines(4)})             # the window's first day
+    # a branch that carries a merge of its own: side -> feature (--no-ff) -> main
+    _ratio_g(root, "switch", "-q", "-c", "feature", "main")
+    (root / "src").mkdir(exist_ok=True); (root / "src/f.py").write_bytes(_lines(6)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "f", when=_at(1))
+    _ratio_g(root, "switch", "-q", "-c", "side", "feature")
+    (root / "src/s.py").write_bytes(_lines(9)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "s", when=_at(1))
+    _ratio_g(root, "switch", "-q", "feature"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge side", "side", when=_at(1))
+    _ratio_g(root, "switch", "-q", "main"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge feature", "feature", when=_at(1))
+    code_, out_, err_ = run(root, "--ratio")
+    _win = next((l for l in out_.splitlines() if l.startswith("window")), "")
+    check(f"FM-032 · a merge inside a merged branch is not on the first-parent line: that day is `(1 merge)` with the branch's 15 lines counted once (saw {_win!r})",
+          code_ == 0 and f"{_today - datetime.timedelta(days=1)}  records +0 \u22120  product +15 \u22120  0.0:1  (1 merge)" in out_)
+    check(f"FM-032 · with no dates the window is the seven Berlin days ending today — the header says {_today - datetime.timedelta(days=6)} to {_today}, "
+          f"the merge dated the day before it is left out and the one on its first day is in (saw {_win!r})",
+          f"\u00b7 {_today - datetime.timedelta(days=6)} to {_today} \u00b7" in out_
+          and _win.startswith("window      records +0 \u22120  product +19 \u22120") and "(2 merges)" in _win)
+    rm_git(root)
+fm.configure(HERE)
+check("FM-032 · `--schema` lists both `[ratio]` keys", "`[ratio] records`" in fm.render_schema() and "`[ratio] exclude`" in fm.render_schema())
+_shallow = _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
+_trunk_here = subprocess.run(["git", "-C", str(HERE), "rev-parse", "--verify", "-q", "origin/main^{commit}"], capture_output=True, env=_ENV).returncode == 0
+if _shallow != "false" or not _trunk_here or not _zone_ok:
+    _why = ("this clone is shallow" if _shallow != "false" else "origin/main is not here (CI, or a clone without it)" if not _trunk_here
+            else "no tz database for Europe/Berlin here, so the days would not be Berlin's")
+    SKIPS.append(("FM-032 · the reproduction on this repository", 1, _why))
+    print(f"  skip  FM-032 · the reproduction on this repository — {_why}; 1 check(s) did not run")
+else:
+    _code, _out, _err = run(HERE, "--ratio", "--since", "2026-09-22", "--until", "2026-09-29")
+    check("FM-032 · the reproduction: `--ratio --since 2026-09-22 --until 2026-09-29` on this repository prints the window the definition page states — "
+          f"records +65,711 \u2212972, product +15,713 \u22121,764 (saw {next((l for l in _out.splitlines() if l.startswith('window')), _err)!r})",
+          _code == 0 and next((l for l in _out.splitlines() if l.startswith("window")), "").startswith("window      records +65,711 \u2212972  product +15,713 \u22121,764  4.2:1  "))
+fm.configure(HERE)
+
+# --- FM-032 · a check output that regenerates is kept as its summary, and the summary is proved -----------------------------------
+# The Owner's ruling of 2026-09-30: *if a check output regenerates, keep only its summary; if it doesn't, it stays in git.* Each
+# README's `## Summary — the check output, regenerable` holds a machine-readable block per output — the command, the tested commit,
+# the number of checks, the failing ids. Here they are read back: `facts.mjs` (git and Node only) on every run where it can; the
+# browser checks — a rebuilt site, `checks.mjs` in Chrome, the same thresholds as the READMEs — behind `SHOALMARK_REGENERATE=1`. A
+# difference in the results fails with both listed; a run that cannot happen here says why and is counted as skipped, never passed.
+_FM6_DIR, _FM2_DIR, _ZENSICAL = "work-tracker/evidence/FM-006/landing/start-page", "work-tracker/evidence/FM-002/slice-a", "0.0.65"
+_SUMMARY_HEAD = "## Summary \u2014 the check output, regenerable"
+
+
+def _summary_blocks(readme):
+    """{file name: its block} of a README's summary section."""
+    section = (HERE / readme).read_text().split(_SUMMARY_HEAD, 1)[1].split("\n## ", 1)[0]
+    return {Path(b["file"]).name: b for b in map(json.loads, re.findall(r"```json\n(.*?)\n```", section, re.S))}
+
+
+def _strip_measure(text):
+    """`3.99 54\u00b010'N (under the title)` -> `54\u00b010'N (under the title)`: the measure moves from run to run, the text does not."""
+    return re.sub(r"^\d+(?:\.\d+)? ", "", text)
+
+
+def _derive_landing(doc, chart_only=False):
+    """FM-006 slice L's `checks.mjs` output -> (checks run, failing ids), by its README's thresholds: per width and method (R, S) the
+    chart texts below 4.5:1; per width the flat texts below 4.5:1 and the sideways scroll; the page's script errors, its accessibility
+    tree, reduced motion, the scheme and the fonts. A chart-only output (the mock's, of which the README keeps the chart part) has four."""
+    s, failing, n = doc["summary"], [], 0
+    for c in s["chart"]:
+        for method, key in (("R", "belowReviewer"), ("S", "belowSeat")):
+            n += 1
+            failing += [f"chart {c['width']} {method} {_strip_measure(x)}" for x in c[key]]
+    if not chart_only:
+        for f in s["flat"]:
+            n += 2
+            failing += [f"flat {f['width']} {_strip_measure(x)}" for x in f["below"]]
+            failing += [f"scroll {f['width']}"] * (f["scroll"][0] != f["scroll"][1])
+        n += len(s["tree"]) + len(s["scheme"]) + 3
+        failing += [f"tree {x['width']}" for x in s["tree"]
+                    if x["focusable"] != x["wrecks"] or not x["canvasDescribed"] or x["figuresRead"] or x["chartNamesRead"]]
+        failing += ["errors"] * bool(s["errors"])
+        failing += ["motion"] * (not s["motion"]["reduced"]["identical"])
+        failing += [f"scheme {w}" for w, v in s["scheme"].items() if not v["identical"]]
+        failing += ["fonts"] * (s["sameFacesAsMock"] is False)
+    return n, sorted(failing)
+
+
+def _derive_board(doc):
+    """FM-002 slice A's `checks.mjs` output -> (checks run, failing ids): per scheme the text pairs below 4.5:1, named by where each was
+    seen; AU-16 per page and scheme, no chart figure and no marker read; AU-18 per scheme, the longest line no longer than the box holds;
+    the tracker view's alignment per scheme, the built page where the mock puts it. The counts of measurements move with the board's
+    clock (it writes what is owed now) and are not compared."""
+    failing, n = [], 0
+    for scheme in ("light", "dark"):
+        n += 1
+        failing += [f"contrast {scheme} {'/'.join(p['where'])} {p['fg']} on {p['ground']}" for p in doc["pairs"] if p["scheme"] == scheme and p["ratio"] < 4.5]
+    for page, v in doc["summary"]["au16"].items():
+        n += 1
+        failing += [f"AU-16 {page}"] * bool(v["figures"] or v["markers"])
+    for scheme, v in doc["au18"].items():
+        n += 1
+        failing += [f"AU-18 {scheme}"] * (v["longestLine"] > v["chars"])
+    for scheme in ("light", "dark"):
+        n += 1
+        failing += [f"alignment {scheme}"] * (doc["alignment"][f"after {scheme}"] != doc["alignment"][f"mock {scheme}"])
+    ctl = doc["control"]                         # the README's own controls: a check that cannot see what it reports as absent is no check (RV-728 c)
+    for scheme in ("light", "dark"):
+        n += 2
+        pipe = ctl.get(f"contrast {scheme}")     # `#767676` on `#ffffff` must read WCAG's 4.54
+        failing += [f"control contrast {scheme}"] * (not (isinstance(pipe, dict) and abs(pipe["ratio"] - 4.542) < 0.01))
+        failing += [f"control dialog open {scheme}"] * (ctl.get(f"dialog open {scheme}") is not True)
+        for page in ("board", "tracker view", "site"):   # the alt texts removed: the same tree must read figures and markers
+            n += 1
+            read = ctl.get(f"ax {page} {scheme}")
+            failing += [f"control ax {page} {scheme}"] * (not (isinstance(read, dict) and read["figures"] > 0 and read["markers"] > 0))
+    return n, sorted(failing)
+
+
+def _facts_fingerprint(doc):
+    """`facts.mjs`'s reading without its time stamp: the fields the README records, and a sha256 of all the rest."""
+    doc = {k: v for k, v in doc.items() if k != "read"}
+    return {"sha": doc["sha"], "release": doc["release"]["version"], "counts": doc["counts"], "wrecks": len(doc["wrecks"]),
+            "sha256_without_read": hashlib.sha256(json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()}
+
+
+def _regen_skip(name, n, why):
+    SKIPS.append((name, n, why))
+    print(f"  skip  {name} \u2014 {why}; {n} check(s) did not run")
+
+
+_b6, _b2 = _summary_blocks(_FM6_DIR + "/README.md"), _summary_blocks(_FM2_DIR + "/README.md")
+_KEYS = {"file", "tested", "command", "failing", "generated_by"}      # and a count: `checks` (verdicts), or `wrecks` where the output is a reading, not a verdict
+check("FM-032 \u00b7 each README's summary holds one machine-readable block per replaced output \u2014 the command, the tested commit, how many checks, "
+      "which failed \u2014 and the summary of a regenerable output is kept where the file was",
+      set(_b6) == {"checks.json", "checks-r3-before.json", "facts.json"} and set(_b2) == {"checks.json"}
+      and all(_KEYS <= set(b) and isinstance(b["failing"], list) and isinstance(b["wrecks" if "wrecks" in b else "checks"], int) and ("wrecks" in b) != ("checks" in b)
+              for b in (*_b6.values(), *_b2.values()))
+      and "wrecks" in _b6["facts.json"] and all("checks" in b for k, b in (*_b6.items(), *_b2.items()) if k != "facts.json"))
+_good_ctl = {**{f"{k} {sc}": v for sc in ("light", "dark") for k, v in (("contrast", {"ratio": 4.542}), ("dialog open", True))},
+             **{f"ax {pg} {sc}": {"figures": 261, "markers": 18} for pg in ("board", "tracker view", "site") for sc in ("light", "dark")}}
+_board_doc = lambda ctl: {"pairs": [], "summary": {"au16": {"board light": {"figures": 0, "markers": 0}}}, "au18": {"light": {"longestLine": 1, "chars": 2}},
+                          "alignment": {f"{w} {sc}": 1 for w in ("after", "mock") for sc in ("light", "dark")}, "control": ctl}
+check("FM-032 \u00b7 slice A's derivation counts the README's controls \u2014 the contrast pipeline at 4.542, the dialog open, the alt-text-removed run reading figures and markers "
+      "\u2014 ten checks beside the fourteen, and a control that fails is a failing check (`control ax board dark` with no figures read)",
+      _derive_board(_board_doc(_good_ctl)) == (16, [])
+      and _derive_board(_board_doc({**_good_ctl, "ax board dark": {"figures": 0, "markers": 18}, "contrast light": {"ratio": 4.2}, "dialog open dark": False}))
+      == (16, ["control ax board dark", "control contrast light", "control dialog open dark"]))
+_derived_ok = (_derive_landing({"summary": {"chart": [{"width": 1, "belowReviewer": ["3.99 a (under the title)"], "belowSeat": []}], "flat": [], "tree": [], "scheme": {},
+                                            "errors": 0, "motion": {"reduced": {"identical": True}}, "sameFacesAsMock": True}}) == (5, ["chart 1 R a (under the title)"]))
+check("FM-032 \u00b7 the derivation drops the measure and keeps the check's own id, and counts its verdicts", _derived_ok)
+
+_have_node, _shallow32 = shutil.which("node"), _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
+_held = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+_tagged = subprocess.run(["git", "-C", str(HERE), "rev-parse", "-q", "--verify", "refs/tags/v0.18.4"], capture_output=True, env=_ENV).returncode == 0
+_why = ("no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "this clone does not hold bef2a1e" if not _held("bef2a1e")
+        else "no tz database for Europe/Berlin here (facts.mjs writes each filing's day and the tag's time in Berlin; git cannot take that zone by name where there is none)" if not _zone_ok
+        else "this clone has no tag v0.18.4 (facts.mjs reads it)" if not _tagged else "")
+if _why:
+    _regen_skip("FM-032 \u00b7 facts.mjs reproduces the summary", 1, _why)
+else:
+    _out32 = subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "work-tracker/evidence/FM-006/landing/index.html")],
+                            cwd=str(HERE), env=_ENV, capture_output=True, text=True, encoding="utf-8", timeout=300)
+    _want32 = {k: v for k, v in _b6["facts.json"]["fields"].items()}
+    _want32["sha256_without_read"] = _b6["facts.json"]["sha256_without_read"]
+    _saw32 = _facts_fingerprint(json.loads(_out32.stdout)) if _out32.returncode == 0 else {"exit": _out32.returncode, "stderr": _out32.stderr[-300:]}
+    check(f"FM-032 \u00b7 `node facts.mjs bef2a1e` regenerates facts.json \u2014 every field the README's block records, and the rest by its sha256, `read` apart "
+          f"(the block says {_want32}; a fresh run says {_saw32})", _saw32 == _want32)
+
+_RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
+_uvx, _npm = shutil.which("uvx"), shutil.which("npm")
+_why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
+        else "no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "")
+_needed = [c for b in (*_b6.values(), *_b2.values()) for c in [b["tested"]] if b["file"].endswith("checks.json") or b["file"].endswith("checks-r3-before.json")] + ["2a9f7eb", "70fedd3"]
+_why = _why or next((f"this clone does not hold {c}" for c in _needed if not _held(c)), "")
+if _why:
+    _regen_skip("FM-032 \u00b7 the browser checks reproduce their summaries", 3, _why)
+else:
+    import tarfile
+
+    def _stage(commit, into):
+        """`git archive commit` extracted into `into` \u2014 a tree without .git, as the READMEs' rebuilds build it."""
+        into.mkdir(parents=True)
+        tar = subprocess.run(["git", "-C", str(HERE), "archive", commit], capture_output=True, check=True, env=_ENV).stdout
+        with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
+            tf.extractall(into, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+
+    def _build(stage):
+        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+
+    def _checks_mjs(script, stage_dir, out, *extra):
+        r = subprocess.run([_have_node, str(HERE / script), str(stage_dir), str(out), *extra], cwd=str(HERE), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME))
+        return json.loads(Path(out).read_text()) if r.returncode == 0 and Path(out).exists() else None
+
+    def _same(name, got, block, derived):
+        want = (block["checks"], sorted(block["failing"]))
+        check(f"FM-032 \u00b7 {name} regenerates by its results \u2014 {want[0]} checks, {len(want[1])} failing ids, the same ids (a fresh run: {derived if got else 'no output'}; "
+              f"the README's block: {want})", bool(got) and derived == want)
+
+    with tempfile.TemporaryDirectory() as d:
+        work = Path(d).resolve()
+        mock_html = str(HERE / "work-tracker/evidence/FM-006/landing/index.html")
+        for name, block, chart_only, mock in (("the start page's checks.json", _b6["checks.json"], False, mock_html),
+                                              ("checks-r3-before.json", _b6["checks-r3-before.json"], True, None)):
+            stage = work / block["tested"]
+            _stage(block["tested"], stage); _build(stage)
+            got = _checks_mjs(_FM6_DIR + "/checks.mjs", stage / "site", work / (block["tested"] + ".json"), *([mock] if mock else []))
+            _same(name, got, block, _derive_landing(got, chart_only) if got else None)
+        if not _npm:
+            _regen_skip("FM-032 \u00b7 slice A's checks.json", 1, "no npm here to fetch @ibm/plex-mono 1.1.0 \u2014 the mock part does not regenerate")
+        else:
+            plex = work / "plex"; plex.mkdir()
+            packed = subprocess.run([_npm, "pack", "@ibm/plex-mono@1.1.0", "--silent"], cwd=str(plex), capture_output=True, text=True, timeout=300, env=_ENV)
+            if packed.returncode != 0:
+                _regen_skip("FM-032 \u00b7 slice A's checks.json", 1, "@ibm/plex-mono 1.1.0 could not be fetched (offline?) \u2014 the mock part does not regenerate")
+            else:
+                with tarfile.open(plex / packed.stdout.strip().splitlines()[-1]) as tf:
+                    tf.extractall(plex, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+                src, stages = work / "a-src", work / "a"
+                _stage("361336a", src)
+                for step in ("before", "after"):
+                    rev = "2a9f7eb" if step == "before" else "70fedd3"
+                    for rel in ("work-tracker/brand/theme.css", "docs/stylesheets/shoalmark.css"):
+                        (src / rel).write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
+                    subprocess.run([sys.executable, "shoalmark.py", "--html-only"], cwd=str(src), check=True, capture_output=True, env=_ENV)
+                    _build(src)
+                    (stages / step).mkdir(parents=True)
+                    shutil.copy(src / "work-tracker/index.html", stages / step / "board.html")
+                    for rel in ("work-tracker/brand", "work-tracker/view", "site"):
+                        shutil.copytree(src / rel, stages / step / Path(rel).name)
+                    if step == "before":                     # the mock is built from the *before* board and site, as the README's rebuild has it
+                        subprocess.run([sys.executable, "work-tracker/evidence/FM-006/themes/build-mocks.py", str(stages / "mock"), "--plex",
+                                        str(plex / "package/fonts/split/woff2")], cwd=str(src), check=True, capture_output=True, env=_ENV)
+                got = _checks_mjs(_FM2_DIR + "/checks.mjs", stages, work / "board.json")
+                _same("slice A's checks.json", got, _b2["checks.json"], _derive_board(got) if got else None)
 fm.configure(HERE)
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",

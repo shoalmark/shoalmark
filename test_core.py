@@ -352,8 +352,8 @@ check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourh
       and '$("q").title=L["search.help"]' in _tri)
 check("FM-020 · the counter names an id searched alone — it is that tracker, open or not, never counted as `open`",
       '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
-check("FM-024 S7, FM-032 S2 · the board carries the report — null where no commit names a session and no verdict was given — and its strip: the sessions of the last day and the week's verdicts",
-      "REG=null," in _tri and '+(REG?(REG.recent.length?"\\n\\n<b>"+l("sessions.recent",REG.recent.length)+"</b> — "' in _tri and 'l("reviews.week",REG.reviews[0],REG.reviews[1])' in _tri)
+check("FM-024 S7, FM-032 S2 · the board carries the report — null where no commit names a session and no verdict was given — and its strip: the parents with a commit in the last day, each a line that opens on its sub-sessions, and the week's verdicts",
+      "REG=null," in _tri and '+(REG?(REG.groups.length?"\\n\\n<b>"+l("sessions.recent",REG.parents,REG.all)+"</b>\\n"' in _tri and "<details><summary>" in _tri and 'l("reviews.week",REG.reviews[0],REG.reviews[1])' in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
       'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
