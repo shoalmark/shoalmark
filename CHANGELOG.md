@@ -6,6 +6,13 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 <!-- The heading's name is provisional; the release cut settles which version this section is. -->
 
+- **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
+  refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
+  that change's history and changes a path outside the records (`[ratio] records`, else the tracker directory); every author, the Owner
+  included, with or without `[seats]`; `Closed` is not judged; on Subversion the change is the uncommitted one, else the newest revision.
+  *On upgrade:* a story reads *3 chapters: 1 shipped · 1 closed · 1 open*, and the board's last section and INDEX.md's Board value are `ended`,
+  not `done` — a `labels.yaml` renames `story.done` to `story.shipped` and `story.closed`, `section.done` to `section.ended`, `desc.done` to `desc.ended`.
+
 - **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
   and AGENTS.md says so in one sentence so nobody "fixes" a seat's text. README, AGENTS.md, `docs/` (English and German,

@@ -357,10 +357,16 @@ check("FM-024 S7, FM-032 S2 · the board carries the report — null where no co
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
       'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
-check("a story's header says how much of it a pass has judged, and closed chapters are not called shipped",
-      '${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}' in _tri and '${l("story.done")} ·' in _tri and "} shipped ·" not in _tri)
-check("the board is the first view: progress · triage · triaged · backlog · done, one section per tracker plus the newest pass",
-      'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*done:", _tri, re.S) is not None
+check("a story's header says how much of it a pass has judged, and counts its chapters shipped, closed and open apart — a closed chapter is not shipped, and is not done",
+      '${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}' in _tri and 'shipped=kids.filter(t=>t[2]=="Shipped").length' in _tri
+      and 'closed=kids.filter(t=>t[2]=="Closed").length' in _tri and '${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class=' in _tri
+      and '${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}' in _tri and "story.done" not in _tri)
+check("FM-005 · no label calls a `Closed` tracker done: not the board's fifth section, its description, nor a story's count — in English and in the German table the tool ships",
+      not any(re.search(r"\bdone\b", v, re.I) for k, v in gti.LABELS.items() if k.startswith(("story.", "section.", "desc.")))
+      and {"story.shipped", "story.closed", "story.open", "section.ended", "desc.ended"} <= set(gti.LABELS) and not {"story.done", "section.done", "desc.done"} & set(gti.LABELS)
+      and not any(re.search(r"erledigt", v, re.I) for k, v in gti.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).items() if k.startswith(("story.", "section.", "desc."))))
+check("the board is the first view: progress · triage · triaged · backlog · ended, one section per tracker plus the newest pass",
+      'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", _tri) is not None
       and 'untriaged(t)?"triage":t[19]]' in _tri and "OPEN.has(t[2])&&!fresh(t)" not in _tri
       and "recent=t=>!!t[17]&&t[17]==LAST" in _tri and "(7+1)*864e5" in _tri and "__DAYS__" not in _tri and gti.TRIAGE_DAYS == 7
       and '<button id="g" aria-pressed="true"></button><button id="o"' in _tri)
@@ -372,10 +378,10 @@ check("the index opens with what the board shows: the Owner's path verbatim, the
       "FEAT-002](FEAT-002-a-story.md) to its end" in _ix and re.search(rf"\| 1 \| P0 \| — \| — \| [^|]+ \| \[{_live[1]['id']}\]", _ix).start() < re.search(rf"\| 2 \| P1 \| — \| — \| [^|]+ \| \[{_live[0]['id']}\]", _ix).start()
       and _live[2]["id"] not in _ix and "Nothing is ranked yet" in gti.render_triage([_live[2]]))
 _b = lambda **kw: gti.board(dict(_live[0], **kw))
-check("one board definition — done · triage · progress · backlog — printed by INDEX.md and handed to the page",
+check("one board definition — ended · triage · progress · backlog — printed by INDEX.md and handed to the page",
       [_b(status="Shipped", triaged=""), _b(status="In Progress", triaged=""), _b(status="In Progress", triaged="2026-09-20"),
        _b(status="Parked", triaged="2026-09-20"), _b(status="Proposed", triaged="2026-09-20"), _b(status="Closed", triaged="2026-09-20")]
-      == ["done", "triage", "progress", "backlog", "backlog", "done"]
+      == ["ended", "triage", "progress", "backlog", "backlog", "ended"]
       # 2026-09-21 — the board says `triage` for exactly what `--triage` lists: old undated Proposed / Reserved / Parked work is backlog, a new filing is not
       and [_b(status="Proposed", triaged="", num=1), _b(status="Reserved", triaged="", num=1), _b(status="Parked", triaged="", num=1),
            _b(status="Proposed", triaged="", num=90001, kind="FEAT")] == ["backlog", "backlog", "backlog", "triage"]
@@ -385,10 +391,10 @@ check("one board definition — done · triage · progress · backlog — printe
 # FM-041 — a status is what a seat set, a rank is what a pass judged: ranked open work sits in `progress` by rank, whatever its status.
 # On origin/main 2eb803b this fails at `return "progress" if t["status"] == "In Progress" else "backlog"`: the ranked Proposed one is `backlog`.
 _r = lambda **kw: gti.board({**dict(_live[0], triaged="2026-09-20"), **kw})
-check("FM-041: a ranked Proposed tracker is in progress; an unranked Proposed one in backlog; a ranked In Progress one stays; triage and done keep their rules",
+check("FM-041: a ranked Proposed tracker is in progress; an unranked Proposed one in backlog; a ranked In Progress one stays; triage and ended keep their rules",
       [_r(status="Proposed", rank=3), _r(status="Proposed", rank=0), _r(status="In Progress", rank=3), _r(status="In Progress", rank=0),
        _r(status="Proposed", rank=3, raised="2026-09-21"), _r(status="Proposed", rank=3, triaged="", num=90001, kind="FEAT"), _r(status="Shipped", rank=3), _r(status="Parked", rank=0)]
-      == ["progress", "backlog", "progress", "progress", "triage", "triage", "done", "backlog"]
+      == ["progress", "backlog", "progress", "progress", "triage", "triage", "ended", "backlog"]
       and "| progress | 2026-09-20 |" in gti.render([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=3, tier="P1")], "Features")
       and "| backlog | 2026-09-20 |" in gti.render([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=0, tier="P1")], "Features")
       and '"2026-09-20", 3, "progress", [' in gti.render_html([dict(_live[0], status="Proposed", triaged="2026-09-20", rank=3)]))
@@ -537,7 +543,7 @@ _ns, _nn = gti.triage_worksheet([dict(_w1, hook_full="old work on the quasar"), 
 _nrow = next(l for l in _ns.splitlines() if l.startswith("| [FEAT-91189]"))
 check("a tracker filed under the `considered:` rule and never triaged enters the worksheet in any open status; an older `Proposed` one and a triaged one do not",
       "· keep · NEW FILING |" in _nrow and "| [FEAT-91003]" not in _ns and "| [FEAT-91190]" not in _ns and "| [FEAT-91001]" in _ns and "NEW FILING" not in _ns.split("| [FEAT-91001]")[1].split("\n")[0])
-check("its row prints what it was held against beside the three closest trackers, done ones included, each marked — and the rules say to open what was not considered",
+check("its row prints what it was held against beside the three closest trackers, shipped and closed ones included, each marked — and the rules say to open what was not considered",
       "considered FEAT-91001 · closest: " in _nrow and "FEAT-91001 (" in _nrow and ", In Progress) ✓" in _nrow and ", Shipped) NOT considered" in _nrow and _nrow.count(" | ") == _ns.splitlines()[-2].count(" | ")
       and "considered — nothing is written" in gti.triage_worksheet([_w1, dict(_nf, considered=[])], "2026-09-20", lambda path: "2026-09-19")[0]
       and "OPEN every one marked NOT considered" in gti.TRIAGE_RULES and gti.CONSIDERED_FROM == {"FEAT": 189, "BUG": 334, "ALIGN": 1000})

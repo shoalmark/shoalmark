@@ -11,6 +11,7 @@ import itertools
 import json
 import os
 import re
+import shlex
 import subprocess
 import datetime
 import sys
@@ -179,7 +180,7 @@ with tempfile.TemporaryDirectory() as d:
     page = (root / "docs/work-tracker/index.html").read_text()
     check("the board is one static page: no unfilled placeholder, the configured kinds in its id patterns, five sections in order",
           not re.search(r"__[A-Z_]+__", page) and "(?:MSR)-" in page
-          and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*done:", page, re.S) is not None
+          and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", page) is not None
           and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "(7+1)*864e5" in page)
     check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/MSR-001.js").exists())
     second = root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md"
@@ -214,12 +215,12 @@ with tempfile.TemporaryDirectory() as d:
     b = lambda **kw: fm.board(dict(base, **kw))
     check("one board definition: `triage` is exactly what the next pass lists — work in progress and new filings; older undated work is backlog",
           [b(status="Shipped"), b(status="In Progress"), b(status="In Progress", triaged="2026-01-01"), b(status="Parked", triaged="2026-01-01"), b()]
-          == ["done", "triage", "progress", "backlog", "triage"]
+          == ["ended", "triage", "progress", "backlog", "triage"]
           and fm.board(dict(base, kind="OLD")) == "backlog")
     check("FM-041: open work with a rank sits in progress whatever its status — ranked Proposed progress, unranked Proposed backlog, ranked In Progress unchanged, a raise keeps triage",
           [b(status="Proposed", triaged="2026-01-01", rank=3), b(status="Proposed", triaged="2026-01-01", rank=0), b(status="In Progress", triaged="2026-01-01", rank=3),
            b(status="Proposed", triaged="2026-01-01", rank=3, raised="2026-01-02"), b(status="Shipped", triaged="2026-01-01", rank=3)]
-          == ["progress", "backlog", "progress", "triage", "done"])
+          == ["progress", "backlog", "progress", "triage", "ended"])
     row = lambda i, **kw: {**dict(id=i, num=int(i[-1]), kind="FEAT", file=f"{i}-x.md", status="In Progress", links=[], considered=["none"], tags=[], blocked_by=[]), **kw}
     check("a story is open while a chapter is — a done tracker that open work names in `epic:` is refused",
           any("A story is open" in p for p in fm.lint([row("FEAT-001", status="Shipped"), row("FEAT-002", epic="FEAT-001")]))
@@ -409,6 +410,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "hang": "FM-035 · a page that never comes back fails the suite",
     "control": "FM-039 · a Chrome slow to start, the board's budget counted beyond its control",
     "board": "the board, rendered in a browser",
+    "story": "FM-005 · a story's header counts its chapters shipped, closed and open apart, rendered",
     "search": "FM-020 · a whole id searched, rendered",
     "progress": "FM-021 · the empty progress section, rendered",
     "cell": "the board's cell shows the display form, rendered",
@@ -1231,8 +1233,8 @@ if _browser("board"):
                                                (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
             board_dom, view_dom = dom(""), dom("#=MSR-001")
             shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
-            check("the board renders in a browser: five sections in order, the open tracker under `triage`, the done one folded away",
-                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?done", shown, re.S) is not None
+            check("the board renders in a browser: five sections in order, the open tracker under `triage`, the shipped one folded away",
+                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?ended", shown, re.S) is not None
                   and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
             check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
                   "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
@@ -1288,6 +1290,38 @@ if _browser("control"):
     _own = float((re.search(r"^control: (\d+\.\d) s$", _late.stdout, re.M) or [None, "0"])[1])
     check(f"FM-039 · a Chrome 5 s slower to start than this one — its control on a blank page took {_own} s — renders the healthy board and passes: the budget is 5 s beyond the control, the page's own cost, not 5 s of wall-clock time, which Chrome's start alone would spend (saw {_late.stdout.strip()[-260:]!r})",
           _own >= 5 and _late.returncode == 0 and _late.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _late.stdout)
+
+# --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
+if _browser("story"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            import html as _html, json as _json
+            root = Path(d).resolve()
+            run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", title="A story")
+            tracker(root, "MSR-002", status="Shipped", extra="epic: MSR-001\n", title="a chapter that shipped")
+            tracker(root, "MSR-003", status="Closed", extra="epic: MSR-001\n", title="a chapter that was closed")
+            tracker(root, "MSR-004", extra="epic: MSR-001\n", title="a chapter still open")
+            wt_ = root / "docs/work-tracker"
+            heads_ = {}
+            for lang_ in ("en", "de"):
+                if lang_ == "de":
+                    (wt_ / "brand").mkdir(exist_ok=True); (wt_ / "brand/labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+                run(root)
+                probe = '<script>{gi=GROUPS.findIndex(g=>g[0]=="epic");draw();document.body.dataset.probe=JSON.stringify([...document.querySelectorAll("#b tr.g")].map(r=>r.textContent.replace(/\\s+/g," ").trim()))}</script>'
+                (wt_ / "probe.html").write_text((wt_ / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()]).stdout
+                heads_[lang_] = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, "[]"])[1]))
+            check(f"FM-005 · a story with one shipped, one closed and one open chapter reads *3 chapters: 1 shipped · 1 closed · 1 open* — the closed one is counted apart, and nothing says *done* (saw {heads_['en']})",
+                  any(h_.endswith("3 chapters: 1 shipped · 1 closed · 1 open") for h_ in heads_["en"]) and not any("done" in h_ for h_ in heads_["en"]))
+            check(f"FM-005 · …and in the German table the tool ships: *3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen* (saw {heads_['de']})",
+                  any(h_.endswith("3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen") for h_ in heads_["de"]) and not any("erledigt" in h_ for h_ in heads_["de"]))
+            (wt_ / "brand/labels.yaml").unlink(); run(root)
+            story_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "index.html").as_uri() + "#=MSR-001"]).stdout))
+            check("FM-005 · the story's own page counts its chapters the same way: *1 shipped · 1 closed* — never *2 done*",
+                  re.search(r"chapters — 3: .*? · 0 parked · 1 shipped · 1 closed", story_) is not None and " done" not in story_[story_.find("chapters —"):story_.find("chapters —") + 200])
+    except _ChromeFailed as e_:
+        _hung("story", e_)
 
 # --- FM-020: a whole id searched is that tracker alone — not every row whose body links to it ----------------------
 if _browser("search"):
@@ -1622,14 +1656,14 @@ section.progress: in Arbeit
 section.triage: zu sichten
 section.triaged: gesichtet
 section.backlog: Vorrat
-section.done: erledigt
+section.ended: beendet
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
 desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
 desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
-desc.done: ausgeliefert oder geschlossen
+desc.ended: ausgeliefert oder ohne Auslieferung geschlossen
 group.none: ohne {0}
 count.trackers: Einträge
 count.open: offen
@@ -1644,7 +1678,8 @@ waiting.title: wartet auf Sie
 waiting.detail: offene Arbeit, deren nächster Schritt beim Eigner liegt
 story.chapter: Kapitel
 story.chapters: Kapitel
-story.done: erledigt
+story.shipped: ausgeliefert
+story.closed: geschlossen
 story.open: offen
 story.parked: geparkt
 word.triaged: gesichtet
@@ -1746,7 +1781,7 @@ with tempfile.TemporaryDirectory() as d:
                 text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
                 chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
                 shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
-                english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "trackers", "proposed", "shipped",
+                english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
                                               "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
                                   if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
                 check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
@@ -2694,14 +2729,14 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "commit", "-q", "--amend", "--no-edit", "--author=p <principal@seat>"); code, _, err = run(root)
     check("5 · the principal holds `ask` — the same commit from the seat that may ask passes", code == 0 and "does not hold" not in err)
     # a `close` is a right of its own, judged on the change the commit makes, not on the line
-    t_.write_text(t_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8"); git(root, "add", "-A")
+    t_.write_text(t_.read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); git(root, "add", "-A")      # `Closed`: a move to `Shipped` has a rule of its own (FM-005)
     code, _, err = run(root, "--print-written")
     check("5 · closing work is a right of its own: the implementer at the keyboard is refused before the commit exists, naming `close`",
           code == fm.EXIT_LINT and "AP-200: this change is a `close`" in err and "does not hold `close`" in err)
     (root / "shoalmark.toml").write_text(seats + '[rights]\nimplementer = ["close"]\n', encoding="utf-8")
     code, _, err = run(root, "--print-written")
     check("5 · given `close`, the same change passes — no hierarchy, no wildcard: a name either holds a right or it does not", code == 0 and "does not hold" not in err)
-    t_.write_text(t_.read_text().replace("status: Shipped", "status: In Progress"), encoding="utf-8")
+    t_.write_text(t_.read_text().replace("status: Closed", "status: In Progress"), encoding="utf-8")
     # `signed`: a git author is a string. The commit must verify AND the key must be the one the repository trusts for that seat
     key = root / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
     other = root / "o"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)], check=True, capture_output=True)
@@ -3052,7 +3087,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # (a) a branch carrying an answer (the owner's), a close and a triage verdict (the principal's) — each by the seat that may
     git(root, "switch", "-q", "-c", "pr/a")
     answer19_(800); git(root, "commit", "-qam", "AP-800: accepted", "--author=holgo <h@x>")
-    edit19_(801, "status: In Progress", "status: Shipped"); git(root, "commit", "-qam", "AP-801 shipped", "--author=p <principal@seat>")
+    edit19_(801, "status: In Progress", "status: Closed"); git(root, "commit", "-qam", "AP-801 closed", "--author=p <principal@seat>")      # `Closed`: a move to `Shipped` has a rule of its own (FM-005)
     edit19_(802, "considered: none\n", "considered: none\ntier: P1\n"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-802 judged", "--author=p <principal@seat>")
     git(root, "switch", "-q", trunk_); (root / "notes.txt").write_text("trunk moved on\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
     mg_ = merged19_("merge", "--no-ff", "-q", "pr/a", "-m", "Merge pull request from pr/a")
@@ -3065,7 +3100,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", trunk_); edit19_(810, "left: the first thing", "left: the trunk's thing"); git(root, "commit", "-qam", "AP-810 on the trunk", "--author=p <principal@seat>")
     conflict_ = merged19_("merge", "--no-ff", "-q", "pr/b", "-m", "Merge pull request from pr/b")
     p810_ = next((root / "docs/work-tracker").glob("AP-810-*.md"))
-    p810_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "left: both things\n", p810_.read_text(), flags=re.S).replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+    p810_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "left: both things\n", p810_.read_text(), flags=re.S).replace("status: In Progress", "status: Closed"), encoding="utf-8")
     git(root, "config", "user.email", "implementer@seat"); git(root, "add", "-A"); run(root); git(root, "add", "-A")
     code_pre, _, err_pre = run(root, "--print-written")
     check("FM-019 · (b) the merge being committed: a conflict resolution that closes a tracker is the merger's `close`, judged under the seat at the keyboard — and the answer the branch brought in is not",
@@ -3124,6 +3159,256 @@ with tempfile.TemporaryDirectory() as tmp:
     check("FM-019 · (e) a merge brings an UNSIGNED answer under the signed owner's identity — refused, and the refusal names that commit, not the merge",
           code == fm.EXIT_LINT and f"the commit `{e_[:10]}` making a `answer` change does not verify as the seat `owner`" in err and sha_()[:10] not in err)
     rm_git(root)
+fm.configure(HERE)
+
+# --- FM-005: a move to Shipped has a commit behind it — the Owner's ruling of 2026-09-30 ---------------------------------------------
+# *A gate that refuses a done without a commit behind it.* At 0.18.6 a tracker marked `Shipped` whose body said *nothing is built* —
+# an empty *Done when*, only *Filed.* in its ship log — passed the hook and `--check`. The rule is judged on the change that moves
+# the status and on no other — a tracker nobody moved is never read — for every author, and with no `[seats]`: it reads no seat.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    plain5_ = 'name = "s"\n[kinds]\nAP = "Work"\n'
+    (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")                          # no `[seats]`: the rule reads no seat and no right
+    wt5_ = root / "docs/work-tracker"
+    nothing5_ = "## What is true now\n\n**Nothing is built.**\n\n## Done when\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-30 | Filed. |\n"
+    for n_ in range(500, 520):
+        tracker(root, f"AP-{n_}", body=nothing5_, title="nothing built")
+    tracker(root, "AP-508", status="Shipped", body=nothing5_, title="shipped before the rule")   # in the first commit, which no change judges: old work, never read again
+    odd5_ = [(600, "AP-600-über.md")] + ([] if os.name == "nt" else [(601, 'AP-601-say "hi".md')])       # names git quotes in `--name-only` (RV-2151); Windows names no file with a `"` in it
+    for n_, name_ in odd5_:
+        p_ = tracker(root, f"AP-{n_}", body=nothing5_, title="nothing built"); p_.rename(p_.with_name(name_))
+    for n_ in (602, 603):
+        tracker(root, f"AP-{n_}", body=nothing5_, title="nothing built")
+    (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers")
+    sha5_ = lambda rev_="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev_], capture_output=True, text=True, env=_ENV).stdout.strip()
+    trunk5_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", "-c", "elsewhere"); (root / "src/other.py").write_text("other\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "built elsewhere")
+    other5_ = sha5_(); git(root, "switch", "-q", trunk5_)                                     # a commit that exists, and is on another branch
+    def commit5_(msg_, files_):
+        for name_, text_ in files_.items():
+            (root / name_).parent.mkdir(parents=True, exist_ok=True); (root / name_).write_text(text_, encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", msg_); return sha5_()
+    built5_ = commit5_("the feature", {"src/app.py": "v1\n"})                                   # product: a path outside the records
+    note5_ = commit5_("only a note", {"docs/work-tracker/evidence/n.md": "a note\n"})         # …and one that touches only the records
+    notes5_ = commit5_("a note elsewhere", {"docs/notes/n.md": "a note\n"})                     # …and one under a prefix only `[ratio]` calls records
+    quote5_ = commit5_("only a note, its name holds a quote", {'docs/work-tracker/evidence/say "hi".md': "a note\n"}) if os.name != "nt" else ""
+    def move5_(n_, *rows_, to="Shipped"):
+        p_ = next(wt5_.glob(f"AP-{n_}-*.md"))
+        p_.write_text(p_.read_text().replace("status: In Progress", f"status: {to}") + "".join(f"| 2026-09-30 | {r_} |\n" for r_ in rows_), encoding="utf-8")
+    def made5_(n_, *rows_, to="Shipped", by=None):
+        """AP-<n_> moves to `to` with `rows_` added to its ship log, committed past every hook (`by`: the author) — then `--check` reads that commit, and it is put back"""
+        move5_(n_, *rows_, to=to); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", f"AP-{n_}: {to}", *([f"--author={by}"] if by else []))
+        got_ = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1"); return got_
+    def staged5_(n_, *rows_, to="Shipped"):
+        """…staged, and the pre-commit run (`--print-written`) judges the commit being made — then it is put back"""
+        move5_(n_, *rows_, to=to); git(root, "add", "-A"); got_ = run(root, "--print-written"); git(root, "reset", "-q", "--hard"); return got_
+    way5_ = lambda err_: "Name the commit that built it in a ship-log row" in err_ and "mark it `Closed`, not `Shipped`" in err_ and "git log --oneline -- ." in err_
+    # the Planner's reproduction: `Shipped`, *nothing is built*, an empty *Done when*, only *Filed.* in the ship log — at commit time, through the installed hook
+    run(root, "--install-hook"); move5_(500); git(root, "add", "-A"); head5_ = sha5_()
+    hooked_ = subprocess.run(["git", "-C", str(root), "commit", "-qm", "AP-500: shipped"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    git(root, "reset", "-q", "--hard")
+    check(f"FM-005 · the Planner's reproduction — `Shipped`, nothing built, an empty *Done when*, only *Filed.* in the ship log — is refused at commit time by the installed hook: the commit is not made, and the refusal names the tracker, what is missing and the way through (saw {hooked_.returncode})",
+          hooked_.returncode != 0 and sha5_() == head5_ and "AP-500: moved to `Shipped` with no commit behind it — its ship log names no commit" in hooked_.stderr and way5_(hooked_.stderr))
+    code, _, err = made5_(500)
+    check("FM-005 · …and the same move, committed past the hook, is refused by `--check` — exit 4: the gate is the one that cannot be skipped",
+          code == fm.EXIT_LINT and "AP-500: moved to `Shipped` with no commit behind it — its ship log names no commit" in err and way5_(err))
+    find5_ = re.search(r"\(`(git log --oneline -- \. [^`]*)` finds it\)", err)
+    found5_ = subprocess.run(shlex.split(find5_.group(1)), cwd=root, capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout if find5_ else ""
+    check("FM-005 · the command the refusal gives finds the commit that built it — the feature's — and leaves out the one that changed only a record",
+          "the feature" in found5_ and "only a note" not in found5_)
+    # the three ways a commit can miss — each refused, each naming the way through
+    code, _, err = made5_(501, f"built in {other5_[:10]}")
+    check("FM-005 · a commit that exists, but on another branch, is not in the history — refused, naming it and the way through",
+          code == fm.EXIT_LINT and f"AP-501: moved to `Shipped` with no commit behind it — `{other5_[:10]}` is not in the history. " in err and "(no such commit)" not in err and way5_(err))
+    code, _, err = made5_(502, "built in c0ffee123456")
+    check("FM-005 · a commit that exists nowhere is not in the history either — refused, and the refusal says there is no such commit",
+          code == fm.EXIT_LINT and "AP-502: moved to `Shipped` with no commit behind it — `c0ffee123456` is not in the history (no such commit). " in err and way5_(err))
+    code, _, err = made5_(503, f"a note in {note5_[:9]}")
+    check("FM-005 · a commit that touches only the records changes nothing outside them — refused, naming the records and the way through",
+          code == fm.EXIT_LINT and f"AP-503: moved to `Shipped` with no commit behind it — `{note5_[:9]}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err))
+    code, _, err = made5_(504, f"built in {built5_[:7]}")
+    code_s, _, err_s = staged5_(504, f"built in {built5_}")
+    check("FM-005 · a real commit named — seven hex characters or all forty — passes, in `--check` on the commit and in the pre-commit run on the commit being made",
+          code == 0 and "AP-504" not in err and code_s == 0 and "AP-504" not in err_s)
+    code, _, err = made5_(505, f"at {other5_[:8]}", f"a note, {note5_[:8]}", "deadbeefdead", f"the feature, {built5_[:8]}")
+    check("FM-005 · one such commit named is enough: three that miss and one that built it pass", code == 0 and "AP-505" not in err)
+    # RV-2151: a name git quotes — a non-ASCII byte, a `"` — is read as it is: the tracker's own, and the records' in a commit a ship log names
+    for n_, name_ in odd5_:
+        move5_(n_); git(root, "add", "-A"); head_ = sha5_()
+        hooked_ = subprocess.run(["git", "-C", str(root), "commit", "-qm", f"AP-{n_}: shipped"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        git(root, "reset", "-q", "--hard"); code, _, err = made5_(n_)
+        check(f"FM-005 · RV-2151 · {name_}, a name git quotes, moved to `Shipped` with nothing named is refused by the installed hook and by `--check`, naming the way through (saw {hooked_.returncode}, {code})",
+              hooked_.returncode != 0 and sha5_() == head_ and f"AP-{n_}: moved to `Shipped` with no commit behind it" in hooked_.stderr and way5_(hooked_.stderr)
+              and code == fm.EXIT_LINT and f"AP-{n_}: moved to `Shipped` with no commit behind it" in err and way5_(err))
+    if quote5_:
+        code, _, err = made5_(602, f"a note in {quote5_[:9]}")
+        check("FM-005 · RV-2151 · a commit that changed only `evidence/say \"hi\".md` changes nothing outside the records — refused, not read as product because git quoted its name",
+              code == fm.EXIT_LINT and f"`{quote5_[:9]}` changes nothing outside the records (docs/work-tracker/)" in err and way5_(err))
+    # RV-2152: the hook judges the commit being made — `commit -a` and `commit <path>` hand it an index of its own, and a move staged bare is refused
+    # though the working tree beside it names the feature
+    hook5_ = lambda *a: subprocess.run(["git", "-C", str(root), "commit", "-qm", "AP-500: shipped", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    p500_ = next(wt5_.glob("AP-500-*.md")); head_ = sha5_(); said5_ = "AP-500: moved to `Shipped` with no commit behind it — its ship log names no commit"
+    move5_(500); by_a_ = hook5_("-a"); git(root, "reset", "-q", "--hard")
+    move5_(500); by_path_ = hook5_("--", "docs/work-tracker/AP-500-x.md"); git(root, "reset", "-q", "--hard")
+    move5_(500); git(root, "add", "-A"); p500_.write_text(p500_.read_text() + f"| 2026-09-30 | built in {built5_[:7]} |\n", encoding="utf-8"); by_bare_ = hook5_(); git(root, "reset", "-q", "--hard")
+    check(f"FM-005 · RV-2152 · the reproduction is refused through the installed hook with `git commit -a`, with `git commit <path>`, and staged bare while the working tree names the feature — the commit is not made (saw {by_a_.returncode}, {by_path_.returncode}, {by_bare_.returncode})",
+          all(r_.returncode != 0 and said5_ in r_.stderr and way5_(r_.stderr) for r_ in (by_a_, by_path_, by_bare_)) and sha5_() == head_)
+    move5_(500, f"built in {built5_[:7]}"); git(root, "add", "-A"); p500_.write_text(p500_.read_text().replace(f"| 2026-09-30 | built in {built5_[:7]} |\n", ""), encoding="utf-8")
+    kept_ = hook5_(); git(root, "reset", "-q", "--hard", head_)
+    check(f"FM-005 · RV-2152 · …and the control: the index names the feature and the working tree does not — the commit being made is the index, and the hook passes it (saw {kept_.returncode})",
+          kept_.returncode == 0 and "AP-500" not in kept_.stderr)
+    # RV-2153: a `Shipped` tracker that is renamed is no move — nothing shipped before breaks; a rename that also moves it to `Shipped` is one
+    p508_ = next(wt5_.glob("AP-508-*.md")); git(root, "mv", str(p508_), str(p508_.with_name("AP-508-a-better-slug.md"))); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-508: a better slug")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    p603_ = next(wt5_.glob("AP-603-*.md")); git(root, "mv", str(p603_), str(p603_.with_name("AP-603-a-better-slug.md")))
+    p603_ = p603_.with_name("AP-603-a-better-slug.md"); p603_.write_text(p603_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-603: a better slug, shipped")
+    code_m, _, err_m = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check(f"FM-005 · RV-2153 · a tracker shipped before the rule and renamed passes; a rename that also moves a tracker to `Shipped` is refused, naming the way through (saw {code}, {code_m})",
+          code == 0 and "AP-508" not in err and code_m == fm.EXIT_LINT and "AP-603: moved to `Shipped` with no commit behind it — its ship log names no commit" in err_m and way5_(err_m))
+    # what is not judged: a tracker no change moves, a move to `Closed`
+    p508_ = next(wt5_.glob("AP-508-*.md")); p508_.write_text(p508_.read_text().replace("Nothing is built.", "Nothing is built; a note."), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-508: a note"); code, _, err = run(root, "--check")
+    check("FM-005 · a tracker shipped before the rule, with no commit named, passes — the gate does not read one no change moves to Shipped; edited in place, `Shipped` still, it is no move either",
+          code == 0 and "AP-508" not in err)
+    code, _, err = made5_(506, to="Closed")
+    check("FM-005 · a move to `Closed` is not judged — nothing was built, and the tracker says so", code == 0 and "AP-506" not in err)
+    # a new tracker filed as Shipped is a move to it
+    tracker(root, "AP-520", status="Shipped", body=nothing5_, title="filed as shipped"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-520: filed")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · a new tracker filed as `Shipped` is a move to it: refused the same", code == fm.EXIT_LINT and "AP-520: moved to `Shipped` with no commit behind it" in err and way5_(err))
+    tracker(root, "AP-521", status="Shipped", body=nothing5_ + f"| 2026-09-30 | built in {built5_[:7]} |\n", title="filed as shipped, and built"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-521: filed")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · …and passes where its log names a commit that built it", code == 0 and "AP-521" not in err)
+    # every author, the Owner included — and with `[seats]` as without
+    (root / "shoalmark.toml").write_text(plain5_ + '[seats]\nowner = "h@x"\nprincipal = "principal@seat"\n', encoding="utf-8")
+    code, _, err = made5_(507, by="holgo <h@x>")
+    (root / "shoalmark.toml").write_text(plain5_ + '[seats]\nowner = "h@x"\nprincipal = "principal@seat"\n', encoding="utf-8")
+    code_p, _, err_p = made5_(507, f"built in {built5_[:7]}", by="holgo <h@x>")
+    (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
+    check("FM-005 · the Owner's own move to `Shipped` is refused as any author's is — the rule reads no seat and no right — and passes with a commit named",
+          code == fm.EXIT_LINT and "AP-507: moved to `Shipped` with no commit behind it" in err and way5_(err) and "does not hold" not in err and code_p == 0 and "AP-507" not in err_p)
+    # what the gate reads: the two sides of a change, in batches — and a commit's history only for a tracker moved to `Shipped`
+    calls5_ = lambda f_: [" ".join(c_) for c_ in argv_of(f_)]
+    names5_ = lambda cs_: [c_ for c_ in cs_ if "--batch-check=" in c_ or ("--no-walk=unsorted" in c_ and "--first-parent" in c_) or ("rev-list" in c_ and " --not " in c_)]
+    move5_(509, to="Closed"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-509: closed")
+    quiet_ = names5_(calls5_(lambda: run(root, "--check"))); git(root, "reset", "-q", "--hard", "HEAD~1")
+    move5_(510, f"built in {built5_[:7]}", f"a note, {note5_[:7]}"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-510: shipped")
+    asked_ = names5_(calls5_(lambda: run(root, "--check"))); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check(f"FM-005 · a change that moves nothing to `Shipped` asks git nothing about any commit; one that does asks once for all it names — are they commits, does the history reach them, what do they change (saw {len(quiet_)}, then {len(asked_)})",
+          quiet_ == [] and len(asked_) == 3 and sum("--batch-check=" in c_ for c_ in asked_) == 1 and sum("--no-walk=unsorted" in c_ for c_ in asked_) == 1 and sum("rev-list" in c_ for c_ in asked_) == 1)
+    # `[ratio] records` names the records where that section is set, and the refusal says which
+    (root / "shoalmark.toml").write_text(plain5_ + '[ratio]\nrecords = ["docs/work-tracker/", "docs/notes/"]\n', encoding="utf-8")
+    code, _, err = made5_(511, f"a note in {notes5_[:9]}")
+    (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
+    code_d, _, err_d = made5_(511, f"a note in {notes5_[:9]}")
+    check("FM-005 · where `[ratio] records` is set it names the records: the same commit, under a prefix it lists, changes nothing outside them — and, with no `[ratio]`, builds the tracker",
+          code == fm.EXIT_LINT and f"`{notes5_[:9]}` changes nothing outside the records (docs/work-tracker/, docs/notes/)" in err and "':(exclude,top)docs/notes/'" in err
+          and code_d == 0 and "AP-511" not in err_d)
+    (root / "shoalmark.toml").write_text(plain5_ + '[ratio]\nrecords = "docs/work-tracker/"\n', encoding="utf-8")
+    code, _, err = made5_(512, f"built in {built5_[:7]}")
+    (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
+    check("FM-005 · a `[ratio] records` that is no list is refused by the line `--ratio` prints, for the move that needs it — never a traceback",
+          code == fm.EXIT_LINT and "AP-512: moved to `Shipped`, which needs the records told from the product" in err and "`[ratio] records` is a list of repository-relative prefixes" in err and "Traceback" not in err)
+    # a merge is judged commit by commit: each commit it brings, against its own parent
+    merged5_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
+                                         env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+    git(root, "switch", "-q", "-c", "pr5a"); move5_(513); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-513 shipped, no hook", "--author=holgo <h@x>"); x5_ = sha5_()
+    git(root, "switch", "-q", trunk5_); commit5_("meanwhile", {"notes/meanwhile.txt": "trunk\n"}); merged5_("merge", "--no-ff", "-q", "pr5a", "-m", "Merge pull request from pr5a")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · a merge brings a commit that moves a tracker to `Shipped` with nothing behind it — refused, naming THAT commit, not the merge that brought it",
+          code == fm.EXIT_LINT and f"AP-513: in `{x5_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it" in err and way5_(err) and sha5_()[:10] not in err)
+    git(root, "switch", "-q", "-c", "pr5u"); move5_(600); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-600 shipped, no hook", "--author=holgo <h@x>"); xu5_ = sha5_()
+    git(root, "switch", "-q", trunk5_); commit5_("meanwhile, for the quoted name", {"notes/meanwhile.txt": "trunk, quoted\n"}); merged5_("merge", "--no-ff", "-q", "pr5u", "-m", "Merge pull request from pr5u")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · RV-2151 · a merge brings the move of a tracker whose name git quotes — refused, naming THAT commit, like any other",
+          code == fm.EXIT_LINT and f"AP-600: in `{xu5_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it" in err and way5_(err))
+    git(root, "switch", "-q", "-c", "pr5b"); p5_ = commit5_("the pull request builds it", {"src/b.py": "b\n"}); move5_(514, f"built in {p5_[:7]}"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-514 shipped")
+    git(root, "switch", "-q", trunk5_); commit5_("meanwhile again", {"notes/meanwhile.txt": "trunk again\n"}); merged5_("merge", "--no-ff", "-q", "pr5b", "-m", "Merge pull request from pr5b")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · …and the pull request that builds it in one commit and ships it in the next passes: the commit it names is in that commit's history", code == 0 and "AP-514" not in err)
+    git(root, "switch", "-q", "-c", "later5_y"); y5_ = commit5_("built after", {"src/c.py": "c\n"}); git(root, "switch", "-q", trunk5_)
+    git(root, "switch", "-q", "-c", "pr5c"); move5_(515, f"built in {y5_[:7]}"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-515 shipped, names a later commit", "--author=holgo <h@x>"); x5c_ = sha5_()
+    merged5_("merge", "--no-ff", "-q", "later5_y", "-m", "the later commit comes in too")
+    git(root, "switch", "-q", trunk5_); commit5_("meanwhile once more", {"notes/meanwhile.txt": "trunk once more\n"}); merged5_("merge", "--no-ff", "-q", "pr5c", "-m", "Merge pull request from pr5c")
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", "HEAD~1")
+    check("FM-005 · a commit the pull request brings AFTER the one that names it is not in that commit's history, though it is in the merge's — the history is the commit's own",
+          code == fm.EXIT_LINT and f"AP-515: in `{x5c_[:10]}` (h@x), which the merge brings — moved to `Shipped` with no commit behind it — `{y5_[:7]}` is not in the history" in err and way5_(err))
+    # RV-2155: seven characters that two commits share name more than one commit — built here by brute force over commit texts, the empty tree and two objects written by hand
+    import hashlib as _hl
+    text5_ = lambda i_: f"tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\nauthor t <t@t> {i_} +0000\ncommitter t <t@t> {i_} +0000\n\nn{i_}\n".encode()
+    seen5_, pair5_ = {}, None
+    for i_ in range(1, 400000):
+        h_ = _hl.sha1(b"commit %d\0" % len(text5_(i_)) + text5_(i_)).hexdigest()
+        if h_[:7] in seen5_:
+            pair5_ = (seen5_[h_[:7]], i_, h_[:7]); break
+        seen5_[h_[:7]] = i_
+    for kind_, body_ in (("tree", b""), ("commit", text5_(pair5_[0])), ("commit", text5_(pair5_[1]))):
+        subprocess.run(["git", "-C", str(root), "hash-object", "-t", kind_, "-w", "--stdin"], input=body_, capture_output=True, check=True, env=_ENV)
+    code, _, err = made5_(514, f"built in {built5_[:7]}", f"and in {pair5_[2]}")
+    check(f"FM-005 · RV-2155 · seven characters two commits share ({pair5_[2]}) are refused as *names more than one commit*, not as *no such commit* — and the real commit beside them still passes (saw {code})",
+          code == 0 and "AP-514" not in err)
+    code, _, err = made5_(514, f"in {pair5_[2]}")
+    check("FM-005 · RV-2155 · …alone, they say what is wrong: *names more than one commit — write more of its hash*, and the way through",
+          code == fm.EXIT_LINT and f"AP-514: moved to `Shipped` with no commit behind it — `{pair5_[2]}` names more than one commit — write more of its hash. " in err and "(no such commit)" not in err and way5_(err))
+    # RV-2154: a tracker that is a link to a file outside the repository stops no run in a traceback
+    if os.name != "nt":
+        with tempfile.TemporaryDirectory() as out_:
+            target_ = Path(out_).resolve() / "outside-AP-590.md"; linked_ = tracker(root, "AP-590", body=nothing5_, title="a link"); target_.write_text(linked_.read_text(encoding="utf-8"), encoding="utf-8")
+            linked_.unlink(); linked_.symlink_to(target_)
+            code, _, err = run(root); code_c, _, err_c = run(root, "--check"); linked_.unlink()
+        check(f"FM-005 · RV-2154 · a tracker file that is a link to a file outside the repository stops no run — the rule reads it as no tracker of the repository, with no traceback (saw {code}, {code_c})",
+              "Traceback" not in err + err_c and code == 0 and code_c == 0)
+    rm_git(root)
+fm.configure(HERE)
+
+# RV-2155: a SHA-256 repository names its commits by 64 characters — the whole hash is read
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    if subprocess.run(["git", "init", "-q", "--object-format=sha256", str(root)], capture_output=True, env=_ENV).returncode != 0:
+        print("  skip  FM-005 · RV-2155 · a SHA-256 repository — this git has no --object-format (2.29 and later do)")
+    else:
+        for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+            git(root, "config", k_, v_)
+        (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+        tracker(root, "AP-700", body="## What is true now\n\n**Nothing is built.**\n\n## Done when\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-30 | Filed. |\n", title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the tracker")
+        (root / "src/app.py").write_text("v1\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the feature")
+        full_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        p_ = next((root / "docs/work-tracker").glob("AP-700-*.md"))
+        p_.write_text(p_.read_text().replace("status: In Progress", "status: Shipped") + f"| 2026-09-30 | built in {full_} |\n", encoding="utf-8"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-700: shipped")
+        code, _, err = run(root, "--check")
+        check(f"FM-005 · RV-2155 · in a SHA-256 repository the whole 64-character hash names the commit that built it (saw {len(full_)} characters, exit {code})", len(full_) == 64 and code == 0 and "AP-700" not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# the working copy below the top of the repository: the records are the tracker directory as git writes it from the top
+with tempfile.TemporaryDirectory() as tmp:
+    top5_ = Path(tmp).resolve(); root = top5_ / "proj"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(top5_)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("commit.gpgsign", "false")):
+        git(top5_, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    for n_ in (530, 531, 532):
+        tracker(root, f"AP-{n_}", body="## What is true now\n\n**Nothing is built.**\n\n## Done when\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-30 | Filed. |\n", title="nothing built")
+    (root / "src").mkdir(); (root / "src/a.py").write_text("v0\n", encoding="utf-8"); run(root); git(top5_, "add", "-A"); git(top5_, "commit", "-qm", "the trackers")
+    def sub5_(msg_, name_, text_):
+        (root / name_).parent.mkdir(parents=True, exist_ok=True); (root / name_).write_text(text_, encoding="utf-8"); git(top5_, "add", "-A"); git(top5_, "commit", "-qm", msg_)
+        return subprocess.run(["git", "-C", str(top5_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    sbuilt_ = sub5_("the feature", "src/a.py", "v1\n"); snote_ = sub5_("only a note", "docs/work-tracker/evidence/n.md", "a note\n")
+    def ships5_(n_, row_):
+        p_ = next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")); p_.write_text(p_.read_text().replace("status: In Progress", "status: Shipped") + f"| 2026-09-30 | {row_} |\n", encoding="utf-8")
+        run(root); git(top5_, "add", "-A"); git(top5_, "commit", "-qm", f"AP-{n_}: shipped"); got_ = run(root, "--check"); git(top5_, "reset", "-q", "--hard", "HEAD~1"); return got_
+    code, _, err = ships5_(530, f"a note in {snote_[:9]}")
+    code_b, _, err_b = ships5_(531, f"built in {sbuilt_[:7]}")
+    code_n, _, err_n = ships5_(532, "Filed again.")
+    check("FM-005 · with the working copy in a directory below the repository's top, the tracker directory is still the records: a commit that changes only it misses, the feature's passes",
+          code == fm.EXIT_LINT and f"`{snote_[:9]}` changes nothing outside the records (proj/docs/work-tracker/)" in err and "':(exclude,top)proj/docs/work-tracker/'" in err
+          and code_b == 0 and "AP-531" not in err_b and code_n == fm.EXIT_LINT and "its ship log names no commit" in err_n)
+    rm_git(top5_)
 fm.configure(HERE)
 
 # --- FM-003: Windows, and Subversion with no git anywhere ---------------------------------------------------------
@@ -3201,6 +3486,89 @@ else:
             (wt_ / f"{id_}-x.md").unlink()
         svn("delete", "--force", str(wt_ / "C2-002-x.md"), str(wt_ / "C2-003-x.md"), cwd=root); run(root)
     fm.configure(HERE)
+
+# --- FM-005 on Subversion: the same rule, judged on the change in front of the run ---------------------------------------------------
+# Subversion has no client hook, and its gate reads a STATE — the last author of a line, by `svn blame` — where a change is what the rule
+# needs: read so, every tracker ever shipped would be a move, and each one shipped before the rule refused for ever. So the change is the
+# one in front of the run, as git's is: what the working copy holds uncommitted, else the newest revision, read against the one before.
+if _SVN:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c5")
+        wt_ = root / "docs/work-tracker"
+        nothing_ = "## What is true now\n\n**Nothing is built.**\n\n## Done when\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-09-30 | Filed. |\n"
+        for n_ in range(1, 12):
+            tracker(root, f"C5-{n_:03d}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        def commit5_(msg_, files_=None):
+            """the working copy as it is, committed and updated to — the revision it made"""
+            for name_, text_ in (files_ or {}).items():
+                (root / name_).parent.mkdir(parents=True, exist_ok=True); (root / name_).write_text(text_, encoding="utf-8")
+            run(root); svn("add", "--force", ".", cwd=root); made_ = svn("commit", "-m", msg_, cwd=root); svn("update", cwd=root)
+            return int(re.search(r"Committed revision (\d+)", made_.stdout).group(1))
+        def ship5_(n_, *rows_, to="Shipped"):
+            p_ = next(wt_.glob(f"C5-{n_:03d}-*.md"))
+            p_.write_text(p_.read_text().replace("status: In Progress", f"status: {to}") + "".join(f"| 2026-09-30 | {r_} |\n" for r_ in rows_), encoding="utf-8")
+        def moved5_(n_, *rows_, to="Shipped"):
+            """C5-<n_> moves to `to` and is COMMITTED — `--check` reads the newest revision, the one that moved it"""
+            ship5_(n_, *rows_, to=to); commit5_(f"C5-{n_:03d}: {to}"); return run(root, "--check")
+        way5_ = lambda err_: "Name the revision that built it in a ship-log row" in err_ and "mark it `Closed`, not `Shipped`" in err_ and "svn log -v -l 20" in err_
+        ship5_(8, to="Shipped"); r0_ = commit5_("the trackers, C5-008 shipped before any rule", {})      # the first revision: nothing is judged before there is a revision to read
+        built_ = commit5_("the feature", {"src/app.py": "v1\n"})                                        # a path outside the records
+        note_ = commit5_("only a note", {"docs/work-tracker/evidence/n.md": "a note\n"})               # …and a revision that touches only the records
+        code, _, err = run(root, "--check")
+        check("FM-005 S · a tracker shipped before the rule, never touched since, passes on Subversion — the gate reads the newest revision, which did not move it",
+              code == 0 and "C5-008" not in err)
+        code, _, err = moved5_(1)
+        check("FM-005 S · the Planner's reproduction on Subversion — `Shipped`, nothing built, only *Filed.* in the ship log — is refused by `--check`, exit 4, naming the tracker, what is missing and the way through",
+              code == fm.EXIT_LINT and "C5-001: moved to `Shipped` with no revision behind it — its ship log names no revision" in err and way5_(err))
+        head_ = int(re.search(r"^Revision: (\d+)", svn("info", cwd=root).stdout, re.M).group(1))
+        code, _, err = moved5_(2, "built in r9999")
+        code_s, _, err_s = moved5_(3, f"built in r{head_ + 2}")                                           # the revision this very commit is: a commit cannot name itself
+        check("FM-005 S · a revision that does not exist, and the revision the move itself is, are not in the history — refused, naming each and the way through",
+              code == fm.EXIT_LINT and "C5-002: moved to `Shipped` with no revision behind it — `r9999` is not in the history. " in err and way5_(err)
+              and code_s == fm.EXIT_LINT and f"`r{head_ + 2}` is not in the history. " in err_s and "C5-003" in err_s and way5_(err_s))
+        code, _, err = moved5_(4, f"a note in r{note_}")
+        check("FM-005 S · a revision that changed only the records misses — refused, naming the records and the way through",
+              code == fm.EXIT_LINT and f"C5-004: moved to `Shipped` with no revision behind it — `r{note_}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err))
+        code, _, err = moved5_(5, f"built in r{built_}")
+        code_m, _, err_m = moved5_(6, "at r9999", f"a note, r{note_}", f"the feature, r{built_}")
+        check("FM-005 S · a real revision named passes — and one such revision among three that miss is enough", code == 0 and "C5-005" not in err and code_m == 0 and "C5-006" not in err_m)
+        code, _, err = moved5_(7, to="Closed")
+        check("FM-005 S · a move to `Closed` is not judged on Subversion either", code == 0 and "C5-007" not in err)
+        # the change in front of the run, not yet committed: the gate refuses it before the commit — the tool is run before `svn commit`
+        ship5_(9); code, _, err = run(root)
+        check("FM-005 S · a move to `Shipped` the working copy holds uncommitted is refused at once — what `svn commit` would make is judged before it is made",
+              code == fm.EXIT_LINT and "C5-009: moved to `Shipped` with no revision behind it — its ship log names no revision" in err and way5_(err))
+        svn("revert", str(next(wt_.glob("C5-009-*.md"))), cwd=root)
+        ship5_(9, f"built in r{built_}"); code, _, err = run(root)
+        check("FM-005 S · …and the same move naming the feature's revision passes, uncommitted", code == 0 and "C5-009" not in err)
+        svn("revert", str(next(wt_.glob("C5-009-*.md"))), cwd=root)
+        tracker(root, "C5-012", status="Shipped", body=nothing_, title="filed as shipped"); code, _, err = run(root)
+        check("FM-005 S · a new tracker filed as `Shipped` — not yet `svn add`ed — is a move to it: refused", code == fm.EXIT_LINT and "C5-012: moved to `Shipped` with no revision behind it" in err and way5_(err))
+        next(wt_.glob("C5-012-*.md")).unlink()
+        calls_ = [" ".join(c_) for c_ in argv_of(lambda: run(root, "--check"))]
+        check(f"FM-005 S · a run with nothing moved to `Shipped` asks Subversion for the working copy's status and the newest revision, and for no revision's paths (saw {len([c_ for c_ in calls_ if c_.startswith('svn')])} calls)",
+              any(c_.startswith("svn status") for c_ in calls_) and any(c_.startswith("svn log -l 1") for c_ in calls_) and not any(re.match(r"svn log -r \d+ ", c_) for c_ in calls_))
+        # RV-2150: a working copy at the repository's root — no `/trunk`, so its own path in the repository is empty and every changed path is made relative to it
+        root = base / "wc2"; svn("checkout", url, str(root)); wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        for n_ in (1, 2):
+            tracker(root, f"C5-{n_:03d}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        commit5_("the trackers, at the repository's root", {})
+        built2_ = commit5_("the feature, at the repository's root", {"src/app.py": "v1\n"})
+        note2_ = commit5_("only a note, at the repository's root", {"docs/work-tracker/evidence/n.md": "a note\n"})
+        code, _, err = moved5_(1, f"a note in r{note2_}")
+        code_b, _, err_b = moved5_(2, f"built in r{built2_}")
+        check("FM-005 S · in a working copy at the repository's root a revision that changed only the records is refused, naming the records and the way through — and the feature's revision passes",
+              code == fm.EXIT_LINT and f"C5-001: moved to `Shipped` with no revision behind it — `r{note2_}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err)
+              and code_b == 0 and "C5-002" not in err_b)
+    fm.configure(HERE)
+
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
@@ -3488,7 +3856,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and [r_["undermines"] for r_ in by_["AP-201"]["raises"]] == [["TRIAGE.md path 5", "AP-210's answer"]])
     check("FM-033 · and nothing else does: a raise naming no signed rule, one dated before the judgement, one on the judgement's own day (a day decides), a path line or an answer that is not there, a raise on done work",
           all(not fm.owed_a_pass(by_[k]) for k in ("AP-202", "AP-203", "AP-204", "AP-205")) and boards_["AP-202"] == boards_["AP-203"] == boards_["AP-204"] == boards_["AP-205"] == "backlog"
-          and boards_["AP-206"] == "done" and not by_["AP-206"]["raised"])
+          and boards_["AP-206"] == "ended" and not by_["AP-206"]["raised"])
     check("FM-033 · the raise line is keyed on its date and its `undermines:` token wherever it sits — never on a count of fields — and a wrapped bullet is read whole",
           boards_["AP-207"] == "triage" and by_["AP-207"]["raises"][0]["undermines"] == ["path 1"] and by_["AP-207"]["raises"][0]["line"].endswith("not tagged · git tag -l"))
     code_, out_, _ = run(root, "--triage")
