@@ -648,7 +648,10 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     `post-merge` tracker-board command goes: this repository is where outside forks arrive. The CHANGELOG line gains, at its
     end: “; if you added a line calling `--html-only` to a post-checkout or post-merge hook of your own, remove it.” Docs,
     config and the CHANGELOG only, so the checksum `22cd0e9e…` stands. The final review's scoped check covers this round;
-    then the final full run, and the Owner marks the pull request ready.
+    then the final full run, and the Owner marks the pull request ready. Two more lines follow, in one commit (the Owner's
+    rulings, the same day): `README.md:284` reads “put back on the branch they started on, the board is rebuilt by the
+    command itself (`--html-only`) where nothing else rebuilt it, and the command says which.”; `.gitignore:1` names “the
+    board”, no longer *built on every checkout*. Then the final review's one verdict and the final full run on that head.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
