@@ -21,6 +21,8 @@ hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merg
 
 ## What is true now
 
+**2026-10-01 — one full local run before a pull request opens (the Owner's ruling):** the suites run in full once on a branch's final tip before its pull request opens, not per commit; a later commit that adds only a review file needs none — CI covers it; never between 00:00 and 02:00 CEST until FM-028 is fixed; CI on the pull request stays the full pass.
+
 **Ruled 2026-09-24 11:07:43 CEST by the Owner's signed answer `ffa63b8` (PR 44): *all four now*.** Built for 0.18.0 on
 this branch, the same day: S2, the registry as a report from the commit trailers (`3c0754f`; it is FM-031's S1 by the two
 answers); S4, the filing freeze at 8 with `--tags` on `--new` (`43e6815`, `66f4b7b`); S1 the review tier and S3 the miss
