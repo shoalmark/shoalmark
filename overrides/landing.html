@@ -210,7 +210,7 @@ section.band{padding-block:72px 40px}
 .peek figcaption{margin-top:8px;font-size:12px;color:var(--mute)}
 .loses{padding:14px 16px;border:1px dashed var(--land);color:var(--dim);font-size:14px}
 .loses b{font-family:var(--pix);font-weight:400;font-size:12px;color:var(--land);text-transform:uppercase;margin-right:8px}
-.beta{margin:0 0 30px}.beta ul{margin:8px 0 0;padding-left:20px;display:grid;gap:6px}.beta li::marker{color:var(--land)}{# FM-006 v0.19.0, In this beta: the start section's three lines, set in the 2P card's You lose nothing box (.loses), its label and its dashed border #}
+.beta{margin:0 0 30px;width:fit-content}.beta ul{margin:8px 0 0;padding-left:20px;display:grid;gap:6px;max-width:80ch}.beta li::marker{color:var(--land)}{# FM-006 v0.19.0, In this beta: the start section's three lines, set in the 2P card's You lose nothing box (.loses), its label and its dashed border #}{# FM-006 v0.19.0, In this beta: on desktop the box's text capped at about 80 characters (80ch on its list) and the box fitted to it, to read faster — the Owner's cosmetic suggestion, filed in FM-006's release section (20fa38b); narrower windows unchanged #}
 
 /* high scores */
 .scores{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start}
