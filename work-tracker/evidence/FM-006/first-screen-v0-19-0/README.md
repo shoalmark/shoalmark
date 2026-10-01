@@ -21,10 +21,10 @@ The first screen's links and buttons: at 390 the HUD's *shoalmark* and *Docs*, t
 edge; at 1440 the HUD's, the wrecks' and the action. The landing's icon is the site's Pricke, `assets/favicon.svg`.
 
 **Checks.** `check_site.py` exit 0 on `ac63619`'s build, link preview images included; `test_check_site.py` and `llms_txt.py`
-exit 0. No script error and no console entry at either width: the icon link ends the browser's request for `/favicon.ico`.
-No sideways scroll. Contrast by slice L's flat method (`../landing/start-page/checks.mjs`), reduced motion: 48 new text runs
-at each width, the lowest 5.69 (the footer's fine print, `#8ea3b6` on `#15293d`); the H1 14.7, the job line 9.6, the action
-10.6, the fleet 9.1 and up; nothing on the page below 4.5. The tiles at 390: 350 px wide, 178–208 px tall, no text under
-12 px, nothing overflowing. Each inlined badge's drawing equals its `brand/seats/` source, rect and paths verbatim. **Not
-verified:** Firefox, Safari (and `svh` under a phone's toolbars), a screen reader, print, a real phone, a link preview as a
-service draws it.
+exit 0. No script error and no console entry at either width: the icon link ends the browser's request for `/favicon.ico`. No
+sideways scroll. Contrast by slice L's `checks.mjs`, run unchanged on the same build
+(`node ../landing/start-page/checks.mjs SITE OUT.json`), reduced motion: the lowest new text 5.69 (the footer's fine print,
+`#8ea3b6` on `#15293d`); the H1 14.7, the job line 9.6, the action 10.6, the fleet 9.1 and up; nothing on the page below 4.5.
+The tiles at 390: 350 px wide, 178–208 px tall, no text under 12 px, nothing overflowing. Each inlined badge's drawing equals
+its `brand/seats/` source, rect and paths verbatim. **Not verified:** Firefox, Safari (and `svh` under a phone's toolbars), a
+screen reader, print, a real phone, a link preview as a service draws it.

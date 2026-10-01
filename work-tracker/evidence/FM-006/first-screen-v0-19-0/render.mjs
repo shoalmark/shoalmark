@@ -10,15 +10,13 @@
 //                                                  selected (every wreck aria-pressed="false", as the markup has it before
 //                                                  attract mode picks one), so no single defect is singled out
 // It prints a JSON summary: each first-screen part's box at both widths (document px; the fold is the window's height), the
-// links in each first screen, script errors and the hosts asked, the page's sideways scroll, the fleet's tiles at 390, and the
-// contrast of every text run outside the chart by slice L's flat method (checks.mjs): its colour, opacity applied, over the
-// median pixel under its glyphs, the ground captured with all text transparent, under reduced motion.
+// links in each first screen, script errors and the hosts asked, the page's sideways scroll and the fleet's tiles at 390. The
+// contrast of every text run is slice L's checks.mjs's (../landing/start-page/), run unchanged on the same SITE.
 import {spawn} from "node:child_process";
 import {createServer} from "node:http";
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join, resolve} from "node:path";
-import {inflateSync} from "node:zlib";
 
 const site = resolve(process.argv[2] ?? "site"), out = resolve(process.argv[3] ?? "."), preview = process.argv[4] ? resolve(process.argv[4]) : null;
 const chrome = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -33,33 +31,6 @@ const server = createServer((q, s) => { const f = join(site, decodeURIComponent(
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const origin = `http://127.0.0.1:${server.address().port}/`;
 
-// ---- a PNG, decoded (slice L's decoder): Chrome's captures are 8-bit RGB or RGBA, not interlaced
-function png(buf) {
-  let p = 8, w, h, ct, idat = [];
-  while (p < buf.length) {
-    const len = buf.readUInt32BE(p), type = buf.toString("ascii", p + 4, p + 8), data = buf.subarray(p + 8, p + 8 + len);
-    if (type == "IHDR") { w = data.readUInt32BE(0); h = data.readUInt32BE(4); ct = data[9]; if (data[8] != 8 || data[12]) throw Error("png: not 8-bit / interlaced") }
-    if (type == "IDAT") idat.push(data);
-    p += 12 + len;
-  }
-  const bpp = ct == 6 ? 4 : ct == 2 ? 3 : 0; if (!bpp) throw Error("png: colour type " + ct);
-  const raw = inflateSync(Buffer.concat(idat)), stride = w * bpp, px = Buffer.alloc(h * stride);
-  for (let y = 0; y < h; y++) {
-    const f = raw[y * (stride + 1)], src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1)), o = y * stride;
-    for (let x = 0; x < stride; x++) {
-      const a = x >= bpp ? px[o + x - bpp] : 0, b = y ? px[o - stride + x] : 0, c = x >= bpp && y ? px[o - stride + x - bpp] : 0;
-      const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c);
-      px[o + x] = (src[x] + [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][f]) & 255;
-    }
-  }
-  return {w, h, at: (x, y) => { const i = (y * w + x) * bpp; return [px[i], px[i + 1], px[i + 2]] }};
-}
-const lin = c => (c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-const ratio = (a, b) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
-const over = ([r, g, b, a], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
-const hex = c => "#" + c.slice(0, 3).map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
-const r2 = v => Math.round(v * 100) / 100;
 
 // ---- a tab
 const errors = [], asked = new Set();
@@ -106,36 +77,6 @@ const TILES = `[...document.querySelectorAll("#seats .seat")].map(t => { const b
   return {name: t.querySelector("h3").textContent.trim(), width: Math.round(b.width), height: Math.round(b.height), smallestText: Math.min(...sizes),
     overflow: [...t.querySelectorAll("*")].some(e => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX != "visible") || t.scrollWidth > t.clientWidth + 1,
     badges: [...t.querySelectorAll("svg")].map(s => Math.round(s.getBoundingClientRect().width))} })`;
-// ---- every text run outside the chart (slice L's COLLECT_FLAT)
-const COLLECT = `(() => {
-  const col = s => { const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const v = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number); return [v[0], v[1], v[2], v[3] ?? 1] };
-  const op = el => { let o = 1; for (let e = el; e && e.nodeType == 1; e = e.parentElement) o *= +getComputedStyle(e).opacity; return o };
-  const name = el => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.classList.length ? "." + [...el.classList].slice(0, 2).join(".") : "");
-  const path = el => { const p = []; for (let e = el; e && e.nodeType == 1 && p.length < 3; e = e.parentElement) p.unshift(name(e)); return p.join(" > ") };
-  const out = [], tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  for (let n; n = tw.nextNode();) {
-    const el = n.parentElement, s = el && getComputedStyle(el); if (!el || !n.nodeValue.trim() || /^(SCRIPT|STYLE)$/.test(el.tagName) || s.visibility != "visible" || s.display == "none") continue;
-    if (el.closest(".stage")) continue;
-    const o = op(el), c = col(s.color); if (o < 0.01 || !c || c[3] == 0) continue;
-    const rg = document.createRange(); rg.selectNodeContents(n);
-    const rects = [...rg.getClientRects()].map(r => [r.left + scrollX, r.top + scrollY, r.right + scrollX, r.bottom + scrollY]).filter(b => b[2] - b[0] >= 2 && b[3] - b[1] >= 4);
-    const isNew = !!el.closest(".title, #seats") || /Deutsch|note for trying it|the Owner's signed answer|the Owner just gave/.test(el.textContent);
-    if (rects.length) out.push({where: path(el), text: n.nodeValue.trim().slice(0, 48), fg: [c[0], c[1], c[2], c[3] * o], rects, isNew, overChart: !!el.closest(".title") && innerWidth >= 1280});
-  }
-  return {items: out, W: document.documentElement.scrollWidth, H: document.documentElement.scrollHeight};
-})()`;
-async function contrast(w, h) {
-  const t = await open(w, h, true), {items, W, H} = await t.js(COLLECT), clip = {x: 0, y: 0, width: W, height: H};
-  const D = png(await t.shot(null, clip));
-  await t.js(style("*,*::before,*::after{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;text-decoration-color:transparent!important}"));
-  const G = png(await t.shot(null, clip)); await t.close();
-  return items.flatMap(it => { const g = [], ink = [];
-    for (const [x0, y0, x1, y1] of it.rects) for (let y = Math.max(0, Math.floor(y0)); y < Math.min(G.h, Math.ceil(y1)); y++) for (let x = Math.max(0, Math.floor(x0)); x < Math.min(G.w, Math.ceil(x1)); x++) {
-      const a = G.at(x, y), b = D.at(x, y); g.push(a); if (a[0] != b[0] || a[1] != b[1] || a[2] != b[2]) ink.push(a) }
-    const under = (ink.length ? ink : g).sort((a, b) => lum(a) - lum(b)), med = under[under.length >> 1];
-    if (!med) return [];                                                  // off the page: the ticker's second, hidden copy
-    return [{where: it.where, text: it.text, fg: hex(it.fg) + (it.fg[3] < 1 ? `@${r2(it.fg[3])}` : ""), ground: hex(med), ratio: r2(ratio(over(it.fg, med), med)), isNew: it.isNew, overChart: it.overChart}] });
-}
 
 mkdirSync(out, {recursive: true});
 const summary = {site, at: new Date().toISOString(), chrome: (await (await fetch(`http://127.0.0.1:${port}/json/version`)).json()).Browser, widths: {}};
@@ -144,9 +85,7 @@ for (const [tag, w, h] of [["phone-390", 390, 844], ["desktop-1440", 1440, 900]]
   await t.shot(join(out, `${tag}-first.png`), {x: 0, y: 0, width: w, height: h});
   await t.shot(join(out, `${tag}-full.png`), {x: 0, y: 0, width: w, height: await t.js("document.documentElement.scrollHeight")});
   await t.close();
-  const pairs = await contrast(w, h), low = arr => arr.reduce((m, x) => !m || x.ratio < m.ratio ? x : m, null);
-  summary.widths[w] = {...parts, tiles, newPairs: pairs.filter(x => x.isNew), lowestNew: low(pairs.filter(x => x.isNew)), lowestAll: low(pairs),
-    below45: pairs.filter(x => x.ratio < 4.5).map(x => `${x.ratio} ${x.where} "${x.text}"`)};
+  summary.widths[w] = {...parts, tiles};
 }
 if (preview) {
   const t = await open(1280, 900, true);
