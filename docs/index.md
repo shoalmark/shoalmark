@@ -41,7 +41,7 @@ In shoalmark's own repository, which runs on shoalmark:
 Owner's own answer branches (`answer/…`). One counts when a commit adding or changing a file under
 `work-tracker/evidence/reviews/`, merge commits excluded, is dated before the pull request was opened. A commit's date
 is when it was made, not when it was pushed: the forge's push events confirm the counted pull requests from
-24 September 2026, 05:18 UTC on, and it no longer lists older ones. The rule is the owner's signed answer of
+24 September 2026, 05:18 UTC on, and it no longer lists older ones. The rule is the Owner's signed answer of
 24 September 2026, 11:07 CEST.*
 
 What shoalmark prints for it, every day:
