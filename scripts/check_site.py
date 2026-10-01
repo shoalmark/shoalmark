@@ -10,7 +10,7 @@ for page in ("index.html", "setup.html", "signing.html", "de/signing.html", "age
     if not (site / page).is_file():
         raise SystemExit(f"site check: missing {page}")
 contract = (site / "agents/index.html").read_text(encoding="utf-8")
-if "How to get a better-performing human owner" not in contract or "--8" in contract:
+if "Get a better-performing human Owner." not in contract or "--8" in contract:
     raise SystemExit("site check: agents' contract include did not render")
 
 class Links(HTMLParser):

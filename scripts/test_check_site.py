@@ -15,7 +15,7 @@ class FontSources(unittest.TestCase):
             for name in ("index.html", "setup.html", "signing.html", "de/signing.html", "agents/index.html", "llms.txt"):
                 p = site / name
                 p.parent.mkdir(parents=True, exist_ok=True)
-                p.write_text("How to get a better-performing human owner")
+                p.write_text("Get a better-performing human Owner.")
             (site / "font").write_bytes(b"synthetic local asset")
             (site / "font.woff2").write_bytes(b"synthetic local asset")
             if inline:
