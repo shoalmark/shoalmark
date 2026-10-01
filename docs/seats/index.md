@@ -1,10 +1,10 @@
 # The seats — one home
 
 These are the seats shoalmark's own repository uses: seven development seats, and the Owner, who is not a seat. A seat is
-a role an agent takes, with its duties and its rights written down. The tool itself knows the Owner, and three seats with
-their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none — `principal` and `implementer`
-are their former names and still work ([README §*Seats*](../agents/README.md#seats)); any other seat is the adopter's
-choice, named in `[seats]` as the adopter chooses. Each seat is six lines — its name, its virtue, its shadow, what it takes, what
+a role an agent takes, with its duties and its rights written down. The tool itself knows
+the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none —
+`principal` and `implementer` are their former names and still work ([README §*Seats*](../agents/README.md#seats)); any
+other seat is the adopter's choice, named in `[seats]` as the adopter chooses. Each seat is six lines — its name, its virtue, its shadow, what it takes, what
 it signs, what it may not do — and one practice line; nothing more: a seat without a page of its own is legitimate and works
 from its row. A seat is *it*: seats are not people, so their texts are not corrected to they/them; a person — the Owner, a
 reader — is they/them/their. No new seat exists without the Owner's word. A parent project links here instead of restating
