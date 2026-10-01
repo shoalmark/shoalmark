@@ -582,6 +582,13 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
   The Reviewer checks the German and runs the way back in a scratch repository — the old order, the text as written, and a
   repository whose own hook carries the added line; the Auditor verifies each commit when it lands.
+- **The cold audit's round** (the Owner's ruling, 2026-10-01): the second, small fix round, on top of the final review's,
+  carries the cold audit's findings and two items the first round found:
+  - `docs/signing.md:240` and its German twin `docs/de/signing.md:261–262` name the seats that hold `answer` beside the Owner,
+    as RV-2261's fix does on the triage pages. *The Planner's reading,* in RV-2261's words: “Where your `owner`, or a seat that
+    holds `answer`, is not marked `signed`, …” / “Wo Ihr `owner` oder ein Sitz mit `answer` nicht `signed` ist, …”.
+  - `docs/requirements.md:21` and `docs/triage.md:106` say “the Owner's signed answer”. The check's name at
+    `test_shoalmark.py:3051` stays: it is a test name, not a page.
 
 ## Signals
 
