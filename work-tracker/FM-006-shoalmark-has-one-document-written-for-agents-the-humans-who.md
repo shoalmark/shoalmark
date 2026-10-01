@@ -652,6 +652,12 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     rulings, the same day): `README.md:284` reads “put back on the branch they started on, the board is rebuilt by the
     command itself (`--html-only`) where nothing else rebuilt it, and the command says which.”; `.gitignore:1` names “the
     board”, no longer *built on every checkout*. Then the final review's one verdict and the final full run on that head.
+  - **The board's link's test, on Windows** (the Owner's ruling, the same day, on CI at `5ffa3d2`): the product is right; the
+    test is wrong. `test_shoalmark.py:165` parses the whole printed line as the URI; it strips the `board: ` prefix first,
+    and the read-back is strict — the path parsed from the URI equals the board file it wrote, on every OS, and the check
+    fails on POSIX too before the fix. Test only: `shoalmark.py` and the notes are untouched, so the checksum `22cd0e9e…`
+    stands. The final review checks that one change; CI on the new head runs every suite, so the local full run is skipped;
+    the Owner merges when CI is 9/9.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
