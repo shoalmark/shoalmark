@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## 0.19.0 — 2026-10-02
+## 0.19.0 — 2026-10-01
 
 **shoalmark 0.19.0 is the first public beta: the gate refuses a *done* without a commit behind it, the first screen speaks to
 the person who owns the repository, and a new English note, `ADOPT.md`, goes to their agents** (FM-005, FM-006, FM-024 — with
