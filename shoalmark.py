@@ -230,6 +230,9 @@ def configure(root=None):
     for name, value in seats_of(CONFIG).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
         for who, _mode in SEATS[name]:
+            if who and who in seen and at_top(seen[who]):   # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
+                raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
+                                 + "; an identity is the Owner's or one seat's, listed once")
             if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
                 raise SystemExit(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
                                  + "; an identity is one seat's, listed once")
@@ -2151,7 +2154,7 @@ def owner_change(tid, t, how):
         print(dirty_refusal(git, dirty), file=sys.stderr)
         return EXIT_LINT
     if signed and not git("config", "user.signingkey").stdout.strip():
-        print(f'{flag}: `{"[seats]" if SEATS else "answerers"}` asks for a signed {noun} and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
+        print(f'{flag}: `{("owner" if at_top(seat) else "[seats]") if SEATS else "answerers"}` asks for a signed {noun} and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
         return EXIT_LINT
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
@@ -4139,7 +4142,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
     "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email or name> signed\"`; at the top of the file, before any table",
               "who the Owner is (FM-024): the one who answers, and holds all four rights — the Owner is not a seat. `signed` is read per identity, as for a seat. "
               "`[seats] owner` is still read, as its old spelling: both present and the same are read once; both present and different are refused at configuration (exit 1), "
-              "and so is an `owner` key inside any other table, naming this place — a key after a `[table]` header belongs to that table"),
+              "and so is an `owner` key inside any other table, naming this place (in `[rights]`, a list of rights is the Owner's own) — a key after a `[table]` header belongs to that table"),
     "[paths] reviews": ("a folder under the tracker directory, or a glob of folders; `evidence/reviews/` (the default)",
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
@@ -4148,7 +4151,8 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                        "who sits in that seat (FM-024): every identity listed maps to the seat — `planner = [\"principal@seat\", "
                        "\"12345+shoalmark-planner[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
-                       "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same"),
+                       "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same. "
+                       "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none"),
     "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default (the default where `[ratio]` is present)",
                         "the records-to-product ratio (FM-032): what `--ratio` counts as a record — a prefix with a trailing slash is a directory, a plain "
                         "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
@@ -4481,7 +4485,8 @@ def seats_of(cfg):
              and not (t == "rights" and not isinstance(body["owner"], str))]
     if where:
         raise SystemExit(f'{CONFIG_NAME}: `owner` is inside {" and ".join(f"`[{t}]`" for t in where)}, where it does not name the Owner — '
-                         f'put it at the top of the file, before any table: `owner = "<identity> signed"`')
+                         f'put it at the top of the file, before any table: `owner = "<identity> signed"`'
+                         + ("; if it is a tag, give it another name: `owner` names the Owner" if "tags" in where else ""))
     top = cfg.get("owner")
     if top is None:
         return seats
@@ -4552,10 +4557,11 @@ def answerers_problems():
                     continue
                 line = "owner" if at_top(s) else f"[seats] {s}"      # the Owner named at the top is a line of its own (FM-024, D2)
                 shown = f'`{line} = "{who}"`' if len(SEATS[s]) == 1 else f'`{line}` lists `"{who}"`'       # a list seat: the item, not the whole seat
-                advice = f'Add `signed` to the seat (`{s} = "{who} signed"`)' if len(SEATS[s]) == 1 else f'Add `signed` to that item (`"{who} signed"`)'
+                advice = f'Add `signed` to {"`owner`" if at_top(s) else "the seat"} (`{s} = "{who} signed"`)' if len(SEATS[s]) == 1 else f'Add `signed` to that item (`"{who} signed"`)'
                 out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and {shown} — '
-                           + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
-                           + f' — is not signed. `[seats]` alone decides who may answer (from 0.17.1), so that answer would count unsigned. '
+                           + (("the Owner, who answers for it" if at_top(s) else "the seat that answers for it") if same
+                              else ("the Owner, who holds `answer`" if at_top(s) else "a seat holding `answer`") + f"; no seat is spelled `{name}`, so each stands in for it")
+                           + f' — is not signed. {"`owner` and `[seats]` alone decide" if CONFIG.get("owner") is not None else "`[seats]` alone decides"} who may answer (from 0.17.1), so that answer would count unsigned. '
                            f'{advice}, or remove `answerers`')
     return out
 
@@ -5802,9 +5808,10 @@ def owners_of(cfg):
     return {w: m for w, m in out.items() if w}
 
 
-def owners_at(rev):
+def owners_at(rev, refused=None):
     """The Owner as `rev`'s `shoalmark.toml` names him — the default branch's, so a branch never names its own Owner — or
-    this checkout's where `rev` is None or carries no configuration."""
+    this checkout's where `rev` is None or carries no configuration. Where this tool refuses that configuration, nobody —
+    and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2)."""
     if not rev:
         return may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
@@ -5813,7 +5820,9 @@ def owners_at(rev):
         return may_answer()
     try:
         return owners_of(read_config(text))
-    except SystemExit:
+    except SystemExit as e:
+        if refused is not None:
+            refused.append(str(e))
         return {}
 
 
@@ -5960,9 +5969,11 @@ def triage_guard():
     if not trunk:
         _GUARD = ([], "the Owner's two sections: no `origin` default branch to measure from — nothing is judged")
         return _GUARD
-    owners = owners_at(trunk)
+    why = []
+    owners = owners_at(trunk, why)
     if not owners:
-        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)")
+        _GUARD = ([], f"the Owner's two sections: not guarded — " + (f"{trunk}'s configuration is refused here, so it names nobody — {why[0]}" if why
+                       else f"{trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
@@ -6600,7 +6611,7 @@ def lint(trackers, committing=False):
     problems = []
     ids = {t["id"] for t in trackers}
     if vcs() == "svn" and any(mode == "signed" for ids in SEATS.values() for _who, mode in ids):
-        problems.append(f'{CONFIG_NAME}: `[seats]` — {", ".join(sorted(s for s in SEATS if any(mode == "signed" for _who, mode in SEATS[s])))} asks for a signature, and '
+        problems.append(f'{CONFIG_NAME}: {", ".join("`owner`" if at_top(s) else f"`[seats] {s}`" for s in sorted(s for s in SEATS if any(mode == "signed" for _who, mode in SEATS[s])))} asks for a signature, and '
                         f'Subversion has none to give: its server authenticates the commit. Name the SVN account alone')
     # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
     # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
@@ -6608,12 +6619,13 @@ def lint(trackers, committing=False):
     if ANSWERERS and SEATS:
         # with `[seats]` the key is NOT READ for answers (`may_answer`, from 0.17.1): telling such a repository it "still
         # works" is what let a signature it asked for go unenforced without a word (FM-015)
-        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right, and here it is not read for answers — `[seats]` decides '
-              f'who may answer and whether the answer is signed. It can be removed', file=sys.stderr)
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right, and here it is not read for answers — '
+              f'{"`owner` and `[seats]` decide" if CONFIG.get("owner") is not None else "`[seats]` decides"} who may answer and whether the answer is signed. It can be removed', file=sys.stderr)
     elif ANSWERERS:
         # The schedule is ANCHORED to 0.17.3, never phrased against "this release": this note prints unchanged in every
         # later release, and a floating "the clock starts here" would restart the countdown each time it was read.
-        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — move it into `[seats]` and `[rights]`. '
+        print(f'  note: {CONFIG_NAME}: `answerers` is the old name for the `answer` right and still works — name the Owner at the top instead '
+              f'(`owner = "<email> signed"`, before any table), and give any other name that answers `answer` in `[rights]`. '
               f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
@@ -6784,7 +6796,7 @@ def parse_args(argv):
                                               "Schedule it yourself: the README has a launchd and a cron line")
     add("--done", nargs=2, metavar=("ID", "WHERE"), help="the Owner's act is done (FM-030): `--done <id> \"<where the result is>\"` writes `done:` — the time and "
                                                         "where its result is — and its record under `## Acts`; the act leaves their list. Made as --answer makes their answer: on "
-                                                        "`answer/<id>`, signed where their seat is `signed`, pushed. The board's *done* button copies it")
+                                                        "`answer/<id>`, signed where their `owner` is `signed`, pushed. The board's *done* button copies it")
     add("--due", nargs=2, metavar=("ID", "TIME"), help="the Owner's act moves (FM-030): `--due <id> 2026-09-26T07:30:00+02:00` writes the new `due:` and records the "
                                                        "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes their answer. The board's "
                                                        "*reschedule* button copies it")

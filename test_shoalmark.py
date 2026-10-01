@@ -943,12 +943,36 @@ with tempfile.TemporaryDirectory() as d:
     read_(f'owner = "alice"\n{base_cfg}\n[seats]\n{PLANNER}'); at_top = getattr(fm, "at_top", lambda seat: None); top_, old_seat_ = at_top("owner"), at_top("planner")
     read_(f'{base_cfg}\n[seats]\nowner = "alice"\n{PLANNER}'); old_spelling_ = at_top("owner")
     check(f"FM-024 D2 · the lines that point at where the Owner's signature is asked say `owner` when it is named at the top, and `[seats] owner` under the old spelling (saw {r_top.returncode}, {r_old.returncode})",
-          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to the seat (`owner = \"alice signed\"`), or remove `answerers`" in r_top.stderr
+          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to `owner` (`owner = \"alice signed\"`), or remove `answerers`" in r_top.stderr
+          and "`owner` and `[seats]` alone decide who may answer" in r_top.stderr and "the Owner, who answers for it" in r_top.stderr
           and '`[seats] owner = "alice"`' in r_old.stderr and top_ is True and old_seat_ is False and old_spelling_ is False)
     check("FM-024 D2 · `--schema` has an `owner` entry — top level, one identity or a list, the old spelling, the refusals — and the `[seats] <seat>` text reads the Owner and three seats with their rights built in",
           (lambda t: "| `owner` | one identity, or a list of them, as a `[seats]` value" in t and "`[seats] owner` is still read, as its old spelling" in t and "are refused at configuration" in t
-                     and "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same" in t
+                     and "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same" in t
+                     and t.split("| `[seats] <seat>` |")[1].split("\n")[0].rstrip(" |").endswith("The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none")
                      and "Four names carry their rights built in" not in t)(run(root, "--schema")[1]))
+    # RV-2200 · the tool's other lines about how the Owner is configured name `owner` for the Owner at the top, never `[seats]` or a seat
+    r_rep, r_both = cli(f'owner = ["{OWN}", "you@example.org"]\n{base_cfg}\n[seats]\n{PLANNER}'), cli(f'owner = "planner@seat"\n{base_cfg}\n[seats]\n{PLANNER}')
+    r_note = cli(f'owner = "you@example.org"\nanswerers = ["someone"]\n{base_cfg}'); r_old_note = cli(f'answerers = ["someone"]\n{base_cfg}')
+    r_tag = cli(f'{base_cfg}owner = "you@example.org"\n')
+    check(f"FM-024 D2 · RV-2200 · an identity listed twice in the top-level `owner`, or the Owner's and a seat's, is refused naming `owner`, not `[seats]`; the `answerers` notes name `owner`; a tag named `owner` is told to take another name (saw {r_rep.stderr.strip()!r}, {r_both.stderr.strip()!r})",
+          one_line(r_rep) and "`owner` lists `you@example.org` twice" in r_rep.stderr and "[seats]" not in r_rep.stderr
+          and one_line(r_both) and "`planner@seat` is the Owner's (`owner`, at the top) and the seat `planner`'s (`[seats]`)" in r_both.stderr and "two seats" not in r_both.stderr
+          and "`owner` and `[seats]` decide who may answer" in r_note.stderr
+          and 'name the Owner at the top instead (`owner = "<email> signed"`, before any table)' in r_old_note.stderr and "move it into `[seats]`" not in r_old_note.stderr
+          and one_line(r_tag) and "if it is a tag, give it another name: `owner` names the Owner" in r_tag.stderr)
+fm.configure(HERE)
+with tempfile.TemporaryDirectory() as d:          # RV-2200 · the Owner's own command, on a machine with no signing key, names `owner`
+    root = Path(d).resolve(); git(root, "init", "-q")
+    for k_, v_ in (("user.name", "me"), ("user.email", "me@x"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('owner = "me@x signed"\nname = "k"\n[kinds]\nAP = "Work"\n[seats]\nimplementer = "implementer@seat"\n')
+    tracker(root, "AP-001", extra=f'next: owner\nask: "Shall it ship?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=me <me@x>")
+    code_k, _, err_k = run(root, "--answer", "AP-001", "accept")
+    check(f"FM-024 D2 · RV-2200 · `--answer` with the Owner at the top and no signing key says `owner` asks for a signed answer, not `[seats]` (saw {err_k.strip()[-150:]!r})",
+          code_k == fm.EXIT_LINT and "`owner` asks for a signed answer and no `user.signingkey` is set" in err_k and "`[seats]` asks" not in err_k)
+    rm_git(root)
 fm.configure(HERE)
 
 # --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
@@ -3589,6 +3613,10 @@ else:
         code, _, err = run(root)
         check("S4 · `signed` under Subversion is refused as meaningless — the server authenticated the commit; name the account alone",
               code == fm.EXIT_LINT and "asks for a signature, and Subversion has none to give" in err and "Name the SVN account alone" in err)
+        (root / "shoalmark.toml").write_text('owner = "holgo signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
+        code, _, err = run(root)
+        check(f"S4 · RV-2200 · the Owner named at the top with `signed` under Subversion is refused as `owner`, never under `[seats]` (saw {err.strip()[-200:]!r})",
+              code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and Subversion has none to give" in err)
         (root / "shoalmark.toml").write_text(cfg, encoding="utf-8")
         for id_ in ("C2-002", "C2-003"):
             (wt_ / f"{id_}-x.md").unlink()
@@ -5600,15 +5628,20 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "no Owner named"); git(root, "push", "-q", "origin", "main")
     c_none_, g_none_ = made37_("ap/037-no-owner", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
-    check(f"FM-037 · the Owner is read from the default branch's `[seats]`, never the branch's: a branch that makes a seat the Owner is still refused; where the default branch names no Owner nothing is guarded, and `--check` says so (saw {g_none_!r})",
+    check(f"FM-037 · the Owner is read from the default branch's configuration, never the branch's: a branch that makes a seat the Owner is still refused; where the default branch names no Owner nothing is guarded, and `--check` says so (saw {g_none_!r})",
           len(g_self_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_self_[0][0]
           and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
+    git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text('owner = "other@x signed"\n' + cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the Owner named twice, differently"); git(root, "push", "-q", "origin", "main")
+    c_two_, g_two_ = made37_("ap/037-two-owners", "AP-037: a better intent", lambda: ((root / "shoalmark.toml").write_text(cfg37_), text37_("lose a loan", "lose a book")()), SEAT_)
+    check(f"FM-037 · RV-2203 · where this tool refuses the default branch's configuration, the guard says so and why — never that it names no Owner (saw {g_two_!r})",
+          g_two_[0] == [] and g_two_[1].startswith("the Owner's two sections: not guarded — origin/main's configuration is refused here, so it names nobody — shoalmark.toml: the Owner is named twice, and differently"))
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
     c_ao_, g_ao_ = made37_("ap/037-author-only", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
     c_aw_, g_aw_ = made37_("ap/037-author-owner", "AP-037: his line, his name", text37_("lose a loan", "lose a page"), OWNER_)
-    check(f"FM-037 · clause 5 · with the Owner's seat not `signed`, a seat's change is refused on its author and the refusal says it proves the author only; his own unsigned change passes on his name, and `--check` says the same of the whole guard (saw {g_ao_[0]!r}, {g_aw_[1]!r})",
+    check(f"FM-037 · clause 5 · with the Owner's `owner` not `signed`, a seat's change is refused on its author and the refusal says it proves the author only; their own unsigned change passes on their name, and `--check` says the same of the whole guard (saw {g_ao_[0]!r}, {g_aw_[1]!r})",
           g_ao_[0] == [f'refused: commit {c_ao_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): the author only — mark `owner` signed to prove the key — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
           and g_aw_ == ([], "the Owner's two sections: guarded (the author only — mark `owner` signed to prove the key) — 1 commit(s) on `ap/037-author-owner` since origin/main, 1 change them or their signers file, each their own commit"))
     svn37_ = base / "svn"; (svn37_ / ".svn").mkdir(parents=True); (svn37_ / "shoalmark.toml").write_text(cfg37_.replace(" signed", ""), encoding="utf-8")
