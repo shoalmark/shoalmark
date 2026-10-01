@@ -36,7 +36,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   and AGENTS.md says so in one sentence so nobody "fixes" a seat's text. README, AGENTS.md, `docs/` (English and German,
   where the German keeps the English seat names and "Sie") and the tool's printed text are reworded; quotes of the Owner
   and every shipped record stay as they were. The seats are Planner and Builder in prose and in `[seats]`:
-  `planner` and `builder`, with their bot identities (the FM-024 bullet below).
+  `planner` and `builder`, with their bot identities (the switch, in the FM-024 bullet on the Owner).
 
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another

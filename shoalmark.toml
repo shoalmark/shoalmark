@@ -5,7 +5,7 @@ triage_days = 7
 freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`): at 8 open or more, only bug filings
 judged_before_build = true   # FM-033, the Owner's rule: a pass judges before the first build commit — refused otherwise
 
-[seats]            # who sits where — seats commit unsigned as <seat>@seat, and a seat's GitHub App shows its icon (README, *Seat icons on the forge*);
+[seats]            # who sits where — a seat commits unsigned under an identity its list gives: the old address, or its GitHub App's bot address, whose icon the forge shows (README, *Seat icons on the forge*);
                    # the Owner is `owner` above, not a seat. A seat's value is a list: every identity in it is that seat, the old address first
 owner = "holgoijo@gmail.com signed"   # the old spelling, the same as `owner` above: a copy older than D2 reads no Owner from the top line, so it stays until the open branches have merged main
 planner = ["principal@seat", "336427458+shoalmark-planner[bot]@users.noreply.github.com"]   # `principal` is its former name, and its address stays: history resolves to this seat
