@@ -36,7 +36,7 @@ copy.
 
 ## Not built yet
 
-Each is an ask to the owner, and starts only on his go.
+Each is an ask to the owner, and starts only on their go.
 
 - **Stage 1**, after the trial and one more prospect: coverage and citation checks; stale-marking of what cites a
   requirement once it changes; `--trace REQ-<id>`; a traceability matrix per release, generated from git.
