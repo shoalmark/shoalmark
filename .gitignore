@@ -1,4 +1,4 @@
-# shoalmark — what git never carries: the board (built on every checkout), the docs site (zensical build), the seat icons' PNGs (brand/seats/export.py)
+# shoalmark — what git never carries: the board, the docs site (zensical build), the seat icons' PNGs (brand/seats/export.py)
 work-tracker/index.html
 work-tracker/view/
 site/
