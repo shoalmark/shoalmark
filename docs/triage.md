@@ -103,7 +103,7 @@ and judged P2: *"the sitting's commands ran green here, so a red CI is not that 
 **A raise that names your path.** On 24 September 2026 the Auditor seat raised FM-007 with a sourced line under it.
 The key that signs the owner's answers was a software key in the shared ssh-agent, used by every seat's push without
 a prompt, and the line ended *"undermines: TRIAGE.md path 5, FM-033's answer"*: it named two signed rules, line 5
-of the path and the owner's signed answer on FM-033. The same evening a pass judged FM-007 again
+of the path and the Owner's signed answer on FM-033. The same evening a pass judged FM-007 again
 (`29466fc`). Re-made on its Reviewer's findings (`c5696c5`), it set P1: *"on the current path, line 5: an answer is
 written and signed, and the raise shows the signature proves the account, not the hand"*.
 

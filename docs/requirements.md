@@ -18,7 +18,7 @@ This page does not restate it.
 
 ## The owner's part
 
-A requirement changes only by the owner's signed answer, through the board — never by a seat's edit. The id stays, the
+A requirement changes only by the Owner's signed answer, through the board — never by a seat's edit. The id stays, the
 line changes, git holds the history. A seat that finds a line wrong raises an ask. *Not applicable* is a signed answer
 with its reason, never a seat's.
 
