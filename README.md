@@ -280,7 +280,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
 | `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
-| a seat's worktree | three per-worktree git settings (`git config --worktree`), read by the tool and never by hand: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists them). **`--whoami`** prints `To: <session> <seat> (<worktree>) · <model> · <effort>` — the line a message between sessions names its target by |
+| a seat's worktree | three per-worktree git settings (`git config --worktree`), read by the tool and never by hand: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists them). **`--whoami`** prints `From: <session> <seat> (<worktree>) · <model> · <effort>` — the line a seat's report opens with; a message between sessions names its target by the same identity after `To:` |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
@@ -393,7 +393,7 @@ message carries already is left alone, each key on its own.
 
 ```text
 $ python3 shoalmark.py --whoami
-To: a9f3c2d1/reviewer-1 reviewer (reviewer-2) · claude-opus-4-8 · high
+From: a9f3c2d1/reviewer-1 reviewer (reviewer-2) · claude-opus-4-8 · high
 ```
 
 A repository

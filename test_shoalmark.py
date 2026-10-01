@@ -1077,10 +1077,10 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
             cfg("seat.session", sid); cfg("user.email", seat); cfg("seat.harness", hid)
             who[name] = run_safe(root, "--whoami")
         wt = root.name
-        want = {"parent": f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · xhigh", "agent1": f"To: 1111aaaa/implementer-1 implementer ({wt}) · claude-sonnet-5-5 · medium",
-                "agent2": f"To: 1111aaaa/reviewer-1 reviewer ({wt}) · claude-opus-4-8 · high", "codex": f"To: 2222bbbb principal ({wt}) · gpt-6.1-sol · medium"}
+        want = {"parent": f"From: 1111aaaa principal ({wt}) · claude-opus-4-8 · xhigh", "agent1": f"From: 1111aaaa/implementer-1 implementer ({wt}) · claude-sonnet-5-5 · medium",
+                "agent2": f"From: 1111aaaa/reviewer-1 reviewer ({wt}) · claude-opus-4-8 · high", "codex": f"From: 2222bbbb principal ({wt}) · gpt-6.1-sol · medium"}
         got = {k: v[1].splitlines()[0] if v[1] else v[2].strip() for k, v in who.items()}
-        check(f"FM-024 (0.19.0) · `--whoami` prints `To: <session> <seat> (<worktree>) · <model> · <effort>` from the log the id names — a Claude parent, its two sub-agents (whose logs all say the parent's launch directory) and a Codex rollout, each the newest turn's own (saw {got})",
+        check(f"FM-024 (0.19.0) · `--whoami` prints `From: <session> <seat> (<worktree>) · <model> · <effort>` from the log the id names — a Claude parent, its two sub-agents (whose logs all say the parent's launch directory) and a Codex rollout, each the newest turn's own (saw {got})",
               got == want and all(v[0] == 0 for v in who.values()) and f"launched in {LAUNCH}" in who["agent1"][1] and "codex-launch" in who["codex"][1])
         msg = root / "MSG"
         trail = {}
@@ -1107,7 +1107,7 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
         msg.write_text("a subject\n"); cw = run_safe(root, "--whoami"); ct = run_safe(root, "--session-trailer", str(msg)); after = msg.read_text()
         seen_all = cw[1] + cw[2] + ct[1] + ct[2] + after
         check(f"FM-024 (0.19.0) · CANARY: a transcript whose message content, tool result and side fields are a sentinel puts none of it into what `--whoami` prints or the hook writes — and a model with a line break in it is no value, so no second trailer (saw {cw[1].splitlines()[:1]} · {after.splitlines()[2:]})",
-              CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
+              CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"From: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
         # the newest turn that carries them, from the end of a log of several megabytes — never a whole-file read
         big = home.log(f".claude/projects/-Users-x-big/{PARENT[:-1]}1.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(30)] + [_turn("claude-sonnet-5-5", "max")])
         cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.monotonic(); bw = run_safe(root, "--whoami"); took = time.monotonic() - t0
@@ -1125,20 +1125,36 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
         dup = home.log(f".claude/projects/-Users-x-elsewhere/{PARENT}.jsonl", [_turn("claude-haiku-4-5", "low")])
         cfg("seat.harness", PARENT)
         msg.write_text("a subject\n"); amb = run_safe(root, "--whoami"); amb_t = run_safe(root, "--session-trailer", str(msg))
-        check(f"FM-024 (0.19.0) · two log files carrying one id refuse — exit 2, both paths named, no `To:` line; the hook writes no `Model:` and no `Effort:` and does not stop the commit (saw {amb[0]}, {amb[2].strip()[-190:]!r} · {msg.read_text().splitlines()[2:]})",
+        check(f"FM-024 (0.19.0) · two log files carrying one id refuse — exit 2, both paths named, no `From:` line; the hook writes no `Model:` and no `Effort:` and does not stop the commit (saw {amb[0]}, {amb[2].strip()[-190:]!r} · {msg.read_text().splitlines()[2:]})",
               amb[0] == 2 and amb[1] == "" and str(dup) in amb[2] and f"{PARENT}.jsonl" in amb[2] and "-Users-x-parent" in amb[2]
               and amb_t[0] == 0 and msg.read_text().splitlines()[2:] == ["Session: 1111aaaa", f"Worktree: {wt}"])
         cfg("seat.harness", "0123456789abcdef0"); none_ = run_safe(root, "--whoami")
         cfg("seat.harness"); unset = run_safe(root, "--whoami")
         cfg("seat.harness", "../../etc/passwd"); odd = run_safe(root, "--whoami")
         check(f"FM-024 (0.19.0) · an id with no log, no id, or an id that is no name reads `—` and says why — the commit gets no trailer (saw {none_[1].strip()!r} · {unset[1].strip()!r} · {odd[1].strip()!r})",
-              none_[1].strip() == f"To: 1111aaaa principal ({wt}) · — · —" and "no log carries the harness id 0123456789abcdef0" in none_[2]
+              none_[1].strip() == f"From: 1111aaaa principal ({wt}) · — · —" and "no log carries the harness id 0123456789abcdef0" in none_[2]
               and unset[1].strip() == none_[1].strip() and "seat.harness" in unset[2] and odd[1].strip() == none_[1].strip() and "at least eight" in odd[2])
         cfg("seat.session"); nosession = run_safe(root, "--whoami")
-        check(f"FM-024 (0.19.0) · `--whoami` in a worktree with no `seat.session` prints no `To:` line and says so, exit 4 (saw {nosession[0]}, {nosession[2].strip()[:90]!r})",
+        check(f"FM-024 (0.19.0) · `--whoami` in a worktree with no `seat.session` prints no `From:` line and says so, exit 4 (saw {nosession[0]}, {nosession[2].strip()[:90]!r})",
               nosession[0] == fm.EXIT_LINT and nosession[1] == "" and "no `seat.session`" in nosession[2])
         schema = run_safe(root, "--schema")[1]
         check("FM-024 (0.19.0) · `--schema` lists the worktree's settings — `seat.session` and `seat.harness` — under the configuration's keys", "| `seat.harness` |" in schema and "| `seat.session` |" in schema and "| `user.email` |" in schema)
+
+# FM-024, A report opens with From: — rule 8 is one text in two places: AGENTS.md's and the contract `--init` writes; its number and its `{cmd}`
+# differ, nothing else. (The rest of AGENTS.md's block is the repository's own and is not held equal here.)
+def _report_rule(text, cmd):
+    """The rule that says what a report opens with: from its bold opening to the next rule or the block's end, the command read as `{cmd}`."""
+    m = re.search(r"^\d+\. (\*\*A seat's report opens.*?)(?=<!-- END shoalmark -->|\n\d+\. )", text, re.S | re.M)
+    return m.group(1).strip().replace(cmd, "{cmd}") if m else None
+
+
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    written, ours = _report_rule((root / "AGENTS.md").read_text(), fm.CMD), _report_rule((HERE / "AGENTS.md").read_text(), "python3 shoalmark.py")
+    check(f"FM-024, A report opens with From: · rule 8 is one text — AGENTS.md's equals the contract `--init` writes, its number and its `{{cmd}}` aside — and it says a report opens with `From:` and a message names its target with `To:` (saw {written and written[:70]!r})",
+          written is not None and written == ours and written.startswith("**A seat's report opens with its identity as the tool prints it:** `From: <session> <seat> (<worktree>)`")
+          and written.endswith("A message a person carries between sessions names its target with `To:` and the same identity.") and "`{cmd} --whoami` prints it" in written)
 
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
