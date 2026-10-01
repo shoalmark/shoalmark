@@ -180,7 +180,7 @@ with tempfile.TemporaryDirectory() as d:
     page = (root / "docs/work-tracker/index.html").read_text()
     check("the board is one static page: no unfilled placeholder, the configured kinds in its id patterns, five sections in order",
           not re.search(r"__[A-Z_]+__", page) and "(?:MSR)-" in page
-          and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*done:", page, re.S) is not None
+          and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", page) is not None
           and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "(7+1)*864e5" in page)
     check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/MSR-001.js").exists())
     second = root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md"
@@ -1233,8 +1233,8 @@ if _browser("board"):
                                                (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
             board_dom, view_dom = dom(""), dom("#=MSR-001")
             shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
-            check("the board renders in a browser: five sections in order, the open tracker under `triage`, the done one folded away",
-                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?done", shown, re.S) is not None
+            check("the board renders in a browser: five sections in order, the open tracker under `triage`, the shipped one folded away",
+                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?ended", shown, re.S) is not None
                   and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
             check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
                   "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)

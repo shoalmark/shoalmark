@@ -366,7 +366,7 @@ check("FM-005 · no label calls a `Closed` tracker done: not the board's fifth s
       and {"story.shipped", "story.closed", "story.open", "section.ended", "desc.ended"} <= set(gti.LABELS) and not {"story.done", "section.done", "desc.done"} & set(gti.LABELS)
       and not any(re.search(r"erledigt", v, re.I) for k, v in gti.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).items() if k.startswith(("story.", "section.", "desc."))))
 check("the board is the first view: progress · triage · triaged · backlog · ended, one section per tracker plus the newest pass",
-      'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:.*triage:.*triaged:.*backlog:.*ended:", _tri, re.S) is not None
+      'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", _tri) is not None
       and 'untriaged(t)?"triage":t[19]]' in _tri and "OPEN.has(t[2])&&!fresh(t)" not in _tri
       and "recent=t=>!!t[17]&&t[17]==LAST" in _tri and "(7+1)*864e5" in _tri and "__DAYS__" not in _tri and gti.TRIAGE_DAYS == 7
       and '<button id="g" aria-pressed="true"></button><button id="o"' in _tri)

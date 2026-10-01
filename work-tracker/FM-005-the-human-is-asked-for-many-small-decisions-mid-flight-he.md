@@ -28,7 +28,9 @@ tier; the pull request, which the Owner opens, and CI's full pass on its final t
 a `git commit --amend` that drops the named row passes the hook and is refused by `--check` (the hook reads it against the commit it
 replaces, as FM-033's does); `rights_problems` still stops in a traceback on a tracker linked from outside the repository where `[seats]`
 are set, as it did at the base. Two rendered checks of the suite fail between 00:00 and 02:00 CEST, on the pristine tip as on this one —
-FM-028's clocks, not this change. Next: review.
+FM-028's clocks, not this change. The pull request's first CI run failed three checks on the board rendered in a browser — the fifth
+section reads *ended* now, and the check still looked for *done*, which no seat had run before the push; fixed in the commit that
+follows it. Next: review.
 
 **Explored and pre-registered 2026-09-21; nothing is built.** The Owner's direction: *how to get a better-performing
 human owner* — less work and distraction for humans, more throughput and less friction for agents; workflows the human
