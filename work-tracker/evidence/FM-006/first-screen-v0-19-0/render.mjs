@@ -4,7 +4,8 @@
 // device scale 1 — the way of slice L's render.mjs (../landing/start-page/), with this slice's files and the preview. Node 22+.
 //   phone-390-first.png, phone-390-full.png        390 × 844, the first screen and the whole page, 3 s after load
 //   desktop-1440-first.png, desktop-1440-full.png  1440 × 900, the same
-//   PREVIEW, if named                              1200 × 630 of the chart at 1280 px, reduced motion: the title shows its wordmark
+//   phone-360-first.png                            360 × 780, the first screen (RV-2189); 375 × 667 measured, not shot
+//   PREVIEW, if named                             1200 × 630 of the chart at 1280 px, reduced motion: the title shows its wordmark
 //                                                  alone — the headline, claim, job line and action hidden; the HUD and its
 //                                                  counts are above the clip — so one image serves both languages; no wreck
 //                                                  selected (every wreck aria-pressed="false", as the markup has it before
@@ -86,6 +87,12 @@ for (const [tag, w, h] of [["phone-390", 390, 844], ["desktop-1440", 1440, 900]]
   await t.shot(join(out, `${tag}-full.png`), {x: 0, y: 0, width: w, height: await t.js("document.documentElement.scrollHeight")});
   await t.close();
   summary.widths[w] = {...parts, tiles};
+}
+// RV-2189, the Owner's ruling filed in FM-006: no sideways scroll at 360, 375 or 390 px; the 360 first screen kept, 375 measured
+for (const [w, h, file] of [[360, 780, "phone-360-first.png"], [375, 667, null]]) {
+  const t = await open(w, h, false); summary.widths[w] = await t.js(PARTS);
+  if (file) await t.shot(join(out, file), {x: 0, y: 0, width: w, height: h});
+  await t.close();
 }
 if (preview) {
   const t = await open(1280, 900, true);
