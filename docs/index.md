@@ -59,8 +59,7 @@ What shoalmark prints for it, every day:
 4. **You** write three lines in your own words: what the repository is for, what is true when it works, and what
    nobody may do to get there. Then you set up your signature, once ([ten minutes](signing.md)).
 
-**You lose nothing.** What you keep today stays where it is: shoalmark changes only what it wrote itself. The path for
-a fleet of agents that already runs a system of its own is filed (FM-026) and coming.
+**You lose nothing.** What you keep today stays where it is: shoalmark changes only what it wrote itself.
 
 ## What a day costs you
 
@@ -72,6 +71,12 @@ a fleet of agents that already runs a system of its own is filed (FM-026) and co
 
 No server, no account, no UUIDs. One Markdown file per work item, one Python file, and a gate on every commit that
 refuses what contradicts itself. Runs on git and Subversion, on Windows, macOS and Linux. Licence: Apache-2.0 or MIT.
+
+**In this beta:**
+
+- Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
+- For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
+- Not proof that work is right. The gate refuses a done without a commit behind it. Whether that commit did the job is what a review is for.
 
 ## Start here
 
