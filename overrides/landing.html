@@ -26,6 +26,7 @@
 <meta property="og:image:alt" content="A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="alternate" type="text/plain" title="llms.txt — for agents" href="https://shoalmark.github.io/shoalmark/llms.txt">
+<link rel="icon" href="{{ 'assets/favicon.svg' | url }}">{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the site's Pricke as the landing's icon — the file the theme names (zensical.toml favicon), so the browser asks for no /favicon.ico #}
 {# FM-006: same faces and weights, served from this site; no external font requests. #}
 <link rel="stylesheet" href="{{ 'stylesheets/fonts.css' | url }}">
 <style>
@@ -294,12 +295,12 @@ section.band{padding-block:72px 40px}
   .moves div{grid-template-columns:1fr;gap:4px}
   .inc-head{grid-template-columns:1fr}.facts{grid-template-columns:repeat(2,auto)}
   .score{gap:14px}.score .mid{display:none}
-  .title{min-height:calc(100vh - 56px);min-height:calc(100svh - 56px);display:flex;flex-direction:column;justify-content:center;padding-bottom:84px}
+  .title{min-height:calc(100vh - 56px - 125px);min-height:calc(100svh - 56px - 125px);display:flex;flex-direction:column;justify-content:center;padding-bottom:28px}
   .title .claim{margin-bottom:36px}
   h1{font-size:24px}
   .lede{margin-bottom:30px;font-size:16px}
   .cta .btn{flex:1;justify-content:center;padding:16px 18px}
-}{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px), so the H1, the job line and the one action carry it and the chart falls below the fold — the stack centred a little above the middle (84px below it, not 26), the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, the action the row's width; the fleet's tiles one to a row, each badge beside its words #}
+}{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the one action carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, the action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
@@ -412,7 +413,7 @@ section.band{padding-block:72px 40px}
     <article class="box player p1" aria-labelledby="h-p1">
       <h3 class="t">1P · for agents</h3>
       <div class="who"><svg viewBox="0 0 12 12" aria-hidden="true"><use href="#ship"/></svg>
-        <div><h3 id="h-p1">The fleet</h3><p>State that outlives a session, one source of truth, a gate that refuses a <em>done</em> without a commit behind it. The contract is written for the agent that has to use it.</p></div></div>
+        <div><h3 id="h-p1">For agents</h3>{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the agents' card is headed For agents; The fleet is the new section's #}<p>State that outlives a session, one source of truth, a gate that refuses a <em>done</em> without a commit behind it. The contract is written for the agent that has to use it.</p></div></div>
       <dl class="moves" aria-label="Moves">
         <div><dt>--next</dt><dd>A cold start in one command: what to work on, and what is true now.</dd></div>
         <div><dt>--new "…"</dt><dd>Look before you file: the closest trackers come first. The default is a slice of one that exists.</dd></div>
