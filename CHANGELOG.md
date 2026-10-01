@@ -24,7 +24,8 @@ FM-040, FM-041 and FM-032).
   merge have merged main. The refusal that lists the seats names the Owner apart; `--schema`, the README and the setup pages say so.
   *The switch:* this repository's `[seats]` keys are `planner` and `builder`, and each seat's GitHub App bot address stands beside its old one; `gtm`, a
   seat of its own until now, is an address of `go-to-market`. A session begun under a seat's former name — `<id>/implementer-<n>`, `<id>/gtm-<n>`, or any
-  `<name>@seat` address the seat lists — still reads as the seat's, so history and the branches in flight keep resolving; no other seat's name does.
+  `<name>@seat` address the seat lists — still reads as the seat's, so history and the branches in flight keep resolving;
+  a label that is another seat's own name, or that two seats claim, passes for none.
 
 - **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
   refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
