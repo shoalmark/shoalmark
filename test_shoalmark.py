@@ -770,16 +770,17 @@ with tempfile.TemporaryDirectory() as d:
     tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
     commit_as(root, "gtm@seat", "the go-to-market seat, at the address history knows\n\nSession: 2222bbbb/go-to-market-1\nWorktree: wt-g")
     seen_h = {}
-    for name, sid, who in (("own hyphenated id", "2222bbbb/go-to-market-1", "gtm@seat"), ("the old short name", "2222bbbb/gtm-1", "gtm@seat"),
+    for name, sid, who in (("own hyphenated id", "2222bbbb/go-to-market-1", "gtm@seat"), ("the old short name", "2222bbbb/gtm-1", "gtm@seat"), ("a name no address of the seat carries", "2222bbbb/gtmx-1", "gtm@seat"),
                            ("a sub-agent of the parent", "2222bbbb", "gtm@seat"), ("research at the old address", "3333cccc/research-2", "datascientist@seat"),
                            ("research at its own", "3333cccc/research-2", "research@seat")):
         subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True)
         seen_h[name] = run_safe(root, "--session-check", git_env=AS(who))
     subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
-    check(f"FM-024 · a seat named with hyphens: `[seats] go-to-market` reads, `gtm@seat` is that seat, and `<id>/go-to-market-<n>` is the session id the rule accepts for it (saw {fm.seat_of('x', 'gtm@seat')}, {[v[0] for v in seen_h.values()]})",
+    check(f"FM-024 · a seat named with hyphens: `[seats] go-to-market` reads, `gtm@seat` is that seat, and `<id>/go-to-market-<n>` is the session id the rule accepts for it — and, since the switch, `<id>/gtm-<n>` too, the name of the address it lists, where any other name is refused (saw {fm.seat_of('x', 'gtm@seat')}, {[v[0] for v in seen_h.values()]})",
           fm.seat_of("x", "gtm@seat") == "go-to-market" and fm.SEATS["go-to-market"] == [("gtm@seat", "")]
           and seen_h["own hyphenated id"][0] == 0 and seen_h["a sub-agent of the parent"][0] == 0
-          and seen_h["the old short name"][0] == fm.EXIT_LINT and "is the seat go-to-market, and its Session: 2222bbbb/gtm-1 names the seat gtm" in seen_h["the old short name"][2])
+          and seen_h["the old short name"][0] == 0
+          and seen_h["a name no address of the seat carries"][0] == fm.EXIT_LINT and "is the seat go-to-market, and its Session: 2222bbbb/gtmx-1 names the seat gtmx" in seen_h["a name no address of the seat carries"][2])
     check(f"FM-024 · `research` keeps `datascientist@seat` beside `research@seat`: both are the seat, and each passes the rule with `<id>/research-<n>` (saw {fm.seat_of('x', 'datascientist@seat')}, {fm.seat_of('x', 'research@seat')})",
           fm.seat_of("x", "datascientist@seat") == "research" and fm.seat_of("x", "research@seat") == "research"
           and seen_h["research at the old address"][0] == 0 and seen_h["research at its own"][0] == 0
@@ -841,6 +842,38 @@ with tempfile.TemporaryDirectory() as d:
     (root / "shoalmark.toml").write_text(base_cfg)
     check("FM-024 · `--schema` names the built-in seats `planner` and `builder`, with `principal` and `implementer` as their former names",
           (lambda t: "`planner`" in t and "`principal`" in t and "former names" in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
+# FM-024 · the switch (the Owner's ruling filed in FM-024): the keys are `planner` and `builder` and `gtm` is dropped, its address under `go-to-market` — and the
+# history still reads: a commit at an old address, with a session begun under the old name, is judged as the seat it had, and no other seat's name passes.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    BOT = lambda seat, n: f"{n}+shoalmark-{seat}[bot]@users.noreply.github.com"
+    (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text()
+                                         + f'\n[seats]\nplanner = ["principal@seat", "{BOT("planner", 1)}"]\nbuilder = ["implementer@seat", "{BOT("builder", 2)}"]\nreviewer = ["reviewer@seat", "{BOT("reviewer", 3)}"]\n'
+                                           f'go-to-market = ["go-to-market@seat", "gtm@seat", "{BOT("go-to-market", 4)}"]\nresearch = ["research@seat", "datascientist@seat"]\n')
+    fm.configure(root)
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A")
+    commit_as(root, "principal@seat", "the first session\n\nSession: 1111aaaa\nWorktree: wt-p")
+    seen_s, cases = {}, (("principal@seat", "1111aaaa/principal-2", 0), ("principal@seat", "1111aaaa/planner-2", 0), (BOT("planner", 1), "1111aaaa/principal-2", 0),
+                         (BOT("planner", 1), "1111aaaa/planner-2", 0), ("implementer@seat", "1111aaaa/implementer-3", 0), ("implementer@seat", "1111aaaa/builder-3", 0),
+                         (BOT("builder", 2), "1111aaaa/implementer-3", 0), ("gtm@seat", "2222bbbb/gtm-1", 0), ("gtm@seat", "2222bbbb/go-to-market-1", 0),
+                         ("datascientist@seat", "3333cccc/datascientist-1", 0), ("datascientist@seat", "3333cccc/research-1", 0),
+                         ("implementer@seat", "1111aaaa/planner-1", fm.EXIT_LINT), ("principal@seat", "1111aaaa/implementer-1", fm.EXIT_LINT),
+                         ("reviewer@seat", "1111aaaa/principal-1", fm.EXIT_LINT), ("gtm@seat", "2222bbbb/gtmx-1", fm.EXIT_LINT), ("research@seat", "3333cccc/gtm-1", fm.EXIT_LINT))
+    for who, sid, _want in cases:
+        subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True)
+        seen_s[(who, sid)] = run_safe(root, "--session-check", git_env=AS(who))
+    subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
+    check(f"FM-024 · the switch · a session begun under a seat's former name still reads as the seat's — `principal`, `implementer`, `gtm` and `datascientist` at their old addresses and the new, beside the new names — and a session naming another seat, or a name no address of the seat carries, is refused (saw {[(w.split('@')[0][:12], s_.rsplit('/', 1)[-1], v[0]) for (w, s_), v in seen_s.items()]})",
+          all(seen_s[(who, sid)][0] == want for who, sid, want in cases)
+          and "is the seat builder, and its Session: 1111aaaa/planner-1 names the seat planner" in seen_s[("implementer@seat", "1111aaaa/planner-1")][2]
+          and "is the seat planner, and its Session: 1111aaaa/implementer-1 names the seat implementer" in seen_s[("principal@seat", "1111aaaa/implementer-1")][2])
+    held_ = {a: (fm.seat_of("x", a), sorted(r for r in fm.RIGHTS if fm.holds(fm.seat_of("x", a), r))) for a in ("principal@seat", "implementer@seat", "gtm@seat", BOT("planner", 1), BOT("builder", 2), BOT("go-to-market", 4))}
+    check(f"FM-024 · the switch · every address maps to the seat it had, renamed, with the rights it held: `principal@seat` and its bot are `planner` (ask · close · triage), `implementer@seat` and its bot `builder` (none), `gtm@seat` and its bot `go-to-market` (none) (saw {held_})",
+          held_["principal@seat"] == held_[BOT("planner", 1)] == ("planner", ["ask", "close", "triage"]) and held_["implementer@seat"] == held_[BOT("builder", 2)] == ("builder", [])
+          and held_["gtm@seat"] == held_[BOT("go-to-market", 4)] == ("go-to-market", []) and "gtm" not in fm.SEATS and "principal" not in fm.SEATS and "implementer" not in fm.SEATS)
 fm.configure(HERE)
 
 # FM-024 · D2, the Owner's ruling filed in FM-024 (*The `[seats]` switch*): the Owner is configured outside `[seats]` — a top-level `owner`, before any

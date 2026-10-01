@@ -5366,10 +5366,21 @@ def history_has_sessions(revs):
     return bool(revs) and bool((git_out("log", "-1", "--format=%H", "-i", "--grep", "^session:", *revs) or "").strip())
 
 
+FORMER_NAMES = {"planner": ("principal",), "builder": ("implementer",)}     # the built-in seats' former names (FM-024): a session id may still carry them
+
+
+def session_names(seat):
+    """The names a session id's `<seat>-<n>` part may carry for this seat (FM-024, the switch): its own; its built-in former name
+    (`principal` for `planner`, `implementer` for `builder`); and the name of each `<name>@seat` address it lists — a seat renamed
+    keeps its old address beside the new, and the sessions begun under the old name (`<id>/gtm-<n>`, `<id>/implementer-<n>`), in
+    the history and in worktrees in flight, keep reading as the seat's. No other name does: a seat's session names no other seat."""
+    return {seat, *FORMER_NAMES.get(seat, ())} | {who[:-len("@seat")] for who, _mode in SEATS.get(seat, ()) if who.endswith("@seat")}
+
+
 def session_problems():
     """THE GATE'S ONE RULE (FM-032 S2): a commit by a seat `[seats]` names — never the Owner's, never an author outside
     `[seats]` — carries a `Session:` of the accepted shape, `<8 hex>` or `<8 hex>/<seat>-<n>`, whose seat part, where it
-    has one, is the author's seat. Judged on every change the rights are judged on (`changes_under_review`): the commit
+    has one, is the author's seat (or a name the seat had: `session_names`). Judged on every change the rights are judged on (`changes_under_review`): the commit
     being made reads `seat.session`, the trailer its hook will write; a made commit — HEAD, or one a merge brings — reads
     its own trailer. A commit with no `Session:` anywhere in its history is not judged (`history_has_sessions`). No row
     is read: the open and closed rows, the one-worktree rule and the registry's removal went with the file in 0.18.0."""
@@ -5387,7 +5398,7 @@ def session_problems():
             why = f"{who} carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: the harness's session id, its first eight hex characters, or `<parent>/{seat}-<n>` for a sub-agent"
         elif not shape:
             why = f"{who} carries `Session: {sid}` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent"
-        elif shape[1] and shape[1] != seat:
+        elif shape[1] and shape[1] not in session_names(seat):
             why = f"{who} is the seat {seat}, and its Session: {sid} names the seat {shape[1]}"
         else:
             continue
