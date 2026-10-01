@@ -6,7 +6,9 @@
 //   desktop-1440-first.png, desktop-1440-full.png  1440 × 900, the same
 //   PREVIEW, if named                              1200 × 630 of the chart at 1280 px, reduced motion: the title shows its wordmark
 //                                                  alone — the headline, claim, job line and action hidden; the HUD and its
-//                                                  counts are above the clip — so one image serves both languages
+//                                                  counts are above the clip — so one image serves both languages; no wreck
+//                                                  selected (every wreck aria-pressed="false", as the markup has it before
+//                                                  attract mode picks one), so no single defect is singled out
 // It prints a JSON summary: each first-screen part's box at both widths (document px; the fold is the window's height), the
 // links in each first screen, script errors and the hosts asked, the page's sideways scroll, the fleet's tiles at 390, and the
 // contrast of every text run outside the chart by slice L's flat method (checks.mjs): its colour, opacity applied, over the
@@ -149,13 +151,14 @@ for (const [tag, w, h] of [["phone-390", 390, 844], ["desktop-1440", 1440, 900]]
 if (preview) {
   const t = await open(1280, 900, true);
   await t.js(style(".title .claim,.title h1,.title .lede,.title .cta{display:none!important}"));
+  const selected = await t.js(`(document.querySelectorAll(".wreck").forEach(b => b.setAttribute("aria-pressed", "false")), document.querySelectorAll('.wreck[aria-pressed="true"]').length)`);
   const st = await t.js(`(() => { const r = document.getElementById("stage").getBoundingClientRect(); return [r.left + scrollX, r.top + scrollY, r.width, r.height] })()`);
   // the clip: the chart's north-west 1200 × 630 at the page's own scale (k = 4, 1280 px wide: the chart spans the window and the
   // page sets the wordmark 82 px inside its west border), from its west and north borders; the east 80 px and the south 190 px of
   // the 1280 × 820 chart are cut
   const clip = {x: st[0], y: st[1], width: 1200, height: 630};
   await t.shot(preview, clip); await t.close();
-  summary.preview = {file: preview, stage: st, clip};
+  summary.preview = {file: preview, stage: st, clip, wrecksSelected: selected};
 }
 proc.kill(); server.close();
 summary.errors = errors; summary.hostsAsked = [...asked].sort();
