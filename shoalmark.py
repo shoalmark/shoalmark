@@ -44,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -7638,8 +7639,21 @@ fi
 }
 
 
-OLD_HOOKS = ("post-checkout", "post-merge")             # the two an older copy wrote and `--install-hook` now removes where they carry `HOOK_MARK`
 HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
+# THE TRUSTED COPY (a private security report): the hooks that run after a checkout and a merge run a copy of the tool kept in the common git directory —
+# shared by every worktree, outside every working tree, written only by `--install-hook` — and never the tool a branch brings. The copy runs `--html-only`:
+# it reads the tree and writes the board, and starts nothing the tree brings. The hooks never block: they always exit 0, with one line where the refresh failed.
+COPY_DIR = "shoalmark-trusted"
+COPY_RUN = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --html-only'      # what a hook that is not ours adds, after the interpreter
+COPY_HOOKS = {
+    name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
+          "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
+          'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
+          'if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the board is not refreshed — the hooks\' copy of the tool is not in the git directory: run --install-hook"\n  exit 0\nfi\n'
+          'out=$({py} -I "$copy" --root "$root" --html-only 2>&1)\ncode=$?\n'
+          'if [ "$code" -eq 0 ]; then\n  printf \'%s\\n\' "$out"\nelse\n  echo "shoalmark: the board is not refreshed (exit $code): $(printf \'%s\' "$out" | tail -n 1)"\nfi\nexit 0\n'
+    for name, when in (("post-checkout", "checkout"), ("post-merge", "merge"))
+}
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
@@ -7691,6 +7705,89 @@ def install_hook_svn():
     return code
 
 
+def copy_files():
+    """What the hooks' copy of the tool holds, relative to the tool: the tool, the vendored `marked`, the VERSION, and the themes it ships — all it needs to render the board."""
+    return ("shoalmark.py", MARKED.relative_to(HERE).as_posix(), "VERSION") + theme_files()
+
+
+def default_branch():
+    """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only — or None where it cannot be told."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    return trunk.split("/", 1)[1] if trunk else None
+
+
+def install_copy():
+    """Write — or replace — the hooks' copy of the tool in the common git directory, `shoalmark-trusted/`: (an exit code, the lines to say). Only `--install-hook` writes it,
+    and only from this copy of the tool where it is a pinned one whose files pass their checksum (`pin_problems`, and each file's own hash, read once and written as read);
+    where there is no pin — the tool runs from the repository's root, or from outside it — from the working tree's tool, and the first line says so. It also says which
+    commit and branch it was taken from, and warns, without refusing, where that is not the default branch: the PIN it was checked against comes from the same tree, so a
+    copy installed from another branch carries that branch's tool."""
+    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-common-dir"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if out.returncode:
+        return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
+    target = (ROOT / out.stdout.strip()).resolve() / COPY_DIR
+    pin, lines = HERE / "PIN", []
+    problems = pin_problems()
+    if problems:
+        return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {problems[0]}", "  vendor the tool again (--vendor), then run --install-hook; the checkout and merge hooks are not written"]
+    pins = {rel: want for want, _, rel in (l.partition("  ") for l in pin.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#"))} if pin.exists() else {}
+    files = {}
+    for rel in copy_files():
+        try:
+            data = (HERE / rel).read_bytes()
+        except OSError as e:
+            return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {rel} cannot be read ({e.strerror or type(e).__name__})"]
+        if pin.exists() and hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest() != pins.get(rel):
+            return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {rel} is " + ("not named by the PIN" if rel not in pins else "not what the PIN names")
+                               + "; vendor the tool again (--vendor), then run --install-hook"]
+        files[rel] = data
+    if not pin.exists():
+        lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
+    here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
+    sha = (git_out("rev-parse", "--short", "HEAD") or "").strip() or "no commit yet"
+    branch = (git_out("branch", "--show-current") or "").strip()
+    default = default_branch()
+    stage = target.with_name(COPY_DIR + ".new")
+    shutil.rmtree(stage, ignore_errors=True)
+    for rel, data in files.items():
+        (stage / rel).parent.mkdir(parents=True, exist_ok=True)
+        (stage / rel).write_bytes(data)
+    put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by the checkout and merge hooks, and by nothing else\n"
+        f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n")
+    if target.is_symlink():
+        target.unlink()
+    shutil.rmtree(target, ignore_errors=True)
+    os.replace(stage, target)
+    lines.append(f"wrote {target} — the hooks' copy of the tool, {__version__}, from {HERE / 'shoalmark.py'} at {sha} on {branch or '(detached HEAD)'}")
+    if default is None:
+        lines.append(f"warning: the default branch cannot be told here (no origin/HEAD, origin/main or origin/master) — the PIN this copy was checked against comes from the same tree, "
+                     f"so a copy installed from a branch that is not the default one carries that branch's tool: run --install-hook on your default branch")
+    elif branch != default:
+        lines.append(f"warning: {branch or '(detached HEAD)'} is not {default}, the default branch — the PIN this copy was checked against comes from the same tree, "
+                     f"so a copy installed from another branch carries that branch's tool: run --install-hook on {default}")
+    return EXIT_OK, lines
+
+
+def hooks_copy_drift():
+    """Where this run IS the hooks' copy (its `COPY` file is beside it): the one line that says the repository pins another version than the copy's own — read as data, from the
+    PIN's manifest or the VERSION of the tool the copy was taken from — else ""."""
+    marker = HERE / "COPY"
+    if not marker.is_file():
+        return ""
+    made = read_flat(marker.read_text(encoding="utf-8"))
+    tool = made.get("tool", "-")
+    if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
+        return ""
+    pin, version = board_text(ROOT / tool / "PIN"), board_text(ROOT / tool / "VERSION")
+    first = (pin or "").splitlines()[0] if pin else ""
+    manifest = MANIFEST_RE.fullmatch(first)
+    pinned = manifest.group(1) if manifest else (version or "").strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", pinned) or pinned == __version__:
+        return ""
+    return f"the hooks' copy is {__version__}, the repository pins {pinned}: run --install-hook"
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
@@ -7705,21 +7802,20 @@ def install_hook():
     fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT).as_posix(), config=CONFIG_NAME,
                 tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
     code = EXIT_OK
-    for name, text in HOOKS.items():
+    copy_code, copy_lines = install_copy()
+    hook_set = {**HOOKS, **({name: text for name, text in COPY_HOOKS.items()} if copy_code == EXIT_OK else {})}      # the checkout and merge hooks only where their copy is there
+    for name, text in hook_set.items():
         path = hooks / name
         if path.exists() and not any(m in path.read_text(encoding="utf-8", errors="replace") for m in (HOOK_MARK, LEGACY_HOOK_MARK)):
-            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{CMD} {HOOK_LINES.get(name, '--html-only')}`", file=sys.stderr)
+            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{PY + ' -I ' + COPY_RUN if name in COPY_HOOKS else CMD + ' ' + HOOK_LINES.get(name, '--html-only')}`", file=sys.stderr)
             code = EXIT_LINT
             continue
-        put(path, text.format(**fill))
+        put(path, text.format(py=PY, **fill))
         path.chmod(0o755)
         print(f"wrote {path}")
-    for name in OLD_HOOKS:                                     # written until 0.19.0, which ran the tool — and through it a deriver a branch brought — after every checkout and merge
-        path = hooks / name
-        if path.is_file() and HOOK_MARK in path.read_text(encoding="utf-8", errors="replace"):
-            path.unlink()
-            print(f"removed {path} — it ran after every {'checkout' if name == 'post-checkout' else 'merge'}; nothing shoalmark installed runs then now")
-    return code
+    for line in copy_lines:
+        print(line, file=sys.stderr if copy_code != EXIT_OK or line.startswith("warning:") else sys.stdout)
+    return code or copy_code
 
 
 def init(key=None):
@@ -7912,6 +8008,9 @@ def board_run(root):
             write_views(trackers)
             if written:
                 print(board_link())                                 # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
+            drift = hooks_copy_drift()
+            if drift:
+                print(drift)                                        # the hook still refreshed: it only says that the copy is not what the repository pins
         return EXIT_OK
     except ReadOnlyRun as e:
         print(f"the board's run was stopped: {e} — it starts nothing but read-only git and writes only the board", file=sys.stderr)
@@ -7929,6 +8028,18 @@ def board_run(root):
 
 
 _AUDIT_HOOKED = [False]
+BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 60)      # how long the board's run, as a program, may take: a checkout or a merge never waits longer for it
+
+
+def board_watchdog():
+    """Bound the board's run when it is a program (a hook's, a hand run's): after `BOARD_RUN_SECONDS` a thread of its own says so on stderr and ends the process, whatever the main thread
+    waits on — a lock, a child, a pipe — so the hook that started it prints one line and returns, and the checkout or merge it came from never waits on it."""
+    def stop():
+        os.write(2, f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped\n".encode("utf-8"))
+        os._exit(EXIT_LINT)
+    timer = threading.Timer(BOARD_RUN_SECONDS, stop)
+    timer.daemon = True
+    timer.start()
 
 
 def main(argv=None):
@@ -8153,6 +8264,8 @@ def main(argv=None):
 
 
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
+if SAFE_READS:
+    board_watchdog()
 configure()
 SAFE_READS = False
 

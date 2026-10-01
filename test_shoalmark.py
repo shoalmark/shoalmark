@@ -394,9 +394,10 @@ with tempfile.TemporaryDirectory() as d:
           code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out and "](" not in out)
     code, out, _ = run(root, "--install-hook")
     hook = root / ".git/hooks/pre-commit"
-    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",
+    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote — and the checkout and merge hooks that refresh the board from the copy of the tool it keeps in the git directory",
           code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text()
-          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"])      # nothing runs after a checkout or a merge
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "post-checkout", "post-merge", "pre-commit", "prepare-commit-msg"]
+          and (root / ".git/shoalmark-trusted/shoalmark.py").read_bytes() == (HERE / "shoalmark.py").read_bytes() and (root / ".git/shoalmark-trusted/COPY").is_file())
     git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
     check("the installed hook runs on a real commit and stages the regenerated INDEX" + said, git2.returncode == 0
@@ -407,29 +408,7 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 
-# --- a private security report: after a checkout or a merge nothing shoalmark installed runs, and `--html-only` never runs the deriver -----------------
-# A branch can bring an executable `<tracker dir>/derive`; the tool runs it, so a hook that ran the tool after a checkout or a merge ran what the branch brought.
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the base")
-    code_i, out_i, _ = run(root, "--install-hook")
-    hooks_, marker_ = root / ".git/hooks", root / "derived-marker"
-    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    hooked_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)      # the installed hooks run
-    git(root, "switch", "-q", "-c", "brings-a-deriver")
-    derive_ = root / "docs/work-tracker/derive"
-    derive_.write_text(f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(marker_)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n', encoding="utf-8"); derive_.chmod(0o755)
-    git(root, "add", "-A"); git(root, "commit", "-qm", "a branch that brings an executable deriver")          # past the hooks, as its author made it
-    sw_ = [hooked_("switch", "-q", trunk_), hooked_("switch", "-q", "brings-a-deriver"), hooked_("switch", "-q", trunk_)]
-    merged_ = hooked_("merge", "--no-ff", "-q", "brings-a-deriver", "-m", "merge the branch")
-    code_h, _, _ = run(root, "--html-only")
-    check(f"FM-006 · a private security report · `--install-hook` writes the three hooks that judge a commit and none that runs after a checkout or a merge; with a branch that brings an executable deriver, "
-          f"`git switch` to it, back, and a merge of it run nothing — and neither does `--html-only` (saw {sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith('.sample'))}, marker {marker_.exists()})",
-          code_i == 0 and sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"] and "removed" not in out_i
-          and all(r_.returncode == 0 for r_ in sw_ + [merged_]) and code_h == 0 and not marker_.exists())
-    run(root)
-    check("FM-006 · a private security report · …and the control: the default run does run that deriver, so the marker was a real test of the hooks", marker_.exists())
-    rm_git(root)
+# --- a private security report: the checkout and merge hooks run the copy of the tool kept in the git directory, and no more than `--html-only` — their cases are further on, beside the board's run -------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); run(root, "--init", "--key", "msr")
@@ -437,14 +416,16 @@ with tempfile.TemporaryDirectory() as d:
     old_ = "#!/bin/sh\n# shoalmark — refresh the git-ignored board\npython3 tools/shoalmark/shoalmark.py --html-only || true\n"
     for name_ in ("post-merge", "post-checkout"):
         (hooks_ / name_).write_text(old_, encoding="utf-8"); (hooks_ / name_).chmod(0o755)
-    code_1, out_1, err_1 = run(root, "--install-hook"); gone_ = not (hooks_ / "post-merge").exists() and not (hooks_ / "post-checkout").exists()
+    code_1, out_1, err_1 = run(root, "--install-hook")
     mine_ = b"#!/bin/sh\n# somebody else's hook\necho mine\n"
+    new_co_, new_mg_ = (hooks_ / "post-checkout").read_text(encoding="utf-8"), (hooks_ / "post-merge").read_text(encoding="utf-8")
     (hooks_ / "post-checkout").write_bytes(mine_); (hooks_ / "post-merge").write_text(old_, encoding="utf-8")
     code_2, out_2, err_2 = run(root, "--install-hook")
-    check(f"FM-006 · a private security report · run again, `--install-hook` removes the `post-checkout` and `post-merge` an older copy wrote — one line for each, saying so — and a `post-checkout` that is not shoalmark's is left byte for byte (saw {code_1}, {code_2})",
-          code_1 == 0 and gone_
-          and f"removed {hooks_ / 'post-checkout'} — it ran after every checkout; nothing shoalmark installed runs then now" in out_1 and f"removed {hooks_ / 'post-merge'} — it ran after every merge; nothing shoalmark installed runs then now" in out_1
-          and code_2 == 0 and (hooks_ / "post-checkout").read_bytes() == mine_ and not (hooks_ / "post-merge").exists() and "post-checkout" not in out_2 + err_2 and f"removed {hooks_ / 'post-merge'}" in out_2)
+    check("FM-006 · a private security report · `--install-hook` replaces the `post-checkout` and `post-merge` an older copy wrote — they ran the working tree's tool — with the copy's own, which name the git directory's copy and never the tree's tool; "
+          "and a `post-checkout` that is not shoalmark's is left byte for byte, named with the line to add, exit 4",
+          code_1 == 0 and "tools/shoalmark" not in new_co_ + new_mg_ and "shoalmark-trusted/shoalmark.py" in new_co_ and "shoalmark-trusted/shoalmark.py" in new_mg_ and "--html-only" in new_co_ and "removed" not in out_1 + err_1
+          and code_2 == fm.EXIT_LINT and (hooks_ / "post-checkout").read_bytes() == mine_ and "shoalmark-trusted" in err_2 and "left alone" in err_2
+          and (hooks_ / "post-merge").read_text(encoding="utf-8") == new_mg_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -1844,6 +1825,253 @@ if _has_rev("ae3c9e9"):
         rm_git(root)
 else:
     SKIPS.append(("FM-006 · what the board's run writes", 3, "this clone does not hold ae3c9e9"))
+
+# --- FM-006: a private security report — the checkout and merge hooks run the copy: one case each, a branch checked out and merged, beside the tool it would have run instead ---------------
+# Every case is a scratch repository with the tool vendored in it and `--install-hook` run from that tool, a branch that brings the case, and `git switch` to it, back, and a fast-forward merge of it —
+# the hooks running. What must hold: nothing the branch brings runs (a marker file would appear), nothing is written outside the tracker folder (`git status --ignored` outside it is empty, and
+# the folder outside the repository is as it was), and the board inside the tracker folder is refreshed. The control is the tool as it was before this report's first fix, vendored the same
+# way, with the hooks it wrote — which run the working tree's tool after a checkout and a merge: each case's check must fail there, and the check says what it saw.
+_OLD_REV = "fec3413~1"
+def _old_tree(into, rev):
+    """The tool as `rev` had it — its file, its VERSION, its vendored `marked` and its brand — laid out as a consumer vendors it."""
+    into = Path(into)
+    for n_ in subprocess.run(["git", "-C", str(HERE), "ls-tree", "-r", "--name-only", rev], capture_output=True, text=True, env=_ENV).stdout.split("\n"):
+        if n_ in ("shoalmark.py", "VERSION", "NOTICE") or n_.startswith(("vendor/", "brand/")):
+            (into / n_).parent.mkdir(parents=True, exist_ok=True)
+            (into / n_).write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{n_}"], capture_output=True, env=_ENV).stdout)
+def _hooked(root, *a, env=None):
+    """git with the hooks running, as a person's own command runs them."""
+    r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+    return r_.returncode, (r_.stdout + r_.stderr).strip()
+def _outside_dirty(root):
+    """What the working tree holds beyond its commit, outside the tracker folder: modified, untracked and ignored paths."""
+    out_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
+    return [l_ for l_ in out_.splitlines() if "docs/work-tracker/" not in l_]
+def _snap(root):
+    t_ = root / "docs/work-tracker"
+    return {"page": (t_ / "index.html").read_text(encoding="utf-8") if (t_ / "index.html").is_file() and not (t_ / "index.html").is_symlink() else None,
+            "views": sorted(p_.name for p_ in (t_ / "view").glob("*.js")) if (t_ / "view").is_dir() else [],
+            "viewtext": "".join(p_.read_text(encoding="utf-8") for p_ in (t_ / "view").glob("*.js")) if (t_ / "view").is_dir() else ""}
+_NEW_TRACKER = "---\nid: MSR-009\nstatus: In Progress\nconsidered: none\nhook: \"h\"\n---\n\n# MSR-009 — {title}\n\n## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n"
+def _hook_scenario(base, payload, control=None, steps=None):
+    """Build the scratch repository for one case, run it, and report what was seen. `control`: None — the copy's hooks, the tool vendored now; "old" — the tool as it was, with its own hooks;
+    "repoint" — the tool vendored now, its hooks pointed at the working tree's tool instead of the copy."""
+    base = Path(base).resolve(); root, out_ = base / "repo", base / "outside"; root.mkdir(); out_.mkdir()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE")
+    tool, mark_ = root / "tools/shoalmark", base / "marker"
+    if control == "old":
+        _old_tree(tool, _OLD_REV)
+    else:
+        subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(tool), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    trunk = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    inst = _tool_run(tool / "shoalmark.py", root, "--install-hook")
+    if control == "repoint":
+        for n_ in ("post-checkout", "post-merge"):
+            (root / f".git/hooks/{n_}").write_text(f'#!/bin/sh\n# shoalmark — the working tree\'s tool, not the copy\n{fm.PY} tools/shoalmark/shoalmark.py --root "$(git rev-parse --show-toplevel)" --html-only || true\n', encoding="utf-8")
+    git(root, "switch", "-q", "-c", "payload")
+    payload(root, tool, base, out_, mark_)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the case")
+    git(root, "switch", "-q", trunk)
+    outside_before = _tree(out_); got = {}
+    got["sw"] = _hooked(root, "switch", "-q", "payload"); got["snap1"], got["dirty1"] = _snap(root), _outside_dirty(root)
+    got["back"] = _hooked(root, "switch", "-q", trunk); got["snap2"], got["dirty2"] = _snap(root), _outside_dirty(root)
+    got["merge"] = _hooked(root, "merge", "--ff-only", "-q", "payload"); got["snap3"], got["dirty3"] = _snap(root), _outside_dirty(root)
+    got.update(root=root, tool=tool, out=out_, inst=inst, marker=mark_.exists(), outside_same=_tree(out_) == outside_before, trunk=trunk, base=base)
+    if steps:
+        steps(got)
+    return got
+def _hook_ops_ok(g):
+    return g["sw"][0] == 0 and g["back"][0] == 0 and g["merge"][0] == 0
+def _refreshed(g, word):
+    return word in (g["snap1"]["page"] or "") and "MSR-009.js" in g["snap1"]["views"] and word not in (g["snap2"]["page"] or "") and word in (g["snap3"]["page"] or "") and "MSR-009.js" in g["snap3"]["views"]
+def _add_tracker(root, title):
+    (root / "docs/work-tracker/MSR-009-x.md").write_text(_NEW_TRACKER.format(title=title), encoding="utf-8")
+def _case_clean(g):
+    return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"]
+            and "run --install-hook" not in g["sw"][1] + g["back"][1] + g["merge"][1])      # the copy is what the repository pins: no drift line
+def _saw(g):
+    return f"marker {g['marker']}, outside the tracker folder {g['dirty1'] + g['dirty3'] or 'untouched'}, folder beyond the repository {'as it was' if g['outside_same'] else 'CHANGED'}, ops {[g[k][0] for k in ('sw', 'back', 'merge')]}"
+_HAVE_OLD = _has_rev(_OLD_REV)
+_CASES = []     # (name, the case's payload, what must hold of the copy's run, what the control saw, what must fail on the control)
+def _pl_deriver(root, tool, base, out_, mark_):
+    d_ = root / "docs/work-tracker/derive"; d_.write_text(f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(mark_)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n', encoding="utf-8"); d_.chmod(0o755)
+    _add_tracker(root, "REFRESHED-1")
+def _pl_tool(root, tool, base, out_, mark_):
+    src_ = tool / "shoalmark.py"; src_.write_text(src_.read_text(encoding="utf-8").replace("import tempfile\n", f"import tempfile\nopen({str(mark_)!r}, 'a').write('ran')\n", 1), encoding="utf-8")
+    if (tool / "PIN").exists():     # a PIN that matches the changed tool: the working tree's gate would pass it
+        pin_ = (tool / "PIN").read_text(encoding="utf-8").splitlines()
+        (tool / "PIN").write_text("\n".join(f"{fm.digest(src_)}  shoalmark.py" if l_.endswith("  shoalmark.py") else l_ for l_ in pin_) + "\n", encoding="utf-8")
+    _add_tracker(root, "REFRESHED-2")
+def _pl_script(root, tool, base, out_, mark_):
+    hostile_ = "</script><b id=\"pwn1\">x</b><!--<script>document.title='ran'//"
+    t_ = next((root / "docs/work-tracker").glob("MSR-001-*.md"))
+    t_.write_text(t_.read_text(encoding="utf-8").replace("# MSR-001 — BASE", "# MSR-001 — " + hostile_).replace('hook: "h of MSR-001"', 'hook: "' + hostile_.replace('"', "'") + '"')
+                  .replace("**One thing is left.**", "**One thing is left.** " + hostile_ + " <img src=x onerror=\"document.title='ran'\">"), encoding="utf-8")
+    _add_tracker(root, "REFRESHED-3")
+def _pl_link(root, tool, base, out_, mark_):
+    c_ = root / "shoalmark.toml"; c_.write_text(c_.read_text(encoding="utf-8").replace("[kinds]", 'blob = "javascript:alert(1)//"\n\n[kinds]', 1), encoding="utf-8")
+    t_ = next((root / "docs/work-tracker").glob("MSR-001-*.md")); t_.write_text(t_.read_text(encoding="utf-8").replace("**One thing is left.**", "**One thing is left.** [a](javascript:alert(1)) [b](data:text/html;base64,AAAA) ![c](data:image/png;base64,AAAA)"), encoding="utf-8")
+    _add_tracker(root, "REFRESHED-4")
+def _pl_outside(root, tool, base, out_, mark_):
+    for t_ in (root / "docs/work-tracker").glob("MSR-*.md"):
+        shutil.copy(t_, out_ / t_.name)
+    c_ = root / "shoalmark.toml"; c_.write_text(re.sub(r'tracker_dir = "[^"]*"', 'tracker_dir = "../outside"', c_.read_text(encoding="utf-8")), encoding="utf-8")
+def _pl_page_link(root, tool, base, out_, mark_):
+    (base / "outside").joinpath("target.html").write_text("SENTINEL", encoding="utf-8"); os.symlink(base / "outside" / "target.html", root / "docs/work-tracker/index.html")
+    git(root, "add", "-f", "docs/work-tracker/index.html"); _add_tracker(root, "REFRESHED-6")
+def _pl_page_tracked(root, tool, base, out_, mark_):
+    (root / "docs/work-tracker/index.html").write_text("STALE PAGE", encoding="utf-8"); git(root, "add", "-f", "docs/work-tracker/index.html"); _add_tracker(root, "REFRESHED-6B")
+def _pl_tracker_link(root, tool, base, out_, mark_):
+    (out_ / "T.md").write_text(_NEW_TRACKER.format(title="OUTSIDE-TRACKER").replace("MSR-009", "MSR-002"), encoding="utf-8"); os.symlink(out_ / "T.md", root / "docs/work-tracker/MSR-002-x.md")
+    _add_tracker(root, "REFRESHED-7")
+def _pl_plain(root, tool, base, out_, mark_):
+    _add_tracker(root, "REFRESHED-P")
+def _ok1(g): return _case_clean(g) and _refreshed(g, "REFRESHED-1")
+def _ok2(g): return _case_clean(g) and _refreshed(g, "REFRESHED-2")
+def _ok3(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-3") and "<!--<script>" not in g["snap1"]["page"] + g["snap3"]["page"] and "</script><b" not in g["snap1"]["page"] + g["snap1"]["viewtext"]
+                     and "\\u003c!--\\u003cscript\\u003e" in g["snap1"]["page"] and "<img" not in g["snap1"]["viewtext"] and "\\u003cimg" in g["snap1"]["viewtext"])
+def _ok4(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-4") and 'BLOB=""' in g["snap1"]["page"] and "javascript:alert(1)//" not in g["snap1"]["page"] and "safeUrl" in g["snap1"]["page"]
+                     and "[a](javascript:alert(1))" in g["snap1"]["viewtext"])
+def _ok5(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and "not inside the repository" in g["sw"][1] and "not inside the repository" in g["merge"][1]
+                     and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
+def _ok6(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and g["outside_same"] and (g["out"] / "target.html").read_text(encoding="utf-8") == "SENTINEL"
+                     and "MSR-009.js" in g["snap1"]["views"] and "index.html (a symlink" in g["sw"][1] and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
+def _ok6b(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and (g["root"] / "docs/work-tracker/index.html").read_text(encoding="utf-8") == "STALE PAGE"
+                      and "MSR-009.js" in g["snap1"]["views"] and "index.html (git tracks it)" in g["sw"][1] and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
+def _ok7(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and g["outside_same"] and _refreshed(g, "REFRESHED-7") and "OUTSIDE-TRACKER" not in g["snap1"]["page"] + g["snap1"]["viewtext"] + g["snap3"]["page"]
+                     and "MSR-002.js" not in g["snap1"]["views"] and "MSR-002-x.md" in g["sw"][1] and len(g["sw"][1].splitlines()) == 2)
+_CASE_TABLE = [("1", "a branch that brings an executable deriver", _pl_deriver, _ok1, False), ("2", "a branch that changes `tools/shoalmark/` and its PIN to match", _pl_tool, _ok2, False),
+               ("3", "a tracker whose text carries a script", _pl_script, _ok3, False), ("4", "a `javascript:` link — in a tracker and as the forge prefix", _pl_link, _ok4, False),
+               ("5", "a tracker folder outside the repository", _pl_outside, _ok5, False), ("6", "`index.html` committed as a symlink", _pl_page_link, _ok6, True),
+               ("6b", "`index.html` committed as a file git tracks", _pl_page_tracked, _ok6b, False), ("7", "a tracker committed as a symlink", _pl_tracker_link, _ok7, True)]
+_SEEN = {}
+for key_, what_, pl_, ok_, needs_link_ in _CASE_TABLE:
+    if needs_link_ and not _SYMLINKS:
+        SKIPS.append((f"FM-006 · a private security report · case {key_}, {what_}", 2, "this system makes no symlink here")); continue
+    with tempfile.TemporaryDirectory() as d:
+        g_ = _hook_scenario(d, pl_); _SEEN[key_] = dict(ok=ok_(g_), saw=_saw(g_), out=g_["sw"][1][:160])
+        check(f"FM-006 · a private security report · case {key_}: {what_} — checked out, left, and merged with the copy's hooks in place, it runs nothing, writes nothing outside the tracker folder, "
+              f"and the board inside it is refreshed where it can be (saw {_saw(g_)}; hook said {g_['sw'][1][:120]!r})", _SEEN[key_]["ok"])
+        rm_git(g_["root"])
+    if not _HAVE_OLD:
+        continue
+    with tempfile.TemporaryDirectory() as d:
+        c_ = _hook_scenario(d, pl_, control="old")
+        said_ = {"1": f"marker {c_['marker']}", "2": f"marker {c_['marker']}", "3": f"`<!--<script>` in the page: {'<!--<script>' in (c_['snap1']['page'] or '')}", "4": f"the forge prefix in the page: {re.findall(r'BLOB=[^,]*', c_['snap1']['page'] or '')[:1]}",
+                 "5": f"the folder beyond the repository changed: {not c_['outside_same']}", "6": f"the file the link points to: {(c_['out'] / 'target.html').read_text(encoding='utf-8')[:12] if (c_['out'] / 'target.html').exists() else None!r}",
+                 "6b": f"the tracked page: {(c_['root'] / 'docs/work-tracker/index.html').read_text(encoding='utf-8')[:14]!r}", "7": f"the outside tracker in the board: {'OUTSIDE-TRACKER' in (c_['snap1']['page'] or '')}"}[key_]
+        check(f"FM-006 · a private security report · case {key_}, the control: with the tool as it was and its own hooks — which run the working tree's tool after a checkout and a merge — the same check FAILS (it saw {said_})", not ok_(c_))
+        rm_git(c_["root"])
+if not _HAVE_OLD:
+    SKIPS.append(("FM-006 · a private security report · the cases' controls", len(_CASE_TABLE), f"this clone does not hold {_OLD_REV}"))
+# case 2, the one the working tree's tool being the new tool does not protect: the hook pointed at it instead of the copy runs what the branch changed
+with tempfile.TemporaryDirectory() as d:
+    c_ = _hook_scenario(d, _pl_tool, control="repoint")
+    check(f"FM-006 · a private security report · case 2, the control with the tool vendored now: the hooks pointed at the working tree's tool instead of the copy run the changed tool — the marker appears, the check fails (saw {_saw(c_)})", not _ok2(c_) and c_["marker"])
+    rm_git(c_["root"])
+
+
+# a copy that hangs — here its main thread waits, as it did on a lock — is stopped by its own bound, and the hook prints one line and returns: the checkout never waits on it
+if os.name != "nt":
+    with tempfile.TemporaryDirectory() as d:
+        def _steps_hang(g):
+            copy_ = g["root"] / ".git/shoalmark-trusted/shoalmark.py"; txt_ = copy_.read_text(encoding="utf-8")
+            hang_ = "        trackers = load_trackers()\n        no_derived(trackers)"
+            assert hang_ in txt_
+            copy_.write_text(txt_.replace(hang_, "        __import__('time').sleep(25)\n" + hang_, 1), encoding="utf-8")        # the copy's main thread waits, as it did on a lock
+            env_ = dict(_ENV, SHOALMARK_BOARD_SECONDS="2")
+            t0_ = time.monotonic(); g["hung"] = _hooked(g["root"], "switch", "-q", "payload", env=env_); g["hung_s"] = time.monotonic() - t0_
+            g["hung_at"] = subprocess.run(["git", "-C", str(g["root"]), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        g_ = _hook_scenario(d, _pl_plain, steps=_steps_hang)
+        check(f"FM-006 · a private security report · a copy that hangs is bounded: a copy whose main thread waits 25 s is stopped by its own bound (2 s here, 60 s by default), the hook prints one line, and the checkout succeeds "
+              f"in {g_['hung_s']:.0f} s on the branch asked for (saw {g_['hung'][1]!r})",
+              g_["hung"][0] == 0 and g_["hung_at"] == "payload" and g_["hung_s"] < 15 and g_["hung"][1] == "shoalmark: the board is not refreshed (exit 4): the board's run took longer than 2 s and was stopped")
+        rm_git(g_["root"])
+else:
+    SKIPS.append(("FM-006 · a private security report · a copy that hangs is bounded", 1, "not run on Windows here"))
+# …and what the copy and its hooks do beside the cases: a version drift, a re-run, two worktrees, a copy that fails, a missing copy, the default branch, a pin that fails, `core.hooksPath`
+def _pl_drift(root, tool, base, out_, mark_):
+    (tool / "VERSION").write_text("9.9.9\n", encoding="utf-8")
+    (tool / "PIN").write_text("\n".join(re.sub(r"^# shoalmark \d+\.\d+\.\d+", "# shoalmark 9.9.9", l_) if l_.startswith("# shoalmark") else f"{fm.digest(tool / 'VERSION')}  VERSION" if l_.endswith("  VERSION") else l_
+                                          for l_ in (tool / "PIN").read_text(encoding="utf-8").splitlines()) + "\n", encoding="utf-8")
+    _add_tracker(root, "REFRESHED-D")
+with tempfile.TemporaryDirectory() as d:
+    g_ = _hook_scenario(d, _pl_drift); line_ = f"the hooks' copy is {fm.__version__}, the repository pins 9.9.9: run --install-hook"
+    check(f"FM-006 · a private security report · a version drift: where the repository pins another version than the copy's own, the hook still refreshes the board and prints exactly `{line_}` — after the checkout and after the merge, "
+          f"and nothing the branch brought ran (saw {g_['sw'][1][-150:]!r})",
+          _hook_ops_ok(g_) and not g_["marker"] and line_ in g_["sw"][1].splitlines() and line_ in g_["merge"][1].splitlines() and line_ not in g_["back"][1].splitlines()
+          and "REFRESHED-D" in g_["snap1"]["page"] and "MSR-009.js" in g_["snap1"]["views"] and "board: file" in g_["sw"][1] and g_["dirty1"] == g_["dirty3"] == [])
+    rm_git(g_["root"])
+def _steps_copy(g):
+    root, tool, base = g["root"], g["tool"], g["base"]; common = root / ".git"; copy_ = common / "shoalmark-trusted"; x = {}
+    # a re-run of `--install-hook` replaces the copy: tamper with it, run again
+    (copy_ / "shoalmark.py").write_text((copy_ / "shoalmark.py").read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8"); (copy_ / "COPY").unlink()
+    gone_theme_ = next((p_ for p_ in (copy_ / "brand").rglob("*") if p_.is_file()), None); gone_theme_.unlink() if gone_theme_ else None
+    x["rerun"] = _tool_run(tool / "shoalmark.py", root, "--install-hook")
+    x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and (not gone_theme_ or gone_theme_.is_file()) and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
+    # two worktrees share the one copy: a second one, made with the hooks running, gets its board from it — and a stub put in its place answers in both
+    x["wt"] = _hooked(root, "worktree", "add", "-q", str(base / "wt2"), "-b", "other")
+    wt2 = base / "wt2"
+    x["wt_board"] = (wt2 / "docs/work-tracker/index.html").is_file() and "BASE" in (wt2 / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    x["wt_common"] = subprocess.run(["git", "-C", str(wt2), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    x["copies"] = sorted(str(p_.relative_to(base)) for p_ in base.rglob(fm.COPY_DIR) if p_.is_dir())
+    (copy_ / "shoalmark.py").write_text("import sys\nprint('STUB-COPY-RAN')\n", encoding="utf-8")
+    x["stub_main"] = _hooked(root, "switch", "-q", g["trunk"]); x["stub_wt"] = _hooked(wt2, "switch", "-q", "-c", "other2")
+    # a copy that fails: one line, and the checkout still succeeds
+    (copy_ / "shoalmark.py").write_text("import sys\nprint('boom')\nprint('and more')\nsys.exit(7)\n", encoding="utf-8")
+    x["fail"] = _hooked(root, "switch", "-q", "payload"); x["fail_at"] = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    # and a copy that is not there
+    shutil.rmtree(copy_); x["missing"] = _hooked(root, "switch", "-q", g["trunk"]); x["missing_at"] = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    g["x"] = x
+with tempfile.TemporaryDirectory() as d:
+    g_ = _hook_scenario(d, _pl_plain, steps=_steps_copy); x_ = g_["x"]
+    check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file, a missing marker and a missing theme file are as the pinned tool has them again", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
+    check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had its board from it, its git directory is the first one's, there is one `{fm.COPY_DIR}` in all, "
+          f"and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
+          x_["wt"][0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve() and x_["copies"] == [f"repo/.git/{fm.COPY_DIR}"]
+          and "STUB-COPY-RAN" in x_["stub_main"][1] and "STUB-COPY-RAN" in x_["stub_wt"][1] and x_["stub_main"][0] == 0 and x_["stub_wt"][0] == 0)
+    check(f"FM-006 · a private security report · a copy that fails prints one line and the checkout still succeeds — exit 0, on the branch asked for (saw {x_['fail'][1]!r}); a copy that is not there is one line too, "
+          f"naming `--install-hook` (saw {x_['missing'][1]!r})",
+          x_["fail"][0] == 0 and x_["fail_at"] == "payload" and len(x_["fail"][1].splitlines()) == 1 and x_["fail"][1].startswith("shoalmark: the board is not refreshed (exit 7)") and x_["fail"][1].endswith("and more")
+          and x_["missing"][0] == 0 and x_["missing_at"] == g_["trunk"] and len(x_["missing"][1].splitlines()) == 1 and "run --install-hook" in x_["missing"][1])
+    rm_git(g_["root"]); subprocess.run(["git", "-C", str(g_["base"] / "wt2"), "--version"], capture_output=True) if False else None
+# the default branch: `--install-hook` names the commit and the branch it took the copy from, and warns — still installing — where that is not the default branch, or where that cannot be told
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    c0_, o0_, e0_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+    git(root, "update-ref", "refs/remotes/origin/main", "HEAD"); git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+    git(root, "switch", "-q", "-c", "feature"); shutil.rmtree(root / ".git/shoalmark-trusted")
+    c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); installed_ = (root / ".git/shoalmark-trusted/shoalmark.py").is_file()
+    git(root, "switch", "-q", trunk_ if trunk_ == "main" else "-c", *(["main"] if trunk_ != "main" else [])) if trunk_ == "main" else git(root, "branch", "-m", trunk_, "main")
+    c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+    check(f"FM-006 · a private security report · `--install-hook` says which commit and branch it took the copy from; where the default branch cannot be told it says so and warns, and installs (saw {e0_.strip()[:200]!r})",
+          c0_ == 0 and f"at {sha_} on {trunk_}" in o0_ and "the default branch cannot be told here" in e0_ and "run --install-hook on your default branch" in e0_ and (root / ".git/shoalmark-trusted/shoalmark.py").is_file()
+          and "this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool" in o0_)
+    check(f"FM-006 · a private security report · `--install-hook` on a branch that is not the default branch warns, names it and the default branch, and still installs (saw {e1_.strip()[:230]!r})",
+          c1_ == 0 and installed_ and "warning: feature is not main, the default branch" in e1_ and "carries that branch's tool: run --install-hook on main" in e1_ and "on feature" in o1_)
+    check("FM-006 · a private security report · …and on the default branch it says which commit and branch, and warns of nothing", c2_ == 0 and "warning" not in e2_ and "on main" in o2_ and e2_.strip() == "")
+    rm_git(root)
+# a pinned copy whose file differs from its PIN is refused — the hooks' copy is not written, nor the hooks that run it
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"], cwd=str(base_), capture_output=True, env=_ENV, check=True)
+    (root / "tools/shoalmark/shoalmark.py").write_text((root / "tools/shoalmark/shoalmark.py").read_text(encoding="utf-8") + "\n# changed in place\n", encoding="utf-8")
+    c_, o_, e_ = _tool_run(root / "tools/shoalmark/shoalmark.py", root, "--install-hook")
+    check(f"FM-006 · a private security report · a pinned copy whose file differs from its PIN is refused: exit 4, the hooks' copy is not written and no checkout or merge hook with it, the three hooks that judge a commit are (saw {e_.strip()[:200]!r})",
+          c_ == fm.EXIT_LINT and "differs from its PIN" in e_ and "not written" in e_ and not (root / ".git/shoalmark-trusted").exists()
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"])
+    rm_git(root)
+# `core.hooksPath` is respected: the hooks are where git looks for them, and run the copy in the git directory
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    git(root, "config", "core.hooksPath", ".githooks"); git(root, "switch", "-q", "-c", "other")
+    c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); sw_ = _hooked(root, "switch", "-q", "-")
+    check(f"FM-006 · a private security report · `core.hooksPath` is respected: the checkout and merge hooks are written where it points, not in `.git/hooks`, and a checkout runs the copy from there (saw {sw_[1][:100]!r})",
+          c_ == 0 and (root / ".githooks/post-checkout").is_file() and (root / ".githooks/post-merge").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
+          and sw_[1].startswith("board: file:") and "BASE" in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
+    rm_git(root)
 
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
@@ -5566,9 +5794,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
     code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
     board_ = page_(root)
-    check(f"FM-030 · 0.18.6 · with the hooks installed — which run nothing after a checkout — `--answer` and `--done` end on the branch they started on, the command rebuilds the board itself, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
-          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
-          and "the board is rebuilt — no checkout hook rebuilt it" in out_d
+    check(f"FM-030 · 0.18.6 · with the hooks installed — whose checkout hook runs the copy of the tool kept in the git directory — `--answer` and `--done` end on the branch they started on, the checkout hook rebuilds the board and the command says so, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook — it reads the branch just pushed" in out_a
+          and "the board was rebuilt by the checkout hook — it reads the branch just pushed" in out_d
           and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
     run(other, "--html-only"); before_ = page_(other)
     git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)
@@ -6278,6 +6506,10 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("user.signingkey", str(rkey_))):
         git(root, "config", k_, v_)
     code_r1_, out_r1_, err_r1_ = run(root, "--answer", "AP-051", "accept")
+    left37_ = subprocess.run(["pgrep", "-f", f"shoalmark.py --root {root} --html-only"], capture_output=True, text=True).returncode if shutil.which("pgrep") else 1
+    check("FM-006 · a private security report · an act with the copy's hooks installed finishes, and the hook's run ends: `--answer` switches branches with the copy's checkout hook running — here in a clone whose signers file sits "
+          "in the checkout, where the copy makes the temporary file it verifies against — and returns, no process of the copy is left, and the board is there (saw exit "
+          f"{code_r1_}, {'no process left' if left37_ == 1 else 'A PROCESS IS LEFT'})", isinstance(code_r1_, int) and left37_ == 1 and (root / "docs/work-tracker/index.html").is_file())
     pushed_r1_ = "answer/ap-051" in subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
     code_r1c_, _o, err_r1c_ = run(root, "--check")                     # on `answer/ap-051`, where the refusal left him
     held_r1_ = "it is signed, but not with a key `docs/work-tracker/allowed_signers` on origin/main holds for that identity — a new key verifies once it is there: the Owner's signed commit to that file, merged into origin/main first"
