@@ -72,10 +72,11 @@ copy the board's two lines in `.gitignore`.
 - `--vendor tools/shoalmark`, `--init`, `--install-hook` in the real directory. **With Subversion:** the command line
   has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it; TortoiseSVN runs
   the gate itself after `--install-hook` and asks permission once.
-- Way back: first remove from `.git/hooks/` everything that calls `tools/shoalmark/shoalmark.py`: the hooks marked
-  `# shoalmark`, and the line you added to a hook of your own (on Subversion, the `tsvn:` hook properties); while any of
-  it stays, every commit is refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in
-  `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.
+- Way back: first remove from your hooks folder (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls
+  `tools/shoalmark/shoalmark.py`: the hooks marked `# shoalmark`, and the line you added to a hook of your own (on
+  Subversion, the `tsvn:` hook properties). Delete the tool before that, and commits are refused. Then delete
+  `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in `AGENTS.md`. The tracker folder can stay: its entries
+  are plain Markdown.
 
 ## Requirements — a trial, not an instruction (Stage 0: the convention only)
 
