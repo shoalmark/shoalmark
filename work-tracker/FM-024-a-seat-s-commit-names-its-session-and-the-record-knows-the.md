@@ -323,6 +323,11 @@ exist, before the v0.19.0 cut.
   (`<bot user id>+shoalmark-<seat>[bot]@users.noreply.github.com`) beside the old ones; `gtm` dropped, its address under
   `go-to-market`. Before any address changes, the Auditor checks all seven bot ids against GitHub's API once the Apps are
   installed, and reports.
+- **The seven bot addresses**, each checked against GitHub's API (`/users/shoalmark-<seat>%5Bbot%5D`) on 2026-10-01 at 10:39:
+  planner `336427458+shoalmark-planner[bot]@users.noreply.github.com` · builder `336429412+shoalmark-builder[bot]@…` · reviewer
+  `336429944+shoalmark-reviewer[bot]@…` · research `336434529+shoalmark-research[bot]@…` · go-to-market
+  `336430483+shoalmark-go-to-market[bot]@…` · designer `336431084+shoalmark-designer[bot]@…` · auditor
+  `336431811+shoalmark-auditor[bot]@…` — each `@users.noreply.github.com`. Phase 2 writes them.
 - **Identities:** no test commits — each seat's next real commit is its proof; every seat worktree's `user.email` moves to its
   bot address as the switch merges.
 - **Route** (FM-032's CI trial): *early* — the gate, identities and the configuration: a draft pull request right after D2's
