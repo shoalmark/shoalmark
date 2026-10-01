@@ -1,0 +1,6 @@
+{#- FM-006 — the theme's language is site-wide (`language = "en"` in zensical.toml); the pages under de/ are German, so they
+    say `lang="de"` and take the theme's German strings, and the rest stays as the configuration has it. -#}
+{% set language = "de" if (page and page.url and page.url[:3] == "de/") else (config.theme.language | d("en", true)) %}
+{% import "partials/languages/" ~ language ~ ".html" as lang %}
+{% import "partials/languages/en.html" as fallback %}
+{% macro t(key) %}{{ lang.t(key) or fallback.t(key) or key }}{% endmacro %}
