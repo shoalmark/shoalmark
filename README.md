@@ -25,7 +25,7 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
-- Not proof that work is right. The gate refuses a done without a commit behind it. Whether that commit did the job is what a review is for.
+- Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
 
 **A convention, Stage 0:** a [`requirements/`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) folder holds one line per requirement — id, *shall*,
 source, acceptance criterion — one text for developer and tester; a tracker cites the id. shoalmark has the
