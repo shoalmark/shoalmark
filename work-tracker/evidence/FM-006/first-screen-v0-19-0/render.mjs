@@ -5,6 +5,7 @@
 //   phone-390-first.png, phone-390-full.png        390 × 844, the first screen and the whole page, 3 s after load
 //   desktop-1440-first.png, desktop-1440-full.png  1440 × 900, the same
 //   phone-360-first.png                            360 × 780, the first screen (RV-2189); 375 × 667 measured, not shot
+//   start-390.png, start-1440.png                  the start section alone, its heading through its last line, 24 px around (In this beta)
 //   PREVIEW, if named                             1200 × 630 of the chart at 1280 px, reduced motion: the title shows its wordmark
 //                                                  alone — the headline, claim, job line and action hidden; the HUD and its
 //                                                  counts are above the clip — so one image serves both languages; no wreck
@@ -85,6 +86,9 @@ for (const [tag, w, h] of [["phone-390", 390, 844], ["desktop-1440", 1440, 900]]
   const t = await open(w, h, false), parts = await t.js(PARTS), tiles = await t.js(TILES);
   await t.shot(join(out, `${tag}-first.png`), {x: 0, y: 0, width: w, height: h});
   await t.shot(join(out, `${tag}-full.png`), {x: 0, y: 0, width: w, height: await t.js("document.documentElement.scrollHeight")});
+  const sec = await t.js(`(() => { const s = document.getElementById("start"), a = s.querySelector(".sec-h").getBoundingClientRect(), b = s.querySelector(".coins").getBoundingClientRect();
+    return [Math.floor(a.top + scrollY) - 24, Math.ceil(b.bottom + scrollY) + 24] })()`);
+  await t.shot(join(out, `start-${w}.png`), {x: 0, y: sec[0], width: w, height: sec[1] - sec[0]});
   await t.close();
   summary.widths[w] = {...parts, tiles};
 }
