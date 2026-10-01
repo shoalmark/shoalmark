@@ -92,6 +92,8 @@ DEFAULTS = {
     # names have theirs (BUILTIN_RIGHTS). ABSENT, nothing is enforced — this is for a repository that lets in agents
     # which never read its contract. It catches an agent that does not know the rule, not one that lies (README,
     # *Seats*). Under Subversion an identity is the server account and `signed` is refused: the server authenticated it.
+    # THE OWNER IS NOT A SEAT (FM-024, D2): a top-level `owner = "<identity> signed"`, before any table, names them — the
+    # same value as a `[seats]` one — and `[seats] owner` is still read, as its old spelling (`seats_of`).
     "seats": {},
     "rights": {},
     # humans have office hours, agents have budgets: ONE fixed sitting a day in which the Owner goes through what
@@ -225,7 +227,7 @@ def configure(root=None):
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
     SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> [(identity, "signed" | ""), …], and seat name -> rights
     seen = {}                                           # identity -> the seat that claimed it first
-    for name, value in (CONFIG.get("seats") or {}).items():
+    for name, value in seats_of(CONFIG).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
         for who, _mode in SEATS[name]:
             if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
@@ -4134,6 +4136,10 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
+    "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email or name> signed\"`; at the top of the file, before any table",
+              "who the Owner is (FM-024): the one who answers, and holds all four rights — the Owner is not a seat. `signed` is read per identity, as for a seat. "
+              "`[seats] owner` is still read, as its old spelling: both present and the same are read once; both present and different are refused at configuration (exit 1), "
+              "and so is an `owner` key inside any other table, naming this place — a key after a `[table]` header belongs to that table"),
     "[paths] reviews": ("a folder under the tracker directory, or a glob of folders; `evidence/reviews/` (the default)",
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
@@ -4142,7 +4148,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                        "who sits in that seat (FM-024): every identity listed maps to the seat — `planner = [\"principal@seat\", "
                        "\"12345+shoalmark-planner[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
-                       "Four names carry their rights built in — `owner`, `planner`, `reviewer`, and `builder` (none); `principal` and `implementer`, their former names, still read and hold the same"),
+                       "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same"),
     "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default (the default where `[ratio]` is present)",
                         "the records-to-product ratio (FM-032): what `--ratio` counts as a record — a prefix with a trailing slash is a directory, a plain "
                         "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
@@ -4460,6 +4466,36 @@ def seat_identities(value):
     return out
 
 
+def seats_of(cfg):
+    """`[seats]` as the tool reads it, `{seat: value}`, with the Owner folded in (FM-024, D2: the Owner is not a seat). A
+    top-level `owner`, before any table, names them; `[seats] owner` is still read, as its old spelling. Both present and
+    the same: read once. Both present and different: refused at configuration, exit 1, one line naming both and the way
+    through. An `owner` key inside any other table is refused, naming where it belongs — a key after a `[table]` header
+    belongs to that table, so a line meant for the top and written at the end of the file lands in the last table, and
+    is read by nobody. `[rights]` keeps its own `owner`, a seat's rights as a list; there only a string is misplaced.
+    The Owner is still the seat `owner` inside the tool, with its four rights; only the configuration moved."""
+    seats = cfg.get("seats") or {}
+    if not isinstance(seats, dict):
+        raise SystemExit(f"{CONFIG_NAME}: `seats` is a table — `[seats]`, one line per seat")
+    where = [t for t, body in cfg.items() if isinstance(body, dict) and "owner" in body and t not in ("owner", "seats")
+             and not (t == "rights" and not isinstance(body["owner"], str))]
+    if where:
+        raise SystemExit(f'{CONFIG_NAME}: `owner` is inside {" and ".join(f"`[{t}]`" for t in where)}, where it does not name the Owner — '
+                         f'put it at the top of the file, before any table: `owner = "<identity> signed"`')
+    top = cfg.get("owner")
+    if top is None:
+        return seats
+    if not isinstance(top, (str, list)):
+        raise SystemExit(f'{CONFIG_NAME}: `owner` is a key at the top of the file, before any table — `owner = "<email or name> signed"`, or a list of them. '
+                         f'Got {"a table, `[owner]`" if isinstance(top, dict) else repr(top)}')
+    old = seats.get("owner")
+    if old is not None and seat_identities(old) != seat_identities(top):
+        shown = lambda v: json.dumps(v, ensure_ascii=False)
+        raise SystemExit(f"{CONFIG_NAME}: the Owner is named twice, and differently — `owner = {shown(top)}` at the top of the file, `owner = {shown(old)}` under `[seats]`. "
+                         "Name them once, at the top: delete the `[seats]` line, or make the two the same")
+    return {"owner": top, **{k: v for k, v in seats.items() if k != "owner"}}
+
+
 def seat_of(name, email):
     """Which seat this author is sitting in — matched on any identity `[seats]` gives it, email or name."""
     return next((s for s, ids in SEATS.items() if any(who and who in (email, name) for who, _m in ids)), None)
@@ -4470,6 +4506,12 @@ def seat_mode(seat, name, email):
     that matches none of its identities (a name where the seat lists an email) reads the seat's first."""
     ids = SEATS[seat]
     return next((m for who, m in ids if who and who in (email, name)), ids[0][1] if ids else "")
+
+
+def at_top(seat):
+    """Is this seat the Owner, named by the top-level `owner` (FM-024, D2) rather than by a line of `[seats]`? A message that points at the line
+    asking a signature says `owner` then — a line of its own, in no table — and `[seats]` otherwise."""
+    return seat == "owner" and CONFIG.get("owner") is not None
 
 
 def holds(seat, right):
@@ -4508,7 +4550,8 @@ def answerers_problems():
             for who, imode in SEATS[s]:                  # FM-024: each identity of the seat — `signed` is read per identity
                 if not who or imode == "signed" or (same and who != name):
                     continue
-                shown = f'`[seats] {s} = "{who}"`' if len(SEATS[s]) == 1 else f'`[seats] {s}` lists `"{who}"`'       # a list seat: the item, not the whole seat
+                line = "owner" if at_top(s) else f"[seats] {s}"      # the Owner named at the top is a line of its own (FM-024, D2)
+                shown = f'`{line} = "{who}"`' if len(SEATS[s]) == 1 else f'`{line}` lists `"{who}"`'       # a list seat: the item, not the whole seat
                 advice = f'Add `signed` to the seat (`{s} = "{who} signed"`)' if len(SEATS[s]) == 1 else f'Add `signed` to that item (`"{who} signed"`)'
                 out.append(f'{CONFIG_NAME}: `answerers = ["{name} signed"]` asks for a signed answer, and {shown} — '
                            + ("the seat that answers for it" if same else f"a seat holding `answer`; no seat is spelled `{name}`, so each stands in for it")
@@ -4522,9 +4565,10 @@ def no_seat(name, email, right, what):
     what the repository's seats are. It names the seat and the right — an agent told only *refused* tries again."""
     who = email or name or "nobody the version control system can name"
     seat = seat_of(name, email)
-    known = ", ".join(f"{s} ({' · '.join(who for who, _m in SEATS[s])})" for s in sorted(SEATS)) or "none"
+    known = ", ".join(f"{s} ({' · '.join(who for who, _m in SEATS[s])})" for s in sorted(SEATS) if s != "owner") or "none"
+    owner = " · ".join(w for w, _m in SEATS.get("owner", ()) if w)             # the Owner is not a seat (FM-024, D2): named apart from the list
     if seat is None:
-        return (f'{what} — `{who}` is not a seat. The seats are: {known}'
+        return (f'{what} — `{who}` is not a seat. The seats are: {known}' + (f". The Owner, who is not a seat, is {owner}" if owner else "")
                 + ("" if vcs() == "svn" else ". A seat wears its badge: `git config --worktree user.email <identity>`"))
     return (f'{what} — `{who}` is the seat `{seat}`, which does not hold `{right}` '
             f'({", ".join(sorted(SEAT_RIGHTS.get(seat) or BUILTIN_RIGHTS.get(seat, set()))) or "no right"}). '
@@ -4555,7 +4599,7 @@ def seat_problems(t):
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
         elif not verified_as(commit, email or None):
             return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — '
-                    + unverified(commit, f'`[seats]` asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach them')]
+                    + unverified(commit, f'{"`owner`" if at_top(seat) else "`[seats]`"} asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach them')]
     return []
 
 
@@ -4716,7 +4760,7 @@ def rights_problems(trackers):
                         print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
                     elif not verified_as(commit, email or None):
                         out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
-                                   + unverified(commit, '`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
+                                   + unverified(commit, f'{"`owner`" if at_top(seat) else "`[seats]`"} asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
     return out
 
 
@@ -5606,7 +5650,7 @@ GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask 
              "answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`")
 GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on their account holds that key (FM-007)"
 # what it can prove where his seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
-GUARD_AUTHOR_ONLY = "the author only — mark the owner's seat signed to prove the key"
+GUARD_AUTHOR_ONLY = "the author only — mark `owner` signed to prove the key"
 GUARD_SVN = ("the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so "
              "nothing here can tell their commit from a seat's")
 _GUARD = None
@@ -5742,10 +5786,11 @@ def guard_walk(*revs, keys=()):
 
 
 def owners_of(cfg):
-    """`may_answer()` for a configuration read from a revision — {identity: "signed" | ""}: each seat of its `[seats]` that
-    holds `answer` (the built-in `owner`, or a name its `[rights]` gives it), or with no `[seats]` its `answerers`."""
-    seats, rights, out = cfg.get("seats") or {}, cfg.get("rights") if isinstance(cfg.get("rights"), dict) else {}, {}
-    if isinstance(seats, dict) and seats:
+    """`may_answer()` for a configuration read from a revision — {identity: "signed" | ""}: each seat of its `[seats]`, and
+    the Owner its top-level `owner` names (`seats_of`), that holds `answer` (the built-in `owner`, or a name its `[rights]`
+    gives it), or with neither its `answerers`."""
+    seats, rights, out = seats_of(cfg), cfg.get("rights") if isinstance(cfg.get("rights"), dict) else {}, {}
+    if seats:
         for name, value in seats.items():
             words = rights.get(name, BUILTIN_RIGHTS.get(name, ()))
             if "answer" in ([words] if isinstance(words, str) else words):
@@ -5917,7 +5962,7 @@ def triage_guard():
         return _GUARD
     owners = owners_at(trunk)
     if not owners:
-        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s `[seats]` gives no seat `answer`: name the Owner's (`owner = \"<email> signed\"`)")
+        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)")
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
@@ -6587,7 +6632,7 @@ def lint(trackers, committing=False):
             # from `may_answer()` — the seats that hold `answer`, or `answerers` where there are no seats
             allowed = may_answer()
             if not allowed:
-                problems.append(f'{t["id"]}: an answer, but ' + (f'no seat in `[seats]` holds the `answer` right — give one `answer` in `[rights]`'
+                problems.append(f'{t["id"]}: an answer, but ' + (f'no seat in `[seats]` holds the `answer` right — name the Owner (`owner = "<email> signed"`, before any table), or give one seat `answer` in `[rights]`'
                                                                  if SEATS else f'`answerers` in {CONFIG_NAME} names nobody — say who may answer')
                                 + ", then the commit's author is checked against it")
             elif not SEATS and t.get("answered_by") not in allowed:
@@ -6608,11 +6653,11 @@ def lint(trackers, committing=False):
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
                     if not verified_as(commit, email if SEATS else None):
                         problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{email if SEATS else who}` — '
-                                        + unverified(commit, f'{"`[seats]` asks this seat" if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
+                                        + unverified(commit, f'{(("`owner`" if at_top(seat) else "`[seats]`") + " asks this seat") if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
                                                              f'sign it (`git commit -S`), or it does not count'))
                 elif how == "git":
                     print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
-                          f'{"that seat in `[seats]`" if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)
+                          f'{("`owner`" if at_top(seat) else "that seat in `[seats]`") if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)
         # `ask-proposal:` is the RECOMMENDED option, and the board offers it first: with options named, it must be one
         # of them, or the Owner is shown a recommendation he cannot pick
         if t.get("ask_proposal") and t.get("ask_options") and t["ask_proposal"] not in t["ask_options"]:
@@ -6776,7 +6821,7 @@ def parse_args(argv):
                                                      "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
     add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
                                                       "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
-                                                      "and refused before it is made, with the line `--check` prints of it; and, where the default branch's `[seats]` names the "
+                                                      "and refused before it is made, with the line `--check` prints of it; and, where the default branch's configuration names the "
                                                       "Owner, a commit that changes their intent or current path in TRIAGE.md is refused before it is made unless they are its author "
                                                       "(FM-037 — the hook sees the author; `--check` judges the signature)")
     add("--session-trailer", nargs="+", metavar="FILE", help="what a prepare-commit-msg hook calls with its message file: appends `Session: <seat.session>` "

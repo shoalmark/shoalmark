@@ -843,6 +843,114 @@ with tempfile.TemporaryDirectory() as d:
           (lambda t: "`planner`" in t and "`principal`" in t and "former names" in t)(run(root, "--schema")[1]))
 fm.configure(HERE)
 
+# FM-024 · D2, the Owner's ruling filed in FM-024 (*The `[seats]` switch*): the Owner is configured outside `[seats]` — a top-level `owner`, before any
+# table — and `[seats] owner` is still read, as its old spelling. Beside the configuration's other refusals: each is exit 1, one line, naming the way through.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()            # what `--init` writes: top-level keys, then `[kinds]`, then `[tags]` last
+    OWN, PLANNER = "you@example.org signed", 'planner = "planner@seat"\n'
+    read_ = lambda text: ((root / "shoalmark.toml").write_text(text), fm.configure(root))
+    t_ = tracker(root, "MSR-001"); run(root)                    # one tracker, its INDEX written: `--check` reads a repository that is whole
+    cli = lambda text: ((root / "shoalmark.toml").write_text(text), subprocess.run([sys.executable, fm.__file__, "--root", str(root), "--check"],
+                                                                                    capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV))[1]
+    one_line = lambda r: r.returncode == 1 and len(r.stderr.strip().splitlines()) == 1 and r.stdout == ""      # a configuration refusal: exit 1, one line, nothing on stdout
+    state = lambda: (fm.SEATS.get("owner"), fm.may_answer(), sorted(fm.SEAT_RIGHTS.get("owner", ())), fm.seat_of("x", "you@example.org"), sorted(fm.SEATS))
+    owners_in = lambda: fm.owners_of(fm.read_config((root / "shoalmark.toml").read_text()))
+
+    read_(f'{base_cfg}\n[seats]\nowner = "{OWN}"\n{PLANNER}'); only_old = state()
+    check(f"FM-024 D2 · 1 of 7 · the old spelling alone — `[seats] owner` still names the Owner: one identity, `signed`, who may answer, the seat the gate matches (saw {only_old[:2]})",
+          only_old[0] == [("you@example.org", "signed")] and only_old[1] == {"you@example.org": "signed"} and only_old[3] == "owner" and only_old[4] == ["owner", "planner"]
+          and owners_in() == {"you@example.org": "signed"})
+
+    read_(f'owner = "{OWN}"\n{base_cfg}\n[seats]\n{PLANNER}'); only_new = state()
+    check(f"FM-024 D2 · 2 of 7 · the new spelling alone — a top-level `owner` names the Owner as the old one did: the same seat, rights and answerers, with `[seats]` naming only seats (saw {only_new[:2]})",
+          only_new == only_old and "owner" not in fm.read_config((root / "shoalmark.toml").read_text())["seats"] and owners_in() == {"you@example.org": "signed"})
+    read_(f'owner = ["{OWN}", "you@example.com"]\n{base_cfg}')
+    check(f"FM-024 D2 · 2 of 7 · …a list, `signed` per identity, as a `[seats]` value is; and with no `[seats]` at all the Owner alone turns the gate on (saw {fm.may_answer()})",
+          fm.may_answer() == {"you@example.org": "signed", "you@example.com": ""} and fm.seat_of("x", "you@example.com") == "owner" and fm.SEATS == {"owner": [("you@example.org", "signed"), ("you@example.com", "")]})
+    read_(f'owner = "{OWN}"\n{base_cfg}'); git(root, "add", "-A"); commit_as(root, "someone@example.org", "a trunk whose configuration names the Owner at the top")
+    check(f"FM-024 D2 · 2 of 7 · …and the gate finds the default branch's Owner there — `owners_at` of a revision whose `shoalmark.toml` carries the new spelling (saw {fm.owners_at('HEAD')})",
+          fm.owners_at("HEAD") == {"you@example.org": "signed"})
+
+    r_same = cli(f'owner = "{OWN}"\n{base_cfg}\n[seats]\nowner = "{OWN}"\n{PLANNER}'); read_((root / "shoalmark.toml").read_text()); same = state()
+    check(f"FM-024 D2 · 3 of 7 · both present and the same — read once: one identity, no `listed twice`, `--check` reads it as the old spelling alone (saw {r_same.returncode}, {r_same.stderr.strip()[:120]!r})",
+          r_same.returncode == 0 and "listed twice" not in r_same.stderr and same == only_old and len(fm.SEATS["owner"]) == 1)
+
+    for label, top, old_ in (("another identity", "you@example.org signed", "other@example.org signed"), ("the same identity, `signed` on one only", "you@example.org signed", "you@example.org")):
+        r_diff = cli(f'owner = "{top}"\n{base_cfg}\n[seats]\nowner = "{old_}"\n{PLANNER}')
+        check(f"FM-024 D2 · 4 of 7 · both present and different ({label}) is refused at configuration — exit 1, one line, naming both and the way through (saw {r_diff.returncode}, {r_diff.stderr.strip()[:260]!r})",
+              one_line(r_diff) and f'`owner = "{top}"` at the top of the file' in r_diff.stderr and f'`owner = "{old_}"` under `[seats]`' in r_diff.stderr
+              and "delete the `[seats]` line, or make the two the same" in r_diff.stderr)
+    try:
+        read_(f'owner = "{OWN}"\n{base_cfg}\n[seats]\nowner = "other@example.org"\n'); unreadable = ""
+    except SystemExit as e_:
+        unreadable = str(e_)
+    try:
+        fm.owners_of(fm.read_config((root / "shoalmark.toml").read_text())); unnamed = ""
+    except SystemExit as e_:
+        unnamed = str(e_)
+    check(f"FM-024 D2 · 4 of 7 · …`configure` and `owners_of` both stop on it, so the guard reads no Owner from such a revision rather than guess (saw {unnamed[:70]!r})",
+          "named twice" in unreadable and "named twice" in unnamed)
+
+    unrelated = {"[tags], the last table `--init` writes": cli(f'{base_cfg}owner = "{OWN}"\n'),
+                 "[paths]": cli(f'{base_cfg}\n[paths]\nreviews = "evidence/reviews/"\nowner = "{OWN}"\n'),
+                 "[ratio]": cli(f'{base_cfg}\n[ratio]\nrecords = ["docs/work-tracker/"]\nowner = "{OWN}"\n'),
+                 "[kinds]": cli(base_cfg.replace('MSR = "Work"', f'MSR = "Work"\nowner = "{OWN}"', 1)),
+                 "[headings]": cli(f'{base_cfg}\n[headings]\nstate = "What is true now"\nowner = "{OWN}"\n'),
+                 "[rights], as a string": cli(f'{base_cfg}\n[rights]\nowner = "{OWN}"\n')}
+    table_of = lambda label: label.split("]")[0] + "]"
+    check(f"FM-024 D2 · 5 of 7 · an `owner` key inside an unrelated table is refused at configuration — exit 1, one line, naming the table and where it belongs (saw {[(t.split(',')[0], r.returncode) for t, r in unrelated.items()]})",
+          all(one_line(r) and f"`owner` is inside `{table_of(t)}`, where it does not name the Owner" in r.stderr
+              and 'put it at the top of the file, before any table: `owner = "<identity> signed"`' in r.stderr for t, r in unrelated.items()))
+    read_(f'{base_cfg}\n[rights]\nowner = ["answer"]\n'); rights_list = sorted(fm.SEAT_RIGHTS["owner"])
+    r_obj = cli(f'[owner]\nname = "x"\n{base_cfg}')
+    check(f"FM-024 D2 · 5 of 7 · …a seat's rights keep the name `owner` (a list under `[rights]` reads: {rights_list}); a table `[owner]` is refused as no key at the top (saw {r_obj.returncode}, {r_obj.stderr.strip()[:130]!r})",
+          rights_list == ["answer"] and one_line(r_obj) and "`owner` is a key at the top of the file, before any table" in r_obj.stderr)
+
+    # the Owner keeps all four rights — through `holds`, under each spelling, and through the gate: each change the Owner makes passes; the planner's answer, the one right it lacks, is refused
+    held = {}
+    for how, text in (("new", f'owner = "owner@example.org"\n{base_cfg}\n[seats]\n{PLANNER}'), ("old", f'{base_cfg}\n[seats]\nowner = "owner@example.org"\n{PLANNER}')):
+        read_(text); held[how] = sorted(r for r in fm.RIGHTS if fm.holds("owner", r))
+    read_(f'owner = "owner@example.org"\n{base_cfg}\n[seats]\n{PLANNER}')
+    ask_ = f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n'
+    git(root, "add", "-A"); commit_as(root, "planner@seat", "the tracker, filed by a seat\n\nSession: 1111aaaa")
+    said = {}
+    for right, edit in (("ask", lambda s: s.replace("considered: none\n", "considered: none\n" + ask_)),
+                        ("answer", lambda s: s.replace("next: owner\n", "next: build\n").replace("hook:", 'answer: "accepted"\nanswered: 2026-10-01\nanswered-by: owner@example.org\nhook:')),
+                        ("triage", lambda s: s.replace("considered: none\n", "considered: none\ntier: P2\nrank: 1\ntriaged: 2026-10-01\nkind-of-problem: complicated\n")),
+                        ("close", lambda s: s.replace("status: In Progress", "status: Closed").replace("rank: 1\n", ""))):
+        t_.write_text(edit(t_.read_text())); git(root, "add", "-A"); staged = run(root, "--print-written", git_env=AS("owner@example.org"))      # the pre-commit run, judging the Owner's pending change
+        git(root, "add", "-A"); commit_as(root, "owner@example.org", f"the Owner's {right}")
+        clean = run_safe(root, "--check"); said[right] = (staged[0], clean[0], staged[2] + clean[2])           # …and the same commit, made, judged at HEAD
+    t_.write_text(t_.read_text().replace("answered-by: owner@example.org", "answered-by: planner@seat")); git(root, "add", "-A"); commit_as(root, "planner@seat", "a seat's answer\n\nSession: 1111aaaa")
+    control = run_safe(root, "--check")
+    check(f"FM-024 D2 · 6 of 7 · the Owner keeps all four rights — answer · ask · close · triage — named at the top as under the old spelling, and each change they make passes the gate; the planner's answer does not (saw {held['new']}, {[(k, v[:2]) for k, v in said.items()]}, {control[0]})",
+          held["new"] == held["old"] == ["answer", "ask", "close", "triage"]
+          and all(v[0] == v[1] == 0 and "does not hold" not in v[2] and "not a seat" not in v[2] for v in said.values())
+          and control[0] == fm.EXIT_LINT and "`planner@seat` is the seat `planner`, which does not hold `answer`" in control[2])
+
+    # the refusal that lists the seats lists the seats, and names the Owner apart
+    read_(f'owner = "{OWN}"\n{base_cfg}\n[seats]\n{PLANNER}reviewer = "reviewer@seat"\n'); said_no = fm.no_seat("m", "mallory@seat", "ask", "x")
+    read_(f'{base_cfg}\n[seats]\nowner = "you@example.org"\n{PLANNER}'); said_old = fm.no_seat("m", "mallory@seat", "ask", "x")
+    read_(f'{base_cfg}\n[seats]\n{PLANNER}'); said_none = fm.no_seat("m", "mallory@seat", "ask", "x")
+    check(f"FM-024 D2 · 7 of 7 · the refusal that lists the seats lists the seats and names the Owner apart, as one who is not a seat — under either spelling; with no Owner named it says nothing of one, and ends on the way through, the badge (saw {said_no[-190:]!r})",
+          "The seats are: planner (planner@seat), reviewer (reviewer@seat). The Owner, who is not a seat, is you@example.org. A seat wears its badge: `git config --worktree user.email <identity>`" in said_no
+          and "owner (" not in said_no and "The seats are: planner (planner@seat). The Owner, who is not a seat, is you@example.org." in said_old
+          and "The seats are: planner (planner@seat). A seat wears its badge" in said_none and "The Owner" not in said_none)
+    # where a message points at the line that asks a signature, the Owner named at the top is `owner`, a line of its own; under the old spelling it stays `[seats] owner`
+    r_top = cli(f'owner = "alice"\nanswerers = ["alice signed"]\n{base_cfg}'); r_old = cli(f'answerers = ["alice signed"]\n{base_cfg}\n[seats]\nowner = "alice"\n')
+    read_(f'owner = "alice"\n{base_cfg}\n[seats]\n{PLANNER}'); at_top = getattr(fm, "at_top", lambda seat: None); top_, old_seat_ = at_top("owner"), at_top("planner")
+    read_(f'{base_cfg}\n[seats]\nowner = "alice"\n{PLANNER}'); old_spelling_ = at_top("owner")
+    check(f"FM-024 D2 · the lines that point at where the Owner's signature is asked say `owner` when it is named at the top, and `[seats] owner` under the old spelling (saw {r_top.returncode}, {r_old.returncode})",
+          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to the seat (`owner = \"alice signed\"`), or remove `answerers`" in r_top.stderr
+          and '`[seats] owner = "alice"`' in r_old.stderr and top_ is True and old_seat_ is False and old_spelling_ is False)
+    check("FM-024 D2 · `--schema` has an `owner` entry — top level, one identity or a list, the old spelling, the refusals — and the `[seats] <seat>` text reads the Owner and three seats with their rights built in",
+          (lambda t: "| `owner` | one identity, or a list of them, as a `[seats]` value" in t and "`[seats] owner` is still read, as its old spelling" in t and "are refused at configuration" in t
+                     and "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same" in t
+                     and "Four names carry their rights built in" not in t)(run(root, "--schema")[1]))
+fm.configure(HERE)
+
 # --- R4: the pre-commit hook judges the session on EVERY commit — a seat's code-only commit included -----------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -5494,15 +5602,15 @@ with tempfile.TemporaryDirectory() as tmp:
     c_none_, g_none_ = made37_("ap/037-no-owner", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
     check(f"FM-037 · the Owner is read from the default branch's `[seats]`, never the branch's: a branch that makes a seat the Owner is still refused; where the default branch names no Owner nothing is guarded, and `--check` says so (saw {g_none_!r})",
           len(g_self_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_self_[0][0]
-          and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's `[seats]` gives no seat `answer`: name the Owner's (`owner = \"<email> signed\"`)"))
+          and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
     c_ao_, g_ao_ = made37_("ap/037-author-only", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
     c_aw_, g_aw_ = made37_("ap/037-author-owner", "AP-037: his line, his name", text37_("lose a loan", "lose a page"), OWNER_)
     check(f"FM-037 · clause 5 · with the Owner's seat not `signed`, a seat's change is refused on its author and the refusal says it proves the author only; his own unsigned change passes on his name, and `--check` says the same of the whole guard (saw {g_ao_[0]!r}, {g_aw_[1]!r})",
-          g_ao_[0] == [f'refused: commit {c_ao_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): the author only — mark the owner\'s seat signed to prove the key — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
-          and g_aw_ == ([], "the Owner's two sections: guarded (the author only — mark the owner's seat signed to prove the key) — 1 commit(s) on `ap/037-author-owner` since origin/main, 1 change them or their signers file, each their own commit"))
+          g_ao_[0] == [f'refused: commit {c_ao_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): the author only — mark `owner` signed to prove the key — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
+          and g_aw_ == ([], "the Owner's two sections: guarded (the author only — mark `owner` signed to prove the key) — 1 commit(s) on `ap/037-author-owner` since origin/main, 1 change them or their signers file, each their own commit"))
     svn37_ = base / "svn"; (svn37_ / ".svn").mkdir(parents=True); (svn37_ / "shoalmark.toml").write_text(cfg37_.replace(" signed", ""), encoding="utf-8")
     fm.configure(svn37_); g_svn_ = _no_git_env(fm.triage_guard)
     check(f"FM-037 · clause 5 · under Subversion the guard says, in one line, that it is out of scope — the working copy carries no signature (saw {g_svn_!r})",
