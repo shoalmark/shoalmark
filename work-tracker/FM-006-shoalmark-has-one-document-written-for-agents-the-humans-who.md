@@ -465,8 +465,9 @@ section that the wreck script reads.
 
 ## The v0.19.0 release commit
 
-**The Owner's approval, 2026-10-01.** One commit in the release bundle (`release/v0.19.0`), after main with the `[seats]`
-switch, the `From:` fix, this slice and the bundle's carried findings, and before the player stats:
+**The Owner's approval, 2026-10-01.** In the release bundle (`release/v0.19.0`), after main with the `[seats]` switch, the
+`From:` fix, this slice and the bundle's carried findings, and before the player stats — prepared in commits of its own before
+the switch merged, and the CHANGELOG's cut and the notes' checksum last, after it (the Owner's ruling of the same day):
 - **README:** the first screen's lists to v0.19.0 — *the tracker, the gate (it refuses a done without a commit behind it), the
   board with waiting for you on top, …*, and the direction *…the rest of evidence-checked done…*; the FM-005 pointer as
   `https://github.com/shoalmark/shoalmark/blob/main/work-tracker/evidence/FM-005/design.md`; §6's `<shoalmark-url>` as
