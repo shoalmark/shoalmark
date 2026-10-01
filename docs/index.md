@@ -70,15 +70,15 @@ What shoalmark prints for it, every day:
 ## What it is not
 
 shoalmark needs no server and no account, and its ids are ones you can say out loud, like FM-012. One Markdown file per
-work item, one Python file, and a gate on every commit that refuses what contradicts itself. Runs on git and Subversion,
-on Windows, macOS and Linux. Licence: Apache-2.0 or MIT.
+work item, one Python file, and a gate on every commit that refuses what contradicts itself. Runs with git on Windows,
+macOS and Linux. Licence: Apache-2.0 or MIT.
 
 **In this beta:**
 
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
 - Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work; signed answers need `git`, and the pull-request queue `git` and GitHub.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
 
 ## Start here
 

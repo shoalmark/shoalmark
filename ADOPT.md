@@ -11,7 +11,7 @@ at the end there is a report to your Owner, and **your Owner decides**.
 shoalmark is a work tracker in a single Python file (standard library only, no dependency, needs no network: online, it
 reaches your repository's host through git, and through gh for the pull-request queue): one Markdown file per work item
 with a small header, a gate that rejects contradictions, a generated `INDEX.md` and a static board (`index.html`) for
-the human. It runs with git and with Subversion, on Windows, macOS and Linux (CI proves all three).
+the human. It runs with git on Windows, macOS and Linux (CI proves all three).
 Licence: Apache-2.0 or MIT.
 
 ## When you do NOT need it
@@ -20,7 +20,8 @@ If a **fresh session with no prior knowledge** can say, from your existing files
 item stands, what comes next and what waits for the Owner — then you already have this. If your project has several people in charge, or a large ticket system to move,
 this beta is not for it yet. Tell your Owner so and stop here. A second system beside a working one is worse than none.
 
-On Subversion it passes the test suite but has not been used in real work: say so in your report.
+On Subversion it reads its history from the server through svn and passes the test suite, but it has not been used in
+real work and comes without a guarantee: say so in your report.
 
 ## The measurement (about 20 minutes, everything in a throwaway folder)
 

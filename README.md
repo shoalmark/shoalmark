@@ -13,9 +13,9 @@ to prove. They see what waits for them, how long, and what it blocks — first, 
 they need to run start to finish: state that outlives a session, one source of truth, a gate that refuses a *done*
 without a commit behind it. **Less work and distraction for the human; more throughput and less friction for the agents.**
 
-**What exists today:** the tracker, the gate (it refuses a *done* without a commit behind it), the board with
-*waiting for you* on top, `next: owner`, a cold-start answer in one command (`--next`) — on git and Subversion, on
-Windows, macOS and Linux, in any language.
+**What exists today:** the tracker, the gate (it refuses a *done* without a commit behind it), the board with *waiting
+for you* on top, `next: owner`, a cold-start answer in one command (`--next`) — with git, on Windows, macOS and Linux,
+in any language.
 **What is the direction, not yet built:** the signed mandate, questions that carry a default and a deadline,
 the rest of evidence-checked *done*, the digest — explored, with what would kill each claim, in shoalmark's own tracker
 (`FM-005`, [`work-tracker/evidence/FM-005/design.md`](https://github.com/shoalmark/shoalmark/blob/main/work-tracker/evidence/FM-005/design.md)).
@@ -26,7 +26,7 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
 - Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work; signed answers need `git`, and the pull-request queue `git` and GitHub.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
 
 **A convention, Stage 0:** a [`requirements/`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) folder holds one line per requirement — id, *shall*,
 source, acceptance criterion — one text for developer and tester; a tracker cites the id. shoalmark has the

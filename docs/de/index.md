@@ -75,15 +75,15 @@ geschrieben hat.
 ## Was es nicht ist
 
 shoalmark braucht keinen Server und kein Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
-Arbeitspaket, eine Python-Datei und ein Gate bei jedem Commit, das ablehnt, was sich widerspricht. Läuft mit git und
-Subversion, auf Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
+Arbeitspaket, eine Python-Datei und ein Gate bei jedem Commit, das ablehnt, was sich widerspricht. Läuft mit git auf
+Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
 
 **In dieser Beta:**
 
 - Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
 - Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
 - Kein Beweis, dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein Review.
-- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt; signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.
 
 ## Hier anfangen
 
