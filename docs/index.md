@@ -33,12 +33,12 @@ made it.
 
 In shoalmark's own repository, which runs on shoalmark:
 
-- **Before the owner signed the review rule** (every change gets a Reviewer's pass): 10 of 37 pull requests carried a
+- **Before the Owner signed the review rule** (every change gets a Reviewer's pass): 10 of 37 pull requests carried a
   Reviewer's file when they were opened.
-- **After it, to 25 September 2026:** 12 of 15.
+- **After it, to 1 October 2026:** 71 of 82.
 
-*Counted on 25 September 2026 with `gh` from pull requests 1–69 of holgo99/shoalmark: merged ones only, without the
-owner's own answer branches (`answer/…`). One counts when a commit adding or changing a file under
+*Counted on 1 October 2026 with `gh` from pull requests 1–144 of shoalmark/shoalmark: merged ones only, without the
+Owner's own answer branches (`answer/…`). One counts when a commit adding or changing a file under
 `work-tracker/evidence/reviews/`, merge commits excluded, is dated before the pull request was opened. A commit's date
 is when it was made, not when it was pushed: the forge's push events confirm the counted pull requests from
 24 September 2026, 05:18 UTC on, and it no longer lists older ones. The rule is the owner's signed answer of

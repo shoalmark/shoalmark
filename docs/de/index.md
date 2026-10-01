@@ -35,9 +35,9 @@ Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 
 - **Bevor der Eigner die Review-Regel signierte** (jede Änderung bekommt einen Reviewer-Durchgang): 10 von 37 Pull
   Requests hatten eine Reviewer-Datei, als sie geöffnet wurden.
-- **Danach, bis zum 25. September 2026:** 12 von 15.
+- **Danach, bis zum 1. Oktober 2026:** 71 von 82.
 
-*Gezählt am 25. September 2026 mit `gh` aus den Pull Requests 1–69 von holgo99/shoalmark: nur gemergte, ohne die
+*Gezählt am 1. Oktober 2026 mit `gh` aus den Pull Requests 1–144 von shoalmark/shoalmark: nur gemergte, ohne die
 eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
 `work-tracker/evidence/reviews/` anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
 Requests datiert ist. Das Datum eines Commits sagt, wann er entstand, nicht wann er gepusht wurde: Die
