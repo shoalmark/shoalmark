@@ -71,8 +71,9 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
 - `--vendor tools/shoalmark`, `--init`, `--install-hook` im echten Verzeichnis. **Mit Subversion:** die
   Kommandozeile kennt keinen Client-Hook — vor jedem `svn commit` das Werkzeug laufen lassen und die `INDEX.md`
   mit einchecken; TortoiseSVN führt das Gate nach `--install-hook` selbst aus und fragt einmal um Erlaubnis.
-- Rückweg: zuerst die mit `# shoalmark` markierten Hooks in `.git/hooks/` entfernen (unter Subversion die
-  `tsvn:`-Hook-Properties); solange sie bleiben, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`,
+- Rückweg: zuerst aus `.git/hooks/` alles entfernen, was `tools/shoalmark/shoalmark.py` aufruft: die mit `# shoalmark`
+  markierten Hooks und die Zeile, die ihr einem eigenen Hook hinzugefügt habt (unter Subversion die
+  `tsvn:`-Hook-Properties); solange etwas davon bleibt, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`,
   `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der Tracker-Ordner kann bleiben: Seine Einträge
   sind einfaches Markdown.
 
