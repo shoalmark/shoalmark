@@ -1,11 +1,11 @@
 # What a stranger meets first — the landing's render for v0.19.0 (FM-006)
 
-**Rendered** from release builds (Zensical 0.0.66, tinycss2 1.4.0, the docs workflow's steps): `start-1440.png` from this
-README's commit (its text capped at about 80 characters), `start-390.png` from `b2683f2` (In this beta); `phone-360-first.png`
-and `phone-390-first.png` from `affd09f` (RV-2189); the rest and `docs/assets/preview.png` from `ac63619`. At this commit the
-first screens and the preview are the same byte for byte; the full pages predate RV-2186's line, RV-2189's HUD and the beta box.
-Round one: `36cde21`. **Made with** `node render.mjs SITE OUT [PREVIEW]` (this folder): Chrome 154.0.8037.58 headless, Node
-26.7.0, 127.0.0.1 only, dark, scale 1, 3 s after load, motion allowed; 2026-10-01, 09:07–10:15 CEST.
+**Rendered** from release builds (Zensical 0.0.66, tinycss2 1.4.0, the docs workflow's steps): `start-390.png` and
+`start-1440.png` from this README's commit (In this beta's fourth line, the 80-character cap kept); `phone-360-first.png` and
+`phone-390-first.png` from `affd09f` (RV-2189); the rest and `docs/assets/preview.png` from `ac63619`. At this commit the first
+screens and the preview are the same byte for byte; the full pages predate RV-2186's line, RV-2189's HUD and the beta box. Round
+one: `36cde21`. **Made with** `node render.mjs SITE OUT [PREVIEW]` (this folder): Chrome 154.0.8037.58 headless, Node 26.7.0,
+127.0.0.1 only, dark, scale 1, 3 s after load, motion allowed; 2026-10-01, 09:07–10:43 CEST.
 
 | File | Width × height | What it shows |
 |---|---|---|
@@ -15,7 +15,7 @@ Round one: `36cde21`. **Made with** `node render.mjs SITE OUT [PREVIEW]` (this f
 | `desktop-1440-first.png` | 1440 × 900 | the chart in the first screen (56–876 px), the title over the sea: the H1 in two lines, broken at its semicolon; the job line; the action (449–486 px) |
 | `desktop-1440-full.png` | 1440 × 6393 | the page, *The fleet* at 1332–1927 px; the agents' card headed *For agents* |
 | `docs/assets/preview.png` | 1200 × 630 | the link preview: the chart's north-west at the page's scale, 4 CSS px to a chart pixel, rendered at 1280 px under reduced motion; the title's texts hidden, the wordmark alone, no HUD; the wreck labels kept and no wreck selected |
-| `start-390.png`, `start-1440.png` | 390 × 2308, 1440 × 962 | the start section alone, its heading through its last line: *In this beta:* and its three lines where the FM-026 line stood, then the stages, the costs and the coins; at 1440 the box fitted to its text, about 80 characters a line |
+| `start-390.png`, `start-1440.png` | 390 × 2425, 1440 × 1035 | the start section alone, its heading through its last line: *In this beta:* and its four lines where the FM-026 line stood, then the stages, the costs and the coins; at 1440 the box fitted to its text, about 80 characters a line |
 
 **Placements.** The fleet is the first section after the chart and its console; *The fleet* heads it alone. The three anchors
 left the page; the HUD's nav keeps their destinations at 981 px and wider. First-screen links: at 390 the HUD's *shoalmark* and
