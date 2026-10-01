@@ -13,12 +13,13 @@ to prove. They see what waits for them, how long, and what it blocks — first, 
 they need to run start to finish: state that outlives a session, one source of truth, a gate that refuses a *done*
 without a commit behind it. **Less work and distraction for the human; more throughput and less friction for the agents.**
 
-**What exists today:** the tracker, the gate, the board with *waiting for you* on top, `next: owner`, a cold-start
-answer in one command (`--next`) — on git and Subversion, on Windows, macOS and Linux, in any language.
+**What exists today:** the tracker, the gate (it refuses a *done* without a commit behind it), the board with
+*waiting for you* on top, `next: owner`, a cold-start answer in one command (`--next`) — on git and Subversion, on
+Windows, macOS and Linux, in any language.
 **What is the direction, not yet built:** the signed mandate, questions that carry a default and a deadline,
-evidence-checked *done*, the digest — explored, with what would kill each claim, in shoalmark's own tracker
-(`FM-005`, `docs/work-tracker/evidence/FM-005/design.md` in its repository). Trust is earned there from the Owner's
-own answers before anything runs unattended.
+the rest of evidence-checked *done*, the digest — explored, with what would kill each claim, in shoalmark's own tracker
+(`FM-005`, [`work-tracker/evidence/FM-005/design.md`](https://github.com/shoalmark/shoalmark/blob/main/work-tracker/evidence/FM-005/design.md)).
+Trust is earned there from the Owner's own answers before anything runs unattended.
 
 **A convention, Stage 0:** a [`requirements/`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) folder holds one line per requirement — id, *shall*,
 source, acceptance criterion — one text for developer and tester; a tracker cites the id. shoalmark has the
@@ -224,7 +225,7 @@ Never `--no-verify`. Never hand-edit `INDEX.md` — it is generated.
 ## 6. Install and upgrade
 
 ```bash
-git clone --branch vX.Y.Z <shoalmark-url> /tmp/shoalmark           # a release: a clean clone at its tag
+git clone --branch vX.Y.Z https://github.com/shoalmark/shoalmark /tmp/shoalmark  # a release: a clean clone at its tag
 python3 /tmp/shoalmark/shoalmark.py --vendor <repo>/tools/shoalmark  # a pinned, self-contained copy + PIN (sha256)
 cd <repo>
 python3 tools/shoalmark/shoalmark.py --init --key MSR               # shoalmark.toml · TRIAGE.md · .gitignore · the contract in AGENTS.md · a CLAUDE.md router
@@ -508,6 +509,20 @@ and reads this from stdout:
   that listened to that would let a stray variable decide what gets staged.
 - A wrapper script may set `SHOALMARK_CMD` so every message names the repository's own command.
 
+## 8. Working on shoalmark
+
+```bash
+python3 test_shoalmark.py && python3 test_core.py          # every check builds its own throwaway repository
+/usr/bin/python3 test_shoalmark.py                         # the oldest Python promised: 3.9, the one macOS ships
+```
+
+Where Chrome or Chromium is installed the board is rendered and read back. `test_core.py` pins the core's
+behaviour on a synthetic corpus; `test_shoalmark.py` pins what was built here. A change ships with its check, and
+the check is shown to fail without the change. Every consumer-visible change gets a `CHANGELOG.md` entry —
+`--vendor` prints it to the repository that upgrades. This repository tracks itself: `python3 shoalmark.py --next`.
+How a change here is reviewed, what a miss costs, and how the Owner is spoken to are this repository's house rules — the
+Owner's signed answers of 2026-09-24, in [`AGENTS.md`](https://github.com/shoalmark/shoalmark/blob/main/AGENTS.md).
+
 ## 9. Branding the board
 
 Four optional files, the same names in every place — the board is built from the places in order, **the later one
@@ -532,20 +547,6 @@ every repository. Only the git-ignored board reads them: `INDEX.md` and the gate
   that rule for any theme and remembers the choice in the browser; paper stays light. A wordmark in `currentColor`
   takes the page's ink, at its `height`, else 22 px. Every page ends in the tool's line: its mark, name and version.
 - **Another language:** `labels.yaml` for the board's words; `[headings]` in `shoalmark.toml` for the gate's sections.
-
-## 8. Working on shoalmark
-
-```bash
-python3 test_shoalmark.py && python3 test_core.py          # every check builds its own throwaway repository
-/usr/bin/python3 test_shoalmark.py                         # the oldest Python promised: 3.9, the one macOS ships
-```
-
-Where Chrome or Chromium is installed the board is rendered and read back. `test_core.py` pins the core's
-behaviour on a synthetic corpus; `test_shoalmark.py` pins what was built here. A change ships with its check, and
-the check is shown to fail without the change. Every consumer-visible change gets a `CHANGELOG.md` entry —
-`--vendor` prints it to the repository that upgrades. This repository tracks itself: `python3 shoalmark.py --next`.
-How a change here is reviewed, what a miss costs, and how the Owner is spoken to are this repository's house rules — the
-Owner's signed answers of 2026-09-24, in [`AGENTS.md`](https://github.com/shoalmark/shoalmark/blob/main/AGENTS.md).
 
 ## Licence
 
