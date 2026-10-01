@@ -31,7 +31,7 @@ now? (d) What is blocked, and by what? (e) How can you tell that item 12 is done
 
 **2. Check what you run.** Fetch the repository at the tag `v0.19.0` into a folder **outside** your working copy. The
 file `shoalmark.py` has — with `\n` line endings — the SHA-256
-`b4ea5ddf1498ada429ae38d4a5cae076adeb1393566dda6deee61ea337cf5150`. It is one file; read it before you run it.
+`1819ebdb1e17647bec64ef1efbbf790599fe1e2a7865c811208bac73b92038d9`. It is one file; read it before you run it.
 
 **3. Set up.** In an empty throwaway folder `probe/` (`python` on Windows, otherwise `python3`):
 
