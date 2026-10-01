@@ -7,6 +7,7 @@ judged_before_build = true   # FM-033, the Owner's rule: a pass judges before th
 
 [seats]            # who sits where — seats commit unsigned as <seat>@seat; the Owner is `owner` above, not a seat
                    # (FM-024: a seat's value may be a list — every identity in it is that seat; a bot address is added beside the old one)
+owner = "holgoijo@gmail.com signed"   # the old spelling, the same as `owner` above: a copy older than D2 reads no Owner from the top line, so it stays until the open branches have merged main
 principal = "principal@seat"
 implementer = "implementer@seat"
 reviewer = "reviewer@seat"

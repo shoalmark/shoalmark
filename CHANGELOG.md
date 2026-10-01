@@ -8,8 +8,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 - **The Owner is configured outside `[seats]` (FM-024).** A top-level `owner = "you@example.org signed"`, before any table, names the Owner,
   who is not a seat and holds all four rights; `[seats] owner` still reads, as its old spelling. *On upgrade:* both present and different, or an
-  `owner` key inside any other table, is refused at configuration in one line (exit 1); a top-level `owner` that older tools ignored now names the
-  Owner. The refusal that lists the seats names the Owner apart; `--schema`, the README and the setup pages say so.
+  `owner` key inside any other table (a list of rights under `[rights]` aside), is refused at configuration in one line (exit 1); a top-level
+  `owner` that older tools ignored now names the Owner — and where there is no `[seats]`, it turns the seats gate on and `answerers` is no longer
+  read. A tool older than this one ignores the top-level line: there the Owner is nobody — their answers are refused, and the TRIAGE.md guard of a
+  branch that runs it reads no Owner on a default branch that names them only at the top. While any copy older than this one reads the
+  repository, keep `[seats] owner` beside the new line, the same: this version reads the two once — this repository does, until the branches open at the
+  merge have merged main. The refusal that lists the seats names the Owner apart; `--schema`, the README and the setup pages say so.
 
 - **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
   refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
