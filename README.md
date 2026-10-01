@@ -1,6 +1,6 @@
 # shoalmark
 
-## How to get a better-performing human owner
+## Get a better-performing human Owner.
 
 Agents do not wait for tools. They wait for their human. Asked what slows them most, three independent agents gave
 the same answer, by a wide margin: **the Owner's unanswered questions** — one question, open three days, held three

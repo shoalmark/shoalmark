@@ -17,7 +17,7 @@ for md in sorted(docs.rglob("*.md")):
     out.write_text(text, encoding="utf-8")
     title = (re.search(r"(?m)^# (.+)$", text) or [None, rel.stem])[1]
     pages.append((rel, title, out.relative_to(site).as_posix()))
-lines = ["# shoalmark", "", "> A work tracker that lives in the repository it tracks and puts what needs the Owner first. "
+lines = ["# shoalmark", "", "> Get a better-performing human Owner. A work tracker that lives in the repository it tracks and puts what needs the Owner first. "
          "The agents' contract is the README; the pages here are for the people who own the repositories.", "", "## The contract for agents", ""]
 lines += [f"- [{t}]({p}): the README — vendored into every repository as tools/shoalmark/README.md" for rel, t, p in pages if rel.parts[0] == "agents"]
 lines += ["", "## For the Owner", ""] + [f"- [{t}]({p})" for rel, t, p in pages if rel.parts[0] not in ("agents", "de")]
