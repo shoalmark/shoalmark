@@ -1,12 +1,12 @@
 name = "shoalmark"
+owner = "holgoijo@gmail.com signed"   # the Owner, not a seat (FM-024): they answer with their key; at the top, before any table
 tracker_dir = "work-tracker"       # the tracker; docs/ is the documentation site
 triage_days = 7
 freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`): at 8 open or more, only bug filings
 judged_before_build = true   # FM-033, the Owner's rule: a pass judges before the first build commit — refused otherwise
 
-[seats]            # who sits where — the Owner answers with their key; seats commit unsigned as <seat>@seat
+[seats]            # who sits where — seats commit unsigned as <seat>@seat; the Owner is `owner` above, not a seat
                    # (FM-024: a seat's value may be a list — every identity in it is that seat; a bot address is added beside the old one)
-owner = "holgoijo@gmail.com signed"
 principal = "principal@seat"
 implementer = "implementer@seat"
 reviewer = "reviewer@seat"

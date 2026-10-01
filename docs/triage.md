@@ -119,7 +119,7 @@ written and signed, and the raise shows the signature proves the account, not th
   path*: a word, a line, even a blank line, because whitespace counts. It also refuses a commit that renames or
   removes those headings, deletes or moves `TRIAGE.md`, or points the tracker directory somewhere else. The one
   exception is your signed commit: `%G?` G, the signer your email, and the author the seat that holds `answer` in the
-  default branch's `[seats]`. A merge is judged only on a text that no parent had.
+  default branch's configuration. A merge is judged only on a text that no parent had.
 - **The tool.** The commit hook refuses such a commit from a seat before it is made, and `--queue` reads its pull
   request as `wait: TRIAGE.md changed unsigned`.
 - **The tool.** The keys your signature is checked against are kept the same way. They come from the default
@@ -157,7 +157,7 @@ process on their account holds that key (FM-007)*.
   catch it. As [the signing page](signing.md) says: *Tier 2 stops the agent that signs by mistake; tier 3 also stops
   the one that means to.* Tier 3 is a hardware key with a PIN and a touch, or a key in a Mac's Secure Enclave with
   Touch ID; only there is the key yours alone.
-- **The tool.** Where your seat in `[seats]` is not marked `signed`, the guard proves the author only, a string anyone
+- **The tool.** Where your `owner` is not marked `signed`, the guard proves the author only, a string anyone
   can type, and it says so.
 - **The tool.** Under Subversion the guard is out of scope, and it says so in one line: a working copy carries no
   signature.

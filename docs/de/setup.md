@@ -45,18 +45,20 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 In `shoalmark.toml`:
 
 ```
+owner = "sie@example.org signed"          # Sie, der Eigner — kein Sitz: Ihre Antworten sind signierte Commits, siehe „Ihre Antwort ist Ihr Commit“
+
 [seats]
-owner       = "sie@example.org signed"    # Sie: Ihre Antworten sind signierte Commits — siehe „Ihre Antwort ist Ihr Commit“
 principal   = "principal@seat"            # die Sitze der Agenten, jeder mit eigener Identität
 implementer = "implementer@seat"
 reviewer    = "reviewer@seat"
 ```
 
-Unter Subversion steht für den Eigner (`owner`) Ihr Server-Konto, ohne `signed`: Der Server kennt Sie schon. Jeder Sitz committet unter
+`owner` steht oben in der Datei, vor jeder Tabelle: Eine Zeile unter einer Tabellen-Kopfzeile gehört zu dieser Tabelle, und das
+Werkzeug lehnt sie in jeder Tabelle außer `[seats]` ab, wo `owner` als alte Schreibweise weiter gilt. Unter Subversion steht für den Eigner (`owner`) Ihr Server-Konto, ohne `signed`: Der Server kennt Sie schon. Jeder Sitz committet unter
 seiner eigenen Identität, einmal in seinem eigenen Worktree eingestellt
 (`git config --worktree user.email implementer@seat`), und hat nur seine eigenen Rechte: Der Eigner (`owner`) antwortet, der
 Planner fragt, schließt und sichtet, der Reviewer sichtet, der Builder baut. Die Sitze heißen im Text Planner und Builder; ihre `[seats]`-Schlüssel `principal` und `implementer` behalten ihre Namen, bis Schlüsselumbenennung, Bot-Identitäten und Badges gemeinsam umgestellt werden. Das ältere
-`answerers = ["ihrname signed"]` gilt weiter, wo es kein `[seats]` gibt.
+`answerers = ["ihrname signed"]` gilt weiter, wo es weder `owner` noch `[seats]` gibt.
 
 **Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
 und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
