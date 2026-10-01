@@ -146,9 +146,10 @@ Signatur beweist also das Konto, nicht die Hand.
 - **Das Werkzeug.** Auf einem Branch lehnt `--check` jeden Commit ab, der den Text unter *Die Absicht* oder *Der
   aktuelle Weg* ändert, sei es ein Wort, eine Zeile oder nur eine Leerzeile, denn auch Leerraum zählt. Ebenso lehnt
   es einen Commit ab, der diese Überschriften umbenennt oder entfernt, die `TRIAGE.md` löscht oder verschiebt oder
-  das Tracker-Verzeichnis woandershin zeigen lässt. Durch kommt nur Ihr signierter Commit: `%G?` G, Ihre E-Mail als
-  Signierer, und als Autor Sie, wie `owner` in der Konfiguration des Standard-Branchs Sie nennt, oder ein Sitz, dem
-  `[rights]` dort das Recht `answer` gibt. Bei einem Merge zählt nur ein Text, den keiner seiner Eltern hatte.
+  das Tracker-Verzeichnis woandershin zeigen lässt. Durch kommt nur Ihr signierter Commit: `%G?` G, die E-Mail des
+  Autors als Signierer, und als Autor Sie, wie `owner` in der Konfiguration des Standard-Branchs Sie nennt, oder ein
+  Sitz, dem `[rights]` dort das Recht `answer` gibt. Bei einem Merge zählt nur ein Text, den keiner seiner Eltern
+  hatte.
 - **Das Werkzeug.** Der Commit-Hook lehnt einen solchen Commit eines Agenten schon ab, bevor er entsteht, und
   `--queue` liest seinen Pull Request als `wait: TRIAGE.md changed unsigned`.
 - **Das Werkzeug.** Auch die Schlüssel, gegen die Ihre Signatur geprüft wird, sind so geschützt. Sie kommen aus der
@@ -195,8 +196,8 @@ nach jeder Ablehnung aus.
   es so: *Stufe 2 hält den Agenten auf, der aus Versehen signiert; Stufe 3 auch den, der es absichtlich tut.* Stufe 3
   ist ein Hardware-Schlüssel mit PIN und Berührung oder ein Schlüssel in der Secure Enclave eines Macs mit Touch ID;
   erst dort gehört der Schlüssel allein Ihnen.
-- **Das Werkzeug.** Ist Ihr `owner` nicht als `signed` markiert, beweist der Schutz nur den Autor, eine
-  Zeichenkette, die jeder tippen kann, und das Werkzeug sagt das auch.
+- **Das Werkzeug.** Ist Ihr `owner` oder ein Sitz mit `answer` nicht als `signed` markiert, beweist der Schutz nur
+  den Autor, eine Zeichenkette, die jeder tippen kann, und das Werkzeug sagt das auch.
 - **Das Werkzeug.** Unter Subversion liegt der Schutz außerhalb seines Umfangs, und das Werkzeug sagt es in einer
   Zeile: Eine Arbeitskopie trägt keine Signatur.
 
