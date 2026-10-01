@@ -458,6 +458,27 @@ section that the wreck script reads.
   may remain.
 - One Builder, or the Designer already on the landing; the Reviewer after; CI; then the tag.
 
+## The v0.19.0 release commit
+
+**The Owner's approval, 2026-10-01.** One commit in the release bundle (`release/v0.19.0`), after main with the `[seats]`
+switch, the `From:` fix, this slice and the bundle's carried findings, and before the player stats:
+- **README:** the first screen's lists to v0.19.0 — *the tracker, the gate (it refuses a done without a commit behind it), the
+  board with waiting for you on top, …*, and the direction *…the rest of evidence-checked done…*; the FM-005 pointer as
+  `https://github.com/shoalmark/shoalmark/blob/main/work-tracker/evidence/FM-005/design.md`; §6's `<shoalmark-url>` as
+  `https://github.com/shoalmark/shoalmark`; §8 moved above §9, the anchors unchanged.
+- **The workflows:** `docs.yml:4` — *Runs on a release tag, or by hand: the site is built and deployed per release. A pull
+  request does not build the site; `zensical build` locally does.*; `ci.yml:9` — RV-2110's text.
+- **The version:** `VERSION` and `__version__` 0.19.0; the CHANGELOG's `## 0.19.0 — 2026-10-02`, opening with a bold headline
+  paragraph as 0.18.6's does — the landing's facts script reads it — and saying that the hook judges more now, so `--install-hook`
+  runs again (RV-2160); both setup pages `--branch v0.19.0`.
+- **The notes:** `ADOPT.md` and `ADOPT.de.md` name `v0.19.0` and the checksum of the final `shoalmark.py`, computed last, after
+  every merge that touches it, the switch's D2 included; the Reviewer checks it against the tagged file.
+- **Shipped:** the trackers that move to `Shipped` at the cut, each naming its commit — the release Builder's list, approved by
+  the Owner.
+- **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
+  with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
+  PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
+
 ## Signals
 
 - 2026-09-30 · the Owner's first pitch, through the Principal (paraphrased, no names) · a firmware developer took one idea from it: developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading the implementation, because test plans drift; the same day a requirements folder went into that firmware repository, regulatory requirements first, the easiest to formulate, and two defects came out of it; a trial is planned for the weekend, most likely run by an agent · source: the Owner's word of 2026-09-30 · the layer is FM-042, Stage 0 its convention
