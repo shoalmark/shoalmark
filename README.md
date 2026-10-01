@@ -315,7 +315,7 @@ With launchd on macOS, `~/Library/LaunchAgents/app.shoalmark.notify.plist`, then
 Who is at the keyboard, and what that seat may change. **Four rights**, each a front-matter transition the gate sees in
 a diff: `answer` (the three answer lines) · `ask` (`next: owner`, and clearing an answered ask with its record) · `close` (a terminal status) · `triage`
 (`considered:`, `kind-of-problem:`, tier, rank); anything else is open to every seat. The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same — any other name says so in `[rights]`, in the same diff as anything it would allow.
-**The Owner is not a seat.** A top-level `owner = "you@example.org signed"`, before any table, names them — one identity or a list of them, `signed` per identity as for a seat — and they hold all four rights. `[seats] owner` is still read, as its old spelling: both present and the same are read once, both present and different are refused at configuration, in one line naming both, and so is an `owner` key inside any other table (in `[rights]`, a list of rights is the Owner's own), which is where a line meant for the top lands when it is written below a `[table]` header. Absent `[seats]` and `owner`, nothing of this is enforced. The seats are called Planner and Builder in prose; this repository's `[seats]` keeps the keys `principal` and `implementer` until the key rename, the bot identities and the badges switch together. A **merge**
+**The Owner is not a seat.** A top-level `owner = "you@example.org signed"`, before any table, names them — one identity or a list of them, `signed` per identity as for a seat — and they hold all four rights. `[seats] owner` is still read, as its old spelling: both present and the same are read once, both present and different are refused at configuration, in one line naming both, and so is an `owner` key inside any other table (in `[rights]`, a list of rights is the Owner's own), which is where a line meant for the top lands when it is written below a `[table]` header. Absent `[seats]` and `owner`, nothing of this is enforced. The seats are called Planner and Builder in prose and in `[seats]`: this repository's keys are `planner` and `builder`, each with its GitHub App's bot address beside the old one (§*Seat icons on the forge*). A **merge**
 is judged by what it changes itself — the files where it differs from every parent — under the merger, and every commit
 it brings against its own parent, under that commit's own author and signature: a clean merge adds nothing, and never
 launders a commit that was made without the hook.
@@ -329,7 +329,7 @@ builder     = "builder@seat"
 chef = ["answer", "close"]              # only for a name of your own — not owner, planner, reviewer or builder
 ```
 
-**The badge:** `git config extensions.worktreeConfig true` once, then `git config --worktree user.email principal@seat`
+**The badge:** `git config extensions.worktreeConfig true` once, then `git config --worktree user.email planner@seat`
 in each seat's worktree. A signed seat's key belongs where only that seat runs — a container, later; the Owner's key is
 never in a seat's environment. This catches an agent that does not know the rule, **not one that lies**: that is
 FM-007's class, and nothing moves work except the Owner's signed answer. **On Subversion** the identity is the server
@@ -356,8 +356,9 @@ planner = ["planner@seat", "12345+shoalmark-planner[bot]@users.noreply.github.co
 Each seat's worktree then takes the new address: `git config --worktree user.email '12345+shoalmark-planner[bot]@users.noreply.github.com'`.
 Nothing else changes: the seat's rights, its `Session:` trailer, and the Owner's signature, which stays theirs. `signed` is read per
 identity; an identity under two seats is refused at configuration, in one line naming both. The seats are `planner` and `builder`
-from 0.19.0 — `principal` and `implementer` still read, and hold the same; renaming a repository's keys, switching its addresses
-and the badges are one change, made together. A seat is *it*, not a person — its texts say
+from 0.19.0 — `principal` and `implementer` still read, and hold the same. This repository made the change in one step: the keys
+renamed, each seat's bot address beside its old one, and `gtm`, a seat of its own until then, an address of `go-to-market`; a session
+begun under a seat's old name (`<id>/implementer-<n>`) still reads as the seat's. A seat is *it*, not a person — its texts say
 *it* on purpose; *they* is for the Owner and any person.
 
 ### Sessions
@@ -366,7 +367,7 @@ The seat says **who may**; it cannot say **which run**: two sessions of one seat
 worktree carries a second setting beside its badge, and every commit made there names its session.
 
 ```bash
-git config --worktree user.email principal@seat      # the seat — read by the gate for rights
+git config --worktree user.email planner@seat        # the seat — read by the gate for rights
 git config --worktree seat.session a9f3c2d1          # the session — the harness's session id, its first eight hex characters;
                                                      # a sub-agent derives its id from its parent's: a9f3c2d1/reviewer-1;
                                                      # a session with no parent and a harness with no id: `<cmd> --session new`
@@ -427,7 +428,7 @@ what its commits say, and it ends at its last one. An id seen in two worktrees i
 ```text
 | Session | Seat | First commit | Last commit | Commits | Worktree |
 |---|---|---|---|---|---|
-| a9f3c2d1 | principal | 2026-09-24 07:28 · 049a9ab | 2026-09-24 11:02 · 5e1f0a2 | 9 | principal-a9 |
+| a9f3c2d1 | planner | 2026-09-24 07:28 · 049a9ab | 2026-09-24 11:02 · 5e1f0a2 | 9 | planner-a9 |
 | a9f3c2d1/reviewer-1 | reviewer | 2026-09-24 09:40 · 7c2d8e1 | 2026-09-24 09:52 · 3a7d1e0 | 2 | reviewer-2 |
 ```
 
@@ -437,12 +438,13 @@ left: delete it; history keeps its rows.
 
 **The gate** holds one rule. A commit by a seat `[seats]` names — never the Owner's, never an author outside
 `[seats]` — must carry a `Session:` of the shape `<8 hex>` or `<8 hex>/<seat>-<n>`, and where it names a seat, that is
-the author's seat. Exit 4, and one of three lines:
+the author's seat — or a name the seat had: `principal` for `planner`, `implementer` for `builder`, the name of an old `<name>@seat`
+address it lists. Exit 4, and one of three lines:
 
 ```text
-refused: this commit by principal@seat carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: …
-refused: this commit by principal@seat carries `Session: q7` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent
-refused: this commit by principal@seat is the seat principal, and its Session: a9f3c2d1/reviewer-1 names the seat reviewer
+refused: this commit by planner@seat carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: …
+refused: this commit by planner@seat carries `Session: q7` — a session id is eight hex characters, or `<id>/<seat>-<n>` for a sub-agent
+refused: this commit by planner@seat is the seat planner, and its Session: a9f3c2d1/reviewer-1 names the seat reviewer
 ```
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
@@ -463,8 +465,8 @@ verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `RE
 commit says one of them.
 
 **Seen:** the board's strip is one line per **parent** session with a commit in the last day, its sub-sessions folded
-into it — *sessions · 2 in the last day (9 with their sub-sessions)*, then *a9f3c2d1 principal (principal-a9) ·
-implementer 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
+into it — *sessions · 2 in the last day (9 with their sub-sessions)*, then *a9f3c2d1 planner (planner-a9) ·
+builder 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
 effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
 worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
 *reviews this week · independent n · same session m*. `--owner`, the digest, carries the same grouping — a header with
