@@ -676,19 +676,32 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       the copy's own, the hook still refreshes and prints one line: “the hooks' copy is <its>, the repository pins
       <pinned>: run --install-hook”. The hook never blocks a checkout or a merge; on failure it prints one line. The
       `pre-commit`, `prepare-commit-msg` and `commit-msg` hooks keep running the working tree's tool.
-    - *This repository:* lefthook reads `lefthook.yml` from the working tree, so lefthook keeps `pre-commit` only;
-      shoalmark's own hooks, with the trusted copy, do the refresh. The copy is refreshed by `--install-hook` on `main`.
+    - *Added the same evening* (the Owner's rulings): `--install-hook` says which commit and branch it copied the trusted
+      copy from, and warns, without refusing, where that is not the repository's default branch — the PIN it checks
+      against comes from the same tree. The board's run ends itself after 35 seconds, so a checkout or a merge never waits
+      longer for it. The board's link prints only for a board the run wrote; where `index.html` is tracked or a symlink,
+      the refusal prints instead. The board and its tracker pages reload themselves when the tab becomes visible again,
+      keeping the scroll position, and never while a dialog is open or a field has input; nothing new is loaded — no
+      polling, no second file, no server.
+    - *This repository:* lefthook reads `lefthook.yml` from the working tree, so lefthook keeps its commit-time hooks —
+      `pre-commit`, `prepare-commit-msg` and `commit-msg` — and runs nothing after a merge or a checkout; shoalmark's own
+      hooks, with the trusted copy, do the refresh. After the merge, `--install-hook` on `main` writes them and the copy.
     - *Texts:* the CHANGELOG's line for the private security report is replaced — the checkout and merge hooks run a copy
-      of the tool kept in the git directory, which runs nothing a branch brings; run `--install-hook` again after
-      upgrading. The setup pages say the board is rebuilt on every commit, checkout and merge again. The README and
-      `--help` name the copy. Both notes' way back also removes the copy in the git directory. The date goes back
-      (*The release day*, above).
+      of the tool kept in the git directory, which runs nothing a branch brings; run `--install-hook` on your default
+      branch again after upgrading. The setup pages say the board is rebuilt on every commit, and on every checkout and
+      merge with git; on Subversion, on a commit through TortoiseSVN or when the tool runs — no new Subversion hook in
+      this change. The README's hooks section and `--help` name the copy and say to run `--install-hook` on your default
+      branch. Both notes' way back also removes the copy in the git directory. The date goes back (*The release day*,
+      above).
     - *Tests:* one for each case the report names, each a branch checked out or merged that must run nothing and write
       nothing outside the tracker folder; a version drift prints its line; a re-run of `--install-hook` replaces the copy;
-      worktrees share it.
+      worktrees share it; `--install-hook` on a branch that is not the default prints its warning; a branch committing
+      `index.html` gets no link; the board's template carries the reload, and no reload path loads another file.
     - *Order:* a new branch from `main` `d9c154b`, one pull request; built on 2026-10-01; the final review at critical tier
-      (seats and security); a cold review by another model family and an outside check the Owner arranges, on 2026-10-02
-      from 07:00; then the notes' checksum, last, the full local run, CI 9/9, the merge and the tag.
+      (seats and security) comes first, and the pull request is opened, as a draft, only after it is cleared; a cold
+      review by another model family and an outside check the Owner arranges, on 2026-10-02 from 07:00; then the notes'
+      checksum, last, the full local run, CI 9/9, the merge and the tag. The scope is frozen: nothing new joins this
+      build unless it is a security finding in this change; everything else goes to 0.19.1.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
