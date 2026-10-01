@@ -27,7 +27,9 @@ hashes and ambiguous abbreviations; the stale *done* copies, README §5's row. *
 tier; the pull request, which the Owner opens, and CI's full pass on its final tree; the Owner merges at 9/9. **Known, not fixed here:**
 a `git commit --amend` that drops the named row passes the hook and is refused by `--check` (the hook reads it against the commit it
 replaces, as FM-033's does); `rights_problems` still stops in a traceback on a tracker linked from outside the repository where `[seats]`
-are set, as it did at the base. Two rendered checks of the suite fail between 00:00 and 02:00 CEST, on the pristine tip as on this one —
+are set, as it did at the base; the pre-commit hook `--install-hook` writes names the tracker directory, the configuration and the
+tool from the tool's root, and git names staged paths from the repository's top: where the root is below the top, the hook never
+runs the gate and `--check` judges; older than this branch. Two rendered checks of the suite fail between 00:00 and 02:00 CEST, on the pristine tip as on this one —
 FM-028's clocks, not this change. The pull request's first CI run failed three checks on the board rendered in a browser — the fifth
 section reads *ended* now, and the check still looked for *done*, which no seat had run before the push; fixed in the commit that
 follows it. Next: review.
