@@ -1,6 +1,7 @@
 # The Owner's run sheet — v0.19.0, shoalmark's first public beta (FM-006)
 
 Copy each block, compare with *Expect*, paste back the one line named. Steps 1–2 come before the tag, 3–7 after it. The tag is yours, on `main` after the merge. The topics in step 1 are proposed; you set them.
+Added in the final review's fix round (RV-2264): steps 1–2 come after the merge, before the tag — `main` has `docs/assets/preview.png` only from the merge.
 
 ## Before the tag
 1. **Description, homepage, topics** (the description is the site's, `zensical.toml`).
