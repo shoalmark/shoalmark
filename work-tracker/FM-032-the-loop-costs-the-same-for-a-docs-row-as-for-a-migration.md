@@ -23,6 +23,8 @@ hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merg
 
 **2026-10-01 — one full local run before a pull request opens (the Owner's ruling):** the suites run in full once on a branch's final tip before its pull request opens, not per commit; a later commit that adds only a review file needs none — CI covers it; never between 00:00 and 02:00 CEST until FM-028 is fixed; CI on the pull request stays the full pass.
 
+**2026-10-01 — when CI runs: a trial through v0.19.0 and the next 10 pull requests (the Owner's ruling):** no fixed point — the Planner picks each change's route and states it in the brief in one line with its reason: *early* for code with platform or CodeQL exposure and any change to the gate, the hook, identities or CI (a draft pull request from the Owner right after the first build, CodeQL running only on pull requests, or a manual CI run where CodeQL is not relevant); *final tip* for small, low-risk changes (one run after the full local run and the verdict); *bundle* for several final-tip changes in separate files. The full local run before any pull request stays. The Auditor measures the trial from the forge, and the Owner rules after it.
+
 **Ruled 2026-09-24 11:07:43 CEST by the Owner's signed answer `ffa63b8` (PR 44): *all four now*.** Built for 0.18.0 on
 this branch, the same day: S2, the registry as a report from the commit trailers (`3c0754f`; it is FM-031's S1 by the two
 answers); S4, the filing freeze at 8 with `--tags` on `--new` (`43e6815`, `66f4b7b`); S1 the review tier and S3 the miss
