@@ -612,6 +612,12 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     commits, so the suite passes inside Codex.
   - **F8:** `ADOPT.de.md:5` opens “**An Claude, Codex und alle, die das lesen:**”.
   - **F4** is closed by RV-2262 (`da144ef`). F3, F6 and F7 go after the tag (the list in *What a stranger meets first*).
+  - **The board's link** (the Owner's ruling, the same day; `shoalmark.py` changes in this round anyway): when the default run
+    or `--html-only` writes the board, the tool prints one line with the board's clickable file link — “board:
+    file:///…/work-tracker/index.html” — correct on Windows, macOS and Linux; never in `--print-written`'s output, which the
+    pre-commit hook pipes into `git add` as paths. Tests: `--html-only` prints the link and it names the written file;
+    `--print-written`'s output is unchanged. One CHANGELOG line in 0.19.0. The notes' checksum is computed after this and
+    F1, last.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run; then the Owner marks the
   pull request ready. The two items from the first round:
