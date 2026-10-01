@@ -2,9 +2,11 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.19.0
+## 0.19.0 — 2026-10-02
 
-<!-- The heading's name is provisional; the release cut settles which version this section is. -->
+**shoalmark 0.19.0 is the first public beta: the gate refuses a *done* without a commit behind it, the first screen speaks to
+the person who owns the repository, and a new English note, `ADOPT.md`, goes to their agents** (FM-005, FM-006, FM-024 — with
+FM-040, FM-041 and FM-032).
 
 - **What a stranger meets first (FM-006) — pages and wording, no product growth.** The Owner's ruling of 2026-09-30, its A amended on 2026-10-01,
   filed in FM-006: the landing leads with *The agents keep the work; the person keeps the word.* and one action, *Hand your agents the note* — the new
@@ -30,6 +32,11 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   included, with or without `[seats]`; `Closed` is not judged; on Subversion the change is the uncommitted one, else the newest revision.
   *On upgrade:* a story reads *3 chapters: 1 shipped · 1 closed · 1 open*, and the board's last section and INDEX.md's Board value are `ended`,
   not `done` — a `labels.yaml` renames `story.done` to `story.shipped` and `story.closed`, `section.done` to `section.ended`, `desc.done` to `desc.ended`.
+- **The pre-commit run judges the commit being made, every file name as it is (FM-005's review).** `git commit -a` and `git commit <path>`
+  hand the hook an index of their own, and the gate read `.git/index` and the working tree, so the rights and the `Shipped` rule judged such a
+  commit only in `--check`; a tracker whose file name git quotes (a non-ASCII byte, a `"`) was read by neither. Both are judged at commit time
+  now. *On upgrade:* a `close`, `answer` or `triage` made that way is refused by the hook, where only `--check` refused it; run `--install-hook`
+  again so the hook also runs the gate for a name git quotes.
 
 - **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
