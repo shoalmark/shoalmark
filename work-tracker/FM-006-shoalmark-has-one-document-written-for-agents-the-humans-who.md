@@ -474,7 +474,7 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
 - **The workflows:** `docs.yml:4` — *Runs on a release tag, or by hand: the site is built and deployed per release. A pull
   request does not build the site; `zensical build` locally does.*; `ci.yml:9` — RV-2110's text.
 - **The version:** `VERSION` and `__version__` 0.19.0; the CHANGELOG's `## 0.19.0 — 2026-10-02`, opening with a bold headline
-  paragraph as 0.18.6's does — the landing's facts script reads it — and saying that the hook judges more now, so `--install-hook`
+  paragraph as 0.18.5's does (0.18.6's opens with a bullet) — the landing's facts script reads it — and saying that the hook judges more now, so `--install-hook`
   runs again (RV-2160); both setup pages `--branch v0.19.0`.
 - **The notes:** `ADOPT.md` and `ADOPT.de.md` name `v0.19.0` and the checksum of the final `shoalmark.py`, computed last, after
   every merge that touches it, the switch's D2 included; the Reviewer checks it against the tagged file.
@@ -490,6 +490,22 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
   `v0.19.0`, `SHA256SUMS` for `shoalmark.py`; the notes — the 0.19.0 section verbatim and three lines (install pinned to the tag,
   `--install-hook` again, the checksum), generated, never committed; `gh release create v0.19.0 --prerelease --title "shoalmark
   0.19.0 — public beta" --notes-file <notes> shoalmark.py SHA256SUMS`. The Auditor verifies the published assets against the tag.
+- **In this beta** (the Owner's ruling, 2026-10-01; built while the bundle waits for the switch; the bundle's final review
+  covers it, no render round). English: *Not a migration tool: it imports no ticket system and starts from your repository's own
+  work. A path for a fleet that already runs a system of its own is filed, not built.* · *For one person in charge and their agent
+  fleet. Several people in charge are not tested in this beta; support for them may come later.* · *Not proof that work is right.
+  The gate refuses a done without a commit behind it. Whether that commit did the job is what a review is for.* German (*Sie*):
+  *Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine
+  Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.* · *Für eine Person mit dem letzten Wort und ihre
+  Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.* · *Kein Beweis,
+  dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein
+  Review.* — on the landing's start section in place of *…filed (FM-026) and coming*, untrue since FM-026 is Parked; in
+  `docs/index.md` and `docs/de/index.md` under *What it is not* / *Was es nicht ist*, as *In this beta:* / *In dieser Beta:*; in
+  the README after *What is the direction*. Before *Tell your Owner so and stop here* in `ADOPT.md`: *If your project has several
+  people in charge, or a large ticket system to move, this beta is not for it yet.*; in `ADOPT.de.md`: *Wenn in eurem Projekt
+  mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen wäre, ist diese Beta noch nichts für euer Projekt.* *The
+  Planner's reading:* the same untrue sentence in the two start pages' *You lose nothing* paragraphs (`docs/index.md:63`,
+  `docs/de/index.md:65`) goes with the landing's.
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
   with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
   PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
