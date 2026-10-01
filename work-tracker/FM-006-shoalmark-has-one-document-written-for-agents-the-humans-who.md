@@ -510,6 +510,13 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
   mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen wäre, ist diese Beta noch nichts für euer Projekt.* *The
   Planner's reading:* the same untrue sentence in the two start pages' *You lose nothing* paragraphs (`docs/index.md:63`,
   `docs/de/index.md:65`) goes with the landing's.
+  A fourth line, the Owner's ruling of the same day, wherever the three stand (the landing's box, the README, both start
+  pages): *Made and tested on git with GitHub. Subversion passes the test suite but has not been used in real work; signed answers
+  and the pull-request queue need git and GitHub.* / *Gebaut und erprobt mit git und GitHub. Subversion besteht die Test-Suite, ist
+  in echter Arbeit aber noch nicht erprobt; signierte Antworten und die Pull-Request-Warteschlange brauchen git und GitHub.* In both
+  notes, after the *not for it yet* line: `ADOPT.md` *On Subversion it passes the test suite but has not been used in real work: say
+  so in your report.*; `ADOPT.de.md` *Unter Subversion besteht es die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: sagt
+  das in eurem Bericht.* The Reviewer checks the German, and that every clause holds at the tip.
   The Owner approved the start section's render (`start-390.png`, `start-1440.png`, `b2683f2`); on desktop the box's text is
   capped at about 80 characters wide, to read faster — the Owner's cosmetic suggestion, taken.
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
