@@ -8041,7 +8041,7 @@ def board_run(root):
 
 
 _AUDIT_HOOKED = [False]
-BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 60)      # how long the board's run, as a program, may take: a checkout or a merge never waits longer for it
+BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 35)      # how long the board's run, as a program, may take: a checkout or a merge never waits longer for it
 
 
 def board_watchdog():
