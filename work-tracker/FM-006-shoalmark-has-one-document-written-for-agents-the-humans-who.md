@@ -456,6 +456,19 @@ section that the wreck script reads.
   method,** in the footnote as today: merged pull requests of `shoalmark/shoalmark`, numbers 1 to the last at the cut, without the
   Owner's answer branches; one counts when a non-merge commit adding or changing a file under `work-tracker/evidence/reviews/` is
   dated before the pull request was opened.
+- **The Auditor's numbers at the cut `c830470`**, read 2026-10-01, 12:47–12:55 CEST:
+  - the top bar: release `v0.19.0` · hi-score 71/82 · wrecks 27 · open 10;
+  - *High scores*: 1st 71/82, *after the rule* — pull requests 47–144, from the Owner's signed answer of 24 September 2026, 11:07
+    CEST, to 1 October 2026; 2nd 10/37, *before it* — pull requests 1–43;
+  - the footnote: “Counted on 1 October 2026 with gh from pull requests 1–144 of shoalmark/shoalmark: merged ones only, without
+    the Owner's own answer branches. One counts when a commit adding or changing a file under work-tracker/evidence/reviews/,
+    merge commits excluded, is dated before the pull request was opened.”;
+  - the wrecks: `WRECKS` from the script at `c830470` — 27: In Progress 7, Proposed 3, Shipped 16, Closed 1, so open 10, raised
+    16, closed 1; all 27 links written as `shoalmark/shoalmark`;
+  - the board's excerpt (`--owner` at `c830470`): *waiting for you* 1; *your acts, with their time* 1, the row “FM-007 after the
+    scoring, once the key is delivered · promised 2026-09-25 · no date yet”; the caption “shoalmark's own board, 1 October 2026”;
+  - the footer: “v0.19.0, released 2 October 2026”, with the CHANGELOG's headline; the release read at its cut, 1 October 2026;
+    the wrecks and the board's excerpt read on 1 October 2026, 12:47 CEST.
 - **The wrecks** come from `evidence/FM-006/landing/start-page/facts.mjs` at the cut; the script stays as written — evidence is
   append-only — and its wreck links, which say `holgo99/shoalmark`, are written as `shoalmark/shoalmark` in the page; the commit
   says so.
@@ -536,14 +549,19 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     host through git, and through gh for the pull-request queue)”. `ADOPT.de.md:11`: “(nur Standardbibliothek, keine
     Abhängigkeit, braucht kein Netz: online erreicht es den Host eures Repositorys über git und für die
     Pull-Request-Warteschlange über gh)”.
-  - *The way back.* `ADOPT.md:74`: “Way back: first remove the hooks marked `# shoalmark` in `.git/hooks/` (on Subversion, the
-    `tsvn:` hook properties); while they stay, every commit is refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the
-    shoalmark block in `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.” `ADOPT.de.md:73`: “Rückweg:
-    zuerst die mit `# shoalmark` markierten Hooks in `.git/hooks/` entfernen (unter Subversion die `tsvn:`-Hook-Properties);
-    solange sie bleiben, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in
-    `AGENTS.md` löschen. Der Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.”
+  - *The way back* — amended the same day, in one more commit before the final review: everything that calls the tool goes
+    first, the line added to a hook of one's own included (the installer leaves an existing hook alone and prints that line to
+    add to it). `ADOPT.md:74`: “Way back: first remove from `.git/hooks/` everything that calls `tools/shoalmark/shoalmark.py`:
+    the hooks marked `# shoalmark`, and the line you added to a hook of your own (on Subversion, the `tsvn:` hook properties);
+    while any of it stays, every commit is refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in
+    `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.” `ADOPT.de.md:73`: “Rückweg: zuerst aus
+    `.git/hooks/` alles entfernen, was `tools/shoalmark/shoalmark.py` aufruft: die mit `# shoalmark` markierten Hooks und die
+    Zeile, die ihr einem eigenen Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties); solange etwas davon
+    bleibt, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in `AGENTS.md`
+    löschen. Der Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.”
 
-  The Reviewer checks the German and runs the way back in a scratch repository; the Auditor verifies the commit when it lands.
+  The Reviewer checks the German and runs the way back in a scratch repository — the old order, the text as written, and a
+  repository whose own hook carries the added line; the Auditor verifies each commit when it lands.
 
 ## Signals
 
