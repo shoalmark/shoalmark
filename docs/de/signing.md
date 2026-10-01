@@ -259,9 +259,9 @@ Standard-Branch geprüft: Ein Branch, der seinen eigenen Schlüssel unter Ihrer 
 
 **Was es nicht unterscheiden kann.** Ein Commit, der mit Ihrem Schlüssel signiert ist, geht durch; auf Stufe 0 hat jeder
 Prozess unter Ihrem Konto diesen Schlüssel (FM-007) — erst die Stufen oben machen ihn allein zu Ihrem. Wo Ihr `owner`
-nicht `signed` ist, beweist das Werkzeug nur den Autor, eine Zeichenkette, die jeder tippen kann, und sagt es:
-Markieren Sie ihn `signed`, um den Schlüssel zu beweisen. Unter Subversion liegt dieser Schutz außerhalb des Umfangs:
-seine Arbeitskopie trägt keine Signatur.
+oder ein Sitz mit `answer` nicht `signed` ist, beweist das Werkzeug nur den Autor, eine Zeichenkette, die jeder tippen
+kann, und sagt es: Markieren Sie ihn `signed`, um den Schlüssel zu beweisen. Unter Subversion liegt dieser Schutz
+außerhalb des Umfangs: seine Arbeitskopie trägt keine Signatur.
 
 ## Was das Werkzeug ablehnt, und was es sagt
 
