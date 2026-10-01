@@ -30,7 +30,7 @@ fertig ist?
 
 **2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.19.0` in einen Ordner **außerhalb** eurer
 Arbeitskopie. Die Datei `shoalmark.py` hat — mit `\n`-Zeilenenden — den SHA-256
-`5330ee0679ee9937a88c91ae3b36a9416f7003c706983ff0bd4e2a0bbfa971ee`. Es ist eine Datei; lest sie, bevor ihr sie startet.
+`d8242f140c98bd322c9c67e185e6c98ffcce9533851cad3f6b18dd4718a9f097`. Es ist eine Datei; lest sie, bevor ihr sie startet.
 
 **3. Aufsetzen.** In einem leeren Wegwerf-Ordner `probe/` (auf Windows `python`, sonst `python3`):
 
