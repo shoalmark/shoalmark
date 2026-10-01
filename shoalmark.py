@@ -6817,6 +6817,11 @@ EXIT_LINT = 4
 GENERATED_RE = re.compile(r"^> Generated \d{4}-\d{2}-\d{2} ", re.M)
 
 
+def board_link():
+    """The one line that says where the board was written: `board: file:///…/index.html` — the written file as a URI, right on Windows, macOS and Linux."""
+    return f"board: {HTML_OUT.resolve().as_uri()}"
+
+
 def drift_normalize(text):
     """Blank the generation date so only ledger content can count as drift."""
     return GENERATED_RE.sub("> Generated <date> ", text)
@@ -7640,6 +7645,7 @@ def main(argv=None):
         if TRACKER_DIR.is_dir():
             put(HTML_OUT, render_html(trackers))
             write_views(trackers)
+            print(board_link())                                 # where the board is written, to open (FM-006); never with --print-written, whose stdout is paths for `git add`
         return EXIT_OK
     if not TRACKER_DIR.is_dir():
         print(f"no tracker directory at {TRACKER_DIR} — run `{CMD} --init`", file=sys.stderr)
@@ -7735,6 +7741,8 @@ def main(argv=None):
         write_views(trackers)
         print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
         print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
+        if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
+            print(board_link())
         for path, text in sorted(DERIVED_FILES.items()):
             path.parent.mkdir(parents=True, exist_ok=True)
             put(path, text)

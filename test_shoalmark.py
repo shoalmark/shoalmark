@@ -159,6 +159,17 @@ with tempfile.TemporaryDirectory() as d:
     made[0].write_text(made[0].read_text().replace("considered:\n", "considered: none\n"))
     code, out, _ = run(root, "--print-written")
     check("with `considered: none` the gate is green, and --print-written names exactly the INDEX", code == 0 and out.strip() == "docs/work-tracker/INDEX.md")
+    # FM-006, the board's link: the line that says where the board was written, to open — in `--html-only` and the default run, never in the pre-commit run
+    import urllib.parse as _up, urllib.request as _ur
+    board_ = root / "docs/work-tracker/index.html"; board_.unlink()
+    code_h, out_h, err_h = run(root, "--html-only"); uri_ = out_h.strip(); read_back_ = Path(_ur.url2pathname(_up.urlparse(uri_).path))
+    code_d, out_d, _ = run(root); code_p, out_p, err_p = run(root, "--print-written")
+    check(f"FM-006 · the board's link: `--html-only` prints one line, `board: file:///…/index.html`, and the URI read back is the file it wrote; the default run prints it as its last line; `--print-written` prints no link — its stdout is the path alone, "
+          f"its stderr the default run's own lines, byte for byte (saw {uri_!r})",
+          code_h == 0 and out_h.count("\n") == 1 and uri_.startswith("board: file:///") and err_h == "" and board_.exists()
+          and Path(_ur.url2pathname(_up.urlparse(uri_[len("board: "):]).path)).resolve() == board_.resolve() and out_d.splitlines()[-1] == uri_
+          and code_p == 0 and out_p == "docs/work-tracker/INDEX.md\n" and "board:" not in out_p + err_p
+          and err_p == "".join(l for l in out_d.splitlines(True) if not l.startswith("board: ")))
     check("--check is green on what was just written, and writes nothing", run(root, "--check")[0] == 0)
     made[0].write_text(made[0].read_text().replace("status: Proposed", "status: In Progress"))
     check("--check reports drift with its own exit code", run(root, "--check")[0] == fm.EXIT_DRIFT)

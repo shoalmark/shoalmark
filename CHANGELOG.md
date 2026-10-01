@@ -38,6 +38,7 @@ FM-040, FM-041 and FM-032).
   commit only in `--check`; a tracker whose file name git quotes (a non-ASCII byte, a `"`) was read by neither. Both are judged at commit time
   now. *On upgrade:* a `close`, `answer` or `triage` made that way is refused by the hook, where only `--check` refused it; run `--install-hook`
   again so the hook also runs the gate for a name git quotes.
+- **The board's link (FM-006).** The default run and `--html-only` print one line, `board: file:///…/index.html`, where the board was written; `--print-written` prints none.
 
 - **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
