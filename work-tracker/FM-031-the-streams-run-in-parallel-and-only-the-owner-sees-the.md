@@ -143,7 +143,7 @@ closes the `sessions.md` admission.
 
 **Ruled 2026-09-24 21:29:12 by the Owner's signed answer `eef0c2e` (PR 62): *the nine hold as written* — the proposal, the first of two.** Recorded as open the same evening at 19:53 on the Auditor seat's check 18 on v0.18.2 (P2), through the Owner; until then neither ruled nor recorded. Sessions of one account can message each other directly (the harness's peer channel, found 2026-09-23 when two
 Principal sessions collided in one worktree); the parent project's fleet wrote eight rules for it that day (its integration plan,
-D11), and the fog incident of the morning of 2026-09-24 (its ledger, PR 812 and PR 813) showed the ninth. Signed as written, the nine:
+D11), and the fog incident of the morning of 2026-09-24 (its ledger, PR 812 and PR 813) showed the ninth. Signed as written, the nine — rule 3's example signed as *he said yes*, written *they said yes* since E of the Owner's ruling of 2026-09-30, filed in FM-006:
 
 1. A message between sessions carries checkable facts only, re-checked in git before anything moves on it.
 2. An agreement exists only as a commit within the hour, with the message quoted; a message alone agrees to nothing.
