@@ -599,10 +599,11 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     need `git`, and the pull-request queue `git` and GitHub.” — in `docs/de/index.md`: “Gebaut und erprobt mit `git` und
     GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr.
     Signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.” The notes' Subversion paragraph,
-    which also closes F5 — `ADOPT.md`: “On Subversion it reads its history from the server through svn and passes the test
-    suite, but it has not been used in real work and comes without a guarantee: say so in your report.” — `ADOPT.de.md`:
-    “Unter Subversion liest es seine Historie über svn vom Server und besteht die Test-Suite, ist in echter Arbeit aber noch
-    nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.”
+    which also closes F5, says F1's cost too (the Owner's ruling, the same day) — `ADOPT.md`: “On Subversion it reads its
+    history from the server through svn, so offline its checks refuse; it passes the test suite, but it has not been used in
+    real work and comes without a guarantee: say so in your report.” — `ADOPT.de.md`: “Unter Subversion liest es seine
+    Historie über svn vom Server, offline lehnen seine Prüfungen deshalb ab; es besteht die Test-Suite, ist in echter Arbeit
+    aber noch nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.”
   - **F1, P1, fixed now:** on Subversion, a done check that cannot read the history it needs refuses and says why; it never
     passes unread. The test is the cold audit's control: a committed `Shipped` tracker with no revision behind it exits 4 when
     connected, and 4, not 0, with the server stopped or the network denied. `shoalmark.py` changes, so its SHA-256 is computed
@@ -618,9 +619,17 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     pre-commit hook pipes into `git add` as paths. Tests: `--html-only` prints the link and it names the written file;
     `--print-written`'s output is unchanged. One CHANGELOG line in 0.19.0. The notes' checksum is computed after this and
     F1, last.
+  - **F1's cost is accepted** (the Owner's ruling, the same day): offline, on Subversion, a repository with a `Shipped` tracker
+    gets exit 4 from `--check` and the default run; the notes' Subversion paragraph (above) says so.
+  - **The second fail-open, fixed now by the same ruling** (found while F1 was built): when `svn blame` fails, the rights check
+    refuses and says why; it never passes unread. F1's unreadable error is reused. The test, in F1's control style: a seat's
+    `close`, `answer` or `triage` change judged with blame failing exits 4, not 0, and passes connected where it should. Then
+    the notes' checksum is computed again, last.
 
-  The final review's scoped check covers both rounds and runs F1's control; then the full local run; then the Owner marks the
-  pull request ready. The two items from the first round:
+  The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
+  built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
+  delta and the final full run on the final head; then the Owner marks the pull request ready. If this is not through by 20:30
+  CEST, the Owner decides between disclosure and 0.19.1. The two items from the first round:
   - `docs/signing.md:240` and its German twin `docs/de/signing.md:261–262` name the seats that hold `answer` beside the Owner,
     as RV-2261's fix does on the triage pages. *The Planner's reading,* in RV-2261's words: “Where your `owner`, or a seat that
     holds `answer`, is not marked `signed`, …” / “Wo Ihr `owner` oder ein Sitz mit `answer` nicht `signed` ist, …”.
