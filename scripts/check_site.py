@@ -46,6 +46,27 @@ class Links(HTMLParser):
 
 for page in ("index.html", "agents/index.html"):
     Links(page).feed((site / page).read_text(encoding="utf-8"))
+
+
+class PreviewImage(HTMLParser):
+    """FM-006: the image a page's link preview names is a file of the site."""
+    def __init__(self, page):
+        super().__init__()
+        self.page = page
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag != "meta" or attrs.get("property") != "og:image":
+            return
+        url = urlsplit(attrs.get("content") or "")
+        if url.netloc != "shoalmark.github.io" or not url.path.startswith("/shoalmark/") \
+                or not (site / unquote(url.path[len("/shoalmark/"):])).is_file():
+            raise SystemExit(f"site check: link preview image not in the site, in {self.page}: {attrs.get('content')}")
+
+
+for page in site.rglob("*.html"):
+    PreviewImage(page.relative_to(site)).feed(page.read_text(encoding="utf-8"))
+
 # Parse CSS syntax: font sources may be extensionless, escaped, or nested in at-rules.
 def asset_target(page, value, kind):
     url = urlsplit(value)
@@ -138,4 +159,4 @@ for page in site.rglob("*"):
             raise SystemExit(f"site check: external Google Fonts reference in {page}")
         if "https://holgo99.github.io/shoalmark" in text or "https://github.com/holgo99/shoalmark" in text:
             raise SystemExit(f"site check: old public URL in {page}")
-print("site check: entry pages, contract inclusion, landing/contract destinations and public URLs passed")
+print("site check: entry pages, contract inclusion, landing/contract destinations, link preview images and public URLs passed")
