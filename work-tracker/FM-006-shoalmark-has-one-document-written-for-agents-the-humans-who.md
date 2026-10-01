@@ -436,7 +436,8 @@ in German prose (*One claim, the Owner's*, above, records *der Eigner*; `ADOPT.d
 lines' *brief*; descriptions of their own for the other German pages — until then they preview with the site's
 description; a release workflow — the notes from the CHANGELOG, the assets, an attestation; a light scheme — the page is dark
 only; a picture of the board itself; the incident panel's cycle; how many
-seats and review passes a one-Owner product carries.
+seats and review passes a one-Owner product carries; the way back on both start pages, and *What it is not* becoming *What
+stays yours* — each screened first (the Owner's ruling, 2026-10-01).
 
 ## The landing's player stats at the v0.19.0 cut
 
@@ -523,6 +524,26 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
   with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
   PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
+- **Every public line stays true for two paths** (the Owner's ruling, 2026-10-01): a phone app, and a hosted path a person opts
+  into — never a requirement; and no line ties shoalmark to one forge. Nothing is announced. One commit on the bundle, before the
+  final review, with these texts as written:
+  - *The rewording.* The landing's ticker, both copies (`overrides/landing.html:517–518`), in place of its first three items:
+    “needs no server and no account · ids you can say out loud”. `docs/index.md:72`: “shoalmark needs no server and no account,
+    and its ids are ones you can say out loud, like FM-012.” `docs/de/index.md:77`: “shoalmark braucht keinen Server und kein
+    Konto, und seine IDs kann man aussprechen, etwa FM-012.” `README.md:40`: “It needs no server, no database and no dependency
+    beyond Python 3.9.”
+  - *No network.* `ADOPT.md:11`: “(standard library only, no dependency, needs no network: online, it reaches your repository's
+    host through git, and through gh for the pull-request queue)”. `ADOPT.de.md:11`: “(nur Standardbibliothek, keine
+    Abhängigkeit, braucht kein Netz: online erreicht es den Host eures Repositorys über git und für die
+    Pull-Request-Warteschlange über gh)”.
+  - *The way back.* `ADOPT.md:74`: “Way back: first remove the hooks marked `# shoalmark` in `.git/hooks/` (on Subversion, the
+    `tsvn:` hook properties); while they stay, every commit is refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the
+    shoalmark block in `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.” `ADOPT.de.md:73`: “Rückweg:
+    zuerst die mit `# shoalmark` markierten Hooks in `.git/hooks/` entfernen (unter Subversion die `tsvn:`-Hook-Properties);
+    solange sie bleiben, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in
+    `AGENTS.md` löschen. Der Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.”
+
+  The Reviewer checks the German and runs the way back in a scratch repository; the Auditor verifies the commit when it lands.
 
 ## Signals
 
