@@ -37,10 +37,11 @@ cd probe
 ```
 
 Nothing needs copying before `--init`: its defaults are English — every entry carries the sections *What is true now*,
-*Why*, *Done when* and *Ship log*, and the board is English. The id prefix is the folder's name, so in `probe/` the
-first entry is `PROBE-001` (`--key` would choose another). Then `python tools/shoalmark/shoalmark.py --init`; it
-overwrites nothing. It writes `shoalmark.toml`, `docs/work-tracker/TRIAGE.md`, the agents' contract in `AGENTS.md` and a
-`CLAUDE.md` router.
+*Why*, *Done when* and *Ship log*, and the board is English. The id prefix is the first word of the folder's name, cut
+to five characters, so in `probe/` the first entry is `PROBE-001` (`--key` would choose another). Then
+`python tools/shoalmark/shoalmark.py --init`; it overwrites nothing. It writes `shoalmark.toml`,
+`docs/work-tracker/TRIAGE.md`, the agents' contract in `AGENTS.md` and a `CLAUDE.md` router, and inside a git working
+copy the board's two lines in `.gitignore`.
 
 **4. File five real work items.** One entry for the plan as a whole, five for work items from your plan
 (`python tools/shoalmark/shoalmark.py --new "…"`), each with `epic: PROBE-001`, an honest `status:`, `next:`
