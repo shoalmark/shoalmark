@@ -632,6 +632,16 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     RV-2269 — the reference lines that name Subversion stay; the fourth line and the notes carry the qualification.
   - **The stopping rule** (the Owner's ruling, the same day): after A, no further Subversion finding holds the tag unless it
     also breaks git; those go to 0.19.1.
+  - **A private security report, P1, fixed before the tag** (the Owner's ruling, the same day): after a checkout or a merge,
+    nothing shoalmark installed runs. `--install-hook` no longer writes `post-checkout` or `post-merge`; run again, it
+    removes the two it wrote before (marked `# shoalmark`) and says so. `--html-only` never runs the deriver. Tests: the
+    checkout case after `--install-hook` runs nothing; a re-run of `--install-hook` removes the old `post-*` hooks; the way
+    back and the hook tests follow the new count. One CHANGELOG line in 0.19.0: “The installed hooks no longer run anything
+    after a checkout or a merge, and `--html-only` no longer runs the deriver; run `--install-hook` again after upgrading to
+    remove the old ones.” Commits and records name it a private security report: no reporter, no exploit recipe. Then the
+    notes' checksum again, last; the final review's scoped check runs the checkout case; the final full run on that head;
+    and the Owner marks the pull request ready. The report's other findings go to 0.19.1 through private advisories, not
+    into public trackers.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
