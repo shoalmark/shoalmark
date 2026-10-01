@@ -438,8 +438,11 @@ description; a release workflow — the notes from the CHANGELOG, the assets, an
 only; a picture of the board itself; the incident panel's cycle; how many
 seats and review passes a one-Owner product carries; the way back on both start pages, and *What it is not* becoming *What
 stays yours* — each screened first (the Owner's ruling, 2026-10-01); the Owner named *he*, *his* or *him* on 128 lines of
-`shoalmark.py`'s comments and docstrings (the Auditor's count at `c830470`; no printed line) — filed, not fixed, since
-`shoalmark.py` stays as checksummed for v0.19.0 (the Owner's ruling, 2026-10-01).
+`shoalmark.py`'s comments and docstrings (the Auditor's count at `c830470`; no printed line) — filed, not fixed (the Owner's
+ruling, 2026-10-01); from the cold audit of v0.19.0 (the Owner's rulings, 2026-10-01; filing is frozen): F3, the Markdown
+twins' broken links (`scripts/llms_txt.py`); F6, the private measurement's source and date on the box; F7, the German
+board's `lang`; and GitLab — by the code, all but `--queue` already works on any git host; the queue needs a reader for
+GitLab; untested.
 
 ## The landing's player stats at the v0.19.0 cut
 
@@ -547,7 +550,8 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
   `ADOPT.md` *On Subversion it passes the test suite but has not been used in real work: say so in your report.*; `ADOPT.de.md`
   *Unter Subversion besteht es die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Sagt das in eurem Bericht.* — the
   capital after the colon, a whole sentence following (the final review's RV-2265, the Owner's ruling). The Reviewer checks the
-  German, and that every clause holds at the tip.
+  German, and that every clause holds at the tip. The cold audit's round rewrites the fourth line and the notes' Subversion
+  paragraph once more (below, *Subversion*).
   The Owner approved the start section's render (`start-390.png`, `start-1440.png`, `b2683f2`); on desktop the box's text is
   capped at about 80 characters wide, to read faster — the Owner's cosmetic suggestion, taken.
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
@@ -582,8 +586,35 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
   The Reviewer checks the German and runs the way back in a scratch repository — the old order, the text as written, and a
   repository whose own hook carries the added line; the Auditor verifies each commit when it lands.
-- **The cold audit's round** (the Owner's ruling, 2026-10-01): the second, small fix round, on top of the final review's,
-  carries the cold audit's findings and two items the first round found:
+- **The cold audit's round** (the Owner's rulings, 2026-10-01): the second, small fix round, on top of the final review's,
+  carries the cold audit's findings — its report on `1c62b13`, *TAG AFTER FIXES*: F1 P1, F2–F5 P2, F6–F8 P3 — the Owner's
+  ruling on Subversion, and two items the first round found.
+  - **Subversion:** anyone may try it; it is not guaranteed and not claimed; it appears only in the qualified lines. The texts,
+    as written — the landing's ticker, both copies: “git and subversion” becomes “made and tested on git”. `README.md:17`: “—
+    with git, on Windows, macOS and Linux, in any language.” `docs/index.md:73`: “Runs with git on Windows, macOS and Linux.”
+    `docs/de/index.md:78–79`: “Läuft mit git auf Windows, macOS und Linux.” `ADOPT.md:14`: “It runs with git on Windows,
+    macOS and Linux (CI proves all three).” `ADOPT.de.md:14`: “Läuft mit git auf Windows, macOS und Linux (CI beweist alle
+    drei).” The fourth *In this beta* line, in the README, `docs/index.md` and the landing: “Made and tested on `git` with
+    GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers
+    need `git`, and the pull-request queue `git` and GitHub.” — in `docs/de/index.md`: “Gebaut und erprobt mit `git` und
+    GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr.
+    Signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.” The notes' Subversion paragraph,
+    which also closes F5 — `ADOPT.md`: “On Subversion it reads its history from the server through svn and passes the test
+    suite, but it has not been used in real work and comes without a guarantee: say so in your report.” — `ADOPT.de.md`:
+    “Unter Subversion liest es seine Historie über svn vom Server und besteht die Test-Suite, ist in echter Arbeit aber noch
+    nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.”
+  - **F1, P1, fixed now:** on Subversion, a done check that cannot read the history it needs refuses and says why; it never
+    passes unread. The test is the cold audit's control: a committed `Shipped` tracker with no revision behind it exits 4 when
+    connected, and 4, not 0, with the server stopped or the network denied. `shoalmark.py` changes, so its SHA-256 is computed
+    again last, and both notes carry the new one. If F1 is not through the scoped check and the full local run by 20:30 CEST,
+    the Owner decides between disclosure and a slip.
+  - **F2:** the check at `test_shoalmark.py:564` clears the harness's variables (`CODEX_THREAD_ID` and the like) before it
+    commits, so the suite passes inside Codex.
+  - **F8:** `ADOPT.de.md:5` opens “**An Claude, Codex und alle, die das lesen:**”.
+  - **F4** is closed by RV-2262 (`da144ef`). F3, F6 and F7 go after the tag (the list in *What a stranger meets first*).
+
+  The final review's scoped check covers both rounds and runs F1's control; then the full local run; then the Owner marks the
+  pull request ready. The two items from the first round:
   - `docs/signing.md:240` and its German twin `docs/de/signing.md:261–262` name the seats that hold `answer` beside the Owner,
     as RV-2261's fix does on the triage pages. *The Planner's reading,* in RV-2261's words: “Where your `owner`, or a seat that
     holds `answer`, is not marked `signed`, …” / “Wo Ihr `owner` oder ein Sitz mit `answer` nicht `signed` ist, …”.

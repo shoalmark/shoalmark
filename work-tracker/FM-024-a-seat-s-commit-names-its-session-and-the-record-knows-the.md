@@ -277,7 +277,7 @@ verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
 - **The guard's author-only hint names only `owner` (the final review of v0.19.0, RV-2261's note).** With a signed `owner`
   and a seat granted `answer` that `[seats]` does not mark `signed`, the guard passes that seat on its author alone and says
   *the author only — mark `owner` signed to prove the key* (`GUARD_AUTHOR_ONLY`, `shoalmark.py:5678`) of an `owner` already
-  signed. After the tag: `shoalmark.py` stays as checksummed for v0.19.0 (the Owner's ruling, 2026-10-01).
+  signed. After the tag (the Owner's ruling, 2026-10-01).
 
 ## What would decide it
 
