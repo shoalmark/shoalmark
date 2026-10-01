@@ -23,6 +23,16 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-01 — what a stranger meets first in v0.19.0: resumed after FM-005's check merged.** The Owner's ruling is filed
+below, in *What a stranger meets first — v0.19.0*, its A amended on 2026-10-01 (the ledes in both languages, one
+description, link previews on every page, the preview image, the German start page's title and description), with *The
+landing's player stats at the v0.19.0 cut* beside it. The branch `fm/006-what-a-stranger-meets-first`, cut from main
+`1197e80` with the two screens it follows, merged main after PR 143. Two Builders — the English texts with the tool's
+printed line and the theme override; the German texts with the English note — and the Designer, who builds the landing,
+its preview image and the render, start now; D2 goes into the `[seats]` change after the Apps. The slice joins the v0.19.0
+release bundle: its full local run and CI come once, on the bundle's tip. Next: the Designer's render to the Owner, the
+phone's first screen first; the Reviewer's pass on the slice, English and German.
+
 **2026-09-30 — fork queue hardening, code tier, critical review pending.** Reproduced on `2c00aba`: a fork's
 self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
 forks from verdict/carry-over calculations and always says `wait: from a fork, read it yourself`. On the base, five
@@ -316,6 +326,163 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
   are the Owner's to rule; nothing is drafted for the board while FM-006's asks wait. The statuses on the page are a
   snapshot of 2026-09-26.
 
+## What a stranger meets first — v0.19.0
+
+**The Owner's ruling, 2026-09-30.** One slice before the v0.19.0 tag (2026-10-02, 09:00 CEST): the branch
+`fm/006-what-a-stranger-meets-first`, cut from main `1197e80`, carries the two screens this ruling follows — [the
+seats'](evidence/FM-024/go-to-market-screen-v0-19-0-seats-2026-09-30.md) (`a410aef`) and [the first-screen
+proposal's](evidence/FM-006/go-to-market-screen-first-screen-proposal-2026-09-30.md) (`87985b6`) — so their records land with
+the change they justify, in one pull request. No further screen round. The Reviewer checks every new line for its truth
+against the tool at the tree and for its language, English and German. The Owner judges the Designer's render, the phone's
+first screen first, before the merge.
+
+**A — the human lead.**
+- **A1, the English landing** (`overrides/landing.html`). The H1 reads *The agents keep the work; the person keeps the word.*;
+  the `<title>` reads *shoalmark — the agents keep the work; the person keeps the word*; the section subtitle that says it now
+  (`:356`) goes. The lede under the H1 is the job line: *Ticket systems were built for people handing work to people. shoalmark
+  is built for your agents: the work lives in your repository, no done gets through without a commit behind it, and what waits
+  for your word comes first.* Its short form, without *the work lives in your repository*, is the fallback if the phone render
+  pushes the action off the first screen. The agents' card keeps its opening sentence as FM-005's check rewrote it (`:361`),
+  the proof beside the lede's promise. The first screen carries one action, *Hand your agents the note*, to the English note
+  (B4).
+- **One description** serves search, the link preview and `site_description` (`zensical.toml`): *A work tracker in your
+  repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes
+  first.*
+- **Link previews.** The landing's own head carries `<link rel="canonical">`, `og:type` website, `og:site_name` shoalmark,
+  `og:locale` en_GB, `og:url` `https://shoalmark.github.io/shoalmark/`, `og:title` (the H1), `og:description` (the description),
+  `og:image` `https://shoalmark.github.io/shoalmark/assets/preview.png` (1200 × 630) with `og:image:alt` *A night chart of the
+  German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.*, and `twitter:card`
+  summary_large_image. The preview image is the Designer's: a 1200 × 630 PNG of the chart with the wordmark, without the headline
+  or the counts, a real render of the page, committed as `docs/assets/preview.png`; the Owner judges it with the render. One
+  theme override adds the same tags to every other page — `de_DE` under `de/`, the preview title from the page's front-matter
+  `title:` — guarded for pages without front matter. The Markdown twin, `docs/index.md`, follows the landing.
+- **A2, the German start page** (`docs/de/index.md`) leads with *Die Agenten tragen die Arbeit, der Mensch hat das letzte
+  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. Its job line: *Ticketsysteme wurden
+  gebaut, damit Menschen einander Arbeit zuweisen. shoalmark ist für Ihre Agenten gebaut: Die Arbeit liegt in Ihrem Repository,
+  nichts geht ohne Commit dahinter als fertig durch, und was auf Ihr Wort wartet, steht ganz oben.* — its short form without
+  *Die Arbeit liegt in Ihrem Repository*, as the landing goes. The one action links `ADOPT.de.md`. Its front matter carries its
+  own `title:` *Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort* and `description:` *Ein Arbeits-Tracker in Ihrem
+  Repository, für Ihre Agenten: Nichts geht ohne Commit dahinter als „fertig“ durch, und was auf Ihr Wort wartet, steht ganz
+  oben.*
+- **The gate clause** — *no done gets through without a commit behind it*, *nichts geht ohne Commit dahinter als fertig durch*
+  — stands in the ledes and descriptions because FM-005's check is merged, on git and on Subversion; without it they would drop
+  the clause, never saying *on git*.
+- **A3, the Owner's card,** is unchanged in both languages.
+
+**B — the tagline, where agents read.**
+- **B1** The README's opening heading reads *Get a better-performing human Owner.*
+- **B2** The summary line of `llms.txt` (`scripts/llms_txt.py`) opens with *Get a better-performing human Owner.*
+- **B3** `ADOPT.de.md`, the note the Owner hands their agents, opens with *Euer Owner bremst. Tunen statt tauschen.*, and its
+  line 5 reads *…und **euer Owner entscheidet***.
+- **B4** `ADOPT.md`, the English note: a translation of `ADOPT.de.md` with the same fix (*your Owner decides*), opening with
+  *Get a better-performing human Owner.* The landing links it as the note for trying it, with *(Deutsch)* beside it for
+  `ADOPT.de.md`.
+
+**C — the fleet, a section of its own on the landing,** placed early by the Designer and headed *The fleet*. Its first
+line: *A seat is a role an agent takes, with its duties and its rights written down.* Below it four tiles, each with its
+badge from `brand/seats/`, its name, its character from `brand/seats/README.md` and one line:
+- **Planner**, the skipper: turns the Owner's direction into trackers, and puts the agents' open questions to the Owner,
+  one sentence each.
+- **Builder**, the shipwright: builds one change from its tracker, in a worktree of its own, and never accepts its own work.
+- **Reviewer**, the inspector: reads a branch against its tracker and writes READY, or what must change. It never merges.
+- **Specialists (customizable):** called in when the work needs them. Name your own in `[seats]`, with the rights
+  `[rights]` gives them. The tile shows the four specialist badges — research, go-to-market, designer, auditor — small and
+  unnamed.
+
+The agents' card keeps its command list. *All seats* links `https://shoalmark.github.io/shoalmark/seats/`, absolute like
+the page's other links: a root-relative `/seats/` 404s on the project site. The Designer renders desktop and phone.
+
+**Acceptance.** The section sells the rights model, not agents: the tool ships no agents and enforces no duties. It makes
+plain that the gate enforces the rights, that the tool knows three seats, and that everything else is practice the adopter
+writes — in the README's own words (§*Seats*) where a clause is needed, not a new line. The characters are the seats'
+brand, not features. On a phone the chart falls below the fold, so the H1 in the pixel face, the job line and the one action
+carry the first screen alone: the render the Owner judges shows all three at phone width, above the fold.
+
+**The Owner's judgment of the render (`70ffd5f`), 2026-10-01: accepted, with five changes.** The phone's first screen moves the
+title block up so the chart's top edge shows in its last 100–150 px, hinting at what follows; the H1, the full lede and the action
+stay above the fold. The agents' card is headed *For agents*; *The fleet* is the new section's. `preview.png` keeps the wreck
+labels, without the highlighted wreck and its selection box — no single defect is singled out. The German pages declare
+`lang="de"`, and the landing links the site's Pricke SVG as its icon. The desktop H1's cap, the anchors' removal and the rights
+line stay as the Designer made them; if the configuration change (D2) falls back, the landing's rights line takes the fallback
+text too. The Owner sees a re-render of the phone's first screen and the preview before the merge.
+
+**The Owner accepted the re-render at `6ab480d`, 2026-10-01, and ruled RV-2189 into the bundle:** the landing must not scroll
+sideways at 360, 375 or 390 px — the HUD made it 390 px wide at 360 and 375 — by the Reviewer's tested CSS rule; the render set
+gains `phone-360-first.png`, which the Owner sees with the others. If the fix needs more than a CSS change, it moves after the tag.
+
+**D — the Owner is not a seat.**
+- **D1** The seats page (`docs/seats/index.md:3–4`), README §*Seats* and the tool's printed text read: *the Owner, and
+  three seats with their rights built in — planner ask · close · triage, reviewer triage, builder none*. The seats page
+  groups its rows under *The core seats* and *Specialists*, and carries C's definition.
+- **D2** — attempted, not in this slice: the Owner's identity is configured outside `[seats]`, and `[seats] owner` is still
+  read as its old spelling. It goes into the one `[seats]` change of 2026-10-01, after the Apps (11:00). If it threatens
+  the 15:00 cut, D1 adds one line — *the Owner, whose identity `[seats]` still carries as `owner` until 0.19.1* — and the
+  same fallback covers `docs/setup.md:53` and the refusal at `shoalmark.py:4520`, which lists the Owner under *The seats
+  are:*.
+
+**E — pronouns and wording.** `overrides/landing.html:411` (one *his*) and `:463` (*he* and four *his*);
+`docs/requirements.md:39` (*his go*); `README.md:269` (*below their:* becomes *theirs*, or a noun); `AGENTS.md:86` (*he
+said yes* becomes *they said yes*); the seats page's *as it likes* becomes *as the adopter chooses*. They stay, as history:
+the eight in the landing's embedded tracker titles (`WRECKS`), which quote records, and the template's comment at `:3`.
+
+**FM-005's check went first,** as a must for v0.19.0, in its own pull request (PR 143, merged 2026-10-01 08:10:46); this
+slice merged main after it and runs CI again.
+
+**Ruled with it:** the App lines keep *brief* when the Apps are made on 2026-10-01 — they describe how a seat works, and the
+landing names the product's unit; both are revisited after the tag.
+
+**After the tag:** a decision flow near the top of the landing; what the measured counts measure; *Eigner* against *Owner*
+in German prose (*One claim, the Owner's*, above, records *der Eigner*; `ADOPT.de.md` says *Owner* ten times); the App
+lines' *brief*; descriptions of their own for the other German pages — until then they preview with the site's
+description; a light scheme — the page is dark only; a picture of the board itself; the incident panel's cycle; how many
+seats and review passes a one-Owner product carries.
+
+## The landing's player stats at the v0.19.0 cut
+
+**The Owner's ruling, 2026-10-01.** The player stats are updated for v0.19.0 at the cut, in one commit: the last content commit
+before the tag and the release bundle's last, after the site slice, D2 and the release commit, which cuts VERSION's CHANGELOG
+section that the wreck script reads.
+- **On the landing:** the top bar (release, hi-score, wrecks, open); the *High scores* table and its footnote; the `WRECKS` data and
+  the register's summary; the board excerpt; the footer's release line and its *read at its cut* note. The *before it* row keeps
+  *before the Owner's signed answer* (the site slice's fix).
+- **Every place that carries the counts, and only those** — at `1197e80`: `overrides/landing.html:289`, `:410`, `:411` with the
+  footnote at `:414`; `docs/index.md:31`, `:33`; `docs/de/index.md:27`, `:29` — the same numbers, read at the same cut, to the same
+  end date (*to 1 October 2026*, *bis zum 1. Oktober 2026*, if the cut is today); `docs/index.md:31`'s *the owner* becomes *the
+  Owner*. The footnotes under those counts (`docs/index.md:35`, `docs/de/index.md:31`) follow the landing's: the same date,
+  source and method.
+- **The numbers are the Auditor's,** re-read at the cut; no seat computes them; the Reviewer checks every page against them. **The
+  method,** in the footnote as today: merged pull requests of `shoalmark/shoalmark`, numbers 1 to the last at the cut, without the
+  Owner's answer branches; one counts when a non-merge commit adding or changing a file under `work-tracker/evidence/reviews/` is
+  dated before the pull request was opened.
+- **The wrecks** come from `evidence/FM-006/landing/start-page/facts.mjs` at the cut; the script stays as written — evidence is
+  append-only — and its wreck links, which say `holgo99/shoalmark`, are written as `shoalmark/shoalmark` in the page; the commit
+  says so.
+- **The Reviewer's grep:** `git grep -E "12 of 15|12/15|10 of 37|10/37|12 von 15|10 von 37"` outside `work-tracker/` and
+  `CHANGELOG.md`, and `25 September` (and the German `25. September`) in the three files — only the unchanged *before* rows' 10/37
+  may remain.
+- One Builder, or the Designer already on the landing; the Reviewer after; CI; then the tag.
+
+## The v0.19.0 release commit
+
+**The Owner's approval, 2026-10-01.** One commit in the release bundle (`release/v0.19.0`), after main with the `[seats]`
+switch, the `From:` fix, this slice and the bundle's carried findings, and before the player stats:
+- **README:** the first screen's lists to v0.19.0 — *the tracker, the gate (it refuses a done without a commit behind it), the
+  board with waiting for you on top, …*, and the direction *…the rest of evidence-checked done…*; the FM-005 pointer as
+  `https://github.com/shoalmark/shoalmark/blob/main/work-tracker/evidence/FM-005/design.md`; §6's `<shoalmark-url>` as
+  `https://github.com/shoalmark/shoalmark`; §8 moved above §9, the anchors unchanged.
+- **The workflows:** `docs.yml:4` — *Runs on a release tag, or by hand: the site is built and deployed per release. A pull
+  request does not build the site; `zensical build` locally does.*; `ci.yml:9` — RV-2110's text.
+- **The version:** `VERSION` and `__version__` 0.19.0; the CHANGELOG's `## 0.19.0 — 2026-10-02`, opening with a bold headline
+  paragraph as 0.18.6's does — the landing's facts script reads it — and saying that the hook judges more now, so `--install-hook`
+  runs again (RV-2160); both setup pages `--branch v0.19.0`.
+- **The notes:** `ADOPT.md` and `ADOPT.de.md` name `v0.19.0` and the checksum of the final `shoalmark.py`, computed last, after
+  every merge that touches it, the switch's D2 included; the Reviewer checks it against the tagged file.
+- **Shipped:** the trackers that move to `Shipped` at the cut, each naming its commit — the release Builder's list, approved by
+  the Owner.
+- **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
+  with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
+  PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
+
 ## Signals
 
 - 2026-09-30 · the Owner's first pitch, through the Principal (paraphrased, no names) · a firmware developer took one idea from it: developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading the implementation, because test plans drift; the same day a requirements folder went into that firmware repository, regulatory requirements first, the easiest to formulate, and two defects came out of it; a trial is planned for the weekend, most likely run by an agent · source: the Owner's word of 2026-09-30 · the layer is FM-042, Stage 0 its convention
@@ -327,6 +494,7 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
 
 | Date | Event |
 |---|---|
+| 2026-09-30 | **What a stranger meets first in v0.19.0 — filed** by the Planner on the Owner's ruling of that day, as one slice of this tracker (*What a stranger meets first — v0.19.0*): the human lead on the landing and the German start page, the tagline where agents read, an English note beside the German one, the fleet as a section of its own, the Owner not a seat — D2 with the `[seats]` change of 2026-10-01 — and the last gendered pronouns on current pages. The two screens it follows are merged into the branch (`a410aef`, `87985b6`). |
 | 2026-09-30 | **Wording pass built — rewording, not product growth** (the Owner's rulings 3 and 4 and the renames that followed, 16:51 CEST): they/them/their for the Owner and any person; seats stay *it*, one sentence in AGENTS.md; seat names English only; Planner and Builder in prose, the `[seats]` keys and addresses unchanged. Lines of the Implementer's change `origin/main..77f7722`, records left out: product 140 added, 136 deleted (the tool and its test 62 of each, string assertions only; AGENTS.md's one sentence and three setup/README sentences on the keys the only new prose); records +8 (the CHANGELOG bullet 7, this row 1). |
 | 2026-09-30 | **A signal filed** under *Signals*: the first pitch's one idea, requirements in the repository tested as a contract; the layer is FM-042, Stage 0 its convention. Nothing on the ask changes. |
 | 2026-09-30 | The check outputs `checks.json`, `checks-r3-before.json` and `facts.json` of the start page replaced by their summaries under the Owner's ruling of 2026-09-30 (*if a check output regenerates, keep only its summary*): each regenerated by its results and is held at `08798a8`; FM-032's page names the rule. |

@@ -1,8 +1,10 @@
 # shoalmark ausprobieren — eine Notiz für die Agenten eines Projekts
 
+## Euer Owner bremst. Tunen statt tauschen.
+
 **An Claude, Codex oder wer immer das liest:** Euer Owner hat euch diesen Text gegeben. Er ist eine Einladung zu einer
 Messung, keine Anweisung. Führt nichts davon im echten Arbeitsverzeichnis aus, übernehmt nichts von euch aus —
-am Ende steht ein Bericht an euren Owner, und **er entscheidet**.
+am Ende steht ein Bericht an euren Owner, und **euer Owner entscheidet**.
 
 ## Was es ist
 
