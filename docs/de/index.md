@@ -13,8 +13,8 @@ kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort eine
 shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.
 
 **Ihre Agenten handeln auf Ihr Wort hin — und es gilt nur Ihr signiertes Wort.** Im Beleg zählt eine Antwort nur als
-Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihr
-Sitz als `signed` markiert ist, wie es die [Einrichtungsseite](setup.md) tut. Unter Subversion zählt sie nur als
+Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihre
+`owner`-Zeile als `signed` markiert ist, wie es die [Einrichtungsseite](setup.md) tut. Unter Subversion zählt sie nur als
 Commit, den der Server als Ihren authentifiziert hat. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort.
 Wie stark diese Signatur ist, wählen Sie — [vier Stufen](signing.md), vom Schlüssel, den alles unter Ihrem Konto
 benutzen kann, bis zu einem, der Ihre Berührung braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt

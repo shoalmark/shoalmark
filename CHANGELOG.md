@@ -6,6 +6,18 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 <!-- The heading's name is provisional; the release cut settles which version this section is. -->
 
+- **The Owner is configured outside `[seats]` (FM-024).** A top-level `owner = "you@example.org signed"`, before any table, names the Owner,
+  who is not a seat and holds all four rights; `[seats] owner` still reads, as its old spelling. *On upgrade:* both present and different, or an
+  `owner` key inside any other table (a list of rights under `[rights]` aside), is refused at configuration in one line (exit 1); a top-level
+  `owner` that older tools ignored now names the Owner — and where there is no `[seats]`, it turns the seats gate on and `answerers` is no longer
+  read. A tool older than this one ignores the top-level line: there the Owner is nobody — their answers are refused, and the TRIAGE.md guard of a
+  branch that runs it reads no Owner on a default branch that names them only at the top. While any copy older than this one reads the
+  repository, keep `[seats] owner` beside the new line, the same: this version reads the two once — this repository does, until the branches open at the
+  merge have merged main. The refusal that lists the seats names the Owner apart; `--schema`, the README and the setup pages say so.
+  *The switch:* this repository's `[seats]` keys are `planner` and `builder`, and each seat's GitHub App bot address stands beside its old one; `gtm`, a
+  seat of its own until now, is an address of `go-to-market`. A session begun under a seat's former name — `<id>/implementer-<n>`, `<id>/gtm-<n>`, or any
+  `<name>@seat` address the seat lists — still reads as the seat's, so history and the branches in flight keep resolving; no other seat's name does.
+
 - **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
   refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
   that change's history and changes a path outside the records (`[ratio] records`, else the tracker directory); every author, the Owner
@@ -17,8 +29,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
   and AGENTS.md says so in one sentence so nobody "fixes" a seat's text. README, AGENTS.md, `docs/` (English and German,
   where the German keeps the English seat names and "Sie") and the tool's printed text are reworded; quotes of the Owner
-  and every shipped record stay as they were. The seats are Planner and Builder in prose; the `[seats]` keys
-  `principal` and `implementer` and their addresses follow with the bot identities, in one change.
+  and every shipped record stay as they were. The seats are Planner and Builder in prose and in `[seats]`:
+  `planner` and `builder`, with their bot identities (the FM-024 bullet below).
 
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
@@ -39,8 +51,8 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   before it. *On upgrade:* a `[seats]` that names one identity under two seats — `owner = "you@example.org"` beside
   `implementer = "you@example.org"` — read as the first seat's before; now every command, and a commit through the installed
   hook, stops at it until it is listed once. Here `[seats]` gains `research` (`research@seat` and `datascientist@seat`), `go-to-market` (`go-to-market@seat`), `designer`
-  and `auditor` beside the five keys it has, which stay — with their addresses — until one change makes the key rename, the bot
-  addresses and the badges together; a session id for `go-to-market` reads `<id>/go-to-market-<n>`, and `--schema` lists the form.
+  and `auditor`, and the switch (the Owner bullet) renames its keys and adds the bot addresses; a session id for `go-to-market` reads
+  `<id>/go-to-market-<n>`, and `--schema` lists the form.
 - **The seats are `planner` and `builder` (FM-024).** The built-in rights belong to `owner`, `planner` (ask, close, triage),
   `reviewer` (triage) and `builder` (none). `principal` and `implementer` stay as their old spellings and hold exactly what they
   held, so a repository's `[seats]` keeps working unchanged; nothing about a commit, a trailer or an address changes. One exception:

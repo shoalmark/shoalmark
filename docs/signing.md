@@ -193,13 +193,12 @@ The tiers hold here too. A key whose passphrase `gpg-agent` or the Keychain keep
 In `shoalmark.toml`:
 
 ```
-[seats]
 owner = "you@example.org signed"
 ```
 
-`you@example.org` is the email you commit with (or your git author name, or the Subversion account). `signed` asks
-for a verified signature — drop it only under Subversion. No seat holds the answer right unless you name it: nobody
-may answer by default, on purpose. The older `answerers = ["yourname signed"]` still works where there is no `[seats]`.
+At the top of the file, before any table. `you@example.org` is the email you commit with (or your git author name, or the Subversion account). `signed` asks
+for a verified signature — drop it only under Subversion. Nobody holds the answer right unless you name them: nobody
+may answer by default, on purpose. `[seats] owner` is the old spelling and still reads; the older `answerers = ["yourname signed"]` still works where there is no `owner` and no `[seats]`.
 
 ## Check it
 
@@ -238,7 +237,7 @@ guarded the same way, and a signature is checked against the default branch's co
 key under your email proves nothing.
 
 **What it cannot tell.** A commit signed with your key passes; at tier 0 any process on your account holds that key
-(FM-007) — the tiers above are what make the key yours alone. Where your seat in `[seats]` is not marked `signed`, the
+(FM-007) — the tiers above are what make the key yours alone. Where your `owner` is not marked `signed`, the
 tool proves the author only, a string anyone can type, and says so: mark it `signed` to prove the key. Under Subversion
 this guard is out of scope: its working copy carries no signature.
 
@@ -246,7 +245,7 @@ this guard is out of scope: its working copy carries no signature.
 
 | You see | It means |
 |---|---|
-| *an answer, but no seat in `[seats]` holds the `answer` right* (or *`answerers` … names nobody*) | write the `[seats]` line above |
+| *an answer, but no seat in `[seats]` holds the `answer` right* (or *`answerers` … names nobody*) | write the `owner` line above |
 | *the answer is not committed yet* | commit it — the commit is the record |
 | *`answered-by: x` but the git author of the answer is `y`* | someone else committed your answer; it does not count |
 | *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file on the default branch does not tie to your email — a new key counts once it is merged there |
