@@ -642,6 +642,13 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     notes' checksum again, last; the final review's scoped check runs the checkout case; the final full run on that head;
     and the Owner marks the pull request ready. The report's other findings go to 0.19.1 through private advisories, not
     into public trackers.
+  - **The private security report's second round** (the Owner's rulings, the same day): `docs/setup.md:75` and
+    `docs/de/setup.md:76` drop “and checkout” / “und Checkout”. The code's comments stay as written — each says in one
+    sentence why the code refuses, with no steps and no payload — and `shoalmark.py` does not change again. `lefthook.yml`'s
+    `post-merge` tracker-board command goes: this repository is where outside forks arrive. The CHANGELOG line gains, at its
+    end: “; if you added a line calling `--html-only` to a post-checkout or post-merge hook of your own, remove it.” Docs,
+    config and the CHANGELOG only, so the checksum `22cd0e9e…` stands. The final review's scoped check covers this round;
+    then the final full run, and the Owner marks the pull request ready.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
