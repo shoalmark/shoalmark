@@ -211,13 +211,12 @@ der starke Weg.
 In `shoalmark.toml`:
 
 ```
-[seats]
 owner = "sie@example.org signed"
 ```
 
-`sie@example.org` ist die E-Mail, unter der Sie committen (oder Ihr git-Autorname, oder das Subversion-Konto). `signed`
-verlangt eine verifizierte Signatur — nur unter Subversion weglassen. Solange Sie keinen Sitz benennen, darf niemand
-antworten: Das ist die Voreinstellung, absichtlich. Das ältere `answerers = ["ihrname signed"]` gilt weiter, wo es kein
+Oben in der Datei, vor jeder Tabelle. `sie@example.org` ist die E-Mail, unter der Sie committen (oder Ihr git-Autorname, oder das Subversion-Konto). `signed`
+verlangt eine verifizierte Signatur — nur unter Subversion weglassen. Solange Sie niemanden benennen, darf niemand
+antworten: Das ist die Voreinstellung, absichtlich. `[seats] owner` ist die alte Schreibweise und gilt weiter; das ältere `answerers = ["ihrname signed"]` gilt weiter, wo es weder `owner` noch
 `[seats]` gibt.
 
 ## Prüfen
@@ -259,8 +258,8 @@ Sichtung festhalten. Die Signierer-Datei ist ebenso geschützt, und eine Signatu
 Standard-Branch geprüft: Ein Branch, der seinen eigenen Schlüssel unter Ihrer E-Mail einträgt, beweist nichts.
 
 **Was es nicht unterscheiden kann.** Ein Commit, der mit Ihrem Schlüssel signiert ist, geht durch; auf Stufe 0 hat jeder
-Prozess unter Ihrem Konto diesen Schlüssel (FM-007) — erst die Stufen oben machen ihn allein zu Ihrem. Wo Ihr Sitz in
-`[seats]` nicht `signed` ist, beweist das Werkzeug nur den Autor, eine Zeichenkette, die jeder tippen kann, und sagt es:
+Prozess unter Ihrem Konto diesen Schlüssel (FM-007) — erst die Stufen oben machen ihn allein zu Ihrem. Wo Ihr `owner`
+nicht `signed` ist, beweist das Werkzeug nur den Autor, eine Zeichenkette, die jeder tippen kann, und sagt es:
 Markieren Sie ihn `signed`, um den Schlüssel zu beweisen. Unter Subversion liegt dieser Schutz außerhalb des Umfangs:
 seine Arbeitskopie trägt keine Signatur.
 
@@ -268,7 +267,7 @@ seine Arbeitskopie trägt keine Signatur.
 
 | Sie sehen | Es bedeutet |
 |---|---|
-| *an answer, but no seat in `[seats]` holds the `answer` right* (oder *`answerers` … names nobody*) | die `[seats]`-Zeile oben schreiben |
+| *an answer, but no seat in `[seats]` holds the `answer` right* (oder *`answerers` … names nobody*) | die `owner`-Zeile oben schreiben |
 | *the answer is not committed yet* | committen — der Commit ist der Beleg |
 | *`answered-by: x` but the git author of the answer is `y`* | jemand anderes hat Ihre Antwort committet; sie zählt nicht |
 | *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei auf dem Standard-Branch nicht an Ihre E-Mail bindet — ein neuer Schlüssel zählt, sobald er dort gemergt ist |

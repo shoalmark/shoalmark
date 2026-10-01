@@ -28,6 +28,16 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**2026-10-01 — the `[seats]` switch is built on `fm/024-the-seats-switch`; the full local run on its tip comes next, then the Owner's cold session and the Reviewer, in parallel.** The Owner's ruling is filed
+below, in *The `[seats]` switch — v0.19.0*. D2 was built at `321fddc` (a top-level `owner` names the Owner; `[seats] owner` still reads as its old spelling) and
+fixed on the Reviewer's pass at `87e2e1b`, the round below. Phase 2 is built: this repository's `[seats]` keys are `planner` and `builder`, the seven bot
+addresses, each checked against GitHub's API, stand beside the old ones, and `gtm` is an address of `go-to-market` — `6debda1` (a session begun under a
+seat's former name still reads as the seat's; without it the rename refused the seats' own commits), `1923f5c` (the configuration), `df5a80b` (the
+texts). The history, 1102 commits, reads as the seats it had with the rights it held. One pull request, #144, a draft until the full local run is green on the
+final tip and the cold session has read it.
+
+**D2's fix round, on the Reviewer's pass at `87e2e1b`** ([`review-fm-024-seats-switch-d2-87e2e1b.md`](evidence/reviews/review-fm-024-seats-switch-d2-87e2e1b.md), READY WITH FINDINGS, seven P3): RV-2200 to RV-2205 fixed on the branch. This repository's `shoalmark.toml` keeps `owner` at the top and `[seats] owner` beside it, the same, while branches that run a copy older than D2 are open — an older copy reads no Owner from the top line, so its `--check` and hook read the default branch as naming nobody (RV-2202); the `[seats] owner` line goes once those branches have merged main. Found on the way (RV-2206): `read_config` keeps the last of two lines that set one key — `owner` twice at the top, or under `[seats]`, names the later without a word, where the two spellings, different, are refused — and a key with a table of its own name below stops in a traceback; 0.19.1 or later: refuse both at the line, as TOML does.
+
 **2026-09-30 — a report opens with `From:`, a bug new in 0.19.0, fixed before the tag — built 2026-10-01.** The Owner's ruling is
 filed below, in *A report opens with From: — v0.19.0*. It is built on `fm/024-a-report-opens-with-from`, cut from main `1197e80`,
 by one Builder (`b3bdb000/implementer-75`), in its own pull request beside FM-005's done fix. `544aac6`: `--whoami` prints
@@ -321,6 +331,35 @@ Postponed on his word of 06:38:10; the task he named as waiting comes first.
 - **How it is built:** one Builder in its own worktree from main `1197e80`, which pushes and stops; the Reviewer of FM-005's done
   fix judges it after that verdict, at code tier; the Owner opens the pull request.
 
+## The `[seats]` switch — v0.19.0
+
+**The Owner's ruling, 2026-10-01.** One change on `fm/024-the-seats-switch`, one pull request, merged after the seven seat Apps
+exist, before the v0.19.0 cut.
+
+- **D2 — the Owner is configured outside `[seats]`** (FM-006's *What a stranger meets first*, D2): a top-level
+  `owner = "<identity> signed"` in `shoalmark.toml`, placed before any table; `[seats] owner` is still read as its old spelling.
+  Tests: the old spelling alone, the new alone, both the same, both different (refused at configuration, exit 1); an `owner`
+  key inside an unrelated table is refused; the Owner keeps all four rights. Built first; if it threatens the 15:00 cut,
+  FM-006's fallback line goes in instead.
+- **This branch owns every line about how the Owner is configured:** README §*Seats*'s rights sentence and the README's
+  `shoalmark.toml` rows, `docs/setup.md:53`, the refusal at `shoalmark.py:4520`, the toml comment — and, by the same rule,
+  `--schema`'s `[seats]` text, the tool's printed text of FM-006's D1 (the Planner's reading). The first-screen slice owns the
+  seats page and the landing.
+- **After 11:00, on the same branch:** the keys `principal` → `planner` and `implementer` → `builder`; the seven bot addresses
+  (`<bot user id>+shoalmark-<seat>[bot]@users.noreply.github.com`) beside the old ones; `gtm` dropped, its address under
+  `go-to-market`. Before any address changes, the Auditor checks all seven bot ids against GitHub's API once the Apps are
+  installed, and reports.
+- **The seven bot addresses**, each checked against GitHub's API (`/users/shoalmark-<seat>%5Bbot%5D`) on 2026-10-01 at 10:39:
+  planner `336427458+shoalmark-planner[bot]@users.noreply.github.com` · builder `336429412+shoalmark-builder[bot]@…` · reviewer
+  `336429944+shoalmark-reviewer[bot]@…` · research `336434529+shoalmark-research[bot]@…` · go-to-market
+  `336430483+shoalmark-go-to-market[bot]@…` · designer `336431084+shoalmark-designer[bot]@…` · auditor
+  `336431811+shoalmark-auditor[bot]@…` — each `@users.noreply.github.com`. Phase 2 writes them.
+- **Identities:** no test commits — each seat's next real commit is its proof; every seat worktree's `user.email` moves to its
+  bot address as the switch merges.
+- **Route** (FM-032's CI trial): *early* — the gate, identities and the configuration: a draft pull request right after D2's
+  first build, so CodeQL reads it; one full local run before it is marked ready; one Builder, the Reviewer at code tier, then the
+  Owner's cold session (critical tier: seats and rights).
+
 ## Done when
 
 The Owner has ruled the candidate; a seat commit without a registered open session is refused by the gate; the board
@@ -384,3 +423,5 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-09-30 | **Slice 2 corrected and widened by the Owner's rulings of 15:29 onward** (relayed by the Principal): the five `[seats]` keys and their addresses stay until one change on Thursday, so `gtm` is back and `go-to-market` has its own address; the built-in rights are `planner` and `builder`, `principal` and `implementer` their old spellings — a test each. Not built: the key rename, the bot addresses, the badges. |
 | 2026-09-30 | **A report opens with `From:` — filed** by the Planner on the Owner's ruling of that day, a bug new in 0.19.0: `--whoami` prints `To: …` and rule 8 says a report opens with that line, so a report opens with *To: <itself>*; `--whoami` prints `From: …`, rule 8 says so and keeps `To:` for a message's target, the README example, the two Unreleased CHANGELOG bullets and the tests follow; records already written stay. |
 | 2026-10-01 | **A report opens with `From:` — built** for 0.19.0 on the Owner's ruling of 2026-09-30 (filed above), by the Builder seat (`b3bdb000/implementer-75`) on `fm/024-a-report-opens-with-from`: `544aac6` — `--whoami` prints `From: <session> <seat> (<worktree>) · <model> · <effort>`, its docstring, `--help` and checks follow; `3648319` — rule 8 in AGENTS.md and in the template `--init` writes says a report opens with that line and a message names its target with `To:` and the same identity, one check holds the two texts equal, the README and the two Unreleased CHANGELOG bullets follow. Records already written stay. Code tier: the Reviewer's pass, the pull request and CI remain. |
+| 2026-10-01 | **The `[seats]` switch — filed** by the Planner on the Owner's ruling of that day: D2 first (the Owner configured by a top-level `owner =`, `[seats] owner` read as the old spelling), then after the Apps the key rename, the seven bot addresses and dropping `gtm`; this branch owns every line about how the Owner is configured. |
+| 2026-10-01 | **The `[seats]` switch built — phase 2**, after D2 (`ca8f7f4`, `321fddc`, `87e2e1b`) and its fix round (`4105114`, `9f2aac5`, `e570b5d`, `b58fe45`): `6debda1` the session rule reads a session begun under a seat's former name (`principal`, `implementer`, the name of an old `<name>@seat` address) as the seat's — the rename would have refused the seats' own commits and the history a merge brings; `1923f5c` this repository's `[seats]`: `planner` and `builder`, the seven bot addresses (each checked with `gh api` before it was written, and equal to the ids filed in the switch section) beside the old ones, `gtm` an address of `go-to-market`; `df5a80b` the texts that called the rename to come, and the CHANGELOG. The 1102 commits of the history map to the seats they had (`principal@seat` to `planner`, `implementer@seat` to `builder`, `gtm@seat` to `go-to-market`) with the rights they held, and each of the 813 that carries a session passes the rule; `--check` exits 0. The full local run, the cold session and the Reviewer follow. |
