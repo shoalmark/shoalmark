@@ -437,7 +437,9 @@ lines' *brief*; descriptions of their own for the other German pages — until t
 description; a release workflow — the notes from the CHANGELOG, the assets, an attestation; a light scheme — the page is dark
 only; a picture of the board itself; the incident panel's cycle; how many
 seats and review passes a one-Owner product carries; the way back on both start pages, and *What it is not* becoming *What
-stays yours* — each screened first (the Owner's ruling, 2026-10-01).
+stays yours* — each screened first (the Owner's ruling, 2026-10-01); the Owner named *he*, *his* or *him* on 128 lines of
+`shoalmark.py`'s comments and docstrings (the Auditor's count at `c830470`; no printed line) — filed, not fixed, since
+`shoalmark.py` stays as checksummed for v0.19.0 (the Owner's ruling, 2026-10-01).
 
 ## The landing's player stats at the v0.19.0 cut
 
@@ -507,8 +509,10 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 - **The release day** (the Owner's ruling, 2026-10-01): the Owner releases v0.19.0 today, 2026-10-01. The CHANGELOG's heading
   carries that date, and the landing's footer says *v0.19.0, released 1 October 2026 —* and the headline from it; the player stats stay as read at
   the cut `c830470`; `shoalmark.py` is untouched, so the notes' checksum stands. After the stats commit, the Owner's cold audit,
-  the full local run and the bundle's final review start at once, and their fixes go in one round; the Owner opens the pull
-  request after the final review's verdict, and the merge waits on CI and the cold audit's verdict. If the bundle is not merged
+  the full local run and the bundle's final review start at once; the Owner opens the pull request after the final review's
+  verdict, as a draft. The final review's findings and the Owner's rulings on them go in one fix round, the cold audit's in a
+  second, small round on top; the pull request stays a draft until both are in, so CI runs once, on the final head, and the
+  final review's scoped check covers both rounds. The merge waits on CI and the cold audit's verdict. If the bundle is not merged
   by 22:00 CEST, the date goes back to 2026-10-02 and the tag moves to the next morning.
 - **The Owner's run sheet** — `work-tracker/evidence/FM-006/release-v0-19-0-owner-run-sheet.md`, about 40 lines of numbered
   copy-paste steps, each with its expected output and one line to paste back. Before the tag: `gh repo edit` with the site's
@@ -534,12 +538,16 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
   Planner's reading:* the same untrue sentence in the two start pages' *You lose nothing* paragraphs (`docs/index.md:63`,
   `docs/de/index.md:65`) goes with the landing's.
   A fourth line, the Owner's ruling of the same day, wherever the three stand (the landing's box, the README, both start
-  pages): *Made and tested on git with GitHub. Subversion passes the test suite but has not been used in real work; signed answers
-  and the pull-request queue need git and GitHub.* / *Gebaut und erprobt mit git und GitHub. Subversion besteht die Test-Suite, ist
-  in echter Arbeit aber noch nicht erprobt; signierte Antworten und die Pull-Request-Warteschlange brauchen git und GitHub.* In both
-  notes, after the *not for it yet* line: `ADOPT.md` *On Subversion it passes the test suite but has not been used in real work: say
-  so in your report.*; `ADOPT.de.md` *Unter Subversion besteht es die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: sagt
-  das in eurem Bericht.* The Reviewer checks the German, and that every clause holds at the tip.
+  pages) — as built, with `git` as code (`ed58291`) and the ending of the final review's RV-2262 (the Owner's ruling, the same
+  day: signed answers need only `git`): “Made and tested on `git` with GitHub. Subversion passes the test suite but has not been
+  used in real work; signed answers need `git`, and the pull-request queue `git` and GitHub.” / “Gebaut und erprobt mit `git` und
+  GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt; signierte Antworten brauchen `git`, die
+  Pull-Request-Warteschlange `git` und GitHub.” In both notes *Tell your Owner so and stop here* / *Sagt das eurem Owner und hört
+  hier auf* comes right after the *not for it yet* line (`ed58291`), and the Subversion line follows in a paragraph of its own:
+  `ADOPT.md` *On Subversion it passes the test suite but has not been used in real work: say so in your report.*; `ADOPT.de.md`
+  *Unter Subversion besteht es die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Sagt das in eurem Bericht.* — the
+  capital after the colon, a whole sentence following (the final review's RV-2265, the Owner's ruling). The Reviewer checks the
+  German, and that every clause holds at the tip.
   The Owner approved the start section's render (`start-390.png`, `start-1440.png`, `b2683f2`); on desktop the box's text is
   capped at about 80 characters wide, to read faster — the Owner's cosmetic suggestion, taken.
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
@@ -555,18 +563,22 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     beyond Python 3.9.”
   - *No network.* `ADOPT.md:11`: “(standard library only, no dependency, needs no network: online, it reaches your repository's
     host through git, and through gh for the pull-request queue)”. `ADOPT.de.md:11`: “(nur Standardbibliothek, keine
-    Abhängigkeit, braucht kein Netz: online erreicht es den Host eures Repositorys über git und für die
-    Pull-Request-Warteschlange über gh)”.
+    Abhängigkeit, braucht kein Netz: Online erreicht es den Host eures Repositorys über git und für die
+    Pull-Request-Warteschlange über gh)” — *Online* upper case after the colon (the final review's RV-2265, the Owner's ruling).
   - *The way back* — amended the same day, in one more commit before the final review: everything that calls the tool goes
     first, the line added to a hook of one's own included (the installer leaves an existing hook alone and prints that line to
-    add to it). `ADOPT.md:74`: “Way back: first remove from `.git/hooks/` everything that calls `tools/shoalmark/shoalmark.py`:
-    the hooks marked `# shoalmark`, and the line you added to a hook of your own (on Subversion, the `tsvn:` hook properties);
-    while any of it stays, every commit is refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in
-    `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.” `ADOPT.de.md:73`: “Rückweg: zuerst aus
-    `.git/hooks/` alles entfernen, was `tools/shoalmark/shoalmark.py` aufruft: die mit `# shoalmark` markierten Hooks und die
-    Zeile, die ihr einem eigenen Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties); solange etwas davon
-    bleibt, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in `AGENTS.md`
-    löschen. Der Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.”
+    add to it); and amended again in the final review's fix round (RV-2263, the Owner's ruling): the hooks folder is the one
+    `core.hooksPath` names where it is set, and the text says what deleting the tool first does — post-merge and post-checkout
+    hooks left behind refuse no commit. The way-back item in each note: “Way back: first remove from your hooks folder
+    (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls `tools/shoalmark/shoalmark.py`: the hooks marked
+    `# shoalmark`, and the line you added to a hook of your own (on Subversion, the `tsvn:` hook properties). Delete the tool
+    before that, and commits are refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in
+    `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.” / “Rückweg: zuerst aus eurem Hook-Ordner
+    (`.git/hooks/` oder dem, den `core.hooksPath` nennt) alles entfernen, was `tools/shoalmark/shoalmark.py` aufruft: die mit
+    `# shoalmark` markierten Hooks und die Zeile, die ihr einem eigenen Hook hinzugefügt habt (unter Subversion die
+    `tsvn:`-Hook-Properties). Löscht ihr das Werkzeug vorher, werden Commits abgelehnt. Dann `tools/shoalmark/`,
+    `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der Tracker-Ordner kann bleiben: Seine Einträge sind
+    einfaches Markdown.”
 
   The Reviewer checks the German and runs the way back in a scratch repository — the old order, the text as written, and a
   repository whose own hook carries the added line; the Auditor verifies each commit when it lands.

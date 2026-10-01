@@ -274,6 +274,10 @@ verdicts (slice 2); FM-023's plan marks (its own release, after it is ripe).
   date such as 20260923, an 8-character commit hash) is read as a parent and refuses a top-level session; loud,
   avoidable by wording; a 7-character hash or upper-case hex passes unread. Fix: read a parent only from a token that
   is a registered session id, or require a letter a–f. 0.17.8 or later.
+- **The guard's author-only hint names only `owner` (the final review of v0.19.0, RV-2261's note).** With a signed `owner`
+  and a seat granted `answer` that `[seats]` does not mark `signed`, the guard passes that seat on its author alone and says
+  *the author only — mark `owner` signed to prove the key* (`GUARD_AUTHOR_ONLY`, `shoalmark.py:5678`) of an `owner` already
+  signed. After the tag: `shoalmark.py` stays as checksummed for v0.19.0 (the Owner's ruling, 2026-10-01).
 
 ## What would decide it
 
