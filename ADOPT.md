@@ -76,7 +76,8 @@ copy the board's two lines in `.gitignore`.
 - Way back: first remove from your hooks folder (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls
   `tools/shoalmark/shoalmark.py`: the hooks marked `# shoalmark`, and the line you added to a hook of your own (on
   Subversion, the `tsvn:` hook properties). Delete the tool before that, and commits are refused. Then delete
-  `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in `AGENTS.md`. The tracker folder can stay: its entries
+  `tools/shoalmark/`, `shoalmark.toml`, the shoalmark block in `AGENTS.md` and the copy in the git directory
+  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries
   are plain Markdown.
 
 ## Requirements — a trial, not an instruction (Stage 0: the convention only)

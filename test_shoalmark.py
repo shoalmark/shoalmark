@@ -2073,6 +2073,28 @@ with tempfile.TemporaryDirectory() as d:
           and sw_[1].startswith("board: file:") and "BASE" in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
     rm_git(root)
 
+# the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
+_rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
+_help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+_help_ = re.sub(r"\s+", " ", _help_)
+check("FM-006 · a private security report · the CHANGELOG's line is the Owner's text — the checkout and merge hooks run a copy of the tool kept in the git directory, which runs nothing a branch brings; run `--install-hook` on your default branch again "
+      "after upgrading — and the section is dated 2026-10-02; the landing's footer says the same day, and the player stats keep theirs",
+      "- The checkout and merge hooks run a copy of the tool kept in the git directory, which runs nothing a branch brings; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md")
+      and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
+      and 'v0.19.0, released 2 October 2026 — shoalmark 0.19.0 is the first public beta' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html"))
+check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
+      "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
+      and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
+      and not re.search(r"svn update|svn up\b", _rd("README.md") + _help_ + _rd("docs/setup.md")))
+check("FM-006 · a private security report · the README and `--help` name the copy: where it is kept, who writes it, what it runs, and that `--install-hook` is run on the default branch and again after an upgrade",
+      "`shoalmark-trusted/`" in _rd("README.md") and "run `--install-hook` on your default branch, and again after upgrading" in _rd("README.md") and "a copy of the tool kept in the git directory" in _rd("README.md")
+      and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_ and "from the copy of the tool kept in the git directory" in _help_)
+check("FM-006 · a private security report · both notes' way back also removes the copy in the git directory, and the rest of it is as it was",
+      "the shoalmark block in `AGENTS.md` and the copy in the git directory\n  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries" in _rd("ADOPT.md")
+      and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Tracker-Ordner kann bleiben" in _rd("ADOPT.de.md")
+      and "Delete the tool before that, and commits are refused." in _rd("ADOPT.md") and "Löscht ihr das Werkzeug vorher, werden Commits" in _rd("ADOPT.de.md"))
+
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
     try:

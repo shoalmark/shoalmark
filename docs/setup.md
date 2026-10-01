@@ -72,8 +72,8 @@ what comes first. Agents read both before every judgement. Leave everything else
 
 ## 6. Open the board
 
-`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit. Its first line is what
-needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
+`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit, and on every checkout and merge with git;
+on Subversion, on a commit through TortoiseSVN or when the tool runs. Its first line is what needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
 [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.

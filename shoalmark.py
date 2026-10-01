@@ -2565,14 +2565,14 @@ def board_stamp():
 
 
 def board_after_act(stamp):
-    """FM-030, his signed answer 920970b7 — *right after the act* the board shows it: he pressed the button, ran the command,
-    and the page he returns to must say *done, on its way* (his words of 13:57:50). Put back where he started, a checkout hook
-    that rebuilds the board — a post-checkout hook of one's own that runs `--html-only` — has written it already, and it reads the
-    branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or its size —
-    between the push and now. Where it did not — no such hook is installed, the checkout ran none (he ran the command on
+    """FM-030, their signed answer 920970b7 — *right after the act* the board shows it: they pressed the button, ran the command,
+    and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started, the checkout hook
+    `--install-hook` writes — it runs the copy of the tool kept in the git directory as `--html-only` — has written it already,
+    and it reads the branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or
+    its size — between the push and now. Where it did not — no such hook is installed, the checkout ran none (they ran the command on
     `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
     process; but never where the board is tracked by git — `--init` ignores it, and written, a committed board would leave
-    the tree changed and refuse his next command. What it says of it, one line; "" where there is no tracker directory."""
+    the tree changed and refuse their next command. What it says of it, one line; "" where there is no tracker directory."""
     if not TRACKER_DIR.is_dir():
         return ""
     if board_stamp() != stamp:
@@ -7175,8 +7175,8 @@ def parse_args(argv):
     add("--html-only", action="store_true",
         help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
-             "tracks; its board carries no derived columns. It stands alone, with --root")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, commit-msg) — nothing runs after a checkout or a merge, and the post-checkout and post-merge hooks an older copy wrote, marked `# shoalmark`, are removed — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+             "tracks; its board carries no derived columns. It stands alone, with --root. The checkout and merge hooks run it from the copy of the tool kept in the git directory")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg and commit-msg run the working tree's tool; post-checkout and post-merge refresh the board from a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "

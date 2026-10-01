@@ -75,7 +75,8 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
 - Rückweg: zuerst aus eurem Hook-Ordner (`.git/hooks/` oder dem, den `core.hooksPath` nennt) alles entfernen, was
   `tools/shoalmark/shoalmark.py` aufruft: die mit `# shoalmark` markierten Hooks und die Zeile, die ihr einem eigenen
   Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties). Löscht ihr das Werkzeug vorher, werden Commits
-  abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der
+  abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml`, den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen
+  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der
   Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.
 
 ## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)
