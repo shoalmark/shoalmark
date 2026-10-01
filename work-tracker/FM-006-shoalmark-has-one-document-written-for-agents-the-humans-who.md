@@ -483,6 +483,10 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
 - **The first public beta** (the Owner's ruling, 2026-10-01): v0.19.0 is shoalmark's first official release, published on
   GitHub Releases as a pre-release; the tag stays `v0.19.0`. The 0.19.0 section's bold headline names it the first public beta —
   the release notes and the landing's release line read that line.
+  The headline, as the Owner wrote it (the ids outside the bold, so the landing shows only the sentence): **shoalmark 0.19.0
+  is the first public beta: the gate refuses a *done* without a commit behind it, the first screen speaks to the person who owns
+  the repository, and a new English note, `ADOPT.md`, goes to their agents** (FM-005, FM-006, FM-024 — with FM-040, FM-041 and
+  FM-032). The Owner configured apart, several identities and `From:` stay in the bullets.
 - **The Owner's run sheet** — `work-tracker/evidence/FM-006/release-v0-19-0-owner-run-sheet.md`, about 40 lines of numbered
   copy-paste steps, each with its expected output and one line to paste back. Before the tag: `gh repo edit` with the site's
   description line, the homepage `https://shoalmark.github.io/shoalmark/` and topics (proposed there, the Owner's to set), and the
@@ -493,8 +497,8 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
 - **In this beta** (the Owner's ruling, 2026-10-01; built while the bundle waits for the switch; the bundle's final review
   covers it, no render round). English: *Not a migration tool: it imports no ticket system and starts from your repository's own
   work. A path for a fleet that already runs a system of its own is filed, not built.* · *For one person in charge and their agent
-  fleet. Several people in charge are not tested in this beta; support for them may come later.* · *Not proof that work is right.
-  The gate refuses a done without a commit behind it. Whether that commit did the job is what a review is for.* German (*Sie*):
+  fleet. Several people in charge are not tested in this beta; support for them may come later.* · “Not proof that work is right.
+  The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.” German (*Sie*):
   *Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine
   Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.* · *Für eine Person mit dem letzten Wort und ihre
   Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.* · *Kein Beweis,
@@ -506,6 +510,8 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
   mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen wäre, ist diese Beta noch nichts für euer Projekt.* *The
   Planner's reading:* the same untrue sentence in the two start pages' *You lose nothing* paragraphs (`docs/index.md:63`,
   `docs/de/index.md:65`) goes with the landing's.
+  The Owner approved the start section's render (`start-390.png`, `start-1440.png`, `b2683f2`); on desktop the box's text is
+  capped at about 80 characters wide, to read faster — the Owner's cosmetic suggestion, taken.
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
   with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
   PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
