@@ -398,6 +398,14 @@ writes — in the README's own words (§*Seats*) where a clause is needed, not a
 brand, not features. On a phone the chart falls below the fold, so the H1 in the pixel face, the job line and the one action
 carry the first screen alone: the render the Owner judges shows all three at phone width, above the fold.
 
+**The Owner's judgment of the render (`70ffd5f`), 2026-10-01: accepted, with five changes.** The phone's first screen moves the
+title block up so the chart's top edge shows in its last 100–150 px, hinting at what follows; the H1, the full lede and the action
+stay above the fold. The agents' card is headed *For agents*; *The fleet* is the new section's. `preview.png` keeps the wreck
+labels, without the highlighted wreck and its selection box — no single defect is singled out. The German pages declare
+`lang="de"`, and the landing links the site's Pricke SVG as its icon. The desktop H1's cap, the anchors' removal and the rights
+line stay as the Designer made them; if the configuration change (D2) falls back, the landing's rights line takes the fallback
+text too. The Owner sees a re-render of the phone's first screen and the preview before the merge.
+
 **D — the Owner is not a seat.**
 - **D1** The seats page (`docs/seats/index.md:3–4`), README §*Seats* and the tool's printed text read: *the Owner, and
   three seats with their rights built in — planner ask · close · triage, reviewer triage, builder none*. The seats page
