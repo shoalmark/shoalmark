@@ -23,12 +23,15 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
-**2026-09-30 — what a stranger meets first in v0.19.0: filed, building.** The Owner's ruling is filed below, in *What a
-stranger meets first — v0.19.0*: one slice on `fm/006-what-a-stranger-meets-first`, cut from main `1197e80`, with the two
-screens it follows merged in (`a410aef`, `87985b6`). A, B, C, D1 and E are built tonight by two Builders — the English texts
-with the tool's printed line; the German texts with the English note — and the Designer, who builds the landing and renders
-it. D2 goes into the `[seats]` change of 2026-10-01. Next: the Designer's render to the Owner, the phone's first screen
-first; the Reviewer's pass, code tier (`shoalmark.py`, `scripts/llms_txt.py`, `zensical.toml`); the pull request and its CI.
+**2026-10-01 — what a stranger meets first in v0.19.0: resumed after FM-005's check merged.** The Owner's ruling is filed
+below, in *What a stranger meets first — v0.19.0*, its A amended on 2026-10-01 (the ledes in both languages, one
+description, link previews on every page, the preview image, the German start page's title and description), with *The
+landing's player stats at the v0.19.0 cut* beside it. The branch `fm/006-what-a-stranger-meets-first`, cut from main
+`1197e80` with the two screens it follows, merged main after PR 143. Two Builders — the English texts with the tool's
+printed line and the theme override; the German texts with the English note — and the Designer, who builds the landing,
+its preview image and the render, start now; D2 goes into the `[seats]` change after the Apps. The slice joins the v0.19.0
+release bundle: its full local run and CI come once, on the bundle's tip. Next: the Designer's render to the Owner, the
+phone's first screen first; the Reviewer's pass on the slice, English and German.
 
 **2026-09-30 — fork queue hardening, code tier, critical review pending.** Reproduced on `2c00aba`: a fork's
 self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
@@ -334,16 +337,36 @@ against the tool at the tree and for its language, English and German. The Owner
 first screen first, before the merge.
 
 **A — the human lead.**
-- **A1, the English landing** (`overrides/landing.html`). The H1 and the `<title>` read *The agents keep the work; the
-  person keeps the word.*, and the section subtitle that says it now (`:356`) goes. The lede under the H1 is the job line:
-  *Ticket systems were built for people handing work to people. shoalmark is built for agents: state that outlives a
-  session, one source of truth, a gate that refuses a false done — and your signed word.* The first screen carries one
-  action, *Hand your agents the note*, to the English note (B4). `site_description` (`zensical.toml`) and the page's own
-  `<meta name="description">` read *The agents keep the work; the person keeps the word. Ticket systems were built for
-  people; shoalmark is built for agents.* The Markdown twin, `docs/index.md`, follows.
+- **A1, the English landing** (`overrides/landing.html`). The H1 reads *The agents keep the work; the person keeps the word.*;
+  the `<title>` reads *shoalmark — the agents keep the work; the person keeps the word*; the section subtitle that says it now
+  (`:356`) goes. The lede under the H1 is the job line: *Ticket systems were built for people handing work to people. shoalmark
+  is built for your agents: the work lives in your repository, no done gets through without a commit behind it, and what waits
+  for your word comes first.* Its short form, without *the work lives in your repository*, is the fallback if the phone render
+  pushes the action off the first screen. The agents' card keeps its opening sentence as FM-005's check rewrote it (`:361`),
+  the proof beside the lede's promise. The first screen carries one action, *Hand your agents the note*, to the English note
+  (B4).
+- **One description** serves search, the link preview and `site_description` (`zensical.toml`): *A work tracker in your
+  repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes
+  first.*
+- **Link previews.** The landing's own head carries `<link rel="canonical">`, `og:type` website, `og:site_name` shoalmark,
+  `og:locale` en_GB, `og:url` `https://shoalmark.github.io/shoalmark/`, `og:title` (the H1), `og:description` (the description),
+  `og:image` `https://shoalmark.github.io/shoalmark/assets/preview.png` (1200 × 630) with `og:image:alt` *A night chart of the
+  German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.*, and `twitter:card`
+  summary_large_image. The preview image is the Designer's: a 1200 × 630 PNG of the chart with the wordmark, without the headline
+  or the counts, a real render of the page, committed as `docs/assets/preview.png`; the Owner judges it with the render. One
+  theme override adds the same tags to every other page — `de_DE` under `de/`, the preview title from the page's front-matter
+  `title:` — guarded for pages without front matter. The Markdown twin, `docs/index.md`, follows the landing.
 - **A2, the German start page** (`docs/de/index.md`) leads with *Die Agenten tragen die Arbeit, der Mensch hat das letzte
-  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. The same job line follows in German;
-  the one action links `ADOPT.de.md`.
+  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. Its job line: *Ticketsysteme wurden
+  gebaut, damit Menschen einander Arbeit zuweisen. shoalmark ist für Ihre Agenten gebaut: Die Arbeit liegt in Ihrem Repository,
+  nichts geht ohne Commit dahinter als fertig durch, und was auf Ihr Wort wartet, steht ganz oben.* — its short form without
+  *Die Arbeit liegt in Ihrem Repository*, as the landing goes. The one action links `ADOPT.de.md`. Its front matter carries its
+  own `title:` *Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort* and `description:` *Ein Arbeits-Tracker in Ihrem
+  Repository, für Ihre Agenten: Nichts geht ohne Commit dahinter als „fertig“ durch, und was auf Ihr Wort wartet, steht ganz
+  oben.*
+- **The gate clause** — *no done gets through without a commit behind it*, *nichts geht ohne Commit dahinter als fertig durch*
+  — stands in the ledes and descriptions because FM-005's check is merged, on git and on Subversion; without it they would drop
+  the clause, never saying *on git*.
 - **A3, the Owner's card,** is unchanged in both languages.
 
 **B — the tagline, where agents read.**
@@ -390,13 +413,42 @@ carry the first screen alone: the render the Owner judges shows all three at pho
 said yes* becomes *they said yes*); the seats page's *as it likes* becomes *as the adopter chooses*. They stay, as history:
 the eight in the landing's embedded tracker titles (`WRECKS`), which quote records, and the template's comment at `:3`.
 
+**FM-005's check went first,** as a must for v0.19.0, in its own pull request (PR 143, merged 2026-10-01 08:10:46); this
+slice merged main after it and runs CI again.
+
 **Ruled with it:** the App lines keep *brief* when the Apps are made on 2026-10-01 — they describe how a seat works, and the
 landing names the product's unit; both are revisited after the tag.
 
 **After the tag:** a decision flow near the top of the landing; what the measured counts measure; *Eigner* against *Owner*
 in German prose (*One claim, the Owner's*, above, records *der Eigner*; `ADOPT.de.md` says *Owner* ten times); the App
-lines' *brief*; a light scheme — the page is dark only; a picture of the board itself; the incident panel's cycle; how many
+lines' *brief*; descriptions of their own for the other German pages — until then they preview with the site's
+description; a light scheme — the page is dark only; a picture of the board itself; the incident panel's cycle; how many
 seats and review passes a one-Owner product carries.
+
+## The landing's player stats at the v0.19.0 cut
+
+**The Owner's ruling, 2026-10-01.** The player stats are updated for v0.19.0 at the cut, in one commit: the last content commit
+before the tag and the release bundle's last, after the site slice, D2 and the release commit, which cuts VERSION's CHANGELOG
+section that the wreck script reads.
+- **On the landing:** the top bar (release, hi-score, wrecks, open); the *High scores* table and its footnote; the `WRECKS` data and
+  the register's summary; the board excerpt; the footer's release line and its *read at its cut* note. The *before it* row keeps
+  *before the Owner's signed answer* (the site slice's fix).
+- **Every place that carries the counts, and only those** — at `1197e80`: `overrides/landing.html:289`, `:410`, `:411` with the
+  footnote at `:414`; `docs/index.md:31`, `:33`; `docs/de/index.md:27`, `:29` — the same numbers, read at the same cut, to the same
+  end date (*to 1 October 2026*, *bis zum 1. Oktober 2026*, if the cut is today); `docs/index.md:31`'s *the owner* becomes *the
+  Owner*. The footnotes under those counts (`docs/index.md:35`, `docs/de/index.md:31`) follow the landing's: the same date,
+  source and method.
+- **The numbers are the Auditor's,** re-read at the cut; no seat computes them; the Reviewer checks every page against them. **The
+  method,** in the footnote as today: merged pull requests of `shoalmark/shoalmark`, numbers 1 to the last at the cut, without the
+  Owner's answer branches; one counts when a non-merge commit adding or changing a file under `work-tracker/evidence/reviews/` is
+  dated before the pull request was opened.
+- **The wrecks** come from `evidence/FM-006/landing/start-page/facts.mjs` at the cut; the script stays as written — evidence is
+  append-only — and its wreck links, which say `holgo99/shoalmark`, are written as `shoalmark/shoalmark` in the page; the commit
+  says so.
+- **The Reviewer's grep:** `git grep -E "12 of 15|12/15|10 of 37|10/37|12 von 15|10 von 37"` outside `work-tracker/` and
+  `CHANGELOG.md`, and `25 September` (and the German `25. September`) in the three files — only the unchanged *before* rows' 10/37
+  may remain.
+- One Builder, or the Designer already on the landing; the Reviewer after; CI; then the tag.
 
 ## Signals
 
