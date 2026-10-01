@@ -406,6 +406,10 @@ labels, without the highlighted wreck and its selection box — no single defect
 line stay as the Designer made them; if the configuration change (D2) falls back, the landing's rights line takes the fallback
 text too. The Owner sees a re-render of the phone's first screen and the preview before the merge.
 
+**The Owner accepted the re-render at `6ab480d`, 2026-10-01, and ruled RV-2189 into the bundle:** the landing must not scroll
+sideways at 360, 375 or 390 px — the HUD made it 390 px wide at 360 and 375 — by the Reviewer's tested CSS rule; the render set
+gains `phone-360-first.png`, which the Owner sees with the others. If the fix needs more than a CSS change, it moves after the tag.
+
 **D — the Owner is not a seat.**
 - **D1** The seats page (`docs/seats/index.md:3–4`), README §*Seats* and the tool's printed text read: *the Owner, and
   three seats with their rights built in — planner ask · close · triage, reviewer triage, builder none*. The seats page
