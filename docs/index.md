@@ -9,7 +9,12 @@ template: landing.html
 
 *A Pricke on the Wadden flats keeps the fleet in the channel.*
 
-## Get a better-performing human Owner.
+## The agents keep the work; the person keeps the word.
+
+Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your
+repository, no done gets through without a commit behind it, and what waits for your word comes first.
+
+**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
 sentence per question, once a day, and make their answer one command.
@@ -73,5 +78,5 @@ refuses what contradicts itself. Runs on git and Subversion, on Windows, macOS a
 | | |
 |---|---|
 | **You, the owner** | [Set up in ten minutes](setup.md) · [Your answer is your commit](signing.md) · [The standup](standup.md) |
-| **Your project's agents** | the [note for trying it](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md) (German): a measurement, not an instruction. They report to you at the end, and you decide |
+| **Your project's agents** | the [note for trying it](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md) ([Deutsch](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)): a measurement, not an instruction. They report to you at the end, and you decide |
 | **An agent at work** | the contract is `tools/shoalmark/README.md` in your repository, [rendered here](agents/README.md). `llms.txt` is at this site's root |

@@ -1,0 +1,43 @@
+{#- FM-006 — link previews on every page the site renders with its theme. The landing (docs/index.md selects overrides/landing.html,
+    a document of its own that extends nothing) writes its own head; this override reaches every other page, the German ones
+    and the 404 included, through the one block the pinned Zensical 0.0.66 leaves empty for it — `extrahead` of base.html.
+    The theme's base.html already writes `<link rel="canonical">` (page.canonical_url, from site_url) and the page's
+    `<meta name="description">` (front-matter `description:`, else site_description); they are not written twice here.
+    Guarded for a page without front matter: page.meta is read only after it is tested, as base.html reads it. The theme's
+    template engine does not escape on its own, so the two texts a page's author writes — title and description — go
+    through `e`; the URL is the site's own. -#}
+{% extends "base.html" %}
+{% block extrahead %}
+  {%- if page and page.meta and page.meta.title -%}
+    {%- set preview_title = page.meta.title -%}
+  {%- elif page and page.title -%}
+    {%- set preview_title = page.title | striptags -%}
+  {%- else -%}
+    {%- set preview_title = config.site_name -%}
+  {%- endif -%}
+  {%- if page and page.meta and page.meta.description -%}
+    {%- set preview_description = page.meta.description -%}
+  {%- else -%}
+    {%- set preview_description = config.site_description -%}
+  {%- endif -%}
+  {%- if page and page.url and page.url[:3] == "de/" -%}
+    {%- set preview_locale = "de_DE" -%}
+  {%- else -%}
+    {%- set preview_locale = "en_GB" -%}
+  {%- endif %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name | e }}">
+  <meta property="og:locale" content="{{ preview_locale }}">
+  {% if page and page.canonical_url -%}
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  {% endif -%}
+  <meta property="og:title" content="{{ preview_title | e }}">
+  {% if preview_description -%}
+  <meta property="og:description" content="{{ preview_description | e }}">
+  {% endif -%}
+  <meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.">
+  <meta name="twitter:card" content="summary_large_image">
+{% endblock %}

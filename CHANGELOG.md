@@ -6,6 +6,12 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 <!-- The heading's name is provisional; the release cut settles which version this section is. -->
 
+- **What a stranger meets first (FM-006) — pages and wording, no product growth.** The Owner's ruling of 2026-09-30, filed in FM-006: the landing leads
+  with *The agents keep the work; the person keeps the word.* and one action, *Hand your agents the note* — the new English note, `ADOPT.md`; the German
+  start page leads the same way; one description and link previews serve every page; the tagline, *Get a better-performing human Owner.*, stands where
+  agents read — the README, `llms.txt` and both notes; the fleet has a section on the landing; the seats page says the Owner is not a seat; the last
+  gendered pronouns on current pages are gone.
+
 - **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
   refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
   that change's history and changes a path outside the records (`[ratio] records`, else the tracker directory); every author, the Owner
