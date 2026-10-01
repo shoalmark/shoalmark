@@ -174,6 +174,261 @@ def put(path, text):
         f.write(text)
 
 
+# THE BOARD'S RUN — `--html-only`, what a checkout and a merge hook starts (a private security report). A branch brings the files this run
+# reads, so it reads only what a regular file inside the repository holds, through no symlink; it starts nothing but read-only git; it
+# writes only the board's files. Each is checked where the file is read or written, and `board_tripwire` refuses at the interpreter
+# whatever else a path of the tool might reach.
+SAFE_READS = False        # on for the board's run: a file in the tree is read only if it is a regular file inside the repository, reached through no symlink
+_TRIPWIRE = False         # on for the board's run: nothing is started, written or imported but what the run is for
+_TEMP = ""                # the system's temporary directory, read before the tripwire is armed: the hook must not ask `tempfile` for it (see `arm_tripwire`)
+_IN_TRIPWIRE = [False]    # the hook is not judged by itself
+BOARD_LEFT = []           # what the run left alone, as (file, why) — said once, at its end
+TRIPPED = []              # …and what the tripwire refused
+
+
+class ReadOnlyRun(BaseException):
+    """What the board's run refused to do. A `BaseException` on purpose: no handler of the tool's own can take it for the failure of
+    a command it may go on from."""
+
+
+def _norm(path):
+    return os.path.normcase(os.path.abspath(os.fspath(path)))
+
+
+def in_tree(path):
+    """Whether `path`, as written, lies inside the repository ROOT."""
+    p, root = _norm(path), _norm(ROOT)
+    return p == root or p.startswith(root.rstrip(os.sep) + os.sep)
+
+
+def real_inside(path):
+    """Whether `path` lies inside the repository and is reached through no symlink or junction: the path as written is the path it resolves to."""
+    return in_tree(path) and os.path.normcase(os.path.realpath(_norm(path))) == _norm(path)
+
+
+def left_alone(path, why):
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/") if in_tree(path) else str(path)
+    if all(rel != r for r, _w in BOARD_LEFT):
+        BOARD_LEFT.append((rel, why))
+
+
+def board_isfile(path):
+    """`path.is_file()` — and, in the board's run, only where the file is the tree's to read: a regular file inside the repository, through no symlink.
+    A file of the tree that is none of these is left unread, and named once at the end."""
+    path = pathlib.Path(path)
+    if not SAFE_READS or not in_tree(path):
+        return path.is_file()
+    if real_inside(path) and path.is_file():
+        return True
+    if os.path.lexists(path):
+        left_alone(path, "a symlink, or not a regular file" if not real_inside(path) else "not a regular file")
+    return False
+
+
+def board_text(path):
+    """A file's text, or None where it is not there — in the board's run, where it is not a regular file inside the repository either."""
+    path = pathlib.Path(path)
+    if SAFE_READS and in_tree(path) and not board_isfile(path):
+        return None
+    return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def tracker_folder_problem():
+    """Why the board's run does not touch the tracker folder, in one line — or "": it must resolve inside the repository, and the way to it is no symlink."""
+    d = TRACKER_DIR
+    if not in_tree(d):
+        return f"the tracker folder {os.path.abspath(d)} is not inside the repository {ROOT} — the board is not refreshed"
+    real = pathlib.Path(os.path.realpath(_norm(d)))
+    if not in_tree(real):
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — the board is not refreshed"
+    if not real_inside(d):
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — the board is not refreshed"
+    return ""
+
+
+_TRACKED = None
+
+
+def tracked_board_files():
+    """What git tracks of the board's files — the page and its views — read once per run, with one read-only call. Where there is no git, none."""
+    global _TRACKED
+    if _TRACKED is None:
+        if vcs() != "git":
+            _TRACKED = set()
+        else:
+            rels = [HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()]
+            out = subprocess.run(["git", "ls-files", "-z", "--", *(":(literal)" + r for r in rels)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                                 errors="replace", env=nested_git_env()).stdout
+            _TRACKED = {_norm(ROOT / r) for r in out.split("\x00") if r}
+    return _TRACKED
+
+
+def unwritable(path):
+    """Why the board's run does not write `path`, or "": it is reached through a symlink, is no regular file, or git tracks it."""
+    if not real_inside(path):
+        return "a symlink, or reached through one"
+    if os.path.lexists(path) and not os.path.isfile(path):
+        return "not a regular file"
+    if _norm(path) in tracked_board_files():
+        return "git tracks it"
+    return ""
+
+
+def board_write(path, text, changed_only=False):
+    """Write one of the board's files: with `put`, as ever; in the board's run only where `unwritable` finds no reason, and never through a symlink.
+    `changed_only`: leave a file that already says this. Returns whether it wrote."""
+    path = pathlib.Path(path)
+    if SAFE_READS:
+        why = unwritable(path)
+        if why:
+            left_alone(path, why)
+            return False
+    if changed_only and path.exists() and path.read_text(encoding="utf-8") == text:
+        return False
+    if not SAFE_READS:
+        put(path, text)
+        return True
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+    return True
+
+
+_PATH_SEP = re.compile(r"[\\/]")
+READ_ONLY_GIT = frozenset({"rev-parse", "log", "show", "cat-file", "diff", "var", "for-each-ref", "symbolic-ref", "ls-files", "rev-list", "merge-base",
+                           "show-ref", "worktree", "config", "branch"})
+READ_ONLY_GIT_C = ("core.quotePath=", "gpg.ssh.allowedSignersFile=")        # the only `-c` the tool hands git: how it prints a path, and the signers it verifies against
+
+
+def read_only_git(argv):
+    """Whether `argv` is a call of git that changes nothing: one of the subcommands above, none of their forms that write (`config` only to read,
+    `branch` only `--show-current`, `worktree` only `list`, no `--output`), and no `-c` but the two the tool uses."""
+    if not isinstance(argv, (list, tuple)) or len(argv) < 2 or _PATH_SEP.split(str(argv[0]))[-1].lower() not in ("git", "git.exe"):
+        return False
+    rest, i = [str(a) for a in argv[1:]], 0
+    while i < len(rest) and rest[i] in ("-c", "-C"):
+        if rest[i] == "-c" and not (i + 1 < len(rest) and rest[i + 1].startswith(READ_ONLY_GIT_C)):
+            return False
+        i += 2
+    if i >= len(rest) or rest[i] not in READ_ONLY_GIT:
+        return False
+    sub, tail = rest[i], rest[i + 1:]
+    if any(a.startswith("--output") for a in tail):
+        return False
+    if sub == "branch":
+        return tail == ["--show-current"]
+    if sub == "worktree":
+        return tail[:1] == ["list"]
+    if sub == "config":
+        return "--get" in tail or tail == ["user.name"]
+    if sub == "symbolic-ref":
+        return len([a for a in tail if not a.startswith("-")]) == 1
+    return True
+
+
+def split_cmdline(line):
+    """A Windows command line as the argument list it came from (the rules `subprocess.list2cmdline` writes by): Windows hands the audit hook
+    the line, POSIX the list."""
+    out, cur, quoted, started, i = [], [], False, False, 0
+    while i < len(line):
+        c = line[i]
+        if c == "\\":
+            j = i
+            while j < len(line) and line[j] == "\\":
+                j += 1
+            n = j - i
+            started = True
+            if j < len(line) and line[j] == '"':
+                cur.append("\\" * (n // 2))
+                if n % 2:
+                    cur.append('"')
+                    j += 1
+            else:
+                cur.append("\\" * n)
+            i = j
+        elif c == '"':
+            quoted, started, i = not quoted, True, i + 1
+        elif c in " \t" and not quoted:
+            if started:
+                out.append("".join(cur))
+                cur, started = [], False
+            i += 1
+        else:
+            cur.append(c)
+            started, i = True, i + 1
+    if started:
+        out.append("".join(cur))
+    return out
+
+
+def board_tripwire(event, args):
+    """The board's run, enforced where Python itself does the thing (`sys.addaudithook`): no program but read-only git, no network, nothing written
+    but the board's files (and the one temporary file the signers are verified against), no file of the tree opened but a regular file inside the
+    repository reached through no symlink. Whatever a path of the tool reaches that the checks above did not think of is refused here and said."""
+    if not _TRIPWIRE or _IN_TRIPWIRE[0]:
+        return
+    _IN_TRIPWIRE[0] = True
+    try:
+        board_judge(event, args)
+    finally:
+        _IN_TRIPWIRE[0] = False
+
+
+def board_judge(event, args):
+    """What `board_tripwire` decides for one event: nothing, or `ReadOnlyRun`. It calls nothing that takes a lock — an event can fire while the code that raised it holds one."""
+    why = ""
+    if event == "subprocess.Popen":
+        argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
+        if not read_only_git(argv):
+            why = f"it would start {' '.join(str(a) for a in argv[:4])}"
+    elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):
+        why = f"{event} is not for the board's run"
+    elif event in ("os.rename", "os.rmdir", "os.symlink", "os.link", "os.truncate", "os.chmod", "os.chown", "os.utime") or event.startswith("shutil."):
+        why = f"{event} is not for the board's run"
+    elif event == "os.mkdir":
+        if _norm(args[0]) != _norm(VIEW_DIR):
+            why = f"it would make {args[0]}"
+    elif event == "os.remove":
+        if not board_target(args[0]):
+            why = f"it would remove {args[0]}"
+    elif event == "open":
+        target, mode, flags = args
+        if isinstance(target, int) or target is None:
+            return
+        flags = flags if isinstance(flags, int) else 0
+        writing = any(c in str(mode or "") for c in "wax+") or bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_TRUNC))
+        if writing:
+            if not board_target(target):
+                why = f"it would write {os.fsdecode(target)}"
+        elif in_tree(os.fsdecode(target)) and not (real_inside(os.fsdecode(target)) and os.path.isfile(os.fsdecode(target))):
+            why = f"it would read {os.fsdecode(target)}, which is no regular file inside the repository"
+    elif event in ("os.listdir", "os.scandir"):
+        if args[0] is not None and not isinstance(args[0], int) and in_tree(os.fsdecode(args[0])) and not real_inside(os.fsdecode(args[0])):
+            why = f"it would list {os.fsdecode(args[0])}, a symlink or reached through one"
+    if why:
+        TRIPPED.append(why)
+        raise ReadOnlyRun(why)
+
+
+def board_target(path):
+    """Whether `path` is one of the board's files: the page, a view, or the one temporary file the signers are verified against."""
+    p = _norm(os.fsdecode(path))
+    if p == _norm(HTML_OUT) or (os.path.dirname(p) == _norm(VIEW_DIR) and p.endswith(os.path.normcase(".js"))):
+        return True
+    return os.path.dirname(p) == _TEMP and os.path.basename(p).startswith("shoalmark-signers-")
+
+
+def arm_tripwire():
+    """Turn the tripwire on. Everything it needs is read first — the system's temporary directory above all: `tempfile` finds it under a lock of its own, on the first `os.open` it
+    makes, and a hook that asked for it then would wait for ever for a lock its own thread holds."""
+    global _TEMP, _TRIPWIRE
+    _TEMP = _norm(tempfile.gettempdir())
+    if not _AUDIT_HOOKED[0]:
+        sys.addaudithook(board_tripwire)
+        _AUDIT_HOOKED[0] = True
+    _TRIPWIRE = True
+
+
 def digest(path):
     """A PIN hash survives a checkout that converts line ends (git's autocrlf, svn:eol-style)."""
     return hashlib.sha256(pathlib.Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
@@ -203,7 +458,8 @@ def configure(root=None):
     global HEAD, STATE_HEAD_RE, DONE_RE
     ROOT = find_root(root)
     path = ROOT / CONFIG_NAME
-    CONFIG = {**DEFAULTS, **(read_config(path.read_text(encoding="utf-8")) if path.exists() else {})}
+    text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
+    CONFIG = {**DEFAULTS, **(read_config(text) if text is not None else {})}
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
@@ -3297,7 +3553,7 @@ def brand():
     themes, logo, wordmark, labels, src, warn = [], None, None, dict(LABELS), {"theme.css": [], "logo": [], "wordmark": [], "labels.yaml": []}, []
     for who, d in brand_places():
         f = d / "theme.css"
-        if f.is_file():
+        if board_isfile(f):
             css = f.read_text(encoding="utf-8")
             # A path in a theme is written relative to THE FILE IT IS IN — what an editor resolves, what a person expects.
             # The page inlines the css, so each is re-based onto the page's directory; that also makes an import or a
@@ -3319,7 +3575,7 @@ def brand():
                     warn.append(f"{who}'s theme.css: text {i} on ground {b} has a contrast of {contrast(b, i):.1f}:1 — below 4.5:1, hard to read")
         for name, mime in (("logo.svg", "image/svg+xml"), ("logo.png", "image/png")):
             f = d / name
-            if f.is_file():
+            if board_isfile(f):
                 data, size = brand_bytes(f)
                 if size > LOGO_MAX:
                     warn.append(f"{who}'s {name} is {size:,} bytes — over {LOGO_MAX:,}, not shown")
@@ -3327,7 +3583,7 @@ def brand():
                     logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(data).decode("ascii"))); src["logo"].append(who)
                 break
         f = d / "wordmark.svg"
-        if f.is_file():
+        if board_isfile(f):
             data, size = brand_bytes(f)
             svg, why = ("", f"it is {size:,} bytes — over {LOGO_MAX:,}") if size > LOGO_MAX else inline_svg(data)
             if svg:
@@ -3335,7 +3591,7 @@ def brand():
             else:
                 warn.append(f"{who}'s wordmark.svg is not shown: {why} — the header keeps {'the wordmark before it' if wordmark else 'the logo and the name'}")
         f = d / "labels.yaml"
-        if f.is_file():
+        if board_isfile(f):
             given = read_flat(f.read_text(encoding="utf-8"))
             unknown = sorted(k for k in given if k not in LABELS)
             if unknown:
@@ -3437,7 +3693,7 @@ THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is 
 def triage_home():
     """TRIAGE.md as the command and the dashboard read it: the Owner's current path, and the newest pass."""
     home = TRACKER_DIR / "TRIAGE.md"
-    text = home.read_text(encoding="utf-8") if home.exists() else ""
+    text = board_text(home) or ""
     # a section is found by the repository's own name for it, or by the English one
     part = lambda k: (re.search(rf"^## (?:{re.escape(HEAD[k])}|{re.escape(DEFAULTS['headings'][k])})[ \t]*\n(.*?)(?=^## |\Z)", text, re.S | re.M) or ["", ""])[1].strip()
     # a pass is a paragraph that carries its date — the template's own notes do not, in any language
@@ -3470,6 +3726,9 @@ def write_views(trackers):
     them, not the newest alone: the relation `recover_relations` read from that answer's commit, under `**answered** —`
     where a record from 0.18.1 on carries its own, naming that commit — or *relation not computable* (FM-029: every
     reading prints the relation)."""
+    if SAFE_READS and os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+        left_alone(VIEW_DIR, "a symlink, or not a directory")        # the board's run writes no view through a symlink or over a file
+        return
     VIEW_DIR.mkdir(exist_ok=True)
     keep = set()
     recover_relations(trackers)
@@ -3485,10 +3744,9 @@ def write_views(trackers):
                     body = body[:cut] + f"\n**relation** — {said}" + (f" · read from the answer's commit `{source}`" if source else "") + body[cut:]
         out, text = VIEW_DIR / f'{t["id"]}.js', f'V({script_json(t["id"])},{script_json(body)})\n'
         keep.add(out.name)
-        if not out.exists() or out.read_text(encoding="utf-8") != text:
-            put(out, text)
+        board_write(out, text, changed_only=True)
     for stray in VIEW_DIR.glob("*.js"):
-        if stray.name not in keep:
+        if stray.name not in keep and not (SAFE_READS and unwritable(stray)):       # a stray the board's run may not write is left where it is
             stray.unlink()
 
 
@@ -3497,6 +3755,8 @@ def latest_verdicts():
     its reason live in the pass's worksheet, never in the tracker; the page shows them where the tracker is read."""
     out = {}
     for sheet in sorted((TRACKER_DIR / "evidence" / "triage").glob("triage-*.md")):
+        if SAFE_READS and not board_isfile(sheet):
+            continue
         for tid, verdict, line, error in sheet_rows(sheet.read_text(encoding="utf-8")):
             if tid and verdict and not error:
                 reason = re.split(r"(?<!\\)\|", line)[-2].strip().replace("\\|", "|")
@@ -3554,7 +3814,7 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask, provenance=not (SAFE_READS and vcs() == "svn")),
               t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
              list(act_of(t) or [])] + ([way[t["id"]]] if t["id"] in way else []),
         )
@@ -6911,7 +7171,10 @@ def parse_args(argv):
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
-    add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — it never runs the deriver, so that board carries no derived columns")
+    add("--html-only", action="store_true",
+        help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
+             "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
+             "tracks; its board carries no derived columns. It stands alone, with --root")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, commit-msg) — nothing runs after a checkout or a merge, and the post-checkout and post-merge hooks an older copy wrote, marked `# shoalmark`, are removed — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
@@ -7081,7 +7344,7 @@ def run_deriver(trackers, mode="write", flags=()):
 
 
 def load_trackers():
-    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)]))
+    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name) and (not SAFE_READS or board_isfile(p))]))
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
@@ -7620,6 +7883,54 @@ def new_tracker(words, trackers, tags_arg=None):
     return EXIT_OK
 
 
+def board_run(root):
+    """`--html-only`: the board's own run, the one a checkout and a merge hook starts (a private security report). It reads what the repository holds
+    and writes the board — `index.html` and `view/<ID>.js` in the tracker folder — and does nothing else:
+    - it starts no deriver and no program but read-only git — `board_tripwire` refuses anything else where Python does it;
+    - it reads the tree only as regular files inside the repository, through no symlink: the trackers, the configuration, the brand's files;
+    - the tracker folder must resolve inside the repository, and the board is written only there, never through a symlink and never over a file git tracks;
+    - it imports nothing from the repository, and writes no bytecode.
+    What it leaves alone it names, in one line — and where that is the page itself, it prints that line and no link; a tracker folder it refuses, in one line, exit 4."""
+    global SAFE_READS, _TRIPWIRE, _TRACKED
+    saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"))
+    SAFE_READS, _TRACKED = True, None
+    BOARD_LEFT.clear(), TRIPPED.clear()
+    sys.dont_write_bytecode = True
+    os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
+    try:
+        configure(root)
+        sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
+        refused = tracker_folder_problem()
+        if refused:
+            print(refused, file=sys.stderr)
+            return EXIT_LINT
+        arm_tripwire()
+        trackers = load_trackers()
+        no_derived(trackers)                                        # no deriver: no derived column, file, note or key
+        if TRACKER_DIR.is_dir():
+            written = board_write(HTML_OUT, render_html(trackers))
+            write_views(trackers)
+            if written:
+                print(board_link())                                 # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
+        return EXIT_OK
+    except ReadOnlyRun as e:
+        print(f"the board's run was stopped: {e} — it starts nothing but read-only git and writes only the board", file=sys.stderr)
+        return EXIT_LINT
+    finally:
+        _TRIPWIRE = SAFE_READS = False
+        sys.dont_write_bytecode, sys.path[:] = saved[0], saved[1]
+        if saved[2] is None:
+            os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+        else:
+            os.environ["NoDefaultCurrentDirectoryInExePath"] = saved[2]
+        if BOARD_LEFT:
+            shown = ", ".join(f"{rel} ({why})" for rel, why in BOARD_LEFT[:4]) + (f" and {len(BOARD_LEFT) - 4} more" if len(BOARD_LEFT) > 4 else "")
+            print(f"board: left alone — {shown}", file=sys.stderr)
+
+
+_AUDIT_HOOKED = [False]
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
@@ -7631,6 +7942,12 @@ def main(argv=None):
         if alone:                                           # a flag that means nothing alone is refused, never silently ignored
             print(f"{flag} goes with {needs} — {like}", file=sys.stderr)
             return 2
+    if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
+        others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
+        if others:
+            print(f"--html-only is the board's read-only run and stands alone, with --root: {', '.join(others)} goes with another run", file=sys.stderr)
+            return 2
+        return board_run(args.root)
     if args.tsvn_hook:
         # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
         # one this copy of the tool lives in. `start` runs before the commit dialog lists its files, so the INDEX.md
@@ -7677,15 +7994,11 @@ def main(argv=None):
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
     mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
-    if args.html_only:                                    # the board's run never reaches the deriver: nothing a hook starts executes a file a branch brought (a private security report)
-        refused, derived_problems = None, []
-        no_derived(trackers)
-    else:
-        refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
+    refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
         return EXIT_OK
-    if refused is not None and not args.html_only:            # the deriver said no: nothing is judged, nothing is written
+    if refused is not None:                                 # the deriver said no: nothing is judged, nothing is written
         for p in derived_problems:
             print(f"  {p}", file=sys.stderr)
         print("REFUSED by the deriver — nothing was written.", file=sys.stderr)
@@ -7719,12 +8032,6 @@ def main(argv=None):
         return code
     if args.next:
         return next_up(trackers)
-    if args.html_only:
-        if TRACKER_DIR.is_dir():
-            put(HTML_OUT, render_html(trackers))
-            write_views(trackers)
-            print(board_link())                                 # where the board is written, to open (FM-006); never with --print-written, whose stdout is paths for `git add`
-        return EXIT_OK
     if not TRACKER_DIR.is_dir():
         print(f"no tracker directory at {TRACKER_DIR} — run `{CMD} --init`", file=sys.stderr)
         return EXIT_LINT
@@ -7845,7 +8152,9 @@ def main(argv=None):
     return EXIT_DRIFT if drifted else EXIT_OK
 
 
+SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
 configure()
+SAFE_READS = False
 
 if __name__ == "__main__":
     sys.exit(main())

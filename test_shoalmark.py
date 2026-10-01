@@ -1611,6 +1611,240 @@ if _browser("escape"):
     except _ChromeFailed as e_:
         _hung("escape", e_)
 
+# --- FM-006: a private security report — the board's run reads only regular files inside the repository, starts only read-only git, writes only the board --------------
+# Inert markers only: a file that would appear, a sentinel text in a file outside the repository. Each control runs the tool as it was before (ae3c9e9) and must fail there.
+_has_rev = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+def _old_tool(into, rev="ae3c9e9"):
+    """The tool as it was before the board's run was read-only, beside its vendored `marked` — a control that must fail on it."""
+    into = Path(into); (into / "vendor").mkdir(parents=True, exist_ok=True)
+    (into / "shoalmark.py").write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:shoalmark.py"], capture_output=True, env=_ENV).stdout)
+    for f_ in (HERE / "vendor").glob("marked-*.js"):
+        shutil.copy(f_, into / "vendor" / f_.name)
+    shutil.copy(HERE / "VERSION", into / "VERSION")
+    return into / "shoalmark.py"
+def _tool_run(tool, root, *a, env=None):
+    """The tool as a program — what a hook starts, with the import-time configuration read and all."""
+    r_ = subprocess.run([sys.executable, str(tool), "--root", str(root), *a], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+    return r_.returncode, r_.stdout, r_.stderr
+def _tree(root, skip=()):
+    """Every path of a tree outside `.git` and `skip`: what it is, and its content or its link — a listing to compare before and after."""
+    out_ = {}
+    for dp_, dn_, fn_ in os.walk(root):
+        dn_[:] = [d_ for d_ in dn_ if d_ != ".git"]
+        for n_ in dn_ + fn_:
+            p_ = Path(dp_) / n_; rel_ = p_.relative_to(root).as_posix()
+            if any(rel_ == k_ or rel_.startswith(k_ + "/") for k_ in skip):
+                continue
+            out_[rel_] = ("link", os.readlink(p_)) if p_.is_symlink() else ("dir",) if p_.is_dir() else ("file", hashlib.sha1(p_.read_bytes()).hexdigest())
+    return out_
+def _can_symlink():
+    with tempfile.TemporaryDirectory() as d_:
+        try:
+            os.symlink(Path(d_) / "a", Path(d_) / "b"); return True
+        except (OSError, NotImplementedError, AttributeError):
+            return False
+_SYMLINKS = os.environ.get("SHOALMARK_NO_SYMLINK_TESTS") is None and _can_symlink()
+def _board_repo(root, key="msr"):
+    git(root, "init", "-q"); run(root, "--init", "--key", key); tracker(root, f"{key.upper()}-001")
+    return root / "docs/work-tracker"
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); tdir_ = _board_repo(root)
+    gi_ = (root / ".gitignore").read_text(encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "x")
+    before_ = _tree(root, skip=("docs/work-tracker",))
+    code_, out_, err_ = run(root, "--html-only")
+    after_ = _tree(root, skip=("docs/work-tracker",)); wrote_ = sorted(set(_tree(root)) - set(_tree(root, skip=("docs/work-tracker/index.html", "docs/work-tracker/view"))))
+    check("FM-006 · a private security report · the board's run writes the board and nothing else: its page and its `view/<ID>.js`, inside the tracker folder, and the tree outside it is "
+          "byte for byte what it was (saw " + repr(wrote_) + ")",
+          code_ == 0 and out_.startswith("board: file:") and before_ == after_ and wrote_ == ["docs/work-tracker/index.html", "docs/work-tracker/view", "docs/work-tracker/view/MSR-001.js"])
+    c2_, o2_, e2_ = run(root, "--html-only", "--check")
+    check("FM-006 · a private security report · `--html-only` stands alone, with `--root`: another run named beside it is refused, one line, exit 2, nothing written",
+          c2_ == 2 and "stands alone" in e2_ and "--check" in e2_ and o2_ == "" and len(e2_.strip().splitlines()) == 1)
+    rm_git(root)
+
+# what a git call may be: the subprocess list of the board's run, each one read-only (the tripwire holds the run to this list, in the interpreter)
+_RO_ = [["git", "log", "-1", "--format=%H"], ["git", "-c", "core.quotePath=false", "show", "HEAD:x"], ["git", "branch", "--show-current"], ["git", "config", "user.name"],
+        ["git", "config", "--path", "--get", "gpg.ssh.allowedSignersFile"], ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"], ["git", "ls-files", "-z", "--", ":(literal)a"],
+        ["git", "worktree", "list", "--porcelain"], ["git", "cat-file", "--batch-check"], ["git", "rev-parse", "--git-path", "MERGE_HEAD"], ["git", "diff", "--quiet", "HEAD", "--", "x"],
+        ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin/answer/"], ["git", "var", "GIT_AUTHOR_IDENT"],
+        ["git", "-c", "gpg.ssh.allowedSignersFile=/tmp/x", "log", "-1", "--format=%G?", "abc"], ["C:\\Program Files\\Git\\cmd\\git.exe", "log"]]
+_NOT_ = [["git", "fetch", "--quiet", "origin"], ["gh", "pr", "list"], ["svn", "blame", "x"], ["git", "-C", "/x", "fetch"], ["git", "-c", "core.sshCommand=x", "log"], ["git", "branch", "x"],
+         ["git", "config", "user.name", "x"], ["git", "config", "--global", "user.name", "x"], ["git", "symbolic-ref", "HEAD", "refs/heads/x"], ["git", "log", "--output=/tmp/x"],
+         ["git", "interpret-trailers", "--in-place", "f"], ["git", "commit", "-m", "x"], ["git", "checkout", "x"], ["git", "worktree", "add", "x"], ["/bin/sh", "-c", "git log"],
+         ["git"], [], "git log", ["git", "-c", "core.fsmonitor=x", "status"], ["git", "update-ref", "-d", "x"], ["git", "gc"]]
+_CMDS_ = [["git", "log", "-1", "--format=%H%n%an"], ["git", "-C", "C:\\a b\\c", "show", "x:y z"], ["git", "log", "--grep", 'say "hi"', "--", "C:\\x y\\"], ["git", "log", ""], ["git", "a\\\\b", "c\\"]]
+check("FM-006 · a private security report · the board's run starts read-only git and nothing else: the calls it makes pass, and `fetch`, `gh`, `svn`, a write form of `config`, `branch` or `symbolic-ref`, "
+      "`--output`, a `-c` other than the two the tool uses, a shell and a bare string do not; a Windows command line is read back to its list, as `subprocess` writes it",
+      all(fm.read_only_git(a_) for a_ in _RO_) and not any(fm.read_only_git(a_) for a_ in _NOT_) and all(fm.split_cmdline(subprocess.list2cmdline(a_)) == a_ for a_ in _CMDS_))
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); _board_repo(root); run(root, "--html-only"); fm.configure(root)
+    saw_ = {}
+    mark_ = root / "marker-ran"
+    fake_ = root / "bin"; fake_.mkdir()
+    (fake_ / "svn").write_text(f'#!/bin/sh\ntouch "{mark_.as_posix()}"\n', encoding="utf-8"); (fake_ / "svn").chmod(0o755)
+    (root / "link-target").write_text("x", encoding="utf-8")
+    if _SYMLINKS:
+        os.symlink(root / "docs", root / "dlink"); os.symlink(root / "link-target", root / "flink")
+    attempts_ = [("svn", lambda: subprocess.run(["svn", "--version"], capture_output=True)), ("gh", lambda: subprocess.run(["gh", "--version"], capture_output=True)),
+                 ("git fetch", lambda: subprocess.run(["git", "fetch", "--quiet", "origin"], cwd=root, capture_output=True)),
+                 ("os.system", lambda: os.system("echo x")), ("a file written", lambda: open(root / "evil.txt", "w").write("x")),
+                 ("a file written in the tracker folder that is no board file", lambda: open(root / "docs/work-tracker/notes.md", "w").write("x")),
+                 ("a rename", lambda: os.rename(root / "link-target", root / "moved")), ("a removal", lambda: os.remove(root / "link-target")),
+                 ("a directory made", lambda: os.mkdir(root / "newdir")), ("a copy", lambda: shutil.copyfile(root / "link-target", root / "copied"))]
+    if _SYMLINKS:
+        attempts_ += [("a folder listed through a symlink", lambda: os.listdir(root / "dlink")), ("a file read through a symlink", lambda: open(root / "flink").read())]
+    saved_path_ = os.environ["PATH"]; os.environ["PATH"] = str(fake_) + os.pathsep + saved_path_
+    fm.TRIPPED.clear(); fm.arm_tripwire()
+    try:
+        for name_, f_ in attempts_:
+            try:
+                f_(); saw_[name_] = "ran"
+            except fm.ReadOnlyRun:
+                saw_[name_] = "refused"
+        ok_git_ = subprocess.run(["git", "rev-parse", "--git-dir"], cwd=root, capture_output=True, text=True).returncode == 0
+        fm.board_write(fm.HTML_OUT, "page")     # the board's own file, in the board's run
+    finally:
+        fm._TRIPWIRE = False; os.environ["PATH"] = saved_path_
+    check("FM-006 · a private security report · the tripwire holds the run where Python does the thing: `svn`, `gh`, `git fetch`, a shell, a write that is no board file, a rename, a removal, a directory, a copy, "
+          "a listing and a read through a symlink are each refused — nothing ran (no marker), nothing was written — and read-only git and the board's own page go through (saw " + repr(saw_) + ")",
+          all(v_ == "refused" for v_ in saw_.values()) and ok_git_ and not mark_.exists() and not (root / "evil.txt").exists() and not (root / "moved").exists() and not (root / "newdir").exists()
+          and not (root / "copied").exists() and not (root / "docs/work-tracker/notes.md").exists() and fm.HTML_OUT.read_text(encoding="utf-8") == "page" and len(fm.TRIPPED) == len(saw_))
+    rm_git(root)
+# …and in a process that has not yet used `tempfile`, as a hook's run is: the temporary file the signers are verified against is made — `tempfile` finds its directory under a lock of its own, on the
+# first `os.open` it makes, and a tripwire that asked for the directory then would wait for ever for a lock its own thread holds. A control: a hook that does ask waits, and is killed.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    fresh_ = lambda body, t=20: subprocess.run([sys.executable, "-c", f"import sys, os, tempfile; sys.path.insert(0, {str(HERE)!r}); import shoalmark as fm; fm.configure({str(root)!r}); {body}"],
+                                         capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV, timeout=t)
+    r_ = fresh_("fm.arm_tripwire(); fd, tmp = tempfile.mkstemp(prefix='shoalmark-signers-'); os.close(fd); os.remove(tmp); print('made and removed')")
+    try:
+        fresh_("sys.addaudithook(lambda e, a: tempfile.gettempdir() if e == 'open' else None); tempfile.mkstemp()", t=6).returncode; waited_ = False
+    except subprocess.TimeoutExpired:
+        waited_ = True
+    check("FM-006 · a private security report · the tripwire, armed in a process that has not used `tempfile`, lets the signers' temporary file be made and removed — it does not ask `tempfile` for its directory inside the event; "
+          f"the control, a hook that does, waits on a lock its own thread holds and is killed after 6 s (saw {r_.stdout.strip()!r} · the control waited: {waited_})",
+          r_.returncode == 0 and r_.stdout.strip() == "made and removed" and waited_)
+    rm_git(root)
+fm.configure(HERE)
+
+# no Subversion call: a working copy that asks `svn blame` for who set `next: owner` — the board's run asks nothing of it
+if os.name != "nt" and _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
+        root = Path(d).resolve(); (root / ".svn").mkdir(); run(root, "--init", "--key", "msr")
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", 'owner = "o@x"\n\n[seats]\nbuilder = "b@x"\n\n[kinds]', 1), encoding="utf-8")
+        tracker(root, "MSR-001", extra='next: owner\nask: "Which one?"\n', title="asks")
+        fake_ = Path(o) / "bin"; fake_.mkdir(); mark_ = Path(o) / "svn-ran"
+        (fake_ / "svn").write_text(f'#!/bin/sh\ntouch "{mark_.as_posix()}"\nexit 1\n', encoding="utf-8"); (fake_ / "svn").chmod(0o755)
+        env_ = dict(_ENV, PATH=str(fake_) + os.pathsep + os.environ["PATH"])
+        new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only", env=env_); ran_new_ = mark_.exists(); mark_.unlink(missing_ok=True)
+        old_ = _tool_run(_old_tool(Path(o) / "old"), root, "--html-only", env=env_); ran_old_ = mark_.exists()
+        check(f"FM-006 · a private security report · in a Subversion working copy the board's run starts no `svn`: with a seat to check and an ask to place, it writes the board and the marker never appears; "
+              f"the tool before it ran `svn` for the same repository (saw exit {new_[0]}, marker new {ran_new_} · old {ran_old_})",
+              new_[0] == 0 and not ran_new_ and (root / "docs/work-tracker/index.html").exists() and ran_old_)
+else:
+    SKIPS.append(("FM-006 · the board's run starts no `svn`", 1, "no POSIX shell for a fake `svn`, or this clone does not hold ae3c9e9"))
+
+# what it reads: only regular files inside the repository — a tracker, the configuration, the Owner's path, the brand's files, a triage worksheet, each a symlink to a file outside
+if _SYMLINKS and _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
+        base_, out_dir_ = Path(d).resolve(), Path(o).resolve()
+        root = base_ / "repo"; root.mkdir(); tdir_ = _board_repo(root)
+        (tdir_ / "brand").mkdir(); (tdir_ / "evidence/triage").mkdir(parents=True)
+        label_ = next(iter(fm.LABELS))
+        outside_ = {"tracker": ("MSR-002-x.md", "---\nid: MSR-002\nstatus: In Progress\nconsidered: none\nhook: \"h\"\n---\n\n# MSR-002 — OUTSIDE-TRACKER\n\n## What is true now\n\n**One thing.**\n\n## Done when\n\nit is.\n", tdir_ / "MSR-002-x.md"),
+                    "home": ("TRIAGE.md", "# Triage\n\n## The intent\n\n- **for** — OUTSIDE-INTENT\n\n## The current path\n\nOUTSIDE-PATH is the road\n\n## Passes\n\n", tdir_ / "TRIAGE.md"),
+                    "theme": ("theme.css", ":root{--bg:#123456;--ink:#fedcba}\n", tdir_ / "brand/theme.css"),
+                    "labels": ("labels.yaml", f"{label_}: OUTSIDE-LABEL\n", tdir_ / "brand/labels.yaml"),
+                    "wordmark": ("wordmark.svg", '<svg viewBox="0 0 8 8" height="8"><title>OUTSIDE-WORDMARK</title><path d="M0 0h8v8z" fill="currentColor"/></svg>\n', tdir_ / "brand/wordmark.svg"),
+                    "sheet": ("triage-2026-01-01.md", "| Tracker | Verdict | Reason |\n|---|---|---|\n| [MSR-001](../MSR-001-x.md) | keep P1 | OUTSIDE-REASON |\n", tdir_ / "evidence/triage/triage-2026-01-01.md")}
+        (tdir_ / "TRIAGE.md").unlink()
+        for key_, (name_, text_, link_) in outside_.items():
+            (out_dir_ / name_).write_text(text_, encoding="utf-8"); os.symlink(out_dir_ / name_, link_)
+        (out_dir_ / "config.toml").write_text('name = "OUTSIDE-NAME"\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        markers_ = ("OUTSIDE-TRACKER", "OUTSIDE-INTENT", "OUTSIDE-PATH", "#123456", "OUTSIDE-LABEL", "OUTSIDE-WORDMARK", "OUTSIDE-REASON")
+        listing_ = _tree(out_dir_)
+        c_new_, o_new_, e_new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); page_new_ = (tdir_ / "index.html").read_text(encoding="utf-8"); views_new_ = "".join(p_.read_text(encoding="utf-8") for p_ in (tdir_ / "view").glob("*.js"))
+        view1_, view2_ = (tdir_ / "view/MSR-001.js").exists(), (tdir_ / "view/MSR-002.js").exists()
+        (tdir_ / "index.html").unlink()
+        c_old_, o_old_, e_old_ = _tool_run(_old_tool(out_dir_.parent / (out_dir_.name + "-old")), root, "--html-only"); page_old_ = (tdir_ / "index.html").read_text(encoding="utf-8")
+        check("FM-006 · a private security report · the board's run reads no symlink: a tracker, the Owner's page, a theme, the labels, a wordmark and a triage worksheet that are each a symlink to a file outside the repository "
+              f"are left unread — none of their words is in the board, one line names them, exit 0 — and the tool before it read every one (saw exit {c_new_}, left alone: {[l_ for l_ in e_new_.splitlines() if 'left alone' in l_][:1]})",
+              c_new_ == 0 and not any(m_ in page_new_ or m_ in views_new_ for m_ in markers_) and "board: left alone" in e_new_ and "MSR-002-x.md" in e_new_ and "brand/theme.css" in e_new_
+              and len(e_new_.strip().splitlines()) == 1 and view1_ and not view2_
+              and all(m_ in page_old_ for m_ in markers_ if m_ != "OUTSIDE-WORDMARK") and _tree(out_dir_) == listing_)
+        # the configuration: a symlink to a file outside — not read, so its `name` is not the board's
+        (tdir_ / "index.html").unlink(); (root / "shoalmark.toml").rename(root / "shoalmark.keep"); os.symlink(out_dir_ / "config.toml", root / "shoalmark.toml")
+        c_cfg_, o_cfg_, e_cfg_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); page_cfg_ = (tdir_ / "index.html").read_text(encoding="utf-8")
+        (tdir_ / "index.html").unlink(); c_cfgo_, _, _ = _tool_run(_old_tool(out_dir_.parent / (out_dir_.name + "-old")), root, "--html-only"); page_cfgo_ = (tdir_ / "index.html").read_text(encoding="utf-8")
+        check("FM-006 · a private security report · the configuration that is a symlink to a file outside the repository is not read — its `name` is not the board's, and the tool before it was",
+              c_cfg_ == 0 and "OUTSIDE-NAME" not in page_cfg_ and "OUTSIDE-NAME" in page_cfgo_)
+        rm_git(root)
+elif not _SYMLINKS:
+    SKIPS.append(("FM-006 · the board's run reads no symlink", 2, "this system makes no symlink here"))
+
+# where it works: the tracker folder must resolve inside the repository
+if _SYMLINKS and _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); tdir_ = _board_repo(root)
+        elsewhere_ = base_ / "elsewhere"; shutil.copytree(tdir_, elsewhere_, ignore=shutil.ignore_patterns("index.html", "view"))
+        old_ = _old_tool(base_ / "old")
+        # (a) `tracker_dir` names a folder outside — in the configuration a branch brings
+        cfg_ = (root / "shoalmark.toml").read_text(encoding="utf-8"); (root / "shoalmark.toml").write_text(re.sub(r'tracker_dir = "[^"]*"', 'tracker_dir = "../elsewhere"', cfg_), encoding="utf-8")
+        listing_ = _tree(elsewhere_); c_a_, o_a_, e_a_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); same_a_ = _tree(elsewhere_) == listing_
+        c_ao_, _, _ = _tool_run(old_, root, "--html-only"); wrote_old_a_ = _tree(elsewhere_) != listing_
+        for p_ in (elsewhere_ / "index.html",): p_.unlink(missing_ok=True)
+        shutil.rmtree(elsewhere_ / "view", ignore_errors=True)
+        # (b) the tracker folder is a symlink to a folder outside, and (c) to one inside
+        (root / "shoalmark.toml").write_text(cfg_, encoding="utf-8"); shutil.rmtree(tdir_); os.symlink(elsewhere_, tdir_)
+        listing_ = _tree(elsewhere_); c_b_, o_b_, e_b_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); same_b_ = _tree(elsewhere_) == listing_
+        c_bo_, _, _ = _tool_run(old_, root, "--html-only"); wrote_old_b_ = _tree(elsewhere_) != listing_
+        tdir_.unlink(); inside_ = root / "docs/real-tracker"; shutil.copytree(elsewhere_, inside_, ignore=shutil.ignore_patterns("index.html", "view")); os.symlink(inside_, tdir_)
+        listing_ = _tree(inside_); c_c_, o_c_, e_c_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); same_c_ = _tree(inside_) == listing_
+        check("FM-006 · a private security report · the tracker folder must resolve inside the repository: named outside by the configuration, or a symlink to a folder outside, or one inside — each refused with one line, "
+              "exit 4, nothing written there, no link; the tool before it wrote the board into the folder outside both times "
+              f"(saw {e_a_.strip()[:90]!r} · {e_b_.strip()[:80]!r} · {e_c_.strip()[:80]!r})",
+              c_a_ == c_b_ == c_c_ == fm.EXIT_LINT and same_a_ and same_b_ and same_c_ and o_a_ == o_b_ == o_c_ == "" and wrote_old_a_ and wrote_old_b_
+              and all(len(e_.strip().splitlines()) == 1 for e_ in (e_a_, e_b_, e_c_)) and "not inside the repository" in e_a_ and "resolves outside the repository" in e_b_ and "reached through, a symlink" in e_c_)
+        rm_git(root)
+elif not _SYMLINKS:
+    SKIPS.append(("FM-006 · the tracker folder must resolve inside the repository", 1, "this system makes no symlink here"))
+
+# what it writes: the board's files, inside the tracker folder, never through a symlink and never over a file git tracks — and its link only for a board it wrote
+if _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
+        base_, out_dir_ = Path(d).resolve(), Path(o).resolve(); root = base_ / "repo"; root.mkdir(); tdir_ = _board_repo(root)
+        old_ = _old_tool(base_ / "old"); view_ = tdir_ / "view"
+        # (a) the page is tracked by git — committed, stale — and a view with it
+        view_.mkdir(); (tdir_ / "index.html").write_text("STALE PAGE", encoding="utf-8"); (view_ / "MSR-001.js").write_text("STALE VIEW", encoding="utf-8")
+        git(root, "add", "-f", "docs/work-tracker/index.html", "docs/work-tracker/view/MSR-001.js"); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "x")
+        c_a_, o_a_, e_a_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); kept_a_ = (tdir_ / "index.html").read_text(encoding="utf-8") == "STALE PAGE" and (view_ / "MSR-001.js").read_text(encoding="utf-8") == "STALE VIEW"
+        clean_a_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout.strip() == ""
+        c_ao_, o_ao_, _ = _tool_run(old_, root, "--html-only"); over_a_ = (tdir_ / "index.html").read_text(encoding="utf-8") != "STALE PAGE"
+        git(root, "checkout", "-q", "--", ".")
+        check("FM-006 · a private security report · a page git tracks is not written over, nor its views: the files stay as committed, the tree is clean, one line says so and the board's link is not printed in its place; "
+              f"the tool before it wrote over them and printed the link (saw {e_a_.strip()[:140]!r})",
+              c_a_ == 0 and kept_a_ and clean_a_ and o_a_ == "" and "left alone" in e_a_ and "index.html (git tracks it)" in e_a_ and len(e_a_.strip().splitlines()) == 1 and over_a_ and o_ao_.startswith("board: "))
+        # (b) the page is a symlink — to a file outside; the board's other files are written
+        git(root, "rm", "-q", "--cached", "-f", "docs/work-tracker/index.html", "docs/work-tracker/view/MSR-001.js"); (tdir_ / "index.html").unlink(); shutil.rmtree(view_)
+        if _SYMLINKS:
+            (out_dir_ / "target.html").write_text("SENTINEL", encoding="utf-8"); os.symlink(out_dir_ / "target.html", tdir_ / "index.html")
+            c_b_, o_b_, e_b_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); kept_b_ = (out_dir_ / "target.html").read_text(encoding="utf-8") == "SENTINEL" and (tdir_ / "index.html").is_symlink()
+            c_bo_, o_bo_, _ = _tool_run(old_, root, "--html-only"); over_b_ = (out_dir_ / "target.html").read_text(encoding="utf-8") != "SENTINEL"
+            check("FM-006 · a private security report · a page that is a symlink is not written through: the file it points to outside the repository is untouched, the views beside it are written, one line says so "
+                  f"and no link is printed; the tool before it wrote through the link (saw {e_b_.strip()[:140]!r})",
+                  c_b_ == 0 and kept_b_ and o_b_ == "" and "index.html (a symlink" in e_b_ and len(e_b_.strip().splitlines()) == 1 and (view_ / "MSR-001.js").exists() and over_b_ and o_bo_.startswith("board: "))
+            # (c) `view/` is a symlink to a folder outside
+            (tdir_ / "index.html").unlink(); shutil.rmtree(view_); (out_dir_ / "views").mkdir(); os.symlink(out_dir_ / "views", view_); listing_ = _tree(out_dir_)
+            c_c_, o_c_, e_c_ = _tool_run(HERE / "shoalmark.py", root, "--html-only")
+            check("FM-006 · a private security report · `view/` that is a symlink to a folder outside is not written into: nothing appears there, the page is written and its link printed, one line names the folder "
+                  f"(saw {e_c_.strip()[:120]!r})",
+                  c_c_ == 0 and _tree(out_dir_) == listing_ and o_c_.startswith("board: ") and (tdir_ / "index.html").is_file() and "view (a symlink" in e_c_ and len(e_c_.strip().splitlines()) == 1)
+        else:
+            SKIPS.append(("FM-006 · the board's run writes through no symlink", 2, "this system makes no symlink here"))
+        rm_git(root)
+else:
+    SKIPS.append(("FM-006 · what the board's run writes", 3, "this clone does not hold ae3c9e9"))
+
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
     try:
