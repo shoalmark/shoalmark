@@ -511,8 +511,7 @@ and reads this from stdout:
   side effects, and nothing derived is ever stored — so nothing derived can be stale.
 - **A non-zero exit refuses the run before anything is written** — a crash included, and silence past 60 s. Say
   why on stderr.
-- `mode` is `write` · `check` · `board` (only the git-ignored page is produced — a guard that protects committed
-  output may stand down) · `read`. `flags` are what was typed as `--derive-flag NAME` on **this** run.
+- `mode` is `write` · `check` · `read`. `flags` are what was typed as `--derive-flag NAME` on **this** run.
 - **A deriver is told things on stdin and never reads the environment** — the core runs it with `PATH`, `HOME`,
   the locale and nothing else. A git hook inherits whatever the shell that ran `git commit` had exported; a deriver
   that listened to that would let a stray variable decide what gets staged.
