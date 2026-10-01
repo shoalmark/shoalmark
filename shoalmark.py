@@ -219,7 +219,7 @@ def configure(root=None):
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
@@ -245,7 +245,7 @@ def configure(root=None):
             raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
-    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
+    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED = False, None, {}, {}, set()    # the pre-commit run, what it stages, who wrote which line, and the trackers whose blame could not be read
     global _BUILD, _CHANGES
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
@@ -4207,23 +4207,44 @@ def git_user():
     return _GIT_USER
 
 
+BLAME_ANSWERS = ("E195002", "E200009")      # the history's own answer *not committed*, which is what a blame of a tracker nobody has committed says: E195002 the path has no committed
+                                            # revision (scheduled for addition), E200009 the target is not in version control (a file not yet `svn add`ed). A failure to READ is none of them
+
+
 def svn_blame(rel):
     """{line number: (author, revision)} for one file, from the server's own record — read once per file and kept:
-    the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository."""
+    the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository. {} for a
+    file that is not committed. Where the blame CANNOT be read (no server, no network, svn not there) SvnUnreadable, with
+    svn's own error — kept as well, so the one failure is raised again, not asked again: a rights check that cannot read
+    who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling)."""
     if rel in _SVN_BLAME:
+        if isinstance(_SVN_BLAME[rel], Exception):
+            raise _SVN_BLAME[rel]
         return _SVN_BLAME[rel]
     out = {}
-    blame = subprocess.run(["svn", "blame", "--xml", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if blame.returncode == 0:
-        import xml.etree.ElementTree as ET
-        try:
-            for e in ET.fromstring(blame.stdout).iter("entry"):
-                who, c = e.find("commit/author"), e.find("commit")
-                out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
-        except (ET.ParseError, ValueError, TypeError):
-            out = {}
+    try:
+        blame = svn_run("blame", rel, xml=True, answers=BLAME_ANSWERS)
+    except SvnUnreadable as e:
+        _SVN_BLAME[rel] = e
+        raise
+    try:
+        for e in (blame.iter("entry") if blame is not None else []):
+            who, c = e.find("commit/author"), e.find("commit")
+            out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
+    except (ValueError, TypeError):
+        out = {}
     _SVN_BLAME[rel] = out
     return out
+
+
+def blame_refusal(t, why):
+    """The one refusal for a tracker whose blame could not be read — once per tracker per run, whichever gate asked first: Subversion's history
+    could not be read, so who changed it is not known and its rights are not judged, and are not passed unread."""
+    if t["id"] in _BLAME_REFUSED:
+        return []
+    _BLAME_REFUSED.add(t["id"])
+    return [f'{t["id"]}: Subversion\'s history could not be read, so who changed this tracker is not known and its rights are not judged — and not passed unread. '
+            f'svn said: {why}. Reach the repository, then run again']
 
 
 ERE_META = frozenset(".[]()*+?{}|^$\\")                  # what a POSIX extended regular expression reserves, and nothing else
@@ -4592,7 +4613,10 @@ def seat_problems(t):
     know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
-    name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
+    try:
+        name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
+    except SvnUnreadable as e:
+        return blame_refusal(t, e)
     if how == "uncommitted":
         if vcs() == "svn":
             return []                                    # Subversion has no client hook; the server's gate reads it next
@@ -4740,7 +4764,11 @@ def rights_problems(trackers):
                     continue
                 if right == "triage":
                     needle = next(k + ":" for k in TRIAGE_KEYS if (t.get("fm", {}).get(k) or "").strip())
-                name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                try:
+                    name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                except SvnUnreadable as e:
+                    out += blame_refusal(t, e)
+                    break                                # the tracker's blame is unreadable: one line, not one for each right
                 if how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
@@ -6714,9 +6742,15 @@ def lint(trackers, committing=False):
             elif not SEATS and t.get("answered_by") not in allowed:
                 problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one')
             else:
-                who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
+                try:
+                    who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
+                except SvnUnreadable as e:
+                    problems += blame_refusal(t, e)
+                    who, email, how, commit = None, None, "unreadable", ""
                 seat = seat_of(who, email) if SEATS else None
-                if how == "uncommitted" and committing:
+                if how == "unreadable":
+                    pass                                 # refused above: who wrote the answer cannot be read
+                elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')

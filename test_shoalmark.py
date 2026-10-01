@@ -3856,6 +3856,70 @@ if _SVN:
                   code_sp == 0 and "C5-002" not in err_sp and code_spd == fm.EXIT_LINT and said_unread_ in err_spd
                   and code_sn == fm.EXIT_LINT and "C5-003: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_sn
                   and code_snd == fm.EXIT_LINT and said_unread_ in err_snd and re.search(r"svn said: .*E\d{6}", err_snd) and "no revision behind it" not in err_snd)
+        # the second fail-open (the cold audit's round, the Owner's ruling): who wrote a line cannot be read — a seat's `close`, `answer` or `triage` change REFUSES, it never passes unread
+        repo4_ = base / "repo4"; away4_ = base / "repo4.away"
+        subprocess.run(["svnadmin", "create", str(repo4_)], check=True); url4_ = repo4_.as_uri()
+        svn("mkdir", "-m", "layout", url4_ + "/trunk", "--username", "pl"); svn("checkout", url4_ + "/trunk", str(base / "wc4")); root = base / "wc4"; wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        (root / "shoalmark.toml").write_text('name = "w"\nowner = "ow"\n[kinds]\nC5 = "Work"\n[seats]\nplanner = "pl"\nbuilder = "bu"\n', encoding="utf-8")       # `planner` holds close and triage, `builder` none; `ow` is the Owner
+        for n_ in (201, 202, 203, 204):
+            tracker(root, f"C5-{n_}", title="nothing built")
+        def by4_(user_, msg_):
+            """the working copy as it is, committed by the Subversion account `user_` — the server's own record of who wrote each line"""
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", msg_, "--username", user_, cwd=root); svn("update", cwd=root)
+        def edit4_(n_, a_, b_):
+            p_ = next(wt_.glob(f"C5-{n_}-*.md")); p_.write_text(p_.read_text().replace(a_, b_), encoding="utf-8")
+        def apart4_():
+            """`--check` with the repository moved away — after the write run, as the cold audit ran it, which leaves an INDEX with no banner"""
+            repo4_.rename(away4_)
+            try:
+                run(root); return run(root, "--check")
+            finally:
+                away4_.rename(repo4_)
+        said4_ = "Subversion's history could not be read, so who changed this tracker is not known and its rights are not judged — and not passed unread. svn said: "
+        by4_("pl", "the trackers")
+        edit4_(201, "status: In Progress", "status: Closed"); by4_("pl", "C5-201 closed by the planner")
+        edit4_(203, "considered: none\n", "considered: none\ntier: P1\n"); by4_("pl", "C5-203 judged by the planner")
+        run(root); code_h, _, err_h = run(root, "--check"); code_hu, _, err_hu = apart4_()
+        check(f"FM-024 · the second fail-open · a planner's `close` and `triage` pass connected (0); with the repository unreachable `--check` exits 4, not 0, naming each tracker, that the history could not be read "
+              f"and svn's own error (saw {code_h}, {code_hu})",
+              code_h == 0 and "does not hold" not in err_h and code_hu == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_hu for n_ in (201, 203)) and re.search(r"svn said: .*E\d{6}", err_hu))
+        edit4_(202, "status: In Progress", "status: Closed"); by4_("bu", "C5-202 closed by the builder")
+        edit4_(204, "considered: none\n", "considered: none\ntier: P1\n"); by4_("bu", "C5-204 judged by the builder")
+        run(root); code_n, _, err_n = run(root, "--check"); code_nu, _, err_nu = apart4_()
+        check(f"FM-024 · the second fail-open · the same changes by a builder, which holds neither right, are refused connected as before — `close` and `triage` named — and with the repository unreachable are refused "
+              f"too, as unread, never passed (saw {code_n}, {code_nu})",
+              code_n == fm.EXIT_LINT and "C5-202: `status:` is a `close` change" in err_n and "C5-204: `tier:` is a `triage` change" in err_n and "C5-201" not in err_n and "C5-203" not in err_n
+              and code_nu == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_nu for n_ in (201, 202, 203, 204)) and "does not hold" not in err_nu)
+        if not shutil.which("svnserve"):
+            print("  skip  FM-024 · the second fail-open · the server itself stopped — `svnserve` is not on the PATH here")
+        else:
+            import socket
+            with socket.socket() as s_:
+                s_.bind(("127.0.0.1", 0)); port4_ = s_.getsockname()[1]
+            proc4_ = subprocess.Popen(["svnserve", "-d", "--foreground", "-r", str(base), "--listen-host", "127.0.0.1", "--listen-port", str(port4_)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if svn("info", f"svn://127.0.0.1:{port4_}/repo4/trunk").returncode == 0:
+                    break
+                time.sleep(0.1)
+            wcs4_ = base / "wcs4"; svn("checkout", f"svn://127.0.0.1:{port4_}/repo4/trunk", str(wcs4_))
+            run(wcs4_); code_sc, _, err_sc = run(wcs4_, "--check")
+            proc4_.terminate(); proc4_.wait(timeout=20)
+            run(wcs4_); code_ss, _, err_ss = run(wcs4_, "--check")
+            check(f"FM-024 · the second fail-open · with `svnserve` on the loopback the rights judge as before connected (the builder's changes refused, 4), and with the server stopped `--check` exits 4, not 0, "
+                  f"naming the trackers as unread (saw {code_sc}, {code_ss})",
+                  code_sc == fm.EXIT_LINT and "C5-202: `status:` is a `close` change" in err_sc and code_ss == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_ss for n_ in (201, 202, 203, 204)) and "does not hold" not in err_ss)
+        # an `answer`: the Owner's passes, a builder's is refused connected as before, and unreachable both read as unread — never as an answer *not committed yet*, which is what a failed blame used to say
+        ask4_ = f'next: owner\nask: "Shall it ship?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "ship it"\n'
+        for n_ in (205, 206):
+            tracker(root, f"C5-{n_}", extra=ask4_, title="asked")
+        answered4_ = 'ask-proposal: "ship it"\n', f'ask-proposal: "ship it"\nanswer: "accepted"\nanswered: {old}\nanswered-by: ow\n'
+        by4_("pl", "the two asks"); edit4_(205, *answered4_); by4_("ow", "C5-205 answered by the Owner"); edit4_(206, *answered4_); by4_("bu", "C5-206 answered by the builder")
+        run(root); code_a, _, err_a = run(root, "--check"); code_au, _, err_au = apart4_()
+        check(f"FM-024 · the second fail-open · an `answer` by the Owner passes connected, one by a builder is refused as before, and with the repository unreachable both are refused as unread — not as an answer "
+              f"*not committed yet* (saw {code_a}, {code_au})",
+              code_a == fm.EXIT_LINT and "C5-206: `answer:` is a `answer` change" in err_a and "C5-205" not in err_a
+              and code_au == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_au for n_ in (205, 206)) and "not committed yet" not in err_au)
     fm.configure(HERE)
 
 
