@@ -147,8 +147,8 @@ Signatur beweist also das Konto, nicht die Hand.
   aktuelle Weg* ändert, sei es ein Wort, eine Zeile oder nur eine Leerzeile, denn auch Leerraum zählt. Ebenso lehnt
   es einen Commit ab, der diese Überschriften umbenennt oder entfernt, die `TRIAGE.md` löscht oder verschiebt oder
   das Tracker-Verzeichnis woandershin zeigen lässt. Durch kommt nur Ihr signierter Commit: `%G?` G, Ihre E-Mail als
-  Signierer, und als Autor Sie, wie `owner` in der Konfiguration des Standard-Branchs Sie nennt. Bei einem
-  Merge zählt nur ein Text, den keiner seiner Eltern hatte.
+  Signierer, und als Autor Sie, wie `owner` in der Konfiguration des Standard-Branchs Sie nennt, oder ein Sitz, dem
+  `[rights]` dort das Recht `answer` gibt. Bei einem Merge zählt nur ein Text, den keiner seiner Eltern hatte.
 - **Das Werkzeug.** Der Commit-Hook lehnt einen solchen Commit eines Agenten schon ab, bevor er entsteht, und
   `--queue` liest seinen Pull Request als `wait: TRIAGE.md changed unsigned`.
 - **Das Werkzeug.** Auch die Schlüssel, gegen die Ihre Signatur geprüft wird, sind so geschützt. Sie kommen aus der

@@ -119,7 +119,8 @@ written and signed, and the raise shows the signature proves the account, not th
   path*: a word, a line, even a blank line, because whitespace counts. It also refuses a commit that renames or
   removes those headings, deletes or moves `TRIAGE.md`, or points the tracker directory somewhere else. The one
   exception is your signed commit: `%G?` G, the signer your email, and the author you, as `owner` in the
-  default branch's configuration names you. A merge is judged only on a text that no parent had.
+  default branch's configuration names you — or a seat that `[rights]` there gives `answer`. A merge is judged only on a
+  text that no parent had.
 - **The tool.** The commit hook refuses such a commit from a seat before it is made, and `--queue` reads its pull
   request as `wait: TRIAGE.md changed unsigned`.
 - **The tool.** The keys your signature is checked against are kept the same way. They come from the default
