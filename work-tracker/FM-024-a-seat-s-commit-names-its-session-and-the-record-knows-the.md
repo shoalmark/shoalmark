@@ -353,7 +353,8 @@ exist, before the v0.19.0 cut.
   planner `336427458+shoalmark-planner[bot]@users.noreply.github.com` · builder `336429412+shoalmark-builder[bot]@…` · reviewer
   `336429944+shoalmark-reviewer[bot]@…` · research `336434529+shoalmark-research[bot]@…` · go-to-market
   `336430483+shoalmark-go-to-market[bot]@…` · designer `336431084+shoalmark-designer[bot]@…` · auditor
-  `336431811+shoalmark-auditor[bot]@…` — each `@users.noreply.github.com`. Phase 2 writes them.
+  `336431811+shoalmark-auditor[bot]@…` — each `@users.noreply.github.com`. Phase 2 writes them. The Auditor checked all seven ids against
+  GitHub's API before phase 2; all matched.
 - **Identities:** no test commits — each seat's next real commit is its proof; every seat worktree's `user.email` moves to its
   bot address as the switch merges.
 - **Route** (FM-032's CI trial): *early* — the gate, identities and the configuration: a draft pull request right after D2's
