@@ -15,7 +15,7 @@ Markdown trackers with a small front matter, and one command that reads them all
     shoalmark.py --init          scaffold the tracker directory, TRIAGE.md and shoalmark.toml
     shoalmark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
-One seam, by convention: if `<tracker dir>/derive` exists and is executable it runs first, on every run — it may add
+One seam, by convention: if `<tracker dir>/derive` exists and is executable it runs first, on every run but `--html-only`'s — it may add
 columns (each also a view on the board), front-matter keys, problems and other generated files, or refuse the run.
 
 The INDEX is a *pointer*, not a copy: each row is a terse hook and a machine-read status; the detail
@@ -219,7 +219,7 @@ def configure(root=None):
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _GIT_USER
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED, _GIT_USER
     _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
@@ -245,7 +245,7 @@ def configure(root=None):
             raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
-    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
+    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED = False, None, {}, {}, set()    # the pre-commit run, what it stages, who wrote which line, and the trackers whose blame could not be read
     global _BUILD, _CHANGES
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
@@ -2310,7 +2310,7 @@ def board_stamp():
 def board_after_act(stamp):
     """FM-030, his signed answer 920970b7 — *right after the act* the board shows it: he pressed the button, ran the command,
     and the page he returns to must say *done, on its way* (his words of 13:57:50). Put back where he started, a checkout hook
-    that rebuilds the board — `--install-hook`'s post-checkout, `--html-only` — has written it already, and it reads the
+    that rebuilds the board — a post-checkout hook of one's own that runs `--html-only` — has written it already, and it reads the
     branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or its size —
     between the push and now. Where it did not — no such hook is installed, the checkout ran none (he ran the command on
     `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
@@ -4207,23 +4207,44 @@ def git_user():
     return _GIT_USER
 
 
+BLAME_ANSWERS = ("E195002", "E200009")      # the history's own answer *not committed*, which is what a blame of a tracker nobody has committed says: E195002 the path has no committed
+                                            # revision (scheduled for addition), E200009 the target is not in version control (a file not yet `svn add`ed). A failure to READ is none of them
+
+
 def svn_blame(rel):
     """{line number: (author, revision)} for one file, from the server's own record — read once per file and kept:
-    the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository."""
+    the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository. {} for a
+    file that is not committed. Where the blame CANNOT be read (no server, no network, svn not there) SvnUnreadable, with
+    svn's own error — kept as well, so the one failure is raised again, not asked again: a rights check that cannot read
+    who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling)."""
     if rel in _SVN_BLAME:
+        if isinstance(_SVN_BLAME[rel], Exception):
+            raise _SVN_BLAME[rel]
         return _SVN_BLAME[rel]
     out = {}
-    blame = subprocess.run(["svn", "blame", "--xml", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if blame.returncode == 0:
-        import xml.etree.ElementTree as ET
-        try:
-            for e in ET.fromstring(blame.stdout).iter("entry"):
-                who, c = e.find("commit/author"), e.find("commit")
-                out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
-        except (ET.ParseError, ValueError, TypeError):
-            out = {}
+    try:
+        blame = svn_run("blame", rel, xml=True, answers=BLAME_ANSWERS)
+    except SvnUnreadable as e:
+        _SVN_BLAME[rel] = e
+        raise
+    try:
+        for e in (blame.iter("entry") if blame is not None else []):
+            who, c = e.find("commit/author"), e.find("commit")
+            out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
+    except (ValueError, TypeError):
+        out = {}
     _SVN_BLAME[rel] = out
     return out
+
+
+def blame_refusal(t, why):
+    """The one refusal for a tracker whose blame could not be read — once per tracker per run, whichever gate asked first: Subversion's history
+    could not be read, so who changed it is not known and its rights are not judged, and are not passed unread."""
+    if t["id"] in _BLAME_REFUSED:
+        return []
+    _BLAME_REFUSED.add(t["id"])
+    return [f'{t["id"]}: Subversion\'s history could not be read, so who changed this tracker is not known and its rights are not judged — and not passed unread. '
+            f'svn said: {why}. Reach the repository, then run again']
 
 
 ERE_META = frozenset(".[]()*+?{}|^$\\")                  # what a POSIX extended regular expression reserves, and nothing else
@@ -4592,7 +4613,10 @@ def seat_problems(t):
     know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
-    name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
+    try:
+        name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
+    except SvnUnreadable as e:
+        return blame_refusal(t, e)
     if how == "uncommitted":
         if vcs() == "svn":
             return []                                    # Subversion has no client hook; the server's gate reads it next
@@ -4740,7 +4764,11 @@ def rights_problems(trackers):
                     continue
                 if right == "triage":
                     needle = next(k + ":" for k in TRIAGE_KEYS if (t.get("fm", {}).get(k) or "").strip())
-                name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                try:
+                    name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                except SvnUnreadable as e:
+                    out += blame_refusal(t, e)
+                    break                                # the tracker's blame is unreadable: one line, not one for each right
                 if how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
@@ -4841,19 +4869,43 @@ def git_ship_verdicts(names, bases, records):
     return out
 
 
-def svn_run(*args, xml=False):
-    """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where svn is not there, fails or is silent."""
+class SvnUnreadable(Exception):
+    """Subversion's history could not be read — svn is not there, or the call failed (no server, no network, a repository moved away) —
+    as against an answer, which may be empty. `tracker` names the one it was reading for, where it knows (F1 of the cold audit)."""
+    tracker = None
+    newest = False                              # the read that failed was the newest revision's — which only the server holds (RV-2267)
+
+
+SVN_ANSWERS = ("E160006", "E195012")        # *no such revision*, and *the path is not in that revision*: an answer of the history, not a failure to read it
+
+
+def svn_run(*args, xml=False, answers=()):
+    """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where the answer is empty, or is an
+    error code in `answers`. Where svn is not there or fails, SvnUnreadable with svn's own error: a done check that cannot read the
+    history it needs REFUSES, and never reads the failure as nothing changed (the cold audit's F1, the Owner's ruling)."""
     import xml.etree.ElementTree as ET
     try:
         done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        return (ET.fromstring(done.stdout) if xml else done.stdout) if done.returncode == 0 and done.stdout.strip() else None
-    except (OSError, ET.ParseError):
+    except OSError as e:
+        raise SvnUnreadable(f"svn could not be run: {e}")
+    if done.returncode != 0:
+        codes = re.findall(r"\bE\d{6}\b", done.stderr)
+        if codes and all(c in answers for c in codes):
+            return None
+        raise SvnUnreadable(" · ".join(l.strip() for l in done.stderr.strip().splitlines()[:2] if l.strip())[:300] or f"svn exited {done.returncode}")
+    if not done.stdout.strip():
         return None
+    if not xml:
+        return done.stdout
+    try:
+        return ET.fromstring(done.stdout)
+    except ET.ParseError:
+        raise SvnUnreadable("svn printed XML that could not be read")
 
 
-def svn_entry(*args):
+def svn_entry(*args, answers=()):
     """The one `<logentry>` that `svn log <args> .` prints for the working copy, or None."""
-    log = svn_run("log", *args, ".", xml=True)
+    log = svn_run("log", *args, ".", xml=True, answers=answers)
     return log.find("logentry") if log is not None else None
 
 
@@ -4864,6 +4916,12 @@ def svn_shipped_moves(rels):
     Shipped tracker there ever was would be a move, and each one shipped before this rule would be refused for ever. Only the change in
     front of the run is a move here. The calls: `svn status`; where nothing is pending, `svn log -l 1` and one `svn cat` for each tracker the
     newest revision changed; and one more `svn cat` for each that is Shipped after."""
+    def read(rel, *args, answers=()):
+        try:
+            return svn_run(*args, answers=answers)
+        except SvnUnreadable as e:
+            e.tracker = rels[rel]["id"]; raise                             # a failed read for this tracker names it
+
     status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
     for e in (status.iter("entry") if status is not None else []):
         wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
@@ -4872,13 +4930,16 @@ def svn_shipped_moves(rels):
     at, touched = None, {}
     if pending:
         touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
-        was = lambda rel: None if pending[rel] else svn_run("cat", "-r", "BASE", rel)
+        was = lambda rel: None if pending[rel] else read(rel, "cat", "-r", "BASE", rel)
     else:
-        newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")                  # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+        try:
+            newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")              # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+        except SvnUnreadable as e:
+            e.newest = True; raise
         at = int(newest.get("revision")) if newest is not None else None
         paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
-        touched = {rel: svn_run("cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
-        was = lambda rel: svn_run("cat", "-r", str(at - 1), rel)
+        touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
+        was = lambda rel: read(rel, "cat", "-r", str(at - 1), rel, answers=SVN_ANSWERS)
     for rel, now in touched.items():
         if is_shipped(now) and not is_shipped(was(rel)):
             yield rels[rel], "", ship_log_rows(now), lambda names, records, at=at: svn_ship_verdicts(names, at, records)
@@ -4891,7 +4952,7 @@ def svn_ship_verdicts(names, at, records):
     base = ("/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")).rstrip("/")   # the working copy's own path in the repository — "" at its root
     out = {}
     for n in names:
-        entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v")
+        entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v", answers=SVN_ANSWERS)
         inside = [p.text[len(base) + 1:] if p.text.startswith(base + "/") else p.text for p in entry.iter("path") if p.text] if entry is not None else []
         out[n] = ("is not in the history" if entry is None
                   else "" if any(ratio_class(p, records, []) == "product" for p in inside) else f"changes nothing outside the records ({', '.join(records)})")
@@ -4944,20 +5005,40 @@ def ship_problems(trackers):
     if not rels:
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
-    for t, where, rows, judge in shipped_moves(rels):
-        names = commits_named(rows)
-        try:
-            records = records or ship_records()
-        except ValueError as bad:
-            out.append(f'{t["id"]}: {where}moved to `Shipped`, which needs the records told from the product — {bad}')
-            continue
-        verdicts = judge(names, records) if names else {}
-        if "" in verdicts.values():
-            continue
-        found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
-        out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
-                   + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
-                   + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+
+    def unread(why, named=None, newest=False):
+        """F1: Subversion's history could not be read, so a move to Shipped cannot be judged — and is refused, not passed. The tracker it was
+        reading for, where that is known; else every tracker that is Shipped in the working copy, the ones such a move could be. Where the
+        read that failed is the NEWEST revision's — the change judged where nothing is pending, which only the server holds — and no tracker
+        in the working copy is Shipped to name, the refusal says that instead: the newest revision is not judged, and is not passed unread (RV-2267)."""
+        ids = [named] if named else [t["id"] for t in trackers if t.get("status") == "Shipped"]
+        if not ids and newest:
+            out.append(f"Subversion's newest revision could not be read, so a move to `Shipped` in it is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again")
+        if ids:
+            out.append(f'{", ".join(ids[:5])}{f" and {len(ids) - 5} more" if len(ids) > 5 else ""}: Subversion\'s history could not be read, so a move to `Shipped` '
+                       f'is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again')
+
+    try:
+        for t, where, rows, judge in shipped_moves(rels):
+            names = commits_named(rows)
+            try:
+                records = records or ship_records()
+            except ValueError as bad:
+                out.append(f'{t["id"]}: {where}moved to `Shipped`, which needs the records told from the product — {bad}')
+                continue
+            try:
+                verdicts = judge(names, records) if names else {}
+            except SvnUnreadable as e:
+                unread(e, t["id"])
+                continue
+            if "" in verdicts.values():
+                continue
+            found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
+            out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
+                       + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
+                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+    except SvnUnreadable as e:
+        unread(e, e.tracker, e.newest)
     return out
 
 
@@ -5291,8 +5372,9 @@ def harness_reading(hid):
 
 
 def whoami():
-    """`--whoami`: who this session is, in the form a message between sessions names its target (AGENTS.md) —
-    `To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]` by the
+    """`--whoami`: who this session is, as the line a seat's report opens with (AGENTS.md) —
+    `From: <session> <seat> (<worktree>) · <model> · <effort>`; a message a person carries between sessions names its target
+    by the same identity after `To:`. The session is from `seat.session`, the seat from `[seats]` by the
     worktree's `user.email`, the worktree's folder, and the model and effort from the harness's log by `seat.harness`
     (`—` where there is none). A second line names the log and the directory its session was launched in, for a person to
     read. Exit 4 (the lint code) without a `seat.session`; exit 2 where two logs carry the id."""
@@ -5306,7 +5388,7 @@ def whoami():
     if reading is None and problem.startswith("two logs"):
         print(f"--whoami: {problem}", file=sys.stderr)
         return 2
-    print(f"To: {sid} {seat_of(name, email) or email or name or '—'} ({pathlib.Path(top).name if top else ROOT.name}) · "
+    print(f"From: {sid} {seat_of(name, email) or email or name or '—'} ({pathlib.Path(top).name if top else ROOT.name}) · "
           f"{(reading or {}).get('model') or '—'} · {(reading or {}).get('effort') or '—'}")
     if reading:
         print(f"    read from {reading['path']}" + (f" — its session was launched in {reading['cwd']}" if reading["cwd"] else ""))
@@ -5370,11 +5452,18 @@ FORMER_NAMES = {"planner": ("principal",), "builder": ("implementer",)}     # th
 
 
 def session_names(seat):
-    """The names a session id's `<seat>-<n>` part may carry for this seat (FM-024, the switch): its own; its built-in former name
-    (`principal` for `planner`, `implementer` for `builder`); and the name of each `<name>@seat` address it lists — a seat renamed
-    keeps its old address beside the new, and the sessions begun under the old name (`<id>/gtm-<n>`, `<id>/implementer-<n>`), in
-    the history and in worktrees in flight, keep reading as the seat's. No other name does: a seat's session names no other seat."""
-    return {seat, *FORMER_NAMES.get(seat, ())} | {who[:-len("@seat")] for who, _mode in SEATS.get(seat, ()) if who.endswith("@seat")}
+    """The names a session id's `<seat>-<n>` part may carry for this seat (FM-024, the switch): its own; and the labels it has left
+    from before — its built-in former name (`principal` for `planner`, `implementer` for `builder`) and the name of each `<name>@seat`
+    address it lists. A seat renamed keeps its old address beside the new, and the sessions begun under the old name
+    (`<id>/gtm-<n>`, `<id>/implementer-<n>`), in the history and in worktrees in flight, keep reading as the seat's.
+    EVERY LABEL NAMES EXACTLY ONE SEAT (RV-2207, RV-2240): a label that is another seat's own name stays that seat's — both
+    spellings configured as two seats, or a list that holds `builder@seat` beside a seat `builder` — and a label two seats
+    claim as a former name or an old address passes for neither. An unshared old label keeps passing."""
+    claims = {}                                   # label -> the seats that claim it as a former name or an old address
+    for s, ids in SEATS.items():
+        for label in {*FORMER_NAMES.get(s, ()), *(who[:-len("@seat")] for who, _mode in ids if who.endswith("@seat"))}:
+            claims.setdefault(label, set()).add(s)
+    return {seat} | {label for label, by in claims.items() if by == {seat} and label not in SEATS}
 
 
 def session_problems():
@@ -6661,9 +6750,15 @@ def lint(trackers, committing=False):
             elif not SEATS and t.get("answered_by") not in allowed:
                 problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one')
             else:
-                who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
+                try:
+                    who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
+                except SvnUnreadable as e:
+                    problems += blame_refusal(t, e)
+                    who, email, how, commit = None, None, "unreadable", ""
                 seat = seat_of(who, email) if SEATS else None
-                if how == "uncommitted" and committing:
+                if how == "unreadable":
+                    pass                                 # refused above: who wrote the answer cannot be read
+                elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
@@ -6764,6 +6859,11 @@ EXIT_LINT = 4
 GENERATED_RE = re.compile(r"^> Generated \d{4}-\d{2}-\d{2} ", re.M)
 
 
+def board_link():
+    """The one line that says where the board was written: `board: file:///…/index.html` — the written file as a URI, right on Windows, macOS and Linux."""
+    return f"board: {HTML_OUT.resolve().as_uri()}"
+
+
 def drift_normalize(text):
     """Blank the generation date so only ledger content can count as drift."""
     return GENERATED_RE.sub("> Generated <date> ", text)
@@ -6789,8 +6889,8 @@ def parse_args(argv):
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
-    add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — it never runs the deriver, so that board carries no derived columns")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, commit-msg) — nothing runs after a checkout or a merge, and the post-checkout and post-merge hooks an older copy wrote, marked `# shoalmark`, are removed — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
@@ -6851,10 +6951,11 @@ def parse_args(argv):
                                                             "and `Worktree: <the checkout's directory>` to a seat's commit — and `Model:` and `Effort:` where `seat.harness` "
                                                             "names a log that carries them (`--whoami`) — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
-    add("--whoami", action="store_true", help="who this session is, as a message between sessions names its target (AGENTS.md): "
-                                              "`To: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]`, the "
+    add("--whoami", action="store_true", help="who this session is — the line a seat's report opens with (AGENTS.md): "
+                                              "`From: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]`, the "
                                               "worktree's folder, and the model and effort from the harness's own log, found by the id in `seat.harness` "
-                                              "(`—` where there is none). Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
+                                              "(`—` where there is none); a message's target is the same identity after `To:`. "
+                                              "Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
@@ -6865,7 +6966,7 @@ def parse_args(argv):
         help=f"with --brand DIR: the starter is a theme the tool ships in brand/themes/ — {' or '.join(shipped_themes()) or 'none in this copy'}: its theme.css and "
              "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
-    add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word")
+    add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
     add("--vendor", metavar="DIR", help="copy this tool into DIR — the themes it ships in brand/themes/ with it — with a PIN file of sha256 hashes: a pinned, self-contained copy. Only from a release: "
                                             "the whole tool, a git checkout whose HEAD is at the tag of its VERSION, a clean tree — otherwise refused, nothing written. "
                                             "The PIN's first line says where the copy came from; `--check` in the consumer reads it")
@@ -6889,11 +6990,19 @@ def deriver_env():
     return {k: v for k, v in os.environ.items() if k in keep or k.startswith("LC_")}
 
 
-DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit and every checkout; one that hangs must not hang the gate
+DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit; one that hangs must not hang the gate
+
+
+def no_derived(trackers):
+    """What a run knows before any deriver has spoken — and what `--html-only` knows, which never runs one: no derived column, file, note or key."""
+    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
+    DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS = [], {}, [], front_matter_schema(), [], []
+    for t in trackers:
+        t["x"], t["xd"], t["x_needs"] = {}, {}, []
 
 
 def run_deriver(trackers, mode="write", flags=()):
-    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run: nothing
+    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run but `--html-only`'s: nothing
     derived is stored, so nothing derived can be stale. stdin: every tracker's id, status, file and front matter.
     stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
     value key becomes a column in INDEX.md and on the board, and a view on the board. `_files: {path: text}` are other
@@ -6901,13 +7010,11 @@ def run_deriver(trackers, mode="write", flags=()):
     and counts them as drift under --check. A non-zero exit REFUSES the run before anything is written.
     Returns (exit code or None, problems)."""
     global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
-    DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS = [], {}, [], front_matter_schema(), [], []
-    for t in trackers:
-        t["x"], t["xd"], t["x_needs"] = {}, {}, []
+    no_derived(trackers)
     exe = TRACKER_DIR / "derive"
     if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
         return None, []
-    # `mode` — write · check · board (the git-ignored page only: nothing the run produces can be committed) · read.
+    # `mode` — write · check · read.
     # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
     # a hook inherits the environment of whatever shell ran `git commit`, and a stray export would reach every run.
     ask = json.dumps({"root": str(ROOT), "mode": mode, "flags": sorted(set(flags)), "trackers": [{"id": t["id"], "status": t["status"], "file": t["file"], "fm": t.get("fm", {})} for t in trackers]})
@@ -6916,7 +7023,7 @@ def run_deriver(trackers, mode="write", flags=()):
         run = subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)], input=ask, capture_output=True, text=True, encoding="utf-8",
                              cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
     except subprocess.TimeoutExpired:
-        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit and every checkout; make it fast, or make it fail"]
+        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit; make it fast, or make it fail"]
     if run.returncode:
         print(run.stderr.rstrip() or f"{exe.relative_to(ROOT).as_posix()} exited {run.returncode}", file=sys.stderr)
         return run.returncode, []
@@ -7182,9 +7289,9 @@ Work in this repository is tracked in `{dir}/` — one Markdown file per work it
    They have office hours, you have a budget: **end a session's last message with `{cmd} --owner`.**
 8. **`{dir}/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
-9. **A message a person carries between sessions names its target as the tool prints it:** `To: <session> <seat> (<worktree>)`.
-   A seat's report opens with its own — `{cmd} --whoami` prints it, with the model and effort the harness's log
-   names, never the seat's own word for them.
+9. **A seat's report opens with its identity as the tool prints it:** `From: <session> <seat> (<worktree>)` —
+   `{cmd} --whoami` prints it, with the model and effort the harness's log names, never the seat's own
+   word for them. A message a person carries between sessions names its target with `To:` and the same identity.
 """
 
 CONFIG_TEMPLATE = """\
@@ -7243,11 +7350,10 @@ fi
 """,
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
     "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033)\n{cmd} --commit-msg \"$1\"\n",
-    "post-merge": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
-    "post-checkout": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
 }
 
 
+OLD_HOOKS = ("post-checkout", "post-merge")             # the two an older copy wrote and `--install-hook` now removes where they carry `HOOK_MARK`
 HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
@@ -7323,6 +7429,11 @@ def install_hook():
         put(path, text.format(**fill))
         path.chmod(0o755)
         print(f"wrote {path}")
+    for name in OLD_HOOKS:                                     # written until 0.19.0, which ran the tool — and through it a deriver a branch brought — after every checkout and merge
+        path = hooks / name
+        if path.is_file() and HOOK_MARK in path.read_text(encoding="utf-8", errors="replace"):
+            path.unlink()
+            print(f"removed {path} — it ran after every {'checkout' if name == 'post-checkout' else 'merge'}; nothing shoalmark installed runs then now")
     return code
 
 
@@ -7543,8 +7654,12 @@ def main(argv=None):
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
-    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
-    refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
+    mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
+    if args.html_only:                                    # the board's run never reaches the deriver: nothing a hook starts executes a file a branch brought (a private security report)
+        refused, derived_problems = None, []
+        no_derived(trackers)
+    else:
+        refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
         return EXIT_OK
@@ -7586,6 +7701,7 @@ def main(argv=None):
         if TRACKER_DIR.is_dir():
             put(HTML_OUT, render_html(trackers))
             write_views(trackers)
+            print(board_link())                                 # where the board is written, to open (FM-006); never with --print-written, whose stdout is paths for `git add`
         return EXIT_OK
     if not TRACKER_DIR.is_dir():
         print(f"no tracker directory at {TRACKER_DIR} — run `{CMD} --init`", file=sys.stderr)
@@ -7681,6 +7797,8 @@ def main(argv=None):
         write_views(trackers)
         print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
         print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
+        if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
+            print(board_link())
         for path, text in sorted(DERIVED_FILES.items()):
             path.parent.mkdir(parents=True, exist_ok=True)
             put(path, text)

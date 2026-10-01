@@ -4,7 +4,7 @@ status: In Progress
 considered: FM-036, FM-002, FM-021, FM-033
 tags: bug
 triaged: 2026-09-30
-next: build
+next: wait
 tier: P3
 hook: "the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order"
 ---
@@ -12,6 +12,9 @@ hook: "the board places a ranked Proposed tracker in the backlog while the progr
 # FM-041 — the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order
 
 ## What is true now
+
+**2026-10-01 — stays In Progress until the parent project's pin moves (the Owner's ruling).** Its fix, `a80a713e9b`, is in
+v0.19.0; the tracker ships, naming that commit, once the parent project's pin has moved and its ranked ten show together.
 
 **Filed 2026-09-28 on the Auditor's finding through the Owner — his paste of 09:01:54, headed *To: 8e509911 principal (shoalmark-principal-4)*, four
 lines, saved word for word, sha256 `a375a843e12228c9229076e9af8b0f6ff22516f16f31156d67f0a75a870118ac`; nothing was built at filing.** The Auditor's line, word for word: *"Bug, 95% on

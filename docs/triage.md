@@ -103,7 +103,7 @@ and judged P2: *"the sitting's commands ran green here, so a red CI is not that 
 **A raise that names your path.** On 24 September 2026 the Auditor seat raised FM-007 with a sourced line under it.
 The key that signs the owner's answers was a software key in the shared ssh-agent, used by every seat's push without
 a prompt, and the line ended *"undermines: TRIAGE.md path 5, FM-033's answer"*: it named two signed rules, line 5
-of the path and the owner's signed answer on FM-033. The same evening a pass judged FM-007 again
+of the path and the Owner's signed answer on FM-033. The same evening a pass judged FM-007 again
 (`29466fc`). Re-made on its Reviewer's findings (`c5696c5`), it set P1: *"on the current path, line 5: an answer is
 written and signed, and the raise shows the signature proves the account, not the hand"*.
 
@@ -118,8 +118,9 @@ written and signed, and the raise shows the signature proves the account, not th
 - **The tool.** On a branch, `--check` refuses any commit that changes the text under *The intent* or *The current
   path*: a word, a line, even a blank line, because whitespace counts. It also refuses a commit that renames or
   removes those headings, deletes or moves `TRIAGE.md`, or points the tracker directory somewhere else. The one
-  exception is your signed commit: `%G?` G, the signer your email, and the author you, as `owner` in the
-  default branch's configuration names you. A merge is judged only on a text that no parent had.
+  exception is your signed commit: `%G?` G, the signer the author's email, and the author you, as `owner` in the
+  default branch's configuration names you — or a seat that `[rights]` there gives `answer`. A merge is judged only on a
+  text that no parent had.
 - **The tool.** The commit hook refuses such a commit from a seat before it is made, and `--queue` reads its pull
   request as `wait: TRIAGE.md changed unsigned`.
 - **The tool.** The keys your signature is checked against are kept the same way. They come from the default
@@ -157,8 +158,8 @@ process on their account holds that key (FM-007)*.
   catch it. As [the signing page](signing.md) says: *Tier 2 stops the agent that signs by mistake; tier 3 also stops
   the one that means to.* Tier 3 is a hardware key with a PIN and a touch, or a key in a Mac's Secure Enclave with
   Touch ID; only there is the key yours alone.
-- **The tool.** Where your `owner` is not marked `signed`, the guard proves the author only, a string anyone
-  can type, and it says so.
+- **The tool.** Where your `owner`, or a seat that holds `answer`, is not marked `signed`, the guard proves the author
+  only, a string anyone can type, and it says so.
 - **The tool.** Under Subversion the guard is out of scope, and it says so in one line: a working copy carries no
   signature.
 

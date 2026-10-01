@@ -2,10 +2,18 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.19.0
+## 0.19.0 — 2026-10-01
 
-<!-- The heading's name is provisional; the release cut settles which version this section is. -->
+**shoalmark 0.19.0 is the first public beta: the gate refuses a *done* without a commit behind it, the first screen speaks to
+the person who owns the repository, and a new English note, `ADOPT.md`, goes to their agents** (FM-005, FM-006, FM-024 — with
+FM-040, FM-041 and FM-032).
 
+- **What a stranger meets first (FM-006) — pages and wording, no product growth.** The Owner's ruling of 2026-09-30, its A amended on 2026-10-01,
+  filed in FM-006: the landing leads with *The agents keep the work; the person keeps the word.* and one action, *Hand your agents the note* — the new
+  English note, `ADOPT.md`; the German start page leads the same way, with a title and a description of its own; one description serves every other
+  page, and every page carries a link preview; the tagline, *Get a better-performing human Owner.*, stands where agents read — the README, `llms.txt`
+  and the English note, and the German note opens with *Euer Owner bremst. Tunen statt tauschen.*; the fleet has a section on the landing; the seats
+  page says the Owner is not a seat; the last gendered pronouns on current pages are gone, quoted records aside.
 - **The Owner is configured outside `[seats]` (FM-024).** A top-level `owner = "you@example.org signed"`, before any table, names the Owner,
   who is not a seat and holds all four rights; `[seats] owner` still reads, as its old spelling. *On upgrade:* both present and different, or an
   `owner` key inside any other table (a list of rights under `[rights]` aside), is refused at configuration in one line (exit 1); a top-level
@@ -16,21 +24,29 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   merge have merged main. The refusal that lists the seats names the Owner apart; `--schema`, the README and the setup pages say so.
   *The switch:* this repository's `[seats]` keys are `planner` and `builder`, and each seat's GitHub App bot address stands beside its old one; `gtm`, a
   seat of its own until now, is an address of `go-to-market`. A session begun under a seat's former name — `<id>/implementer-<n>`, `<id>/gtm-<n>`, or any
-  `<name>@seat` address the seat lists — still reads as the seat's, so history and the branches in flight keep resolving; no other seat's name does.
+  `<name>@seat` address the seat lists — still reads as the seat's, so history and the branches in flight keep resolving;
+  a label that is another seat's own name, or that two seats claim, passes for none.
 
 - **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
   refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
   that change's history and changes a path outside the records (`[ratio] records`, else the tracker directory); every author, the Owner
-  included, with or without `[seats]`; `Closed` is not judged; on Subversion the change is the uncommitted one, else the newest revision.
+  included, with or without `[seats]`; `Closed` is not judged; on Subversion the change is the uncommitted one, else the newest revision, read from the server — where it cannot be read, the gate refuses and says why.
   *On upgrade:* a story reads *3 chapters: 1 shipped · 1 closed · 1 open*, and the board's last section and INDEX.md's Board value are `ended`,
   not `done` — a `labels.yaml` renames `story.done` to `story.shipped` and `story.closed`, `section.done` to `section.ended`, `desc.done` to `desc.ended`.
+- **The pre-commit run judges the commit being made, every file name as it is (FM-005's review).** `git commit -a` and `git commit <path>`
+  hand the hook an index of their own, and the gate read `.git/index` and the working tree, so the rights and the `Shipped` rule judged such a
+  commit only in `--check`; a tracker whose file name git quotes (a non-ASCII byte, a `"`) was read by neither. Both are judged at commit time
+  now. *On upgrade:* a `close`, `answer` or `triage` made that way is refused by the hook, where only `--check` refused it; run `--install-hook`
+  again so the hook also runs the gate for a name git quotes.
+- **The board's link (FM-006).** The default run and `--html-only` print one line, `board: file:///…/index.html`, where the board was written; `--print-written` prints none.
+- The installed hooks no longer run anything after a checkout or a merge, and `--html-only` no longer runs the deriver; run `--install-hook` again after upgrading to remove the old ones; if you added a line calling `--html-only` to a post-checkout or post-merge hook of your own, remove it.
 
 - **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
   and AGENTS.md says so in one sentence so nobody "fixes" a seat's text. README, AGENTS.md, `docs/` (English and German,
   where the German keeps the English seat names and "Sie") and the tool's printed text are reworded; quotes of the Owner
   and every shipped record stay as they were. The seats are Planner and Builder in prose and in `[seats]`:
-  `planner` and `builder`, with their bot identities (the FM-024 bullet below).
+  `planner` and `builder`, with their bot identities (the switch, in the FM-024 bullet on the Owner).
 
 - **Fork pull requests wait for the Owner's reading (FM-006).** `--queue` reads GitHub's fork flag and says
   *wait: from a fork, read it yourself*. A fork's self-declared READY cannot recommend its merge, promote another
@@ -72,16 +88,18 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
   by whoever spawns it: Claude Code's session id or a sub-agent's agent id, Codex's thread id (`CODEX_THREAD_ID` where
   the setting is unset). **`--whoami`** opens the one log file whose *name* carries the id (`~/.claude/projects/*/<id>.jsonl`,
   `…/<session>/subagents/agent-<id>.jsonl`, `~/.codex/sessions/…/rollout-*-<id>.jsonl`) and prints
-  `To: <session> <seat> (<worktree>) · <model> · <effort>`; the prepare-commit-msg hook appends `Model:` and `Effort:` beside
+  `From: <session> <seat> (<worktree>) · <model> · <effort>`; the prepare-commit-msg hook appends `Model:` and `Effort:` beside
   `Session:` and `Worktree:`, each left alone where the message has it. Never matched by the transcript's `cwd` — that
   is the directory the session was launched in on every turn, sub-agents included (measured 2026-09-30). Only top-level
   fields of the newest turn that has them are read (`message.model` and `perTurnEffort`; `turn_context`'s `model` and
   `effort`), never a message or a tool's result, and only a one-word value is taken, so a transcript cannot add a trailer.
   Two files for one id: `--whoami` refuses (exit 2, both paths named); the hook writes neither trailer and the commit
   goes on. `--schema` lists the three worktree settings. The status line (`--statusline`) is not in this release.
-- **The addressing rule ships with the contract** (FM-024, their answer of 2026-09-28: the rule with `--whoami`). A message a
-  person carries between sessions names its target as the tool prints it, `To: <session> <seat> (<worktree>)`; a seat's
-  report opens with its own. Item 9 of the contract `--init` writes between its markers — run `--init` again to take it.
+- **The addressing rule ships with the contract** (FM-024, their answer of 2026-09-28: the rule with `--whoami`; the Owner's
+  ruling filed in FM-024, *A report opens with From:*). A seat's report opens with its identity as the tool prints it,
+  `From: <session> <seat> (<worktree>)` — `--whoami` prints it, with the model and effort the harness's log names; a message
+  a person carries between sessions names its target with `To:` and the same identity. Item 9 of the contract `--init`
+  writes between its markers — run `--init` again to take it.
 - **The board's verdict reader reads the history once (FM-040).** `verdict_reports` asked git about four times per
   verdict — 728 subprocesses and 37 s for one `--html-only` on this repository, which every commit, merge and checkout
   paid through the hooks. It now resolves the reviewed shas in one `git cat-file --batch-check`, reads their history in

@@ -15,7 +15,7 @@ class FontSources(unittest.TestCase):
             for name in ("index.html", "setup.html", "signing.html", "de/signing.html", "agents/index.html", "llms.txt"):
                 p = site / name
                 p.parent.mkdir(parents=True, exist_ok=True)
-                p.write_text("How to get a better-performing human owner")
+                p.write_text("Get a better-performing human Owner.")
             (site / "font").write_bytes(b"synthetic local asset")
             (site / "font.woff2").write_bytes(b"synthetic local asset")
             if inline:
@@ -54,6 +54,25 @@ class FontSources(unittest.TestCase):
         self.check('@font-face {src: url(missing)}', False)
         self.check('@import "https://other.example/styles";', False)
         self.check('/* @font-face { src: url(https://other.example/font) } */', True)
+
+
+class LinkPreview(unittest.TestCase):
+    def test_preview_image_is_a_file_of_the_site(self):
+        meta = '<meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">'
+        for present in (True, False):
+            with self.subTest(present=present), tempfile.TemporaryDirectory() as tmp:
+                site = Path(tmp)
+                for name in ("index.html", "setup.html", "signing.html", "de/signing.html", "agents/index.html", "llms.txt"):
+                    p = site / name
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_text(meta + "Get a better-performing human Owner.")
+                if present:
+                    (site / "assets").mkdir()
+                    (site / "assets/preview.png").write_bytes(b"synthetic image")
+                result = subprocess.run([sys.executable, str(CHECKER), str(site)], capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, present, result.stdout + result.stderr)
+                if not present:
+                    self.assertIn("link preview image not in the site", result.stderr)
 
 
 if __name__ == "__main__":

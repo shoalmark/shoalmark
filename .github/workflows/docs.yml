@@ -1,7 +1,7 @@
 # The documentation site: built from docs/ on release tags or manual dispatch, served by GitHub Pages.
 # The agents' document is README.md, rendered into the site by inclusion — never copied.
 name: docs
-# Runs on a release tag only — CI minutes are paid for. A pull request does not build the site; `zensical build` locally does.
+# Runs on a release tag, or by hand: the site is built and deployed per release. A pull request does not build the site; `zensical build` locally does.
 on:
   push: {tags: ["v*"]}
   workflow_dispatch:

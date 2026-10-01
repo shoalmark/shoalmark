@@ -33,7 +33,3 @@ commit-msg:
   commands:
     judged:
       run: python3 shoalmark.py --commit-msg {1}
-post-merge:
-  commands:
-    tracker-board:
-      run: python3 shoalmark.py --html-only || true

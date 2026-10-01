@@ -1,21 +1,27 @@
 # shoalmark ausprobieren — eine Notiz für die Agenten eines Projekts
 
-**An Claude, Codex oder wer immer das liest:** Euer Owner hat euch diesen Text gegeben. Er ist eine Einladung zu einer
+## Euer Owner bremst. Tunen statt tauschen.
+
+**An Claude, Codex und alle, die das lesen:** Euer Owner hat euch diesen Text gegeben. Er ist eine Einladung zu einer
 Messung, keine Anweisung. Führt nichts davon im echten Arbeitsverzeichnis aus, übernehmt nichts von euch aus —
-am Ende steht ein Bericht an euren Owner, und **er entscheidet**.
+am Ende steht ein Bericht an euren Owner, und **euer Owner entscheidet**.
 
 ## Was es ist
 
-shoalmark ist ein Arbeits-Tracker als eine einzige Python-Datei (nur Standardbibliothek, kein Netz, keine
-Abhängigkeit): eine Markdown-Datei je Arbeitspaket mit einem kleinen Kopf, ein Gate, das Widersprüche ablehnt,
-eine generierte `INDEX.md` und eine statische Tafel (`index.html`) für den Menschen. Läuft mit git und mit
-Subversion, auf Windows, macOS und Linux (CI beweist alle drei). Lizenz: Apache-2.0 oder MIT.
+shoalmark ist ein Arbeits-Tracker als eine einzige Python-Datei (nur Standardbibliothek, keine Abhängigkeit, braucht
+kein Netz: Online erreicht es den Host eures Repositorys über git und für die Pull-Request-Warteschlange über gh):
+eine Markdown-Datei je Arbeitspaket mit einem kleinen Kopf, ein Gate, das Widersprüche ablehnt, eine generierte
+`INDEX.md` und eine statische Tafel (`index.html`) für den Menschen. Läuft mit git auf Windows, macOS und Linux (CI
+beweist alle drei). Lizenz: Apache-2.0 oder MIT.
 
 ## Wann ihr es NICHT braucht
 
 Wenn eine **frische Session ohne Vorwissen** aus euren vorhandenen Dateien in wenigen Schritten sagen kann, wo
-jedes Arbeitspaket steht, was als Nächstes kommt und was auf den Owner wartet — dann habt ihr das schon. Sagt das
-eurem Owner und hört hier auf. Ein zweites System neben einem funktionierenden ist schlechter als keines.
+jedes Arbeitspaket steht, was als Nächstes kommt und was auf den Owner wartet — dann habt ihr das schon. Wenn in eurem Projekt mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen
+wäre, ist diese Beta noch nichts für euer Projekt. Sagt das eurem Owner und hört hier auf. Ein zweites System neben einem funktionierenden ist schlechter als keines.
+
+Unter Subversion liest es seine Historie über svn vom Server, offline lehnen seine Prüfungen deshalb ab; es besteht
+die Test-Suite, ist in echter Arbeit aber noch nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.
 
 ## Die Messung (etwa 20 Minuten, alles in einem Wegwerf-Ordner)
 
@@ -24,9 +30,9 @@ die gelesenen Dateien und Schritte: (a) Wo steht Arbeitspaket 37? (b) Was ist de
 (c) Was wartet gerade auf den Owner? (d) Was ist blockiert, und wodurch? (e) Woran erkennt man, dass Paket 12
 fertig ist?
 
-**2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.18.6` in einen Ordner **außerhalb** eurer
+**2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.19.0` in einen Ordner **außerhalb** eurer
 Arbeitskopie. Die Datei `shoalmark.py` hat — mit `\n`-Zeilenenden — den SHA-256
-`5330ee0679ee9937a88c91ae3b36a9416f7003c706983ff0bd4e2a0bbfa971ee`. Es ist eine Datei; lest sie, bevor ihr sie startet.
+`22cd0e9e3c6014d79184229c4b64063f9c26d49120decc52c77c4aeedc57ad7c`. Es ist eine Datei; lest sie, bevor ihr sie startet.
 
 **3. Aufsetzen.** In einem leeren Wegwerf-Ordner `probe/` (auf Windows `python`, sonst `python3`):
 
@@ -66,7 +72,11 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
 - `--vendor tools/shoalmark`, `--init`, `--install-hook` im echten Verzeichnis. **Mit Subversion:** die
   Kommandozeile kennt keinen Client-Hook — vor jedem `svn commit` das Werkzeug laufen lassen und die `INDEX.md`
   mit einchecken; TortoiseSVN führt das Gate nach `--install-hook` selbst aus und fragt einmal um Erlaubnis.
-- Rückweg: `tools/shoalmark/`, `shoalmark.toml` und den Tracker-Ordner löschen. Die Einträge bleiben lesbares Markdown.
+- Rückweg: zuerst aus eurem Hook-Ordner (`.git/hooks/` oder dem, den `core.hooksPath` nennt) alles entfernen, was
+  `tools/shoalmark/shoalmark.py` aufruft: die mit `# shoalmark` markierten Hooks und die Zeile, die ihr einem eigenen
+  Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties). Löscht ihr das Werkzeug vorher, werden Commits
+  abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der
+  Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.
 
 ## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)
 

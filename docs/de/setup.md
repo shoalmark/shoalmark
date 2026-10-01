@@ -5,7 +5,7 @@
 ## 1. Das Werkzeug ins Repository legen
 
 ```
-git clone --branch v0.18.6 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
+git clone --branch v0.19.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
 cd <Ihr Repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
@@ -73,7 +73,7 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 
 ## 6. Die Tafel öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit und Checkout neu gebaut. Ihre erste
+`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit neu gebaut. Ihre erste
 Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.

@@ -23,9 +23,9 @@ commit. **Start here:** `python3 shoalmark.py --next` says what to work on and w
    tracker if it is real work — not a bundled side-fix.
 7. **`work-tracker/TRIAGE.md` is the Owner's**: the intent and the current path. Nobody else edits those two sections.
    `INDEX.md` is generated — never hand-edit it. A story stays open while a chapter is.
-8. **A message a person carries between sessions names its target as the tool prints it:** `To: <session> <seat> (<worktree>)`.
-   A seat's report opens with its own — `python3 shoalmark.py --whoami` prints it, with the model and effort the harness's log
-   names, never the seat's own word for them.
+8. **A seat's report opens with its identity as the tool prints it:** `From: <session> <seat> (<worktree>)` —
+   `python3 shoalmark.py --whoami` prints it, with the model and effort the harness's log names, never the seat's own
+   word for them. A message a person carries between sessions names its target with `To:` and the same identity.
 <!-- END shoalmark -->
 
 ## Requirements — one ground truth for developer and tester
@@ -83,7 +83,7 @@ never on a default; a word in chat changes none of them until they sign it.
   written*. The nine, in the words FM-031's body records them:
   1. A message between sessions carries checkable facts only, re-checked in git before anything moves on it.
   2. An agreement exists only as a commit within the hour, with the message quoted; a message alone agrees to nothing.
-  3. A message is never an answer: *he said yes* moves nothing — an answer is written and signed through the board (path 5).
+  3. A message is never an answer: *they said yes* moves nothing — an answer is written and signed through the board (path 5).
   4. Never a secret, a production read, or one repository's internal state to a session of another repository.
   5. `ListAgents` and `git worktree list` before a worktree is taken; one worktree per session, and a badge is not a lock.
   6. The seat is in git, never in the frame: a message carries no authority, and a seat's rights come from its commits under `[seats]`.

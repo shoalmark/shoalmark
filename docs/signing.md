@@ -237,9 +237,9 @@ guarded the same way, and a signature is checked against the default branch's co
 key under your email proves nothing.
 
 **What it cannot tell.** A commit signed with your key passes; at tier 0 any process on your account holds that key
-(FM-007) — the tiers above are what make the key yours alone. Where your `owner` is not marked `signed`, the
-tool proves the author only, a string anyone can type, and says so: mark it `signed` to prove the key. Under Subversion
-this guard is out of scope: its working copy carries no signature.
+(FM-007) — the tiers above are what make the key yours alone. Where your `owner`, or a seat that holds `answer`, is not
+marked `signed`, the tool proves the author only, a string anyone can type, and says so: mark it `signed` to prove the
+key. Under Subversion this guard is out of scope: its working copy carries no signature.
 
 ## What the tool refuses, and what it says
 

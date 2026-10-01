@@ -1,10 +1,9 @@
 ---
 id: FM-040
-status: In Progress
+status: Shipped
 considered: FM-018, FM-025, FM-034, FM-035, FM-039, FM-012, FM-024
 tags: bug
 triaged: 2026-09-28
-rank: 4
 next: build
 tier: P2
 hook: "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it"
@@ -13,6 +12,13 @@ hook: "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDiv
 # FM-040 — the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it
 
 ## What is true now
+
+**2026-10-01 — shipped in v0.19.0, the Owner accepting the time.** The fix is `9c87f6ccb0` (`verdict_reports` reads the history
+once). On shoalmark the board's build fell from 37.2 s to 0.98 s at load 3 (2026-09-30, the build's own measurement). On the
+parent project, measured by the Planner in its own clone (516 trackers, 4,185 commits, load 2.8–4.1, 2026-10-01): the board's
+build (`--html-only`) 28.4 s and 27.3 s with the pinned 0.18.6, 4.45 s and 4.30 s with the release's tool; the pre-commit step
+(`--print-written`) 2.5 s and 1.9 s before, 1.9 s after. The board is byte-identical for the same trackers (reviewer-67's verdict
+`0e5e68c`).
 
 **Slice (b) is built on `fm/040-the-history-reader-and-verdict-reports-in-memory` (2026-09-30, implementer-64); the rest of the Done-when waits on the Owner's acceptance of the time.**
 `verdict_reports` no longer calls git per verdict: one `git cat-file --batch-check` resolves the reviewed shas, one `git log` reads their history, and
@@ -113,3 +119,4 @@ today's for the same trackers.
 | 2026-09-28 | **Raised, 12:49:43** (the Auditor through the Owner, paste sha256 `dd56f6a2f0a9422bd831b04568708fef2b3a32e1f19350de849230df05f12946`): the Owner hit the wait again on `--done`; four points recorded above — the checkout switch pays `post-checkout` twice (70 %), the cache of `verdict_reports` per commit sha (80 %), `--html-only` in the background with a temp-file rename (75 %), a temporary worktree for `--done` (55 %, the Principal's judgement) — and the Rust port named a product decision, not this fix. Point 2 is the design's counsel (b); point 3 joins (a) as a candidate at the build's design (P2 #4; critical, the Owner's cold review); point 1 is measured before it; the Done-when unchanged. |
 | 2026-09-28 | RV-757 and RV-758 (the docs pass `992fb5d` on `3a417db`): the raise's reading corrected in place before the merge — point 2 is counsel (b), point 3 a candidate beside (a) at the build's design, the Done-when unchanged; the Owner's words inside the quote marked as the Auditor's quotation. |
 | 2026-09-30 | **Built** on `fm/040-the-history-reader-and-verdict-reports-in-memory` (implementer-64): the history reader as its own no-behaviour-change commit (`33e0f47`), `verdict_reports` switched onto it (`9c87f6c`), the golden comparison byte-identical on shoalmark and on the parent project's clone; `--html-only` 37.2 s → about 1 s. The Owner's acceptance of the time and the cold review are next. |
+| 2026-10-01 | **Shipped in v0.19.0** — `9c87f6ccb0`, `verdict_reports` reading the history once; the Owner accepted the time on 2026-10-01. Load and time on both repositories: shoalmark 37.2 s → 0.98 s at load 3 (2026-09-30); the parent project's clone (516 trackers, 4,185 commits, load 2.8–4.1, 2026-10-01) — the board's build 28.4 s / 27.3 s → 4.45 s / 4.30 s, the pre-commit step 2.5 s / 1.9 s → 1.9 s; the board byte-identical for the same trackers (`0e5e68c`). |

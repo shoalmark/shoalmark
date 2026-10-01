@@ -159,6 +159,17 @@ with tempfile.TemporaryDirectory() as d:
     made[0].write_text(made[0].read_text().replace("considered:\n", "considered: none\n"))
     code, out, _ = run(root, "--print-written")
     check("with `considered: none` the gate is green, and --print-written names exactly the INDEX", code == 0 and out.strip() == "docs/work-tracker/INDEX.md")
+    # FM-006, the board's link: the line that says where the board was written, to open — in `--html-only` and the default run, never in the pre-commit run
+    import urllib.parse as _up, urllib.request as _ur
+    board_ = root / "docs/work-tracker/index.html"; board_.unlink()
+    code_h, out_h, err_h = run(root, "--html-only"); uri_ = out_h.strip(); read_back_ = Path(_ur.url2pathname(_up.urlparse(uri_[len("board: "):]).path))      # the URI after its `board: ` prefix — whole, `urlparse` takes `board` for a scheme and Windows raises "Bad URL"
+    code_d, out_d, _ = run(root); code_p, out_p, err_p = run(root, "--print-written")
+    check(f"FM-006 · the board's link: `--html-only` prints one line, `board: file:///…/index.html`, and the URI read back is the file it wrote; the default run prints it as its last line; `--print-written` prints no link — its stdout is the path alone, "
+          f"its stderr the default run's own lines, byte for byte (saw {uri_!r}, read back {str(read_back_)!r})",
+          code_h == 0 and out_h.count("\n") == 1 and uri_.startswith("board: file:///") and err_h == "" and board_.exists()
+          and read_back_ == board_ and out_d.splitlines()[-1] == uri_
+          and code_p == 0 and out_p == "docs/work-tracker/INDEX.md\n" and "board:" not in out_p + err_p
+          and err_p == "".join(l for l in out_d.splitlines(True) if not l.startswith("board: ")))
     check("--check is green on what was just written, and writes nothing", run(root, "--check")[0] == 0)
     made[0].write_text(made[0].read_text().replace("status: Proposed", "status: In Progress"))
     check("--check reports drift with its own exit code", run(root, "--check")[0] == fm.EXIT_DRIFT)
@@ -384,7 +395,8 @@ with tempfile.TemporaryDirectory() as d:
     code, out, _ = run(root, "--install-hook")
     hook = root / ".git/hooks/pre-commit"
     check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",
-          code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text() and (root / ".git/hooks/post-merge").exists())
+          code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text()
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"])      # nothing runs after a checkout or a merge
     git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
     check("the installed hook runs on a real commit and stages the regenerated INDEX" + said, git2.returncode == 0
@@ -394,6 +406,47 @@ with tempfile.TemporaryDirectory() as d:
     check("a hook that is not shoalmark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
 fm.configure(HERE)
 
+
+# --- a private security report: after a checkout or a merge nothing shoalmark installed runs, and `--html-only` never runs the deriver -----------------
+# A branch can bring an executable `<tracker dir>/derive`; the tool runs it, so a hook that ran the tool after a checkout or a merge ran what the branch brought.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the base")
+    code_i, out_i, _ = run(root, "--install-hook")
+    hooks_, marker_ = root / ".git/hooks", root / "derived-marker"
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    hooked_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)      # the installed hooks run
+    git(root, "switch", "-q", "-c", "brings-a-deriver")
+    derive_ = root / "docs/work-tracker/derive"
+    derive_.write_text(f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(marker_)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n', encoding="utf-8"); derive_.chmod(0o755)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a branch that brings an executable deriver")          # past the hooks, as its author made it
+    sw_ = [hooked_("switch", "-q", trunk_), hooked_("switch", "-q", "brings-a-deriver"), hooked_("switch", "-q", trunk_)]
+    merged_ = hooked_("merge", "--no-ff", "-q", "brings-a-deriver", "-m", "merge the branch")
+    code_h, _, _ = run(root, "--html-only")
+    check(f"FM-006 · a private security report · `--install-hook` writes the three hooks that judge a commit and none that runs after a checkout or a merge; with a branch that brings an executable deriver, "
+          f"`git switch` to it, back, and a merge of it run nothing — and neither does `--html-only` (saw {sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith('.sample'))}, marker {marker_.exists()})",
+          code_i == 0 and sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"] and "removed" not in out_i
+          and all(r_.returncode == 0 for r_ in sw_ + [merged_]) and code_h == 0 and not marker_.exists())
+    run(root)
+    check("FM-006 · a private security report · …and the control: the default run does run that deriver, so the marker was a real test of the hooks", marker_.exists())
+    rm_git(root)
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    hooks_ = root / ".git/hooks"; hooks_.mkdir(parents=True, exist_ok=True)
+    old_ = "#!/bin/sh\n# shoalmark — refresh the git-ignored board\npython3 tools/shoalmark/shoalmark.py --html-only || true\n"
+    for name_ in ("post-merge", "post-checkout"):
+        (hooks_ / name_).write_text(old_, encoding="utf-8"); (hooks_ / name_).chmod(0o755)
+    code_1, out_1, err_1 = run(root, "--install-hook"); gone_ = not (hooks_ / "post-merge").exists() and not (hooks_ / "post-checkout").exists()
+    mine_ = b"#!/bin/sh\n# somebody else's hook\necho mine\n"
+    (hooks_ / "post-checkout").write_bytes(mine_); (hooks_ / "post-merge").write_text(old_, encoding="utf-8")
+    code_2, out_2, err_2 = run(root, "--install-hook")
+    check(f"FM-006 · a private security report · run again, `--install-hook` removes the `post-checkout` and `post-merge` an older copy wrote — one line for each, saying so — and a `post-checkout` that is not shoalmark's is left byte for byte (saw {code_1}, {code_2})",
+          code_1 == 0 and gone_
+          and f"removed {hooks_ / 'post-checkout'} — it ran after every checkout; nothing shoalmark installed runs then now" in out_1 and f"removed {hooks_ / 'post-merge'} — it ran after every merge; nothing shoalmark installed runs then now" in out_1
+          and code_2 == 0 and (hooks_ / "post-checkout").read_bytes() == mine_ and not (hooks_ / "post-merge").exists() and "post-checkout" not in out_2 + err_2 and f"removed {hooks_ / 'post-merge'}" in out_2)
+    rm_git(root)
+fm.configure(HERE)
 
 # the browser that renders the board, where one is installed — read here, before the first check that renders one
 _CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []     # a CI container has no user namespace for the sandbox
@@ -551,7 +604,10 @@ with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); _, init_out, _ = run(root, "--init", "--key", "msr"); code, _, _ = run(root, "--install-hook")
     pcm = root / ".git/hooks/prepare-commit-msg"
-    commit_ = lambda msg: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", msg], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    # the hook adds `Model:` and `Effort:` where it finds the harness's own id (`harness_id`: `seat.harness`, else `CODEX_THREAD_ID`), and these checks
+    # read the trailer block's END as `Session:` and `Worktree:`: the commits are made without the harness's variable, so the suite passes inside Codex too (F2)
+    no_harness = {k: v for k, v in _ENV.items() if k != "CODEX_THREAD_ID"}
+    commit_ = lambda msg: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", msg], capture_output=True, text=True, encoding="utf-8", errors="replace", env=no_harness)
     body = lambda: subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%B"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
     c0 = commit_("a person's commit"); plain = body()
     subprocess.run(["git", "-C", str(root), "config", "seat.session", "a9"], env=_ENV, check=True)
@@ -874,6 +930,46 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 · the switch · every address maps to the seat it had, renamed, with the rights it held: `principal@seat` and its bot are `planner` (ask · close · triage), `implementer@seat` and its bot `builder` (none), `gtm@seat` and its bot `go-to-market` (none) (saw {held_})",
           held_["principal@seat"] == held_[BOT("planner", 1)] == ("planner", ["ask", "close", "triage"]) and held_["implementer@seat"] == held_[BOT("builder", 2)] == ("builder", [])
           and held_["gtm@seat"] == held_[BOT("go-to-market", 4)] == ("go-to-market", []) and "gtm" not in fm.SEATS and "principal" not in fm.SEATS and "implementer" not in fm.SEATS)
+fm.configure(HERE)
+
+# FM-024 · RV-2207 and RV-2240 · every session label names exactly one seat: a former name or a `<name>@seat` label that is, or reads as, another seat's passes for
+# no seat but that one — and where two seats would claim it, for none. Each seat's own name, and an unshared old label, still pass.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); commit_as(root, "someone@example.org", "the first session\n\nSession: 1111aaaa")
+    verdict = lambda who, sid: (subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True), run_safe(root, "--session-check", git_env=AS(who)))[1]
+    cases = {}
+    # RV-2207 (1): both spellings configured as two seats — `principal` is a seat, so it is that seat's name alone
+    (root / "shoalmark.toml").write_text(f'{base_cfg}\n[seats]\nplanner = "planner@seat"\nprincipal = "principal@seat"\nbuilder = "builder@seat"\nimplementer = "implementer@seat"\n'); fm.configure(root)
+    for key, who, sid in (("two spellings: planner at the former name", "planner@seat", "1111aaaa/principal-1"), ("two spellings: builder at the former name", "builder@seat", "1111aaaa/implementer-1"),
+                          ("two spellings: planner, its own", "planner@seat", "1111aaaa/planner-1"), ("two spellings: principal, its own", "principal@seat", "1111aaaa/principal-1"),
+                          ("two spellings: implementer, its own", "implementer@seat", "1111aaaa/implementer-1")):
+        cases[key] = verdict(who, sid)
+    # RV-2207 (2): a list that holds `builder@seat` beside a seat `builder` — the label is the seat's, not the list's
+    (root / "shoalmark.toml").write_text(f'{base_cfg}\n[seats]\nbuilder = "build@seat"\nreviewer = ["reviewer@seat", "builder@seat"]\n'); fm.configure(root)
+    for key, who, sid in (("a list holding builder@seat: reviewer at the label builder", "builder@seat", "1111aaaa/builder-1"), ("a list holding builder@seat: reviewer, its own", "builder@seat", "1111aaaa/reviewer-1"),
+                          ("a list holding builder@seat: builder, its own", "build@seat", "1111aaaa/builder-1")):
+        cases[key] = verdict(who, sid)
+    # RV-2240: one label, two claimants that are no seat's key — the Builder's built-in former name and the research seat's address
+    (root / "shoalmark.toml").write_text(f'{base_cfg}\n[seats]\nbuilder = "build@seat"\nresearch = "implementer@seat"\ngo-to-market = ["go-to-market@seat", "gtm@seat"]\n'); fm.configure(root)
+    for key, who, sid in (("a shared label: builder at implementer", "build@seat", "1111aaaa/implementer-1"), ("a shared label: research at implementer", "implementer@seat", "1111aaaa/implementer-1"),
+                          ("a shared label: builder, its own", "build@seat", "1111aaaa/builder-1"), ("a shared label: research, its own", "implementer@seat", "1111aaaa/research-1"),
+                          ("an unshared old label: gtm for go-to-market", "gtm@seat", "1111aaaa/gtm-1"), ("an unshared old label: gtm for research", "implementer@seat", "1111aaaa/gtm-1")):
+        cases[key] = verdict(who, sid)
+    subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
+    refused = lambda k, other: cases[k][0] == fm.EXIT_LINT and f"names the seat {other}" in cases[k][2]
+    passed = lambda k: cases[k][0] == 0
+    check(f"FM-024 · RV-2207 · with both spellings as two seats, `planner@seat` with `principal-<n>` and `builder@seat` with `implementer-<n>` are refused, each naming the other seat, and each seat's own name still passes (saw {[(k, v[0]) for k, v in cases.items() if k.startswith('two')]})",
+          refused("two spellings: planner at the former name", "principal") and refused("two spellings: builder at the former name", "implementer")
+          and passed("two spellings: planner, its own") and passed("two spellings: principal, its own") and passed("two spellings: implementer, its own"))
+    check(f"FM-024 · RV-2207 · a list that holds `builder@seat` beside a seat `builder` does not make `builder-<n>` the list's: refused for `reviewer`, passing for `builder` (saw {[(k, v[0]) for k, v in cases.items() if k.startswith('a list')]})",
+          refused("a list holding builder@seat: reviewer at the label builder", "builder") and passed("a list holding builder@seat: reviewer, its own") and passed("a list holding builder@seat: builder, its own"))
+    check(f"FM-024 · RV-2240 · a label that is one seat's former name and another seat's `<name>@seat` passes for neither, each seat's own name and an unshared old label still pass (saw {[(k, v[0]) for k, v in cases.items() if k.startswith(('a shared', 'an unshared'))]})",
+          refused("a shared label: builder at implementer", "implementer") and refused("a shared label: research at implementer", "implementer")
+          and passed("a shared label: builder, its own") and passed("a shared label: research, its own")
+          and passed("an unshared old label: gtm for go-to-market") and refused("an unshared old label: gtm for research", "gtm"))
 fm.configure(HERE)
 
 # FM-024 · D2, the Owner's ruling filed in FM-024 (*The `[seats]` switch*): the Owner is configured outside `[seats]` — a top-level `owner`, before any
@@ -1242,10 +1338,10 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
             cfg("seat.session", sid); cfg("user.email", seat); cfg("seat.harness", hid)
             who[name] = run_safe(root, "--whoami")
         wt = root.name
-        want = {"parent": f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · xhigh", "agent1": f"To: 1111aaaa/implementer-1 implementer ({wt}) · claude-sonnet-5-5 · medium",
-                "agent2": f"To: 1111aaaa/reviewer-1 reviewer ({wt}) · claude-opus-4-8 · high", "codex": f"To: 2222bbbb principal ({wt}) · gpt-6.1-sol · medium"}
+        want = {"parent": f"From: 1111aaaa principal ({wt}) · claude-opus-4-8 · xhigh", "agent1": f"From: 1111aaaa/implementer-1 implementer ({wt}) · claude-sonnet-5-5 · medium",
+                "agent2": f"From: 1111aaaa/reviewer-1 reviewer ({wt}) · claude-opus-4-8 · high", "codex": f"From: 2222bbbb principal ({wt}) · gpt-6.1-sol · medium"}
         got = {k: v[1].splitlines()[0] if v[1] else v[2].strip() for k, v in who.items()}
-        check(f"FM-024 (0.19.0) · `--whoami` prints `To: <session> <seat> (<worktree>) · <model> · <effort>` from the log the id names — a Claude parent, its two sub-agents (whose logs all say the parent's launch directory) and a Codex rollout, each the newest turn's own (saw {got})",
+        check(f"FM-024 (0.19.0) · `--whoami` prints `From: <session> <seat> (<worktree>) · <model> · <effort>` from the log the id names — a Claude parent, its two sub-agents (whose logs all say the parent's launch directory) and a Codex rollout, each the newest turn's own (saw {got})",
               got == want and all(v[0] == 0 for v in who.values()) and f"launched in {LAUNCH}" in who["agent1"][1] and "codex-launch" in who["codex"][1])
         msg = root / "MSG"
         trail = {}
@@ -1272,7 +1368,7 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
         msg.write_text("a subject\n"); cw = run_safe(root, "--whoami"); ct = run_safe(root, "--session-trailer", str(msg)); after = msg.read_text()
         seen_all = cw[1] + cw[2] + ct[1] + ct[2] + after
         check(f"FM-024 (0.19.0) · CANARY: a transcript whose message content, tool result and side fields are a sentinel puts none of it into what `--whoami` prints or the hook writes — and a model with a line break in it is no value, so no second trailer (saw {cw[1].splitlines()[:1]} · {after.splitlines()[2:]})",
-              CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"To: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
+              CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"From: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
         # the newest turn that carries them, from the end of a log of several megabytes — never a whole-file read
         big = home.log(f".claude/projects/-Users-x-big/{PARENT[:-1]}1.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(30)] + [_turn("claude-sonnet-5-5", "max")])
         cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.monotonic(); bw = run_safe(root, "--whoami"); took = time.monotonic() - t0
@@ -1290,20 +1386,36 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
         dup = home.log(f".claude/projects/-Users-x-elsewhere/{PARENT}.jsonl", [_turn("claude-haiku-4-5", "low")])
         cfg("seat.harness", PARENT)
         msg.write_text("a subject\n"); amb = run_safe(root, "--whoami"); amb_t = run_safe(root, "--session-trailer", str(msg))
-        check(f"FM-024 (0.19.0) · two log files carrying one id refuse — exit 2, both paths named, no `To:` line; the hook writes no `Model:` and no `Effort:` and does not stop the commit (saw {amb[0]}, {amb[2].strip()[-190:]!r} · {msg.read_text().splitlines()[2:]})",
+        check(f"FM-024 (0.19.0) · two log files carrying one id refuse — exit 2, both paths named, no `From:` line; the hook writes no `Model:` and no `Effort:` and does not stop the commit (saw {amb[0]}, {amb[2].strip()[-190:]!r} · {msg.read_text().splitlines()[2:]})",
               amb[0] == 2 and amb[1] == "" and str(dup) in amb[2] and f"{PARENT}.jsonl" in amb[2] and "-Users-x-parent" in amb[2]
               and amb_t[0] == 0 and msg.read_text().splitlines()[2:] == ["Session: 1111aaaa", f"Worktree: {wt}"])
         cfg("seat.harness", "0123456789abcdef0"); none_ = run_safe(root, "--whoami")
         cfg("seat.harness"); unset = run_safe(root, "--whoami")
         cfg("seat.harness", "../../etc/passwd"); odd = run_safe(root, "--whoami")
         check(f"FM-024 (0.19.0) · an id with no log, no id, or an id that is no name reads `—` and says why — the commit gets no trailer (saw {none_[1].strip()!r} · {unset[1].strip()!r} · {odd[1].strip()!r})",
-              none_[1].strip() == f"To: 1111aaaa principal ({wt}) · — · —" and "no log carries the harness id 0123456789abcdef0" in none_[2]
+              none_[1].strip() == f"From: 1111aaaa principal ({wt}) · — · —" and "no log carries the harness id 0123456789abcdef0" in none_[2]
               and unset[1].strip() == none_[1].strip() and "seat.harness" in unset[2] and odd[1].strip() == none_[1].strip() and "at least eight" in odd[2])
         cfg("seat.session"); nosession = run_safe(root, "--whoami")
-        check(f"FM-024 (0.19.0) · `--whoami` in a worktree with no `seat.session` prints no `To:` line and says so, exit 4 (saw {nosession[0]}, {nosession[2].strip()[:90]!r})",
+        check(f"FM-024 (0.19.0) · `--whoami` in a worktree with no `seat.session` prints no `From:` line and says so, exit 4 (saw {nosession[0]}, {nosession[2].strip()[:90]!r})",
               nosession[0] == fm.EXIT_LINT and nosession[1] == "" and "no `seat.session`" in nosession[2])
         schema = run_safe(root, "--schema")[1]
         check("FM-024 (0.19.0) · `--schema` lists the worktree's settings — `seat.session` and `seat.harness` — under the configuration's keys", "| `seat.harness` |" in schema and "| `seat.session` |" in schema and "| `user.email` |" in schema)
+
+# FM-024, A report opens with From: — rule 8 is one text in two places: AGENTS.md's and the contract `--init` writes; its number and its `{cmd}`
+# differ, nothing else. (The rest of AGENTS.md's block is the repository's own and is not held equal here.)
+def _report_rule(text, cmd):
+    """The rule that says what a report opens with: from its bold opening to the next rule or the block's end, the command read as `{cmd}`."""
+    m = re.search(r"^\d+\. (\*\*A seat's report opens.*?)(?=<!-- END shoalmark -->|\n\d+\. )", text, re.S | re.M)
+    return m.group(1).strip().replace(cmd, "{cmd}") if m else None
+
+
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    written, ours = _report_rule((root / "AGENTS.md").read_text(), fm.CMD), _report_rule((HERE / "AGENTS.md").read_text(), "python3 shoalmark.py")
+    check(f"FM-024, A report opens with From: · rule 8 is one text — AGENTS.md's equals the contract `--init` writes, its number and its `{{cmd}}` aside — and it says a report opens with `From:` and a message names its target with `To:` (saw {written and written[:70]!r})",
+          written is not None and written == ours and written.startswith("**A seat's report opens with its identity as the tool prints it:** `From: <session> <seat> (<worktree>)`")
+          and written.endswith("A message a person carries between sessions names its target with `To:` and the same identity.") and "`{cmd} --whoami` prints it" in written)
 
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
@@ -1645,8 +1757,9 @@ with tempfile.TemporaryDirectory() as d:
         del os.environ["STRAY_EXPORT"]
     check("what is exported in the shell that ran the commit never reaches a deriver — a stray variable cannot change what is staged",
           stray == 0 and run(root, "--derive-flag", "refuse")[0] == 5)
-    check("the board's run says so: a deriver may skip a guard there, because nothing it produces can be committed",
-          run(root, "--html-only")[0] == 0 and "mode=board" not in (root / "docs/work-tracker/INDEX.md").read_text())
+    html_ = argv_of(lambda: run(root, "--html-only")); default_ = argv_of(lambda: run(root))
+    check("the board's run never reaches the deriver — `--html-only` exits 0 and starts no deriver, where the default run does: nothing a hook starts executes a file a branch brought",
+          run(root, "--html-only")[0] == 0 and not any(str(exe) in c_ for c_ in html_) and any(str(exe) in c_ for c_ in default_) and "mode=board" not in (root / "docs/work-tracker/INDEX.md").read_text())
     _t, fm.DERIVE_TIMEOUT = fm.DERIVE_TIMEOUT, 1
     try:
         code, _, err = run(root, "--derive-flag", "sleep")
@@ -3417,9 +3530,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # though the working tree beside it names the feature
     hook5_ = lambda *a: subprocess.run(["git", "-C", str(root), "commit", "-qm", "AP-500: shipped", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     p500_ = next(wt5_.glob("AP-500-*.md")); head_ = sha5_(); said5_ = "AP-500: moved to `Shipped` with no commit behind it — its ship log names no commit"
-    move5_(500); by_a_ = hook5_("-a"); git(root, "reset", "-q", "--hard")
-    move5_(500); by_path_ = hook5_("--", "docs/work-tracker/AP-500-x.md"); git(root, "reset", "-q", "--hard")
-    move5_(500); git(root, "add", "-A"); p500_.write_text(p500_.read_text() + f"| 2026-09-30 | built in {built5_[:7]} |\n", encoding="utf-8"); by_bare_ = hook5_(); git(root, "reset", "-q", "--hard")
+    move5_(500); by_a_ = hook5_("-a"); git(root, "reset", "-q", "--hard", head_)
+    move5_(500); by_path_ = hook5_("--", "docs/work-tracker/AP-500-x.md"); git(root, "reset", "-q", "--hard", head_)
+    move5_(500); git(root, "add", "-A"); p500_.write_text(p500_.read_text() + f"| 2026-09-30 | built in {built5_[:7]} |\n", encoding="utf-8"); by_bare_ = hook5_(); git(root, "reset", "-q", "--hard", head_)
     check(f"FM-005 · RV-2152 · the reproduction is refused through the installed hook with `git commit -a`, with `git commit <path>`, and staged bare while the working tree names the feature — the commit is not made (saw {by_a_.returncode}, {by_path_.returncode}, {by_bare_.returncode})",
           all(r_.returncode != 0 and said5_ in r_.stderr and way5_(r_.stderr) for r_ in (by_a_, by_path_, by_bare_)) and sha5_() == head_)
     move5_(500, f"built in {built5_[:7]}"); git(root, "add", "-A"); p500_.write_text(p500_.read_text().replace(f"| 2026-09-30 | built in {built5_[:7]} |\n", ""), encoding="utf-8")
@@ -3736,6 +3849,175 @@ if _SVN:
         check("FM-005 S · in a working copy at the repository's root a revision that changed only the records is refused, naming the records and the way through — and the feature's revision passes",
               code == fm.EXIT_LINT and f"C5-001: moved to `Shipped` with no revision behind it — `r{note2_}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err)
               and code_b == 0 and "C5-002" not in err_b)
+        # F1 of the cold audit (P1): a done check that cannot read the history it needs REFUSES — it never passes unread. The control: a committed
+        # `Shipped` tracker with no revision behind it exits 4 connected, and must exit 4, not 0, with the repository unreachable
+        repo3_ = base / "repo3"; away3_ = base / "repo3.away"
+        subprocess.run(["svnadmin", "create", str(repo3_)], check=True); url3_ = repo3_.as_uri()
+        svn("mkdir", "-m", "layout", url3_ + "/trunk"); svn("checkout", url3_ + "/trunk", str(base / "wc3")); root = base / "wc3"; wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        for n_ in (1, 2, 3):
+            tracker(root, f"C5-{n_:03d}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        commit5_("the trackers, for the control", {}); built3_ = commit5_("the feature, for the control", {"src/app.py": "v1\n"})
+        ship5_(1); commit5_("C5-001: shipped, no revision behind it")
+        said_no_ = "C5-001: moved to `Shipped` with no revision behind it — its ship log names no revision"
+        said_unread_ = "Subversion's history could not be read, so a move to `Shipped` is not judged — and not passed unread. svn said: "
+        code_c, _, err_c = run(root, "--check")
+        repo3_.rename(away3_); code_uw, _, err_uw = run(root); code_u, _, err_u = run(root, "--check"); away3_.rename(repo3_)       # the write run first, as the audit ran it: it leaves an INDEX with no banner
+        code_r, _, err_r = run(root, "--check")
+        check(f"FM-005 F1 · the cold audit's control — a committed `Shipped` tracker with no revision behind it: connected, `--check` exits 4 (*no revision behind it*); with the `file://` repository moved away it exits 4, not 0 — "
+              f"in `--check` and in the write run — naming the tracker, that the history could not be read, and svn's own error; reconnected, 4 again (saw {code_c}, {code_u}, {code_uw}, {code_r})",
+              code_c == fm.EXIT_LINT and said_no_ in err_c and way5_(err_c)
+              and code_u == fm.EXIT_LINT and f"C5-001: {said_unread_}" in err_u and re.search(r"svn said: .*E\d{6}", err_u) and "no revision behind it" not in err_u
+              and code_uw == fm.EXIT_LINT and f"C5-001: {said_unread_}" in err_uw and code_r == fm.EXIT_LINT and said_no_ in err_r)
+        ship5_(2, f"built in r{built3_}"); commit5_("C5-002: shipped, the feature behind it")
+        code_p, _, err_p = run(root, "--check")
+        repo3_.rename(away3_); run(root); code_pu, _, err_pu = run(root, "--check"); away3_.rename(repo3_)
+        check(f"FM-005 F1 · the positive control — a `Shipped` move with a real revision behind it passes connected (0), and is refused, not passed, with the repository unreachable (4), naming the trackers it could not judge (saw {code_p}, {code_pu})",
+              code_p == 0 and "C5-002" not in err_p and code_pu == fm.EXIT_LINT and "C5-001, C5-002: " + said_unread_ in err_pu)
+        if not shutil.which("svnserve"):
+            print("  skip  FM-005 F1 · the server itself stopped — `svnserve` is not on the PATH here")
+        else:
+            import socket
+            def served_():
+                """a fresh working copy of repo3 through `svnserve` on the loopback — the server process, and the working copy"""
+                with socket.socket() as s_:
+                    s_.bind(("127.0.0.1", 0)); port_ = s_.getsockname()[1]
+                proc_ = subprocess.Popen(["svnserve", "-d", "--foreground", "-r", str(base), "--listen-host", "127.0.0.1", "--listen-port", str(port_)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for _ in range(100):
+                    if svn("info", f"svn://127.0.0.1:{port_}/repo3/trunk").returncode == 0:
+                        break
+                    time.sleep(0.1)
+                dest_ = base / f"wcs{port_}"; svn("checkout", f"svn://127.0.0.1:{port_}/repo3/trunk", str(dest_)); return proc_, dest_
+            def stopped_(proc_):
+                proc_.terminate(); proc_.wait(timeout=20)
+            proc_, wcs_ = served_(); code_sp, _, err_sp = run(wcs_, "--check"); stopped_(proc_); run(wcs_); code_spd, _, err_spd = run(wcs_, "--check")
+            ship5_(3); commit5_("C5-003: shipped, no revision behind it")
+            proc_, wcs_ = served_(); code_sn, _, err_sn = run(wcs_, "--check"); stopped_(proc_); run(wcs_); code_snd, _, err_snd = run(wcs_, "--check")
+            check(f"FM-005 F1 · with `svnserve` on the loopback: a `Shipped` move with a real revision passes connected (0) and is refused with the server stopped (4); one with no revision behind it is refused connected "
+                  f"(*no revision behind it*) and with the server stopped (4), naming the tracker and svn's own error (saw {code_sp}, {code_spd}, {code_sn}, {code_snd})",
+                  code_sp == 0 and "C5-002" not in err_sp and code_spd == fm.EXIT_LINT and said_unread_ in err_spd
+                  and code_sn == fm.EXIT_LINT and "C5-003: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_sn
+                  and code_snd == fm.EXIT_LINT and said_unread_ in err_snd and re.search(r"svn said: .*E\d{6}", err_snd) and "no revision behind it" not in err_snd)
+        # the second fail-open (the cold audit's round, the Owner's ruling): who wrote a line cannot be read — a seat's `close`, `answer` or `triage` change REFUSES, it never passes unread
+        repo4_ = base / "repo4"; away4_ = base / "repo4.away"
+        subprocess.run(["svnadmin", "create", str(repo4_)], check=True); url4_ = repo4_.as_uri()
+        svn("mkdir", "-m", "layout", url4_ + "/trunk", "--username", "pl"); svn("checkout", url4_ + "/trunk", str(base / "wc4")); root = base / "wc4"; wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        (root / "shoalmark.toml").write_text('name = "w"\nowner = "ow"\n[kinds]\nC5 = "Work"\n[seats]\nplanner = "pl"\nbuilder = "bu"\n', encoding="utf-8")       # `planner` holds close and triage, `builder` none; `ow` is the Owner
+        for n_ in (201, 202, 203, 204):
+            tracker(root, f"C5-{n_}", title="nothing built")
+        def by4_(user_, msg_):
+            """the working copy as it is, committed by the Subversion account `user_` — the server's own record of who wrote each line"""
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", msg_, "--username", user_, cwd=root); svn("update", cwd=root)
+        def edit4_(n_, a_, b_):
+            p_ = next(wt_.glob(f"C5-{n_}-*.md")); p_.write_text(p_.read_text().replace(a_, b_), encoding="utf-8")
+        def apart4_():
+            """`--check` with the repository moved away — after the write run, as the cold audit ran it, which leaves an INDEX with no banner"""
+            repo4_.rename(away4_)
+            try:
+                run(root); return run(root, "--check")
+            finally:
+                away4_.rename(repo4_)
+        said4_ = "Subversion's history could not be read, so who changed this tracker is not known and its rights are not judged — and not passed unread. svn said: "
+        by4_("pl", "the trackers")
+        edit4_(201, "status: In Progress", "status: Closed"); by4_("pl", "C5-201 closed by the planner")
+        edit4_(203, "considered: none\n", "considered: none\ntier: P1\n"); by4_("pl", "C5-203 judged by the planner")
+        run(root); code_h, _, err_h = run(root, "--check"); code_hu, _, err_hu = apart4_()
+        check(f"FM-024 · the second fail-open · a planner's `close` and `triage` pass connected (0); with the repository unreachable `--check` exits 4, not 0, naming each tracker, that the history could not be read "
+              f"and svn's own error (saw {code_h}, {code_hu})",
+              code_h == 0 and "does not hold" not in err_h and code_hu == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_hu for n_ in (201, 203)) and re.search(r"svn said: .*E\d{6}", err_hu))
+        edit4_(202, "status: In Progress", "status: Closed"); by4_("bu", "C5-202 closed by the builder")
+        edit4_(204, "considered: none\n", "considered: none\ntier: P1\n"); by4_("bu", "C5-204 judged by the builder")
+        run(root); code_n, _, err_n = run(root, "--check"); code_nu, _, err_nu = apart4_()
+        check(f"FM-024 · the second fail-open · the same changes by a builder, which holds neither right, are refused connected as before — `close` and `triage` named — and with the repository unreachable are refused "
+              f"too, as unread, never passed (saw {code_n}, {code_nu})",
+              code_n == fm.EXIT_LINT and "C5-202: `status:` is a `close` change" in err_n and "C5-204: `tier:` is a `triage` change" in err_n and "C5-201" not in err_n and "C5-203" not in err_n
+              and code_nu == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_nu for n_ in (201, 202, 203, 204)) and "does not hold" not in err_nu)
+        if not shutil.which("svnserve"):
+            print("  skip  FM-024 · the second fail-open · the server itself stopped — `svnserve` is not on the PATH here")
+        else:
+            import socket
+            with socket.socket() as s_:
+                s_.bind(("127.0.0.1", 0)); port4_ = s_.getsockname()[1]
+            proc4_ = subprocess.Popen(["svnserve", "-d", "--foreground", "-r", str(base), "--listen-host", "127.0.0.1", "--listen-port", str(port4_)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if svn("info", f"svn://127.0.0.1:{port4_}/repo4/trunk").returncode == 0:
+                    break
+                time.sleep(0.1)
+            wcs4_ = base / "wcs4"; svn("checkout", f"svn://127.0.0.1:{port4_}/repo4/trunk", str(wcs4_))
+            run(wcs4_); code_sc, _, err_sc = run(wcs4_, "--check")
+            proc4_.terminate(); proc4_.wait(timeout=20)
+            run(wcs4_); code_ss, _, err_ss = run(wcs4_, "--check")
+            check(f"FM-024 · the second fail-open · with `svnserve` on the loopback the rights judge as before connected (the builder's changes refused, 4), and with the server stopped `--check` exits 4, not 0, "
+                  f"naming the trackers as unread (saw {code_sc}, {code_ss})",
+                  code_sc == fm.EXIT_LINT and "C5-202: `status:` is a `close` change" in err_sc and code_ss == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_ss for n_ in (201, 202, 203, 204)) and "does not hold" not in err_ss)
+        # an `answer`: the Owner's passes, a builder's is refused connected as before, and unreachable both read as unread — never as an answer *not committed yet*, which is what a failed blame used to say
+        ask4_ = f'next: owner\nask: "Shall it ship?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "ship it"\n'
+        for n_ in (205, 206):
+            tracker(root, f"C5-{n_}", extra=ask4_, title="asked")
+        answered4_ = 'ask-proposal: "ship it"\n', f'ask-proposal: "ship it"\nanswer: "accepted"\nanswered: {old}\nanswered-by: ow\n'
+        by4_("pl", "the two asks"); edit4_(205, *answered4_); by4_("ow", "C5-205 answered by the Owner"); edit4_(206, *answered4_); by4_("bu", "C5-206 answered by the builder")
+        run(root); code_a, _, err_a = run(root, "--check"); code_au, _, err_au = apart4_()
+        check(f"FM-024 · the second fail-open · an `answer` by the Owner passes connected, one by a builder is refused as before, and with the repository unreachable both are refused as unread — not as an answer "
+              f"*not committed yet* (saw {code_a}, {code_au})",
+              code_a == fm.EXIT_LINT and "C5-206: `answer:` is a `answer` change" in err_a and "C5-205" not in err_a
+              and code_au == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_au for n_ in (205, 206)) and "not committed yet" not in err_au)
+        # RV-2267: where nothing is pending the change judged is the NEWEST revision, which only the server holds — where it cannot be read the gate refuses and says why,
+        # whether or not a tracker in the working copy is `Shipped`. The case: a working copy BEHIND HEAD, nothing `Shipped` in it, and HEAD's false move
+        repo5_ = base / "repo5"; away5_ = base / "repo5.away"
+        subprocess.run(["svnadmin", "create", str(repo5_)], check=True); url5_ = repo5_.as_uri()
+        svn("mkdir", "-m", "layout", url5_ + "/trunk"); svn("checkout", url5_ + "/trunk", str(base / "wc5")); root = base / "wc5"; wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        for n_ in (301, 302):
+            tracker(root, f"C5-{n_}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        commit5_("the trackers, for RV-2267", {}); behind5_ = int(re.search(r"^Revision: (\d+)", svn("info", cwd=root).stdout, re.M).group(1))
+        said5_ = "Subversion's newest revision could not be read, so a move to `Shipped` in it is not judged — and not passed unread. svn said: "
+        def apart5_(where_=None):
+            """`--check` in `where_` with the repository moved away — after the write run, as the cold audit ran it"""
+            repo5_.rename(away5_)
+            try:
+                run(where_ or root); return run(where_ or root, "--check")
+            finally:
+                away5_.rename(repo5_)
+        code_c, _, err_c = run(root, "--check"); code_cu, _, err_cu = apart5_()
+        check(f"FM-005 · RV-2267 · connected and clean `--check` exits 0; with the repository unreachable, nothing pending and nothing `Shipped` in the working copy, it exits 4 — not 0 — in one line: the newest revision "
+              f"is not judged and not passed unread, svn's own error, reach the repository (saw {code_c}, {code_cu})",
+              code_c == 0 and code_cu == fm.EXIT_LINT and said5_ in err_cu and re.search(r"svn said: .*E\d{6}", err_cu) and "Reach the repository, then run again" in err_cu
+              and sum(l_.lstrip().startswith("lint:") for l_ in err_cu.splitlines()) == 1)
+        # a pending change offline is still judged, from BASE: this one names no revision
+        p301_ = next(wt_.glob("C5-301-*.md")); p301_.write_text(p301_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+        repo5_.rename(away5_); code_pn, _, err_pn = run(root); away5_.rename(repo5_)
+        svn("revert", str(p301_), cwd=root)
+        check(f"FM-005 · RV-2267 · a pending change is still judged offline, from BASE: a move to `Shipped` that names no revision is refused for that, and the newest revision's line is not there (saw {code_pn})",
+              code_pn == fm.EXIT_LINT and "C5-301: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_pn and "newest revision could not be read" not in err_pn)
+        svn("checkout", url5_ + "/trunk", str(base / "wc5b")); rootb_ = base / "wc5b"
+        p302_ = next((rootb_ / "docs/work-tracker").glob("C5-302-*.md")); p302_.write_text(p302_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+        svn("commit", "-m", "C5-302: shipped at HEAD, nothing behind it", cwd=rootb_)
+        code_hv, _, err_hv = run(root, "--check"); code_hu, _, err_hu = apart5_(); code_hr, _, err_hr = run(root, "--check")
+        check(f"FM-005 · RV-2267 · the case itself — the working copy behind HEAD, nothing `Shipped` in it, HEAD's false move: connected `--check` exits 4 (*no revision behind it*), unreachable 4 — not 0 — as the newest "
+              f"revision unread, reconnected 4 again (saw {code_hv}, {code_hu}, {code_hr})",
+              "C5-302: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_hv and code_hv == fm.EXIT_LINT and way5_(err_hv)
+              and code_hu == fm.EXIT_LINT and said5_ in err_hu and "no revision behind it" not in err_hu and code_hr == fm.EXIT_LINT and "C5-302: moved" in err_hr)
+        if not shutil.which("svnserve"):
+            print("  skip  FM-005 · RV-2267 · the server itself stopped — `svnserve` is not on the PATH here")
+        else:
+            import socket
+            with socket.socket() as s_:
+                s_.bind(("127.0.0.1", 0)); port5_ = s_.getsockname()[1]
+            proc5_ = subprocess.Popen(["svnserve", "-d", "--foreground", "-r", str(base), "--listen-host", "127.0.0.1", "--listen-port", str(port5_)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if svn("info", f"svn://127.0.0.1:{port5_}/repo5/trunk").returncode == 0:
+                    break
+                time.sleep(0.1)
+            wcs5_ = base / "wcs5"; svn("checkout", "-r", str(behind5_), f"svn://127.0.0.1:{port5_}/repo5/trunk", str(wcs5_))
+            run(wcs5_); code_sc, _, err_sc = run(wcs5_, "--check")
+            proc5_.terminate(); proc5_.wait(timeout=20)
+            run(wcs5_); code_ss, _, err_ss = run(wcs5_, "--check")
+            check(f"FM-005 · RV-2267 · with `svnserve` on the loopback and the working copy behind HEAD with nothing `Shipped` in it: connected `--check` refuses HEAD's false move (4), and with the server stopped it exits 4 — "
+                  f"not 0 — as the newest revision unread (saw {code_sc}, {code_ss})",
+                  code_sc == fm.EXIT_LINT and "C5-302: moved to `Shipped` with no revision behind it" in err_sc and code_ss == fm.EXIT_LINT and said5_ in err_ss and "no revision behind it" not in err_ss)
     fm.configure(HERE)
 
 
@@ -5007,9 +5289,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
     code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
     board_ = page_(root)
-    check(f"FM-030 · 0.18.6 · with the checkout hook installed, `--answer` and `--done` end on the branch they started on, the hook has rebuilt the board, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
-          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook" in out_a
-          and "the board was rebuilt by the checkout hook" in out_d
+    check(f"FM-030 · 0.18.6 · with the hooks installed — which run nothing after a checkout — `--answer` and `--done` end on the branch they started on, the command rebuilds the board itself, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
+          and "the board is rebuilt — no checkout hook rebuilt it" in out_d
           and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
     run(other, "--html-only"); before_ = page_(other)
     git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)

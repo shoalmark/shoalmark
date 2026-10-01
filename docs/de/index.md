@@ -1,10 +1,19 @@
+---
+title: Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort
+description: "Ein Arbeits-Tracker in Ihrem Repository, für Ihre Agenten: Nichts geht ohne Commit dahinter als „fertig“ durch, und was auf Ihr Wort wartet, steht ganz oben."
+---
+
 # shoalmark
 
 *Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.*
 
 **Die Startseite, auf Englisch:** [eine Seekarte des Wattenmeers](../index.md), auf der jeder Fehler aus shoalmarks eigenem Tracker als Wrack liegt.
 
-## Dein Eigner bremst. Tunen statt tauschen.
+## Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.
+
+Ticketsysteme wurden gebaut, damit Menschen einander Arbeit zuweisen. shoalmark ist für Ihre Agenten gebaut: Die Arbeit liegt in Ihrem Repository, nichts geht ohne Commit dahinter als fertig durch, und was auf Ihr Wort wartet, steht ganz oben.
+
+**[Geben Sie Ihren Agenten die Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)**
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden
 kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort einen einzigen Befehl.
@@ -26,9 +35,9 @@ Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 
 - **Bevor der Eigner die Review-Regel signierte** (jede Änderung bekommt einen Reviewer-Durchgang): 10 von 37 Pull
   Requests hatten eine Reviewer-Datei, als sie geöffnet wurden.
-- **Danach, bis zum 25. September 2026:** 12 von 15.
+- **Danach, bis zum 1. Oktober 2026:** 71 von 82.
 
-*Gezählt am 25. September 2026 mit `gh` aus den Pull Requests 1–69 von holgo99/shoalmark: nur gemergte, ohne die
+*Gezählt am 1. Oktober 2026 mit `gh` aus den Pull Requests 1–144 von shoalmark/shoalmark: nur gemergte, ohne die
 eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
 `work-tracker/evidence/reviews/` anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
 Requests datiert ist. Das Datum eines Commits sagt, wann er entstand, nicht wann er gepusht wurde: Die
@@ -53,7 +62,7 @@ Was shoalmark dazu ausgibt, jeden Tag:
    ([zehn Minuten](signing.md)).
 
 **Sie verlieren nichts.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark ändert nur, was es selbst
-geschrieben hat. Der Weg für eine Agenten-Flotte, die schon ein eigenes System hat, ist als FM-026 erfasst und folgt.
+geschrieben hat.
 
 ## Was ein Tag Sie kostet
 
@@ -65,9 +74,16 @@ geschrieben hat. Der Weg für eine Agenten-Flotte, die schon ein eigenes System 
 
 ## Was es nicht ist
 
-Kein Server, kein Konto, keine UUIDs. Eine Markdown-Datei je Arbeitspaket, eine Python-Datei und ein Gate bei jedem
-Commit, das ablehnt, was sich widerspricht. Läuft mit git und Subversion, auf Windows, macOS und Linux. Lizenz:
-Apache-2.0 oder MIT.
+shoalmark braucht keinen Server und kein Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
+Arbeitspaket, eine Python-Datei und ein Gate bei jedem Commit, das ablehnt, was sich widerspricht. Läuft mit git auf
+Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
+
+**In dieser Beta:**
+
+- Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
+- Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
+- Kein Beweis, dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein Review.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.
 
 ## Hier anfangen
 

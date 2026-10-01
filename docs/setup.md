@@ -5,7 +5,7 @@
 ## 1. Put the tool in the repository
 
 ```
-git clone --branch v0.18.6 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
+git clone --branch v0.19.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
 cd <your repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
@@ -72,7 +72,7 @@ what comes first. Agents read both before every judgement. Leave everything else
 
 ## 6. Open the board
 
-`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit and checkout. Its first line is what
+`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit. Its first line is what
 needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
 [The standup](standup.md).
 

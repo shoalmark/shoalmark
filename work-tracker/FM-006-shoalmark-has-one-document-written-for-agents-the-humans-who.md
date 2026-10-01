@@ -23,6 +23,16 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-01 — what a stranger meets first in v0.19.0: resumed after FM-005's check merged.** The Owner's ruling is filed
+below, in *What a stranger meets first — v0.19.0*, its A amended on 2026-10-01 (the ledes in both languages, one
+description, link previews on every page, the preview image, the German start page's title and description), with *The
+landing's player stats at the v0.19.0 cut* beside it. The branch `fm/006-what-a-stranger-meets-first`, cut from main
+`1197e80` with the two screens it follows, merged main after PR 143. Two Builders — the English texts with the tool's
+printed line and the theme override; the German texts with the English note — and the Designer, who builds the landing,
+its preview image and the render, start now; D2 goes into the `[seats]` change after the Apps. The slice joins the v0.19.0
+release bundle: its full local run and CI come once, on the bundle's tip. Next: the Designer's render to the Owner, the
+phone's first screen first; the Reviewer's pass on the slice, English and German.
+
 **2026-09-30 — fork queue hardening, code tier, critical review pending.** Reproduced on `2c00aba`: a fork's
 self-declared READY reads as merge; its verdict or carried head also changes another PR's action. The slice excludes
 forks from verdict/carry-over calculations and always says `wait: from a fork, read it yourself`. On the base, five
@@ -316,6 +326,350 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
   are the Owner's to rule; nothing is drafted for the board while FM-006's asks wait. The statuses on the page are a
   snapshot of 2026-09-26.
 
+## What a stranger meets first — v0.19.0
+
+**The Owner's ruling, 2026-09-30.** One slice before the v0.19.0 tag (2026-10-02, 09:00 CEST): the branch
+`fm/006-what-a-stranger-meets-first`, cut from main `1197e80`, carries the two screens this ruling follows — [the
+seats'](evidence/FM-024/go-to-market-screen-v0-19-0-seats-2026-09-30.md) (`a410aef`) and [the first-screen
+proposal's](evidence/FM-006/go-to-market-screen-first-screen-proposal-2026-09-30.md) (`87985b6`) — so their records land with
+the change they justify, in one pull request. No further screen round. The Reviewer checks every new line for its truth
+against the tool at the tree and for its language, English and German. The Owner judges the Designer's render, the phone's
+first screen first, before the merge.
+
+**A — the human lead.**
+- **A1, the English landing** (`overrides/landing.html`). The H1 reads *The agents keep the work; the person keeps the word.*;
+  the `<title>` reads *shoalmark — the agents keep the work; the person keeps the word*; the section subtitle that says it now
+  (`:356`) goes. The lede under the H1 is the job line: *Ticket systems were built for people handing work to people. shoalmark
+  is built for your agents: the work lives in your repository, no done gets through without a commit behind it, and what waits
+  for your word comes first.* Its short form, without *the work lives in your repository*, is the fallback if the phone render
+  pushes the action off the first screen. The agents' card keeps its opening sentence as FM-005's check rewrote it (`:361`),
+  the proof beside the lede's promise. The first screen carries one action, *Hand your agents the note*, to the English note
+  (B4).
+- **One description** serves search, the link preview and `site_description` (`zensical.toml`): *A work tracker in your
+  repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes
+  first.*
+- **Link previews.** The landing's own head carries `<link rel="canonical">`, `og:type` website, `og:site_name` shoalmark,
+  `og:locale` en_GB, `og:url` `https://shoalmark.github.io/shoalmark/`, `og:title` (the H1), `og:description` (the description),
+  `og:image` `https://shoalmark.github.io/shoalmark/assets/preview.png` (1200 × 630) with `og:image:alt` *A night chart of the
+  German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.*, and `twitter:card`
+  summary_large_image. The preview image is the Designer's: a 1200 × 630 PNG of the chart with the wordmark, without the headline
+  or the counts, a real render of the page, committed as `docs/assets/preview.png`; the Owner judges it with the render. One
+  theme override adds the same tags to every other page — `de_DE` under `de/`, the preview title from the page's front-matter
+  `title:` — guarded for pages without front matter. The Markdown twin, `docs/index.md`, follows the landing.
+- **A2, the German start page** (`docs/de/index.md`) leads with *Die Agenten tragen die Arbeit, der Mensch hat das letzte
+  Wort.* and carries no claim: *Dein Eigner bremst. Tunen statt tauschen.* leaves it. Its job line: *Ticketsysteme wurden
+  gebaut, damit Menschen einander Arbeit zuweisen. shoalmark ist für Ihre Agenten gebaut: Die Arbeit liegt in Ihrem Repository,
+  nichts geht ohne Commit dahinter als fertig durch, und was auf Ihr Wort wartet, steht ganz oben.* — its short form without
+  *Die Arbeit liegt in Ihrem Repository*, as the landing goes. The one action links `ADOPT.de.md`. Its front matter carries its
+  own `title:` *Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort* and `description:` *Ein Arbeits-Tracker in Ihrem
+  Repository, für Ihre Agenten: Nichts geht ohne Commit dahinter als „fertig“ durch, und was auf Ihr Wort wartet, steht ganz
+  oben.*
+- **The gate clause** — *no done gets through without a commit behind it*, *nichts geht ohne Commit dahinter als fertig durch*
+  — stands in the ledes and descriptions because FM-005's check is merged, on git and on Subversion; without it they would drop
+  the clause, never saying *on git*.
+- **A3, the Owner's card,** is unchanged in both languages.
+
+**B — the tagline, where agents read.**
+- **B1** The README's opening heading reads *Get a better-performing human Owner.*
+- **B2** The summary line of `llms.txt` (`scripts/llms_txt.py`) opens with *Get a better-performing human Owner.*
+- **B3** `ADOPT.de.md`, the note the Owner hands their agents, opens with *Euer Owner bremst. Tunen statt tauschen.*, and its
+  line 5 reads *…und **euer Owner entscheidet***.
+- **B4** `ADOPT.md`, the English note: a translation of `ADOPT.de.md` with the same fix (*your Owner decides*), opening with
+  *Get a better-performing human Owner.* The landing links it as the note for trying it, with *(Deutsch)* beside it for
+  `ADOPT.de.md`.
+
+**C — the fleet, a section of its own on the landing,** placed early by the Designer and headed *The fleet*. Its first
+line: *A seat is a role an agent takes, with its duties and its rights written down.* Below it four tiles, each with its
+badge from `brand/seats/`, its name, its character from `brand/seats/README.md` and one line:
+- **Planner**, the skipper: turns the Owner's direction into trackers, and puts the agents' open questions to the Owner,
+  one sentence each.
+- **Builder**, the shipwright: builds one change from its tracker, in a worktree of its own, and never accepts its own work.
+- **Reviewer**, the inspector: reads a branch against its tracker and writes READY, or what must change. It never merges.
+- **Specialists (customizable):** called in when the work needs them. Name your own in `[seats]`, with the rights
+  `[rights]` gives them. The tile shows the four specialist badges — research, go-to-market, designer, auditor — small and
+  unnamed.
+
+The agents' card keeps its command list. *All seats* links `https://shoalmark.github.io/shoalmark/seats/`, absolute like
+the page's other links: a root-relative `/seats/` 404s on the project site. The Designer renders desktop and phone.
+
+**Acceptance.** The section sells the rights model, not agents: the tool ships no agents and enforces no duties. It makes
+plain that the gate enforces the rights, that the tool knows three seats, and that everything else is practice the adopter
+writes — in the README's own words (§*Seats*) where a clause is needed, not a new line. The characters are the seats'
+brand, not features. On a phone the chart falls below the fold, so the H1 in the pixel face, the job line and the one action
+carry the first screen alone: the render the Owner judges shows all three at phone width, above the fold.
+
+**The Owner's judgment of the render (`70ffd5f`), 2026-10-01: accepted, with five changes.** The phone's first screen moves the
+title block up so the chart's top edge shows in its last 100–150 px, hinting at what follows; the H1, the full lede and the action
+stay above the fold. The agents' card is headed *For agents*; *The fleet* is the new section's. `preview.png` keeps the wreck
+labels, without the highlighted wreck and its selection box — no single defect is singled out. The German pages declare
+`lang="de"`, and the landing links the site's Pricke SVG as its icon. The desktop H1's cap, the anchors' removal and the rights
+line stay as the Designer made them; if the configuration change (D2) falls back, the landing's rights line takes the fallback
+text too. The Owner sees a re-render of the phone's first screen and the preview before the merge.
+
+**The Owner accepted the re-render at `6ab480d`, 2026-10-01, and ruled RV-2189 into the bundle:** the landing must not scroll
+sideways at 360, 375 or 390 px — the HUD made it 390 px wide at 360 and 375 — by the Reviewer's tested CSS rule; the render set
+gains `phone-360-first.png`, which the Owner sees with the others. If the fix needs more than a CSS change, it moves after the tag.
+
+**D — the Owner is not a seat.**
+- **D1** The seats page (`docs/seats/index.md:3–4`), README §*Seats* and the tool's printed text read: *the Owner, and
+  three seats with their rights built in — planner ask · close · triage, reviewer triage, builder none*. The seats page
+  groups its rows under *The core seats* and *Specialists*, and carries C's definition.
+- **D2** — attempted, not in this slice: the Owner's identity is configured outside `[seats]`, and `[seats] owner` is still
+  read as its old spelling. It goes into the one `[seats]` change of 2026-10-01, after the Apps (11:00). If it threatens
+  the 15:00 cut, D1 adds one line — *the Owner, whose identity `[seats]` still carries as `owner` until 0.19.1* — and the
+  same fallback covers `docs/setup.md:53` and the refusal at `shoalmark.py:4520`, which lists the Owner under *The seats
+  are:*.
+
+**E — pronouns and wording.** `overrides/landing.html:411` (one *his*) and `:463` (*he* and four *his*);
+`docs/requirements.md:39` (*his go*); `README.md:269` (*below their:* becomes *theirs*, or a noun); `AGENTS.md:86` (*he
+said yes* becomes *they said yes*); the seats page's *as it likes* becomes *as the adopter chooses*. They stay, as history:
+the eight in the landing's embedded tracker titles (`WRECKS`), which quote records, and the template's comment at `:3`.
+
+**FM-005's check went first,** as a must for v0.19.0, in its own pull request (PR 143, merged 2026-10-01 08:10:46); this
+slice merged main after it and runs CI again.
+
+**Ruled with it:** the App lines keep *brief* when the Apps are made on 2026-10-01 — they describe how a seat works, and the
+landing names the product's unit; both are revisited after the tag.
+
+**After the tag:** a decision flow near the top of the landing; what the measured counts measure; *Eigner* against *Owner*
+in German prose (*One claim, the Owner's*, above, records *der Eigner*; `ADOPT.de.md` says *Owner* ten times); the App
+lines' *brief*; descriptions of their own for the other German pages — until then they preview with the site's
+description; a release workflow — the notes from the CHANGELOG, the assets, an attestation; a light scheme — the page is dark
+only; a picture of the board itself; the incident panel's cycle; how many
+seats and review passes a one-Owner product carries; the way back on both start pages, and *What it is not* becoming *What
+stays yours* — each screened first (the Owner's ruling, 2026-10-01); the Owner named *he*, *his* or *him* on 128 lines of
+`shoalmark.py`'s comments and docstrings (the Auditor's count at `c830470`; no printed line) — filed, not fixed (the Owner's
+ruling, 2026-10-01); from the cold audit of v0.19.0 (the Owner's rulings, 2026-10-01; filing is frozen): F3, the Markdown
+twins' broken links (`scripts/llms_txt.py`); F6, the private measurement's source and date on the box; F7, the German
+board's `lang`; and GitLab — by the code, all but `--queue` already works on any git host; the queue needs a reader for
+GitLab; untested.
+
+## The landing's player stats at the v0.19.0 cut
+
+**The Owner's ruling, 2026-10-01.** The player stats are updated for v0.19.0 at the cut, in one commit: the last content commit
+before the tag and the release bundle's last, after the site slice, D2 and the release commit, which cuts VERSION's CHANGELOG
+section that the wreck script reads.
+- **On the landing:** the top bar (release, hi-score, wrecks, open); the *High scores* table and its footnote; the `WRECKS` data and
+  the register's summary; the board excerpt; the footer's release line and its *read at its cut* note. The *before it* row keeps
+  *before the Owner's signed answer* (the site slice's fix).
+- **Every place that carries the counts, and only those** — at `1197e80`: `overrides/landing.html:289`, `:410`, `:411` with the
+  footnote at `:414`; `docs/index.md:31`, `:33`; `docs/de/index.md:27`, `:29` — the same numbers, read at the same cut, to the same
+  end date (*to 1 October 2026*, *bis zum 1. Oktober 2026*, if the cut is today); `docs/index.md:31`'s *the owner* becomes *the
+  Owner*. The footnotes under those counts (`docs/index.md:35`, `docs/de/index.md:31`) follow the landing's: the same date,
+  source and method.
+- **The numbers are the Auditor's,** re-read at the cut; no seat computes them; the Reviewer checks every page against them. **The
+  method,** in the footnote as today: merged pull requests of `shoalmark/shoalmark`, numbers 1 to the last at the cut, without the
+  Owner's answer branches; one counts when a non-merge commit adding or changing a file under `work-tracker/evidence/reviews/` is
+  dated before the pull request was opened.
+- **The Auditor's numbers at the cut `c830470`**, read 2026-10-01, 12:47–12:55 CEST:
+  - the top bar: release `v0.19.0` · hi-score 71/82 · wrecks 27 · open 10;
+  - *High scores*: 1st 71/82, *after the rule* — pull requests 47–144, from the Owner's signed answer of 24 September 2026, 11:07
+    CEST, to 1 October 2026; 2nd 10/37, *before it* — pull requests 1–43;
+  - the footnote: “Counted on 1 October 2026 with gh from pull requests 1–144 of shoalmark/shoalmark: merged ones only, without
+    the Owner's own answer branches. One counts when a commit adding or changing a file under work-tracker/evidence/reviews/,
+    merge commits excluded, is dated before the pull request was opened.”;
+  - the wrecks: `WRECKS` from the script at `c830470` — 27: In Progress 7, Proposed 3, Shipped 16, Closed 1, so open 10, raised
+    16, closed 1; all 27 links written as `shoalmark/shoalmark`;
+  - the board's excerpt (`--owner` at `c830470`): *waiting for you* 1; *your acts, with their time* 1, the row “FM-007 after the
+    scoring, once the key is delivered · promised 2026-09-25 · no date yet”; the caption “shoalmark's own board, 1 October 2026”;
+  - the footer: the release line “v0.19.0, released 1 October 2026 — shoalmark 0.19.0 is the first public beta: …” — the date
+    from the CHANGELOG's heading, as *The release day* below rules it, then a dash, so the CHANGELOG's headline stays word for
+    word with one colon in the line (the Owner's ruling, 2026-10-01); the release read at its cut, 1 October 2026;
+    the wrecks and the board's excerpt read on 1 October 2026, 12:47 CEST.
+- **The wrecks** come from `evidence/FM-006/landing/start-page/facts.mjs` at the cut; the script stays as written — evidence is
+  append-only — and its wreck links, which say `holgo99/shoalmark`, are written as `shoalmark/shoalmark` in the page; the commit
+  says so.
+- **The Reviewer's grep:** `git grep -E "12 of 15|12/15|10 of 37|10/37|12 von 15|10 von 37"` outside `work-tracker/` and
+  `CHANGELOG.md`, and `25 September` (and the German `25. September`) in the three files — only the unchanged *before* rows' 10/37
+  may remain.
+- One Builder, or the Designer already on the landing; the Reviewer after; CI; then the tag.
+
+## The v0.19.0 release commit
+
+**The Owner's approval, 2026-10-01.** In the release bundle (`release/v0.19.0`), after main with the `[seats]` switch, the
+`From:` fix, this slice and the bundle's carried findings, and before the player stats — prepared in commits of its own before
+the switch merged, and the CHANGELOG's cut and the notes' checksum last, after it (the Owner's ruling of the same day):
+- **README:** the first screen's lists to v0.19.0 — *the tracker, the gate (it refuses a done without a commit behind it), the
+  board with waiting for you on top, …*, and the direction *…the rest of evidence-checked done…*; the FM-005 pointer as
+  `https://github.com/shoalmark/shoalmark/blob/main/work-tracker/evidence/FM-005/design.md`; §6's `<shoalmark-url>` as
+  `https://github.com/shoalmark/shoalmark`; §8 moved above §9, the anchors unchanged.
+- **The workflows:** `docs.yml:4` — *Runs on a release tag, or by hand: the site is built and deployed per release. A pull
+  request does not build the site; `zensical build` locally does.*; `ci.yml:9` — RV-2110's text.
+- **The version:** `VERSION` and `__version__` 0.19.0; the CHANGELOG's `## 0.19.0 — 2026-10-01` (*The release day*, below), opening with a bold headline
+  paragraph as 0.18.5's does (0.18.6's opens with a bullet) — the landing's facts script reads it — and saying that the hook judges more now, so `--install-hook`
+  runs again (RV-2160); both setup pages `--branch v0.19.0`.
+- **The notes:** `ADOPT.md` and `ADOPT.de.md` name `v0.19.0` and the checksum of the final `shoalmark.py`, computed last, after
+  every merge that touches it, the switch's D2 included; the Reviewer checks it against the tagged file.
+- **Shipped:** the trackers that move to `Shipped` at the cut, each naming its commit — the release Builder's list, approved by
+  the Owner.
+- **The first public beta** (the Owner's ruling, 2026-10-01): v0.19.0 is shoalmark's first official release, published on
+  GitHub Releases as a pre-release; the tag stays `v0.19.0`. The 0.19.0 section's bold headline names it the first public beta —
+  the release notes and the landing's release line read that line.
+  The headline, as the Owner wrote it (the ids outside the bold, so the landing shows only the sentence): **shoalmark 0.19.0
+  is the first public beta: the gate refuses a *done* without a commit behind it, the first screen speaks to the person who owns
+  the repository, and a new English note, `ADOPT.md`, goes to their agents** (FM-005, FM-006, FM-024 — with FM-040, FM-041 and
+  FM-032). The Owner configured apart, several identities and `From:` stay in the bullets.
+- **The release day** (the Owner's ruling, 2026-10-01): the Owner releases v0.19.0 today, 2026-10-01. The CHANGELOG's heading
+  carries that date, and the landing's footer says *v0.19.0, released 1 October 2026 —* and the headline from it; the player stats stay as read at
+  the cut `c830470`; `shoalmark.py` is untouched, so the notes' checksum stands. After the stats commit, the Owner's cold audit,
+  the full local run and the bundle's final review start at once; the Owner opens the pull request after the final review's
+  verdict, as a draft. The final review's findings and the Owner's rulings on them go in one fix round, the cold audit's in a
+  second, small round on top; the pull request stays a draft until both are in, so CI runs once, on the final head, and the
+  final review's scoped check covers both rounds. The merge waits on CI and the cold audit's verdict. If the bundle is not merged
+  by 22:00 CEST, the date goes back to 2026-10-02 and the tag moves to the next morning.
+- **The Owner's run sheet** — `work-tracker/evidence/FM-006/release-v0-19-0-owner-run-sheet.md`, about 40 lines of numbered
+  copy-paste steps, each with its expected output and one line to paste back. Before the tag: `gh repo edit` with the site's
+  description line, the homepage `https://shoalmark.github.io/shoalmark/` and topics (proposed there, the Owner's to set), and the
+  manual upload of `docs/assets/preview.png` as the repository's social preview. After the tag: from a clean checkout at
+  `v0.19.0`, `SHA256SUMS` for `shoalmark.py`; the notes — the 0.19.0 section verbatim and three lines (install pinned to the tag,
+  `--install-hook` again, the checksum), generated, never committed; `gh release create v0.19.0 --prerelease --title "shoalmark
+  0.19.0 — public beta" --notes-file <notes> shoalmark.py SHA256SUMS`. The Auditor verifies the published assets against the tag.
+- **In this beta** (the Owner's ruling, 2026-10-01; built while the bundle waits for the switch; the bundle's final review
+  covers it, no render round). English: *Not a migration tool: it imports no ticket system and starts from your repository's own
+  work. A path for a fleet that already runs a system of its own is filed, not built.* · *For one person in charge and their agent
+  fleet. Several people in charge are not tested in this beta; support for them may come later.* · “Not proof that work is right.
+  The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.” German (*Sie*):
+  *Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine
+  Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.* · *Für eine Person mit dem letzten Wort und ihre
+  Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.* · *Kein Beweis,
+  dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein
+  Review.* — on the landing's start section in place of *…filed (FM-026) and coming*, untrue since FM-026 is Parked; in
+  `docs/index.md` and `docs/de/index.md` under *What it is not* / *Was es nicht ist*, as *In this beta:* / *In dieser Beta:*; in
+  the README after *What is the direction*. Before *Tell your Owner so and stop here* in `ADOPT.md`: *If your project has several
+  people in charge, or a large ticket system to move, this beta is not for it yet.*; in `ADOPT.de.md`: *Wenn in eurem Projekt
+  mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen wäre, ist diese Beta noch nichts für euer Projekt.* *The
+  Planner's reading:* the same untrue sentence in the two start pages' *You lose nothing* paragraphs (`docs/index.md:63`,
+  `docs/de/index.md:65`) goes with the landing's.
+  A fourth line, the Owner's ruling of the same day, wherever the three stand (the landing's box, the README, both start
+  pages) — as built, with `git` as code (`ed58291`) and the ending of the final review's RV-2262 (the Owner's ruling, the same
+  day: signed answers need only `git`): “Made and tested on `git` with GitHub. Subversion passes the test suite but has not been
+  used in real work; signed answers need `git`, and the pull-request queue `git` and GitHub.” / “Gebaut und erprobt mit `git` und
+  GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt; signierte Antworten brauchen `git`, die
+  Pull-Request-Warteschlange `git` und GitHub.” In both notes *Tell your Owner so and stop here* / *Sagt das eurem Owner und hört
+  hier auf* comes right after the *not for it yet* line (`ed58291`), and the Subversion line follows in a paragraph of its own:
+  `ADOPT.md` *On Subversion it passes the test suite but has not been used in real work: say so in your report.*; `ADOPT.de.md`
+  *Unter Subversion besteht es die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Sagt das in eurem Bericht.* — the
+  capital after the colon, a whole sentence following (the final review's RV-2265, the Owner's ruling). The Reviewer checks the
+  German, and that every clause holds at the tip. The cold audit's round rewrites the fourth line and the notes' Subversion
+  paragraph once more (below, *Subversion*).
+  The Owner approved the start section's render (`start-390.png`, `start-1440.png`, `b2683f2`); on desktop the box's text is
+  capped at about 80 characters wide, to read faster — the Owner's cosmetic suggestion, taken.
+- **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
+  with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
+  PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
+- **Every public line stays true for two paths** (the Owner's ruling, 2026-10-01): a phone app, and a hosted path a person opts
+  into — never a requirement; and no line ties shoalmark to one forge. Nothing is announced. One commit on the bundle, before the
+  final review, with these texts as written:
+  - *The rewording.* The landing's ticker, both copies (`overrides/landing.html:517–518`), in place of its first three items:
+    “needs no server and no account · ids you can say out loud”. `docs/index.md:72`: “shoalmark needs no server and no account,
+    and its ids are ones you can say out loud, like FM-012.” `docs/de/index.md:77`: “shoalmark braucht keinen Server und kein
+    Konto, und seine IDs kann man aussprechen, etwa FM-012.” `README.md:40`: “It needs no server, no database and no dependency
+    beyond Python 3.9.”
+  - *No network.* `ADOPT.md:11`: “(standard library only, no dependency, needs no network: online, it reaches your repository's
+    host through git, and through gh for the pull-request queue)”. `ADOPT.de.md:11`: “(nur Standardbibliothek, keine
+    Abhängigkeit, braucht kein Netz: Online erreicht es den Host eures Repositorys über git und für die
+    Pull-Request-Warteschlange über gh)” — *Online* upper case after the colon (the final review's RV-2265, the Owner's ruling).
+  - *The way back* — amended the same day, in one more commit before the final review: everything that calls the tool goes
+    first, the line added to a hook of one's own included (the installer leaves an existing hook alone and prints that line to
+    add to it); and amended again in the final review's fix round (RV-2263, the Owner's ruling): the hooks folder is the one
+    `core.hooksPath` names where it is set, and the text says what deleting the tool first does — post-merge and post-checkout
+    hooks left behind refuse no commit. The way-back item in each note: “Way back: first remove from your hooks folder
+    (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls `tools/shoalmark/shoalmark.py`: the hooks marked
+    `# shoalmark`, and the line you added to a hook of your own (on Subversion, the `tsvn:` hook properties). Delete the tool
+    before that, and commits are refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in
+    `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.” / “Rückweg: zuerst aus eurem Hook-Ordner
+    (`.git/hooks/` oder dem, den `core.hooksPath` nennt) alles entfernen, was `tools/shoalmark/shoalmark.py` aufruft: die mit
+    `# shoalmark` markierten Hooks und die Zeile, die ihr einem eigenen Hook hinzugefügt habt (unter Subversion die
+    `tsvn:`-Hook-Properties). Löscht ihr das Werkzeug vorher, werden Commits abgelehnt. Dann `tools/shoalmark/`,
+    `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der Tracker-Ordner kann bleiben: Seine Einträge sind
+    einfaches Markdown.”
+
+  The Reviewer checks the German and runs the way back in a scratch repository — the old order, the text as written, and a
+  repository whose own hook carries the added line; the Auditor verifies each commit when it lands.
+- **The cold audit's round** (the Owner's rulings, 2026-10-01): the second, small fix round, on top of the final review's,
+  carries the cold audit's findings — its report on `1c62b13`, *TAG AFTER FIXES*: F1 P1, F2–F5 P2, F6–F8 P3 — the Owner's
+  ruling on Subversion, and two items the first round found.
+  - **Subversion:** anyone may try it; it is not guaranteed and not claimed; it appears only in the qualified lines. The texts,
+    as written — the landing's ticker, both copies: “git and subversion” becomes “made and tested on git”. `README.md:17`: “—
+    with git, on Windows, macOS and Linux, in any language.” `docs/index.md:73`: “Runs with git on Windows, macOS and Linux.”
+    `docs/de/index.md:78–79`: “Läuft mit git auf Windows, macOS und Linux.” `ADOPT.md:14`: “It runs with git on Windows,
+    macOS and Linux (CI proves all three).” `ADOPT.de.md:14`: “Läuft mit git auf Windows, macOS und Linux (CI beweist alle
+    drei).” The fourth *In this beta* line, in the README, `docs/index.md` and the landing: “Made and tested on `git` with
+    GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers
+    need `git`, and the pull-request queue `git` and GitHub.” — in `docs/de/index.md`: “Gebaut und erprobt mit `git` und
+    GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr.
+    Signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.” The notes' Subversion paragraph,
+    which also closes F5, says F1's cost too (the Owner's ruling, the same day) — `ADOPT.md`: “On Subversion it reads its
+    history from the server through svn, so offline its checks refuse; it passes the test suite, but it has not been used in
+    real work and comes without a guarantee: say so in your report.” — `ADOPT.de.md`: “Unter Subversion liest es seine
+    Historie über svn vom Server, offline lehnen seine Prüfungen deshalb ab; es besteht die Test-Suite, ist in echter Arbeit
+    aber noch nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.”
+  - **F1, P1, fixed now:** on Subversion, a done check that cannot read the history it needs refuses and says why; it never
+    passes unread. The test is the cold audit's control: a committed `Shipped` tracker with no revision behind it exits 4 when
+    connected, and 4, not 0, with the server stopped or the network denied. `shoalmark.py` changes, so its SHA-256 is computed
+    again last, and both notes carry the new one. If F1 is not through the scoped check and the full local run by 20:30 CEST,
+    the Owner decides between disclosure and a slip.
+  - **F2:** the check at `test_shoalmark.py:564` clears the harness's variables (`CODEX_THREAD_ID` and the like) before it
+    commits, so the suite passes inside Codex.
+  - **F8:** `ADOPT.de.md:5` opens “**An Claude, Codex und alle, die das lesen:**”.
+  - **F4** is closed by RV-2262 (`da144ef`). F3, F6 and F7 go after the tag (the list in *What a stranger meets first*).
+  - **The board's link** (the Owner's ruling, the same day; `shoalmark.py` changes in this round anyway): when the default run
+    or `--html-only` writes the board, the tool prints one line with the board's clickable file link — “board:
+    file:///…/work-tracker/index.html” — correct on Windows, macOS and Linux; never in `--print-written`'s output, which the
+    pre-commit hook pipes into `git add` as paths. Tests: `--html-only` prints the link and it names the written file;
+    `--print-written`'s output is unchanged. One CHANGELOG line in 0.19.0. The notes' checksum is computed after this and
+    F1, last.
+  - **F1's cost is accepted** (the Owner's ruling, the same day): offline, on Subversion, a repository with a `Shipped` tracker
+    gets exit 4 from `--check` and the default run; the notes' Subversion paragraph (above) says so.
+  - **The second fail-open, fixed now by the same ruling** (found while F1 was built): when `svn blame` fails, the rights check
+    refuses and says why; it never passes unread. F1's unreadable error is reused. The test, in F1's control style: a seat's
+    `close`, `answer` or `triage` change judged with blame failing exits 4, not 0, and passes connected where it should. Then
+    the notes' checksum is computed again, last.
+  - **The scoped check's three** (the Owner's rulings, the same day, on the final review's scoped check at `3ed5268`):
+    RV-2267, *option A* — where the newest revision cannot be read and nothing is pending, the gate refuses and says why, so
+    *offline its checks refuse* holds exactly; then the notes' checksum again, last. RV-2268, with A — `CHANGELOG.md:33`
+    reads “…, else the newest revision, read from the server — where it cannot be read, the gate refuses and says why.”
+    RV-2269 — the reference lines that name Subversion stay; the fourth line and the notes carry the qualification.
+  - **The stopping rule** (the Owner's ruling, the same day): after A, no further Subversion finding holds the tag unless it
+    also breaks git; those go to 0.19.1.
+  - **A private security report, P1, fixed before the tag** (the Owner's ruling, the same day): after a checkout or a merge,
+    nothing shoalmark installed runs. `--install-hook` no longer writes `post-checkout` or `post-merge`; run again, it
+    removes the two it wrote before (marked `# shoalmark`) and says so. `--html-only` never runs the deriver. Tests: the
+    checkout case after `--install-hook` runs nothing; a re-run of `--install-hook` removes the old `post-*` hooks; the way
+    back and the hook tests follow the new count. One CHANGELOG line in 0.19.0: “The installed hooks no longer run anything
+    after a checkout or a merge, and `--html-only` no longer runs the deriver; run `--install-hook` again after upgrading to
+    remove the old ones.” Commits and records name it a private security report: no reporter, no exploit recipe. Then the
+    notes' checksum again, last; the final review's scoped check runs the checkout case; the final full run on that head;
+    and the Owner marks the pull request ready. The report's other findings go to 0.19.1 through private advisories, not
+    into public trackers.
+  - **The private security report's second round** (the Owner's rulings, the same day): `docs/setup.md:75` and
+    `docs/de/setup.md:76` drop “and checkout” / “und Checkout”. The code's comments stay as written — each says in one
+    sentence why the code refuses, with no steps and no payload — and `shoalmark.py` does not change again. `lefthook.yml`'s
+    `post-merge` tracker-board command goes: this repository is where outside forks arrive. The CHANGELOG line gains, at its
+    end: “; if you added a line calling `--html-only` to a post-checkout or post-merge hook of your own, remove it.” Docs,
+    config and the CHANGELOG only, so the checksum `22cd0e9e…` stands. The final review's scoped check covers this round;
+    then the final full run, and the Owner marks the pull request ready. Two more lines follow, in one commit (the Owner's
+    rulings, the same day): `README.md:284` reads “put back on the branch they started on, the board is rebuilt by the
+    command itself (`--html-only`) where nothing else rebuilt it, and the command says which.”; `.gitignore:1` names “the
+    board”, no longer *built on every checkout*. Then the final review's one verdict and the final full run on that head.
+  - **The board's link's test, on Windows** (the Owner's ruling, the same day, on CI at `5ffa3d2`): the product is right; the
+    test is wrong. `test_shoalmark.py:165` parses the whole printed line as the URI; it strips the `board: ` prefix first,
+    and the read-back is strict — the path parsed from the URI equals the board file it wrote, on every OS, and the check
+    fails on POSIX too before the fix. Test only: `shoalmark.py` and the notes are untouched, so the checksum `22cd0e9e…`
+    stands. The final review checks that one change; CI on the new head runs every suite, so the local full run is skipped;
+    the Owner merges when CI is 9/9.
+
+  The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
+  built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
+  delta and the final full run on the final head; then the Owner marks the pull request ready. If this is not through by 20:30
+  CEST, the Owner decides between disclosure and 0.19.1. After A: the final review's scoped check of A and the CHANGELOG line,
+  the final full run on that head, and the Owner marks the pull request ready. The two items from the first round:
+  - `docs/signing.md:240` and its German twin `docs/de/signing.md:261–262` name the seats that hold `answer` beside the Owner,
+    as RV-2261's fix does on the triage pages. *The Planner's reading,* in RV-2261's words: “Where your `owner`, or a seat that
+    holds `answer`, is not marked `signed`, …” / “Wo Ihr `owner` oder ein Sitz mit `answer` nicht `signed` ist, …”.
+  - `docs/requirements.md:21` and `docs/triage.md:106` say “the Owner's signed answer”. The check's name at
+    `test_shoalmark.py:3051` stays: it is a test name, not a page.
+
 ## Signals
 
 - 2026-09-30 · the Owner's first pitch, through the Principal (paraphrased, no names) · a firmware developer took one idea from it: developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading the implementation, because test plans drift; the same day a requirements folder went into that firmware repository, regulatory requirements first, the easiest to formulate, and two defects came out of it; a trial is planned for the weekend, most likely run by an agent · source: the Owner's word of 2026-09-30 · the layer is FM-042, Stage 0 its convention
@@ -327,6 +681,7 @@ ship wrecks, each with a tracker number, incident ID and a short incident report
 
 | Date | Event |
 |---|---|
+| 2026-09-30 | **What a stranger meets first in v0.19.0 — filed** by the Planner on the Owner's ruling of that day, as one slice of this tracker (*What a stranger meets first — v0.19.0*): the human lead on the landing and the German start page, the tagline where agents read, an English note beside the German one, the fleet as a section of its own, the Owner not a seat — D2 with the `[seats]` change of 2026-10-01 — and the last gendered pronouns on current pages. The two screens it follows are merged into the branch (`a410aef`, `87985b6`). |
 | 2026-09-30 | **Wording pass built — rewording, not product growth** (the Owner's rulings 3 and 4 and the renames that followed, 16:51 CEST): they/them/their for the Owner and any person; seats stay *it*, one sentence in AGENTS.md; seat names English only; Planner and Builder in prose, the `[seats]` keys and addresses unchanged. Lines of the Implementer's change `origin/main..77f7722`, records left out: product 140 added, 136 deleted (the tool and its test 62 of each, string assertions only; AGENTS.md's one sentence and three setup/README sentences on the keys the only new prose); records +8 (the CHANGELOG bullet 7, this row 1). |
 | 2026-09-30 | **A signal filed** under *Signals*: the first pitch's one idea, requirements in the repository tested as a contract; the layer is FM-042, Stage 0 its convention. Nothing on the ask changes. |
 | 2026-09-30 | The check outputs `checks.json`, `checks-r3-before.json` and `facts.json` of the start page replaced by their summaries under the Owner's ruling of 2026-09-30 (*if a check output regenerates, keep only its summary*): each regenerated by its results and is held at `08798a8`; FM-032's page names the rule. |
