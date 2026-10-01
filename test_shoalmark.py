@@ -551,7 +551,10 @@ with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); _, init_out, _ = run(root, "--init", "--key", "msr"); code, _, _ = run(root, "--install-hook")
     pcm = root / ".git/hooks/prepare-commit-msg"
-    commit_ = lambda msg: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", msg], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    # the hook adds `Model:` and `Effort:` where it finds the harness's own id (`harness_id`: `seat.harness`, else `CODEX_THREAD_ID`), and these checks
+    # read the trailer block's END as `Session:` and `Worktree:`: the commits are made without the harness's variable, so the suite passes inside Codex too (F2)
+    no_harness = {k: v for k, v in _ENV.items() if k != "CODEX_THREAD_ID"}
+    commit_ = lambda msg: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", msg], capture_output=True, text=True, encoding="utf-8", errors="replace", env=no_harness)
     body = lambda: subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%B"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
     c0 = commit_("a person's commit"); plain = body()
     subprocess.run(["git", "-C", str(root), "config", "seat.session", "a9"], env=_ENV, check=True)
