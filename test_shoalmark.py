@@ -1984,7 +1984,7 @@ if os.name != "nt":
             t0_ = time.monotonic(); g["hung"] = _hooked(g["root"], "switch", "-q", "payload", env=env_); g["hung_s"] = time.monotonic() - t0_
             g["hung_at"] = subprocess.run(["git", "-C", str(g["root"]), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
         g_ = _hook_scenario(d, _pl_plain, steps=_steps_hang)
-        check(f"FM-006 · a private security report · a copy that hangs is bounded: a copy whose main thread waits 25 s is stopped by its own bound (2 s here, 60 s by default), the hook prints one line, and the checkout succeeds "
+        check(f"FM-006 · a private security report · a copy that hangs is bounded: a copy whose main thread waits 25 s is stopped by its own bound (2 s here, 35 s by default), the hook prints one line, and the checkout succeeds "
               f"in {g_['hung_s']:.0f} s on the branch asked for (saw {g_['hung'][1]!r})",
               g_["hung"][0] == 0 and g_["hung_at"] == "payload" and g_["hung_s"] < 15 and g_["hung"][1] == "shoalmark: the board is not refreshed (exit 4): the board's run took longer than 2 s and was stopped")
         rm_git(g_["root"])
