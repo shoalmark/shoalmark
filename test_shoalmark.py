@@ -3792,6 +3792,56 @@ if _SVN:
         check("FM-005 S · in a working copy at the repository's root a revision that changed only the records is refused, naming the records and the way through — and the feature's revision passes",
               code == fm.EXIT_LINT and f"C5-001: moved to `Shipped` with no revision behind it — `r{note2_}` changes nothing outside the records (docs/work-tracker/). " in err and way5_(err)
               and code_b == 0 and "C5-002" not in err_b)
+        # F1 of the cold audit (P1): a done check that cannot read the history it needs REFUSES — it never passes unread. The control: a committed
+        # `Shipped` tracker with no revision behind it exits 4 connected, and must exit 4, not 0, with the repository unreachable
+        repo3_ = base / "repo3"; away3_ = base / "repo3.away"
+        subprocess.run(["svnadmin", "create", str(repo3_)], check=True); url3_ = repo3_.as_uri()
+        svn("mkdir", "-m", "layout", url3_ + "/trunk"); svn("checkout", url3_ + "/trunk", str(base / "wc3")); root = base / "wc3"; wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        for n_ in (1, 2, 3):
+            tracker(root, f"C5-{n_:03d}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        commit5_("the trackers, for the control", {}); built3_ = commit5_("the feature, for the control", {"src/app.py": "v1\n"})
+        ship5_(1); commit5_("C5-001: shipped, no revision behind it")
+        said_no_ = "C5-001: moved to `Shipped` with no revision behind it — its ship log names no revision"
+        said_unread_ = "Subversion's history could not be read, so a move to `Shipped` is not judged — and not passed unread. svn said: "
+        code_c, _, err_c = run(root, "--check")
+        repo3_.rename(away3_); code_uw, _, err_uw = run(root); code_u, _, err_u = run(root, "--check"); away3_.rename(repo3_)       # the write run first, as the audit ran it: it leaves an INDEX with no banner
+        code_r, _, err_r = run(root, "--check")
+        check(f"FM-005 F1 · the cold audit's control — a committed `Shipped` tracker with no revision behind it: connected, `--check` exits 4 (*no revision behind it*); with the `file://` repository moved away it exits 4, not 0 — "
+              f"in `--check` and in the write run — naming the tracker, that the history could not be read, and svn's own error; reconnected, 4 again (saw {code_c}, {code_u}, {code_uw}, {code_r})",
+              code_c == fm.EXIT_LINT and said_no_ in err_c and way5_(err_c)
+              and code_u == fm.EXIT_LINT and f"C5-001: {said_unread_}" in err_u and re.search(r"svn said: .*E\d{6}", err_u) and "no revision behind it" not in err_u
+              and code_uw == fm.EXIT_LINT and f"C5-001: {said_unread_}" in err_uw and code_r == fm.EXIT_LINT and said_no_ in err_r)
+        ship5_(2, f"built in r{built3_}"); commit5_("C5-002: shipped, the feature behind it")
+        code_p, _, err_p = run(root, "--check")
+        repo3_.rename(away3_); run(root); code_pu, _, err_pu = run(root, "--check"); away3_.rename(repo3_)
+        check(f"FM-005 F1 · the positive control — a `Shipped` move with a real revision behind it passes connected (0), and is refused, not passed, with the repository unreachable (4), naming the trackers it could not judge (saw {code_p}, {code_pu})",
+              code_p == 0 and "C5-002" not in err_p and code_pu == fm.EXIT_LINT and "C5-001, C5-002: " + said_unread_ in err_pu)
+        if not shutil.which("svnserve"):
+            print("  skip  FM-005 F1 · the server itself stopped — `svnserve` is not on the PATH here")
+        else:
+            import socket
+            def served_():
+                """a fresh working copy of repo3 through `svnserve` on the loopback — the server process, and the working copy"""
+                with socket.socket() as s_:
+                    s_.bind(("127.0.0.1", 0)); port_ = s_.getsockname()[1]
+                proc_ = subprocess.Popen(["svnserve", "-d", "--foreground", "-r", str(base), "--listen-host", "127.0.0.1", "--listen-port", str(port_)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for _ in range(100):
+                    if svn("info", f"svn://127.0.0.1:{port_}/repo3/trunk").returncode == 0:
+                        break
+                    time.sleep(0.1)
+                dest_ = base / f"wcs{port_}"; svn("checkout", f"svn://127.0.0.1:{port_}/repo3/trunk", str(dest_)); return proc_, dest_
+            def stopped_(proc_):
+                proc_.terminate(); proc_.wait(timeout=20)
+            proc_, wcs_ = served_(); code_sp, _, err_sp = run(wcs_, "--check"); stopped_(proc_); run(wcs_); code_spd, _, err_spd = run(wcs_, "--check")
+            ship5_(3); commit5_("C5-003: shipped, no revision behind it")
+            proc_, wcs_ = served_(); code_sn, _, err_sn = run(wcs_, "--check"); stopped_(proc_); run(wcs_); code_snd, _, err_snd = run(wcs_, "--check")
+            check(f"FM-005 F1 · with `svnserve` on the loopback: a `Shipped` move with a real revision passes connected (0) and is refused with the server stopped (4); one with no revision behind it is refused connected "
+                  f"(*no revision behind it*) and with the server stopped (4), naming the tracker and svn's own error (saw {code_sp}, {code_spd}, {code_sn}, {code_snd})",
+                  code_sp == 0 and "C5-002" not in err_sp and code_spd == fm.EXIT_LINT and said_unread_ in err_spd
+                  and code_sn == fm.EXIT_LINT and "C5-003: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_sn
+                  and code_snd == fm.EXIT_LINT and said_unread_ in err_snd and re.search(r"svn said: .*E\d{6}", err_snd) and "no revision behind it" not in err_snd)
     fm.configure(HERE)
 
 

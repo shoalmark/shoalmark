@@ -4841,19 +4841,42 @@ def git_ship_verdicts(names, bases, records):
     return out
 
 
-def svn_run(*args, xml=False):
-    """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where svn is not there, fails or is silent."""
+class SvnUnreadable(Exception):
+    """Subversion's history could not be read — svn is not there, or the call failed (no server, no network, a repository moved away) —
+    as against an answer, which may be empty. `tracker` names the one it was reading for, where it knows (F1 of the cold audit)."""
+    tracker = None
+
+
+SVN_ANSWERS = ("E160006", "E195012")        # *no such revision*, and *the path is not in that revision*: an answer of the history, not a failure to read it
+
+
+def svn_run(*args, xml=False, answers=()):
+    """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where the answer is empty, or is an
+    error code in `answers`. Where svn is not there or fails, SvnUnreadable with svn's own error: a done check that cannot read the
+    history it needs REFUSES, and never reads the failure as nothing changed (the cold audit's F1, the Owner's ruling)."""
     import xml.etree.ElementTree as ET
     try:
         done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        return (ET.fromstring(done.stdout) if xml else done.stdout) if done.returncode == 0 and done.stdout.strip() else None
-    except (OSError, ET.ParseError):
+    except OSError as e:
+        raise SvnUnreadable(f"svn could not be run: {e}")
+    if done.returncode != 0:
+        codes = re.findall(r"\bE\d{6}\b", done.stderr)
+        if codes and all(c in answers for c in codes):
+            return None
+        raise SvnUnreadable(" · ".join(l.strip() for l in done.stderr.strip().splitlines()[:2] if l.strip())[:300] or f"svn exited {done.returncode}")
+    if not done.stdout.strip():
         return None
+    if not xml:
+        return done.stdout
+    try:
+        return ET.fromstring(done.stdout)
+    except ET.ParseError:
+        raise SvnUnreadable("svn printed XML that could not be read")
 
 
-def svn_entry(*args):
+def svn_entry(*args, answers=()):
     """The one `<logentry>` that `svn log <args> .` prints for the working copy, or None."""
-    log = svn_run("log", *args, ".", xml=True)
+    log = svn_run("log", *args, ".", xml=True, answers=answers)
     return log.find("logentry") if log is not None else None
 
 
@@ -4864,6 +4887,12 @@ def svn_shipped_moves(rels):
     Shipped tracker there ever was would be a move, and each one shipped before this rule would be refused for ever. Only the change in
     front of the run is a move here. The calls: `svn status`; where nothing is pending, `svn log -l 1` and one `svn cat` for each tracker the
     newest revision changed; and one more `svn cat` for each that is Shipped after."""
+    def read(rel, *args, answers=()):
+        try:
+            return svn_run(*args, answers=answers)
+        except SvnUnreadable as e:
+            e.tracker = rels[rel]["id"]; raise                             # a failed read for this tracker names it
+
     status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
     for e in (status.iter("entry") if status is not None else []):
         wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
@@ -4872,13 +4901,13 @@ def svn_shipped_moves(rels):
     at, touched = None, {}
     if pending:
         touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
-        was = lambda rel: None if pending[rel] else svn_run("cat", "-r", "BASE", rel)
+        was = lambda rel: None if pending[rel] else read(rel, "cat", "-r", "BASE", rel)
     else:
         newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")                  # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
         at = int(newest.get("revision")) if newest is not None else None
         paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
-        touched = {rel: svn_run("cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
-        was = lambda rel: svn_run("cat", "-r", str(at - 1), rel)
+        touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
+        was = lambda rel: read(rel, "cat", "-r", str(at - 1), rel, answers=SVN_ANSWERS)
     for rel, now in touched.items():
         if is_shipped(now) and not is_shipped(was(rel)):
             yield rels[rel], "", ship_log_rows(now), lambda names, records, at=at: svn_ship_verdicts(names, at, records)
@@ -4891,7 +4920,7 @@ def svn_ship_verdicts(names, at, records):
     base = ("/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")).rstrip("/")   # the working copy's own path in the repository — "" at its root
     out = {}
     for n in names:
-        entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v")
+        entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v", answers=SVN_ANSWERS)
         inside = [p.text[len(base) + 1:] if p.text.startswith(base + "/") else p.text for p in entry.iter("path") if p.text] if entry is not None else []
         out[n] = ("is not in the history" if entry is None
                   else "" if any(ratio_class(p, records, []) == "product" for p in inside) else f"changes nothing outside the records ({', '.join(records)})")
@@ -4944,20 +4973,36 @@ def ship_problems(trackers):
     if not rels:
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
-    for t, where, rows, judge in shipped_moves(rels):
-        names = commits_named(rows)
-        try:
-            records = records or ship_records()
-        except ValueError as bad:
-            out.append(f'{t["id"]}: {where}moved to `Shipped`, which needs the records told from the product — {bad}')
-            continue
-        verdicts = judge(names, records) if names else {}
-        if "" in verdicts.values():
-            continue
-        found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
-        out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
-                   + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
-                   + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+
+    def unread(why, named=None):
+        """F1: Subversion's history could not be read, so a move to Shipped cannot be judged — and is refused, not passed. The tracker it was
+        reading for, where that is known; else every tracker that is Shipped in the working copy, the ones such a move could be."""
+        ids = [named] if named else [t["id"] for t in trackers if t.get("status") == "Shipped"]
+        if ids:
+            out.append(f'{", ".join(ids[:5])}{f" and {len(ids) - 5} more" if len(ids) > 5 else ""}: Subversion\'s history could not be read, so a move to `Shipped` '
+                       f'is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again')
+
+    try:
+        for t, where, rows, judge in shipped_moves(rels):
+            names = commits_named(rows)
+            try:
+                records = records or ship_records()
+            except ValueError as bad:
+                out.append(f'{t["id"]}: {where}moved to `Shipped`, which needs the records told from the product — {bad}')
+                continue
+            try:
+                verdicts = judge(names, records) if names else {}
+            except SvnUnreadable as e:
+                unread(e, t["id"])
+                continue
+            if "" in verdicts.values():
+                continue
+            found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
+            out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
+                       + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
+                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+    except SvnUnreadable as e:
+        unread(e, e.tracker)
     return out
 
 
