@@ -464,6 +464,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "control": "FM-039 · a Chrome slow to start, the board's budget counted beyond its control",
     "board": "the board, rendered in a browser",
     "story": "FM-005 · a story's header counts its chapters shipped, closed and open apart, rendered",
+    "escape": "FM-006 · a private security report · what a tracker's text can make of the board, rendered — no script, no `javascript:` link, no `data:` image",
     "search": "FM-020 · a whole id searched, rendered",
     "progress": "FM-021 · the empty progress section, rendered",
     "cell": "the board's cell shows the display form, rendered",
@@ -1567,6 +1568,48 @@ if _browser("control"):
     _own = float((re.search(r"^control: (\d+\.\d) s$", _late.stdout, re.M) or [None, "0"])[1])
     check(f"FM-039 · a Chrome 5 s slower to start than this one — its control on a blank page took {_own} s — renders the healthy board and passes: the budget is 5 s beyond the control, the page's own cost, not 5 s of wall-clock time, which Chrome's start alone would spend (saw {_late.stdout.strip()[-260:]!r})",
           _own >= 5 and _late.returncode == 0 and _late.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _late.stdout)
+
+# --- FM-006: a private security report — everything the board renders from a tracker is escaped for where it lands --------------------------------------
+# Inert markers only: a hostile string here does nothing but stand where a tag, a comment or a link would be.
+HOSTILE = "</script><b id=\"pwn1\">x</b><!--<script>alert(1)//"
+def _hostile_repo(root, blob="javascript:alert(1)//"):
+    (root / "shoalmark.toml").write_text(f'name = "</title><b id=pwn2>"\nblob = "{blob}"\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+    body = ('## What is true now\n\n**One thing is left.** <img src=x onerror="document.body.dataset.pwn=1"> <script>document.body.dataset.pwn=2</script>\n\n'
+            '[js](javascript:document.body.dataset.pwn=3) [tab](java\tscript:alert(1)) [ent](&#106;avascript:alert(1)) [ok](https://example.org/a)\n\n'
+            '![data](data:image/png;base64,AAAA) ![ok](https://example.org/a.png)\n\n## Done when\n\nit is.\n')
+    tracker(root, "MSR-001", extra=f'tags: bug\n', body=body, title=HOSTILE)
+    p_ = next((root / "docs/work-tracker").glob("MSR-001-*.md")); p_.write_text(p_.read_text(encoding="utf-8").replace('hook: "h of MSR-001"', 'hook: "' + HOSTILE.replace('"', "'") + '"'), encoding="utf-8")
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); _hostile_repo(root)
+    code_, _, err_ = run(root, "--html-only"); page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); view_ = (root / "docs/work-tracker/view/MSR-001.js").read_text(encoding="utf-8")
+    check("FM-006 · a private security report · a tracker's text — its title, its hook, the Markdown of its body — and the configuration's name and `blob` reach the page only as escaped data: "
+          "no tag, comment or `</script>` of theirs stands in the page or its view, and a forge link of another kind than http(s) is not made",
+          code_ == 0 and '<b id="pwn1">' not in page_ and "<b id=pwn2>" not in page_ and "<!--<script>" not in page_ and "</script><b" not in page_ and "<script>alert" not in page_
+          and "\\u003c/script\\u003e" in page_ and "&lt;/title&gt;" in page_ and "const BLOB=\"\"," in page_ and "not an http(s) URL" in err_
+          and "<img src=x" not in view_ and "<script>document" not in view_ and "\\u003cimg src=x" in view_)
+    check("FM-006 · a private security report · the page's own code refuses what it must: a link or an image of a kind other than http(s), mailto or a relative path is not made — the Markdown renderer's, and the page's last word on the DOM",
+          "safeUrl=u=>" in page_ and "link(k){return safeUrl(k.href)" in page_ and "image(k){return safeUrl(k.href)" in page_ and 'if(!safeUrl(h)){a.removeAttribute("href");continue}' in page_
+          and 'renderer:{html:k=>esc(k.raw||k.text||"")' in page_)
+    rm_git(root)
+fm.configure(HERE)
+if _browser("escape"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); _hostile_repo(root, blob="https://example.org/r/")
+            run(root, "--html-only")
+            dom_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri() + "#=MSR-001"]).stdout
+            md_ = re.sub(r"<script\b.*?</script>", "", dom_, flags=re.S)  # the page's own code is not what it rendered
+            md_ = md_[md_.find('<div class="md">'):md_.find("</article>")]
+            hrefs_, srcs_ = re.findall(r'<a [^>]*href="([^"]*)"', md_), re.findall(r'<img [^>]*src="([^"]*)"', md_)
+            check("FM-006 · a private security report · rendered, a tracker's Markdown makes no script and no unsafe link: its tags stand as text (no element carries `onerror`, none is a `<script>`, nothing set `data-pwn`); "
+                  "its `javascript:` links in every spelling — plain, with a tab, as an entity — make no link and their text stays; its `data:` image is not made and its alt text stays; "
+                  "the http(s) link and image are kept (saw links " + repr(hrefs_) + ", images " + repr(srcs_) + ")",
+                  "data-pwn" not in dom_ and not re.search(r"<[a-z][^>]* onerror=", md_) and "<script" not in md_ and "&lt;script&gt;" in md_
+                  and hrefs_ == ["https://example.org/a"] and srcs_ == ["https://example.org/a.png"]
+                  and "<p>js [tab]" in md_ and " ent <a " in md_ and "<p>data <img" in md_)
+    except _ChromeFailed as e_:
+        _hung("escape", e_)
 
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):

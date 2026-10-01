@@ -2652,6 +2652,9 @@ __ROWS__
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
 esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])),
 dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}},          // `#100%` must not blank the page
+// a link or an image a tracker's text makes is one of three kinds: http(s), mailto, or relative. The scheme is read as the DOM reads it — tabs, line breaks and
+// control characters dropped — so `javascript:` and `data:` are refused however they are spelled (a private security report)
+safeUrl=u=>{const s=String(u).replace(/[\u0000-\u0020\u007f-\u009f\u00ad\u200b-\u200f\u2028\u2029\ufeff]/g,"");return !/^[a-z][a-z0-9+.-]*:/i.test(s)||/^(https?|mailto):/i.test(s)},
 // every word of the chrome comes from L (labels.yaml, merged over the built-in English). What the page's LOGIC compares —
 // a status, a section, a move — stays the word an agent types; only what is SHOWN goes through here.
 l=(k,...a)=>esc((L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??"")),sl=s=>L["status."+s]||s,vn=g=>L["view."+g]||g,
@@ -2707,7 +2710,7 @@ function draw(){
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
-    return head+(folded?"":g.map((t,i)=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}${i%2?" zebra":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    return head+(folded?"":g.map((t,i)=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}${i%2?" zebra":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
@@ -2832,7 +2835,9 @@ onkeydown=e=>{if(e.key=="/"&&document.activeElement!=$("q")){e.preventDefault();
 // the viewer: `#=MSR-012` shows that tracker rendered. Markdown comes from view/<ID>.js (a script tag works from
 // disk, a fetch does not); embedded HTML is shown, never run; bare ids and tracker links stay inside the page.
 const MD=new Map(),TID=/(?:__KINDS__)-\d+\b/;
-marked.use({renderer:{html:k=>esc(k.raw||k.text||"")},extensions:[{name:"tid",level:"inline",start:s=>s.match(new RegExp("\\b"+TID.source))?.index,
+marked.use({renderer:{html:k=>esc(k.raw||k.text||""),
+  link(k){return safeUrl(k.href)&&!/&(#|colon|tab|newline)/i.test(k.href)?false:this.parser.parseInline(k.tokens)},      // false: the renderer's own link; refused, the text stays
+  image(k){return safeUrl(k.href)&&!/^mailto:/i.test(String(k.href).trim())&&!/&(#|colon|tab|newline)/i.test(k.href)?false:esc(k.text||"")}},extensions:[{name:"tid",level:"inline",start:s=>s.match(new RegExp("\\b"+TID.source))?.index,
   tokenizer(s){if(this.lexer.state.inLink)return;const m=new RegExp("^"+TID.source).exec(s);if(m&&byId.has(m[0])&&"#="+m[0]!=dec(location.hash))return{type:"tid",raw:m[0]}},
   renderer:k=>`<a href="#=${k.raw}">${k.raw}</a>`}]});
 V=(id,md)=>{MD.set(id,md);if(dec(location.hash)=="#="+id)view(id)};
@@ -2842,14 +2847,16 @@ function view(id){
     s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · ${l("viewer.no_copy",id,"__CMD__ --html-only")}</p>`;
     v.innerHTML=`<p class="m">${id} …</p>`;return document.head.append(s)}
   const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
-  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
+  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${esc(BLOB)+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(r=>r.length?` · <i>${l("relation."+r[0],r[1])}${r[2]?": "+esc(r[2]):""}</i>`:"")(t[29][11])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
 <b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+  for(const i of v.querySelectorAll(".md img"))if(!safeUrl(i.getAttribute("src")||"")||/^mailto:/i.test((i.getAttribute("src")||"").trim()))i.replaceWith(document.createTextNode(i.alt||""));      // the DOM's last word on what an image loads
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
+    if(!safeUrl(h)){a.removeAttribute("href");continue}
     if(m&&byId.has(m[1]))a.href="#="+m[1];else if(h[0]=="#"&&h[1]!="="){a.removeAttribute("href");a.dataset.s=dec(h.slice(1))}else if(!/^[a-z]+:/i.test(h)&&h[0]!="#")a.href=BLOB+h}
   // headings get GitHub's slug, so a tracker's own `#section` links work; a long tracker gets its sections listed.
   // The hash belongs to the router, so these scroll by click, not by address.
@@ -3476,7 +3483,7 @@ def write_views(trackers):
                     said, source = (t.get("asks_recovered_all") or {}).get(key, (RELATION_TEXT["unknown"], ""))
                     cut = start + line.end()
                     body = body[:cut] + f"\n**relation** — {said}" + (f" · read from the answer's commit `{source}`" if source else "") + body[cut:]
-        out, text = VIEW_DIR / f'{t["id"]}.js', f'V({json.dumps(t["id"])},{json.dumps(body, ensure_ascii=False)})\n'
+        out, text = VIEW_DIR / f'{t["id"]}.js', f'V({script_json(t["id"])},{script_json(body)})\n'
         keep.add(out.name)
         if not out.exists() or out.read_text(encoding="utf-8") != text:
             put(out, text)
@@ -3507,8 +3514,24 @@ def built_on():
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
+def board_blob():
+    """The forge URL prefix the board's links to a tracker's file are built on: `blob` from the configuration where it is an http(s) URL — a
+    link of any other kind (`javascript:`, `data:`) is a link the board does not make, and says so once — else none."""
+    if REPO_BLOB and not re.match(r"https?://[^\s\"'<>]+$", REPO_BLOB, re.I):
+        print(f"  blob: `blob = {REPO_BLOB[:60]!r}` in {CONFIG_NAME} is not an http(s) URL — the board makes no link to the forge", file=sys.stderr)
+        return ""
+    return REPO_BLOB
+
+
 def html_escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def script_json(value):
+    """JSON written for a `<script>`: `<`, `>` and `&` and the two line separators as `\\u` escapes, so no text a tracker holds can open a tag or
+    a comment, or end the block — `</script>` is only one of the ways — and the browser reads back the same value."""
+    return (json.dumps(value, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
 def render_html(trackers):
@@ -3523,7 +3546,7 @@ def render_html(trackers):
     way = {k: [w["kind"], w["branch"], w["tip"], w["commit"], w["time"], w["sig"], w["said"], w["what"], w["asked"], w["value"], int(w["answered"]), int(w["owed"]), w["due"], w["note"], w["held"]]
            for k, w in on_their_way(trackers).items()}
     rows = [
-        json.dumps(
+        script_json(
             [t["id"], t["tier"], t["status"], "—", "—",
              t["file"], t["title"], t["hook_full"], t["num"], "—", "—",
              "—", sorted({"-".join(f.split("-")[:2]) for f in t["links"]} - {t["id"]}),
@@ -3534,16 +3557,15 @@ def render_html(trackers):
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
               t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
              list(act_of(t) or [])] + ([way[t["id"]]] if t["id"] in way else []),
-            ensure_ascii=False,
-        ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
+        )
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
     ]
     unwrap = lambda md: re.sub(r" {2,}", " ", re.sub(r"(?<!\n)\n(?!\s*\n|\s*\d+\. |\s*- )", " ", md))   # source line breaks are not the reader's
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
-            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD)
-            .replace("__ACTS_HEAD__", json.dumps(HEAD["acts"], ensure_ascii=False)[1:-1]))
+            .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
+            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]))
     themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
@@ -3561,8 +3583,8 @@ def render_html(trackers):
                         '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
                         f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
                         f'aria-label="release v{v}">v{v}</a></p>')
-    page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__REG__", json.dumps(board_sessions(), ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
+    page = page.replace("__LABELS__", script_json(labels))
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(built_on())).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
