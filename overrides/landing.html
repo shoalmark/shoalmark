@@ -3,13 +3,28 @@
     the Owner's rule: full-bleed, no site chrome, nothing added. The only edits are the four his rule allows, each marked
     where it stands with a comment like this one, which the build drops: (a) the facts dated, (b) R4 the reports cut,
     (c) R3 the chart's texts above the CRT overlay, (d) the font loading. -#}
+{#- FM-006 v0.19.0 first screen: the Owner's ruling filed in FM-006 (What a stranger meets first) — A1's lead and its one action,
+    the link previews, C the fleet, E's two lines, the phone's first screen. Each edit is marked where it stands, as above. -#}
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>shoalmark — get a better-performing human Owner</title>
-<meta name="description" content="shoalmark: a work tracker that lives in the repository it tracks. One Markdown file per work item, one Python file, a gate on every commit. It puts what needs the Owner first.">
+<title>shoalmark — the agents keep the work; the person keeps the word</title>{# FM-006 v0.19.0 first screen: A1, the title #}
+<meta name="description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">{# FM-006 v0.19.0 first screen: A1, the one description #}
+{# FM-006 v0.19.0 first screen: the link previews, in the landing's own head — the image is docs/assets/preview.png, a render of this page's chart with its wordmark #}
+<link rel="canonical" href="https://shoalmark.github.io/shoalmark/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="shoalmark">
+<meta property="og:locale" content="en_GB">
+<meta property="og:url" content="https://shoalmark.github.io/shoalmark/">
+<meta property="og:title" content="The agents keep the work; the person keeps the word.">
+<meta property="og:description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">
+<meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="alternate" type="text/plain" title="llms.txt — for agents" href="https://shoalmark.github.io/shoalmark/llms.txt">
 {# FM-006: same faces and weights, served from this site; no external font requests. #}
 <link rel="stylesheet" href="{{ 'stylesheets/fonts.css' | url }}">
@@ -103,18 +118,14 @@ a{color:var(--blue)}
   filter:drop-shadow(4px 4px 0 var(--band)) drop-shadow(4px 4px 0 #0a1622)}
 .wm{fill:currentColor}.wm .pricke{fill:var(--watt)}
 .claim{margin:14px 0 18px;font-style:italic;color:var(--watt)}
-h1{margin:0;font:700 clamp(20px,1.9vw,28px)/1.2 var(--pix);letter-spacing:.01em;text-transform:uppercase;
-  text-shadow:3px 3px 0 var(--band),0 0 18px rgba(217,228,236,.18)}
+h1{margin:0;font:700 clamp(20px,1.9vw,24px)/1.2 var(--pix);letter-spacing:.01em;text-transform:uppercase;text-wrap:balance;
+  text-shadow:3px 3px 0 var(--band),0 0 18px rgba(217,228,236,.18)}{# FM-006 v0.19.0 first screen: the H1 at most 24px, on the pixel face's own grid (an eighth of the em, 3px), and balanced — its two clauses break at the semicolon over the sea; at 1.9vw, 27.4px at 1440, the second clause broke and left WORD. alone #}
 .lede{margin:14px 0 20px;max-width:54ch;color:var(--dim)}
 .cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .btn{display:inline-flex;align-items:center;gap:10px;padding:12px 16px;font:700 13px/1 var(--pix);text-transform:uppercase;
   color:var(--landink);background:var(--watt);text-decoration:none;border:0;box-shadow:4px 4px 0 var(--band)}
-.btn i{font-style:normal;font-weight:400;opacity:.75}
-.btn.alt{background:var(--land)}
 .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--band)}
-.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--band)}
-.press{font:400 12px/1 var(--pix);color:var(--magenta);text-decoration:none;margin-left:6px}
-.press span{animation:blink 1.1s steps(1) infinite}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--band)}{# FM-006 v0.19.0 first screen: one action — .btn i, .btn.alt and .press went with the three anchors #}
 @keyframes blink{50%{opacity:0}}
 
 /* the console under the playfield: the selected incident, and the key */
@@ -149,6 +160,24 @@ section.band{padding-block:72px 40px}
 .sec-h h2{margin:0;font:700 clamp(22px,3vw,34px)/1.1 var(--pix);text-transform:uppercase;text-shadow:3px 3px 0 var(--band)}
 .sec-h p{margin:0;color:var(--mute);font-size:13px}
 .sec-h .n{font:400 12px/1 var(--pix);color:var(--watt)}
+
+/* the fleet */{# FM-006 v0.19.0 first screen: C, the fleet — its styles; each badge drawn as its SVG in brand/seats/ draws itself, a whole number of CSS pixels to its grid's unit: 4, and 2 for the four small ones #}
+.fleet .sec-h{margin-bottom:14px}
+.fleet-def{margin:0 0 8px;max-width:80ch;font-size:16px;color:var(--ink)}
+.fleet-rights{margin:0 0 34px;font-size:14px;color:var(--dim)}
+.fleet-rights b{color:var(--ink);font-weight:600}.fleet-rights span{white-space:nowrap}
+.seats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:0;padding:0;list-style:none}
+.seat{display:grid;grid-template-columns:auto;gap:12px;align-content:start;padding:30px 20px 22px}
+.seat svg{display:block;width:80px;height:80px;shape-rendering:crispEdges}
+.seat .four{display:flex;gap:8px;align-items:end;height:80px}
+.seat .four svg{width:40px;height:40px}
+.seat p{margin:0;font-size:14px;color:var(--dim)}
+.seat .ch{font-style:italic;color:var(--watt)}
+.seat code,.fleet-foot code{font-size:.92em;color:var(--land);white-space:nowrap}
+.fleet-foot{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:14px 28px;margin-top:26px}
+.fleet-foot p{margin:0;max-width:100ch;font-size:14px;color:var(--dim)}
+.fleet-foot p b{color:var(--ink);font-weight:600}
+.fleet-foot a{font:400 12px/1.6 var(--pix);text-transform:uppercase;color:var(--watt);white-space:nowrap}
 
 /* select player */
 .players{display:grid;grid-template-columns:1fr 1fr;gap:28px}
@@ -253,18 +282,24 @@ section.band{padding-block:72px 40px}
 @media (max-width:980px){
   .score .opt{display:none}.hud nav a:not(.docs){display:none}
   .console,.players,.scores{grid-template-columns:1fr}
-  .stages{grid-template-columns:1fr 1fr}.costs,.coins{grid-template-columns:1fr}
+  .stages,.seats{grid-template-columns:1fr 1fr}.costs,.coins{grid-template-columns:1fr}
   .name.water:not(.big),.name.land{display:none}
 }
 @media (max-width:700px){
   .stage{width:100%;height:auto;aspect-ratio:320/205}
   .wreck span,.fig,.name{display:none}
   .wreck svg{width:14px;height:10px}
-  .stages{grid-template-columns:1fr}
+  .stages,.seats{grid-template-columns:1fr}
+  .seat{grid-template-columns:80px minmax(0,1fr);column-gap:16px}.seat>svg{grid-row:span 2}.seat.spec{grid-template-columns:1fr}.seat .four{height:auto}
   .moves div{grid-template-columns:1fr;gap:4px}
   .inc-head{grid-template-columns:1fr}.facts{grid-template-columns:repeat(2,auto)}
   .score{gap:14px}.score .mid{display:none}
-}
+  .title{min-height:calc(100vh - 56px);min-height:calc(100svh - 56px);display:flex;flex-direction:column;justify-content:center;padding-bottom:84px}
+  .title .claim{margin-bottom:36px}
+  h1{font-size:24px}
+  .lede{margin-bottom:30px;font-size:16px}
+  .cta .btn{flex:1;justify-content:center;padding:16px 18px}
+}{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px), so the H1, the job line and the one action carry it and the chart falls below the fold — the stack centred a little above the middle (84px below it, not 26), the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, the action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
@@ -311,13 +346,11 @@ section.band{padding-block:72px 40px}
   <div class="title">
     <svg class="wm" viewBox="0 0 130 16" role="img" aria-label="shoalmark"><path class="pricke" shape-rendering="crispEdges" d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/><path d="M41.42 14.22Q39.91 14.22 38.82 13.73Q37.73 13.24 37.06 12.43L38.27 11.35Q38.88 12.02 39.64 12.37Q40.41 12.72 41.45 12.72Q42.41 12.72 42.99 12.4Q43.58 12.07 43.58 11.39Q43.58 11.1 43.47 10.9Q43.36 10.71 43.16 10.58Q42.97 10.45 42.7 10.38Q42.44 10.31 42.16 10.27L40.68 10.04Q40.14 9.97 39.58 9.81Q39.02 9.64 38.58 9.35Q38.14 9.05 37.86 8.58Q37.58 8.11 37.58 7.39Q37.58 5.97 38.67 5.23Q39.76 4.5 41.54 4.5Q42.84 4.5 43.78 4.88Q44.73 5.27 45.36 5.95L44.26 7.11Q43.9 6.69 43.24 6.34Q42.57 5.99 41.47 5.99Q39.51 5.99 39.51 7.23Q39.51 7.83 39.93 8.05Q40.36 8.28 40.93 8.35L42.41 8.58Q42.97 8.67 43.52 8.82Q44.06 8.96 44.5 9.26Q44.95 9.55 45.22 10.02Q45.5 10.49 45.5 11.21Q45.5 12.61 44.41 13.41Q43.33 14.22 41.42 14.22ZM47.86 0.68H49.82V6.3H49.91Q50.06 5.94 50.28 5.6Q50.51 5.27 50.83 5.03Q51.16 4.78 51.59 4.64Q52.02 4.5 52.6 4.5Q54 4.5 54.86 5.41Q55.73 6.33 55.73 8.02V14H53.77V8.31Q53.77 6.1 51.84 6.1Q51.46 6.1 51.1 6.2Q50.74 6.3 50.45 6.49Q50.17 6.69 50 7Q49.82 7.3 49.82 7.7V14H47.86ZM62.1 14.22Q61.07 14.22 60.26 13.87Q59.44 13.53 58.87 12.9Q58.3 12.27 58 11.37Q57.69 10.47 57.69 9.36Q57.69 8.24 58 7.34Q58.3 6.44 58.87 5.81Q59.44 5.18 60.26 4.84Q61.07 4.5 62.1 4.5Q63.13 4.5 63.95 4.84Q64.76 5.18 65.33 5.81Q65.9 6.44 66.2 7.34Q66.51 8.24 66.51 9.36Q66.51 10.47 66.2 11.37Q65.9 12.27 65.33 12.9Q64.76 13.53 63.95 13.87Q63.13 14.22 62.1 14.22ZM62.1 12.67Q63.18 12.67 63.82 12.01Q64.46 11.35 64.46 10.06V8.65Q64.46 7.36 63.82 6.7Q63.18 6.04 62.1 6.04Q61.02 6.04 60.38 6.7Q59.74 7.36 59.74 8.65V10.06Q59.74 11.35 60.38 12.01Q61.02 12.67 62.1 12.67ZM75.91 14Q75.06 14 74.64 13.57Q74.21 13.14 74.12 12.43H74.03Q73.76 13.28 73.05 13.75Q72.34 14.22 71.24 14.22Q69.82 14.22 68.98 13.47Q68.13 12.72 68.13 11.41Q68.13 10.06 69.13 9.35Q70.13 8.64 72.2 8.64H73.98V7.92Q73.98 6.03 71.98 6.03Q71.08 6.03 70.52 6.38Q69.97 6.73 69.59 7.3L68.42 6.35Q68.81 5.59 69.75 5.05Q70.69 4.5 72.16 4.5Q73.93 4.5 74.93 5.34Q75.94 6.19 75.94 7.79V12.45H77.11V14ZM71.8 12.78Q72.76 12.78 73.37 12.34Q73.98 11.91 73.98 11.23V9.88H72.23Q70.11 9.88 70.11 11.16V11.52Q70.11 12.15 70.56 12.46Q71.01 12.78 71.8 12.78ZM78.75 12.42H81.83V2.26H78.75V0.68H83.79V12.42H86.87V14H78.75ZM88.54 14V4.71H90.22V5.92H90.31Q90.52 5.32 90.93 4.91Q91.33 4.5 92.09 4.5Q92.83 4.5 93.23 4.9Q93.64 5.31 93.74 6.01H93.82Q94.07 5.38 94.52 4.94Q94.97 4.5 95.81 4.5Q96.89 4.5 97.32 5.25Q97.74 6.01 97.74 7.47V14H96.07V7.72Q96.07 6.75 95.83 6.38Q95.6 6.01 95.08 6.01Q94.61 6.01 94.29 6.32Q93.98 6.64 93.98 7.27V14H92.3V7.72Q92.3 6.75 92.08 6.38Q91.85 6.01 91.33 6.01Q90.85 6.01 90.53 6.32Q90.22 6.64 90.22 7.27V14ZM106.96 14Q106.11 14 105.69 13.57Q105.26 13.14 105.17 12.43H105.08Q104.81 13.28 104.1 13.75Q103.39 14.22 102.29 14.22Q100.87 14.22 100.03 13.47Q99.18 12.72 99.18 11.41Q99.18 10.06 100.18 9.35Q101.18 8.64 103.25 8.64H105.03V7.92Q105.03 6.03 103.03 6.03Q102.13 6.03 101.57 6.38Q101.02 6.73 100.64 7.3L99.47 6.35Q99.86 5.59 100.8 5.05Q101.74 4.5 103.21 4.5Q104.98 4.5 105.98 5.34Q106.99 6.19 106.99 7.79V12.45H108.16V14ZM102.85 12.78Q103.81 12.78 104.42 12.34Q105.03 11.91 105.03 11.23V9.88H103.28Q101.16 9.88 101.16 11.16V11.52Q101.16 12.15 101.61 12.46Q102.06 12.78 102.85 12.78ZM109.82 12.42H112.28V6.3H109.82V4.71H114.25V7.18H114.35Q114.48 6.69 114.71 6.24Q114.95 5.79 115.31 5.46Q115.67 5.13 116.19 4.92Q116.71 4.71 117.41 4.71H118.53V6.58H116.69Q115.61 6.58 114.93 7.22Q114.25 7.86 114.25 8.94V12.42H117.61V14H109.82ZM120.38 0.68H122.35V8.73H122.44L123.89 7.23L126.5 4.71H128.83L125.06 8.37L129.24 14H126.88L123.64 9.48L122.35 10.69V14H120.38Z"/></svg>
     <p class="claim">A Pricke on the Wadden flats keeps the fleet in the channel.</p>
-    <h1>Get a better-performing human Owner.</h1>
-    <p class="lede">A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads them all, a gate on every commit. It puts what needs the Owner first.</p>
+    <h1>The agents keep the work; the person keeps the word.</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
+    <p class="lede">Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your repository, no <em>done</em> gets through without a commit behind it, and what waits for your word comes first.</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
     <div class="cta">
-      <a class="btn" href="#agents"><i>1P</i> for agents</a>
-      <a class="btn alt" href="#people"><i>2P</i> for people</a>
-      <a class="press" href="#start">press start <span aria-hidden="true">▮</span></a>
-    </div>
+      <a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>
+    </div>{# FM-006 v0.19.0 first screen: A1, the one action, to the English note; the three anchors (1P for agents, 2P for people, press start) left the page — the HUD's nav keeps their destinations where it shows them #}
   </div>
 </section>
 
@@ -352,8 +385,29 @@ section.band{padding-block:72px 40px}
   </aside>
 </div>
 
+{# FM-006 v0.19.0 first screen: C, the fleet — a section of its own, early: the first after the chart and its console. Its first line the ruled definition; four tiles as ruled — badge, name, character, the one line; where a clause is needed, README §Seats's own words: the tool's three seats (D1's phrase) and a seat's charter. Each badge inlined from brand/seats/<seat>.svg, its drawing verbatim (the built site carries no brand/), its title left out: decorative, and the four specialists unnamed #}
+<section class="band wrap fleet" id="seats" aria-labelledby="h-fleet">
+  <div class="sec-h"><h2 id="h-fleet">The fleet</h2></div>
+  <p class="fleet-def">A seat is a role an agent takes, with its duties and its rights written down.</p>
+  <p class="fleet-rights">The tool knows the Owner, and three seats with their rights built in — <span><b>planner</b> ask · close · triage</span>, <span><b>reviewer</b> triage</span>, <span><b>builder</b> none</span>.</p>
+  <ul class="seats">
+    <li class="box seat"><h3 class="t">Planner</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><path fill="#5b83a3" d="M6 6h8v1h-8Z"/><path fill="#f1d47a" d="M9 6h2v1h-2Z"/><path fill="#07111b" d="M6 7h8v1h-8Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
+      <p class="ch">the skipper</p><p>turns the Owner's direction into trackers, and puts the agents' open questions to the Owner, one sentence each.</p></li>
+    <li class="box seat"><h3 class="t">Builder</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#bccd8f" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#f1d47a" d="M8 4h4v1h-4ZM7 5h6v1h-6ZM6 6h8v1h-8ZM5 7h10v1h-10Z"/><path fill="#e8d4a0" d="M9 4h2v3h-2Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
+      <p class="ch">the shipwright</p><p>builds one change from its tracker, in a worktree of its own, and never accepts its own work.</p></li>
+    <li class="box seat"><h3 class="t">Reviewer</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8fb9f3" d="M6 6h8v1h-8ZM5 7h10v6h-10ZM6 13h8v1h-8Z"/><path fill="#d9e4ec" d="M11 7h4v1h-4ZM10 8h1v4h-1ZM15 8h1v4h-1ZM11 12h4v1h-4ZM15 13h1v2h-1Z"/><path fill="#15293d" d="M12 9h2v2h-2Z"/><path fill="#15293d" d="M6 10h2v1h-2Z"/><path fill="#f38a80" d="M6 12h1v1h-1Z"/></svg>
+      <p class="ch">the inspector</p><p>reads a branch against its tracker and writes READY, or what must change. It never merges.</p></li>
+    <li class="box seat spec"><h3 class="t">Specialists</h3><div class="four" aria-hidden="true"><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><path fill="#f38a80" d="M13 12h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><path fill="#f1d47a" d="M9 11h2v2h-2Z"/></svg></div>
+      <p class="ch">(customizable)</p><p>called in when the work needs them. Name your own in <code>[seats]</code>, with the rights <code>[rights]</code> gives them.</p></li>
+  </ul>
+  <div class="fleet-foot">
+    <p>A seat's <b>charter</b> — how it thinks, a bold Planner against a steady one — is <code>&lt;tracker dir&gt;/seats/&lt;name&gt;.md</code>, read by the agent at start, never by the gate.</p>
+    <a href="https://shoalmark.github.io/shoalmark/seats/">All seats <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+
 <section class="band wrap" id="agents" aria-labelledby="h-players">
-  <div class="sec-h"><span class="n">— select player —</span><h2 id="h-players">Two players, one record</h2><p>The agents keep the work; the person keeps the word.</p></div>
+  <div class="sec-h"><span class="n">— select player —</span><h2 id="h-players">Two players, one record</h2></div>{# FM-006 v0.19.0 first screen: A1 — the subtitle that said the H1 went #}
   <div class="players">
     <article class="box player p1" aria-labelledby="h-p1">
       <h3 class="t">1P · for agents</h3>
@@ -408,7 +462,7 @@ section.band{padding-block:72px 40px}
         <thead><tr><th>rank</th><th>score</th><th>period</th></tr></thead>
         <tbody>
           <tr><td class="rk">1st</td><td class="sc">12/15</td><td class="pd"><b>after the rule</b>after the Owner signed the review rule — every change gets a Reviewer's pass — to 25 September 2026</td></tr>
-          <tr class="lo"><td class="rk">2nd</td><td class="sc">10/37</td><td class="pd"><b>before it</b>pull requests 1–69, before his signed answer of 24 September 2026, 11:07 CEST</td></tr>
+          <tr class="lo"><td class="rk">2nd</td><td class="sc">10/37</td><td class="pd"><b>before it</b>pull requests 1–69, before the Owner's signed answer of 24 September 2026, 11:07 CEST</td></tr>{# FM-006 v0.19.0 first screen: E, the Owner named #}
         </tbody>
       </table>
       <p class="small" style="margin-top:16px">Counted on 25 September 2026 with <code>gh</code> from pull requests 1–69 of holgo99/shoalmark: merged ones only, without the Owner's own answer branches. One counts when a commit adding or changing a file under <code>work-tracker/evidence/reviews/</code>, merge commits excluded, is dated before the pull request was opened.</p>
@@ -445,7 +499,7 @@ section.band{padding-block:72px 40px}
   </div>
   <div class="coins">
     <div class="coin"><span class="go">▶ 2P</span><b>You, the Owner</b><span><a href="https://shoalmark.github.io/shoalmark/setup.html">Set up in ten minutes</a> · <a href="https://shoalmark.github.io/shoalmark/signing.html">Your answer is your commit</a> · <a href="https://shoalmark.github.io/shoalmark/standup.html">The standup</a></span></div>
-    <div class="coin"><span class="go">▶ 1P</span><b>Your project's agents</b><span>The <a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md">note for trying it</a> (German): a measurement, not an instruction. They report to you at the end, and you decide.</span></div>
+    <div class="coin"><span class="go">▶ 1P</span><b>Your project's agents</b><span>The <a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">note for trying it</a> (<a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md">Deutsch</a>): a measurement, not an instruction. They report to you at the end, and you decide.</span></div>{# FM-006 v0.19.0 first screen: B4, the English note, the German beside it #}
     <div class="coin"><span class="go">▶ 1P</span><b>An agent at work</b><span>The contract is <code>tools/shoalmark/README.md</code> in your repository, <a href="https://shoalmark.github.io/shoalmark/agents/index.html">rendered here</a>. <code>llms.txt</code> is at the site's root.</span></div>
   </div>
 </section>
@@ -460,7 +514,7 @@ section.band{padding-block:72px 40px}
   <div class="wrap">
     <p class="claim">A Pricke on the Wadden flats keeps the fleet in the channel.</p>
     <span class="mk"><a href="https://github.com/shoalmark/shoalmark"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="currentColor"/></svg>shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.18.6" style="color:#b4c3d1">v0.18.6</a></span>
-    <p class="fine">v0.18.6, released 28 September 2026: the board reads git — an act or an answer he just gave shows as done, on its way, before his merge lands it — and --queue reads his done: and due: commits as his answer, admitting no commit that is not his. Licence: Apache-2.0 or MIT. The release: read at its cut, 26 September 2026. The wrecks and the board's excerpt: read on 26 September 2026, 18:00 CEST from main at bef2a1e.</p>{# FM-006 slice L, edit (a): the facts dated — read on 26 September 2026, 18:00 CEST from main at bef2a1e (evidence/FM-006/landing/start-page/facts.mjs and README.md) #}{# FM-006 slice L, edit (a), the release re-read at the 0.18.5 cut: here, in the HUD and in the foot's link, the release VERSION names, as the setup pages' clone tag does; the summary is CHANGELOG.md's head line for it #}
+    <p class="fine">v0.18.6, released 28 September 2026: the board reads git — an act or an answer the Owner just gave shows as done, on its way, before their merge lands it — and --queue reads their done: and due: commits as their answer, admitting no commit that is not theirs. Licence: Apache-2.0 or MIT. The release: read at its cut, 26 September 2026. The wrecks and the board's excerpt: read on 26 September 2026, 18:00 CEST from main at bef2a1e.</p>{# FM-006 slice L, edit (a): the facts dated — read on 26 September 2026, 18:00 CEST from main at bef2a1e (evidence/FM-006/landing/start-page/facts.mjs and README.md) #}{# FM-006 slice L, edit (a), the release re-read at the 0.18.5 cut: here, in the HUD and in the foot's link, the release VERSION names, as the setup pages' clone tag does; the summary is CHANGELOG.md's head line for it #}{# FM-006 v0.19.0 first screen: E, the Owner named, then they and their #}
   </div>
 </footer>
 
