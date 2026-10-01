@@ -72,7 +72,7 @@ what comes first. Agents read both before every judgement. Leave everything else
 
 ## 6. Open the board
 
-`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit and checkout. Its first line is what
+`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit. Its first line is what
 needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
 [The standup](standup.md).
 
