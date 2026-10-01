@@ -6785,10 +6785,10 @@ def parse_args(argv):
                                                             "names a log that carries them (`--whoami`) — nothing without `seat.session`; "
                                                             "a trailer the message carries already is left alone")
     add("--whoami", action="store_true", help="who this session is — the line a seat's report opens with (AGENTS.md): "
-                                              "`From: <session> <seat> (<worktree>) · <model> · <effort>`; a message's target is the same identity after `To:` "
-                                              "— the session from `seat.session`, the seat from `[seats]`, the "
+                                              "`From: <session> <seat> (<worktree>) · <model> · <effort>` — the session from `seat.session`, the seat from `[seats]`, the "
                                               "worktree's folder, and the model and effort from the harness's own log, found by the id in `seat.harness` "
-                                              "(`—` where there is none). Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
+                                              "(`—` where there is none); a message's target is the same identity after `To:`. "
+                                              "Reads top-level fields of the log, never its messages; exit 2 where two logs carry the id")
     add("--tsvn-hook", nargs="+", metavar="start|pre", help=argparse.SUPPRESS)      # what the TortoiseSVN properties call; TortoiseSVN appends its own arguments
     add("--derive-flag", action="append", default=[], metavar="NAME",
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
