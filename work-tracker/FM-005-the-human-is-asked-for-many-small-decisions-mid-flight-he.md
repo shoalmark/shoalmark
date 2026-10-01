@@ -14,14 +14,21 @@ hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after 
 
 ## What is true now
 
-**2026-10-01 — evidence-checked done, its first slice: built and pushed, waiting for the Reviewer (v0.19.0).** The Owner's ruling is
-filed below, in *A shipped tracker names its commit — v0.19.0*. Built on `fm/005-a-shipped-tracker-names-its-commit`, cut from
-main `1197e80`, by one Builder: the rule (`ship_problems`, on git and on Subversion, with 30 new checks and their controls), the board
-counting `Closed` apart from `Shipped` (*3 chapters: 1 shipped · 1 closed · 1 open*; the board's fifth section and INDEX.md's Board
-value are `ended`, not `done`), the claim in README.md and on the landing page, §5's row and the CHANGELOG. **Left:** one Reviewer's
-pass on the pushed tip at code tier; the pull request, which the Owner opens, and CI's full pass on its final tree; the Owner merges at
-9/9. Two rendered checks of the suite fail between 00:00 and 02:00 CEST, on the pristine tip as on this one — FM-028's clocks, not this
-change. Next: review.
+**2026-10-01 — evidence-checked done, its first slice: built, judged once, fixed, waiting for the Reviewer's verification (v0.19.0).** The
+Owner's ruling is filed below, in *A shipped tracker names its commit — v0.19.0*. Built on `fm/005-a-shipped-tracker-names-its-commit`,
+cut from main `1197e80`, by one Builder: the rule (`ship_problems`, on git and on Subversion, with its checks and their controls), the
+board counting `Closed` apart from `Shipped` (*3 chapters: 1 shipped · 1 closed · 1 open*; the board's fifth section and INDEX.md's Board
+value are `ended`, not `done`), the claim in README.md and on the landing page, §5's row and the CHANGELOG. The Reviewer's pass on
+`6890292` (RV-2150…2159: NOT READY, two P2 and eight P3) is fixed in `4324476`, `a36cf2e`, `d6ed788` and `b3fbbc9`: Subversion at the
+repository's root; every path list the rule rests on read NUL-separated — **the rights read the same lists, so they now see names git
+quotes that they missed**: a seat without `close` closing `AP-600-über.md` was let through, and is refused; the hook judges the commit
+being made; a renamed `Shipped` tracker is no move; a tracker linked from outside no longer stops the rule in a traceback; SHA-256
+hashes and ambiguous abbreviations; the stale *done* copies, README §5's row. **Left:** the Reviewer's verification of the fixes at code
+tier; the pull request, which the Owner opens, and CI's full pass on its final tree; the Owner merges at 9/9. **Known, not fixed here:**
+a `git commit --amend` that drops the named row passes the hook and is refused by `--check` (the hook reads it against the commit it
+replaces, as FM-033's does); `rights_problems` still stops in a traceback on a tracker linked from outside the repository where `[seats]`
+are set, as it did at the base. Two rendered checks of the suite fail between 00:00 and 02:00 CEST, on the pristine tip as on this one —
+FM-028's clocks, not this change. Next: review.
 
 **Explored and pre-registered 2026-09-21; nothing is built.** The Owner's direction: *how to get a better-performing
 human owner* — less work and distraction for humans, more throughput and less friction for agents; workflows the human
@@ -98,3 +105,4 @@ it, so a new tracker filed as `Shipped` moves to it.
 | 2026-09-21 | P0a prepared in the origin (its FEAT-190); the real queue read — four kinds of waiting (§3.7). |
 | 2026-09-30 | **A shipped tracker names its commit — filed** by the Planner on the Owner's ruling of that day, a must for v0.19.0: the claim *a gate that refuses a false done* is untrue at `1197e80` (a `Shipped` tracker with nothing built passes the hook and `--check`, reproduced in a scratch repository), so a move to `Shipped` is refused unless the ship log names a commit in the history that changes a path outside the records — every author, git and Subversion, judged on the commit that changes the status. |
 | 2026-10-01 | **Built and pushed for the Reviewer** by one Builder on `fm/005-a-shipped-tracker-names-its-commit`, in four commits and this record: `047d3e1` (`changes_under_review` read once per run, outputs unchanged), `5562476` (the rule and its tests, git and Subversion), `3bb9251` (the board counts `Closed` apart), `1467792` (the claim, §5's row, the CHANGELOG). Nothing on the branch moves a tracker to `Shipped`; one Reviewer at code tier, then the Owner opens the pull request. |
+| 2026-10-01 | **Fixed after the Reviewer's pass** (RV-2150…2159 on `6890292`, NOT READY): `4324476` (RV-2150, Subversion at the repository's root, and the corrections to two earlier messages), `a36cf2e` (RV-2151, NUL-separated path lists), `d6ed788` (RV-2156…2159), `b3fbbc9` (RV-2152…2155). Nothing on the branch moves a tracker to `Shipped`; one Reviewer verifies, then the Owner opens the pull request. |
