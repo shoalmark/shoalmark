@@ -69,8 +69,9 @@ What shoalmark prints for it, every day:
 
 ## What it is not
 
-No server, no account, no UUIDs. One Markdown file per work item, one Python file, and a gate on every commit that
-refuses what contradicts itself. Runs on git and Subversion, on Windows, macOS and Linux. Licence: Apache-2.0 or MIT.
+shoalmark needs no server and no account, and its ids are ones you can say out loud, like FM-012. One Markdown file per
+work item, one Python file, and a gate on every commit that refuses what contradicts itself. Runs on git and Subversion,
+on Windows, macOS and Linux. Licence: Apache-2.0 or MIT.
 
 **In this beta:**
 

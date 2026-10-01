@@ -8,9 +8,10 @@ at the end there is a report to your Owner, and **your Owner decides**.
 
 ## What it is
 
-shoalmark is a work tracker in a single Python file (standard library only, no network, no dependency): one Markdown
-file per work item with a small header, a gate that rejects contradictions, a generated `INDEX.md` and a static board
-(`index.html`) for the human. It runs with git and with Subversion, on Windows, macOS and Linux (CI proves all three).
+shoalmark is a work tracker in a single Python file (standard library only, no dependency, needs no network: online, it
+reaches your repository's host through git, and through gh for the pull-request queue): one Markdown file per work item
+with a small header, a gate that rejects contradictions, a generated `INDEX.md` and a static board (`index.html`) for
+the human. It runs with git and with Subversion, on Windows, macOS and Linux (CI proves all three).
 Licence: Apache-2.0 or MIT.
 
 ## When you do NOT need it
@@ -71,7 +72,9 @@ copy the board's two lines in `.gitignore`.
 - `--vendor tools/shoalmark`, `--init`, `--install-hook` in the real directory. **With Subversion:** the command line
   has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it; TortoiseSVN runs
   the gate itself after `--install-hook` and asks permission once.
-- Way back: delete `tools/shoalmark/`, `shoalmark.toml` and the tracker folder. The entries stay readable Markdown.
+- Way back: first remove the hooks marked `# shoalmark` in `.git/hooks/` (on Subversion, the `tsvn:` hook properties);
+  while they stay, every commit is refused. Then delete `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in
+  `AGENTS.md`. The tracker folder can stay: its entries are plain Markdown.
 
 ## Requirements — a trial, not an instruction (Stage 0: the convention only)
 

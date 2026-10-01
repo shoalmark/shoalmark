@@ -37,7 +37,7 @@ convention only: checks and traceability are later.
 ---
 
 A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads
-them all, a gate on every commit. No server, no database, no dependency beyond Python 3.9.
+them all, a gate on every commit. It needs no server, no database and no dependency beyond Python 3.9.
 **This page is written for the agent that has to use it.** Find your situation, do what it says.
 
 | You are… | Go to |

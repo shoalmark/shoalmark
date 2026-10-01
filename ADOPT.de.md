@@ -8,10 +8,11 @@ am Ende steht ein Bericht an euren Owner, und **euer Owner entscheidet**.
 
 ## Was es ist
 
-shoalmark ist ein Arbeits-Tracker als eine einzige Python-Datei (nur Standardbibliothek, kein Netz, keine
-Abhängigkeit): eine Markdown-Datei je Arbeitspaket mit einem kleinen Kopf, ein Gate, das Widersprüche ablehnt,
-eine generierte `INDEX.md` und eine statische Tafel (`index.html`) für den Menschen. Läuft mit git und mit
-Subversion, auf Windows, macOS und Linux (CI beweist alle drei). Lizenz: Apache-2.0 oder MIT.
+shoalmark ist ein Arbeits-Tracker als eine einzige Python-Datei (nur Standardbibliothek, keine Abhängigkeit, braucht
+kein Netz: online erreicht es den Host eures Repositorys über git und für die Pull-Request-Warteschlange über gh):
+eine Markdown-Datei je Arbeitspaket mit einem kleinen Kopf, ein Gate, das Widersprüche ablehnt, eine generierte
+`INDEX.md` und eine statische Tafel (`index.html`) für den Menschen. Läuft mit git und mit Subversion, auf Windows,
+macOS und Linux (CI beweist alle drei). Lizenz: Apache-2.0 oder MIT.
 
 ## Wann ihr es NICHT braucht
 
@@ -70,7 +71,10 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
 - `--vendor tools/shoalmark`, `--init`, `--install-hook` im echten Verzeichnis. **Mit Subversion:** die
   Kommandozeile kennt keinen Client-Hook — vor jedem `svn commit` das Werkzeug laufen lassen und die `INDEX.md`
   mit einchecken; TortoiseSVN führt das Gate nach `--install-hook` selbst aus und fragt einmal um Erlaubnis.
-- Rückweg: `tools/shoalmark/`, `shoalmark.toml` und den Tracker-Ordner löschen. Die Einträge bleiben lesbares Markdown.
+- Rückweg: zuerst die mit `# shoalmark` markierten Hooks in `.git/hooks/` entfernen (unter Subversion die
+  `tsvn:`-Hook-Properties); solange sie bleiben, wird jeder Commit abgelehnt. Dann `tools/shoalmark/`,
+  `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der Tracker-Ordner kann bleiben: Seine Einträge
+  sind einfaches Markdown.
 
 ## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)
 
