@@ -25,7 +25,7 @@ here. A second system beside a working one is worse than none.
 steps: (a) Where does work item 37 stand? (b) What is the next step, and whose? (c) What is waiting for the Owner right
 now? (d) What is blocked, and by what? (e) How can you tell that item 12 is done?
 
-**2. Check what you run.** Fetch the repository at the tag `v0.18.6` into a folder **outside** your working copy. The
+**2. Check what you run.** Fetch the repository at the tag `v0.19.0` into a folder **outside** your working copy. The
 file `shoalmark.py` has — with `\n` line endings — the SHA-256
 `5330ee0679ee9937a88c91ae3b36a9416f7003c706983ff0bd4e2a0bbfa971ee`. It is one file; read it before you run it.
 
