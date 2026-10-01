@@ -28,11 +28,13 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
-**2026-10-01 — the `[seats]` switch: D2 building, the rename and the addresses after the Apps.** The Owner's ruling is filed
-below, in *The `[seats]` switch — v0.19.0*. One Builder builds D2 on `fm/024-the-seats-switch`, cut from main `ea70e5e`; the
+**2026-10-01 — the `[seats]` switch: D2 built, the rename and the addresses after the Apps.** The Owner's ruling is filed
+below, in *The `[seats]` switch — v0.19.0*. One Builder built D2 on `fm/024-the-seats-switch`, cut from main `ea70e5e`; the
 key rename, the seven bot addresses and dropping `gtm` follow on the same branch after 11:00, once the Auditor has checked the
-bot ids. One pull request: a draft right after D2's first build, the Reviewer at code tier, then the Owner's cold session.
-Next: build.
+bot ids. **D2 is built at `321fddc`** — a top-level `owner` names the Owner, `[seats] owner` still reads as its old spelling,
+the tool and its tests at `ca8f7f4`, the texts and this repository's own `shoalmark.toml` at `321fddc` — and the rest of the
+switch follows after the Apps. One pull request: a draft right after D2's first build, the Reviewer at code tier, then the
+Owner's cold session. Next: build.
 
 **Slice 2 built 2026-09-30 on `fm/024-a-seat-has-several-identities`, for 0.19.0 — the Owner's word of 14:42, normalised: *"the seat icons ride v0.19.0"*; open for the Reviewer's pass.**
 `[seats]` takes a string or a list per seat, so a seat keeps its old address and gains a GitHub App's bot address (`seat_of`, the gates and the session rule match any; `signed` per identity; a duplicate — under two seats, or twice under one — refuses, exit 1); the README's *Seat icons on the forge*; `research` (with `datascientist@seat`), `go-to-market`, `designer` and `auditor` added to `shoalmark.toml` beside the five keys, which stay until the one change on Thursday (their addresses are the Owner's ruling of 15:29; none is in history yet but `designer@seat`, whose ten commits from PR 137 carry `Session: 8e509911/designer-1` and now resolve to the seat); `planner` and `builder` in the built-in rights, `principal` and `implementer` their old spellings; 18 checks, each failing on `origin/main`'s tool except the builder's, which is the point.
