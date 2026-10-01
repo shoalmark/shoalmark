@@ -17,7 +17,8 @@ Licence: Apache-2.0 or MIT.
 
 If a **fresh session with no prior knowledge** can say, from your existing files and in a few steps, where each work
 item stands, what comes next and what waits for the Owner — then you already have this. If your project has several people in charge, or a large ticket system to move,
-this beta is not for it yet. Tell your Owner so and stop here. A second system beside a working one is worse than none.
+this beta is not for it yet. On Subversion it passes the test suite but has not been used in real work: say so in your report.
+Tell your Owner so and stop here. A second system beside a working one is worse than none.
 
 ## The measurement (about 20 minutes, everything in a throwaway folder)
 
