@@ -6,11 +6,11 @@
 > **Status** = code lifecycle; `Shipped` means merged, **not** a production claim.
 >
 > **Tier · Board · Triaged** = the triage picture — the same one the board (`index.html`) shows, from the
-> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `done`.
+> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `ended` shipped or closed.
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-09-30 · 42 trackers (42 work).
+> Generated 2026-10-01 · 42 trackers (42 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -29,7 +29,7 @@
 | 2 | P1 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
 | 3 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
 | 4 | P2 | build | — | intended, kind | [FM-040](FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md) | the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it | In Progress |
-| 5 | P1 | wait | *complex* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
+| 5 | P1 | review | *complicated* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
 | 6 | P2 | build | — | intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
 | 7 | P2 | review | *complicated* | intended | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
@@ -72,22 +72,22 @@
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
 | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | P2 | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed | progress | 2026-09-25 |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
-| [FM-036](FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md) | P2 | On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-… | Shipped | done | 2026-09-25 |
-| [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Shipped | done | 2026-09-25 |
-| [FM-034](FM-034-a-fresh-clone-s-check-says-the-index-is-stale-the-header.md) | P2 | A fresh clone without the Owner's allowedSignersFile runs --check and reads two findings where there is one: the missin… | Shipped | done | 2026-09-25 |
-| [FM-022](FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md) | — | A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something… | Shipped | done | 2026-09-23 |
-| [FM-021](FM-021-the-progress-section-is-empty-beside-work-in-progress-and.md) | — | The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that… | Shipped | done | 2026-09-23 |
-| [FM-020](FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md) | — | The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He… | Shipped | done | 2026-09-23 |
-| [FM-019](FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md) | — | On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carr… | Shipped | done | — |
-| [FM-017](FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md) | — | When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with… | Shipped | done | — |
-| [FM-015](FM-015-seats-silently-drops-a-signature-that-answerers-asked-for.md) | — | From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['ali… | Shipped | done | — |
-| [FM-014](FM-014-the-seat-cannot-record-that-it-acted-on-an-answer-clearing.md) | — | `--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front… | Shipped | done | — |
-| [FM-013](FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md) | — | In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the… | Shipped | done | — |
-| [FM-012](FM-012-a-load-spawns-git-once-per-tracker-and-answer-is-silent-for.md) | — | Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of th… | Shipped | done | — |
-| [FM-011](FM-011-vendoring-from-an-incomplete-source-copies-what-it-finds-and.md) | P1 | `vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete so… | Shipped | done | 2026-09-23 |
-| [FM-010](FM-010-the-answerers-deprecation-warning-never-reaches-the.md) | — | The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only wher… | Shipped | done | — |
-| [FM-009](FM-009-version-has-drifted-from-version-and-vendor-suppresses-the.md) | — | `__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG say 0.17.2. Two tags shipped that way. `--vend… | Shipped | done | — |
-| [FM-008](FM-008-an-ask-reaches-the-owner-only-through-the-gate.md) | — | The ask/answer flow holds only while every agent has read AGENTS.md and chooses to obey it. Nothing in the tool refuses… | Shipped | done | 2026-09-23 |
-| [FM-003](FM-003-the-tool-is-proven-only-on-macos-with-git-a-first-outside.md) | — | Every proof so far is macOS, git, one Owner. The first outside user works on Windows, with Subversion and TortoiseSVN,… | Shipped | done | — |
-| [FM-002](FM-002-a-board-anyone-can-brand-the-person-the-repository-the.md) | P2 | The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English onl… | Shipped | done | 2026-09-27 |
-| [FM-016](FM-016-an-answered-ask-still-shows-as-unanswered-on-the-branch-the.md) | — | After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept an… | Closed | done | 2026-09-23 |
+| [FM-036](FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md) | P2 | On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-… | Shipped | ended | 2026-09-25 |
+| [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Shipped | ended | 2026-09-25 |
+| [FM-034](FM-034-a-fresh-clone-s-check-says-the-index-is-stale-the-header.md) | P2 | A fresh clone without the Owner's allowedSignersFile runs --check and reads two findings where there is one: the missin… | Shipped | ended | 2026-09-25 |
+| [FM-022](FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md) | — | A person finds the three intent lines hard to start: there is no beginning, and no example. *for* reads as if something… | Shipped | ended | 2026-09-23 |
+| [FM-021](FM-021-the-progress-section-is-empty-beside-work-in-progress-and.md) | — | The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that… | Shipped | ended | 2026-09-23 |
+| [FM-020](FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md) | — | The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for. He… | Shipped | ended | 2026-09-23 |
+| [FM-019](FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md) | — | On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carr… | Shipped | ended | — |
+| [FM-017](FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md) | — | When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with… | Shipped | ended | — |
+| [FM-015](FM-015-seats-silently-drops-a-signature-that-answerers-asked-for.md) | — | From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['ali… | Shipped | ended | — |
+| [FM-014](FM-014-the-seat-cannot-record-that-it-acted-on-an-answer-clearing.md) | — | `--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front… | Shipped | ended | — |
+| [FM-013](FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md) | — | In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the… | Shipped | ended | — |
+| [FM-012](FM-012-a-load-spawns-git-once-per-tracker-and-answer-is-silent-for.md) | — | Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of th… | Shipped | ended | — |
+| [FM-011](FM-011-vendoring-from-an-incomplete-source-copies-what-it-finds-and.md) | P1 | `vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete so… | Shipped | ended | 2026-09-23 |
+| [FM-010](FM-010-the-answerers-deprecation-warning-never-reaches-the.md) | — | The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only wher… | Shipped | ended | — |
+| [FM-009](FM-009-version-has-drifted-from-version-and-vendor-suppresses-the.md) | — | `__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG say 0.17.2. Two tags shipped that way. `--vend… | Shipped | ended | — |
+| [FM-008](FM-008-an-ask-reaches-the-owner-only-through-the-gate.md) | — | The ask/answer flow holds only while every agent has read AGENTS.md and chooses to obey it. Nothing in the tool refuses… | Shipped | ended | 2026-09-23 |
+| [FM-003](FM-003-the-tool-is-proven-only-on-macos-with-git-a-first-outside.md) | — | Every proof so far is macOS, git, one Owner. The first outside user works on Windows, with Subversion and TortoiseSVN,… | Shipped | ended | — |
+| [FM-002](FM-002-a-board-anyone-can-brand-the-person-the-repository-the.md) | P2 | The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English onl… | Shipped | ended | 2026-09-27 |
+| [FM-016](FM-016-an-answered-ask-still-shows-as-unanswered-on-the-branch-the.md) | — | After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept an… | Closed | ended | 2026-09-23 |

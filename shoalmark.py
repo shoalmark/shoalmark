@@ -44,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
 # The version is the `VERSION` file and nothing else. It ships in TOOL_FILES, so a vendored copy carries it, and
@@ -240,8 +241,8 @@ def configure(root=None):
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
     COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME = False, None, {}, {}    # the pre-commit run, what it stages, and who wrote which line
-    global _BUILD
-    _BUILD = None                                       # FM-033's judgement of this run, read once
+    global _BUILD, _CHANGES
+    _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -336,7 +337,7 @@ def front_matter_schema():
     return {
         "id":              (_IDS, "all", "the filing seat", "the tracker's id — the filename's, checked against it"),
         "status":          ("|".join(OPEN_STATUSES[:-1] + ("Shipped", "Closed")), "all", "the seat that changes it",
-                            "the code lifecycle, one word — `Shipped` means merged, not deployed; a date belongs in the body"),
+                            "the code lifecycle, one word — `Shipped` means merged, not deployed, and a move to it names the commit that built it in the ship log (the gate refuses one that does not); a date belongs in the body"),
         "hook":            (None, "open", "the filing seat", "the problem as filed, in two or three sentences — the INDEX row"),
         "epic":            (_IDS, False, "the filing seat, or a triage pass", "the STORY this tracker is a chapter of — a tracker id; chapters inherit its `intent:`"),
         "tags":            (None, False, "the filing seat", "at most %d from the vocabulary in the configuration's [tags]" % MAX_TAGS),
@@ -759,7 +760,7 @@ def board(t):
     Open work with a rank sits in `progress` whatever its status (`In Progress` or `Proposed`, the two a rank may stand on — `lint`); the
     open unranked is `backlog`, `triage` keeps its precedence over both, and the sections sort by rank, then tier."""
     if t["status"] not in ("In Progress", "Parked", "Proposed", "Reserved", "?"):
-        return "done"
+        return "ended"                                               # shipped or closed — a closed tracker is not "done" (FM-005)
     if t.get("raised") or (not t.get("triaged") and owed_a_pass(t)):     # a raise on a signed rule re-judges it (FM-033)
         return "triage"
     # a status is what a seat set; a rank is what a pass judged (FM-041) — the ranked open work is the working set, whatever its status
@@ -2499,7 +2500,7 @@ def mark_raised(trackers):
     current path in TRIAGE.md (`path 5`, `TRIAGE.md path 5` — a number the path has), or a tracker's signed answer
     (`FM-033's answer` — a tracker with an answer that is not revoked, or an answered record under `## Asks`). Such a
     tracker is owed a pass and sits under *triage*. Clock-free: every input is a committed file, and a day decides — a raise
-    written after the same day's pass is re-judged by that seat's own re-run, not by this rule. A done tracker's raise
+    written after the same day's pass is re-judged by that seat's own re-run, not by this rule. A shipped or closed tracker's raise
     changes nothing here."""
     lines = {int(n) for n in re.findall(r"^\s*(\d+)\.\s", triage_home()["path"], re.M)}
     answered = {t["id"] for t in trackers if (t.get("answer") and (answer_relation(t) or ("",))[0] != "revoked") or t.get("asks_relation")}
@@ -2660,7 +2661,7 @@ vcmp=(a,b)=>{if(a=="—"||b=="—")return(a=="—")-(b=="—");const x=ver(a),y=
 GROUPS=[["board",t=>board(t)],["epic",t=>t[13]!="—"?t[13]:EPICS.has(t[0])?t[0]:"—"],...COLS.map(c=>[c.toLowerCase(),t=>xv(t,c)])],   // board · story · then every derived column is a view
 // blocked is derived, never typed: open work whose named blocker is still open (or is the Owner)
 blocked=t=>OPEN.has(t[2])&&t[16].some(b=>b.startsWith("Owner")||byId.has(b)&&OPEN.has(byId.get(b)[2])),
-// the board — the generator puts every tracker in exactly one of progress · triage · backlog · done (the same
+// the board — the generator puts every tracker in exactly one of progress · triage · backlog · ended (the same
 // word INDEX.md prints); `triaged` repeats the
 // newest pass under `triage`. A judgement on work in progress holds __DAYS__ days, then it is back in `triage`; parked work does not go stale.
 LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
@@ -2674,7 +2675,7 @@ actstate=a=>!a[3]?"nodate":(now=>now<Date.parse(a[3])?"due":now<Date.parse(a[3])
 // has a pass run? ONE answer for every line that asks: the newest date a pass left on a tracker, or else the date of the
 // newest pass TRIAGE.md records. `progress` holds only what a pass kept — until a first pass it is empty by rule and says so (FM-021)
 PASSED=LAST||(HOME.last.match(/\d{4}-\d\d-\d\d/)||[""])[0],
-BOARD={progress:PASSED?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none"),backlog:l("desc.backlog"),done:l("desc.done")},
+BOARD={progress:PASSED?l("desc.progress"):l("desc.progress.none"),triage:l("desc.triage","__DAYS__"),triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none"),backlog:l("desc.backlog"),ended:l("desc.ended")},
 board=t=>[...(recent(t)?["triaged"]:[]),untriaged(t)?"triage":t[19]],   // t[19] is the generator's; staleness is the one clock rule, and only work in progress goes stale
 MARK={"In Progress":"b","Shipped":"t","Parked":"y","Closed":"z"},mark=t=>blocked(t)?"r":t[2].startsWith("Shipped")?"t":MARK[t[2]]||"",
 ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">${i}</a>`:i),   // TRIAGE.md — an id opens its tracker rendered, as in a row
@@ -2696,8 +2697,8 @@ function draw(){
   for(const k of keys)if((gname=="epic"||gname=="board"&&order.indexOf(k)>1)&&!q&&!touched.has(gname+k))shut.add(gname+k);
   $("b").innerHTML=keys.map(k=>{
     const g=groups.get(k);
-    const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),folded=shut.has(gname+k)&&!q;
-    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${kids.length-open.length} ${l("story.done")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
+    const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),shipped=kids.filter(t=>t[2]=="Shipped").length,closed=kids.filter(t=>t[2]=="Closed").length,folded=shut.has(gname+k)&&!q;
+    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
@@ -2842,7 +2843,7 @@ ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
-<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>!OPEN.has(x[2])).length} ${l("story.done")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
     if(m&&byId.has(m[1]))a.href="#="+m[1];else if(h[0]=="#"&&h[1]!="="){a.removeAttribute("href");a.dataset.s=dec(h.slice(1))}else if(!/^[a-z]+:/i.test(h)&&h[0]!="#")a.href=BLOB+h}
   // headings get GitHub's slug, so a tracker's own `#section` links work; a long tracker gets its sections listed.
@@ -2882,12 +2883,12 @@ LABELS = {
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
     "status.Proposed": "Proposed", "status.In Progress": "In Progress", "status.Parked": "Parked", "status.Reserved": "Reserved",
     "status.Shipped": "Shipped", "status.Closed": "Closed", "status.Blocked": "Blocked",
-    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.done": "done",
+    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.ended": "ended",
     "desc.progress": "kept by triage — by rank, then tier",
     "desc.progress.none": "empty until a first triage pass has run — --triage",
     "desc.triage": "what the next --triage lists — in progress and unjudged or judged over {0} days ago, and new filings",
     "desc.triaged": "judged {0} — each also sits in its own section", "desc.triaged.none": "no triage pass has run yet",
-    "desc.backlog": "waiting — P0 to P3, then untiered, then parked", "desc.done": "shipped or closed",
+    "desc.backlog": "waiting — P0 to P3, then untiered, then parked", "desc.ended": "shipped, or closed without shipping",
     "group.none": "no {0}",
     "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.id": "tracker · {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
@@ -2934,7 +2935,7 @@ LABELS = {
     "answer.sign.page": "the signing page", "answer.sign.url": SIGNING_PAGE,
     "answer.done": "Done",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
-    "story.chapter": "chapter", "story.chapters": "chapters", "story.done": "done", "story.open": "open", "story.parked": "parked",
+    "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
     "word.missing": "missing", "word.stated": "stated",
     "viewer.board": "← board", "viewer.neighbours": "neighbours", "viewer.file": "file", "viewer.forge": "forge",
@@ -3684,7 +3685,7 @@ THE INTENT — the Owner's own words, from {home}. Where the mechanics below lea
              write none. A merge, a close or a fix names none.
      NEW FILINGS: a row marked NEW FILING was filed since the last pass and has met no second reader — this pass
              is that reader, whatever the row's status. Its Closest cell holds what the filing says it was held
-             against (`considered:`) beside the three trackers the machine finds closest, done ones included.
+             against (`considered:`) beside the three trackers the machine finds closest, shipped and closed ones included.
              OPEN every one marked NOT considered. The same work: `merge ID`. Otherwise judge the row like any other.
      RAISED: a row marked RAISED carries a raise — a line under the tracker's `## Raised` — dated after its last
              judgement and naming a signed rule it undermines: a line of the current path, or a tracker's signed
@@ -3777,8 +3778,8 @@ def triage_worksheet(trackers, today, worked_on, earlier="", repos=None):
     """The worksheet of a triage pass: `In Progress` trackers no pass has dated in TRIAGE_DAYS, oldest work first —
     and every NEW FILING: open work filed under the `considered:` rule that no pass has ever dated, whatever its
     status. A fresh `Proposed` tracker used to meet no second reader at all, and `considered: none` nobody. Its row
-    prints what the filing says it was held against beside the three closest trackers the machine finds, done ones
-    included — shipped work is prior art too. The seat judges; no score decides, and no gate turns red because
+    prints what the filing says it was held against beside the three closest trackers the machine finds, shipped and
+    closed ones included — shipped work is prior art too. The seat judges; no score decides, and no gate turns red because
     someone else filed. `earlier` is today's worksheet if one exists: a re-run keeps every row whose Verdict is filled."""
     judged = [l for _tid, _v, l, _e in sheet_rows(earlier)]
     done = {tid for tid, _v, _l, _e in sheet_rows(earlier) if tid}
@@ -3933,7 +3934,7 @@ def apply_worksheet(sheet, sheet_is_todays, trackers, today, superseded=None):
         if not t or (t.get("triaged") and not sheet_is_todays):
             continue
         if t.get("status") not in OPEN_STATUSES:          # it shipped or closed since its verdict: a same-day re-run must not
-            continue                                      # rank or re-date done work, nor refuse the run over it
+            continue                                      # rank or re-date ended work, nor refuse the run over it
         path = TRACKER_DIR / t["file"]
         old = path.read_text(encoding="utf-8")
         new, hand, error = apply_verdict(old, verdict, today, by_id.keys() - {tid})
@@ -4421,13 +4422,19 @@ def checkout_lines(problems):
     return [f"  checkout: {why}" + (f" — {len(items)} signed commit(s) it could not check: {', '.join(items.values())}" if items else "") for why, items in groups.items()]
 
 
+def index_env():
+    """The environment for a git call that reads the index of the commit being made: `commit -a` and `commit <path>` hand the hook an
+    index of their own (`GIT_INDEX_FILE`), which `nested_git_env` strips — so the hook would judge `.git/index` and the working tree."""
+    return dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
+
+
 def staged_now():
     """What the commit being made is about to carry — read once. The gate's version-control calls cost real seconds in
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-        _STAGED = set(out.stdout.split("\n")) if out.returncode == 0 else set()
+        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
+        _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
 
@@ -4602,7 +4609,20 @@ def merge_heads():
     return f.read_text(encoding="utf-8").split() if f is not None and f.is_file() else []
 
 
+_CHANGES = None
+
+
 def changes_under_review():
+    """`read_changes`, read ONCE per run: the rights, the sessions and the Shipped rule judge the same changes, and each reading is
+    several version-control calls — 0.07 s in the pre-commit run and 0.13 s on a clean tree, in the repository this tool was cut from.
+    The answer depends on `COMMITTING`, so a run that asks both ways reads twice. No reader changes what it is given."""
+    global _CHANGES
+    if _CHANGES is None or _CHANGES[0] != COMMITTING:
+        _CHANGES = (COMMITTING, read_changes())
+    return _CHANGES[1]
+
+
+def read_changes():
     """WHAT THIS RUN IS JUDGING, once — a list of changes, each (the revisions it is read against, the tracker files it
     touches, author name, author email, the commit or "" when it is not made yet, the revision that holds its result or
     None for the working tree, a label that names it). The commit being made — staged, or simply not committed yet —
@@ -4619,33 +4639,32 @@ def changes_under_review():
     seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
     merge brings are read only when there is a merge: one `git log` for all of them."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    names = lambda r: set(r.stdout.split("\n")) - {""} if r.returncode == 0 else set()
+    names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
     def brought(tips, first):
         """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
         if not tips:
             return []
         out = []
-        log = git("log", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x00%H%x00%an%x00%ae", *tips, "--not", first)
-        records = log.stdout.split("\x00")[1:]          # hash · name · email, then the files --name-only lists under it
-        for i in range(0, len(records) - 2, 3):
-            c, an, rest = records[i], records[i + 1], records[i + 2]
-            ae, _, files = rest.partition("\n")
-            out.append(([f"{c}^1"], set(files.split("\n")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+        log = git("log", "-z", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%an%x02%ae", *tips, "--not", first)
+        for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
+            head, _, files = record.partition("\x00")
+            c, an, ae = (head.split("\x02") + ["", ""])[:3]
+            out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
         return out
 
     heads = merge_heads()
     if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
-        files = set(staged_now()) if COMMITTING else names(git("diff", "--name-only", "--relative", "HEAD"))
+        files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "HEAD"))
         for h in heads:
-            files &= names(git("diff", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
+            files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
         return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
     if not parents:
         return []                                        # a root commit has no parent to compare with
     files = None
     for parent in parents:
-        got = names(git("diff", "--name-only", "--relative", parent, "HEAD"))
+        got = names(git("diff", "-z", "--name-only", "--relative", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     return (brought(parents[1:], parents[0]) if len(parents) > 1 else []) + [(parents, files, name, email, commit, "HEAD", "")]
@@ -4698,6 +4717,197 @@ def rights_problems(trackers):
                     elif not verified_as(commit, email or None):
                         out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
                                    + unverified(commit, '`[seats]` asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
+    return out
+
+
+# --- the Shipped rule (FM-005, the Owner's ruling of 2026-09-30) ---------------------------------------------------------
+# The claim is *a gate that refuses a done without a commit behind it*. A change that moves a tracker to `Shipped` — its status
+# classifies as Shipped after and did not before, a new tracker included — is refused unless the tracker's ship log, as that
+# change leaves it, names a commit that is (a) in the change's history (an ancestor of the commit being judged: a commit being made
+# cannot name itself) and (b) changes at least one path outside the records. It judges exactly the changes the gate already
+# judges (`changes_under_review`), so a `Shipped` tracker no change moves is never read. It holds for every author, the Owner
+# included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged.
+GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more, up to a SHA-256 hash's 64
+SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
+
+
+def is_shipped(text):
+    """Does this tracker's `status:` classify as Shipped, as the gate reads it elsewhere — False for no text, a file that was not there."""
+    status = (parse_frontmatter(text)[0].get("status") or "") if text is not None else ""
+    return bool(status) and classify_status(status) == "Shipped"
+
+
+def ship_log_rows(text):
+    """The rows of a tracker's ship log as one string — "" where it has no log, or a heading with no table under it."""
+    lines = parse_frontmatter(text)[1].split("\n")
+    log = ship_log_table(lines)
+    return "\n".join(lines[log[1] + 1:log[2] + 1]) if log and log[1] is not None else ""
+
+
+def commits_named(rows):
+    """The commits a ship log's rows name, once each in the order written: git hashes, or on Subversion `r<N>` revisions."""
+    return list(dict.fromkeys((SVN_NAME_RE if vcs() == "svn" else GIT_NAME_RE).findall(rows)))
+
+
+def ship_records():
+    """The prefixes that are the records for this rule — `[ratio] records` where that section is set, as `--ratio` reads it, else the
+    tracker directory, written from the top of the repository (git). A ValueError with the line to print where `[ratio]` is malformed."""
+    section = CONFIG.get("ratio")
+    if isinstance(section, dict):
+        return ratio_paths(section)[0]
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if vcs() == "git" else ""
+    return [prefix + p for p in ratio_defaults()["records"]]
+
+
+def git_ship_verdicts(names, bases, records):
+    """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
+    parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
+    At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
+    git = lambda *a, **k: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}\n{n}^{{commit}}\n" for n in names))     # each name twice: as written, where git says *ambiguous*, and peeled to its commit
+    lines = found.stdout.split("\n") + [""] * (2 * len(names))
+    shas = {n: lines[2 * i + 1].partition(" ")[0] for i, n in enumerate(names) if lines[2 * i + 1].partition(" ")[2] == "commit"}
+    ambiguous = {n for i, n in enumerate(names) if n not in shas and lines[2 * i].endswith(" ambiguous")}
+    behind, changed = {}, {}
+    if shas:
+        beyond = git("rev-list", *dict.fromkeys(shas.values()), "--not", *bases)          # what the candidates reach that the parents do not
+        unreached = set(beyond.stdout.split()) if beyond.returncode == 0 else set(shas.values())      # no parent (a first commit): nothing is behind it
+        behind = {n: s for n, s in shas.items() if s not in unreached}
+    if behind:
+        log = git("log", "-z", "--no-walk=unsorted", "-m", "--first-parent", "--no-renames", "--name-only", "--format=%x01%H", *dict.fromkeys(behind.values()))
+        for record in log.stdout.split("\x01")[1:]:         # NUL-separated names: a `"` or a tab in a name is no quoted name here (RV-2151)
+            sha, _, files = record.partition("\x00")
+            changed[sha.strip()] = [f for f in files.lstrip("\n").split("\x00") if f]
+    out = {}
+    for n in names:
+        if n in ambiguous:
+            out[n] = "names more than one commit — write more of its hash"
+        elif n not in behind:
+            out[n] = "is not in the history" + ("" if n in shas else " (no such commit)")
+        elif any(ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
+            out[n] = ""
+        else:
+            out[n] = f"changes nothing outside the records ({', '.join(records)})"
+    return out
+
+
+def svn_run(*args, xml=False):
+    """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where svn is not there, fails or is silent."""
+    import xml.etree.ElementTree as ET
+    try:
+        done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        return (ET.fromstring(done.stdout) if xml else done.stdout) if done.returncode == 0 and done.stdout.strip() else None
+    except (OSError, ET.ParseError):
+        return None
+
+
+def svn_entry(*args):
+    """The one `<logentry>` that `svn log <args> .` prints for the working copy, or None."""
+    log = svn_run("log", *args, ".", xml=True)
+    return log.find("logentry") if log is not None else None
+
+
+def svn_shipped_moves(rels):
+    """Subversion's reading of "what this run is judging", the one git's is: the change NOT YET COMMITTED — the trackers the working
+    copy has modified, added or not yet `svn add`ed — else the NEWEST revision, at HEAD, that changed anything under the working
+    copy, read against the one before it. The rights read the `status:` line's last author by `svn blame`, which judges a STATE: read so, every
+    Shipped tracker there ever was would be a move, and each one shipped before this rule would be refused for ever. Only the change in
+    front of the run is a move here. The calls: `svn status`; where nothing is pending, `svn log -l 1` and one `svn cat` for each tracker the
+    newest revision changed; and one more `svn cat` for each that is Shipped after."""
+    status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
+    for e in (status.iter("entry") if status is not None else []):
+        wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
+        if rel in rels and wc is not None and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
+            pending[rel] = wc.get("item") != "modified"                     # is it new to the repository
+    at, touched = None, {}
+    if pending:
+        touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
+        was = lambda rel: None if pending[rel] else svn_run("cat", "-r", "BASE", rel)
+    else:
+        newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")                  # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+        at = int(newest.get("revision")) if newest is not None else None
+        paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
+        touched = {rel: svn_run("cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
+        was = lambda rel: svn_run("cat", "-r", str(at - 1), rel)
+    for rel, now in touched.items():
+        if is_shipped(now) and not is_shipped(was(rel)):
+            yield rels[rel], "", ship_log_rows(now), lambda names, records, at=at: svn_ship_verdicts(names, at, records)
+
+
+def svn_ship_verdicts(names, at, records):
+    """{name: "" when that revision is a revision behind the change, else why it is not} — one before `at`, the revision being judged
+    (any, for a change not yet committed), that changed something under this working copy, with a path outside `records`, which are
+    read from the working copy's root. One `svn info`, and one `svn log` for each revision named."""
+    base = ("/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")).rstrip("/")   # the working copy's own path in the repository — "" at its root
+    out = {}
+    for n in names:
+        entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v")
+        inside = [p.text[len(base) + 1:] if p.text.startswith(base + "/") else p.text for p in entry.iter("path") if p.text] if entry is not None else []
+        out[n] = ("is not in the history" if entry is None
+                  else "" if any(ratio_class(p, records, []) == "product" for p in inside) else f"changes nothing outside the records ({', '.join(records)})")
+    return out
+
+
+def shipped_moves(rels):
+    """Every move to Shipped the run is judging: (the tracker, where the change is said to be, the rows of its ship log as the change
+    leaves them, and what tells the commits those rows name apart). Git: each change `changes_under_review` lists — the ship log read
+    from the working tree for the commit being made, from the commit otherwise — and a move is one the tracker makes against EVERY
+    parent. Only a tracker that is Shipped after is read on the other side."""
+    if vcs() == "svn":
+        yield from svn_shipped_moves(rels)
+        return
+    for bases, files, _name, _email, _commit, result, label in changes_under_review():
+        touched = sorted(files & set(rels))
+        if not touched:
+            continue
+        spec = lambda rev, rel: f"{rev}:./{rel}"                            # `./`: from the working directory, which is ROOT — as `--relative` made the paths
+        if result is None and COMMITTING:
+            texts = cat_blobs([f":./{rel}" for rel in touched], index_env())         # the commit being made is what its index holds, not the working tree
+            now = {rel: texts.get(f":./{rel}") for rel in touched}
+        elif result is None:
+            now = {rel: (TRACKER_DIR / rels[rel]["file"]).read_text(encoding="utf-8") for rel in touched}
+        else:
+            texts = cat_blobs([spec(result, rel) for rel in touched])      # one call for every tracker the change touches
+            now = {rel: texts.get(spec(result, rel)) for rel in touched}
+        shipped = [rel for rel in touched if is_shipped(now.get(rel))]
+        before = cat_blobs([spec(base, rel) for rel in shipped for base in bases])
+        for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
+            d = pathlib.PurePath(rel).parent.as_posix()
+            was = next((n for n in (git_out("ls-tree", "-z", "--name-only", f"{base}:./{d}") or "").split("\x00") if n.startswith(rels[rel]["id"] + "-") and n.endswith(".md")), None)
+            before[spec(base, rel)] = cat_blobs([f"{base}:./{d}/{was}"]).get(f"{base}:./{d}/{was}") if was else None
+        for rel in shipped:
+            if not any(is_shipped(before.get(spec(base, rel))) for base in bases):
+                yield rels[rel], (label + " — " if label else ""), ship_log_rows(now[rel]), lambda names, records, bases=bases: git_ship_verdicts(names, bases, records)
+
+
+def ship_problems(trackers):
+    """THE SHIPPED RULE's refusals, one line for each tracker a change moves to Shipped without a commit behind it: which tracker,
+    what is missing — no commit named · not in the history · nothing changed outside the records — and the way through."""
+    if vcs() not in ("git", "svn"):
+        return []
+    rels = {}
+    for t in trackers:
+        try:
+            rels[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
+        except (KeyError, ValueError):
+            continue                                     # no file, or a link to one outside the repository — as `in_this_commit` reads it
+    if not rels:
+        return []                                        # no tracker read from a file: nothing a change could have moved
+    records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
+    for t, where, rows, judge in shipped_moves(rels):
+        names = commits_named(rows)
+        try:
+            records = records or ship_records()
+        except ValueError as bad:
+            out.append(f'{t["id"]}: {where}moved to `Shipped`, which needs the records told from the product — {bad}')
+            continue
+        verdicts = judge(names, records) if names else {}
+        if "" in verdicts.values():
+            continue
+        found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
+        out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
+                   + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
+                   + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
     return out
 
 
@@ -6363,6 +6573,7 @@ def lint(trackers, committing=False):
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
     problems += rights_problems(trackers)
+    problems += ship_problems(trackers)              # FM-005: no move to Shipped without a commit behind it, every author
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     problems += triage_guard()[0]                    # FM-037: only the Owner changes his intent and his current path
@@ -6957,7 +7168,7 @@ HOOKS = {
     "pre-commit": """#!/bin/sh
 {mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
 {cmd} --session-check || exit $?
-if git diff --cached --name-only | grep -q -E '^({dir}/.*\\.md|{config}|{tool}/)'; then
+if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^"?({dir}/.*\\.md|{config}|{tool}/)'; then
   written=$({cmd} --print-written) || exit $?
   printf '%s\\n' "$written" | git add --pathspec-from-file=-
 fi
@@ -7361,7 +7572,7 @@ def main(argv=None):
         "> (or its `# title`). Rows are *pointers* — the detail lives in the tracker, never duplicated here.\n>\n"
         "> **Status** = code lifecycle; `Shipped` means merged, **not** a production claim.\n>\n"
         "> **Tier · Board · Triaged** = the triage picture — the same one the board (`index.html`) shows, from the\n"
-        "> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `done`.\n"
+        "> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `ended` shipped or closed.\n"
         f"> One rule this file cannot show, because it has no clock: a judgement on work in progress older than {TRIAGE_DAYS} days\n"
         "> counts as `triage` again.\n>\n"
         + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
