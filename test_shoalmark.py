@@ -3268,9 +3268,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # though the working tree beside it names the feature
     hook5_ = lambda *a: subprocess.run(["git", "-C", str(root), "commit", "-qm", "AP-500: shipped", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     p500_ = next(wt5_.glob("AP-500-*.md")); head_ = sha5_(); said5_ = "AP-500: moved to `Shipped` with no commit behind it — its ship log names no commit"
-    move5_(500); by_a_ = hook5_("-a"); git(root, "reset", "-q", "--hard")
-    move5_(500); by_path_ = hook5_("--", "docs/work-tracker/AP-500-x.md"); git(root, "reset", "-q", "--hard")
-    move5_(500); git(root, "add", "-A"); p500_.write_text(p500_.read_text() + f"| 2026-09-30 | built in {built5_[:7]} |\n", encoding="utf-8"); by_bare_ = hook5_(); git(root, "reset", "-q", "--hard")
+    move5_(500); by_a_ = hook5_("-a"); git(root, "reset", "-q", "--hard", head_)
+    move5_(500); by_path_ = hook5_("--", "docs/work-tracker/AP-500-x.md"); git(root, "reset", "-q", "--hard", head_)
+    move5_(500); git(root, "add", "-A"); p500_.write_text(p500_.read_text() + f"| 2026-09-30 | built in {built5_[:7]} |\n", encoding="utf-8"); by_bare_ = hook5_(); git(root, "reset", "-q", "--hard", head_)
     check(f"FM-005 · RV-2152 · the reproduction is refused through the installed hook with `git commit -a`, with `git commit <path>`, and staged bare while the working tree names the feature — the commit is not made (saw {by_a_.returncode}, {by_path_.returncode}, {by_bare_.returncode})",
           all(r_.returncode != 0 and said5_ in r_.stderr and way5_(r_.stderr) for r_ in (by_a_, by_path_, by_bare_)) and sha5_() == head_)
     move5_(500, f"built in {built5_[:7]}"); git(root, "add", "-A"); p500_.write_text(p500_.read_text().replace(f"| 2026-09-30 | built in {built5_[:7]} |\n", ""), encoding="utf-8")
