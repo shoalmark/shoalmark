@@ -20,8 +20,8 @@ If a **fresh session with no prior knowledge** can say, from your existing files
 item stands, what comes next and what waits for the Owner — then you already have this. If your project has several people in charge, or a large ticket system to move,
 this beta is not for it yet. Tell your Owner so and stop here. A second system beside a working one is worse than none.
 
-On Subversion it reads its history from the server through svn and passes the test suite, but it has not been used in
-real work and comes without a guarantee: say so in your report.
+On Subversion it reads its history from the server through svn, so offline its checks refuse; it passes the test
+suite, but it has not been used in real work and comes without a guarantee: say so in your report.
 
 ## The measurement (about 20 minutes, everything in a throwaway folder)
 

@@ -20,8 +20,8 @@ Wenn eine **frische Session ohne Vorwissen** aus euren vorhandenen Dateien in we
 jedes Arbeitspaket steht, was als Nächstes kommt und was auf den Owner wartet — dann habt ihr das schon. Wenn in eurem Projekt mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen
 wäre, ist diese Beta noch nichts für euer Projekt. Sagt das eurem Owner und hört hier auf. Ein zweites System neben einem funktionierenden ist schlechter als keines.
 
-Unter Subversion liest es seine Historie über svn vom Server und besteht die Test-Suite, ist in echter Arbeit aber
-noch nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.
+Unter Subversion liest es seine Historie über svn vom Server, offline lehnen seine Prüfungen deshalb ab; es besteht
+die Test-Suite, ist in echter Arbeit aber noch nicht erprobt und ohne Gewähr: Sagt das in eurem Bericht.
 
 ## Die Messung (etwa 20 Minuten, alles in einem Wegwerf-Ordner)
 
