@@ -5371,11 +5371,18 @@ FORMER_NAMES = {"planner": ("principal",), "builder": ("implementer",)}     # th
 
 
 def session_names(seat):
-    """The names a session id's `<seat>-<n>` part may carry for this seat (FM-024, the switch): its own; its built-in former name
-    (`principal` for `planner`, `implementer` for `builder`); and the name of each `<name>@seat` address it lists — a seat renamed
-    keeps its old address beside the new, and the sessions begun under the old name (`<id>/gtm-<n>`, `<id>/implementer-<n>`), in
-    the history and in worktrees in flight, keep reading as the seat's. No other name does: a seat's session names no other seat."""
-    return {seat, *FORMER_NAMES.get(seat, ())} | {who[:-len("@seat")] for who, _mode in SEATS.get(seat, ()) if who.endswith("@seat")}
+    """The names a session id's `<seat>-<n>` part may carry for this seat (FM-024, the switch): its own; and the labels it has left
+    from before — its built-in former name (`principal` for `planner`, `implementer` for `builder`) and the name of each `<name>@seat`
+    address it lists. A seat renamed keeps its old address beside the new, and the sessions begun under the old name
+    (`<id>/gtm-<n>`, `<id>/implementer-<n>`), in the history and in worktrees in flight, keep reading as the seat's.
+    EVERY LABEL NAMES EXACTLY ONE SEAT (RV-2207, RV-2240): a label that is another seat's own name stays that seat's — both
+    spellings configured as two seats, or a list that holds `builder@seat` beside a seat `builder` — and a label two seats
+    claim as a former name or an old address passes for neither. An unshared old label keeps passing."""
+    claims = {}                                   # label -> the seats that claim it as a former name or an old address
+    for s, ids in SEATS.items():
+        for label in {*FORMER_NAMES.get(s, ()), *(who[:-len("@seat")] for who, _mode in ids if who.endswith("@seat"))}:
+            claims.setdefault(label, set()).add(s)
+    return {seat} | {label for label, by in claims.items() if by == {seat} and label not in SEATS}
 
 
 def session_problems():

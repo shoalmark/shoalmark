@@ -447,7 +447,7 @@ left: delete it; history keeps its rows.
 **The gate** holds one rule. A commit by a seat `[seats]` names — never the Owner's, never an author outside
 `[seats]` — must carry a `Session:` of the shape `<8 hex>` or `<8 hex>/<seat>-<n>`, and where it names a seat, that is
 the author's seat — or a name the seat had: `principal` for `planner`, `implementer` for `builder`, the name of an old `<name>@seat`
-address it lists. Exit 4, and one of three lines:
+address it lists — and a label that is another seat's own name, or that two seats claim, passes for none. Exit 4, and one of three lines:
 
 ```text
 refused: this commit by planner@seat carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: …

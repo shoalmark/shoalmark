@@ -876,6 +876,46 @@ with tempfile.TemporaryDirectory() as d:
           and held_["gtm@seat"] == held_[BOT("go-to-market", 4)] == ("go-to-market", []) and "gtm" not in fm.SEATS and "principal" not in fm.SEATS and "implementer" not in fm.SEATS)
 fm.configure(HERE)
 
+# FM-024 · RV-2207 and RV-2240 · every session label names exactly one seat: a former name or a `<name>@seat` label that is, or reads as, another seat's passes for
+# no seat but that one — and where two seats would claim it, for none. Each seat's own name, and an unshared old label, still pass.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    base_cfg = (root / "shoalmark.toml").read_text()
+    tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); commit_as(root, "someone@example.org", "the first session\n\nSession: 1111aaaa")
+    verdict = lambda who, sid: (subprocess.run(["git", "-C", str(root), "config", "seat.session", sid], env=_ENV, check=True), run_safe(root, "--session-check", git_env=AS(who)))[1]
+    cases = {}
+    # RV-2207 (1): both spellings configured as two seats — `principal` is a seat, so it is that seat's name alone
+    (root / "shoalmark.toml").write_text(f'{base_cfg}\n[seats]\nplanner = "planner@seat"\nprincipal = "principal@seat"\nbuilder = "builder@seat"\nimplementer = "implementer@seat"\n'); fm.configure(root)
+    for key, who, sid in (("two spellings: planner at the former name", "planner@seat", "1111aaaa/principal-1"), ("two spellings: builder at the former name", "builder@seat", "1111aaaa/implementer-1"),
+                          ("two spellings: planner, its own", "planner@seat", "1111aaaa/planner-1"), ("two spellings: principal, its own", "principal@seat", "1111aaaa/principal-1"),
+                          ("two spellings: implementer, its own", "implementer@seat", "1111aaaa/implementer-1")):
+        cases[key] = verdict(who, sid)
+    # RV-2207 (2): a list that holds `builder@seat` beside a seat `builder` — the label is the seat's, not the list's
+    (root / "shoalmark.toml").write_text(f'{base_cfg}\n[seats]\nbuilder = "build@seat"\nreviewer = ["reviewer@seat", "builder@seat"]\n'); fm.configure(root)
+    for key, who, sid in (("a list holding builder@seat: reviewer at the label builder", "builder@seat", "1111aaaa/builder-1"), ("a list holding builder@seat: reviewer, its own", "builder@seat", "1111aaaa/reviewer-1"),
+                          ("a list holding builder@seat: builder, its own", "build@seat", "1111aaaa/builder-1")):
+        cases[key] = verdict(who, sid)
+    # RV-2240: one label, two claimants that are no seat's key — the Builder's built-in former name and the research seat's address
+    (root / "shoalmark.toml").write_text(f'{base_cfg}\n[seats]\nbuilder = "build@seat"\nresearch = "implementer@seat"\ngo-to-market = ["go-to-market@seat", "gtm@seat"]\n'); fm.configure(root)
+    for key, who, sid in (("a shared label: builder at implementer", "build@seat", "1111aaaa/implementer-1"), ("a shared label: research at implementer", "implementer@seat", "1111aaaa/implementer-1"),
+                          ("a shared label: builder, its own", "build@seat", "1111aaaa/builder-1"), ("a shared label: research, its own", "implementer@seat", "1111aaaa/research-1"),
+                          ("an unshared old label: gtm for go-to-market", "gtm@seat", "1111aaaa/gtm-1"), ("an unshared old label: gtm for research", "implementer@seat", "1111aaaa/gtm-1")):
+        cases[key] = verdict(who, sid)
+    subprocess.run(["git", "-C", str(root), "config", "--unset", "seat.session"], env=_ENV)
+    refused = lambda k, other: cases[k][0] == fm.EXIT_LINT and f"names the seat {other}" in cases[k][2]
+    passed = lambda k: cases[k][0] == 0
+    check(f"FM-024 · RV-2207 · with both spellings as two seats, `planner@seat` with `principal-<n>` and `builder@seat` with `implementer-<n>` are refused, each naming the other seat, and each seat's own name still passes (saw {[(k, v[0]) for k, v in cases.items() if k.startswith('two')]})",
+          refused("two spellings: planner at the former name", "principal") and refused("two spellings: builder at the former name", "implementer")
+          and passed("two spellings: planner, its own") and passed("two spellings: principal, its own") and passed("two spellings: implementer, its own"))
+    check(f"FM-024 · RV-2207 · a list that holds `builder@seat` beside a seat `builder` does not make `builder-<n>` the list's: refused for `reviewer`, passing for `builder` (saw {[(k, v[0]) for k, v in cases.items() if k.startswith('a list')]})",
+          refused("a list holding builder@seat: reviewer at the label builder", "builder") and passed("a list holding builder@seat: reviewer, its own") and passed("a list holding builder@seat: builder, its own"))
+    check(f"FM-024 · RV-2240 · a label that is one seat's former name and another seat's `<name>@seat` passes for neither, each seat's own name and an unshared old label still pass (saw {[(k, v[0]) for k, v in cases.items() if k.startswith(('a shared', 'an unshared'))]})",
+          refused("a shared label: builder at implementer", "implementer") and refused("a shared label: research at implementer", "implementer")
+          and passed("a shared label: builder, its own") and passed("a shared label: research, its own")
+          and passed("an unshared old label: gtm for go-to-market") and refused("an unshared old label: gtm for research", "gtm"))
+fm.configure(HERE)
+
 # FM-024 · D2, the Owner's ruling filed in FM-024 (*The `[seats]` switch*): the Owner is configured outside `[seats]` — a top-level `owner`, before any
 # table — and `[seats] owner` is still read, as its old spelling. Beside the configuration's other refusals: each is exit 1, one line, naming the way through.
 with tempfile.TemporaryDirectory() as d:
