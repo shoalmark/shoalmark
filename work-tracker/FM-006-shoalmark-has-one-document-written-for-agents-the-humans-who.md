@@ -625,11 +625,19 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     refuses and says why; it never passes unread. F1's unreadable error is reused. The test, in F1's control style: a seat's
     `close`, `answer` or `triage` change judged with blame failing exits 4, not 0, and passes connected where it should. Then
     the notes' checksum is computed again, last.
+  - **The scoped check's three** (the Owner's rulings, the same day, on the final review's scoped check at `3ed5268`):
+    RV-2267, *option A* — where the newest revision cannot be read and nothing is pending, the gate refuses and says why, so
+    *offline its checks refuse* holds exactly; then the notes' checksum again, last. RV-2268, with A — `CHANGELOG.md:33`
+    reads “…, else the newest revision, read from the server — where it cannot be read, the gate refuses and says why.”
+    RV-2269 — the reference lines that name Subversion stay; the fourth line and the notes carry the qualification.
+  - **The stopping rule** (the Owner's ruling, the same day): after A, no further Subversion finding holds the tag unless it
+    also breaks git; those go to 0.19.1.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
   delta and the final full run on the final head; then the Owner marks the pull request ready. If this is not through by 20:30
-  CEST, the Owner decides between disclosure and 0.19.1. The two items from the first round:
+  CEST, the Owner decides between disclosure and 0.19.1. After A: the final review's scoped check of A and the CHANGELOG line,
+  the final full run on that head, and the Owner marks the pull request ready. The two items from the first round:
   - `docs/signing.md:240` and its German twin `docs/de/signing.md:261–262` name the seats that hold `answer` beside the Owner,
     as RV-2261's fix does on the triage pages. *The Planner's reading,* in RV-2261's words: “Where your `owner`, or a seat that
     holds `answer`, is not marked `signed`, …” / “Wo Ihr `owner` oder ein Sitz mit `answer` nicht `signed` ist, …”.
