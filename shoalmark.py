@@ -15,7 +15,7 @@ Markdown trackers with a small front matter, and one command that reads them all
     shoalmark.py --init          scaffold the tracker directory, TRIAGE.md and shoalmark.toml
     shoalmark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
-One seam, by convention: if `<tracker dir>/derive` exists and is executable it runs first, on every run — it may add
+One seam, by convention: if `<tracker dir>/derive` exists and is executable it runs first, on every run but `--html-only`'s — it may add
 columns (each also a view on the board), front-matter keys, problems and other generated files, or refuse the run.
 
 The INDEX is a *pointer*, not a copy: each row is a terse hook and a machine-read status; the detail
@@ -2310,7 +2310,7 @@ def board_stamp():
 def board_after_act(stamp):
     """FM-030, his signed answer 920970b7 — *right after the act* the board shows it: he pressed the button, ran the command,
     and the page he returns to must say *done, on its way* (his words of 13:57:50). Put back where he started, a checkout hook
-    that rebuilds the board — `--install-hook`'s post-checkout, `--html-only` — has written it already, and it reads the
+    that rebuilds the board — a post-checkout hook of one's own that runs `--html-only` — has written it already, and it reads the
     branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or its size —
     between the push and now. Where it did not — no such hook is installed, the checkout ran none (he ran the command on
     `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
@@ -6889,8 +6889,8 @@ def parse_args(argv):
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
-    add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — a post-merge hook cannot dirty the tree")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, post-merge, post-checkout), or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — it never runs the deriver, so that board carries no derived columns")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, commit-msg) — nothing runs after a checkout or a merge, and the post-checkout and post-merge hooks an older copy wrote, marked `# shoalmark`, are removed — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
@@ -6990,11 +6990,19 @@ def deriver_env():
     return {k: v for k, v in os.environ.items() if k in keep or k.startswith("LC_")}
 
 
-DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit and every checkout; one that hangs must not hang the gate
+DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit; one that hangs must not hang the gate
+
+
+def no_derived(trackers):
+    """What a run knows before any deriver has spoken — and what `--html-only` knows, which never runs one: no derived column, file, note or key."""
+    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
+    DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS = [], {}, [], front_matter_schema(), [], []
+    for t in trackers:
+        t["x"], t["xd"], t["x_needs"] = {}, {}, []
 
 
 def run_deriver(trackers, mode="write", flags=()):
-    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run: nothing
+    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run but `--html-only`'s: nothing
     derived is stored, so nothing derived can be stale. stdin: every tracker's id, status, file and front matter.
     stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
     value key becomes a column in INDEX.md and on the board, and a view on the board. `_files: {path: text}` are other
@@ -7002,13 +7010,11 @@ def run_deriver(trackers, mode="write", flags=()):
     and counts them as drift under --check. A non-zero exit REFUSES the run before anything is written.
     Returns (exit code or None, problems)."""
     global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
-    DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS = [], {}, [], front_matter_schema(), [], []
-    for t in trackers:
-        t["x"], t["xd"], t["x_needs"] = {}, {}, []
+    no_derived(trackers)
     exe = TRACKER_DIR / "derive"
     if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
         return None, []
-    # `mode` — write · check · board (the git-ignored page only: nothing the run produces can be committed) · read.
+    # `mode` — write · check · read.
     # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
     # a hook inherits the environment of whatever shell ran `git commit`, and a stray export would reach every run.
     ask = json.dumps({"root": str(ROOT), "mode": mode, "flags": sorted(set(flags)), "trackers": [{"id": t["id"], "status": t["status"], "file": t["file"], "fm": t.get("fm", {})} for t in trackers]})
@@ -7017,7 +7023,7 @@ def run_deriver(trackers, mode="write", flags=()):
         run = subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)], input=ask, capture_output=True, text=True, encoding="utf-8",
                              cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
     except subprocess.TimeoutExpired:
-        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit and every checkout; make it fast, or make it fail"]
+        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit; make it fast, or make it fail"]
     if run.returncode:
         print(run.stderr.rstrip() or f"{exe.relative_to(ROOT).as_posix()} exited {run.returncode}", file=sys.stderr)
         return run.returncode, []
@@ -7344,11 +7350,10 @@ fi
 """,
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
     "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033)\n{cmd} --commit-msg \"$1\"\n",
-    "post-merge": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
-    "post-checkout": "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n",
 }
 
 
+OLD_HOOKS = ("post-checkout", "post-merge")             # the two an older copy wrote and `--install-hook` now removes where they carry `HOOK_MARK`
 HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
@@ -7424,6 +7429,11 @@ def install_hook():
         put(path, text.format(**fill))
         path.chmod(0o755)
         print(f"wrote {path}")
+    for name in OLD_HOOKS:                                     # written until 0.19.0, which ran the tool — and through it a deriver a branch brought — after every checkout and merge
+        path = hooks / name
+        if path.is_file() and HOOK_MARK in path.read_text(encoding="utf-8", errors="replace"):
+            path.unlink()
+            print(f"removed {path} — it ran after every {'checkout' if name == 'post-checkout' else 'merge'}; nothing shoalmark installed runs then now")
     return code
 
 
@@ -7644,8 +7654,12 @@ def main(argv=None):
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
-    mode = "board" if args.html_only else "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
-    refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
+    mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
+    if args.html_only:                                    # the board's run never reaches the deriver: nothing a hook starts executes a file a branch brought (a private security report)
+        refused, derived_problems = None, []
+        no_derived(trackers)
+    else:
+        refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
         return EXIT_OK

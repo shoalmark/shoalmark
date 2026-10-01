@@ -395,7 +395,8 @@ with tempfile.TemporaryDirectory() as d:
     code, out, _ = run(root, "--install-hook")
     hook = root / ".git/hooks/pre-commit"
     check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",
-          code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text() and (root / ".git/hooks/post-merge").exists())
+          code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text()
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"])      # nothing runs after a checkout or a merge
     git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
     check("the installed hook runs on a real commit and stages the regenerated INDEX" + said, git2.returncode == 0
@@ -405,6 +406,47 @@ with tempfile.TemporaryDirectory() as d:
     check("a hook that is not shoalmark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
 fm.configure(HERE)
 
+
+# --- a private security report: after a checkout or a merge nothing shoalmark installed runs, and `--html-only` never runs the deriver -----------------
+# A branch can bring an executable `<tracker dir>/derive`; the tool runs it, so a hook that ran the tool after a checkout or a merge ran what the branch brought.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the base")
+    code_i, out_i, _ = run(root, "--install-hook")
+    hooks_, marker_ = root / ".git/hooks", root / "derived-marker"
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    hooked_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)      # the installed hooks run
+    git(root, "switch", "-q", "-c", "brings-a-deriver")
+    derive_ = root / "docs/work-tracker/derive"
+    derive_.write_text(f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(marker_)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n', encoding="utf-8"); derive_.chmod(0o755)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "a branch that brings an executable deriver")          # past the hooks, as its author made it
+    sw_ = [hooked_("switch", "-q", trunk_), hooked_("switch", "-q", "brings-a-deriver"), hooked_("switch", "-q", trunk_)]
+    merged_ = hooked_("merge", "--no-ff", "-q", "brings-a-deriver", "-m", "merge the branch")
+    code_h, _, _ = run(root, "--html-only")
+    check(f"FM-006 · a private security report · `--install-hook` writes the three hooks that judge a commit and none that runs after a checkout or a merge; with a branch that brings an executable deriver, "
+          f"`git switch` to it, back, and a merge of it run nothing — and neither does `--html-only` (saw {sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith('.sample'))}, marker {marker_.exists()})",
+          code_i == 0 and sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"] and "removed" not in out_i
+          and all(r_.returncode == 0 for r_ in sw_ + [merged_]) and code_h == 0 and not marker_.exists())
+    run(root)
+    check("FM-006 · a private security report · …and the control: the default run does run that deriver, so the marker was a real test of the hooks", marker_.exists())
+    rm_git(root)
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    hooks_ = root / ".git/hooks"; hooks_.mkdir(parents=True, exist_ok=True)
+    old_ = "#!/bin/sh\n# shoalmark — refresh the git-ignored board\npython3 tools/shoalmark/shoalmark.py --html-only || true\n"
+    for name_ in ("post-merge", "post-checkout"):
+        (hooks_ / name_).write_text(old_, encoding="utf-8"); (hooks_ / name_).chmod(0o755)
+    code_1, out_1, err_1 = run(root, "--install-hook"); gone_ = not (hooks_ / "post-merge").exists() and not (hooks_ / "post-checkout").exists()
+    mine_ = b"#!/bin/sh\n# somebody else's hook\necho mine\n"
+    (hooks_ / "post-checkout").write_bytes(mine_); (hooks_ / "post-merge").write_text(old_, encoding="utf-8")
+    code_2, out_2, err_2 = run(root, "--install-hook")
+    check(f"FM-006 · a private security report · run again, `--install-hook` removes the `post-checkout` and `post-merge` an older copy wrote — one line for each, saying so — and a `post-checkout` that is not shoalmark's is left byte for byte (saw {code_1}, {code_2})",
+          code_1 == 0 and gone_
+          and f"removed {hooks_ / 'post-checkout'} — it ran after every checkout; nothing shoalmark installed runs then now" in out_1 and f"removed {hooks_ / 'post-merge'} — it ran after every merge; nothing shoalmark installed runs then now" in out_1
+          and code_2 == 0 and (hooks_ / "post-checkout").read_bytes() == mine_ and not (hooks_ / "post-merge").exists() and "post-checkout" not in out_2 + err_2 and f"removed {hooks_ / 'post-merge'}" in out_2)
+    rm_git(root)
+fm.configure(HERE)
 
 # the browser that renders the board, where one is installed — read here, before the first check that renders one
 _CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []     # a CI container has no user namespace for the sandbox
@@ -1715,8 +1757,9 @@ with tempfile.TemporaryDirectory() as d:
         del os.environ["STRAY_EXPORT"]
     check("what is exported in the shell that ran the commit never reaches a deriver — a stray variable cannot change what is staged",
           stray == 0 and run(root, "--derive-flag", "refuse")[0] == 5)
-    check("the board's run says so: a deriver may skip a guard there, because nothing it produces can be committed",
-          run(root, "--html-only")[0] == 0 and "mode=board" not in (root / "docs/work-tracker/INDEX.md").read_text())
+    html_ = argv_of(lambda: run(root, "--html-only")); default_ = argv_of(lambda: run(root))
+    check("the board's run never reaches the deriver — `--html-only` exits 0 and starts no deriver, where the default run does: nothing a hook starts executes a file a branch brought",
+          run(root, "--html-only")[0] == 0 and not any(str(exe) in c_ for c_ in html_) and any(str(exe) in c_ for c_ in default_) and "mode=board" not in (root / "docs/work-tracker/INDEX.md").read_text())
     _t, fm.DERIVE_TIMEOUT = fm.DERIVE_TIMEOUT, 1
     try:
         code, _, err = run(root, "--derive-flag", "sleep")
@@ -5246,9 +5289,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
     code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
     board_ = page_(root)
-    check(f"FM-030 · 0.18.6 · with the checkout hook installed, `--answer` and `--done` end on the branch they started on, the hook has rebuilt the board, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
-          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook" in out_a
-          and "the board was rebuilt by the checkout hook" in out_d
+    check(f"FM-030 · 0.18.6 · with the hooks installed — which run nothing after a checkout — `--answer` and `--done` end on the branch they started on, the command rebuilds the board itself, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
+          and "the board is rebuilt — no checkout hook rebuilt it" in out_d
           and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
     run(other, "--html-only"); before_ = page_(other)
     git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)
