@@ -30,7 +30,7 @@ FM-040, FM-041 and FM-032).
 - **A move to `Shipped` names its commit, and the board stops counting `Closed` as done (FM-005).** The Owner's ruling of 2026-09-30: the gate
   refuses a change that moves a tracker to `Shipped` unless its ship log names a commit — a git hash, or `r<N>` on Subversion — that is in
   that change's history and changes a path outside the records (`[ratio] records`, else the tracker directory); every author, the Owner
-  included, with or without `[seats]`; `Closed` is not judged; on Subversion the change is the uncommitted one, else the newest revision.
+  included, with or without `[seats]`; `Closed` is not judged; on Subversion the change is the uncommitted one, else the newest revision, read from the server — where it cannot be read, the gate refuses and says why.
   *On upgrade:* a story reads *3 chapters: 1 shipped · 1 closed · 1 open*, and the board's last section and INDEX.md's Board value are `ended`,
   not `done` — a `labels.yaml` renames `story.done` to `story.shipped` and `story.closed`, `section.done` to `section.ended`, `desc.done` to `desc.ended`.
 - **The pre-commit run judges the commit being made, every file name as it is (FM-005's review).** `git commit -a` and `git commit <path>`
