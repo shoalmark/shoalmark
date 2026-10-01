@@ -4873,6 +4873,7 @@ class SvnUnreadable(Exception):
     """Subversion's history could not be read — svn is not there, or the call failed (no server, no network, a repository moved away) —
     as against an answer, which may be empty. `tracker` names the one it was reading for, where it knows (F1 of the cold audit)."""
     tracker = None
+    newest = False                              # the read that failed was the newest revision's — which only the server holds (RV-2267)
 
 
 SVN_ANSWERS = ("E160006", "E195012")        # *no such revision*, and *the path is not in that revision*: an answer of the history, not a failure to read it
@@ -4931,7 +4932,10 @@ def svn_shipped_moves(rels):
         touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
         was = lambda rel: None if pending[rel] else read(rel, "cat", "-r", "BASE", rel)
     else:
-        newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")                  # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+        try:
+            newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")              # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+        except SvnUnreadable as e:
+            e.newest = True; raise
         at = int(newest.get("revision")) if newest is not None else None
         paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
         touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
@@ -5002,10 +5006,14 @@ def ship_problems(trackers):
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
 
-    def unread(why, named=None):
+    def unread(why, named=None, newest=False):
         """F1: Subversion's history could not be read, so a move to Shipped cannot be judged — and is refused, not passed. The tracker it was
-        reading for, where that is known; else every tracker that is Shipped in the working copy, the ones such a move could be."""
+        reading for, where that is known; else every tracker that is Shipped in the working copy, the ones such a move could be. Where the
+        read that failed is the NEWEST revision's — the change judged where nothing is pending, which only the server holds — and no tracker
+        in the working copy is Shipped to name, the refusal says that instead: the newest revision is not judged, and is not passed unread (RV-2267)."""
         ids = [named] if named else [t["id"] for t in trackers if t.get("status") == "Shipped"]
+        if not ids and newest:
+            out.append(f"Subversion's newest revision could not be read, so a move to `Shipped` in it is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again")
         if ids:
             out.append(f'{", ".join(ids[:5])}{f" and {len(ids) - 5} more" if len(ids) > 5 else ""}: Subversion\'s history could not be read, so a move to `Shipped` '
                        f'is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again')
@@ -5030,7 +5038,7 @@ def ship_problems(trackers):
                        + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
                        + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
     except SvnUnreadable as e:
-        unread(e, e.tracker)
+        unread(e, e.tracker, e.newest)
     return out
 
 

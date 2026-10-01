@@ -3920,6 +3920,61 @@ if _SVN:
               f"*not committed yet* (saw {code_a}, {code_au})",
               code_a == fm.EXIT_LINT and "C5-206: `answer:` is a `answer` change" in err_a and "C5-205" not in err_a
               and code_au == fm.EXIT_LINT and all(f"C5-{n_}: {said4_}" in err_au for n_ in (205, 206)) and "not committed yet" not in err_au)
+        # RV-2267: where nothing is pending the change judged is the NEWEST revision, which only the server holds — where it cannot be read the gate refuses and says why,
+        # whether or not a tracker in the working copy is `Shipped`. The case: a working copy BEHIND HEAD, nothing `Shipped` in it, and HEAD's false move
+        repo5_ = base / "repo5"; away5_ = base / "repo5.away"
+        subprocess.run(["svnadmin", "create", str(repo5_)], check=True); url5_ = repo5_.as_uri()
+        svn("mkdir", "-m", "layout", url5_ + "/trunk"); svn("checkout", url5_ + "/trunk", str(base / "wc5")); root = base / "wc5"; wt_ = root / "docs/work-tracker"
+        run(root, "--init", "--key", "c5")
+        for n_ in (301, 302):
+            tracker(root, f"C5-{n_}", body=nothing_, title="nothing built")
+        (root / "src").mkdir(); (root / "src/app.py").write_text("v0\n", encoding="utf-8")
+        commit5_("the trackers, for RV-2267", {}); behind5_ = int(re.search(r"^Revision: (\d+)", svn("info", cwd=root).stdout, re.M).group(1))
+        said5_ = "Subversion's newest revision could not be read, so a move to `Shipped` in it is not judged — and not passed unread. svn said: "
+        def apart5_(where_=None):
+            """`--check` in `where_` with the repository moved away — after the write run, as the cold audit ran it"""
+            repo5_.rename(away5_)
+            try:
+                run(where_ or root); return run(where_ or root, "--check")
+            finally:
+                away5_.rename(repo5_)
+        code_c, _, err_c = run(root, "--check"); code_cu, _, err_cu = apart5_()
+        check(f"FM-005 · RV-2267 · connected and clean `--check` exits 0; with the repository unreachable, nothing pending and nothing `Shipped` in the working copy, it exits 4 — not 0 — in one line: the newest revision "
+              f"is not judged and not passed unread, svn's own error, reach the repository (saw {code_c}, {code_cu})",
+              code_c == 0 and code_cu == fm.EXIT_LINT and said5_ in err_cu and re.search(r"svn said: .*E\d{6}", err_cu) and "Reach the repository, then run again" in err_cu
+              and sum(l_.lstrip().startswith("lint:") for l_ in err_cu.splitlines()) == 1)
+        # a pending change offline is still judged, from BASE: this one names no revision
+        p301_ = next(wt_.glob("C5-301-*.md")); p301_.write_text(p301_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+        repo5_.rename(away5_); code_pn, _, err_pn = run(root); away5_.rename(repo5_)
+        svn("revert", str(p301_), cwd=root)
+        check(f"FM-005 · RV-2267 · a pending change is still judged offline, from BASE: a move to `Shipped` that names no revision is refused for that, and the newest revision's line is not there (saw {code_pn})",
+              code_pn == fm.EXIT_LINT and "C5-301: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_pn and "newest revision could not be read" not in err_pn)
+        svn("checkout", url5_ + "/trunk", str(base / "wc5b")); rootb_ = base / "wc5b"
+        p302_ = next((rootb_ / "docs/work-tracker").glob("C5-302-*.md")); p302_.write_text(p302_.read_text().replace("status: In Progress", "status: Shipped"), encoding="utf-8")
+        svn("commit", "-m", "C5-302: shipped at HEAD, nothing behind it", cwd=rootb_)
+        code_hv, _, err_hv = run(root, "--check"); code_hu, _, err_hu = apart5_(); code_hr, _, err_hr = run(root, "--check")
+        check(f"FM-005 · RV-2267 · the case itself — the working copy behind HEAD, nothing `Shipped` in it, HEAD's false move: connected `--check` exits 4 (*no revision behind it*), unreachable 4 — not 0 — as the newest "
+              f"revision unread, reconnected 4 again (saw {code_hv}, {code_hu}, {code_hr})",
+              "C5-302: moved to `Shipped` with no revision behind it — its ship log names no revision" in err_hv and code_hv == fm.EXIT_LINT and way5_(err_hv)
+              and code_hu == fm.EXIT_LINT and said5_ in err_hu and "no revision behind it" not in err_hu and code_hr == fm.EXIT_LINT and "C5-302: moved" in err_hr)
+        if not shutil.which("svnserve"):
+            print("  skip  FM-005 · RV-2267 · the server itself stopped — `svnserve` is not on the PATH here")
+        else:
+            import socket
+            with socket.socket() as s_:
+                s_.bind(("127.0.0.1", 0)); port5_ = s_.getsockname()[1]
+            proc5_ = subprocess.Popen(["svnserve", "-d", "--foreground", "-r", str(base), "--listen-host", "127.0.0.1", "--listen-port", str(port5_)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if svn("info", f"svn://127.0.0.1:{port5_}/repo5/trunk").returncode == 0:
+                    break
+                time.sleep(0.1)
+            wcs5_ = base / "wcs5"; svn("checkout", "-r", str(behind5_), f"svn://127.0.0.1:{port5_}/repo5/trunk", str(wcs5_))
+            run(wcs5_); code_sc, _, err_sc = run(wcs5_, "--check")
+            proc5_.terminate(); proc5_.wait(timeout=20)
+            run(wcs5_); code_ss, _, err_ss = run(wcs5_, "--check")
+            check(f"FM-005 · RV-2267 · with `svnserve` on the loopback and the working copy behind HEAD with nothing `Shipped` in it: connected `--check` refuses HEAD's false move (4), and with the server stopped it exits 4 — "
+                  f"not 0 — as the newest revision unread (saw {code_sc}, {code_ss})",
+                  code_sc == fm.EXIT_LINT and "C5-302: moved to `Shipped` with no revision behind it" in err_sc and code_ss == fm.EXIT_LINT and said5_ in err_ss and "no revision behind it" not in err_ss)
     fm.configure(HERE)
 
 
