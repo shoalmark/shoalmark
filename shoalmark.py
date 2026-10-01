@@ -3121,6 +3121,7 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
   for(const h of hs)h.id="h-"+h.textContent.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu,"").trim().replace(/\s/g,"-");
   const h2=hs.filter(h=>h.tagName=="H2");
   if(h2.length>5)v.querySelector(".md").insertAdjacentHTML("beforebegin",`<p class="m toc">${h2.map(h=>`<a data-s="${esc(h.id.slice(2))}">${esc(h.textContent)}</a>`).join(" · ")}</p>`);
+  if(want!=null){scrollTo(0,want);want=null}      // back from a reload: where the person was
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
@@ -3135,8 +3136,20 @@ paint=m=>{for(const s of document.styleSheets)rules(s,r=>{if(!ORIG.has(r)){if(!r
 setScheme=m=>{scheme=m;paint(m);$("s").textContent="◐ "+L["scheme."+m];$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
 $("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
+// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull
+// changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
+// holds input; the scroll position is kept across the reload.
+let want=null,hiddenAt=0;
+try{const k=JSON.parse(sessionStorage.getItem("shoalmark.keep")||"null");sessionStorage.removeItem("shoalmark.keep");if(k&&k.h==location.hash&&Date.now()-k.t<1e4)want=k.y}catch(e){}
+const busy=()=>$("dlg").open||[...document.querySelectorAll("input:not([type=radio]):not([type=checkbox]):not([type=hidden]),textarea,select")].some(e=>e.value!=="");
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState=="hidden"){hiddenAt=1;return}
+  if(!hiddenAt||busy())return;hiddenAt=0;
+  try{sessionStorage.setItem("shoalmark.keep",JSON.stringify({h:location.hash,y:scrollY,t:Date.now()}))}catch(e){}
+  location.reload()});
+// reload: end
 (onhashchange=()=>{const h=dec(location.hash.slice(1));if(h[0]=="="&&byId.has(h.slice(1)))return view(h.slice(1));
-  $("v").hidden=true;$("B").hidden=false;$("q").value=h;draw();scrollTo(0,0)})();
+  $("v").hidden=true;$("B").hidden=false;$("q").value=h;draw();scrollTo(0,want??0);want=null})();
 </script></html>
 """
 

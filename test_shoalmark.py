@@ -2095,6 +2095,64 @@ check("FM-006 · a private security report · both notes' way back also removes 
       and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Tracker-Ordner kann bleiben" in _rd("ADOPT.de.md")
       and "Delete the tool before that, and commits are refused." in _rd("ADOPT.md") and "Löscht ihr das Werkzeug vorher, werden Commits" in _rd("ADOPT.de.md"))
 
+# --- FM-006: the board and its tracker pages reload themselves when the tab is visible again — the same page and nothing else ------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root, "--html-only")
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); views_ = [p_.read_text(encoding="utf-8") for p_ in (root / "docs/work-tracker/view").glob("*.js")]
+    block_ = re.search(r"// reload: begin.*?// reload: end", page_, re.S)
+    block_ = block_.group(0) if block_ else ""
+    check("FM-006 · the board reloads · the template carries it: the page that is the board and, under `#=ID`, every tracker's page — one document, a tracker's own file `view/<ID>.js` is data and carries none — reloads on `visibilitychange` "
+          "to visible, keeps its scroll position (`sessionStorage`), and not while a dialog is open or a field holds input",
+          bool(block_) and 'document.addEventListener("visibilitychange"' in block_ and block_.count("location.reload()") == 1 and "shoalmark.keep" in block_ and "scrollY" in block_ and '$("dlg").open' in block_
+          and "textarea,select" in block_ and 'hiddenAt' in block_ and "scrollTo(0,want" in page_ and all(v_.startswith("V(") and "reload" not in v_ and "visibilitychange" not in v_ for v_ in views_) and views_)
+    check("FM-006 · the board reloads · no reload path loads another file: nothing in that code fetches, makes a request, polls, sets a timer, opens a socket, makes an element or names a URL — it is `location.reload()`, the same page",
+          bool(block_) and not re.search(r"fetch\s*\(|XMLHttpRequest|setInterval|setTimeout|requestAnimationFrame|requestIdleCallback|WebSocket|EventSource|sendBeacon|new\s+Worker|importScripts|import\s*\(|createElement|new\s+Image|\.src\s*=|\.href\s*=|https?:|file:|//[a-z0-9.-]+\.[a-z]{2,}",
+                                         re.sub(r"//[^\n]*", "", block_)) and "location.assign" not in block_ and "location.replace" not in block_ and "location.href" not in block_)
+    (root / "reload-block.js").write_text(block_, encoding="utf-8")
+    if _have_node_ := shutil.which("node"):
+        (root / "reload-harness.js").write_text(r"""
+const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8");
+function run(o){
+  const calls=[],store=Object.assign({},o.store||{});let handler=null;
+  const sandbox={$:id=>({dlg:{open:!!o.dialog}})[id],
+    document:{visibilityState:"visible",querySelectorAll:()=>(o.fields||[]).map(v=>({value:v})),addEventListener:(t,f)=>{if(t=="visibilitychange")handler=f}},
+    sessionStorage:o.broken?{getItem(){throw new Error("no storage")},setItem(){throw new Error("no storage")},removeItem(){throw new Error("no storage")}}
+      :{getItem:k=>k in store?store[k]:null,setItem:(k,v)=>{store[k]=v},removeItem:k=>{delete store[k]}},
+    location:{hash:o.hash||"#=MSR-001",reload:()=>calls.push("reload")},scrollY:240,Date,JSON};
+  vm.createContext(sandbox);
+  const want=vm.runInContext(code+"\n;want",sandbox);
+  for(const st of o.events||[]){sandbox.document.visibilityState=st;handler()}
+  return {calls,keep:store["shoalmark.keep"]?JSON.parse(store["shoalmark.keep"]):null,want,left:Object.keys(store)};
+}
+const now=Date.now(),away=["hidden","visible"],out={};
+out.away=run({events:away});
+out.never=run({events:["visible"]});
+out.dialog=run({events:away,dialog:true});
+out.typed=run({events:away,fields:["abc"]});
+out.empty=run({events:away,fields:[""]});
+out.twice=run({events:["hidden","visible","visible"]});
+out.back=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,t:now})}});
+out.stale=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,t:now-60000})}});
+out.other=run({store:{"shoalmark.keep":JSON.stringify({h:"#",y:512,t:now})}});
+out.broken=run({events:away,broken:true});
+console.log(JSON.stringify(out));
+""", encoding="utf-8")
+        r_ = subprocess.run([_have_node_, str(root / "reload-harness.js"), str(root / "reload-block.js")], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        try:
+            o_ = json.loads(r_.stdout)
+        except ValueError:
+            o_ = {}
+        ok_ = lambda k, **kw: all(o_.get(k, {}).get(a_) == v_ for a_, v_ in kw.items())
+        check("FM-006 · the board reloads · its logic, run: away and back it reloads once and keeps its place (the address and the scroll position) — and not when it was never away, not with a dialog open, not with a field that holds input, "
+              "and one that is empty does not stop it; a second `visible` without a `hidden` between is no second reload; where `sessionStorage` is not there it still reloads (saw " + repr({k_: v_["calls"] for k_, v_ in o_.items()}) + ")",
+              ok_("away", calls=["reload"]) and o_["away"]["keep"]["h"] == "#=MSR-001" and o_["away"]["keep"]["y"] == 240 and ok_("never", calls=[]) and ok_("dialog", calls=[]) and ok_("typed", calls=[]) and ok_("empty", calls=["reload"])
+              and ok_("twice", calls=["reload"]) and ok_("broken", calls=["reload"]))
+        check("FM-006 · the board reloads · back from a reload the page takes the scroll position it kept — once, for that address, within seconds; a stale one, or another page's, is not taken",
+              ok_("back", want=512, left=[]) and ok_("stale", want=None, left=[]) and ok_("other", want=None, left=[]))
+    else:
+        SKIPS.append(("FM-006 · the board reloads · its logic, run", 2, "no Node here"))
+    rm_git(root)
+
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
     try:
