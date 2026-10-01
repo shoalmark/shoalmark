@@ -16,8 +16,8 @@ Subversion, auf Windows, macOS und Linux (CI beweist alle drei). Lizenz: Apache-
 ## Wann ihr es NICHT braucht
 
 Wenn eine **frische Session ohne Vorwissen** aus euren vorhandenen Dateien in wenigen Schritten sagen kann, wo
-jedes Arbeitspaket steht, was als Nächstes kommt und was auf den Owner wartet — dann habt ihr das schon. Sagt das
-eurem Owner und hört hier auf. Ein zweites System neben einem funktionierenden ist schlechter als keines.
+jedes Arbeitspaket steht, was als Nächstes kommt und was auf den Owner wartet — dann habt ihr das schon. Wenn in eurem Projekt mehrere Menschen entscheiden oder ein großes Ticketsystem umzuziehen
+wäre, ist diese Beta noch nichts für euer Projekt. Sagt das eurem Owner und hört hier auf. Ein zweites System neben einem funktionierenden ist schlechter als keines.
 
 ## Die Messung (etwa 20 Minuten, alles in einem Wegwerf-Ordner)
 

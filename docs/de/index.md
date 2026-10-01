@@ -62,7 +62,7 @@ Was shoalmark dazu ausgibt, jeden Tag:
    ([zehn Minuten](signing.md)).
 
 **Sie verlieren nichts.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark ändert nur, was es selbst
-geschrieben hat. Der Weg für eine Agenten-Flotte, die schon ein eigenes System hat, ist als FM-026 erfasst und folgt.
+geschrieben hat.
 
 ## Was ein Tag Sie kostet
 
@@ -77,6 +77,12 @@ geschrieben hat. Der Weg für eine Agenten-Flotte, die schon ein eigenes System 
 Kein Server, kein Konto, keine UUIDs. Eine Markdown-Datei je Arbeitspaket, eine Python-Datei und ein Gate bei jedem
 Commit, das ablehnt, was sich widerspricht. Läuft mit git und Subversion, auf Windows, macOS und Linux. Lizenz:
 Apache-2.0 oder MIT.
+
+**In dieser Beta:**
+
+- Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
+- Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
+- Kein Beweis, dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein Review.
 
 ## Hier anfangen
 
