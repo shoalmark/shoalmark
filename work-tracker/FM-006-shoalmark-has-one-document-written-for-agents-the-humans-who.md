@@ -467,8 +467,9 @@ section that the wreck script reads.
     16, closed 1; all 27 links written as `shoalmark/shoalmark`;
   - the board's excerpt (`--owner` at `c830470`): *waiting for you* 1; *your acts, with their time* 1, the row “FM-007 after the
     scoring, once the key is delivered · promised 2026-09-25 · no date yet”; the caption “shoalmark's own board, 1 October 2026”;
-  - the footer: “v0.19.0, released 1 October 2026” — the date from the CHANGELOG's heading, as *The release day* below rules
-    it — with the CHANGELOG's headline; the release read at its cut, 1 October 2026;
+  - the footer: the release line “v0.19.0, released 1 October 2026 — shoalmark 0.19.0 is the first public beta: …” — the date
+    from the CHANGELOG's heading, as *The release day* below rules it, then a dash, so the CHANGELOG's headline stays word for
+    word with one colon in the line (the Owner's ruling, 2026-10-01); the release read at its cut, 1 October 2026;
     the wrecks and the board's excerpt read on 1 October 2026, 12:47 CEST.
 - **The wrecks** come from `evidence/FM-006/landing/start-page/facts.mjs` at the cut; the script stays as written — evidence is
   append-only — and its wreck links, which say `holgo99/shoalmark`, are written as `shoalmark/shoalmark` in the page; the commit
@@ -504,7 +505,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
   the repository, and a new English note, `ADOPT.md`, goes to their agents** (FM-005, FM-006, FM-024 — with FM-040, FM-041 and
   FM-032). The Owner configured apart, several identities and `From:` stay in the bullets.
 - **The release day** (the Owner's ruling, 2026-10-01): the Owner releases v0.19.0 today, 2026-10-01. The CHANGELOG's heading
-  carries that date, and the landing's footer says *v0.19.0, released 1 October 2026* from it; the player stats stay as read at
+  carries that date, and the landing's footer says *v0.19.0, released 1 October 2026 —* and the headline from it; the player stats stay as read at
   the cut `c830470`; `shoalmark.py` is untouched, so the notes' checksum stands. After the stats commit, the Owner's cold audit,
   the full local run and the bundle's final review start at once, and their fixes go in one round; the Owner opens the pull
   request after the final review's verdict, and the merge waits on CI and the cold audit's verdict. If the bundle is not merged
