@@ -434,7 +434,8 @@ landing names the product's unit; both are revisited after the tag.
 **After the tag:** a decision flow near the top of the landing; what the measured counts measure; *Eigner* against *Owner*
 in German prose (*One claim, the Owner's*, above, records *der Eigner*; `ADOPT.de.md` says *Owner* ten times); the App
 lines' *brief*; descriptions of their own for the other German pages — until then they preview with the site's
-description; a light scheme — the page is dark only; a picture of the board itself; the incident panel's cycle; how many
+description; a release workflow — the notes from the CHANGELOG, the assets, an attestation; a light scheme — the page is dark
+only; a picture of the board itself; the incident panel's cycle; how many
 seats and review passes a one-Owner product carries.
 
 ## The landing's player stats at the v0.19.0 cut
@@ -479,6 +480,16 @@ switch, the `From:` fix, this slice and the bundle's carried findings, and befor
   every merge that touches it, the switch's D2 included; the Reviewer checks it against the tagged file.
 - **Shipped:** the trackers that move to `Shipped` at the cut, each naming its commit — the release Builder's list, approved by
   the Owner.
+- **The first public beta** (the Owner's ruling, 2026-10-01): v0.19.0 is shoalmark's first official release, published on
+  GitHub Releases as a pre-release; the tag stays `v0.19.0`. The 0.19.0 section's bold headline names it the first public beta —
+  the release notes and the landing's release line read that line.
+- **The Owner's run sheet** — `work-tracker/evidence/FM-006/release-v0-19-0-owner-run-sheet.md`, about 40 lines of numbered
+  copy-paste steps, each with its expected output and one line to paste back. Before the tag: `gh repo edit` with the site's
+  description line, the homepage `https://shoalmark.github.io/shoalmark/` and topics (proposed there, the Owner's to set), and the
+  manual upload of `docs/assets/preview.png` as the repository's social preview. After the tag: from a clean checkout at
+  `v0.19.0`, `SHA256SUMS` for `shoalmark.py`; the notes — the 0.19.0 section verbatim and three lines (install pinned to the tag,
+  `--install-hook` again, the checksum), generated, never committed; `gh release create v0.19.0 --prerelease --title "shoalmark
+  0.19.0 — public beta" --notes-file <notes> shoalmark.py SHA256SUMS`. The Auditor verifies the published assets against the tag.
 - **Carried in from the reviews:** RV-2161 (FM-005's check: one test's three attempts share a history), RV-2162 (FM-005: one line —
   with the tool's root below the repository's top the hook never runs the gate), RV-2170 and RV-2171 (the `From:` fix: FM-024's
   PR 139 paragraph, `--help`'s order), RV-2184 (`--key`'s help: the first word cut to five characters).
