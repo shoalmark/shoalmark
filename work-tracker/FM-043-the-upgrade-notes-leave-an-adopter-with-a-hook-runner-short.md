@@ -30,8 +30,8 @@ the README, `ADOPT.md` — and the tool's refusal lines. Where they were not eno
    the notes do not say so.
 6. README.md:250 says CI's `--check`, which runs the deriver, holds the derived files. That holds only where CI runs
    `--check`; the notes do not say what an adopter without it does.
-7. On the upgrade's own branch, the TRIAGE.md guard reads the Owner from the default branch's configuration, which
-   0.19.0 refuses until the upgrade merges; the notes do not say what the guard does in between.
+7. The notes do not say to land the configuration change on the default branch first, before other work on the
+   upgrade.
 8. A session label in a seat's new name is refused while `[seats]` still spells the seat by its former name; the notes
    do not say to rename the seats' keys before the labels.
 9. `--install-hook` has no way to show what it would write and refuse before it writes; an adopter learns its
