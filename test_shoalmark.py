@@ -3107,6 +3107,42 @@ else:
     _skipped("FM-006 · a private security report · the reading rule · the configuration in cp1252", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- the copy's own PIN and VERSION under the reading rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, the Windows round):
+# what `--check` reports of a vendored copy's PIN is read as `pin_problems` reads it — a VERSION that is a symlink is refused in one line, its text never reported
+_PR_MARK = "INERT-VERSION"
+def _pr(rev=None):
+    """A vendored copy at `tools/shoalmark` whose PIN no longer names VERSION, and whose VERSION is a symlink to a file beside the repository that carries
+    the inert marker; the copy's own `--check`."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        src_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
+        copy_ = root / "tools/shoalmark"; pin_ = copy_ / "PIN"
+        pin_.write_text("".join(l_ + "\n" for l_ in pin_.read_text(encoding="utf-8").splitlines() if not l_.endswith("  VERSION")), encoding="utf-8")
+        target_ = marks / "version.txt"; target_.write_text((copy_ / "VERSION").read_text(encoding="utf-8").strip() + f"-{_PR_MARK}\n", encoding="utf-8")
+        (copy_ / "VERSION").unlink(); os.symlink(target_, copy_ / "VERSION")
+        c_, o_, e_ = _tool_run(copy_ / "shoalmark.py", root, "--check")
+        g_ = dict(vendored=v_[0], code=c_, err=e_.strip(), said=o_ + e_)
+        rm_git(root)
+    return g_
+def _pr_ok(g):
+    return (g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and g["err"].splitlines()[-1:] == [f"shoalmark: tools/shoalmark/VERSION {_RR_SAYS}"]
+            and sum("tools/shoalmark/VERSION" in l_ for l_ in g["said"].splitlines()) == 1 and _PR_MARK not in g["said"])
+if _SYMLINKS:
+    g_ = _pr()
+    check(f"FM-006 · a private security report · the reading rule · `--check` reports a vendored copy's PIN under the rule: its VERSION a symlink, refused in one line "
+          f"naming it, exit 4, its text never reported (saw exit {g_['code']}, {g_['err'][-110:]!r})", _pr_ok(g_))
+    if _HAVE_WIN:
+        c_ = _pr(_WIN_REV)
+        check(f"FM-006 · a private security report · the reading rule · the copy's PIN and VERSION · …the control: beside {_WIN_REV}'s tool this check FAILS "
+              f"(saw marker reported: {_PR_MARK in c_['said']})", not _pr_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the reading rule · the copy's PIN and VERSION · the control", 1, f"this clone does not hold {_WIN_REV}")
+else:
+    _skipped("FM-006 · a private security report · the reading rule · the copy's PIN and VERSION", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

@@ -7656,10 +7656,10 @@ def pin_report():
     """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning when it
     was no release or is partial, and one naming what is wrong when the manifest is not what `--vendor` wrote."""
     pin = HERE / "PIN"
-    if not pin.exists() or ROOT not in HERE.parents:
+    if ROOT not in HERE.parents or not board_isfile(pin):  # the reading rule: the running copy's PIN and VERSION are files of the tree, as in `pin_problems`
         return []
-    pinned = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else ""
-    m, wrong = pin_manifest(pin.read_text(encoding="utf-8"), pinned)
+    pinned = (board_text(HERE / "VERSION") or "").strip()
+    m, wrong = pin_manifest(board_text(pin) or "", pinned)
     if wrong:
         return [f"warning: the PIN's manifest {wrong} — this copy is unverified; vendor again from a release"]
     if not m:
