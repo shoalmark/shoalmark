@@ -789,6 +789,12 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       same morning, on reviewer-80's check at `e8d2eea`), in this build, a fourth commit: `--brand DIR` without `--from`
       judges each file as named and under the resolved folder, before the folder is made; one more row in the
       destinations test, failing beside `4087e23`'s tool.
+      *The Windows round* (the Owner's rulings, the same day, on CI run 36998106048 at `90abab9`, red on both Windows
+      jobs): the three checks that fail there and the stop of the suite are fixed, each fix saying whether the tool or
+      the test was wrong; a check that cannot observe on Windows skips there, visibly, with its reason, and no control
+      may pass. `pin_report()` reads the running copy's PIN and VERSION under the reading rule, with a test. Notes: the
+      CHANGELOG's line on commits says what `AGENTS.md:52` says, and 0.19.0 gains two security lines, as the Owner wrote
+      them. Then reviewer-80's scoped check, the push, READY, and one CI run the Owner dispatches; the ledger names it.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
