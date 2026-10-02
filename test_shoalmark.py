@@ -2597,6 +2597,32 @@ if not _HAVE_RR:
     _skipped("FM-006 · a private security report · the git configuration's files · the controls", 2, f"this clone does not hold {_RR_REV}")
 fm.configure(HERE)
 
+# --- the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): every run writes a file of the tree only as a
+# regular file inside the repository, never through a symlink; a run by hand refuses in one line naming the file, exit 4, and writes nothing
+_WR_SAYS = "is a symlink, or reached through one — the tool writes a file of the tree only as a regular file inside the repository, never through a symlink: nothing is written; put the file itself there"
+def _wr(rev=None):
+    """A run by hand that would write an INDEX.md that is a symlink."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; page_ = root / "docs/work-tracker/index.html"
+        target_ = marks / "target"; target_.write_text("UNCHANGED\n", encoding="utf-8")
+        sums_ = lambda: (hashlib.sha256(target_.read_bytes()).hexdigest(), hashlib.sha256(page_.read_bytes()).hexdigest() if page_.is_file() else None)
+        os.unlink(root / "docs/work-tracker/INDEX.md"); os.symlink(target_, root / "docs/work-tracker/INDEX.md"); before_ = sums_()
+        c_, o_, e_ = _tool_run(tool_, root)
+        g_ = dict(code=c_, err=e_.strip(), same=sums_() == before_)
+        rm_git(root)
+    return g_
+def _wr_ok(g):
+    return g["code"] == fm.EXIT_LINT and g["err"] == f"shoalmark: docs/work-tracker/INDEX.md {_WR_SAYS}" and g["same"]
+g_ = _wr()
+check(f"FM-006 · a private security report · the write rule · a run by hand meets an INDEX.md that is a symlink: refused in one line naming it, exit 4, nothing written — "
+      f"the symlink's target and the board unchanged (saw {g_['err'][-120:]!r})", _wr_ok(g_)) if _SYMLINKS else _skipped("FM-006 · a private security report · the write rule", 1, "this system makes no symlink here")
+if _SYMLINKS and _HAVE_RR:
+    c_ = _wr(_RR_REV)
+    check(f"FM-006 · a private security report · the write rule · …the control: beside {_RR_REV}'s tool this check FAILS", not _wr_ok(c_))
+elif _SYMLINKS:
+    _skipped("FM-006 · a private security report · the write rule · the control", 1, f"this clone does not hold {_RR_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

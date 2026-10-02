@@ -171,6 +171,37 @@ def vcs():
     return ""
 
 
+# THE WRITE RULE (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): every run writes a file of the tree only as
+# a regular file inside the repository, outside its git directory, never through a symlink. `write_rule` is the one place every write of the tree passes:
+# the board's refresh leaves such a file unwritten with its line (`board_write`); a hook's run of the copy refuses (`guard_write`, the commit refused);
+# every other run refuses in one line naming the file, exit 4, before anything is written (`refuse_tree_write`).
+def tree_write(path):
+    """Whether a write lands in the tree this run tracks — inside the repository as written and outside its git directory, or in the tracker folder
+    wherever that is. A destination a person names elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not."""
+    p, td = _norm(path), _norm(TRACKER_DIR)
+    return (in_tree(path) and not in_git_dir(path)) or p == td or p.startswith(td.rstrip(os.sep) + os.sep)
+
+
+def write_rule(path):
+    """The write rule for one file of the tree: in a hook's run of the copy, `guard_write`; in every other run but the board's refresh, one line naming
+    the file, exit 4, where `write_problem` finds a reason."""
+    if SAFE_WRITES:
+        guard_write(path)
+    elif tree_write(path):
+        why = write_problem(path)
+        if why:
+            refuse_tree_write(path, why)
+
+
+def refuse_tree_write(path, why):
+    """A run other than the board's refresh, and no hook's, would write a file of the tree it may not: one line naming it, exit 4, the lint code, and
+    nothing written."""
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/") if in_tree(path) else str(path)
+    print(f"shoalmark: {rel} is {why} — the tool writes a file of the tree only as a regular file inside the repository, never through a symlink: "
+          "nothing is written; put the file itself there", file=sys.stderr)
+    raise SystemExit(EXIT_LINT)
+
+
 def guard_write(path):
     """In a hook's run of the copy, or the board's run: refuse to write `path` where `write_problem` finds a reason — `ReadOnlyRun`, which the run says in one line."""
     why = write_problem(path) if SAFE_WRITES else ""
@@ -180,9 +211,9 @@ def guard_write(path):
 
 def put(path, text):
     """Every file the tool writes is UTF-8 with `\\n` line ends on every system — what is committed must not depend on
-    who ran the tool. In a hook's run of the copy, a file is written only where `write_problem` finds no reason, and never through a symlink."""
-    if SAFE_WRITES:
-        guard_write(path)
+    who ran the tool. A file of the tree is written under the write rule (`write_rule`): only a regular file inside the repository, never through a symlink."""
+    if SAFE_WRITES or tree_write(path):
+        write_rule(path)
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
@@ -350,16 +381,15 @@ def board_write(path, text, changed_only=False):
     """Write one of the board's files: with `put`, as ever; in the board's run and a hook's run of the copy only where `unwritable` finds no reason, and
     never through a symlink. `changed_only`: leave a file that already says this. Returns whether it wrote."""
     path = pathlib.Path(path)
-    if SAFE_WRITES:
+    if SAFE_READS:                                          # the board's refresh: what it may not write it leaves, with its line
         why = unwritable(path)
         if why:
             left_alone(path, why)
             return False
+    else:                                                   # every other run: the write rule
+        write_rule(path)
     if changed_only and path.exists() and path.read_text(encoding="utf-8") == text:
         return False
-    if not SAFE_WRITES:
-        put(path, text)
-        return True
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
     with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
@@ -3815,15 +3845,25 @@ def owners_intent(text):
     return "\n\n".join(kept).strip()
 
 
+def view_dir_refused():
+    """The write rule for the views' folder, where it is a symlink or no folder: a hook's run refuses the commit, any other run refuses in one line."""
+    why = "a symlink, or not a directory"
+    if SAFE_WRITES:
+        raise ReadOnlyRun(f"it would write into {os.path.relpath(VIEW_DIR, ROOT).replace(os.sep, '/') if in_tree(VIEW_DIR) else VIEW_DIR}, {why}")
+    refuse_tree_write(VIEW_DIR, why)
+
+
 def write_views(trackers):
     """One `view/<ID>.js` per tracker — `V(id, markdown)`. Rewritten only when changed; strays removed. The markdown is
     the file's body, and one line more under each record under `## Asks` that has no `**relation** —` line, every one of
     them, not the newest alone: the relation `recover_relations` read from that answer's commit, under `**answered** —`
     where a record from 0.18.1 on carries its own, naming that commit — or *relation not computable* (FM-029: every
     reading prints the relation)."""
-    if SAFE_WRITES and os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
-        left_alone(VIEW_DIR, "a symlink, or not a directory")        # the board's run writes no view through a symlink or over a file
-        return
+    if os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+        if SAFE_READS:
+            left_alone(VIEW_DIR, "a symlink, or not a directory")    # the board's run writes no view through a symlink or over a file
+            return
+        view_dir_refused()
     VIEW_DIR.mkdir(exist_ok=True)
     keep = set()
     recover_relations(trackers)
@@ -7489,6 +7529,11 @@ def run_deriver(trackers, mode="write", flags=()):
 
 
 def load_trackers():
+    if not SAFE_READS:                                      # the tracker folder, read and written, judged in every run as the board's refresh judges it
+        refused = tracker_folder_problem("nothing is written, and the commit is refused" if HOOK_RUN else "nothing is read or written")
+        if refused:
+            print(refused, file=sys.stderr)
+            raise SystemExit(EXIT_LINT)
     return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name) and board_isfile(p)]))      # the reading rule
 
 
@@ -8506,6 +8551,10 @@ def main(argv=None):
             print(refused, file=sys.stderr)
             return EXIT_LINT
         try:
+            for target in ([] if DERIVER_LEFT else [OUT]) + [HTML_OUT, *sorted(DERIVED_FILES)]:     # the write rule for every file this run writes, before it writes one
+                write_rule(target)
+            if os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+                view_dir_refused()
             if DERIVER_LEFT:                                        # a hook ran no deriver: INDEX.md and what it derives stay as staged, never rewritten without its columns
                 print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
             else:
