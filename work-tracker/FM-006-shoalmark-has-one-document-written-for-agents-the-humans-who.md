@@ -785,7 +785,10 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       a name outside it is refused in one line, unread; `--triage` skips a submodule path from `.gitmodules` that resolves
       outside the repository, and runs no git there; a destination a person names (`--vendor`, `--brand --from`, a
       calendar file) is resolved once, where it is named, and the write rule then judges every file under the resolved
-      folder. One commit and one test each, each test failing beside `4087e23`'s tool.
+      folder. One commit and one test each, each test failing beside `4087e23`'s tool. RV-2317 (the Owner's ruling, the
+      same morning, on reviewer-80's check at `e8d2eea`), in this build, a fourth commit: `--brand DIR` without `--from`
+      judges each file as named and under the resolved folder, before the folder is made; one more row in the
+      destinations test, failing beside `4087e23`'s tool.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
