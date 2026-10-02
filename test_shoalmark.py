@@ -2576,7 +2576,7 @@ def _cfg_files(kind, rev=None):
             named_ = None
         tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
         c_, o_, e_ = _tool_run(tool_, at_, "--install-hook")
-        g_ = dict(code=c_, err=e_.strip(), named=str(named_.resolve()) if named_ else "", hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)) if named_ else "", hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
                   copy=(root / ".git" / fm.COPY_DIR).exists())
         rm_git(root)
     return g_
