@@ -8685,6 +8685,10 @@ def main(argv=None):
     return EXIT_DRIFT if drifted else EXIT_OK
 
 
+if __name__ == "__main__":                                  # what is said while the configuration is read, here, is in UTF-8 too — as `main` says
+    for _stream in (sys.stdout, sys.stderr):                # everything after: a Windows console in cp1252 would say `—` in its own code page
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
 if SAFE_READS or HOOK_RUN:
     board_watchdog(board=SAFE_READS)                                        # the board's run, and every hook's run of the copy, is bounded

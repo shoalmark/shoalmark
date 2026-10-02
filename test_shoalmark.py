@@ -3059,6 +3059,33 @@ else:
     _skipped("FM-006 · a private security report · destinations a person names", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- the Windows round (the Owner's ruling filed in FM-006, *The fix round after the critical review*): a refusal said while the configuration is read is said in
+# UTF-8 whatever the console's code page — the one line is the same on every system
+_WIN_REV = "90abab9"
+_HAVE_WIN = _has_rev(_WIN_REV)
+def _cpage(rev=None):
+    """`--check` where the configuration is a symlink to a file beside the repository, the console's code page cp1252, as a Windows console's is."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); target_ = marks / "shoalmark.toml"; target_.write_text((root / "shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "shoalmark.toml").unlink(); os.symlink(target_, root / "shoalmark.toml")
+        c_, o_, e_ = _tool_run(root / "shoalmark.py", root, "--check", env=dict(_ENV, PYTHONIOENCODING="cp1252"))
+        rm_git(root)
+    return c_, e_.strip()
+_CPAGE_LINE = f"shoalmark: shoalmark.toml {_RR_SAYS}"
+if _SYMLINKS:
+    c_, e_ = _cpage()
+    check(f"FM-006 · a private security report · the reading rule · the configuration a symlink, the console's code page cp1252: the one line is said in UTF-8, "
+          f"exit 4 (saw exit {c_}, {e_[:70]!r})", c_ == fm.EXIT_LINT and e_ == _CPAGE_LINE)
+    if _HAVE_WIN:
+        c_, e_ = _cpage(_WIN_REV)
+        check(f"FM-006 · a private security report · the reading rule · the configuration in cp1252 · …the control: beside {_WIN_REV}'s tool this check FAILS (saw {e_[:70]!r})",
+              not (c_ == fm.EXIT_LINT and e_ == _CPAGE_LINE))
+    else:
+        _skipped("FM-006 · a private security report · the reading rule · the configuration in cp1252 · the control", 1, f"this clone does not hold {_WIN_REV}")
+else:
+    _skipped("FM-006 · a private security report · the reading rule · the configuration in cp1252", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
