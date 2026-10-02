@@ -7203,7 +7203,11 @@ def _sig_lint(case, variant, tool, gnupg=None):
             parent_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
             obj_ = (f"tree {tree_}\nparent {parent_}\nauthor {author_} 1700000000 +0000\ncommitter {author_} 1700000000 +0000\n"
                     "gpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEEAAAAAAAAAAAAAAAAAAAAAAAAAAAFAmUAAAAACgkQAAAAAAAAAAA=\n =AAAA\n -----END PGP SIGNATURE-----\n\nSG-001: the signed line\n")
-            new_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=obj_, capture_output=True, text=True, env=_ENV).stdout.strip()
+            made_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=obj_.encode("utf-8"), capture_output=True, env=_ENV)   # bytes: `\n` as written
+            new_ = made_.stdout.decode("utf-8", "replace").strip()
+            if made_.returncode != 0 or not new_:                # said in the check that leans on it, never a stop of the suite
+                rm_git(root)
+                return None, "hash-object refused the commit object: " + made_.stderr.decode("utf-8", "replace").strip()
             git(root, "update-ref", "HEAD", new_)
         else:
             how_ = (["-c", "gpg.format=openpgp", "-c", f"user.signingkey={gnupg[1]}"] if variant == "gpg"
@@ -7235,7 +7239,7 @@ with tempfile.TemporaryDirectory() as d_old_:
           f"`{_SIG_LINE}` (saw {said_[-160:]!r})", c_ == fm.EXIT_LINT and _SIG_LINE in said_)
     if old_tool_:
         c_, said_ = _sig_lint("answer", "pgp", old_tool_)
-        check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool the PGP header gets no such line", _SIG_LINE not in said_)
+        check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool the PGP header gets no such line", c_ is not None and _SIG_LINE not in said_)
     # … and a trusted GPG key whose user ID carries the Owner's email, with real `gpg` in a throwaway home
     if shutil.which("gpg"):
         gh_ = tempfile.mkdtemp(); os.chmod(gh_, 0o700); genv_ = dict(_ENV, GNUPGHOME=gh_)
