@@ -2930,7 +2930,7 @@ fm.configure(HERE)
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
 # opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it.
 # Windows hands the hook a program's arguments as one command line: its words are read as `list2cmdline` writes them. Before a check leans on the hook for a
-# start, `_watch_sees_start` proves it sees one here; where it does not, the check skips, saying so
+# start, `_watch_sees_start` proves it sees one here, and before one leans on it for an open, `_watch_sees_open`; where it does not, the check skips, saying so
 _SAME_REV = "4087e23"
 _HAVE_SAME = _has_rev(_SAME_REV)
 def _watch(where, mark, opened=(), started=()):
@@ -2972,6 +2972,11 @@ def _watch_sees_start(env, mark, path):
                    capture_output=True, env=env)
     seen_ = Path(mark).exists(); Path(mark).unlink(missing_ok=True)
     return seen_
+def _watch_sees_open(env, mark, path):
+    """Whether the watch in `env` sees `path` opened — the hook's own proof, here, before a check leans on it. The marker it leaves is cleared."""
+    subprocess.run([sys.executable, "-c", "import sys; open(sys.argv[1], 'rb').close()", str(path)], capture_output=True, env=env)
+    seen_ = Path(mark).exists(); Path(mark).unlink(missing_ok=True)
+    return seen_
 
 # --- the PIN's names (RV-2316, the Owner's ruling filed in FM-006, *The fix round after the critical review*): the gate reads only the files a vendored copy's PIN
 # names inside the copy — a name outside it is refused in one line, and the file it names is never opened
@@ -2984,22 +2989,26 @@ def _pn(rev=None):
         v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
         outside_ = marks / "outside.txt"; outside_.write_text("inert\n", encoding="utf-8")
         pin_ = root / "tools/shoalmark/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  ../../../marks/outside.txt\n", encoding="utf-8")
-        mark_ = marks / "opened"; env_ = _watch(marks / "watch", mark_, opened=[outside_])
+        mark_ = marks / "opened"; env_ = _watch(marks / "watch", mark_, opened=[outside_]); live_ = _watch_sees_open(env_, mark_, outside_)
         c_, o_, e_ = _tool_run(root / "tools/shoalmark/shoalmark.py", root, "--check", env=env_)
-        g_ = dict(vendored=v_[0], code=c_, said=(o_ + e_).strip(), opened=mark_.exists())
+        g_ = dict(live=live_, vendored=v_[0], code=c_, said=(o_ + e_).strip(), opened=mark_.exists())
         rm_git(root)
     return g_
 _PN_LINE = "tools/shoalmark/PIN names ../../../marks/outside.txt, outside the copy — a PIN names only the copy's own files; vendor again with --vendor"
 def _pn_ok(g):
     return g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and sum(_PN_LINE in l_ for l_ in g["said"].splitlines()) == 1 and not g["opened"]
 g_ = _pn()
-check(f"FM-006 · a private security report · the PIN's names · a name outside the copy: `--check` refuses it in one line, exit 4, and the file it names is never opened "
-      f"(saw exit {g_['code']}, opened={g_['opened']}, {next((l_ for l_ in g_['said'].splitlines() if 'outside the copy' in l_), '')[-90:]!r})", _pn_ok(g_))
-if _HAVE_SAME:
-    c_ = _pn(_SAME_REV)
-    check(f"FM-006 · a private security report · the PIN's names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _pn_ok(c_))
+if g_["live"]:
+    check(f"FM-006 · a private security report · the PIN's names · a name outside the copy: `--check` refuses it in one line, exit 4, and the file it names is never opened "
+          f"(saw exit {g_['code']}, opened={g_['opened']}, {next((l_ for l_ in g_['said'].splitlines() if 'outside the copy' in l_), '')[-90:]!r})", _pn_ok(g_))
+    c_ = _pn(_SAME_REV) if _HAVE_SAME else None
+    if c_ and c_["live"]:
+        check(f"FM-006 · a private security report · the PIN's names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _pn_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the PIN's names · the control", 1,
+                 f"this clone does not hold {_SAME_REV}" if not c_ else "the audit hook here does not see the files a run opens")
 else:
-    _skipped("FM-006 · a private security report · the PIN's names · the control", 1, f"this clone does not hold {_SAME_REV}")
+    _skipped("FM-006 · a private security report · the PIN's names", 2, "the audit hook here does not see the files a run opens")
 fm.configure(HERE)
 
 # --- `--triage` and the submodules (the Owner's ruling filed in FM-006, *The fix round after the critical review*): a `.gitmodules` path that resolves outside the
