@@ -3017,19 +3017,21 @@ else:
     _skipped("FM-006 · a private security report · `--triage` and the submodules · the control", 1, f"this clone does not hold {_SAME_REV}")
 fm.configure(HERE)
 
-# --- destinations a person names (the Owner's ruling filed in FM-006, *The fix round after the critical review*, with RV-2316): `--vendor DIR`, `--brand DIR --from`
-# and `--standup FILE.ics` resolve the destination once, where it is named, and the write rule judges every file under the folder it resolves to — named through a
-# folder outside the repository that resolves inside it, a file under it that is a symlink is refused in one line, and the file it points to is unchanged
+# --- destinations a person names (the Owner's ruling filed in FM-006, *The fix round after the critical review*, with RV-2316, and RV-2317): `--vendor DIR`,
+# `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics` resolve the destination once, where it is named, and the write rule judges every file under the
+# folder it resolves to — named through a folder outside the repository that resolves inside it, a file under it that is a symlink is refused in one line, and
+# the file it points to is unchanged
 def _nd(rev=None):
     """Each command at a destination named through `marks/door-*`, a symlink to a folder inside the repository that holds one symlink: `--vendor` meets
-    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand --from` meets `theme.css`, a symlink to a file
-    that is not there."""
+    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand --from` and `--brand DIR` meet `theme.css`, a
+    symlink to a file that is not there."""
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
         conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
         sums_ = lambda p_: hashlib.sha256(p_.read_bytes()).hexdigest() if p_.is_file() else None
         for key_, inner_, there_, argv_ in (("vendor", "shoalmark.py", True, lambda door_: ("--vendor", str(door_), "--partial", "--allow-untagged")),
                                              ("brand", "theme.css", False, lambda door_: ("--brand", str(door_), "--from", "monochrome")),
+                                             ("brand-starter", "theme.css", False, lambda door_: ("--brand", str(door_))),
                                              ("standup", "cal.ics", True, lambda door_: ("--standup", str(door_ / "cal.ics")))):
             folder_ = root / "dest" / key_; folder_.mkdir(parents=True); target_ = marks / f"target-{key_}"
             if there_:
@@ -3042,12 +3044,12 @@ def _nd(rev=None):
         rm_git(root)
     return g_
 def _nd_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "standup"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "brand-starter", "standup"))
 if _SYMLINKS:
     g_ = _nd()
-    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from` and `--standup FILE.ics`, named through a folder "
+    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics`, named through a folder "
           f"outside the repository that resolves inside it, meet a file under it that is a symlink: each is refused in one line naming it, exit 4, the file it points "
-          f"to unchanged and nothing written (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'standup')]!r})", _nd_ok(g_))
+          f"to unchanged and nothing written (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
     if _HAVE_SAME:
         c_ = _nd(_SAME_REV)
         check(f"FM-006 · a private security report · destinations a person names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _nd_ok(c_))

@@ -3772,14 +3772,16 @@ def brand_report(dest=None, theme=None):
         print(f"yours to change; a board wears it from a brand place — <tracker dir>/brand/, or ~/.config/shoalmark/ for you alone (`--brand` lists them)")
         return EXIT_OK
     if dest:
-        dest = pathlib.Path(dest)
-        for name in ("theme.css", "labels.yaml"):          # the write rule for both, before the folder is made
+        named = pathlib.Path(dest)
+        dest = pathlib.Path(os.path.realpath(named))        # a destination a person names: resolved once, where it is named
+        for name in ("theme.css", "labels.yaml"):          # the write rule for both — as the path is named, and under the folder it resolves to — before
+            write_rule(named / name)                        # the folder is made
             write_rule(dest / name)
         dest.mkdir(parents=True, exist_ok=True)
         for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
                                                            + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
             if not (dest / name).exists():
-                put(dest / name, text); print(f"wrote {dest / name}")
+                put(dest / name, text); print(f"wrote {named / name}")
         print("a logo is logo.svg or logo.png beside them, a wordmark wordmark.svg; the name is `name` in " + CONFIG_NAME)
         return EXIT_OK
     themes, logo, labels, src, warn, _wordmark = brand()
