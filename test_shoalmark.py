@@ -2066,13 +2066,14 @@ with tempfile.TemporaryDirectory() as d:
           c_ == fm.EXIT_LINT and "differs from its PIN" in e_ and "not written" in e_ and "no hook is written" in e_ and not (root / ".git/shoalmark-trusted").exists()
           and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == [])
     rm_git(root)
-# `core.hooksPath` is respected: the hooks are where git looks for them, and run the copy in the git directory
+# `core.hooksPath` is respected: the hooks are where git looks for them — here a folder outside the repository (one inside the working tree is refused) — and run the copy in the git directory
 with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
-    git(root, "config", "core.hooksPath", ".githooks"); git(root, "switch", "-q", "-c", "other")
+    base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); hp_ = base_ / "hooks"
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    git(root, "config", "core.hooksPath", str(hp_)); git(root, "switch", "-q", "-c", "other")
     c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); sw_ = _hooked(root, "switch", "-q", "-")
-    check(f"FM-006 · a private security report · `core.hooksPath` is respected: the checkout and merge hooks are written where it points, not in `.git/hooks`, and a checkout runs the copy from there (saw {sw_[1][:100]!r})",
-          c_ == 0 and (root / ".githooks/post-checkout").is_file() and (root / ".githooks/post-merge").is_file() and (root / ".githooks/post-rewrite").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
+    check(f"FM-006 · a private security report · `core.hooksPath` is respected: the checkout and merge hooks are written where it points, outside the repository, not in `.git/hooks`, and a checkout runs the copy from there (saw {sw_[1][:100]!r})",
+          c_ == 0 and (hp_ / "post-checkout").is_file() and (hp_ / "post-merge").is_file() and (hp_ / "post-rewrite").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
           and sw_[1].startswith("board: file:") and "BASE" in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
     rm_git(root)
 
@@ -2206,7 +2207,7 @@ def _rv_bound(rev=None):
         shutil.rmtree(root / ".git" / fm.COPY_DIR); c_ = _hooked(root, "commit", "--allow-empty", "-qm", "no copy"); g_.update(gone_code=c_[0], gone_said=c_[1], gone_head=_head(root) == h_)
         rm_git(root)
     return g_
-_BOUND_LINE = "shoalmark: the hook's run took longer than 2 s and was stopped — the commit is refused"
+_BOUND_LINE = "shoalmark: the hook's run took longer than 2 s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer"
 _GONE_LINE = "shoalmark: the commit is refused — the hooks' copy of the tool is not in the git directory: run --install-hook"
 def _rv_bound_ok(g):
     return g["code"] != 0 and g["took"] < 15 and g["said"].splitlines()[-1:] == [_BOUND_LINE] and g["head_same"]
@@ -2215,7 +2216,7 @@ def _rv_gone_ok(g):
 if os.name != "nt":
     g_ = _rv_bound()
     check(f"FM-006 · a private security report · RV-2300 · the 35-second bound covers a commit's hooks too, and there it fails closed: a copy whose main thread waits 25 s is stopped by its bound "
-          f"(2 s here), and the commit is refused with one line, in {g_['took']:.0f} s (saw {g_['said'][-120:]!r})", _rv_bound_ok(g_))
+          f"(2 s here), and the commit is refused with one line naming `SHOALMARK_BOARD_SECONDS` as the way to raise it, in {g_['took']:.0f} s (saw {g_['said'][-120:]!r})", _rv_bound_ok(g_))
     check(f"FM-006 · a private security report · RV-2300 · a commit's hook whose copy is not in the git directory refuses the commit with one line naming `--install-hook` (saw {g_['gone_said']!r})", _rv_gone_ok(g_))
     if _HAVE_RV:
         c_ = _rv_bound(_RV_REV)
@@ -2227,48 +2228,124 @@ if not _HAVE_RV:
     SKIPS.append(("FM-006 · a private security report · RV-2300 · the controls", 4, f"this clone does not hold {_RV_REV}"))
 fm.configure(HERE)
 
-# --- RV-2300 (a private security report): the deriver in hooks — a hook runs the tree's deriver only where it is the one accepted at the last `--install-hook` ----------------
-def _rv_deriver(rev=None):
-    """A deriver accepted at `--install-hook` runs in a commit's hook; then the same deriver changed, committed with the hooks running."""
+# --- No deriver in hooks (the Owner's ruling filed in FM-006): a hook's run of the copy starts no deriver, and the commit's hook leaves INDEX.md as staged ------------------
+# A repository with a deriver that leaves an inert marker when it runs. Each control is the same operation beside fc5f197's tool, whose `--install-hook` accepted a deriver and
+# whose commit hook ran it: only `pre-commit` ever started one, so the operations that run no `pre-commit` — a clean merge, a cherry-pick, a rebase — hold beside it as well.
+_ND_REV = "fc5f197"
+_HAVE_ND = _has_rev(_ND_REV)
+_ND_LINE = fm.DERIVER_HOOK_LINE.format(cmd=f"{fm.PY} shoalmark.py")
+def _nd_op(op, rev=None):
     with tempfile.TemporaryDirectory() as d:
-        root, marks, inst = _root_repo(d, rev, deriver="accepted"); exe_ = root / "docs/work-tracker/derive"; sum_ = hashlib.sha256(exe_.read_bytes()).hexdigest()
-        rec_ = (root / ".git" / fm.COPY_DIR / "COPY").read_text(encoding="utf-8") if (root / ".git" / fm.COPY_DIR / "COPY").is_file() else ""
-        _hook_changed(root, "the accepted deriver runs"); git(root, "add", "-A"); c1_ = _hooked(root, "commit", "-qm", "the accepted deriver")
-        g_ = dict(inst=inst, sum=sum_, rec=rec_, ran=(marks / "accepted").exists(), code1=c1_[0], said1=c1_[1])
-        _put_deriver(root, marks, "changed"); _hook_changed(root, "a changed deriver is skipped"); git(root, "add", "-A"); c2_ = _hooked(root, "commit", "-qm", "the deriver changed")
-        staged_ = subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, env=_ENV).stdout
-        g_.update(code2=c2_[0], said2=c2_[1], changed_ran=(marks / "changed").exists(), staged2="docs/work-tracker/INDEX.md" in staged_ and "docs/work-tracker/derive" in staged_)
+        root, marks, inst = _root_repo(d, rev, deriver="deriver")
+        trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        (root / "conflict.txt").write_text("base\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a file both sides change")
+        git(root, "switch", "-q", "-c", "side"); _hook_changed(root, "changed on the side"); (root / "conflict.txt").write_text("side\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "the side"); git(root, "switch", "-q", trunk_)
+        index0_ = (root / "docs/work-tracker/INDEX.md").read_bytes()
+        if op == "commit":
+            _hook_changed(root, "changed here"); git(root, "add", "-A"); c_ = _hooked(root, "commit", "-qm", "a tracker changed")
+        elif op == "merge":
+            (root / "trunk.txt").write_text("trunk\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves on")
+            c_ = _hooked(root, "merge", "--no-ff", "--no-edit", "side")
+        elif op == "conflicted":
+            (root / "conflict.txt").write_text("trunk\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves on")
+            stop_ = _hooked(root, "merge", "--no-edit", "side"); (root / "conflict.txt").write_text("resolved\n", encoding="utf-8"); git(root, "add", "conflict.txt")
+            c_ = _hooked(root, "commit", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, c_[1])
+        elif op == "cherry-pick":
+            c_ = _hooked(root, "cherry-pick", "side")
+        else:
+            git(root, "switch", "-q", "-c", "work"); (root / "work.txt").write_text("work\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "work")
+            c_ = _hooked(root, "rebase", "side")
+        head_index_ = subprocess.run(["git", "-C", str(root), "show", "HEAD:docs/work-tracker/INDEX.md"], capture_output=True, env=_ENV).stdout
+        g_ = dict(code=c_[0], said=c_[1], ran=(marks / "deriver").exists(), kept=head_index_ == index0_ and (root / "docs/work-tracker/INDEX.md").read_bytes() == index0_)
         rm_git(root)
     return g_
-def _rv_accepted_ok(g):
-    return (g["inst"][0] == 0 and f"accepted docs/work-tracker/derive for the hooks — sha256 {g['sum'][:12]}" in g["inst"][1] and f"deriver: {g['sum']}\n" in g["rec"]
-            and g["ran"] and g["code1"] == 0 and fm.DERIVER_CHANGED not in g["said1"])
-def _rv_changed_ok(g):
-    return g["code2"] == 0 and g["said2"].splitlines().count(fm.DERIVER_CHANGED) == 1 and not g["changed_ran"] and g["staged2"]
-g_ = _rv_deriver()
-check(f"FM-006 · a private security report · RV-2300 · `--install-hook` accepts the tree's deriver for the hooks — its sha256 recorded with the copy, and said — and a commit's hook runs that deriver "
-      f"(saw {[l_ for l_ in g_['inst'][1].splitlines() if l_.startswith('accepted')]!r}, ran {g_['ran']})", _rv_accepted_ok(g_))
-check(f"FM-006 · a private security report · RV-2300 · a changed deriver is not run in a hook: the commit is made, INDEX.md staged, and the hook says exactly `{fm.DERIVER_CHANGED}`, once "
-      f"(saw ran {g_['changed_ran']}, {g_['said2'][-120:]!r})", _rv_changed_ok(g_))
-def _rv_new_deriver(rev=None):
-    """No deriver at `--install-hook`; a new one, committed with the hooks running."""
+def _nd_ok(g, op):
+    return g["code"] == 0 and not g["ran"] and g["kept"] and (op not in ("commit", "conflicted") or g["said"].splitlines().count(_ND_LINE) == 1)
+_ND_OPS = (("commit", "a commit that changes a tracker — `pre-commit` says it in one line"), ("merge", "a clean merge"),
+           ("conflicted", "a conflicted merge, at its resolving commit — `pre-commit` says it in one line"), ("cherry-pick", "a cherry-pick"), ("rebase", "a rebase"))
+for op_, what_ in _ND_OPS:
+    g_ = _nd_op(op_)
+    check(f"FM-006 · a private security report · no deriver in hooks · {what_}: in a repository with a deriver, no hook starts it, and INDEX.md is left as staged "
+          f"(saw exit {g_['code']}, deriver ran {g_['ran']}, INDEX.md kept {g_['kept']})", _nd_ok(g_, op_))
+    if _HAVE_ND and op_ in ("commit", "conflicted"):
+        c_ = _nd_op(op_, _ND_REV)
+        check(f"FM-006 · a private security report · no deriver in hooks · …the control: {op_} beside {_ND_REV}'s tool FAILS — its commit hook ran the deriver it had accepted and rewrote "
+              f"INDEX.md (saw deriver ran {c_['ran']}, INDEX.md kept {c_['kept']})", not _nd_ok(c_, op_))
+if not _HAVE_ND:
+    SKIPS.append(("FM-006 · a private security report · no deriver in hooks · the controls", 2, f"this clone does not hold {_ND_REV}"))
+check(f"FM-006 · a private security report · no deriver in hooks · the line a commit's hook says where it starts no deriver names the tool's command and CI's `--check`: `{_ND_LINE}`",
+      "runs only in explicit runs" in _ND_LINE and f"run `{fm.PY} shoalmark.py` before committing" in _ND_LINE and "CI's `--check` holds them" in _ND_LINE)
+# the hooks folder: `--install-hook` refuses one a branch can change — inside a working tree, outside the git directory — and writes no hook and no copy
+def _hooks_folder(kind, rev=None):
     with tempfile.TemporaryDirectory() as d:
-        root, marks, inst = _root_repo(d, rev)
-        rec_ = (root / ".git" / fm.COPY_DIR / "COPY").read_text(encoding="utf-8") if (root / ".git" / fm.COPY_DIR / "COPY").is_file() else ""
-        _put_deriver(root, marks, "new"); _hook_changed(root, "a new deriver is skipped"); git(root, "add", "-A"); c_ = _hooked(root, "commit", "-qm", "a new deriver")
-        g_ = dict(rec=rec_, code=c_[0], said=c_[1], ran=(marks / "new").exists())
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); at_ = root
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "in-tree":
+            git(root, "config", "core.hooksPath", "githooks"); folder_ = root / "githooks"
+        elif kind == "link":
+            (root / "inside").mkdir(); os.symlink(root / "inside", base / "hooks-link"); git(root, "config", "core.hooksPath", str(base / "hooks-link")); folder_ = root / "inside"
+        elif kind == "worktree":
+            git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); at_ = base / "wt"; folder_ = root / ".git/hooks"
+        elif kind == "worktree-relative":       # a relative `core.hooksPath` resolves in the working tree of whichever worktree a hook runs in
+            git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); git(root, "config", "core.hooksPath", "githooks"); at_ = base / "wt"; folder_ = base / "wt/githooks"
+        elif kind == "nested-relative":         # `../hooks` lies outside the main working tree, and inside it where a linked worktree nested in it resolves it
+            git(root, "worktree", "add", "-q", str(root / "nested/wt"), "-b", "wt"); git(root, "config", "core.hooksPath", "../hooks"); folder_ = base / "hooks"
+        else:
+            folder_ = root / ".git/hooks"
+        if rev:
+            _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
+        else:
+            tool_ = HERE / "shoalmark.py"
+        c_, o_, e_ = _tool_run(tool_, at_, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), hooks=sorted(p_.name for p_ in folder_.iterdir() if not p_.name.endswith(".sample")) if folder_.is_dir() else [],
+                  copy=(root / ".git" / fm.COPY_DIR / "shoalmark.py").is_file())
         rm_git(root)
     return g_
-def _rv_new_ok(g):
-    return "deriver: none\n" in g["rec"] and g["code"] == 0 and g["said"].splitlines().count(fm.DERIVER_CHANGED) == 1 and not g["ran"]
-g_ = _rv_new_deriver()
-check(f"FM-006 · a private security report · RV-2300 · a new deriver — none was there at `--install-hook` — is not run in a hook either, with the same line (saw ran {g_['ran']}, {g_['said'][-100:]!r})", _rv_new_ok(g_))
-if _HAVE_RV:
-    c_, n_ = _rv_deriver(_RV_REV), _rv_new_deriver(_RV_REV)
-    check(f"FM-006 · a private security report · RV-2300 · …the control: beside {_RV_REV}'s tool all three checks FAIL — it accepts no deriver, and its commit hook runs the changed one and the new one "
-          f"(saw changed ran {c_['changed_ran']}, new ran {n_['ran']})", not _rv_accepted_ok(c_) and not _rv_changed_ok(c_) and not _rv_new_ok(n_))
+def _hooks_refused(g):
+    return g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and "where a branch can change the hooks themselves" in g["err"] and "§Sessions" in g["err"] and g["hooks"] == [] and not g["copy"]
+def _hooks_written(g):
+    return g["code"] == 0 and "pre-commit" in g["hooks"] and "post-rewrite" in g["hooks"] and g["copy"]
+g_ = _hooks_folder("in-tree")
+check(f"FM-006 · a private security report · no deriver in hooks · `--install-hook` refuses a `core.hooksPath` inside the working tree, with one line naming the README's hook-runner paragraph, "
+      f"and writes no hook and no copy (saw {g_['err'][:150]!r})", _hooks_refused(g_))
+if _SYMLINKS:
+    g_ = _hooks_folder("link")
+    check(f"FM-006 · a private security report · no deriver in hooks · …and a hooks folder outside the repository that is a symlink into the working tree, resolved (saw {g_['err'][:110]!r})", _hooks_refused(g_))
 else:
-    SKIPS.append(("FM-006 · a private security report · RV-2300 · the deriver's control", 1, f"this clone does not hold {_RV_REV}"))
+    SKIPS.append(("FM-006 · a private security report · no deriver in hooks · a hooks folder that is a symlink into the tree", 1, "this system makes no symlink here"))
+for kind_, what_ in (("worktree-relative", "a linked worktree with a relative `core.hooksPath`, which resolves inside the working tree a hook runs in"),
+                     ("nested-relative", "a relative `core.hooksPath` that lies outside the working tree installed from, and inside it where a linked worktree nested in it resolves it")):
+    g_ = _hooks_folder(kind_)
+    check(f"FM-006 · a private security report · no deriver in hooks · …and {what_}: judged against every working tree, refused (saw {g_['err'][:110]!r})", _hooks_refused(g_))
+g_, w_ = _hooks_folder("default"), _hooks_folder("worktree")
+check(f"FM-006 · a private security report · no deriver in hooks · the default `.git/hooks` is written, and so is a linked worktree's, the common git directory's (saw {g_['hooks']}, {w_['hooks']})",
+      _hooks_written(g_) and _hooks_written(w_))
+if _HAVE_ND:
+    c_ = _hooks_folder("in-tree", _ND_REV)
+    check(f"FM-006 · a private security report · no deriver in hooks · …the control: beside {_ND_REV}'s tool a `core.hooksPath` inside the working tree is written into (saw {c_['hooks']})", not _hooks_refused(c_))
+# the off-main warning names a PIN only where the repository pins one
+def _off_main(pinned, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); fm.configure(HERE)
+        if pinned:
+            subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+            tool_ = root / "tools/shoalmark/shoalmark.py"
+        elif rev:
+            _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
+        else:
+            tool_ = HERE / "shoalmark.py"
+        git(root, "add", "-A"); git(root, "commit", "-qm", "base"); git(root, "update-ref", "refs/remotes/origin/main", "HEAD"); git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+        git(root, "switch", "-q", "-c", "feature"); c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
+        rm_git(root)
+    return c_, [l_ for l_ in e_.splitlines() if l_.startswith("warning:")]
+c0_, w0_ = _off_main(False); c1_, w1_ = _off_main(True)
+_PIN_SAID = "the PIN this copy was checked against comes from the same tree"
+check(f"FM-006 · a private security report · no deriver in hooks · the off-main warning names a PIN only where the repository pins one (saw {w0_!r} and {w1_[:1]!r})",
+      c0_ == 0 and len(w0_) == 1 and "warning: feature is not main, the default branch" in w0_[0] and "PIN" not in w0_[0] and len(w1_) == 1 and _PIN_SAID in w1_[0])
+if _HAVE_ND:
+    c_, wc_ = _off_main(False, _ND_REV)
+    check(f"FM-006 · a private security report · no deriver in hooks · …the control: beside {_ND_REV}'s tool the unpinned warning names a PIN (saw {wc_[:1]!r})", any("PIN" in l_ for l_ in wc_))
 fm.configure(HERE)
 
 # --- RV-2300 (a private security report): what a branch brings by every way git brings it — a merge, clean and conflicted, a cherry-pick, a revert, a rebase and `git am` -------
@@ -2313,7 +2390,7 @@ def _rv_op(op, rev=None):
     return g_
 def _rv_op_ok(g, op):
     return (g["code"] == 0 and g["moved"] and g["brought"] and not g["tool"] and not g["deriver"] and g["copy_same"]
-            and _LINE2 in g["said"].splitlines() and (op not in ("conflicted", "am") or fm.DERIVER_CHANGED in g["said"].splitlines()))
+            and _LINE2 in g["said"].splitlines() and (op not in ("conflicted", "am") or _ND_LINE in g["said"].splitlines()))
 _RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and `post-merge` run"),
            ("conflicted", "a merge, conflicted and finished with `git commit` — at its resolving commit `pre-commit`, `prepare-commit-msg` and `commit-msg` run"),
            ("cherry-pick", "a cherry-pick — it runs only `prepare-commit-msg`"), ("revert", "a revert — it runs only `prepare-commit-msg`"),
@@ -2322,7 +2399,7 @@ _RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and 
 for op_, what_ in _RV_OPS:
     g_ = _rv_op(op_)
     check(f"FM-006 · a private security report · RV-2300 · {what_}: it brings a changed tool and a changed deriver, and nothing of the tree runs, no hook writes the copy"
-          + ", and the hooks that run judge with the copy and say it differs" + (", the changed deriver skipped with its line" if op_ in ("conflicted", "am") else "")
+          + ", and the hooks that run judge with the copy and say it differs" + (", the commit's hook saying it starts no deriver" if op_ in ("conflicted", "am") else "")
           + f" (saw exit {g_['code']}, tool ran {g_['tool']}, deriver ran {g_['deriver']}, copy unchanged {g_['copy_same']})", _rv_op_ok(g_, op_))
     if not _HAVE_RV:
         continue
@@ -2404,10 +2481,10 @@ _help_ = re.sub(r"\s+", " ", _help_)
 _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
 _NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
                   "`svn update`: run `--html-only` to rebuild it.")
-check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, and the deriver only as "
-      "accepted (RV-2300); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer says the same day, and the player stats keep theirs",
-      "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, and runs the repository's deriver only as `--install-hook` "
-      "last accepted it; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
+check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer says the same day, and the player stats keep theirs",
+      "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
+      "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
       and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
       and 'v0.19.0, released 2 October 2026 — shoalmark 0.19.0 is the first public beta' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
       and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html"))
@@ -2420,12 +2497,13 @@ check("FM-006 · a private security report · the README's hooks section says in
 check("FM-006 · a private security report · the README and `--help` name the copy: where it is kept, who writes it, what it runs, and that `--install-hook` is run on the default branch and again after an upgrade",
       "`shoalmark-trusted/`" in _rd("README.md") and "run `--install-hook` on your default branch, and again after upgrading" in _readme_ and "a copy of the tool kept in the git directory" in _rd("README.md")
       and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_ and "from the copy of the tool kept in the git directory" in _help_)
-check("FM-006 · a private security report · RV-2300 · the README's hooks section and `--help` say every hook runs the copy — the commit's hooks too, failing closed — that a hook runs the deriver only as "
-      "`--install-hook` last accepted it, and that developing the tool means installing the branch's copy deliberately; neither says a commit's hook runs the working tree's tool",
+check("FM-006 · a private security report · RV-2300 · the README's hooks section and `--help` say every hook runs the copy — the commit's hooks too, failing closed — that no hook runs the deriver and a hooks "
+      "folder inside the working tree is refused (No deriver in hooks), and that developing the tool means installing the branch's copy deliberately; neither says a commit's hook runs the working tree's tool",
       "`--install-hook` writes six hooks, and every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
-      and "A hook runs the repository's deriver only as `--install-hook` last accepted it" in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
+      and "No hook runs the repository's deriver" in _readme_ and "`--install-hook` refuses a hooks folder inside the working tree" in _readme_ and "(`SHOALMARK_BOARD_SECONDS` gives it longer)" in _readme_
+      and "last accepted it" not in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
       and "which run the tool in the working tree" not in _readme_
-      and "every one running a COPY of the tool this keeps in the git directory" in _help_ and "a hook runs the deriver only as this last accepted it" in _help_ and "run the working tree's tool" not in _help_)
+      and "every one running a COPY of the tool this keeps in the git directory" in _help_ and "no hook runs the deriver — explicit runs do" in _help_ and "A hooks folder inside the working tree is refused" in _help_ and "run the working tree's tool" not in _help_)
 check("FM-006 · a private security report · the README's entries for a repository with its own hook runner run the copy with the installed hooks' invocation, say what an entry does where the copy is "
       "missing, and say plainly that a hook runner reads its configuration from the tree, `--install-hook` being the safe default; this repository keeps no `lefthook.yml`",
       all(f"run: python3 -I {fm.COPY_AT} {flag_}" in _rd("README.md") for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))

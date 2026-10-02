@@ -243,8 +243,10 @@ python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git 
 brings: the three that judge a commit — `pre-commit`, `prepare-commit-msg` and `commit-msg` — and the three that refresh the board, `post-checkout`, `post-merge` and `post-rewrite`
 (after a rebase, so `git pull --rebase` with local commits refreshes it too), which run the copy's `--html-only`: it reads the tree and writes the board, and starts nothing but
 read-only git. A commit's hook writes only inside the repository, outside its git directory and through no
-symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 35 seconds, the commit is refused with one line. A hook runs the repository's deriver only
-as `--install-hook` last accepted it: a changed or new deriver is skipped there, with one line, until you run `--install-hook` again. Only `--install-hook` writes the copy — from a pinned
+symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 35 seconds (`SHOALMARK_BOARD_SECONDS` gives it longer), the commit is refused with
+one line. No hook runs the repository's deriver: where there is one, the commit's hook leaves INDEX.md and the files it derives as staged and says so in one line — run the tool
+before committing; CI's `--check`, which runs the deriver, holds them. `--install-hook` refuses a hooks folder inside the working tree — a `core.hooksPath` there, or a symlink into
+it — where a branch could change the hooks themselves, and writes no hook and no copy. Only `--install-hook` writes the copy — from a pinned
 copy that passes its PIN, else from the working tree's tool, and it says which commit and branch — so **run `--install-hook` on your default branch, and again after upgrading**; where the
 tree's tool differs from the copy, a hook still judges with the copy and prints one line that says so. A person, an agent and CI run the repository's own tool, as ever. Developing the
 tool itself means installing the branch's copy deliberately: `--install-hook` on that branch, which warns that the copy carries that branch's tool.

@@ -4332,6 +4332,8 @@ def schema_problems(t):
     for key, value in t["fm"].items():
         if key.startswith("#"):
             continue
+        if key not in FRONT_MATTER and DERIVER_LEFT:          # a hook ran no deriver, so the keys it declares are unknown here: `--check`, which runs it, judges them
+            continue
         if key not in FRONT_MATTER:
             near = difflib.get_close_matches(key.replace("_", "-"), FRONT_MATTER, 1, 0.75) or difflib.get_close_matches(key, FRONT_MATTER, 1, 0.75)
             out.append(f'{t["id"]}: `{key}:` is not a front-matter key' + (f' — did you mean `{near[0]}:`?' if near else '.')
@@ -7248,7 +7250,7 @@ def parse_args(argv):
         help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
              "tracks; its board carries no derived columns. It stands alone, with --root. The checkout and merge hooks run it from the copy of the tool kept in the git directory")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout, post-merge and post-rewrite, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and a hook runs the deriver only as this last accepted it. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout, post-merge and post-rewrite, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
@@ -7349,15 +7351,11 @@ def deriver_env():
 
 
 DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit; one that hangs must not hang the gate
-DERIVER_CHANGED = "the deriver changed: not run; run --install-hook to accept it"      # what a hook says where the tree's deriver is not the one accepted (RV-2300)
-
-
-def deriver_sum(exe):
-    """The sha256 of a deriver as it lies on disk — what `--install-hook` accepts for the hooks, and what a hook's run of the copy compares — or "" where it cannot be read."""
-    try:
-        return hashlib.sha256(pathlib.Path(exe).read_bytes()).hexdigest()
-    except OSError:
-        return ""
+# NO DERIVER IN HOOKS (the Owner's ruling filed in FM-006, *No deriver in hooks*): a hook's run of the copy starts no deriver — a deriver is the tree's own
+# program. Where the repository has one, the commit's hook leaves INDEX.md and the derived files as they are staged, never rewritten without the derived
+# columns, and says so in this line; explicit runs run the deriver, and CI's `--check` holds what it derives.
+DERIVER_HOOK_LINE = "shoalmark: the deriver runs only in explicit runs — INDEX.md and the files it derives are left as staged: run `{cmd}` before committing; CI's `--check` holds them"
+DERIVER_LEFT = False          # a hook's run of the copy found a deriver it does not start (`run_deriver`)
 
 
 def no_derived(trackers):
@@ -7369,21 +7367,20 @@ def no_derived(trackers):
 
 
 def run_deriver(trackers, mode="write", flags=()):
-    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run but `--html-only`'s: nothing
-    derived is stored, so nothing derived can be stale. A hook's run of the copy runs it only where it is the deriver `--install-hook` last
-    accepted (its sha256 in the copy's `COPY`); a changed or new one is skipped there, with one line, and the run goes on as one with no deriver. stdin: every tracker's id, status, file and front matter.
+    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on every explicit run but `--html-only`'s: nothing
+    derived is stored, so nothing derived can be stale. A hook's run of the copy starts none (`DERIVER_LEFT`). stdin: every tracker's id, status, file and front matter.
     stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
     value key becomes a column in INDEX.md and on the board, and a view on the board. `_files: {path: text}` are other
     generated files: the deriver stays free of side effects — the core writes them, reports them under --print-written
     and counts them as drift under --check. A non-zero exit REFUSES the run before anything is written.
     Returns (exit code or None, problems)."""
-    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
+    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
     no_derived(trackers)
     exe = TRACKER_DIR / "derive"
     if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
         return None, []
-    if HOOK_RUN and deriver_sum(exe) != copy_record().get("deriver"):    # a hook runs only the deriver accepted at the last `--install-hook`: a changed or new one is skipped
-        print(DERIVER_CHANGED, file=sys.stderr)
+    if HOOK_RUN:                                            # a hook starts no deriver: the run leaves what it derives as staged (`main`)
+        DERIVER_LEFT = True
         return None, []
     # `mode` — write · check · read.
     # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
@@ -7731,7 +7728,7 @@ HOOKS = {
                   + '{py} -I "$copy" --root "$root" --session-check || exit $?\n'
                   "if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
                   '  written=$({py} -I "$copy" --root "$root" --print-written) || exit $?\n'
-                  "  printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
+                  "  [ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
                           + 'exec {py} -I "$copy" --root "$root" --session-trailer "$1" "$2"\n',
     "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
@@ -7818,8 +7815,7 @@ def install_copy():
     and only from this copy of the tool where it is a pinned one whose files pass their checksum (`pin_problems`, and each file's own hash, read once and written as read);
     where there is no pin — the tool runs from the repository's root, or from outside it — from the working tree's tool, and the first line says so. It also says which
     commit and branch it was taken from, and warns, without refusing, where that is not the default branch: the PIN it was checked against comes from the same tree, so a
-    copy installed from another branch carries that branch's tool. Beside it, `COPY` records the command it was run with and the sha256 of the tree's deriver as it
-    is now: the one deriver a hook runs."""
+    copy installed from another branch carries that branch's tool. Beside it, `COPY` records the command it was run with, for the copy's messages."""
     out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-common-dir"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode:
         return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
@@ -7841,8 +7837,6 @@ def install_copy():
         files[rel] = data
     if not pin.exists():
         lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
-    exe = TRACKER_DIR / "derive"                            # the deriver the hooks may run: this one, as it is now — a changed or new one is skipped in hooks until it is accepted here
-    accepted = deriver_sum(exe) if exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK)) else ""
     here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
     sha = (git_out("rev-parse", "--short", "HEAD") or "").strip() or "no commit yet"
     branch = (git_out("branch", "--show-current") or "").strip()
@@ -7854,20 +7848,19 @@ def install_copy():
         (stage / rel).write_bytes(data)
     put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by every hook it writes, and by nothing else\n"
         f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n"
-        f"cmd: {CMD_OWN}\nderiver: {accepted or 'none'}\n")
+        f"cmd: {CMD_OWN}\n")
     if target.is_symlink():
         target.unlink()
     shutil.rmtree(target, ignore_errors=True)
     os.replace(stage, target)
     lines.append(f"wrote {target} — the hooks' copy of the tool, {__version__}, from {HERE / 'shoalmark.py'} at {sha} on {branch or '(detached HEAD)'}")
-    if accepted:
-        lines.append(f"accepted {os.path.relpath(exe, ROOT).replace(os.sep, '/')} for the hooks — sha256 {accepted[:12]}: a hook runs it only while it is this one")
+    same_tree = "the PIN this copy was checked against comes from the same tree, so " if pin.exists() else ""     # a PIN is named only where one is pinned
     if default is None:
-        lines.append(f"warning: the default branch cannot be told here (no origin/HEAD, origin/main or origin/master) — the PIN this copy was checked against comes from the same tree, "
-                     f"so a copy installed from a branch that is not the default one carries that branch's tool: run --install-hook on your default branch")
+        lines.append(f"warning: the default branch cannot be told here (no origin/HEAD, origin/main or origin/master) — {same_tree}"
+                     f"a copy installed from a branch that is not the default one carries that branch's tool: run --install-hook on your default branch")
     elif branch != default:
-        lines.append(f"warning: {branch or '(detached HEAD)'} is not {default}, the default branch — the PIN this copy was checked against comes from the same tree, "
-                     f"so a copy installed from another branch carries that branch's tool: run --install-hook on {default}")
+        lines.append(f"warning: {branch or '(detached HEAD)'} is not {default}, the default branch — {same_tree}"
+                     f"a copy installed from another branch carries that branch's tool: run --install-hook on {default}")
     return EXIT_OK, lines
 
 
@@ -7935,6 +7928,36 @@ def hooks_copy_drift():
     return ""
 
 
+def worktree_tops():
+    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved."""
+    tops = {os.path.realpath(ROOT)}
+    for line in (git_out("worktree", "list", "--porcelain") or "").splitlines():
+        if line.startswith("worktree "):
+            tops.add(os.path.realpath(line[len("worktree "):]))
+    return sorted(tops)
+
+
+def hooks_folder_problem(hooks):
+    """Why `--install-hook` writes nothing into the hooks folder git reads, in one line — or "": it resolves, symlinks resolved, inside a working tree of this
+    repository and outside its git directory, so a branch can change the hooks themselves. It is judged against EVERY working tree `git worktree list` names,
+    the main one and each linked one: a relative `core.hooksPath` is read where each of them resolves it — a hook runs in the working tree of whichever
+    worktree it runs in — and an absolute one as it is; with none set, the folder is the common git directory's `hooks`, which passes. `hooks` is that
+    folder as this worktree resolves it."""
+    tops = worktree_tops()
+    said = (git_out("config", "--path", "--get", "core.hooksPath") or "").strip()
+    seen = [hooks] if not said or os.path.isabs(said) else [os.path.join(top, said) for top in tops]
+    for where in seen:
+        real = os.path.normcase(os.path.realpath(where))
+        if in_git_dir(real):
+            continue
+        for top in tops:
+            top = os.path.normcase(top)
+            if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
+                return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
+                        f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
+    return ""
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
@@ -7945,6 +7968,10 @@ def install_hook():
         print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT
     hooks = (ROOT / out.stdout.strip()).resolve()
+    refused = hooks_folder_problem(hooks)
+    if refused:                                             # a hooks folder a branch can change runs what the branch names: no hook, and no copy
+        print(refused, file=sys.stderr)
+        return EXIT_LINT
     hooks.mkdir(parents=True, exist_ok=True)
     fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT).as_posix(), config=CONFIG_NAME,
                 tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
@@ -8184,7 +8211,7 @@ def board_watchdog(board=True):
     and ends the process, exit 4, whatever the main thread waits on — a lock, a child, a pipe. A checkout or a merge hook prints one line and returns, so they never wait on
     it; a commit's hook (`board` false) fails closed: its one line says the commit is refused, and the hook's exit refuses it."""
     said = (f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped" if board
-            else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused")
+            else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer")
     def stop():
         os.write(2, (said + "\n").encode("utf-8"))
         os._exit(EXIT_LINT)
@@ -8395,14 +8422,18 @@ def main(argv=None):
             print(refused, file=sys.stderr)
             return EXIT_LINT
         try:
-            put(OUT, body)
+            if DERIVER_LEFT:                                        # a hook ran no deriver: INDEX.md and what it derives stay as staged, never rewritten without its columns
+                print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
+            else:
+                put(OUT, body)
             board_write(HTML_OUT, render_html(trackers))   # git-ignored; never staged
             write_views(trackers)
-            print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
-            print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
+            if not DERIVER_LEFT:
+                print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
+                print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
             if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
                 print(board_link())
-            for path, text in sorted(DERIVED_FILES.items()):
+            for path, text in sorted(DERIVED_FILES.items()):        # none where a hook ran no deriver
                 guard_write(path)                                   # before its folder is made
                 path.parent.mkdir(parents=True, exist_ok=True)
                 put(path, text)
@@ -8412,7 +8443,7 @@ def main(argv=None):
         if SAFE_WRITES and BOARD_LEFT:
             shown = ", ".join(f"{rel} ({why})" for rel, why in BOARD_LEFT[:4]) + (f" and {len(BOARD_LEFT) - 4} more" if len(BOARD_LEFT) > 4 else "")
             print(f"board: left alone — {shown}", file=sys.stderr)
-        if args.print_written:                 # the caller stages what we OWN, never a guessed glob
+        if args.print_written and not DERIVER_LEFT:     # the caller stages what we OWN, never a guessed glob — nothing where a hook ran no deriver
             for path in [OUT, *sorted(DERIVED_FILES)]:
                 print(path.relative_to(ROOT).as_posix())
 
