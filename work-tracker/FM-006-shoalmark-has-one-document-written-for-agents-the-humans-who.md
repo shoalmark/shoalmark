@@ -702,6 +702,23 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       review by another model family and an outside check the Owner arranges, on 2026-10-02 from 07:00; then the notes'
       checksum, last, the full local run, CI 9/9, the merge and the tag. The scope is frozen: nothing new joins this
       build unless it is a security finding in this change; everything else goes to 0.19.1.
+    - *RV-2300, fixed in this build* (the Owner's ruling, 2026-10-02, night, on the final review's finding): one rule —
+      no hook shoalmark installs runs anything the tree brought. It replaces the design's last sentence and *This
+      repository* above. Every hook shoalmark installs runs the trusted copy: `pre-commit`, `prepare-commit-msg` and
+      `commit-msg` as well as `post-checkout` and `post-merge`; no hook runs the tree's tool. A hook runs the tree's
+      deriver only if it equals the one accepted at the last `--install-hook`, whose checksum is recorded with the copy;
+      a changed or new deriver is skipped in hooks, with one line: “the deriver changed: not run; run --install-hook to
+      accept it”. Where the tree's tool differs from the copy, the hook judges with the copy and prints the drift line.
+      Explicit runs — a person, an agent, CI — run the tree's tool as today. This repository: lefthook's `pre-commit`,
+      `prepare-commit-msg` and `commit-msg` are replaced by shoalmark's own installed hooks, because lefthook reads
+      `lefthook.yml` from the merged tree; developing the tool means installing the branch's copy deliberately, with its
+      warning. Tests, each in a throwaway repository with the copy installed: a merge (clean and conflicted), a
+      cherry-pick, a revert, a rebase and `git am`, each bringing a changed tool and a changed deriver — nothing from the
+      tree runs, and no hook writes the copy; an accepted deriver runs, and a changed one is skipped with its line. Texts:
+      the README's hooks section, the CHANGELOG's line for the private security report, and the notes' way back where it
+      changes. Then the final review at critical tier of the whole change, the cold review and the Owner's outside check,
+      the notes' checksum last, the full local run, CI 9/9, the merge and the tag — the tag waits for the reviews, not for
+      09:00.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
