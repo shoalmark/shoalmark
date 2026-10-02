@@ -53,6 +53,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 # a second time here is what let 0.17.1 and 0.17.2 ship with a stale constant, silencing the changelog (FM-009).
 __version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else "unknown"
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
+# THE HOOKS' COPY (a private security report): every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which `--install-hook` alone writes,
+# with its `COPY` file beside it. A run of that copy is a hook's run: it runs nothing the tree brought, and writes only inside the repository, through no symlink.
+HOOK_RUN = __name__ == "__main__" and (HERE / "COPY").is_file()
 # how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
 # second screen (a repository with its own page overrides the label `answer.sign.url`)
 SIGNING_PAGE = "https://shoalmark.github.io/shoalmark/signing.html"
@@ -168,9 +171,22 @@ def vcs():
     return ""
 
 
+def guard_write(path):
+    """In a hook's run of the copy, or the board's run: refuse to write `path` where `write_problem` finds a reason — `ReadOnlyRun`, which the run says in one line."""
+    why = write_problem(path) if SAFE_WRITES else ""
+    if why:
+        raise ReadOnlyRun(f"it would write {os.path.relpath(path, ROOT).replace(os.sep, '/') if in_tree(path) else path}, {why}")
+
+
 def put(path, text):
     """Every file the tool writes is UTF-8 with `\\n` line ends on every system — what is committed must not depend on
-    who ran the tool."""
+    who ran the tool. In a hook's run of the copy, a file is written only where `write_problem` finds no reason, and never through a symlink."""
+    if SAFE_WRITES:
+        guard_write(path)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        return
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
 
@@ -180,6 +196,7 @@ def put(path, text):
 # writes only the board's files. Each is checked where the file is read or written, and `board_tripwire` refuses at the interpreter
 # whatever else a path of the tool might reach.
 SAFE_READS = False        # on for the board's run: a file in the tree is read only if it is a regular file inside the repository, reached through no symlink
+SAFE_WRITES = False       # on for the board's run and every hook's run of the copy: a file is written only inside the repository, outside its git directory, through no symlink
 _TRIPWIRE = False         # on for the board's run: nothing is started, written or imported but what the run is for
 _TEMP = ""                # the system's temporary directory, read before the tripwire is armed: the hook must not ask `tempfile` for it (see `arm_tripwire`)
 _IN_TRIPWIRE = [False]    # the hook is not judged by itself
@@ -205,6 +222,40 @@ def in_tree(path):
 def real_inside(path):
     """Whether `path` lies inside the repository and is reached through no symlink or junction: the path as written is the path it resolves to."""
     return in_tree(path) and os.path.normcase(os.path.realpath(_norm(path))) == _norm(path)
+
+
+_GIT_DIRS = None
+
+
+def git_dirs():
+    """The repository's git directories — its own and the common one, which holds the hooks' copy — read once per run with one read-only call,
+    and `.git` at the root whatever git says."""
+    global _GIT_DIRS
+    if _GIT_DIRS is None:
+        out = subprocess.run(["git", "rev-parse", "--absolute-git-dir", "--git-common-dir"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", env=nested_git_env())
+        _GIT_DIRS = sorted({_norm(ROOT / ".git"), *(_norm(ROOT / l) for l in (out.stdout.splitlines() if out.returncode == 0 else []) if l.strip())})
+    return _GIT_DIRS
+
+
+def in_git_dir(path):
+    """Whether `path`, as written or as it resolves, lies inside one of the repository's git directories."""
+    ps = {_norm(path), os.path.normcase(os.path.realpath(_norm(path)))}
+    return any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for p in ps for d in git_dirs())
+
+
+def write_problem(path):
+    """Why a hook's run of the copy, or the board's run, does not write `path`, or "": it lies outside the repository or inside its git directory —
+    where the hooks and their copy are — is reached through a symlink, or is no regular file."""
+    if not in_tree(path):
+        return "outside the repository"
+    if in_git_dir(path):
+        return "inside the git directory"
+    if not real_inside(path):
+        return "a symlink, or reached through one"
+    if os.path.lexists(path) and not os.path.isfile(path):
+        return "not a regular file"
+    return ""
 
 
 def left_alone(path, why):
@@ -234,16 +285,19 @@ def board_text(path):
     return path.read_text(encoding="utf-8") if path.exists() else None
 
 
-def tracker_folder_problem():
-    """Why the board's run does not touch the tracker folder, in one line — or "": it must resolve inside the repository, and the way to it is no symlink."""
+def tracker_folder_problem(what="the board is not refreshed"):
+    """Why the board's run, or a hook's run of the copy, does not touch the tracker folder, in one line ending in `what` — or "": it must resolve inside the
+    repository and outside its git directory, and the way to it is no symlink."""
     d = TRACKER_DIR
     if not in_tree(d):
-        return f"the tracker folder {os.path.abspath(d)} is not inside the repository {ROOT} — the board is not refreshed"
+        return f"the tracker folder {os.path.abspath(d)} is not inside the repository {ROOT} — {what}"
     real = pathlib.Path(os.path.realpath(_norm(d)))
     if not in_tree(real):
-        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — the board is not refreshed"
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — {what}"
+    if in_git_dir(d):
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the git directory, where the hooks and their copy are — {what}"
     if not real_inside(d):
-        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — the board is not refreshed"
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — {what}"
     return ""
 
 
@@ -265,28 +319,28 @@ def tracked_board_files():
 
 
 def unwritable(path):
-    """Why the board's run does not write `path`, or "": it is reached through a symlink, is no regular file, or git tracks it."""
-    if not real_inside(path):
-        return "a symlink, or reached through one"
-    if os.path.lexists(path) and not os.path.isfile(path):
-        return "not a regular file"
-    if _norm(path) in tracked_board_files():
+    """Why the board's run, or a hook's run of the copy, does not write one of the board's files, or "": `write_problem`'s reason — and, in the board's run, that git
+    tracks it (a commit's hook rewrites a board a repository tracks, as it always has)."""
+    why = write_problem(path)
+    if why:
+        return why
+    if SAFE_READS and _norm(path) in tracked_board_files():
         return "git tracks it"
     return ""
 
 
 def board_write(path, text, changed_only=False):
-    """Write one of the board's files: with `put`, as ever; in the board's run only where `unwritable` finds no reason, and never through a symlink.
-    `changed_only`: leave a file that already says this. Returns whether it wrote."""
+    """Write one of the board's files: with `put`, as ever; in the board's run and a hook's run of the copy only where `unwritable` finds no reason, and
+    never through a symlink. `changed_only`: leave a file that already says this. Returns whether it wrote."""
     path = pathlib.Path(path)
-    if SAFE_READS:
+    if SAFE_WRITES:
         why = unwritable(path)
         if why:
             left_alone(path, why)
             return False
     if changed_only and path.exists() and path.read_text(encoding="utf-8") == text:
         return False
-    if not SAFE_READS:
+    if not SAFE_WRITES:
         put(path, text)
         return True
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
@@ -507,6 +561,8 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    global _GIT_DIRS
+    _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -530,11 +586,14 @@ def configure(root=None):
     H1_ID_RE = re.compile(rf"^#\s+[*_~`]*((?:{alt})-\d+)\b")
     ROW_ID_RE = re.compile(rf"^\| \[((?:{alt})-\d+)\]")
     TRACKER_LINK_RE = re.compile(rf"\]\(((?:{alt})-\d+-[a-z0-9-]+\.md)\)")
+    global CMD_OWN
     try:
-        CMD = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
+        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
     except ValueError:
-        CMD = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
-    CMD = os.environ.get("SHOALMARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
+        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
+    if HOOK_RUN:                                        # the hooks' copy names the command a person runs — the one `--install-hook` was run with — never its own place
+        CMD_OWN = copy_record().get("cmd") or CMD_OWN
+    CMD = os.environ.get("SHOALMARK_CMD") or CMD_OWN    # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
 
@@ -3740,7 +3799,7 @@ def write_views(trackers):
     them, not the newest alone: the relation `recover_relations` read from that answer's commit, under `**answered** —`
     where a record from 0.18.1 on carries its own, naming that commit — or *relation not computable* (FM-029: every
     reading prints the relation)."""
-    if SAFE_READS and os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+    if SAFE_WRITES and os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
         left_alone(VIEW_DIR, "a symlink, or not a directory")        # the board's run writes no view through a symlink or over a file
         return
     VIEW_DIR.mkdir(exist_ok=True)
@@ -3760,7 +3819,7 @@ def write_views(trackers):
         keep.add(out.name)
         board_write(out, text, changed_only=True)
     for stray in VIEW_DIR.glob("*.js"):
-        if stray.name not in keep and not (SAFE_READS and unwritable(stray)):       # a stray the board's run may not write is left where it is
+        if stray.name not in keep and not (SAFE_WRITES and unwritable(stray)):      # a stray the board's run may not write is left where it is
             stray.unlink()
 
 
@@ -7350,7 +7409,7 @@ def run_deriver(trackers, mode="write", flags=()):
     INDEX_COLUMNS = [c for c in (said.get("_index") or DERIVED_COLUMNS) if c in DERIVED_COLUMNS]
     BOARD_COLUMNS = [c for c in (said.get("_board") or DERIVED_COLUMNS) if c in DERIVED_COLUMNS]
     for rel, text in (said.get("_files") or {}).items():
-        path = (ROOT / rel).resolve()
+        path = pathlib.Path(os.path.abspath(ROOT / rel)) if SAFE_WRITES else (ROOT / rel).resolve()      # a hook's run of the copy judges the path as written: `write_problem`
         if ROOT not in path.parents:
             return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()}: `_files` names {rel} — outside the repository"]
         DERIVED_FILES[path] = str(text)
@@ -7366,21 +7425,25 @@ TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE
 
 def pin_problems():
     """A vendored copy carries a PIN — `sha256  path` per file. A copy that was edited in place is refused by the
-    gate: fix it upstream and vendor again, so two repositories never run two tools under one name."""
-    pin = HERE / "PIN"
-    here = str(HERE.relative_to(ROOT).as_posix()) if ROOT in HERE.parents else str(HERE)
+    gate: fix it upstream and vendor again, so two repositories never run two tools under one name. The hooks' copy judges the
+    repository's own tool (`tool_here`), not itself."""
+    tool = tool_here()
+    if tool is None:
+        return []
+    pin = tool / "PIN"
+    here = str(tool.relative_to(ROOT).as_posix()) if ROOT in tool.parents else str(tool)
     if not pin.exists():
         # the tool sitting INSIDE the repository it tracks, and not at its root, is a vendored copy — and a vendored
         # copy without its PIN has had its integrity check switched off, silently
-        return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in HERE.parents else []
+        return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in tool.parents else []
     out = []
     for line in pin.read_text(encoding="utf-8").splitlines():
         if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
             continue
         want, _, rel = line.partition("  ")
-        if rel and not (HERE / rel).exists():               # the working tree lacks it — the checkout's finding (FM-034)
+        if rel and not (tool / rel).exists():               # the working tree lacks it — the checkout's finding (FM-034)
             out.append(f"{here}/{rel}: the PIN names it, and {CHECKOUT_MARKS[1]} — restore it from git, or run --vendor again")
-        elif rel and digest(HERE / rel) != want:
+        elif rel and digest(tool / rel) != want:
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
@@ -7638,30 +7701,37 @@ hook: "{title}"
 
 HOOK_MARK = "# shoalmark"
 LEGACY_HOOK_MARK = "# fathom-mark"          # the name until 0.6.0 — a hook it wrote is still ours to rewrite
+# THE HOOKS RUN THE COPY (a private security report): every hook `--install-hook` writes runs the copy of the tool kept in the common git directory — shared by
+# every worktree, outside every working tree, written only by `--install-hook` — against the worktree it runs in, and never the tool a branch brings. The commit's
+# hooks fail closed: no copy, a refusal or the copy's bound, and the commit is refused with one line. The checkout and merge hooks never block: they run the copy's
+# read-only `--html-only` and always exit 0, with one line where the refresh failed. A person, an agent and CI run the repository's own tool, as ever.
+COPY_DIR = "shoalmark-trusted"
+COPY_AT = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --root "$(git rev-parse --show-toplevel)"'      # the copy, against this worktree — after the interpreter and `-I`
+COPY_RUN = COPY_AT + " --html-only"
+_COPY_FIND = 'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
+_COPY_SAYS = ("# It runs the copy of the tool kept in the git directory, which only `--install-hook` writes — never the tool a branch brings; the commit is refused\n"
+              "# with one line where the copy is not there, refuses it, or does not finish within its bound.\n")
+_COPY_GONE = ('if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the commit is refused — the hooks\' copy of the tool is not in the git directory: run --install-hook" >&2\n'
+              '  exit 1\nfi\n')
 HOOKS = {
-    "pre-commit": """#!/bin/sh
-{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
-{cmd} --session-check || exit $?
-if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^"?({dir}/.*\\.md|{config}|{tool}/)'; then
-  written=$({cmd} --print-written) || exit $?
-  printf '%s\\n' "$written" | git add --pathspec-from-file=-
-fi
-""",
-    "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
-    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033)\n{cmd} --commit-msg \"$1\"\n",
+    "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
+                  + '{py} -I "$copy" --root "$root" --session-check || exit $?\n'
+                  "if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
+                  '  written=$({py} -I "$copy" --root "$root" --print-written) || exit $?\n'
+                  "  printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
+    "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
+                          + 'exec {py} -I "$copy" --root "$root" --session-trailer "$1" "$2"\n',
+    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
+                  + 'exec {py} -I "$copy" --root "$root" --commit-msg "$1"\n',
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
-# THE TRUSTED COPY (a private security report): the hooks that run after a checkout and a merge run a copy of the tool kept in the common git directory —
-# shared by every worktree, outside every working tree, written only by `--install-hook` — and never the tool a branch brings. The copy runs `--html-only`:
-# it reads the tree and writes the board, and starts nothing the tree brings. The hooks never block: they always exit 0, with one line where the refresh failed.
-COPY_DIR = "shoalmark-trusted"
-COPY_RUN = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --html-only'      # what a hook that is not ours adds, after the interpreter
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
+              "post-checkout": "--html-only", "post-merge": "--html-only"}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
 COPY_HOOKS = {
     name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
           "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
-          'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
+          + _COPY_FIND +
           'if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the board is not refreshed — the hooks\' copy of the tool is not in the git directory: run --install-hook"\n  exit 0\nfi\n'
           'out=$({py} -I "$copy" --root "$root" --html-only 2>&1)\ncode=$?\n'
           'if [ "$code" -eq 0 ]; then\n  printf \'%s\\n\' "$out"\nelse\n  echo "shoalmark: the board is not refreshed (exit $code): $(printf \'%s\' "$out" | tail -n 1)"\nfi\nexit 0\n'
@@ -7743,7 +7813,7 @@ def install_copy():
     pin, lines = HERE / "PIN", []
     problems = pin_problems()
     if problems:
-        return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {problems[0]}", "  vendor the tool again (--vendor), then run --install-hook; the checkout and merge hooks are not written"]
+        return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {problems[0]}", "  vendor the tool again (--vendor), then run --install-hook; no hook is written"]
     pins = {rel: want for want, _, rel in (l.partition("  ") for l in pin.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#"))} if pin.exists() else {}
     files = {}
     for rel in copy_files():
@@ -7766,8 +7836,9 @@ def install_copy():
     for rel, data in files.items():
         (stage / rel).parent.mkdir(parents=True, exist_ok=True)
         (stage / rel).write_bytes(data)
-    put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by the checkout and merge hooks, and by nothing else\n"
-        f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n")
+    put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by every hook it writes, and by nothing else\n"
+        f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n"
+        f"cmd: {CMD_OWN}\n")
     if target.is_symlink():
         target.unlink()
     shutil.rmtree(target, ignore_errors=True)
@@ -7782,23 +7853,68 @@ def install_copy():
     return EXIT_OK, lines
 
 
-def hooks_copy_drift():
-    """Where this run IS the hooks' copy (its `COPY` file is beside it): the one line that says the repository pins another version than the copy's own — read as data, from the
-    PIN's manifest or the VERSION of the tool the copy was taken from — else ""."""
-    marker = HERE / "COPY"
-    if not marker.is_file():
-        return ""
-    made = read_flat(marker.read_text(encoding="utf-8"))
-    tool = made.get("tool", "-")
+_COPY_RECORD = None
+
+
+def copy_record():
+    """What `--install-hook` wrote beside the hooks' copy — its `COPY` file, read once, as data: {} where this run is not the copy. A value that is not one
+    printable line is no value."""
+    global _COPY_RECORD
+    if _COPY_RECORD is None:
+        marker = HERE / "COPY"
+        try:
+            made = read_flat(marker.read_text(encoding="utf-8")) if marker.is_file() else {}
+        except (OSError, UnicodeDecodeError):
+            made = {}
+        _COPY_RECORD = {k: v for k, v in made.items() if isinstance(v, str) and len(v) < 400 and v.isprintable()}
+    return _COPY_RECORD
+
+
+def tree_tool_dir():
+    """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says — or None where that was outside
+    the repository, or is not said."""
+    tool = copy_record().get("tool", "-")
     if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
+        return None
+    return ROOT / tool if tool else ROOT
+
+
+def tool_here():
+    """Where the repository's own tool is, for its PIN: this file's folder — in the hooks' copy, the tree's tool's (`tree_tool_dir`)."""
+    return tree_tool_dir() if HOOK_RUN else HERE
+
+
+def tree_bytes(path):
+    """A file of the tree as bytes, `\\r\\n` read as `\\n` — or None where it is not there, or, in the board's run, not a regular file inside the repository."""
+    path = pathlib.Path(path)
+    if not board_isfile(path):
+        return None
+    try:
+        return path.read_bytes().replace(b"\r\n", b"\n")
+    except OSError:
+        return None
+
+
+def hooks_copy_drift():
+    """Where this run IS the hooks' copy (its `COPY` file is beside it): the one line that says the repository's own tool is not the copy — another version, read as
+    data from the PIN's manifest or the VERSION of the tool the copy was taken from; or the same version with other files — else "". Where the tree holds no
+    `shoalmark.py` there, there is nothing to compare."""
+    if not (HERE / "COPY").is_file():
         return ""
-    pin, version = board_text(ROOT / tool / "PIN"), board_text(ROOT / tool / "VERSION")
+    tool = tree_tool_dir()
+    if tool is None:
+        return ""
+    pin, version = board_text(tool / "PIN"), board_text(tool / "VERSION")
     first = (pin or "").splitlines()[0] if pin else ""
     manifest = MANIFEST_RE.fullmatch(first)
     pinned = manifest.group(1) if manifest else (version or "").strip()
-    if not re.fullmatch(r"\d+\.\d+\.\d+", pinned) or pinned == __version__:
+    if re.fullmatch(r"\d+\.\d+\.\d+", pinned) and pinned != __version__:
+        return f"the hooks' copy is {__version__}, the repository pins {pinned}: run --install-hook"
+    if tree_bytes(tool / "shoalmark.py") is None:
         return ""
-    return f"the hooks' copy is {__version__}, the repository pins {pinned}: run --install-hook"
+    if any(tree_bytes(tool / rel) != (HERE / rel).read_bytes().replace(b"\r\n", b"\n") for rel in copy_files()):
+        return f"the hooks' copy is {__version__}, and the repository's tool differs from it: run --install-hook"
+    return ""
 
 
 def install_hook():
@@ -7816,11 +7932,11 @@ def install_hook():
                 tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
     code = EXIT_OK
     copy_code, copy_lines = install_copy()
-    hook_set = {**HOOKS, **({name: text for name, text in COPY_HOOKS.items()} if copy_code == EXIT_OK else {})}      # the checkout and merge hooks only where their copy is there
+    hook_set = {**HOOKS, **COPY_HOOKS} if copy_code == EXIT_OK else {}      # every hook runs the copy: none is written where it is not there
     for name, text in hook_set.items():
         path = hooks / name
         if path.exists() and not any(m in path.read_text(encoding="utf-8", errors="replace") for m in (HOOK_MARK, LEGACY_HOOK_MARK)):
-            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{PY + ' -I ' + COPY_RUN if name in COPY_HOOKS else CMD + ' ' + HOOK_LINES.get(name, '--html-only')}`", file=sys.stderr)
+            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{PY} -I {COPY_AT} {HOOK_LINES[name]}`", file=sys.stderr)
             code = EXIT_LINT
             continue
         put(path, text.format(py=PY, **fill))
@@ -8000,9 +8116,9 @@ def board_run(root):
     - the tracker folder must resolve inside the repository, and the board is written only there, never through a symlink and never over a file git tracks;
     - it imports nothing from the repository, and writes no bytecode.
     What it leaves alone it names, in one line — and where that is the page itself, it prints that line and no link; a tracker folder it refuses, in one line, exit 4."""
-    global SAFE_READS, _TRIPWIRE, _TRACKED
-    saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"))
-    SAFE_READS, _TRACKED = True, None
+    global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED
+    saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"), SAFE_WRITES)
+    SAFE_READS, SAFE_WRITES, _TRACKED = True, True, None
     BOARD_LEFT.clear(), TRIPPED.clear()
     sys.dont_write_bytecode = True
     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
@@ -8030,6 +8146,7 @@ def board_run(root):
         return EXIT_LINT
     finally:
         _TRIPWIRE = SAFE_READS = False
+        SAFE_WRITES = saved[3]
         sys.dont_write_bytecode, sys.path[:] = saved[0], saved[1]
         if saved[2] is None:
             os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
@@ -8041,14 +8158,17 @@ def board_run(root):
 
 
 _AUDIT_HOOKED = [False]
-BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 35)      # how long the board's run, as a program, may take: a checkout or a merge never waits longer for it
+BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 35)      # how long the board's run, or any hook's run of the copy, may take: nothing waits longer for it
 
 
-def board_watchdog():
-    """Bound the board's run when it is a program (a hook's, a hand run's): after `BOARD_RUN_SECONDS` a thread of its own says so on stderr and ends the process, whatever the main thread
-    waits on — a lock, a child, a pipe — so the hook that started it prints one line and returns, and the checkout or merge it came from never waits on it."""
+def board_watchdog(board=True):
+    """Bound the board's run when it is a program (a hook's, a hand run's), and every hook's run of the copy: after `BOARD_RUN_SECONDS` a thread of its own says so on stderr
+    and ends the process, exit 4, whatever the main thread waits on — a lock, a child, a pipe. A checkout or a merge hook prints one line and returns, so they never wait on
+    it; a commit's hook (`board` false) fails closed: its one line says the commit is refused, and the hook's exit refuses it."""
+    said = (f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped" if board
+            else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused")
     def stop():
-        os.write(2, f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped\n".encode("utf-8"))
+        os.write(2, (said + "\n").encode("utf-8"))
         os._exit(EXIT_LINT)
     timer = threading.Timer(BOARD_RUN_SECONDS, stop)
     timer.daemon = True
@@ -8080,6 +8200,13 @@ def main(argv=None):
         args = parse_args(["--root", str(ROOT)] + ([] if args.tsvn_hook[0] == "start" else ["--check"]))
     if args.root:
         configure(args.root)
+    if HOOK_RUN:                                            # a hook's run of the copy writes only inside the repository, outside its git directory, through no symlink
+        global SAFE_WRITES
+        SAFE_WRITES = True
+        os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts a program from the current directory first, and the checkout's is the branch's
+        drift = "" if args.print_written else hooks_copy_drift()        # once per hook: the pre-commit hook says it with --session-check, before --print-written
+        if drift:
+            print(drift, file=sys.stderr)
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
@@ -8245,16 +8372,28 @@ def main(argv=None):
         elif freeze_unpassable():
             print(freeze_unpassable(), file=log)
     else:
-        put(OUT, body)
-        put(HTML_OUT, render_html(trackers))   # git-ignored; never staged
-        write_views(trackers)
-        print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
-        print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
-        if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
-            print(board_link())
-        for path, text in sorted(DERIVED_FILES.items()):
-            path.parent.mkdir(parents=True, exist_ok=True)
-            put(path, text)
+        refused = tracker_folder_problem("nothing is written, and the commit is refused") if SAFE_WRITES else ""
+        if refused:                                             # a hook's run of the copy writes nothing where the tracker folder may lead it out
+            print(refused, file=sys.stderr)
+            return EXIT_LINT
+        try:
+            put(OUT, body)
+            board_write(HTML_OUT, render_html(trackers))   # git-ignored; never staged
+            write_views(trackers)
+            print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
+            print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
+            if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
+                print(board_link())
+            for path, text in sorted(DERIVED_FILES.items()):
+                guard_write(path)                                   # before its folder is made
+                path.parent.mkdir(parents=True, exist_ok=True)
+                put(path, text)
+        except ReadOnlyRun as e:                                    # what a hook's run of the copy will not write refuses the commit, in one line
+            print(f"shoalmark: the hooks' copy stopped: {e} — the commit is refused", file=sys.stderr)
+            return EXIT_LINT
+        if SAFE_WRITES and BOARD_LEFT:
+            shown = ", ".join(f"{rel} ({why})" for rel, why in BOARD_LEFT[:4]) + (f" and {len(BOARD_LEFT) - 4} more" if len(BOARD_LEFT) > 4 else "")
+            print(f"board: left alone — {shown}", file=sys.stderr)
         if args.print_written:                 # the caller stages what we OWN, never a guessed glob
             for path in [OUT, *sorted(DERIVED_FILES)]:
                 print(path.relative_to(ROOT).as_posix())
@@ -8277,8 +8416,8 @@ def main(argv=None):
 
 
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
-if SAFE_READS:
-    board_watchdog()
+if SAFE_READS or HOOK_RUN:
+    board_watchdog(board=SAFE_READS)                                        # the board's run, and every hook's run of the copy, is bounded
 configure()
 SAFE_READS = False
 
