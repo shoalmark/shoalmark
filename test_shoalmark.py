@@ -2271,6 +2271,69 @@ else:
     SKIPS.append(("FM-006 · a private security report · RV-2300 · the deriver's control", 1, f"this clone does not hold {_RV_REV}"))
 fm.configure(HERE)
 
+# --- RV-2300 (a private security report): what a branch brings by every way git brings it — a merge, clean and conflicted, a cherry-pick, a revert, a rebase and `git am` -------
+# Each in a scratch repository with the copy installed and its deriver accepted; the branch brings a changed tool and a changed deriver. Nothing of the tree runs (no marker
+# appears beside the repository) and no hook writes the copy (its hash is as it was). The control is the same operation beside 79be49d's tool.
+def _rv_op(op, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev, deriver="accepted"); base_ = Path(d).resolve()
+        trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        (root / "conflict.txt").write_text("base\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a file both sides change")
+        git(root, "switch", "-q", "-c", "payload")
+        _tree_tool_changed(root, marks); _put_deriver(root, marks, "changed"); _add_tracker(root, "BROUGHT")
+        (root / "conflict.txt").write_text("payload\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the branch: a changed tool and a changed deriver")
+        git(root, "switch", "-q", trunk_)
+        if op in ("merge", "conflicted"):
+            (root / ("conflict.txt" if op == "conflicted" else "trunk.txt")).write_text("trunk\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves on")
+        elif op == "revert":
+            git(root, "merge", "-q", "--ff-only", "payload"); git(root, "revert", "--no-edit", "HEAD")      # the change, then its undoing: reverting the undoing brings it back
+        elif op == "rebase":
+            git(root, "switch", "-q", "-c", "work"); (root / "work.txt").write_text("work\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "work to rebase")
+        h0_, head_ = _copy_hash(root), _head(root)
+        if op == "merge":
+            c_ = _hooked(root, "merge", "--no-ff", "--no-edit", "payload")
+        elif op == "conflicted":
+            stop_ = _hooked(root, "merge", "--no-edit", "payload"); (root / "conflict.txt").write_text("resolved\n", encoding="utf-8"); git(root, "add", "conflict.txt")
+            c_ = _hooked(root, "commit", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, stop_[1] + "\n" + c_[1])
+        elif op == "cherry-pick":
+            c_ = _hooked(root, "cherry-pick", "payload")
+        elif op == "revert":
+            c_ = _hooked(root, "revert", "--no-edit", "HEAD")
+        elif op == "rebase":
+            c_ = _hooked(root, "rebase", "payload")
+        else:
+            patch_ = base_ / "brought.patch"
+            patch_.write_bytes(subprocess.run(["git", "-C", str(root), "format-patch", "-1", "--stdout", "payload"], capture_output=True, env=_ENV).stdout)
+            c_ = _hooked(root, "am", str(patch_))
+        brought_ = (root / "docs/work-tracker/MSR-009-x.md").is_file() and "the tree tool wrote" in (root / "shoalmark.py").read_text(encoding="utf-8")
+        g_ = dict(code=c_[0], said=c_[1], moved=_head(root) != head_, brought=brought_, tool=(marks / "tool").exists(), deriver=(marks / "changed").exists(),
+                  copy_same=_copy_hash(root) == h0_)
+        rm_git(root)
+    return g_
+def _rv_op_ok(g, op):
+    return (g["code"] == 0 and g["moved"] and g["brought"] and not g["tool"] and not g["deriver"] and g["copy_same"]
+            and (op == "am" or _LINE2 in g["said"].splitlines()) and (op != "conflicted" or fm.DERIVER_CHANGED in g["said"].splitlines()))
+_RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and `post-merge` run"), ("conflicted", "a merge, conflicted and finished with `git commit` — `pre-commit`, `prepare-commit-msg` and `commit-msg` run"),
+           ("cherry-pick", "a cherry-pick — `prepare-commit-msg` runs"), ("revert", "a revert — `prepare-commit-msg` runs"), ("rebase", "a rebase — `post-checkout` and `prepare-commit-msg` run"),
+           ("am", "`git am` — it runs none of the five hooks shoalmark writes"))
+for op_, what_ in _RV_OPS:
+    g_ = _rv_op(op_)
+    check(f"FM-006 · a private security report · RV-2300 · {what_}: it brings a changed tool and a changed deriver, and nothing of the tree runs, no hook writes the copy"
+          + ("" if op_ == "am" else ", and the hooks that run judge with the copy and say it differs") + (", the changed deriver skipped with its line" if op_ == "conflicted" else "")
+          + f" (saw exit {g_['code']}, tool ran {g_['tool']}, deriver ran {g_['deriver']}, copy unchanged {g_['copy_same']})", _rv_op_ok(g_, op_))
+    if not _HAVE_RV:
+        continue
+    c_ = _rv_op(op_, _RV_REV)
+    if op_ == "am":
+        check(f"FM-006 · a private security report · RV-2300 · …`git am` beside {_RV_REV}'s tool: it runs none of the hooks there either, so its check holds there too — it is no control "
+              f"(saw tool ran {c_['tool']}, deriver ran {c_['deriver']})", _rv_op_ok(c_, op_))
+    else:
+        check(f"FM-006 · a private security report · RV-2300 · …the control: {op_} beside {_RV_REV}'s tool FAILS — its commit hooks run what the branch brought (saw tool ran {c_['tool']}, "
+              f"deriver ran {c_['deriver']}, copy unchanged {c_['copy_same']})", not _rv_op_ok(c_, op_))
+if not _HAVE_RV:
+    SKIPS.append(("FM-006 · a private security report · RV-2300 · the operations' controls", len(_RV_OPS), f"this clone does not hold {_RV_REV}"))
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
