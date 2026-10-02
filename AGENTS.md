@@ -49,11 +49,11 @@ convention is in [`requirements/README.md`](requirements/README.md); this is Sta
   review* when done. CI checks every non-draft PR revision.
 - **A version is a tag.** `VERSION`, `__version__` and the CHANGELOG section change on the branch; the Owner tags `vX.Y.Z`
   on `main` after the merge. The tag runs CI and builds the documentation site. Consumers vendor from a tag.
-- **Checks:** Python commits run staged-source syntax checks and the focused core suite locally, once on `python3`,
-  with visible output; session, tracker and judgement gates stay. Run focused checks while developing. Both full
-  suites run in the required GitHub matrix for non-draft PRs when opened, updated, reopened or marked ready,
-  and on release tags (manual dispatch remains available).
-  The Owner authorized these PR triggers and the lighter commit hook on 2026-09-29. Say when a tag is due; never create one.
+- **Checks:** commits run shoalmark's own hooks, from the copy of the tool in the git directory: the session, tracker
+  and judgement gates. Before committing Python, run `python3 -m py_compile` on the changed files and
+  `python3 -u test_core.py`. Both full suites run in the required GitHub matrix for non-draft PRs when opened, updated,
+  reopened or marked ready, on release tags, and when dispatched by hand. The Owner authorized these PR triggers on
+  2026-09-29 and these hooks on 2026-10-02. Say when a tag is due; never create one.
 
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
