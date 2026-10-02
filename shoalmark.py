@@ -8081,7 +8081,8 @@ def config_file_problem():
     """Why `--install-hook` writes nothing because of where git reads its configuration from, in one line — or "": a value comes from a file that resolves,
     symlinks resolved, inside a working tree of this repository and outside its git directory (an `include.path` into the tree, say), so a branch can
     change what git runs — a hooks folder, a filter, a program. Read from `git config --list --show-origin` and judged as the hooks folder is: against
-    every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass."""
+    every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass. The target of every include
+    setting is judged the same way (`include_targets`): conditional ones whether or not the condition holds, and whether or not the target exists yet."""
     out = subprocess.run(["git", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     tops = [os.path.normcase(t) for t in worktree_tops()]
     for origin in (out.stdout.split("\0")[0::2] if out.returncode == 0 else []):
@@ -8095,7 +8096,45 @@ def config_file_problem():
         if top:
             return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
                     f"copy is written; keep that setting in .git/config or outside every working tree")
+    for holder, target in include_targets(out.stdout.split("\0") if out.returncode == 0 else []):
+        real = os.path.normcase(os.path.realpath(target))
+        if in_git_dir(real):
+            continue
+        top = next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
+        if top:
+            return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
+                    f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
     return ""
+
+
+INCLUDE_KEY = re.compile(r"include(?:if\..*)?\.path", re.I | re.S)     # `include.path`, and `includeIf.<condition>.path` whatever the condition
+
+
+def include_targets(listing):
+    """Every include setting of git's configuration, as (the file that holds it, or None for the command line; its target). The target is taken as
+    written, whether or not it exists: `~` from the home folder, `%(prefix)/` from git's own, any other relative target from the folder of the file that
+    holds it. A target that is a file is read for its own include settings in turn, whatever its condition. `listing` is `git config --list --show-origin
+    -z` split at its NULs."""
+    at = lambda origin: os.path.join(ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
+    todo = [(at(o), *e.partition("\n")[::2]) for o, e in zip(listing[0::2], listing[1::2])]
+    found, read = [], set()
+    while todo:
+        holder, key, value = todo.pop(0)
+        if not INCLUDE_KEY.fullmatch(key) or not value:
+            continue
+        if value.startswith("%(prefix)/"):
+            target = os.path.join(re.sub(r"[\\/]libexec[\\/]git-core[\\/]*$", "", (git_out("--exec-path") or "").strip()), value[len("%(prefix)/"):])
+        else:
+            target = os.path.expanduser(value)
+            if not os.path.isabs(target):
+                if holder is None:
+                    continue                                # git refuses a relative include that comes from no file
+                target = os.path.join(os.path.dirname(holder), target)
+        found.append((holder, target))
+        if os.path.realpath(target) not in read and os.path.isfile(target):
+            read.add(os.path.realpath(target))
+            todo += [(target, *e.partition("\n")[::2]) for e in (git_out("config", "--file", target, "--no-includes", "--list", "-z") or "").split("\0") if e]
+    return found
 
 
 def install_hook():

@@ -2772,6 +2772,43 @@ else:
     _skipped("FM-006 · a private security report · a folder named `derive` · the control", 1, f"this clone does not hold {_DF_REV}")
 fm.configure(HERE)
 
+# --- every include setting's target (RV-2313, the Owner's ruling filed in FM-006, *The fix round after the critical review*): `--install-hook` judges the target of
+# every include setting, conditional ones whether or not the condition holds, and whether or not the target exists — one inside the working tree is refused in one
+# line, and no hook and no copy is written
+_INC_REV = "ee6c28a"
+_HAVE_INC = _has_rev(_INC_REV)
+def _inc(kind, rev=None):
+    """`--install-hook` where `.git/config` holds a conditional include whose condition does not hold, or an include whose target does not exist yet — each
+    target inside the working tree."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "conditional":
+            (root / "inert.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "includeIf.onbranch:no-such-branch.path", "../inert.gitconfig"); named_ = root / "inert.gitconfig"
+        else:
+            git(root, "config", "include.path", "../later.gitconfig"); named_ = root / "later.gitconfig"
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=str(named_), holder=str(root / ".git" / "config"), top=str(root),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(), exists=named_.exists())
+        rm_git(root)
+    return g_
+def _inc_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1
+            and g["err"].startswith(f"--install-hook: an include setting in {g['holder']} names {g['named']}, inside the working tree {g['top']}, where a branch can change what git runs")
+            and "no hook and no copy is written" in g["err"] and g["hooks"] == [] and not g["copy"])
+for kind_, what_ in (("conditional", "a conditional include into the tree, its condition not holding"), ("missing", "an include into the tree whose target does not exist yet")):
+    g_ = _inc(kind_)
+    check(f"FM-006 · a private security report · every include setting's target · {what_}: `--install-hook` refuses in one line naming the setting's file and its target, "
+          f"and writes no hook and no copy (saw {g_['err'][:150]!r})", _inc_refused(g_) and g_["exists"] == (kind_ == "conditional"))
+    if _HAVE_INC:
+        c_ = _inc(kind_, _INC_REV)
+        check(f"FM-006 · a private security report · every include setting's target · {what_} · …the control: beside {_INC_REV}'s tool this check FAILS", not _inc_refused(c_))
+if not _HAVE_INC:
+    _skipped("FM-006 · a private security report · every include setting's target · the controls", 2, f"this clone does not hold {_INC_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
