@@ -3152,6 +3152,44 @@ else:
     _skipped("FM-006 · a private security report · the reading rule · the copy's PIN and VERSION", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- a board file git tracks (the cold review's F1, the Owner's ruling filed in FM-006): no page the board's run writes loads it — the run leaves a page that loads
+# nothing and names the file, and says that line in place of the link; `--check` refuses it in one line, exit 4
+_F1_REV, _F1_MARK = "df4f266", "INERT-VIEW"
+_HAVE_F1 = _has_rev(_F1_REV)
+_F1_LOADS = re.compile(r"<script|<link|<img|<iframe|<object|<embed|<audio|<video|<source|\bsrc\s*=|\bhref\s*=|url\(|@import", re.I)
+_F1_CHECK = ("shoalmark: docs/work-tracker/view/MSR-001.js is a file of the board git tracks — the board's files are the tool's to write and are never committed: "
+             "nothing is read from it; untrack it (`git rm --cached`), and the board's run writes the board")
+def _f1(rev=None):
+    """A repository whose `view/MSR-001.js` git tracks, its text the inert marker; the board's run, then `--check`, from the tool as it is or as `rev` had it."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); tdir_ = _board_repo(root); fm.configure(HERE)
+        (tdir_ / "view").mkdir(exist_ok=True); (tdir_ / "view/MSR-001.js").write_text(_F1_MARK + "\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "add", "-f", "docs/work-tracker/view/MSR-001.js"); git(root, "commit", "-qm", "a view tracked")
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        b_ = _tool_run(tool_, root, "--html-only"); page_ = (tdir_ / "index.html").read_text(encoding="utf-8") if (tdir_ / "index.html").is_file() else ""
+        c_ = _tool_run(tool_, root, "--check")
+        g_ = dict(code=b_[0], out=b_[1].strip(), err=b_[2].strip(), page=page_, view=(tdir_ / "view/MSR-001.js").read_text(encoding="utf-8"), check=c_)
+        rm_git(root)
+    return g_
+def _f1_board_ok(g):
+    line_ = fm.tracked_board_line(["docs/work-tracker/view/MSR-001.js"])
+    return (g["code"] == 0 and g["page"] != "" and not _F1_LOADS.search(g["page"]) and "default-src 'none'" in g["page"] and fm.html_escape(line_) in g["page"]
+            and "docs/work-tracker/view/MSR-001.js" in g["page"] and _F1_MARK not in g["page"] and g["out"] == "" and g["err"] == line_ and g["view"] == _F1_MARK + "\n")
+def _f1_check_ok(g):
+    c_, o_, e_ = g["check"]
+    return c_ == fm.EXIT_LINT and e_.strip() == _F1_CHECK and _F1_MARK not in o_ + e_
+g_ = _f1()
+check(f"FM-006 · the cold review's F1 · a view git tracks: the board's run leaves a page that loads nothing and names the file, and says that line in place of the link "
+      f"(saw exit {g_['code']}, out {g_['out'][:40]!r}, {g_['err'][:90]!r})", _f1_board_ok(g_))
+check(f"FM-006 · the cold review's F1 · a view git tracks: `--check` refuses it in one line naming it, exit 4 (saw exit {g_['check'][0]}, {g_['check'][2].strip()[:90]!r})", _f1_check_ok(g_))
+if _HAVE_F1:
+    c_ = _f1(_F1_REV)
+    check(f"FM-006 · the cold review's F1 · …the control: beside {_F1_REV}'s tool both checks FAIL (saw out {c_['out'][:40]!r}, check exit {c_['check'][0]})",
+          not _f1_board_ok(c_) and not _f1_check_ok(c_))
+else:
+    _skipped("FM-006 · the cold review's F1 · the control", 1, f"this clone does not hold {_F1_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
