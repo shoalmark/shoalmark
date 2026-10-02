@@ -2809,6 +2809,36 @@ if not _HAVE_INC:
     _skipped("FM-006 · a private security report · every include setting's target · the controls", 2, f"this clone does not hold {_INC_REV}")
 fm.configure(HERE)
 
+# --- the write rule before a folder is made (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR` and
+# `--init` ask the rule for every file they would write before the first folder is made — through a folder of the tree that is a symlink, each is refused in one line
+# naming the file, exit 4, and nothing is written
+def _wf(rev=None):
+    """`--brand DIR` and `--init`, each where a parent of the folder it would make is a symlink to an empty folder beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir(); git(root, "init", "-q"); g_ = {}
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        for key_, link_, argv_ in (("brand", "brandy", ("--brand", "brandy/starter")), ("init", "docs", ("--init", "--key", "msr"))):
+            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_)
+            c_, o_, e_ = _tool_run(tool_, root, *argv_)
+            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists())
+        rm_git(root)
+    return g_
+_WF_LINE = {"brand": f"shoalmark: brandy/starter/theme.css {_WR_SAYS}", "init": f"shoalmark: docs/work-tracker/TRIAGE.md {_WR_SAYS}"}
+def _wf_ok(g):
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _WF_LINE[k_] and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
+if _SYMLINKS:
+    g_ = _wf()
+    check(f"FM-006 · a private security report · the write rule · `--brand DIR` and `--init` through a folder of the tree that is a symlink: each is refused in one line "
+          f"naming the file, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
+    if _HAVE_RR:
+        c_ = _wf(_RR_REV)
+        check(f"FM-006 · a private security report · the write rule · before a folder is made · …the control: beside {_RR_REV}'s tool this check FAILS", not _wf_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · before a folder is made · the control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · before a folder is made", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

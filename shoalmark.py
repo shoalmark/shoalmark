@@ -2478,6 +2478,7 @@ def notify_cmd(trackers):
         if keep:
             seen[str(ROOT)] = sorted(keep)
         try:
+            write_rule(path)                                # the write rule, before its folder is made
             path.parent.mkdir(parents=True, exist_ok=True)
             put(path, json.dumps(seen, indent=1, ensure_ascii=False) + "\n")
             where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
@@ -3766,7 +3767,10 @@ def brand_report(dest=None, theme=None):
         print(f"yours to change; a board wears it from a brand place — <tracker dir>/brand/, or ~/.config/shoalmark/ for you alone (`--brand` lists them)")
         return EXIT_OK
     if dest:
-        dest = pathlib.Path(dest); dest.mkdir(parents=True, exist_ok=True)
+        dest = pathlib.Path(dest)
+        for name in ("theme.css", "labels.yaml"):          # the write rule for both, before the folder is made
+            write_rule(dest / name)
+        dest.mkdir(parents=True, exist_ok=True)
         for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
                                                            + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
             if not (dest / name).exists():
@@ -7875,6 +7879,10 @@ def svn_ignore_board():
     contents already leaves the board out."""
     svn = lambda *a: subprocess.run(["svn", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    refused = tracker_folder_problem("no folder is made there, and the board is not ignored")      # the tracker folder, judged before it is made
+    if refused:
+        print(refused, file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
     if svn("info", rel).returncode:                         # not versioned yet
         if svn("add", "--parents", "--depth=empty", rel).returncode:
@@ -8178,12 +8186,14 @@ def init(key=None):
         print(f"--key: {key!r} is not an id prefix — letters and digits, starting with a letter", file=sys.stderr)
         return EXIT_LINT
     fresh_config = not (ROOT / CONFIG_NAME).exists()
-    for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
-                       (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))):
-        if not path.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            put(path, text)
-            wrote.append(path)
+    made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
+                                            (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
+    for path, _text in made:                                # the write rule for both, before a folder is made
+        write_rule(path)
+    for path, text in made:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        put(path, text)
+        wrote.append(path)
     if fresh_config:
         configure(ROOT)
     section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), state=HEAD["state"], cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
@@ -8325,6 +8335,7 @@ def new_tracker(words, trackers, tags_arg=None):
     tid = f"{kind}-{num:03d}"
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
+    write_rule(path)                                        # the write rule, before its folder is made
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
     text = template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD)
     put(path, set_front(text, "tags", ", ".join(tags)) if tags_arg is not None else text)
