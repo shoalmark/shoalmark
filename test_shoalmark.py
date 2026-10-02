@@ -2046,7 +2046,7 @@ def _steps_copy(g):
     wt2 = base / "wt2"
     x["wt_board"] = (wt2 / "docs/work-tracker/index.html").is_file() and "BASE" in (wt2 / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     x["wt_common"] = subprocess.run(["git", "-C", str(wt2), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    x["copies"] = sorted(str(p_.relative_to(base)) for p_ in base.rglob(fm.COPY_DIR) if p_.is_dir())
+    x["copies"] = sorted(p_.relative_to(base).as_posix() for p_ in base.rglob(fm.COPY_DIR) if p_.is_dir())
     (copy_ / "shoalmark.py").write_text("import sys\nprint('STUB-COPY-RAN')\n", encoding="utf-8")
     x["stub_main"] = _hooked(root, "switch", "-q", g["trunk"]); x["stub_wt"] = _hooked(wt2, "switch", "-q", "-c", "other2")
     # a copy that fails: one line, and the checkout still succeeds
