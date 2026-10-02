@@ -2650,6 +2650,49 @@ else:
     _skipped("FM-006 · a private security report · a deriver that is a symlink", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- the calendar files under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--standup FILE.ics`
+# and `--invite <id>` write a file of the tree only as a regular file inside the repository, never through a symlink, and their lines end in CRLF
+def _cal(rev=None):
+    """`--standup FILE.ics` at a calendar file that is a symlink, and `--invite <id>` where the evidence folder is a symlink; then each at a regular place."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
+        conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
+        due_ = (datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0) + datetime.timedelta(days=1)).isoformat()
+        tracker(root, "MSR-002", extra=f"next: run\ndue: {due_}\n", title="ACT")
+        target_ = marks / "cal.ics"; target_.write_text("UNCHANGED\n", encoding="utf-8"); os.symlink(target_, root / "cal.ics")
+        c_, o_, e_ = _tool_run(tool_, root, "--standup", "cal.ics")
+        g_["standup"] = dict(code=c_, err=e_.strip(), same=target_.read_text(encoding="utf-8") == "UNCHANGED\n")
+        c_, o_, e_ = _tool_run(tool_, root, "--standup", "plain.ics")
+        g_["standup"]["plain"] = (root / "plain.ics").read_bytes() if c_ == 0 and (root / "plain.ics").is_file() else b""
+        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_)
+        c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002")
+        g_["invite"] = dict(code=c_, err=e_.strip(), same=sorted(os.listdir(away_)) == [])
+        os.unlink(ev_)
+        c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002"); ics_ = ev_ / "MSR-002" / "MSR-002-act.ics"
+        g_["invite"]["plain"] = ics_.read_bytes() if c_ == 0 and ics_.is_file() else b""
+        rm_git(root)
+    return g_
+def _cal_crlf(b):
+    return b.startswith(b"BEGIN:VCALENDAR\r\n") and b.endswith(b"END:VCALENDAR\r\n") and b.count(b"\n") == b.count(b"\r\n")
+def _cal_ok(g, key, rel):
+    return g[key]["code"] == fm.EXIT_LINT and g[key]["err"] == f"shoalmark: {rel} {_WR_SAYS}" and g[key]["same"] and _cal_crlf(g[key]["plain"])
+_CAL_CASES = (("standup", "cal.ics", "`--standup FILE.ics` at a calendar file that is a symlink"),
+              ("invite", "docs/work-tracker/evidence/MSR-002/MSR-002-act.ics", "`--invite <id>` where the evidence folder is a symlink"))
+if _SYMLINKS:
+    g_ = _cal()
+    for key_, rel_, what_ in _CAL_CASES:
+        check(f"FM-006 · a private security report · the write rule · {what_}: refused in one line naming the file, exit 4, nothing written through it; at a regular "
+              f"place the file is written, its lines ending in CRLF (saw {g_[key_]['err'][-120:]!r})", _cal_ok(g_, key_, rel_))
+    if _HAVE_RR:
+        c_ = _cal(_RR_REV)
+        for key_, rel_, what_ in _CAL_CASES:
+            check(f"FM-006 · a private security report · the write rule · {what_} · …the control: beside {_RR_REV}'s tool this check FAILS", not _cal_ok(c_, key_, rel_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · the calendar files' controls", 2, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · the calendar files", 4, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

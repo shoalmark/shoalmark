@@ -1665,7 +1665,7 @@ def standup(trackers, invite=None):
                  f"DTSTART:{f(start)}", f"DTEND:{f(end)}", "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
                  f"SUMMARY:{name} — standup: what needs you", f"DESCRIPTION:Run `{CMD} --standup` — or open the board: its first lines are the agenda.",
                  "END:VEVENT", "END:VCALENDAR"]
-        pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
+        put(pathlib.Path(invite), "\r\n".join(lines) + "\r\n")      # the write rule (`put`); a calendar file ends its lines with CRLF, on every system — `put` writes them as they are
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
     way = on_their_way(trackers)
@@ -2382,8 +2382,9 @@ def invite_cmd(tid, trackers):
              "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + ics_text(f"{tid}: {what}"), f"TRIGGER:-PT{NOTIFY_AHEAD}M", "END:VALARM",
              "END:VEVENT", "END:VCALENDAR"]
     out = TRACKER_DIR / "evidence" / tid / f"{tid}-act.ics"
+    write_rule(out)                                         # the write rule, before its folder is made
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(("\r\n".join(ics_fold(l) for l in lines) + "\r\n").encode("utf-8"))      # CRLF, on every system
+    put(out, "\r\n".join(ics_fold(l) for l in lines) + "\r\n")      # CRLF, on every system — `put` writes them as they are
     print(f"wrote {out.relative_to(ROOT).as_posix()} — {tid} due {due} ({utc(when)} UTC), {window} minutes, a reminder "
           f"{NOTIFY_AHEAD} minutes before; import it into your calendar")
     return EXIT_OK
