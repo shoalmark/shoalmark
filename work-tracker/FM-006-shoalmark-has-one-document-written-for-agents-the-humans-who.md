@@ -520,6 +520,8 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
   **Moved** (the Owner's ruling, 2026-10-01, evening): v0.19.0 is not tagged on 2026-10-01; `main` carries the bundle untagged
   (`d9c154b`). The release day is 2026-10-02, the tag before 09:00 CEST, or later if a check needs it: the CHANGELOG's heading
   carries 2026-10-02 and the landing's footer *v0.19.0, released 2 October 2026 —*; the player stats stay as read at the cut.
+  **No date** (the Owner's ruling, 2026-10-02, night): v0.19.0 is tagged when it is done (*The release bar*, under *The
+  board's refresh, from a trusted copy*); the CHANGELOG's heading and the landing's footer carry the day of the tag.
 - **The Owner's run sheet** — `work-tracker/evidence/FM-006/release-v0-19-0-owner-run-sheet.md`, about 40 lines of numbered
   copy-paste steps, each with its expected output and one line to paste back. Before the tag: `gh repo edit` with the site's
   description line, the homepage `https://shoalmark.github.io/shoalmark/` and topics (proposed there, the Owner's to set), and the
@@ -719,6 +721,57 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       changes. Then the final review at critical tier of the whole change, the cold review and the Owner's outside check,
       the notes' checksum last, the full local run, CI 9/9, the merge and the tag — the tag waits for the reviews, not for
       09:00.
+    - *The refresh after a pull* (the Owner's rulings, 2026-10-02, night): `git pull --rebase` with local commits, and
+      `git rebase`, run `post-checkout` before the local commits are replayed and no refresh hook after, so the board
+      would show the remote's trackers without the local ones. `--install-hook` also installs `post-rewrite`, which runs
+      the copy as `post-checkout` and `post-merge` do. A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop`
+      run no hook that writes the board, and on Subversion nothing refreshes it after `svn update`: the README's hooks
+      section says so in one line, naming `--html-only` as the rebuild; hooks for these are 0.19.1's. The reload keeps
+      the filter, as it keeps the scroll position, and the search box no longer holds it back. Tests, one per operation,
+      that the board after it equals a fresh `--html-only` of the tree: a switch, a pull fast-forward, a pull with a
+      merge, `pull --rebase` with local commits, a clean merge, a conflicted merge at its resolving commit, and a squash
+      merge. RV-2300's `git am` case is `git am` followed by the next commit: `git am` runs none of the hooks, and a
+      cherry-pick, a revert and a rebase's replay run only `prepare-commit-msg`.
+    - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
+      release whose next outside security scan finds nothing new, and where every finding of the private security report
+      is fixed or visibly next.
+      - *Added to this build — the signed identity:* a `signed` identity is an email, and it verifies by SSH only: the
+        commit's signature is SSH, good under the default branch's signers file as today, and its principal equals the
+        email exactly. A GPG signature on a signed line is refused with one line: “sign with SSH; GPG returns with a
+        fingerprint binding”; so is any other kind that is not SSH. A `signed` identity that is not an email — under
+        `owner`, `[seats]` or `answerers` — is refused at configuration, exit 1, with one line on how to migrate. Tests:
+        a commit under the Owner's email signed with another trusted key is refused; a principal that contains the email
+        without equalling it is refused; the exact one passes; a name-only `signed` identity is refused at
+        configuration; a trusted GPG key whose user ID carries the Owner's email is refused. Texts: README §*Seats* and
+        the `answerers` row, the signing pages (SSH for signed lines), the setup pages, and one CHANGELOG upgrade line.
+        The change gets no advisory of its own, so the line says it is a security fix and opens with the reason:
+        “Security, from a private report: a signed identity configured by name, or a signer whose identity merely
+        contained the address, could let another trusted signer's commit count as that identity's. A signed identity is
+        now an email address only, matched exactly against the SSH signer; …”, then the migration step as built. FM-037
+        records its part as fixed here. `main`'s history is replayed under the new rule: every judgement of a signed
+        line or a signature, by the tool before and after — no new refusal, GitHub's own PGP-signed merge commits
+        included; the result is a row of the ledger.
+      - *Added to this build — hook runners:* the README's entries for a repository with its own hook runner run the
+        trusted copy, and the text says plainly that a hook runner reads its configuration from the tree, so a merged
+        branch's configuration runs whatever it names; shoalmark's own `--install-hook` is the safe default. This
+        repository's `lefthook.yml` goes: before its commit, lefthook's three commit-time hooks on the Owner's machine
+        are set aside and `--install-hook` from this branch writes shoalmark's hooks and the copy, which judge every
+        worktree's commits until `--install-hook` on `main` after the merge. The tests run explicitly and in CI.
+      - *Next, no date:* the report's two remaining findings are 0.19.1's first work, in the private advisory set only.
+      - *Evidence before the tag:* a ledger in `work-tracker/evidence/FM-006/` — one row per security claim in the
+        CHANGELOG, the README and the notes, each naming its test, an executed check, or “cut”; no attack steps — built
+        by the Planner after the code lands and checked by reviewer-80 and the Auditor; reviewer-80's critical review of
+        the whole change; a cold review by another model family, with no time limit; the Auditor's re-run of the
+        report's reproductions on the final head and of the common security scanners, every hit triaged.
+      - *The tests:* every finding fixed in v0.19.0 has a test in `test_shoalmark.py` that must pass in full CI on the
+        final head. The ledger shows for each security test the CI jobs it ran on, and where it skipped, with the
+        reason; no security test may skip on every job, and nothing the release notes claim may rest on a test that ran
+        on only some systems unless the claim says which. Each security test's negative control — the test failing
+        against the tool as it was before its fix — is run once and recorded. The history replay, the scanners and the
+        Auditor's re-run of the report's reproductions are rows of the ledger with their results. The report's two
+        remaining findings get their tests with their fixes in 0.19.1, not before.
+      - *Gate:* no open P1 or P2; every finding of the report carries a status; the advisories say only what was tested.
+        Then the notes' checksum, last, the full local run, CI 9/9 and the merge.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
