@@ -770,6 +770,10 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       condition holds and whether or not the target exists when `--install-hook` runs; a target inside a working tree is
       refused like any other configuration file there. Tests: a conditional include into the tree, and an include whose
       target does not exist yet.
+      Also in this round (the Owner's rulings, the same morning, on the Builder's findings at `83eb0dc`): the tool's
+      comments that call the Owner “he” or “his” say they/them — comments only. For 0.19.1: `--init`'s files written
+      before a refusal; and, P3, the hooks-folder and configuration checks compare paths case-sensitively on macOS,
+      whose default file system is not — their inputs come from the person's own configuration, never a branch.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
