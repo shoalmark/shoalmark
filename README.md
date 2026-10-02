@@ -239,14 +239,17 @@ python3 tools/shoalmark/shoalmark.py --init --key MSR               # shoalmark.
 python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git hooks, and the copy of the tool they all run; a hook that is not shoalmark's is never overwritten
 ```
 
-`--install-hook` writes five hooks, and every one runs **a copy of the tool kept in the git directory** (`shoalmark-trusted/`, shared by every worktree), never the tool a branch
-brings: the three that judge a commit — `pre-commit`, `prepare-commit-msg` and `commit-msg` — and the two that refresh the board, `post-checkout` and `post-merge`, which run the copy's
-`--html-only`: it reads the tree and writes the board, and starts nothing but read-only git. A commit's hook writes only inside the repository, outside its git directory and through no
+`--install-hook` writes six hooks, and every one runs **a copy of the tool kept in the git directory** (`shoalmark-trusted/`, shared by every worktree), never the tool a branch
+brings: the three that judge a commit — `pre-commit`, `prepare-commit-msg` and `commit-msg` — and the three that refresh the board, `post-checkout`, `post-merge` and `post-rewrite`
+(after a rebase, so `git pull --rebase` with local commits refreshes it too), which run the copy's `--html-only`: it reads the tree and writes the board, and starts nothing but
+read-only git. A commit's hook writes only inside the repository, outside its git directory and through no
 symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 35 seconds, the commit is refused with one line. A hook runs the repository's deriver only
 as `--install-hook` last accepted it: a changed or new deriver is skipped there, with one line, until you run `--install-hook` again. Only `--install-hook` writes the copy — from a pinned
 copy that passes its PIN, else from the working tree's tool, and it says which commit and branch — so **run `--install-hook` on your default branch, and again after upgrading**; where the
 tree's tool differs from the copy, a hook still judges with the copy and prints one line that says so. A person, an agent and CI run the repository's own tool, as ever. Developing the
 tool itself means installing the branch's copy deliberately: `--install-hook` on that branch, which warns that the copy carries that branch's tool.
+A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after
+`svn update`: run `--html-only` to rebuild it.
 
 Then **the Owner** writes the intent and the current path in `<tracker dir>/TRIAGE.md`. Nobody else edits those two
 sections. The intent is three lines in their own words about the repository as a whole, never one feature of it: what

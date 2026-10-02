@@ -396,7 +396,7 @@ with tempfile.TemporaryDirectory() as d:
     hook = root / ".git/hooks/pre-commit"
     check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote — and the checkout and merge hooks that refresh the board from the copy of the tool it keeps in the git directory",
           code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text()
-          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "post-checkout", "post-merge", "pre-commit", "prepare-commit-msg"]
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "post-checkout", "post-merge", "post-rewrite", "pre-commit", "prepare-commit-msg"]
           and (root / ".git/shoalmark-trusted/shoalmark.py").read_bytes() == (HERE / "shoalmark.py").read_bytes() and (root / ".git/shoalmark-trusted/COPY").is_file())
     git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
@@ -2072,7 +2072,7 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "config", "core.hooksPath", ".githooks"); git(root, "switch", "-q", "-c", "other")
     c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); sw_ = _hooked(root, "switch", "-q", "-")
     check(f"FM-006 · a private security report · `core.hooksPath` is respected: the checkout and merge hooks are written where it points, not in `.git/hooks`, and a checkout runs the copy from there (saw {sw_[1][:100]!r})",
-          c_ == 0 and (root / ".githooks/post-checkout").is_file() and (root / ".githooks/post-merge").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
+          c_ == 0 and (root / ".githooks/post-checkout").is_file() and (root / ".githooks/post-merge").is_file() and (root / ".githooks/post-rewrite").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
           and sw_[1].startswith("board: file:") and "BASE" in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
     rm_git(root)
 
@@ -2081,7 +2081,7 @@ with tempfile.TemporaryDirectory() as d:
 # "a hook wrote the copy" is the copy's hash, changed. Each control is the same check beside 79be49d's tool, whose commit hooks ran the working tree's tool: it must fail there.
 _RV_REV = "79be49d"
 _HAVE_RV = _has_rev(_RV_REV)
-_HOOK_NAMES = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-checkout", "post-merge")
+_HOOK_NAMES = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-checkout", "post-merge", "post-rewrite")
 def _copy_hash(root):
     """The hooks' copy, every file of it with its name, as one hash — None where it is not there."""
     c_ = root / ".git" / fm.COPY_DIR
@@ -2130,7 +2130,7 @@ def _rv_hooks(rev=None):
     return (inst[0] == 0 and all(f'/{fm.COPY_DIR}/shoalmark.py"' in t_ and ' -I "$copy" --root "$root" ' in t_ for t_ in texts_.values())
             and not any(re.search(r"\b(python3?|py)\s+(\S*/)?shoalmark\.py\b", t_) for t_ in texts_.values()) and f"cmd: {fm.PY} shoalmark.py\n" in record_), texts_["pre-commit"]
 ok_, _pc = _rv_hooks()
-check("FM-006 · a private security report · RV-2300 · all five hooks `--install-hook` writes — `pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-checkout` and `post-merge` — run the copy in the git "
+check("FM-006 · a private security report · RV-2300 · every hook `--install-hook` writes — `pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-checkout`, `post-merge` and `post-rewrite` — runs the copy in the git "
       "directory, with `-I`, against the worktree they run in; none names the tree's tool, and the copy records the command a person runs, for its messages", ok_)
 if _HAVE_RV:
     ok_, _pc = _rv_hooks(_RV_REV)
@@ -2301,10 +2301,11 @@ def _rv_op(op, rev=None):
             c_ = _hooked(root, "revert", "--no-edit", "HEAD")
         elif op == "rebase":
             c_ = _hooked(root, "rebase", "payload")
-        else:
+        else:                               # `git am` runs none of the hooks: the next commit is where they run on what it brought
             patch_ = base_ / "brought.patch"
             patch_.write_bytes(subprocess.run(["git", "-C", str(root), "format-patch", "-1", "--stdout", "payload"], capture_output=True, env=_ENV).stdout)
             c_ = _hooked(root, "am", str(patch_))
+            _hook_changed(root, "the commit after it"); git(root, "add", "-A"); n_ = _hooked(root, "commit", "-qm", "the commit after it"); c_ = (c_[0] or n_[0], c_[1] + "\n" + n_[1])
         brought_ = (root / "docs/work-tracker/MSR-009-x.md").is_file() and "the tree tool wrote" in (root / "shoalmark.py").read_text(encoding="utf-8")
         g_ = dict(code=c_[0], said=c_[1], moved=_head(root) != head_, brought=brought_, tool=(marks / "tool").exists(), deriver=(marks / "changed").exists(),
                   copy_same=_copy_hash(root) == h0_)
@@ -2312,32 +2313,97 @@ def _rv_op(op, rev=None):
     return g_
 def _rv_op_ok(g, op):
     return (g["code"] == 0 and g["moved"] and g["brought"] and not g["tool"] and not g["deriver"] and g["copy_same"]
-            and (op == "am" or _LINE2 in g["said"].splitlines()) and (op != "conflicted" or fm.DERIVER_CHANGED in g["said"].splitlines()))
-_RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and `post-merge` run"), ("conflicted", "a merge, conflicted and finished with `git commit` — `pre-commit`, `prepare-commit-msg` and `commit-msg` run"),
-           ("cherry-pick", "a cherry-pick — `prepare-commit-msg` runs"), ("revert", "a revert — `prepare-commit-msg` runs"), ("rebase", "a rebase — `post-checkout` and `prepare-commit-msg` run"),
-           ("am", "`git am` — it runs none of the five hooks shoalmark writes"))
+            and _LINE2 in g["said"].splitlines() and (op not in ("conflicted", "am") or fm.DERIVER_CHANGED in g["said"].splitlines()))
+_RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and `post-merge` run"),
+           ("conflicted", "a merge, conflicted and finished with `git commit` — at its resolving commit `pre-commit`, `prepare-commit-msg` and `commit-msg` run"),
+           ("cherry-pick", "a cherry-pick — it runs only `prepare-commit-msg`"), ("revert", "a revert — it runs only `prepare-commit-msg`"),
+           ("rebase", "a rebase — `post-checkout` before its replay, which runs only `prepare-commit-msg`, and `post-rewrite` after"),
+           ("am", "`git am`, which runs none of the hooks, and the next commit, which runs `pre-commit`, `prepare-commit-msg` and `commit-msg` on what it brought"))
 for op_, what_ in _RV_OPS:
     g_ = _rv_op(op_)
     check(f"FM-006 · a private security report · RV-2300 · {what_}: it brings a changed tool and a changed deriver, and nothing of the tree runs, no hook writes the copy"
-          + ("" if op_ == "am" else ", and the hooks that run judge with the copy and say it differs") + (", the changed deriver skipped with its line" if op_ == "conflicted" else "")
+          + ", and the hooks that run judge with the copy and say it differs" + (", the changed deriver skipped with its line" if op_ in ("conflicted", "am") else "")
           + f" (saw exit {g_['code']}, tool ran {g_['tool']}, deriver ran {g_['deriver']}, copy unchanged {g_['copy_same']})", _rv_op_ok(g_, op_))
     if not _HAVE_RV:
         continue
     c_ = _rv_op(op_, _RV_REV)
-    if op_ == "am":
-        check(f"FM-006 · a private security report · RV-2300 · …`git am` beside {_RV_REV}'s tool: it runs none of the hooks there either, so its check holds there too — it is no control "
-              f"(saw tool ran {c_['tool']}, deriver ran {c_['deriver']})", _rv_op_ok(c_, op_))
-    else:
-        check(f"FM-006 · a private security report · RV-2300 · …the control: {op_} beside {_RV_REV}'s tool FAILS — its commit hooks run what the branch brought (saw tool ran {c_['tool']}, "
-              f"deriver ran {c_['deriver']}, copy unchanged {c_['copy_same']})", not _rv_op_ok(c_, op_))
+    check(f"FM-006 · a private security report · RV-2300 · …the control: {op_} beside {_RV_REV}'s tool FAILS — its commit hooks run what the branch brought (saw tool ran {c_['tool']}, "
+          f"deriver ran {c_['deriver']}, copy unchanged {c_['copy_same']})", not _rv_op_ok(c_, op_))
 if not _HAVE_RV:
     SKIPS.append(("FM-006 · a private security report · RV-2300 · the operations' controls", len(_RV_OPS), f"this clone does not hold {_RV_REV}"))
+fm.configure(HERE)
+
+# --- FM-006: the refresh after a pull — after each way a clone's tree moves, the board equals a fresh `--html-only` of it, byte for byte, nothing normalised --------------
+# A bare origin, an upstream clone that pushes, and a clone with the hooks installed. "Fresh" is the same copy run by hand afterwards: what differs is what no hook refreshed.
+def _board_files(root):
+    t_ = root / "docs/work-tracker"
+    return {"index.html": (t_ / "index.html").read_bytes() if (t_ / "index.html").is_file() else None, **{f"view/{p_.name}": p_.read_bytes() for p_ in sorted((t_ / "view").glob("*.js"))}}
+def _pull_scenario(op, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); origin_, up_, me_ = base / "origin.git", base / "up", base / "me"
+        subprocess.run(["git", "init", "-q", "--bare", str(origin_)], check=True, capture_output=True, env=_ENV)
+        up_.mkdir(); git(up_, "init", "-q"); run(up_, "--init", "--key", "msr"); tracker(up_, "MSR-001", title="BASE"); run(up_); fm.configure(HERE)
+        git(up_, "add", "-A"); git(up_, "commit", "-qm", "base"); git(up_, "remote", "add", "origin", str(origin_))
+        trunk_ = subprocess.run(["git", "-C", str(up_), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); git(up_, "push", "-q", "-u", "origin", trunk_)
+        subprocess.run(["git", "clone", "-q", str(origin_), str(me_)], check=True, capture_output=True, env=_ENV)
+        if rev:
+            _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
+        else:
+            tool_ = HERE / "shoalmark.py"
+        inst_ = _tool_run(tool_, me_, "--install-hook"); _hooked(me_, "switch", "-q", trunk_)
+        upstream_ = lambda tid, title: (tracker(up_, tid, title=title), git(up_, "add", "-A"), git(up_, "commit", "-qm", title), git(up_, "push", "-q", "origin", trunk_))
+        local_ = lambda tid, title: (tracker(me_, tid, title=title), git(me_, "add", "-A"), git(me_, "commit", "-qm", title))
+        want_ = []
+        if op == "switch":
+            git(me_, "switch", "-q", "-c", "other"); local_("MSR-002", "ON-THE-OTHER-BRANCH"); git(me_, "switch", "-q", trunk_); c_ = _hooked(me_, "switch", "-q", "other"); want_ = ["ON-THE-OTHER-BRANCH"]
+        elif op == "pull-ff":
+            upstream_("MSR-003", "FROM-UPSTREAM"); c_ = _hooked(me_, "pull", "-q", "--ff-only"); want_ = ["FROM-UPSTREAM"]
+        elif op in ("pull-merge", "pull-rebase"):
+            upstream_("MSR-003", "FROM-UPSTREAM"); local_("MSR-004", "MADE-HERE")
+            c_ = _hooked(me_, "pull", "-q", "--no-edit", "--no-rebase" if op == "pull-merge" else "--rebase"); want_ = ["FROM-UPSTREAM", "MADE-HERE"]
+        else:
+            git(me_, "switch", "-q", "-c", "feature")
+            if op == "conflicted":
+                t_ = me_ / "docs/work-tracker/MSR-001-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("One thing is left.", "ON-THE-FEATURE"), encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "feature")
+                git(me_, "switch", "-q", trunk_); t_.write_text(t_.read_text(encoding="utf-8").replace("One thing is left.", "ON-THE-TRUNK"), encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "trunk")
+                stop_ = _hooked(me_, "merge", "--no-edit", "feature")
+                t_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "RESOLVED-BY-HAND\n", t_.read_text(encoding="utf-8"), flags=re.S), encoding="utf-8"); git(me_, "add", "-A")
+                c_ = _hooked(me_, "commit", "-q", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, c_[1]); want_ = ["RESOLVED-BY-HAND"]
+            else:
+                local_("MSR-005", "ON-THE-FEATURE"); git(me_, "switch", "-q", trunk_); (me_ / "trunk.txt").write_text("trunk\n", encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "trunk")
+                if op == "merge":
+                    c_ = _hooked(me_, "merge", "--no-ff", "--no-edit", "feature")
+                else:
+                    sq_ = _hooked(me_, "merge", "--squash", "feature"); c_ = _hooked(me_, "commit", "-qm", "squashed"); c_ = (sq_[0] or c_[0], c_[1])
+                want_ = ["ON-THE-FEATURE"]
+        after_ = _board_files(me_)
+        subprocess.run([sys.executable, "-I", str(me_ / ".git" / fm.COPY_DIR / "shoalmark.py"), "--root", str(me_), "--html-only"], cwd=str(me_), capture_output=True, env=_ENV)
+        fresh_ = _board_files(me_)
+        g_ = dict(code=c_[0], inst=inst_[0], same=after_ == fresh_, differs=sorted(k_ for k_ in set(after_) | set(fresh_) if after_.get(k_) != fresh_.get(k_)),
+                  shown=all(w_.encode() in (fresh_.get("index.html") or b"") + b"".join(v_ for k_, v_ in fresh_.items() if k_.startswith("view/")) for w_ in want_))
+        rm_git(me_); rm_git(up_)
+    return g_
+def _pull_ok(g):
+    return g["code"] == 0 and g["same"] and g["shown"]
+_PULL_OPS = (("switch", "a switch"), ("pull-ff", "a pull, fast-forward"), ("pull-merge", "a pull with a merge"), ("pull-rebase", "`git pull --rebase` with local commits — `post-checkout` before the replay, `post-rewrite` after"),
+             ("merge", "a clean merge"), ("conflicted", "a conflicted merge, at its resolving commit"), ("squash", "a squash merge, at its commit"))
+for op_, what_ in _PULL_OPS:
+    g_ = _pull_scenario(op_)
+    check(f"FM-006 · the refresh after a pull · {what_}: the board after it equals a fresh `--html-only` of the tree, byte for byte, nothing normalised (saw exit {g_['code']}, differing {g_['differs']})", _pull_ok(g_))
+if _HAVE_RV:
+    c_ = _pull_scenario("pull-rebase", _RV_REV)
+    check(f"FM-006 · the refresh after a pull · …the control: `git pull --rebase` with local commits beside {_RV_REV}'s hooks FAILS — no hook refreshes the board after the replay (saw differing {c_['differs']})", not _pull_ok(c_))
+else:
+    SKIPS.append(("FM-006 · the refresh after a pull · the control", 1, f"this clone does not hold {_RV_REV}"))
 fm.configure(HERE)
 
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
 _help_ = re.sub(r"\s+", " ", _help_)
+_readme_ = re.sub(r"\s+", " ", _rd("README.md"))
+_NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
+                  "`svn update`: run `--html-only` to rebuild it.")
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, and the deriver only as "
       "accepted (RV-2300); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer says the same day, and the player stats keep theirs",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, and runs the repository's deriver only as `--install-hook` "
@@ -2348,14 +2414,15 @@ check("FM-006 · a private security report · the CHANGELOG's line — every hoo
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
-      and not re.search(r"svn update|svn up\b", _rd("README.md") + _help_ + _rd("docs/setup.md")))
-_readme_ = re.sub(r"\s+", " ", _rd("README.md"))
+      and not re.search(r"svn update|svn up\b", _readme_.replace(_NO_BOARD_LINE, "") + _help_ + _rd("docs/setup.md")))
+check("FM-006 · a private security report · the README's hooks section says in one line what writes no board — a cherry-pick, a revert, `git am`, `reset --hard`, `stash pop`, and `svn update` on "
+      "Subversion — naming `--html-only` as the rebuild; it is the one place the README names `svn update`", _NO_BOARD_LINE in _readme_ and "svn update" not in _readme_.replace(_NO_BOARD_LINE, ""))
 check("FM-006 · a private security report · the README and `--help` name the copy: where it is kept, who writes it, what it runs, and that `--install-hook` is run on the default branch and again after an upgrade",
       "`shoalmark-trusted/`" in _rd("README.md") and "run `--install-hook` on your default branch, and again after upgrading" in _readme_ and "a copy of the tool kept in the git directory" in _rd("README.md")
       and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_ and "from the copy of the tool kept in the git directory" in _help_)
 check("FM-006 · a private security report · RV-2300 · the README's hooks section and `--help` say every hook runs the copy — the commit's hooks too, failing closed — that a hook runs the deriver only as "
       "`--install-hook` last accepted it, and that developing the tool means installing the branch's copy deliberately; neither says a commit's hook runs the working tree's tool",
-      "`--install-hook` writes five hooks, and every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
+      "`--install-hook` writes six hooks, and every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
       and "A hook runs the repository's deriver only as `--install-hook` last accepted it" in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
       and "which run the tool in the working tree" not in _readme_
       and "every one running a COPY of the tool this keeps in the git directory" in _help_ and "a hook runs the deriver only as this last accepted it" in _help_ and "run the working tree's tool" not in _help_)
@@ -2381,6 +2448,8 @@ with tempfile.TemporaryDirectory() as d:
           "to visible, keeps its scroll position (`sessionStorage`), and not while a dialog is open or a field holds input",
           bool(block_) and 'document.addEventListener("visibilitychange"' in block_ and block_.count("location.reload()") == 1 and "shoalmark.keep" in block_ and "scrollY" in block_ and '$("dlg").open' in block_
           and "textarea,select" in block_ and 'hiddenAt' in block_ and "scrollTo(0,want" in page_ and all(v_.startswith("V(") and "reload" not in v_ and "visibilitychange" not in v_ for v_ in views_) and views_)
+    check("FM-006 · the board reloads · RV-2302 · the template: the search box is no field that holds the reload back, and its filter is kept across the reload with the scroll position, then put back",
+          "input:not(#q):not([type=radio])" in block_ and 'q:$("q").value' in block_ and 'wantQ=typeof k.q=="string"?k.q:null' in block_ and '$("q").value=wantQ??h' in page_)
     check("FM-006 · the board reloads · no reload path loads another file: nothing in that code fetches, makes a request, polls, sets a timer, opens a socket, makes an element or names a URL — it is `location.reload()`, the same page",
           bool(block_) and not re.search(r"fetch\s*\(|XMLHttpRequest|setInterval|setTimeout|requestAnimationFrame|requestIdleCallback|WebSocket|EventSource|sendBeacon|new\s+Worker|importScripts|import\s*\(|createElement|new\s+Image|\.src\s*=|\.href\s*=|https?:|file:|//[a-z0-9.-]+\.[a-z]{2,}",
                                          re.sub(r"//[^\n]*", "", block_)) and "location.assign" not in block_ and "location.replace" not in block_ and "location.href" not in block_)
@@ -2390,15 +2459,16 @@ with tempfile.TemporaryDirectory() as d:
 const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8");
 function run(o){
   const calls=[],store=Object.assign({},o.store||{});let handler=null;
-  const sandbox={$:id=>({dlg:{open:!!o.dialog}})[id],
-    document:{visibilityState:"visible",querySelectorAll:()=>(o.fields||[]).map(v=>({value:v})),addEventListener:(t,f)=>{if(t=="visibilitychange")handler=f}},
+  const sandbox={$:id=>({dlg:{open:!!o.dialog},q:{value:o.q||""}})[id],
+    document:{visibilityState:"visible",addEventListener:(t,f)=>{if(t=="visibilitychange")handler=f},
+      querySelectorAll:sel=>(o.fields||[]).map(v=>typeof v=="string"?{id:"f",value:v}:v).filter(e=>!(e.id=="q"&&sel.includes(":not(#q)")))},
     sessionStorage:o.broken?{getItem(){throw new Error("no storage")},setItem(){throw new Error("no storage")},removeItem(){throw new Error("no storage")}}
       :{getItem:k=>k in store?store[k]:null,setItem:(k,v)=>{store[k]=v},removeItem:k=>{delete store[k]}},
     location:{hash:o.hash||"#=MSR-001",reload:()=>calls.push("reload")},scrollY:240,Date,JSON};
   vm.createContext(sandbox);
-  const want=vm.runInContext(code+"\n;want",sandbox);
+  const [want,wantQ]=vm.runInContext(code+"\n;[want,wantQ]",sandbox);
   for(const st of o.events||[]){sandbox.document.visibilityState=st;handler()}
-  return {calls,keep:store["shoalmark.keep"]?JSON.parse(store["shoalmark.keep"]):null,want,left:Object.keys(store)};
+  return {calls,keep:store["shoalmark.keep"]?JSON.parse(store["shoalmark.keep"]):null,want,wantQ,left:Object.keys(store)};
 }
 const now=Date.now(),away=["hidden","visible"],out={};
 out.away=run({events:away});
@@ -2411,6 +2481,9 @@ out.back=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,t:now}
 out.stale=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,t:now-60000})}});
 out.other=run({store:{"shoalmark.keep":JSON.stringify({h:"#",y:512,t:now})}});
 out.broken=run({events:away,broken:true});
+out.filter=run({events:away,fields:[{id:"q",value:"MSR-0"}],q:"MSR-0"});
+out.filterAndField=run({events:away,fields:[{id:"q",value:"MSR-0"},"typed"],q:"MSR-0"});
+out.backq=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,q:"MSR-0",t:now})}});
 console.log(JSON.stringify(out));
 """, encoding="utf-8")
         r_ = subprocess.run([_have_node_, str(root / "reload-harness.js"), str(root / "reload-block.js")], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
@@ -2425,8 +2498,11 @@ console.log(JSON.stringify(out));
               and ok_("twice", calls=["reload"]) and ok_("broken", calls=["reload"]))
         check("FM-006 · the board reloads · back from a reload the page takes the scroll position it kept — once, for that address, within seconds; a stale one, or another page's, is not taken",
               ok_("back", want=512, left=[]) and ok_("stale", want=None, left=[]) and ok_("other", want=None, left=[]))
+        check("FM-006 · the board reloads · RV-2302 · its logic, run: a filter in the search box, typed or linked, no longer holds the reload back, and it is kept and taken back with the scroll position; "
+              "another field holding input still holds it back (saw " + repr({k_: (o_.get(k_, {}).get("calls"), o_.get(k_, {}).get("wantQ")) for k_ in ("filter", "filterAndField", "backq")}) + ")",
+              ok_("filter", calls=["reload"]) and (o_.get("filter", {}).get("keep") or {}).get("q") == "MSR-0" and ok_("filterAndField", calls=[]) and ok_("backq", want=512, wantQ="MSR-0", left=[]))
     else:
-        SKIPS.append(("FM-006 · the board reloads · its logic, run", 2, "no Node here"))
+        SKIPS.append(("FM-006 · the board reloads · its logic, run", 3, "no Node here"))
     rm_git(root)
 
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------

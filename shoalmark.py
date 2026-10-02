@@ -3197,18 +3197,18 @@ $("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(s
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 // reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull
 // changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
-// holds input; the scroll position is kept across the reload.
-let want=null,hiddenAt=0;
-try{const k=JSON.parse(sessionStorage.getItem("shoalmark.keep")||"null");sessionStorage.removeItem("shoalmark.keep");if(k&&k.h==location.hash&&Date.now()-k.t<1e4)want=k.y}catch(e){}
-const busy=()=>$("dlg").open||[...document.querySelectorAll("input:not([type=radio]):not([type=checkbox]):not([type=hidden]),textarea,select")].some(e=>e.value!=="");
+// holds input — the search box aside: its filter, typed or linked, is kept across the reload, as the scroll position is.
+let want=null,wantQ=null,hiddenAt=0;
+try{const k=JSON.parse(sessionStorage.getItem("shoalmark.keep")||"null");sessionStorage.removeItem("shoalmark.keep");if(k&&k.h==location.hash&&Date.now()-k.t<1e4){want=k.y;wantQ=typeof k.q=="string"?k.q:null}}catch(e){}
+const busy=()=>$("dlg").open||[...document.querySelectorAll("input:not(#q):not([type=radio]):not([type=checkbox]):not([type=hidden]),textarea,select")].some(e=>e.value!=="");
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState=="hidden"){hiddenAt=1;return}
   if(!hiddenAt||busy())return;hiddenAt=0;
-  try{sessionStorage.setItem("shoalmark.keep",JSON.stringify({h:location.hash,y:scrollY,t:Date.now()}))}catch(e){}
+  try{sessionStorage.setItem("shoalmark.keep",JSON.stringify({h:location.hash,y:scrollY,q:$("q").value,t:Date.now()}))}catch(e){}
   location.reload()});
 // reload: end
 (onhashchange=()=>{const h=dec(location.hash.slice(1));if(h[0]=="="&&byId.has(h.slice(1)))return view(h.slice(1));
-  $("v").hidden=true;$("B").hidden=false;$("q").value=h;draw();scrollTo(0,want??0);want=null})();
+  $("v").hidden=true;$("B").hidden=false;$("q").value=wantQ??h;wantQ=null;draw();scrollTo(0,want??0);want=null})();
 </script></html>
 """
 
@@ -7248,7 +7248,7 @@ def parse_args(argv):
         help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
              "tracks; its board carries no derived columns. It stands alone, with --root. The checkout and merge hooks run it from the copy of the tool kept in the git directory")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout and post-merge, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and a hook runs the deriver only as this last accepted it. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout, post-merge and post-rewrite, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and a hook runs the deriver only as this last accepted it. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
@@ -7740,7 +7740,7 @@ HOOKS = {
 
 
 HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
-              "post-checkout": "--html-only", "post-merge": "--html-only"}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
+              "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
 COPY_HOOKS = {
     name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
           "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
@@ -7748,8 +7748,8 @@ COPY_HOOKS = {
           'if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the board is not refreshed — the hooks\' copy of the tool is not in the git directory: run --install-hook"\n  exit 0\nfi\n'
           'out=$({py} -I "$copy" --root "$root" --html-only 2>&1)\ncode=$?\n'
           'if [ "$code" -eq 0 ]; then\n  printf \'%s\\n\' "$out"\nelse\n  echo "shoalmark: the board is not refreshed (exit $code): $(printf \'%s\' "$out" | tail -n 1)"\nfi\nexit 0\n'
-    for name, when in (("post-checkout", "checkout"), ("post-merge", "merge"))
-}
+    for name, when in (("post-checkout", "checkout"), ("post-merge", "merge"), ("post-rewrite", "rebase or an amend"))
+}       # `post-rewrite`: a rebase — `git pull --rebase` with local commits among them — runs `post-checkout` before it replays them, and no other refresh after
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
