@@ -732,6 +732,20 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       merge, `pull --rebase` with local commits, a clean merge, a conflicted merge at its resolving commit, and a squash
       merge. RV-2300's `git am` case is `git am` followed by the next commit: `git am` runs none of the hooks, and a
       cherry-pick, a revert and a rebase's replay run only `prepare-commit-msg`.
+    - *No deriver in hooks* (the Owner's rulings, 2026-10-02, night, on the Builder's findings at `fc5f197`): it
+      replaces R2 under *RV-2300, fixed in this build*. No hook runs a deriver; `--install-hook` accepts none, and the
+      copy's record has no `deriver:` field. In a repository with a deriver, the commit hook leaves `INDEX.md` and the
+      derived files as staged — it never rewrites them without the derived columns — and prints one line: the deriver
+      runs only in explicit runs; run the tool before committing; CI's `--check` holds it. Tests: in a repository with a
+      deriver, no hook starts it after a commit, a clean and a conflicted merge, a cherry-pick and a rebase, and
+      `INDEX.md` is left as staged. `--install-hook` refuses a hooks folder that resolves, symlinks resolved, inside the
+      working tree and outside the git directory, with one line naming the README's hook-runner section; the default
+      `.git/hooks` and a folder outside the repository stay accepted. A relative `core.hooksPath` resolves in the
+      working tree of whichever worktree the hook runs in, so `--install-hook` judges the folder against every working
+      tree `git worktree list` names, not only its own. Tests: an in-tree `core.hooksPath`, a symlink into the tree, the
+      default, and a linked worktree with a relative `core.hooksPath`. The 35 seconds stay; the commit's refusal line
+      names `SHOALMARK_BOARD_SECONDS` as the way to raise it. The warning off the default branch names a PIN only where
+      the repository pins one. The drift line printed more than once on one commit is 0.19.1's.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
@@ -772,6 +786,16 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
         remaining findings get their tests with their fixes in 0.19.1, not before.
       - *Gate:* no open P1 or P2; every finding of the report carries a status; the advisories say only what was tested.
         Then the notes' checksum, last, the full local run, CI 9/9 and the merge.
+      - *Order* (the Owner's rulings, 2026-10-02, night; it replaces the orders above): after the Builder's last push —
+        the signed identity and the tests' record in — reviewer-80's critical review of the whole change, `d9c154b` to
+        the final head, until READY with no open P1 or P2; then the draft pull request, which the Owner opens, and CI
+        9/9 on it, dispatched by the Owner by hand; then the ledger, which names the CI run it reads (its URL) and the
+        commit it ran on — every commit after that one is evidence or notes only — with reviewer-80's scoped check of
+        it; then the Auditor's final-head checks — the commits against the rulings, the ledger, the re-run of the
+        report's reproductions and the scanners; only then the cold review, on a head nobody expects to change: a fix
+        after it gets reviewer-80's scoped check and the Auditor's verification, and a second cold round only for a P1.
+        Then the notes' checksum, last, the full local run, and the final CI from marking the pull request ready for
+        review, with no second dispatch; the merge and the tag.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the
