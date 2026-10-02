@@ -762,6 +762,9 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       The Owner authorized these PR triggers on 2026-09-29 and these hooks on 2026-10-02. Say when a tag is due; never
       create one.” RV-2305, RV-2306 and RV-2307 are 0.19.1's. implementer-81 builds the round on Opus; then
       reviewer-80's scoped check and READY.
+      Added to the round (the Owner's rulings, the same morning): every run writes only regular files inside the
+      repository, never through a symlink, and otherwise refuses in one line, with a test; a deriver that is a symlink
+      is refused in one line. One check's older Windows guard and the drift line printed more than once are 0.19.1's.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
