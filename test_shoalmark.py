@@ -2927,6 +2927,65 @@ check(f"FM-006 · a private security report · every worktree's configuration ·
       g_["prunable"] and g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
 fm.configure(HERE)
 
+# --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
+# opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it
+_SAME_REV = "4087e23"
+_HAVE_SAME = _has_rev(_SAME_REV)
+def _watch(where, mark, opened=(), started=()):
+    """The environment of a run watched for opening `opened` or starting a program on `started` (paths, compared resolved); `mark` appears where it did."""
+    where = Path(where); where.mkdir(parents=True, exist_ok=True)
+    (where / "sitecustomize.py").write_text(
+        "import os, sys\n"
+        f"_OPENED, _STARTED, _MARK = {sorted(os.path.realpath(p_) for p_ in opened)!r}, {sorted(os.path.realpath(p_) for p_ in started)!r}, {str(mark)!r}\n"
+        "_IN = [False]\n"
+        "def _real(a):\n"
+        "    return os.path.realpath(os.fsdecode(a)) if isinstance(a, (str, bytes, os.PathLike)) else None\n"
+        "def _seen(event, args):\n"
+        "    if _IN[0]:\n"
+        "        return\n"
+        "    _IN[0] = True\n"
+        "    try:\n"
+        "        hit = (event == 'open' and args and _real(args[0]) in _OPENED) or (event in ('subprocess.Popen', 'os.posix_spawn', 'os.spawn', 'os.exec') and len(args) > 1\n"
+        "               and any(_real(a) in _STARTED for a in (args[1] if isinstance(args[1], (list, tuple)) else [args[1]])))\n"
+        "        if hit:\n"
+        "            with open(_MARK, 'a') as f:\n"
+        "                f.write(event + '\\n')\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "    finally:\n"
+        "        _IN[0] = False\n"
+        "sys.addaudithook(_seen)\n", encoding="utf-8")
+    return dict(_ENV, PYTHONPATH=str(where))
+
+# --- the PIN's names (RV-2316, the Owner's ruling filed in FM-006, *The fix round after the critical review*): the gate reads only the files a vendored copy's PIN
+# names inside the copy — a name outside it is refused in one line, and the file it names is never opened
+def _pn(rev=None):
+    """A vendored copy at `tools/shoalmark` whose PIN names one more file, `../../../marks/outside.txt`, outside the copy; its `--check`, watched."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        src_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
+        outside_ = marks / "outside.txt"; outside_.write_text("inert\n", encoding="utf-8")
+        pin_ = root / "tools/shoalmark/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  ../../../marks/outside.txt\n", encoding="utf-8")
+        mark_ = marks / "opened"; env_ = _watch(marks / "watch", mark_, opened=[outside_])
+        c_, o_, e_ = _tool_run(root / "tools/shoalmark/shoalmark.py", root, "--check", env=env_)
+        g_ = dict(vendored=v_[0], code=c_, said=(o_ + e_).strip(), opened=mark_.exists())
+        rm_git(root)
+    return g_
+_PN_LINE = "tools/shoalmark/PIN names ../../../marks/outside.txt, outside the copy — a PIN names only the copy's own files; vendor again with --vendor"
+def _pn_ok(g):
+    return g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and sum(_PN_LINE in l_ for l_ in g["said"].splitlines()) == 1 and not g["opened"]
+g_ = _pn()
+check(f"FM-006 · a private security report · the PIN's names · a name outside the copy: `--check` refuses it in one line, exit 4, and the file it names is never opened "
+      f"(saw exit {g_['code']}, opened={g_['opened']}, {next((l_ for l_ in g_['said'].splitlines() if 'outside the copy' in l_), '')[-90:]!r})", _pn_ok(g_))
+if _HAVE_SAME:
+    c_ = _pn(_SAME_REV)
+    check(f"FM-006 · a private security report · the PIN's names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _pn_ok(c_))
+else:
+    _skipped("FM-006 · a private security report · the PIN's names · the control", 1, f"this clone does not hold {_SAME_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

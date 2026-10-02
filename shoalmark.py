@@ -7573,6 +7573,9 @@ def pin_problems():
         if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
             continue
         want, _, rel = line.partition("  ")
+        if rel and not _norm(tool / rel).startswith(_norm(tool).rstrip(os.sep) + os.sep):     # RV-2316: a name outside the copy is refused, and never read
+            out.append(f"{here}/PIN names {rel}, outside the copy — a PIN names only the copy's own files; vendor again with --vendor")
+            continue
         if rel and not board_isfile(tool / rel):            # the working tree lacks it — the checkout's finding (FM-034)
             out.append(f"{here}/{rel}: the PIN names it, and {CHECKOUT_MARKS[1]} — restore it from git, or run --vendor again")
         elif rel and digest(tool / rel) != want:
