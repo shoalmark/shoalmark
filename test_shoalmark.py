@@ -2749,6 +2749,29 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the triage worksheet", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- a folder named `derive` (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): it is no deriver — a run by hand
+# goes on without one and says nothing of it; the deriver's line is for a symlink alone
+_DF_REV = "ee6c28a"
+_HAVE_DF = _has_rev(_DF_REV)
+def _df(rev=None):
+    """A run by hand where the tracker folder holds a folder named `derive`."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); (root / "docs/work-tracker/derive").mkdir(); (root / "docs/work-tracker/derive/note.txt").write_text("inert\n", encoding="utf-8")
+        c_, o_, e_ = _tool_run(root / "shoalmark.py", root)
+        g_ = dict(code=c_, err=e_.strip(), index=(root / "docs/work-tracker/INDEX.md").is_file())
+        rm_git(root)
+    return g_
+def _df_ok(g):
+    return g["code"] == 0 and "derive" not in g["err"] and g["index"]
+g_ = _df()
+check(f"FM-006 · a private security report · a folder named `derive` is no deriver: a run by hand goes on, exit 0, and no line names it (saw exit {g_['code']}, {g_['err'][-100:]!r})", _df_ok(g_))
+if _HAVE_DF:
+    c_ = _df(_DF_REV)
+    check(f"FM-006 · a private security report · a folder named `derive` · …the control: beside {_DF_REV}'s tool this check FAILS", not _df_ok(c_))
+else:
+    _skipped("FM-006 · a private security report · a folder named `derive` · the control", 1, f"this clone does not hold {_DF_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
