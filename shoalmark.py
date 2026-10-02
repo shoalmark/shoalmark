@@ -96,7 +96,7 @@ DEFAULTS = {
     # names have theirs (BUILTIN_RIGHTS). ABSENT, nothing is enforced — this is for a repository that lets in agents
     # which never read its contract. It catches an agent that does not know the rule, not one that lies (README,
     # *Seats*). Under Subversion an identity is the server account and `signed` is refused: the server authenticated it.
-    # THE OWNER IS NOT A SEAT (FM-024, D2): a top-level `owner = "<identity> signed"`, before any table, names them — the
+    # THE OWNER IS NOT A SEAT (FM-024, D2): a top-level `owner = "<email> signed"`, before any table, names them — the
     # same value as a `[seats]` one — and `[seats] owner` is still read, as its old spelling (`seats_of`).
     "seats": {},
     "rights": {},
@@ -536,10 +536,13 @@ def configure(root=None):
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
+        refuse_signed_name("`answerers`", name, mode)
     SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> [(identity, "signed" | ""), …], and seat name -> rights
     seen = {}                                           # identity -> the seat that claimed it first
     for name, value in seats_of(CONFIG).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
+        for who, mode in SEATS[name]:                   # a signed identity is an email (the release bar's signed identity)
+            refuse_signed_name("`owner`" if at_top(name) else f"`[seats] {name}`", who, mode)
         for who, _mode in SEATS[name]:
             if who and who in seen and at_top(seen[who]):   # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
                 raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
@@ -1742,16 +1745,16 @@ def have_not(shas):
 
 def answerer_of(commit):
     """(whether the author of `commit` may answer — the gate's own match, email or name —, that author as the queue names
-    one — the email, else the name —, the email)"""
+    one — the email, else the name —, the configured identity they answer as, which a signature must name: `answerer_identity`)"""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", commit) or "").strip().partition("\x01")
-    return (holds(seat_of(name, email), "answer") if SEATS else name in may_answer()), email or name or "no author", email
+    return (holds(seat_of(name, email), "answer") if SEATS else name in may_answer()), email or name or "no author", answerer_identity(name, email)
 
 
 def answers_as_him(commit):
     """`commit` is his: its author may answer and it verifies as him — the gate's one test, `verified_as`, as
     `answer_reading` applies it to the commit an `answer/*` pull request is read by (FM-031, RV-710)"""
-    may, _who, email = answerer_of(commit)
-    return may and verified_as(commit, email or None)
+    may, _who, identity = answerer_of(commit)
+    return may and verified_as(commit, identity)
 
 
 def review_addendum():
@@ -1930,11 +1933,13 @@ def answer_reading(head):
     case the Owner most needs named); else on the signature. `answer_branch_reading` reads a merge here as his only where
     every commit of the branch's own below `head` is his too, a review file's only, or the tool's own refusal record
     (RV-710)."""
-    may, who, email = answerer_of(head)
+    may, who, identity = answerer_of(head)
     if not may:
         return "wait", f"wait: not an answerer ({who})", ""
-    if verified_as(head, email or None):
+    if verified_as(head, identity):
         return "merge", "merge: your answer", f"signed {head[:7]}"
+    if signature_kind(head) not in ("", "ssh"):             # GPG, X.509: a signed line verifies by SSH only
+        return "wait", f"wait: {SIGN_WITH_SSH}", ""
     gap = signature_gap(head)
     return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
 
@@ -2592,7 +2597,7 @@ def owner_change(tid, t, how):
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
         return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
-    if signed and not verified_as("HEAD"):
+    if signed and not verified_as("HEAD", signed_identity(seat, pend_name or me, pend_email) if SEATS else me):
         # the gate's own test, `verified_as`, asked here so the change is never pushed under one the gate will refuse: a good
         # signature under a key the DEFAULT branch's signers file trusts, for the author's email (FM-037's cold re-review, R1:
         # this read the clone's own file, so mid key rotation it said *pushed*, and the gate refused the answer after)
@@ -4496,7 +4501,7 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
-    "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email or name> signed\"`; at the top of the file, before any table",
+    "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email> signed\"` — a signed identity is an email; at the top of the file, before any table",
               "who the Owner is (FM-024): the one who answers, and holds all four rights — the Owner is not a seat. `signed` is read per identity, as for a seat. "
               "`[seats] owner` is still read, as its old spelling: both present and the same are read once; both present and different are refused at configuration (exit 1), "
               "and so is an `owner` key inside any other table, naming this place (in `[rights]`, a list of rights is the Owner's own) — a key after a `[table]` header belongs to that table"),
@@ -4504,7 +4509,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
                         "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
-    "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email or name> signed\"`",
+    "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email> signed\"` — a signed identity is an email, verified by SSH",
                        "who sits in that seat (FM-024): every identity listed maps to the seat — `planner = [\"principal@seat\", "
                        "\"12345+shoalmark-planner[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
@@ -4675,18 +4680,35 @@ def pending_author():
     return (name.strip(), rest.partition(">")[0].strip()) if out.returncode == 0 else ("", "")
 
 
-def verified_as(commit, email=None):
-    """The gate's ONE signature test, shared by every rule that asks for a signed line: `%G?` is G for a good
-    signature under a trusted key, GPG or SSH alike — and the principal the key is trusted FOR (`%GS`) must be the
-    identity claimed. A good signature under a trusted key still says nothing about whose name is on the commit. The key is
-    trusted by the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19): an answer branch that appends its own
-    key under the Owner's email vouches for nothing."""
-    if signature_gap(commit):
+# A SIGNED IDENTITY (FM-024; the Owner's ruling filed in FM-006, *The release bar*, on a private security report): a `signed` identity is an email address —
+# one `@`, something on both sides, no whitespace — and it verifies by SSH only. Configuration refuses any other `signed` identity; a commit signed any other
+# way than SSH is refused on a signed line with `SIGN_WITH_SSH`.
+EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+")
+SIGN_WITH_SSH = "sign with SSH; GPG returns with a fingerprint binding"
+
+
+def signature_kind(commit):
+    """The kind of `commit`'s signature, read from the commit object's own header — never from configuration: "ssh", "pgp", "x509" or "other",
+    and "" where it carries none."""
+    head = (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    m = re.search(r"^gpgsig(?:-sha256)? (.*)$", head, re.M)
+    if not m:
+        return ""
+    first = m.group(1)
+    return ("ssh" if "BEGIN SSH SIGNATURE" in first else "pgp" if "BEGIN PGP SIGNATURE" in first
+            else "x509" if "BEGIN SIGNED MESSAGE" in first or "BEGIN CMS" in first else "other")
+
+
+def verified_as(commit, identity):
+    """The gate's ONE signature test, shared by every rule that asks for a signed line — the identity a signature must name is the configured one
+    (`signed_identity`), never the commit's author standing in for it. All three must hold: the signature, read from the commit object's own header,
+    is SSH; `%G?` is G under the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19: an answer branch that appends its own key under the
+    Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it."""
+    if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or signature_gap(commit):
         return False
-    v = subprocess.run(["git", *signers_args(), "log", "-1", "--format=%G?%n%GS%n%ae", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    good, signer, author_email = (v.stdout.split("\n") + ["", "", ""])[:3]
-    claimed = (email or author_email).strip()
-    return good.strip() == "G" and bool(claimed) and claimed in signer
+    v = subprocess.run(["git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    good, signer = (v.stdout.split("\n") + ["", ""])[:2]
+    return good.strip() == "G" and signer.strip() == identity
 
 
 _SIGNERS = None
@@ -4751,17 +4773,11 @@ def signers_gap(commit):
 
 
 def signature_gap(commit):
-    """Why a SIGNED commit cannot be verified in this clone — the clone's configuration, not the commit — or "": the commit
-    carries no signature, or the check could run. A refusal that said *sign it* to a signed commit blamed the Owner's
-    key for a missing file in the reader's setup: SSH needs `gpg.ssh.allowedSignersFile`, GPG the key in the keyring."""
-    head = (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
-    if not re.search(r"^gpgsig(-sha256)? ", head, re.M):
-        return ""
-    if "BEGIN SSH SIGNATURE" in head:
-        return signers_gap(commit)                          # FM-037's AU-19: the default branch's signers file, never the branch's
-    elif "BEGIN PGP SIGNATURE" in head and (git_out("log", "-1", "--format=%G?", commit) or "").strip() == "E":
-        return "the signing key is not in this clone's GPG keyring"
-    return ""
+    """Why an SSH-signed commit cannot be verified in this clone — the clone's configuration, not the commit — or "": the commit
+    carries no SSH signature, or the check could run. A refusal that said *sign it* to a signed commit blamed the Owner's
+    key for a missing file in the reader's setup: SSH needs `gpg.ssh.allowedSignersFile`. Any other kind is no gap: a signed line refuses it
+    (`SIGN_WITH_SSH`)."""
+    return signers_gap(commit) if signature_kind(commit) == "ssh" else ""      # FM-037's AU-19: the default branch's signers file, never the branch's
 
 
 def unverified(commit, tail):
@@ -4770,11 +4786,13 @@ def unverified(commit, tail):
     holds for it, with the way through — a key lands in that file first (FM-037's cold re-review, R1: mid key rotation the
     answer gate told the Owner to sign a commit he had signed) — `%G?` U, a key the file does not hold, or G, one it holds for
     someone else; else the seat's own words (`tail`), which ask for a signature — a bad signature (`%G?` B) among them."""
+    if signature_kind(commit) not in ("", "ssh"):          # GPG, X.509 or another kind: a signed line verifies by SSH only
+        return SIGN_WITH_SSH
     gap = signature_gap(commit)
     if gap:
         return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}"
     s = trusted_signers()
-    ssh = "BEGIN SSH SIGNATURE" in (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    ssh = signature_kind(commit) == "ssh"
     if ssh and s["file"] and (git_out(*signers_args(), "log", "-1", "--format=%G?", commit) or "").strip() in ("G", "U"):
         held = f"`{s['rel']}` on {s['trunk']}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
         return (f"it is signed, but not with a key {held} holds for that identity — a new key verifies once it is there"
@@ -4837,6 +4855,14 @@ def in_this_commit(t):
         return True
 
 
+def refuse_signed_name(where, who, mode):
+    """A `signed` identity that is not an email is refused when the configuration is read — exit 1, one line on how to migrate: a signature
+    verifies against the email the signers file names for the key, and nothing else. An identity without `signed` stays as it is."""
+    if mode == "signed" and not EMAIL_RE.fullmatch(who or ""):
+        raise SystemExit(f'{CONFIG_NAME}: {where} names `{who}` as signed, and a signed identity is an email address — write the email the signers file names for the key: '
+                         + ('`owner = "<email> signed"`, before any table (`answerers` is its old spelling, read by the git author\'s name)' if where == "`answerers`" else '`"<email> signed"`'))
+
+
 def seat_identities(value):
     """A `[seats]` value as its identities, `[(identity, "signed" | ""), …]` (FM-024): a string is one, as ever —
     `"principal@seat"`, `"you@example.org signed"` — a list is several, each item optionally `… signed`, so the address a
@@ -4863,13 +4889,13 @@ def seats_of(cfg):
              and not (t == "rights" and not isinstance(body["owner"], str))]
     if where:
         raise SystemExit(f'{CONFIG_NAME}: `owner` is inside {" and ".join(f"`[{t}]`" for t in where)}, where it does not name the Owner — '
-                         f'put it at the top of the file, before any table: `owner = "<identity> signed"`'
+                         f'put it at the top of the file, before any table: `owner = "<email> signed"`'
                          + ("; if it is a tag, give it another name: `owner` names the Owner" if "tags" in where else ""))
     top = cfg.get("owner")
     if top is None:
         return seats
     if not isinstance(top, (str, list)):
-        raise SystemExit(f'{CONFIG_NAME}: `owner` is a key at the top of the file, before any table — `owner = "<email or name> signed"`, or a list of them. '
+        raise SystemExit(f'{CONFIG_NAME}: `owner` is a key at the top of the file, before any table — `owner = "<email> signed"`, or a list of them. '
                          f'Got {"a table, `[owner]`" if isinstance(top, dict) else repr(top)}')
     old = seats.get("owner")
     if old is not None and seat_identities(old) != seat_identities(top):
@@ -4889,6 +4915,25 @@ def seat_mode(seat, name, email):
     that matches none of its identities (a name where the seat lists an email) reads the seat's first."""
     ids = SEATS[seat]
     return next((m for who, m in ids if who and who in (email, name)), ids[0][1] if ids else "")
+
+
+def signed_identity(seat, name, email):
+    """The identity a signature must name for this author in that seat: the configured `signed` identity it wears — matched as `seat_mode` matches,
+    on its email or its name — which configuration holds to an email; None where the identity it wears asks for no signature. Never the commit's
+    author standing in for it."""
+    ids = SEATS.get(seat) or []
+    hit = next(((who, m) for who, m in ids if who and who in (email, name)), ids[0] if ids else None)
+    return hit[0] if hit and hit[1] == "signed" else None
+
+
+def answerer_identity(name, email):
+    """The configured identity this author answers as — with `[seats]`, the one their seat lists that they match (or the seat's first, as `seat_mode`
+    reads it); without, the `answerers` entry their name, else their email, is — or None. What `--queue` verifies an answer against."""
+    if SEATS:
+        ids = SEATS.get(seat_of(name, email)) or []
+        hit = next((who for who, _m in ids if who and who in (email, name)), ids[0][0] if ids else None)
+        return hit
+    return name if name in may_answer() else None          # `answerers` always meant the git author's name
 
 
 def at_top(seat):
@@ -4984,7 +5029,7 @@ def seat_problems(t):
     if seat_mode(seat, name, email) == "signed" and how != "svn":
         if not commit:
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
-        elif not verified_as(commit, email or None):
+        elif not verified_as(commit, signed_identity(seat, name, email)):
             return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — '
                     + unverified(commit, f'{"`owner`" if at_top(seat) else "`[seats]`"} asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach them')]
     return []
@@ -5149,7 +5194,7 @@ def rights_problems(trackers):
                 elif seat_mode(seat, name, email) == "signed":
                     if not commit:
                         print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
-                    elif not verified_as(commit, email or None):
+                    elif not verified_as(commit, signed_identity(seat, name, email)):
                         out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
                                    + unverified(commit, f'{"`owner`" if at_top(seat) else "`[seats]`"} asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
     return out
@@ -6255,12 +6300,15 @@ def owners_of(cfg):
     seats, rights, out = seats_of(cfg), cfg.get("rights") if isinstance(cfg.get("rights"), dict) else {}, {}
     if seats:
         for name, value in seats.items():
+            for who, mode in seat_identities(value):    # the same refusal as this checkout's configuration: `owners_at` says it
+                refuse_signed_name("`owner`" if name == "owner" and cfg.get("owner") is not None else f"`[seats] {name}`", who, mode)
             words = rights.get(name, BUILTIN_RIGHTS.get(name, ()))
             if "answer" in ([words] if isinstance(words, str) else words):
                 out.update(seat_identities(value))
         return {w: m for w, m in out.items() if w}
     for a in (cfg.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
+        refuse_signed_name("`answerers`", name, mode)
         out[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
     return {w: m for w, m in out.items() if w}
 
@@ -6283,13 +6331,6 @@ def owners_at(rev, refused=None):
         return {}
 
 
-def signer_is(signer, email):
-    """The signer principal IS the email: an SSH principal equal to it, or a GPG user id carrying it as `<email>` — never a
-    principal that merely contains it."""
-    s, e = (signer or "").strip().lower(), (email or "").strip().lower()
-    return bool(e) and (s == e or f"<{e}>" in s)
-
-
 def guard_verdicts(changed, owners):
     """[(commit, subject, home, what, verdict, why)] for each commit of `guard_walk` that changes a section — `verdict`:
     `signed` (the Owner's signed commit), `author` (the Owner's, where his seat asks for no signature: the author is all
@@ -6304,17 +6345,20 @@ def guard_verdicts(changed, owners):
     verdicts = []
     for c, subject, home, what in changed:
         name, email, good, signer = sigs.get(c, ("", "", "", ""))
-        mode = next((m for who, m in owners.items() if who in (email, name)), None)
+        identity, mode = next(((who, m) for who, m in owners.items() if who in (email, name)), (None, None))
+        kind = signature_kind(c)
         if mode is None:
             verdict, why = "refused", f"its author `{email or name or 'nobody git can name'}` is not the Owner ({' · '.join(f'`{w}`' for w in owners)})"
         elif mode != "signed":
             verdict, why = "author", ""
+        elif kind not in ("", "ssh"):                       # GPG, X.509: the Owner's signed line verifies by SSH only
+            verdict, why = "refused", SIGN_WITH_SSH
         elif signature_gap(c):                              # before `%G?`: read against a signers file the branch wrote, it says G
             verdict, why = "checkout", signature_gap(c)
-        elif good == "G" and signer_is(signer, email):
+        elif good == "G" and signer.strip() == identity:    # the principal IS the Owner's configured email — never a principal that contains it, never the author
             verdict, why = "signed", ""
         elif good == "G":
-            verdict, why = "refused", f"signed as `{signer}`, not as its author `{email}`"
+            verdict, why = "refused", f"signed as `{signer}`, not as the Owner's `{identity}`"
         else:
             verdict, why = "refused", ("the Owner's email, unsigned — a git author is a string anyone can type" if good == "N"
                                        else f"the Owner's email, and its signature does not verify (`%G?` {good})")
@@ -7126,8 +7170,9 @@ def lint(trackers, committing=False):
                 elif how == "git" and (seat_mode(seat, who, email) if SEATS else allowed[who]) == "signed":
                     # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
-                    if not verified_as(commit, email if SEATS else None):
-                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{email if SEATS else who}` — '
+                    claimed = signed_identity(seat, who, email) if SEATS else who
+                    if not verified_as(commit, claimed):
+                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{claimed}` — '
                                         + unverified(commit, f'{(("`owner`" if at_top(seat) else "`[seats]`") + " asks this seat") if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
                                                              f'sign it (`git commit -S`), or it does not count'))
                 elif how == "git":

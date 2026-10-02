@@ -1013,7 +1013,7 @@ with tempfile.TemporaryDirectory() as d:
     table_of = lambda label: label.split("]")[0] + "]"
     check(f"FM-024 D2 · 5 of 7 · an `owner` key inside an unrelated table is refused at configuration — exit 1, one line, naming the table and where it belongs (saw {[(t.split(',')[0], r.returncode) for t, r in unrelated.items()]})",
           all(one_line(r) and f"`owner` is inside `{table_of(t)}`, where it does not name the Owner" in r.stderr
-              and 'put it at the top of the file, before any table: `owner = "<identity> signed"`' in r.stderr for t, r in unrelated.items()))
+              and 'put it at the top of the file, before any table: `owner = "<email> signed"`' in r.stderr for t, r in unrelated.items()))
     read_(f'{base_cfg}\n[rights]\nowner = ["answer"]\n'); rights_list = sorted(fm.SEAT_RIGHTS["owner"])
     r_obj = cli(f'[owner]\nname = "x"\n{base_cfg}')
     check(f"FM-024 D2 · 5 of 7 · …a seat's rights keep the name `owner` (a list under `[rights]` reads: {rights_list}); a table `[owner]` is refused as no key at the top (saw {r_obj.returncode}, {r_obj.stderr.strip()[:130]!r})",
@@ -1050,13 +1050,13 @@ with tempfile.TemporaryDirectory() as d:
           and "owner (" not in said_no and "The seats are: planner (planner@seat). The Owner, who is not a seat, is you@example.org." in said_old
           and "The seats are: planner (planner@seat). A seat wears its badge" in said_none and "The Owner" not in said_none)
     # where a message points at the line that asks a signature, the Owner named at the top is `owner`, a line of its own; under the old spelling it stays `[seats] owner`
-    r_top = cli(f'owner = "alice"\nanswerers = ["alice signed"]\n{base_cfg}'); r_old = cli(f'answerers = ["alice signed"]\n{base_cfg}\n[seats]\nowner = "alice"\n')
+    r_top = cli(f'owner = "alice@x"\nanswerers = ["alice@x signed"]\n{base_cfg}'); r_old = cli(f'answerers = ["alice@x signed"]\n{base_cfg}\n[seats]\nowner = "alice@x"\n')    # a signed identity is an email
     read_(f'owner = "alice"\n{base_cfg}\n[seats]\n{PLANNER}'); at_top = getattr(fm, "at_top", lambda seat: None); top_, old_seat_ = at_top("owner"), at_top("planner")
     read_(f'{base_cfg}\n[seats]\nowner = "alice"\n{PLANNER}'); old_spelling_ = at_top("owner")
     check(f"FM-024 D2 · the lines that point at where the Owner's signature is asked say `owner` when it is named at the top, and `[seats] owner` under the old spelling (saw {r_top.returncode}, {r_old.returncode})",
-          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to `owner` (`owner = \"alice signed\"`), or remove `answerers`" in r_top.stderr
+          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice@x"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to `owner` (`owner = \"alice@x signed\"`), or remove `answerers`" in r_top.stderr
           and "`owner` and `[seats]` alone decide who may answer" in r_top.stderr and "the Owner, who answers for it" in r_top.stderr
-          and '`[seats] owner = "alice"`' in r_old.stderr and top_ is True and old_seat_ is False and old_spelling_ is False)
+          and '`[seats] owner = "alice@x"`' in r_old.stderr and top_ is True and old_seat_ is False and old_spelling_ is False)
     check("FM-024 D2 · `--schema` has an `owner` entry — top level, one identity or a list, the old spelling, the refusals — and the `[seats] <seat>` text reads the Owner and three seats with their rights built in",
           (lambda t: "| `owner` | one identity, or a list of them, as a `[seats]` value" in t and "`[seats] owner` is still read, as its old spelling" in t and "are refused at configuration" in t
                      and "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same" in t
@@ -3643,16 +3643,17 @@ with tempfile.TemporaryDirectory() as tmp:
     check("an answer committed by the answerer passes: the ask leaves the Owner's queue and appears under --answered, with the question, the answer and who answered",
           code == 0 and "AP-060" not in q_ and "1 ANSWERED, NOT YET ACTED ON" in a_ and "answer: accepted — count one week first" in a_ and "by holgo" in a_)
     # `signed`: a git author is a string; the commit must VERIFY. A throwaway SSH key, trusted by the repository alone.
-    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    (root / "shoalmark.toml").write_text('owner = "h@x signed"\nname = "q"\n[kinds]\nAP = "Work"\n[seats]\nplanner = "s@x"\n', encoding="utf-8")       # a signed identity is an email (FM-024); the asks are the planner's
     code, _, err = run(root)
-    check("`answerers = [\"holgo signed\"]`: an unsigned answer is refused even though its author string is right — a git author is only a string", code == fm.EXIT_LINT and "does not verify" in err + _)
+    check("`owner = \"h@x signed\"`: an unsigned answer is refused even though its author string is right — a git author is only a string", code == fm.EXIT_LINT and "does not verify" in err + _)
     key = root / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
-    (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    other_ = root / "o"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other_)], check=True, capture_output=True)
+    (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text() + "other@x " + other_.with_suffix(".pub").read_text(), encoding="utf-8")
     git(root, "config", "gpg.format", "ssh"); git(root, "config", "user.signingkey", str(key)); git(root, "config", "gpg.ssh.allowedSignersFile", str(root / "signers"))
     git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>"); code, _, err = run(root)
     check("a signed answer under a key the repository trusts verifies and passes", code == 0 and "does not verify" not in err)
-    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <other@x>"); code, _, err = run(root)
-    check("signed by the key, but as an identity the signers file does not tie to it — refused: the key and the name must agree", code == fm.EXIT_LINT and "does not verify" in err + _)
+    git(root, "-c", f"user.signingkey={other_}", "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>"); code, _, err = run(root)
+    check("signed by a key the signers file trusts for another identity — refused: the key and the identity must agree", code == fm.EXIT_LINT and "does not verify" in err + _)
     git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>")
     (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     ans.write_text(ans.read_text().replace("answered-by: holgo\n", "answered-by: intruder\n"), encoding="utf-8"); code, _, err = run(root)
@@ -3794,7 +3795,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(root / "signers")), ("commit.gpgsign", "false")):
         git(root, "config", k_, v_)
     git(root, "remote", "add", "origin", str(base / "origin.git"))
-    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    (root / "shoalmark.toml").write_text('owner = "h@x signed"\nname = "q"\n[kinds]\nAP = "Work"\n[seats]\nplanner = "s@x"\n', encoding="utf-8")       # a signed identity is an email (FM-024); the asks are the planner's
     # the tracker discusses its own keys, as FM-007 itself does: "an `answer:` counts only from the account it is filed
     # from" is the sentence the pre-mortem's rule is written in, and it sits in the body of the very tracker it governs
     ap70_ = tracker(root, "AP-070", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="the ask",
@@ -4081,21 +4082,21 @@ with tempfile.TemporaryDirectory() as tmp:
     cfg_("", "")
     tracker(root, "AP-700", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=p <p@seat>")     # asked by the principal, which signs nothing
-    cfg_('["alice signed"]', 'owner = "alice signed"'); code_a, _, err_a = run(root, "--check")
+    cfg_('["alice@x signed"]', 'owner = "alice@x signed"'); code_a, _, err_a = run(root, "--check")      # a signed identity is an email (FM-024)
     check("FM-015 · `answerers` signed and the seat that answers for it signed — clean, and told `answerers` is not read here and can go",
           code_a == 0 and "answerers" in err_a and "here it is not read for answers" in err_a and "is not signed" not in err_a)
-    cfg_('["alice signed"]', 'owner = "alice"'); code_b, _, err_b = run(root, "--check")
+    cfg_('["alice@x signed"]', 'owner = "alice@x"'); code_b, _, err_b = run(root, "--check")
     check("FM-015 · `answerers` signed and the seat that answers for it NOT signed — REFUSED, naming both lines and the two ways out",
-          code_b == fm.EXIT_LINT and '`answerers = ["alice signed"]` asks for a signed answer' in err_b and '`[seats] owner = "alice"`' in err_b
-          and 'Add `signed` to the seat (`owner = "alice signed"`), or remove `answerers`' in err_b)
+          code_b == fm.EXIT_LINT and '`answerers = ["alice@x signed"]` asks for a signed answer' in err_b and '`[seats] owner = "alice@x"`' in err_b
+          and 'Add `signed` to the seat (`owner = "alice@x signed"`), or remove `answerers`' in err_b)
     code_c, _, err_c = run(root, "--answer", "AP-700", "accept")
     check("FM-015 · …and `--answer` refuses the same way before it touches anything — it would have committed unsigned",
-          code_c == fm.EXIT_LINT and '`[seats] owner = "alice"`' in err_c and "answering AP-700 — 2/4" not in err_c
+          code_c == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_c and "answering AP-700 — 2/4" not in err_c
           and subprocess.run(["git", "-C", str(root), "branch", "--list", "answer/ap-700"], capture_output=True, text=True, env=_ENV).stdout.strip() == "")
-    cfg_('["alice signed"]', 'owner = "alice@x"'); code_d, _, err_d = run(root, "--check")
-    check("FM-015 · where no seat is spelled like the `answerers` entry — a name there, an email here — the seats holding `answer` stand in for it, and an unsigned one is refused",
-          code_d == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_d and "no seat is spelled `alice`" in err_d)
-    cfg_('["alice signed"]', ""); code_e, _, err_e = run(root, "--check")
+    cfg_('["alice2@x signed"]', 'owner = "alice@x"'); code_d, _, err_d = run(root, "--check")
+    check("FM-015 · where no seat is spelled like the `answerers` entry — another address there, this one here — the seats holding `answer` stand in for it, and an unsigned one is refused",
+          code_d == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_d and "no seat is spelled `alice2@x`" in err_d)
+    cfg_('["alice@x signed"]', ""); code_e, _, err_e = run(root, "--check")
     check("FM-015 · no `[seats]` — `answerers` is read, and the note is today's, with its removal anchored to 0.17.3",
           code_e == 0 and "and still works" in err_e and "the release after 0.17.3" in err_e and "is not signed" not in err_e)
     cfg_("", 'owner = "alice"'); code_f, _, err_f = run(root, "--check")
@@ -4770,11 +4771,11 @@ else:
         check("S4 · under Subversion the seat is the server's account: the ask committed by an account that is no seat is refused, naming it — and the one from the seat that holds `ask` passes",
               code == fm.EXIT_LINT and "C2-002: `next: owner` puts a question in front of the Owner" in err and "`stranger` is not a seat" in err
               and "--worktree user.email" not in err and "C2-003" not in err)
-        (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal signed"\n', encoding="utf-8")
+        (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal@example.org signed"\n', encoding="utf-8")      # a signed identity is an email (FM-024)
         code, _, err = run(root)
         check("S4 · `signed` under Subversion is refused as meaningless — the server authenticated the commit; name the account alone",
               code == fm.EXIT_LINT and "asks for a signature, and Subversion has none to give" in err and "Name the SVN account alone" in err)
-        (root / "shoalmark.toml").write_text('owner = "holgo signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
+        (root / "shoalmark.toml").write_text('owner = "holgo@example.org signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
         code, _, err = run(root)
         check(f"S4 · RV-2200 · the Owner named at the top with `signed` under Subversion is refused as `owner`, never under `[seats]` (saw {err.strip()[-200:]!r})",
               code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and Subversion has none to give" in err)
@@ -6515,6 +6516,188 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- the signed identity (FM-024; the Owner's ruling filed in FM-006, *The release bar*, on a private security report) ----------------------------------------------
+# A `signed` identity is an email, and it verifies by SSH only: the signature, read from the commit's own header, is SSH; `%G?` is G under the default branch's
+# signers file; the principal EQUALS the configured email — never one that contains it, never the commit's author standing in for it. Throwaway keys made by
+# `ssh-keygen` (and `gpg` in a throwaway home, where there is one); every signature is a test key's. Each control is the same check beside 79be49d's tool.
+_SIG_REV = "79be49d"
+_HAVE_SIG = _has_rev(_SIG_REV)
+_SIG_LINE = fm.SIGN_WITH_SSH
+def _sig_keys(base, *principals):
+    """One throwaway SSH key per principal, and a signers file beside the repository naming each — {principal: key file}."""
+    keys_ = {}
+    for i_, p_ in enumerate(principals):
+        k_ = base / f"key{i_}"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(k_)], check=True, capture_output=True); keys_[p_] = k_
+    (base / "signers").write_text("".join(f"{p_} {k_.with_suffix('.pub').read_text(encoding='utf-8')}" for p_, k_ in keys_.items()), encoding="utf-8")
+    return keys_
+def _sig_old(into):
+    """79be49d's tool, laid out beside the repository: its path, and the module it is, loaded apart from this one."""
+    into = Path(into); into.mkdir(parents=True, exist_ok=True); _old_tree(into, _SIG_REV)
+    spec_ = importlib.util.spec_from_file_location("fm_before_the_signed_identity", into / "shoalmark.py"); m_ = importlib.util.module_from_spec(spec_); spec_.loader.exec_module(m_)
+    return into / "shoalmark.py", m_
+_SIG_CFG = 'name = "s"\nowner = "h@x signed"\n[kinds]\nSG = "Work"\n[seats]\nplanner = "p@x signed"\n'
+def _sig_lint(case, variant, tool, gnupg=None):
+    """The gate's lint on one signed line in a scratch repository. `case`: the Owner's `answer`, the planner's `next: owner` ask, or the planner's `close`.
+    `variant`: `exact` — the seat's email, signed with the key the signers file trusts for it; `name` — an author whose name is the seat's email and whose
+    email is another signer's, signed with that signer's trusted key; `contains` — the seat's email, signed with a key trusted for a principal that contains
+    it; `gpg` — the Owner's email, signed by a GPG key whose user ID carries it (`gnupg`: its home and fingerprint); `pgp` — the Owner's email, the commit
+    object written with git's plumbing and a PGP-armoured signature header, no `gpg` needed. (exit, what the tool said)."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, env=_ENV)
+        keys_ = _sig_keys(base, "h@x", "p@x", "o@x", "xh@x", "xp@x")
+        for k_, v_ in (("gpg.format", "ssh"), ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+            git(root, "config", k_, v_)
+        (root / "shoalmark.toml").write_text(_SIG_CFG, encoding="utf-8")
+        since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        seat_ = "h@x" if case == "answer" else "p@x"
+        author_ = {"name": f"{seat_} <o@x>"}.get(variant, f"them <{seat_}>")
+        asked_ = f'next: build\nask: "Ship it?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+        tracker(root, "SG-001", extra=asked_ if case == "answer" else "")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+        if case == "answer":
+            tracker(root, "SG-001", extra=asked_ + f'answer: "accepted"\nanswered: {since_}\nanswered-by: {author_.split(" <")[0]}\n')
+        elif case == "ask":
+            tracker(root, "SG-001", extra=asked_.replace("next: build", "next: owner"))
+        else:
+            tracker(root, "SG-001", status="Closed")
+        git(root, "add", "-A")
+        env_ = dict(_ENV, **({"GNUPGHOME": gnupg[0]} if gnupg else {}))
+        if variant == "pgp":
+            tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
+            parent_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+            obj_ = (f"tree {tree_}\nparent {parent_}\nauthor {author_} 1700000000 +0000\ncommitter {author_} 1700000000 +0000\n"
+                    "gpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEEAAAAAAAAAAAAAAAAAAAAAAAAAAAFAmUAAAAACgkQAAAAAAAAAAA=\n =AAAA\n -----END PGP SIGNATURE-----\n\nSG-001: the signed line\n")
+            new_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=obj_, capture_output=True, text=True, env=_ENV).stdout.strip()
+            git(root, "update-ref", "HEAD", new_)
+        else:
+            how_ = (["-c", "gpg.format=openpgp", "-c", f"user.signingkey={gnupg[1]}"] if variant == "gpg"
+                    else ["-c", f"user.signingkey={keys_[{'exact': seat_, 'name': 'o@x', 'contains': 'x' + seat_}[variant]]}"])
+            subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", *how_, "commit", "-qm", "SG-001: the signed line", "-S", f"--author={author_}"],
+                           check=True, capture_output=True, env=env_)
+        c_, o_, e_ = _tool_run(tool, root, env=env_)
+        rm_git(root)
+    return c_, o_ + e_
+def _sig_lint_ok(said):
+    """exact passes; another trusted signer under an author that carries the identity, and a principal that only contains it, are refused."""
+    return "does not verify" not in said["exact"][1] and all("does not verify" in said[v_][1] for v_ in ("name", "contains"))
+_SIG_CASES = (("answer", "the Owner's answer (`verified_as`, as the lint's answer rule calls it)"), ("ask", "a signed seat's `next: owner` ask (the lint's ask rule)"),
+              ("close", "a signed seat's `close` (the lint's rights rule)"))
+with tempfile.TemporaryDirectory() as d_old_:
+    old_tool_, old_fm_ = _sig_old(Path(d_old_) / "tool") if _HAVE_SIG else (None, None)
+    for case_, what_ in _SIG_CASES:
+        said_ = {v_: _sig_lint(case_, v_, HERE / "shoalmark.py") for v_ in ("exact", "name", "contains")}
+        check(f"FM-024 · a private security report · the signed identity · {what_}: the exact principal passes; another trusted signer's key under an author that carries the "
+              f"identity as its name is refused, and so is a principal that contains the email without equalling it (saw exits {[said_[v_][0] for v_ in ('exact', 'name', 'contains')]})",
+              _sig_lint_ok(said_))
+        if old_tool_:
+            old_ = {v_: _sig_lint(case_, v_, old_tool_) for v_ in ("exact", "name", "contains")}
+            check(f"FM-024 · a private security report · the signed identity · …the control: {case_} beside {_SIG_REV}'s tool FAILS — it let the author stand in, or took a principal that "
+                  f"contains the email (saw refused: {[v_ for v_ in ('name', 'contains') if 'does not verify' in old_[v_][1]]})", not _sig_lint_ok(old_))
+    # a GPG signature on a signed line is refused with one line — a commit object written with git's own plumbing, no `gpg` needed …
+    c_, said_ = _sig_lint("answer", "pgp", HERE / "shoalmark.py")
+    check(f"FM-024 · a private security report · the signed identity · a commit whose signature header is PGP-armoured, written with git's plumbing, is refused on a signed line with exactly "
+          f"`{_SIG_LINE}` (saw {said_[-160:]!r})", c_ == fm.EXIT_LINT and _SIG_LINE in said_)
+    if old_tool_:
+        c_, said_ = _sig_lint("answer", "pgp", old_tool_)
+        check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool the PGP header gets no such line", _SIG_LINE not in said_)
+    # … and a trusted GPG key whose user ID carries the Owner's email, with real `gpg` in a throwaway home
+    if shutil.which("gpg"):
+        gh_ = tempfile.mkdtemp(); os.chmod(gh_, 0o700); genv_ = dict(_ENV, GNUPGHOME=gh_)
+        subprocess.run(["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-gen-key", "holgo <h@x>", "ed25519", "sign", "never"], capture_output=True, env=genv_)
+        fpr_ = next((l_.split(":")[9] for l_ in subprocess.run(["gpg", "--batch", "--with-colons", "--list-keys", "h@x"], capture_output=True, text=True, env=genv_).stdout.splitlines() if l_.startswith("fpr")), "")
+        if fpr_:
+            c_, said_ = _sig_lint("answer", "gpg", HERE / "shoalmark.py", (gh_, fpr_))
+            check(f"FM-024 · a private security report · the signed identity · a trusted GPG key whose user ID carries the Owner's email signs the answer: refused with exactly `{_SIG_LINE}` "
+                  f"(saw {said_[-140:]!r})", c_ == fm.EXIT_LINT and _SIG_LINE in said_)
+            if old_tool_:
+                c_, said_ = _sig_lint("answer", "gpg", old_tool_, (gh_, fpr_))
+                check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that GPG-signed answer passes (saw exit {c_})", "does not verify" not in said_ and _SIG_LINE not in said_)
+        else:
+            SKIPS.append(("FM-024 · the signed identity · a trusted GPG key", 2, "gpg made no key here"))
+        subprocess.run(["gpgconf", "--kill", "gpg-agent"], capture_output=True, env=genv_) if shutil.which("gpgconf") else None
+        shutil.rmtree(gh_, ignore_errors=True)
+    else:
+        SKIPS.append(("FM-024 · the signed identity · a trusted GPG key whose user ID carries the Owner's email", 2, "no `gpg` here"))
+    # a `signed` identity that is not an email is refused when the configuration is read: exit 1, one line on how to migrate — under `owner`, `[seats]` and `answerers`
+    def _sig_cfg(text, tool):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); git(root, "init", "-q"); (root / "shoalmark.toml").write_text(text, encoding="utf-8"); tracker(root, "SG-001")
+            c_, o_, e_ = _tool_run(tool, root, "--check"); rm_git(root)
+        return c_, e_.strip()
+    for where_, text_, line_ in (("`owner`", 'name = "s"\nowner = "holgo signed"\n[kinds]\nSG = "Work"\n', '`"<email> signed"`'),
+                                 ("`[seats] planner`", 'name = "s"\n[kinds]\nSG = "Work"\n[seats]\nplanner = ["p@x", "planner signed"]\n', '`"<email> signed"`'),
+                                 ("`answerers`", 'name = "s"\nanswerers = ["holgo signed"]\n[kinds]\nSG = "Work"\n', '`owner = "<email> signed"`, before any table')):
+        c_, e_ = _sig_cfg(text_, HERE / "shoalmark.py")
+        check(f"FM-024 · a private security report · the signed identity · a name-only `signed` identity under {where_} is refused when the configuration is read — exit 1, one line saying to "
+              f"write the email the signers file names for the key (saw {e_[-170:]!r})",
+              c_ == 1 and len(e_.splitlines()) == 1 and "as signed, and a signed identity is an email address — write the email the signers file names for the key" in e_ and line_ in e_)
+        if old_tool_:
+            c_, e_ = _sig_cfg(text_, old_tool_)
+            check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that configuration is read (saw exit {c_})", c_ != 1)
+    c_, e_ = _sig_cfg('name = "s"\nowner = ["holgo", "h@x signed"]\n[kinds]\nSG = "Work"\n[seats]\nplanner = "planner"\n', HERE / "shoalmark.py")
+    check(f"FM-024 · the signed identity · an identity without `signed` stays as it is, a name included (saw exit {c_})", c_ != 1 and "signed identity is an email" not in e_)
+    # the readings of a signed line outside the lint: FM-037's guard, `--queue`'s, the board's and `--owner`'s (`on_their_way`), and `--answer`'s own check
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); root = _way_repo(base)
+        extra_ = {p_: base / f"x{i_}" for i_, p_ in enumerate(("o@x", "xh@x"))}
+        for p_, k_ in extra_.items():
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(k_)], check=True, capture_output=True)
+        (base / "signers").write_text((base / "signers").read_text(encoding="utf-8") + "".join(f"{p_} {k_.with_suffix('.pub').read_text(encoding='utf-8')}" for p_, k_ in extra_.items()), encoding="utf-8")
+        since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        sha_ = lambda ref: subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+        heads_ = {}
+        for tid_, (author_, key_) in {"AP-501": ("holgo <h@x>", base / "k"), "AP-502": ("h@x <o@x>", extra_["o@x"]), "AP-504": ("holgo <h@x>", extra_["xh@x"])}.items():
+            git(root, "switch", "-q", "-c", f"answer/{tid_.lower()}", "main"); t_ = next((root / "docs/work-tracker").glob(f"{tid_}-*.md"))
+            t_.write_text(t_.read_text(encoding="utf-8").replace("next: owner\n", f'next: owner\nanswer: "accepted"\nanswered: {since_}\nanswered-by: {author_.split(" <")[0]}\n'), encoding="utf-8")
+            git(root, "add", "-A"); git(root, "-c", f"user.signingkey={key_}", "commit", "-qm", f"{tid_}: accepted", "-S", f"--author={author_}")
+            git(root, "push", "-q", "origin", f"answer/{tid_.lower()}"); heads_[tid_] = sha_("HEAD"); git(root, "switch", "-q", "main")
+        def _readings(mod):
+            mod.configure(root)
+            queue_ = {tid_: mod.answer_reading(h_)[0] for tid_, h_ in heads_.items()}
+            way_ = mod.on_their_way(mod.load_trackers()); board_ = {tid_: way_.get(tid_, {}).get("said", "")[:5] for tid_ in heads_}
+            guard_ = {tid_: mod.guard_verdicts([(h_, "s", "TRIAGE.md", [("intent", "")])], mod.owners_at(None))[0][4] for tid_, h_ in heads_.items()}
+            return queue_, board_, guard_
+        q_, b_, g_ = _readings(fm); owner_ = run(root, "--owner")[1]
+        _read_ok = lambda q, b, g: (q == {"AP-501": "merge", "AP-502": "wait", "AP-504": "wait"} and b == {"AP-501": "merge", "AP-502": "wait:", "AP-504": "wait:"}
+                                    and g == {"AP-501": "signed", "AP-502": "refused", "AP-504": "refused"})
+        check(f"FM-024 · a private security report · the signed identity · `--queue`'s reading of an answer, the board's and `--owner`'s *signed* (`on_their_way`) and FM-037's guard each take the "
+              f"exact principal only — not another trusted signer under the identity as the author's name, not a principal that contains it (saw {q_}, {b_}, {g_})", _read_ok(q_, b_, g_))
+        check("FM-024 · a private security report · the signed identity · `--owner` shows only the exact principal's answer as signed",
+              re.search(r"AP-501 .*· signed ·", owner_) is not None and not re.search(r"AP-50[24] .*· signed ·", owner_))
+        if old_fm_:
+            q_, b_, g_ = _readings(old_fm_); fm.configure(root)
+            check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool those readings take the others too (saw {q_}, {b_}, {g_})", not _read_ok(q_, b_, g_))
+        # `--answer`'s own check, after its commit: an author whose name is the Owner's email, signing with another trusted signer's key, is never pushed
+        for k_, v_ in (("user.name", "h@x"), ("user.email", "o@x"), ("user.signingkey", str(extra_["o@x"]))):
+            git(root, "config", k_, v_)
+        code_, _o, err_ = run(root, "--answer", "AP-505", "accept")
+        pushed_ = "answer/ap-505" in subprocess.run(["git", "-C", str(root), "ls-remote", "origin"], capture_output=True, text=True, env=_ENV).stdout
+        check(f"FM-024 · a private security report · the signed identity · `--answer` committed under the Owner's email as its name with another trusted signer's key: it does not verify, and it is "
+              f"NOT pushed (saw exit {code_}, pushed {pushed_})", code_ != 0 and not pushed_ and "does not verify as" in err_)
+        if old_tool_:
+            git(root, "reset", "-q", "--hard", "origin/main"); git(root, "switch", "-q", "main")
+            subprocess.run(["git", "-C", str(root), "branch", "-D", "answer/ap-505"], capture_output=True, env=_ENV)
+            c_, o_, e_ = _tool_run(old_tool_, root, "--answer", "AP-505", "accept", env={k_: v_ for k_, v_ in _ENV.items() if not k_.startswith("GIT_AUTHOR") and not k_.startswith("GIT_COMMITTER")})
+            pushed_ = "answer/ap-505" in subprocess.run(["git", "-C", str(root), "ls-remote", "origin"], capture_output=True, text=True, env=_ENV).stdout
+            check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that answer is pushed (saw exit {c_})", pushed_)
+        rm_git(root)
+if not _HAVE_SIG:
+    SKIPS.append(("FM-024 · the signed identity · the controls", 10, f"this clone does not hold {_SIG_REV}"))
+_rd_ = lambda rel: re.sub(r"\s+", " ", (HERE / rel).read_text(encoding="utf-8"))
+check("FM-024 · a private security report · the signed identity · the texts: README §Seats and its `answerers` and refusal rows, both signing pages (SSH only, no GPG route, the refusal line), "
+      "both setup pages, the configuration reference, and the CHANGELOG's security line, which opens with its reason",
+      "**A `signed` identity is an email address, and it verifies by SSH only:**" in _rd_("README.md") and f"`{_SIG_LINE}`" in _rd_("README.md")
+      and "or import the key (GPG)" not in _rd_("README.md") and '`["name signed"]`' not in _rd_("README.md")
+      and all("Route B" not in _rd_(r_) and "Weg B" not in _rd_(r_) and _SIG_LINE in _rd_(r_) and "gpg --list-secret-keys" not in _rd_(r_) for r_ in ("docs/signing.md", "docs/de/signing.md"))
+      and "A `signed` identity is an email address, verified by SSH" in _rd_("docs/setup.md") and "Eine Identität mit `signed` ist eine E-Mail-Adresse und wird über SSH geprüft" in _rd_("docs/de/setup.md")
+      and '`answerers = ["yourname signed"]`' not in _rd_("docs/setup.md") + _rd_("docs/signing.md") and '`answerers = ["ihrname signed"]`' not in _rd_("docs/de/setup.md") + _rd_("docs/de/signing.md")
+      and "<email or name> signed" not in fm.render_schema() and '`"<email> signed"` — a signed identity is an email' in fm.render_schema()
+      and ("- Security, from a private report: a signed identity configured by name, or a signer whose identity merely contained the address, could let another trusted signer's commit count as "
+           "that identity's. A signed identity is now an email address only, matched exactly against the SSH signer; ") in _rd_("CHANGELOG.md")
+      and "This fix has no advisory of its own" in _rd_("CHANGELOG.md"))
+fm.configure(HERE)
+
 # --- FM-029, 0.18.4 G: the record `--clear-ask` writes names the commit that signed the answer — `**signed** — <sha> ·
 #     <G|N|U>` (the Auditor seat's AU-29); the tier is not printed yet
 with tempfile.TemporaryDirectory() as tmp:
@@ -6898,7 +7081,7 @@ with tempfile.TemporaryDirectory() as tmp:
           g_sig_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-signed` since origin/main, 1 change them or their signers file, each their own commit")
           and len(g_forge_[0]) == 1 and "— the Owner's email, unsigned — a git author is a string anyone can type: not the Owner's signed commit" in g_forge_[0][0]
           and len(g_ok_seat_[0]) == 1 and "its author `implementer@seat` is not the Owner" in g_ok_seat_[0][0]
-          and len(g_sk_[0]) == 1 and f'refused: commit {c_sk_[:7]} "AP-037: a seat\'s key, his name" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — signed as `implementer@seat`, not as its author `h@x`' in g_sk_[0][0])
+          and len(g_sk_[0]) == 1 and f'refused: commit {c_sk_[:7]} "AP-037: a seat\'s key, his name" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — signed as `implementer@seat`, not as the Owner\'s `h@x`' in g_sk_[0][0])
     git(root, "switch", "-q", "ap/037-signed"); code37s_, _o, err37s_ = run(root, "--check")
     check(f"FM-037 · end to end: the branch that carries the Owner's signed commit passes `--check` (saw {err37s_.strip()[-200:]!r})", code37s_ == 0)
     # a merge (FM-019): the text it carries from a parent was judged on the commit that made it; a text no parent had is its own
@@ -7079,7 +7262,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
         git(root, "config", k_, v_)
     run(root, "--init", "--key", "msr")
-    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text('owner = "t@t signed"\n' + cfg_.read_text())       # a signed identity is an email (FM-024)
     sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
     since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
     tr_ = tracker(root, "MSR-001", extra=f'next: owner\nask: "Ship it?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n')
@@ -7096,10 +7279,10 @@ with tempfile.TemporaryDirectory() as tmp:
     fm.configure(root)
     read_ = lambda: [a_ for _p, _k, a_, _d in _no_git_env(lambda: fm.queue_actions(prs))]
     trusted_ = read_()
-    plain_cfg = cfg_.read_text(); cfg_.write_text(plain_cfg.replace('answerers = ["t signed"]\n', "") + '\n[seats]\nowner = "t signed"\n'); fm.configure(root)
-    by_name_ = read_(); cfg_.write_text(plain_cfg); fm.configure(root)
-    check(f"R1 · with `[seats]` naming the Owner by his git name, as the gate matches a seat (email or name), his signed answer reads `merge: your answer` (saw {by_name_})",
-          by_name_ == ["merge: your answer", "wait: unsigned answer", "wait: not an answerer (m@m)"])
+    plain_cfg = cfg_.read_text(); cfg_.write_text(plain_cfg.replace('owner = "t@t signed"\n', 'owner = "t signed"\n')); by_name_ = _try(lambda: fm.configure(root))
+    cfg_.write_text(plain_cfg); fm.configure(root)
+    check("R1 · FM-024 · a `signed` Owner named by their git name is refused at configuration — a signed identity is an email, matched exactly against the SSH signer",
+          by_name_ is False)
     # FM-031, 0.18.4 · an answer branch is read by its answer commit — the one that wrote `answer:` — where only review files
     # follow it: the Reviewer's docs pass on the answer read `not an answerer (reviewer@seat)` by its head (the parent's PRs 836,
     # 849, 853 — its review file beside the tracker's evidence, as the parent files it); a seat's other change is read as before
@@ -7311,7 +7494,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
         git(root, "config", k_, v_)
     run(root, "--init", "--key", "msr")
-    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text('owner = "t@t signed"\n' + cfg_.read_text())       # a signed identity is an email (FM-024)
     since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
     ask_ = lambda q: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
     trs_ = [tracker(root, "MSR-001", extra=ask_("Ship the importer?")), tracker(root, "MSR-002", extra=ask_("Ship the exporter?"))]
