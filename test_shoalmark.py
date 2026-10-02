@@ -2693,6 +2693,35 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the calendar files", 4, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- the copies under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR --from THEME`
+# and `--vendor DIR` judge every file they would write before the first folder or copy is made — into a folder of the tree that is a symlink, each is refused in one
+# line naming the first file, exit 4, and nothing is written
+def _cp(rev=None):
+    """`--brand DIR --from monochrome` and `--vendor DIR`, each where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
+        for key_, argv_ in (("brand", ("--brand", "brandx", "--from", "monochrome")), ("vendor", ("--vendor", "vend", "--partial", "--allow-untagged"))):
+            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1])
+            c_, o_, e_ = _tool_run(tool_, root, *argv_)
+            g_[key_] = dict(code=c_, err=e_.strip(), out=o_.strip(), empty=sorted(os.listdir(away_)) == [])
+        rm_git(root)
+    return g_
+_CP_FIRST = {"brand": "brandx/" + next(r_ for r_ in fm.theme_files() if r_.startswith("brand/themes/monochrome/"))[len("brand/themes/monochrome/"):], "vendor": "vend/shoalmark.py"}
+def _cp_ok(g):
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == f"shoalmark: {_CP_FIRST[k_]} {_WR_SAYS}" and g[k_]["out"] == "" and g[k_]["empty"] for k_ in ("brand", "vendor"))
+if _SYMLINKS:
+    g_ = _cp()
+    check(f"FM-006 · a private security report · the write rule · `--brand DIR --from THEME` and `--vendor DIR` into a folder of the tree that is a symlink: each is refused in "
+          f"one line naming the first file, exit 4, and nothing is written (saw {g_['brand']['err'][:90]!r}, {g_['vendor']['err'][:70]!r})", _cp_ok(g_))
+    if _HAVE_RR:
+        c_ = _cp(_RR_REV)
+        check(f"FM-006 · a private security report · the write rule · the copies · …the control: beside {_RR_REV}'s tool this check FAILS", not _cp_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · the copies' control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

@@ -3754,8 +3754,11 @@ def brand_report(dest=None, theme=None):
             print(f"--from {theme}: the tool ships no such theme — {' or '.join(names) if names else 'this copy ships none'}; nothing was written", file=sys.stderr)
             return 2
         dest, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
+        rels = [r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")]
+        for rel in rels:                                    # the write rule for every file it may write, before the first folder or copy is made
+            write_rule(dest / rel)
         print(f"the {theme} theme — a starter from {src}")
-        for rel in (r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")):
+        for rel in rels:
             if (dest / rel).exists():
                 print(f"kept {dest / rel} — it is there already; delete it to start from {theme}")
                 continue
@@ -7657,6 +7660,9 @@ def vendor(dest, partial=False, allow_untagged=False):
     not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
     (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
     in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
+    copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]   # the themes it ships travel, pinned (FM-002)
+    for rel in copied + ["PIN"]:                            # the write rule for every file it writes, as the path is written, before anything is read or written
+        write_rule(pathlib.Path(dest).absolute() / rel)
     dest = pathlib.Path(dest).resolve()
     had = (dest / "VERSION").read_text(encoding="utf-8").strip() if (dest / "VERSION").exists() else ""
     edited = [l.partition("  ")[2] for l in ((dest / "PIN").read_text(encoding="utf-8").splitlines() if (dest / "PIN").exists() else [])
@@ -7676,10 +7682,8 @@ def vendor(dest, partial=False, allow_untagged=False):
               f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
         return EXIT_LINT
     lines = []
-    for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files():   # the themes it ships travel, pinned (FM-002)
+    for rel in copied:
         src = HERE / rel
-        if not src.is_file():
-            continue
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dest / rel)
         lines.append(f"{digest(src)}  {rel}")
