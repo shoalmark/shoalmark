@@ -797,11 +797,14 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       them. Then reviewer-80's scoped check, the push, READY, and one CI run the Owner dispatches; the ledger names it.
       *The cold review's F1* (the Owner's rulings, the same day, on the cold review at `df4f266`, which the Owner accepts
       as the release bar's cold review): P2, fixed before the tag, at critical tier. No page the board's run writes loads
-      a board file git tracks; where git tracks any file of the board's folder, the run leaves a page that loads nothing
-      and names that file, and prints that line instead of the link; `--check` refuses a tracked board file. A test with
-      inert content, its control failing beside `df4f266`'s tool. Then reviewer-80's scoped check, the Owner's CI on the
-      new head, READY; the ledger's new rows, every CI column from that run, and reviewer-80's check of it; the
-      Auditor's final-head checks; the cold session's re-run of F1; E2, E3 and E6; ready, the merge and the tag.
+      a board file git tracks; where git tracks a view of the board — a file of its `view/` folder — and not the page,
+      the run leaves a page that loads nothing and names that file, and prints that line instead of the link; a page git
+      tracks, alone or with a view, is left as committed, with its line and no link, as before, and the board's run
+      writes over no file git tracks (amended the same day, the Owner's rulings, on the Planner's point at `7f8d163` and
+      on CI run 37029025288). A test with inert content, its control failing beside `df4f266`'s tool.
+      Then reviewer-80's scoped check, the Owner's CI on the new head, READY; the ledger's new rows, every CI column from
+      that run, and reviewer-80's check of it; the Auditor's final-head checks; the cold session's re-run of F1; E2, E3
+      and E6; ready, the merge and the tag.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.

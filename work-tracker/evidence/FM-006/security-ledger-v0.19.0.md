@@ -5,16 +5,20 @@ CHANGELOG, the README and the notes, each naming its test, an executed check, or
 skipped and why; each negative control, run once. Built by the Planner; checked by reviewer-80 and the Auditor. No attack steps: a test is named by
 what it asserts.
 
-- **The CI run it reads:** https://github.com/shoalmark/shoalmark/actions/runs/37009286728 — `workflow_dispatch`, dispatched by the Owner on draft pull request #146, on `26bcd9706279004f3bcb495693f943aa2e146964`. Five suite jobs —
+- **The CI run it reads:** https://github.com/shoalmark/shoalmark/actions/runs/37033610114 — `workflow_dispatch`, dispatched by the Owner on draft pull request #146, on `6e2d689c950a763c73d79ffdebead54fb8d6794f`. Five suite jobs —
   ubuntu 3.9, ubuntu 3.12, macOS 3.12, windows 3.9, windows 3.12 — each running `test_core.py` and `test_shoalmark.py`: green on all five, no check failed,
-  and each suite ends *all green*. `test_core.py`: 158 ok on each. `test_shoalmark.py`: 861 ok on ubuntu and macOS, with 3 skipped in 1 block
-  (the browser checks: `SHOALMARK_REGENERATE=1` is not set); 852 ok on Windows.
+  and each suite ends *all green*. `test_core.py`: 158 ok on each. `test_shoalmark.py`: 863 ok on ubuntu and macOS, with 3 skipped in 1 block
+  (the browser checks: `SHOALMARK_REGENERATE=1` is not set); 854 ok on Windows.
   Windows: 10 skipped in 6 blocks; 3 more not run on Windows, as on main.
 - **The runs before it:** https://github.com/shoalmark/shoalmark/actions/runs/36998106048 on `90abab9` was red on both Windows jobs, and FM-006's *Windows round* answered it;
-  https://github.com/shoalmark/shoalmark/actions/runs/37005430667 on `d443cf5` was green on all five; then RV-2318, test only (`26bcd97`), and this run.
-- **Every commit after `26bcd97` is evidence or notes only** — this ledger's own commit carries one notes change the Owner ruled with it: `CHANGELOG.md:45` narrowed to *(the running tool's own files aside)*.
+  https://github.com/shoalmark/shoalmark/actions/runs/37005430667 on `d443cf5` was green on all five; then RV-2318, test only (`26bcd97`), and
+  https://github.com/shoalmark/shoalmark/actions/runs/37009286728 on `26bcd97`, green on all five; then the cold review's F1, and
+  https://github.com/shoalmark/shoalmark/actions/runs/37029025288 on `7f8d163`, red on all five jobs and answered by FM-006's ruling on it; then this run.
+- **Every commit after `6e2d689` is evidence or notes only** — the ledger's commits carry the notes the Owner ruled with them: `CHANGELOG.md:45` narrowed to
+  *(the running tool's own files aside)*, and `CHANGELOG.md:44` and FM-006's filing of the cold review's F1 as the Owner amended them.
 - **The negative controls:** run once, 2026-10-02 14:14–14:47 CEST, in a worktree at `d443cf5` — each check alone, with `work-tracker/evidence/FM-006/run-one-check.py`,
-  whose suite at `d443cf5` differs from the head's only in rows 114–115's check (`26bcd97`, RV-2318); row 114's control ran again at the head, `26bcd97`.
+  whose suite at `d443cf5` differs from the head's only in rows 114–115's check (`26bcd97`, RV-2318), run again at `26bcd97`, and the cold review's F1
+  (T130–T131, `d1661e3` and `6e2d689`), whose control ran at `6e2d689`, 18:28.
   Each runs against the tool as it was before its fix (the commands are the tests' record's). The checkout and merge hooks' controls run against v0.18.6.
   A control that *FAILS* is the result wanted: the check catches what the fix fixed.
 - **The report's findings:** each fixed here carries its tests below; its two remaining findings are 0.19.1's first work, in the private advisory
@@ -55,7 +59,7 @@ what it asserts.
 | C29 | ADOPT.md:32–34; ADOPT.de.md:33–35 | Check what you run: the SHA-256 of `shoalmark.py` at the tag. | E6 — the notes' checksum, set last, after the cold review |
 | C30 | CHANGELOG.md:138 | Security reporting is provided. | E7 (`SECURITY.md` at the head) |
 | C31 | README.md:180–186 | `--queue` reads an answer branch as a wait where its answer is by someone who may not answer, where a seat's commit or an unverified commit in the Owner's name lies below it, where the base is not fetched, and where this clone cannot verify the signature. | X64–X68 |
-| C32 | CHANGELOG.md:44 | Everything the board renders from a tracker or the configuration is escaped for its place, and a link or an image is http(s), mailto or relative; a `blob` that is not an http(s) URL makes no forge link, and the run says so. | T2–T4; T17's case 4 |
+| C32 | CHANGELOG.md:44 | Everything the board renders from a tracker or the configuration is escaped for its place, and a link or an image is http(s), mailto or relative; a page the board's run writes loads no board file git tracks; a `blob` that is not an http(s) URL makes no forge link, and the run says so. | T2–T4; T17's case 4; T130–T131 |
 | C33 | CHANGELOG.md:45 | Every run reads and writes a file of the tree — a tracker, the configuration, a theme, the board — only as a regular file inside the repository, never through a symlink (the running tool's own files aside); such a file is refused in one line, exit 4, and the board's refresh leaves it and names it. | reading: T76–T82, T88, T122–T124, T127–T128; writing: T89–T90, T93–T100, T107–T108; the board's run: T11–T16; a deriver that is a symlink, and a folder named `derive`: T91–T92, T101–T102 |
 | C34 | CHANGELOG.md:45 | A destination a person names (`--vendor`, `--brand`, `--standup FILE.ics`) is judged where it resolves. | T118–T120 |
 | C35 | CHANGELOG.md:45 | A vendored copy's PIN is read only for the copy's own files. | T109–T110, T114–T115 |
@@ -207,6 +211,8 @@ table counts one per case.
 | T127 | the reading rule · `--check` reports a vendored copy's PIN under the rule: its VERSION a symlink, refused in one li… | 5126178 — `pin_report` under the reading rule | all five | FAILS beside `90abab9` |
 | T128 | the reading rule · the copy's PIN and VERSION · …the control: beside 90abab9's tool this check FAILS | 5126178 | all five | — (a control: it runs the old tool itself) |
 | T129 | amends rows 114 and 115 · the PIN's names — RV-2318: the check leaned on the watch for *never opened* without provi… | 26bcd97 — the open proved before the check | the check of T114 and T115 — see those rows | as rows 114 and 115 |
+| T130 | FM-006 · the cold review's F1 · a view git tracks: the board's run leaves a page that loads nothing and names the f… | d1661e3 — the cold review's F1 (85bf269, a refactor before it) | all five | its block stops beside `df4f266` with an AttributeError before the check — the check reads its expected line from a helper that tool has not got (run once, 2026-10-02 18:28 CEST, at `6e2d689`); T131, its control in the suite, runs that tool as a program, and there this check FAILS |
+| T131 | FM-006 · the cold review's F1 · …the control: beside df4f266's tool the board check FAILS | d1661e3; the board check alone since 6e2d689 | all five | — (a control: it runs the old tool itself) |
 
 ### 2b. The earlier fixes' tests, and the tests of the older claims
 
@@ -215,29 +221,29 @@ control was its own release's.
 
 | # | where | what it asserts | fix | CI: ran on | negative control |
 |---|---|---|---|---|---|
-| X1 | test_shoalmark.py:3455 | `--html-only` starts no deriver; nothing a hook starts executes a file a branch brought | afa1a11 (#145, the report's P1) | all five | FAILS beside `afa1a11~1` |
-| X2 | test_shoalmark.py:5187 | a move to `Shipped` with nothing built behind it is refused at commit time by the installed hook | 5562476 (#145, FM-005) | all five | FAILS beside `5562476~1` |
-| X3 | test_shoalmark.py:5190 | …and by `--check`, exit 4 | 5562476 (#145, FM-005) | all five | FAILS beside `5562476~1` |
-| X4 | test_shoalmark.py:5198 | a commit not in the history is refused | 5562476 (#145, FM-005) | all five | the rule is new with 5562476 — X2 is its control |
-| X5 | test_shoalmark.py:5201 | a commit that exists nowhere is refused | 5562476 (#145, FM-005) | all five | the rule is new with 5562476 — X2 is its control |
-| X6 | test_shoalmark.py:5204 | a commit that changes only the records is refused | 5562476 (#145, FM-005) | all five | the rule is new with 5562476 — X2 is its control |
-| X7 | test_shoalmark.py:5208 | a real commit named passes, in `--check` and at commit time — must stay accepted | 5562476 (#145, FM-005) | all five | must stay accepted — a property, no control |
-| X8 | test_shoalmark.py:5217 | a tracker whose name git quotes, moved to `Shipped` with nothing named, is refused by the hook and by `--check` | a36cf2e (#145, RV-2151) | all five (2 cases; 1 on Windows, as on main) | FAILS beside `a36cf2e~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
-| X9 | test_shoalmark.py:5222 | a commit whose only path git quotes changes nothing outside the records | a36cf2e (#145, RV-2151) | ran on ubuntu 3.9, ubuntu 3.12, macOS 3.12; not run on windows 3.9 and windows 3.12, as on main | FAILS beside `a36cf2e~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
-| X10 | test_shoalmark.py:5231 | the hook judges the commit being made: `git commit -a`, `git commit <path>`, and the bare index | b3fbbc9 (#145, RV-2152) | all five | FAILS beside `b3fbbc9~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
-| X11 | test_shoalmark.py:5235 | the commit being made is the index: where it names the feature, the hook passes it — must stay accepted | b3fbbc9 (#145, RV-2152) | all five | FAILS beside `b3fbbc9~1` (seen in X10's run: the hook read the working tree, not the index) |
-| X12 | test_shoalmark.py:5300 | a merge that brings such a move is refused, naming that commit | a36cf2e (#145, RV-2151) | all five | FAILS beside `a36cf2e~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
-| X13 | test_shoalmark.py:5564 | on Subversion, a `Shipped` move the history cannot be read for is refused, never passed (exit 4, not 0) | ce5f305 (#145, F1) | all five | FAILS beside `ce5f305~1` |
-| X14 | test_shoalmark.py:5572 | a real revision passes connected and is refused, not passed, unreachable | ce5f305 (#145, F1) | all five | FAILS beside `ce5f305~1` |
-| X15 | test_shoalmark.py:5593 | the same with a real server, connected and stopped | ce5f305 (#145, F1) | all five | FAILS beside `ce5f305~1` |
-| X16 | test_shoalmark.py:5623 | on Subversion, where `svn blame` cannot be read the rights check refuses (exit 4, not 0) | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
-| X17 | test_shoalmark.py:5629 | a seat without the right is refused connected and unreachable | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
-| X18 | test_shoalmark.py:5648 | the same with a real server, connected and stopped | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
-| X19 | test_shoalmark.py:5658 | an answer is refused as unread when the history cannot be read | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
-| X20 | test_shoalmark.py:5681 | where the newest revision cannot be read, `--check` refuses (exit 4, not 0), nothing pending | 28816ed (#145, RV-2267) | all five | FAILS beside `28816ed~1` |
-| X21 | test_shoalmark.py:5689 | a pending change is judged offline from BASE — must stay accepted | 28816ed (#145, RV-2267) | all five | must stay accepted — passes beside `28816ed~1` too, by design: a pending change was judged offline before the fix |
-| X22 | test_shoalmark.py:5695 | a working copy behind HEAD with a false move at HEAD is refused, connected and unreachable | 28816ed (#145, RV-2267) | all five | FAILS beside `28816ed~1` |
-| X23 | test_shoalmark.py:5714 | the same with a real server, connected and stopped | 28816ed (#145, RV-2267) | all five | FAILS beside `28816ed~1` |
+| X1 | test_shoalmark.py:3485 | `--html-only` starts no deriver; nothing a hook starts executes a file a branch brought | afa1a11 (#145, the report's P1) | all five | FAILS beside `afa1a11~1` |
+| X2 | test_shoalmark.py:5217 | a move to `Shipped` with nothing built behind it is refused at commit time by the installed hook | 5562476 (#145, FM-005) | all five | FAILS beside `5562476~1` |
+| X3 | test_shoalmark.py:5220 | …and by `--check`, exit 4 | 5562476 (#145, FM-005) | all five | FAILS beside `5562476~1` |
+| X4 | test_shoalmark.py:5228 | a commit not in the history is refused | 5562476 (#145, FM-005) | all five | the rule is new with 5562476 — X2 is its control |
+| X5 | test_shoalmark.py:5231 | a commit that exists nowhere is refused | 5562476 (#145, FM-005) | all five | the rule is new with 5562476 — X2 is its control |
+| X6 | test_shoalmark.py:5234 | a commit that changes only the records is refused | 5562476 (#145, FM-005) | all five | the rule is new with 5562476 — X2 is its control |
+| X7 | test_shoalmark.py:5238 | a real commit named passes, in `--check` and at commit time — must stay accepted | 5562476 (#145, FM-005) | all five | must stay accepted — a property, no control |
+| X8 | test_shoalmark.py:5247 | a tracker whose name git quotes, moved to `Shipped` with nothing named, is refused by the hook and by `--check` | a36cf2e (#145, RV-2151) | all five (2 cases; 1 on Windows, as on main) | FAILS beside `a36cf2e~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
+| X9 | test_shoalmark.py:5252 | a commit whose only path git quotes changes nothing outside the records | a36cf2e (#145, RV-2151) | ran on ubuntu 3.9, ubuntu 3.12, macOS 3.12; not run on windows 3.9 and windows 3.12, as on main | FAILS beside `a36cf2e~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
+| X10 | test_shoalmark.py:5261 | the hook judges the commit being made: `git commit -a`, `git commit <path>`, and the bare index | b3fbbc9 (#145, RV-2152) | all five | FAILS beside `b3fbbc9~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
+| X11 | test_shoalmark.py:5265 | the commit being made is the index: where it names the feature, the hook passes it — must stay accepted | b3fbbc9 (#145, RV-2152) | all five | FAILS beside `b3fbbc9~1` (seen in X10's run: the hook read the working tree, not the index) |
+| X12 | test_shoalmark.py:5330 | a merge that brings such a move is refused, naming that commit | a36cf2e (#145, RV-2151) | all five | FAILS beside `a36cf2e~1` (its block stops after it, with a ValueError, at a part that tool cannot run) |
+| X13 | test_shoalmark.py:5594 | on Subversion, a `Shipped` move the history cannot be read for is refused, never passed (exit 4, not 0) | ce5f305 (#145, F1) | all five | FAILS beside `ce5f305~1` |
+| X14 | test_shoalmark.py:5602 | a real revision passes connected and is refused, not passed, unreachable | ce5f305 (#145, F1) | all five | FAILS beside `ce5f305~1` |
+| X15 | test_shoalmark.py:5623 | the same with a real server, connected and stopped | ce5f305 (#145, F1) | all five | FAILS beside `ce5f305~1` |
+| X16 | test_shoalmark.py:5653 | on Subversion, where `svn blame` cannot be read the rights check refuses (exit 4, not 0) | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
+| X17 | test_shoalmark.py:5659 | a seat without the right is refused connected and unreachable | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
+| X18 | test_shoalmark.py:5678 | the same with a real server, connected and stopped | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
+| X19 | test_shoalmark.py:5688 | an answer is refused as unread when the history cannot be read | a1d839a (#145, the second fail-open) | all five | FAILS beside `a1d839a~1` |
+| X20 | test_shoalmark.py:5711 | where the newest revision cannot be read, `--check` refuses (exit 4, not 0), nothing pending | 28816ed (#145, RV-2267) | all five | FAILS beside `28816ed~1` |
+| X21 | test_shoalmark.py:5719 | a pending change is judged offline from BASE — must stay accepted | 28816ed (#145, RV-2267) | all five | must stay accepted — passes beside `28816ed~1` too, by design: a pending change was judged offline before the fix |
+| X22 | test_shoalmark.py:5725 | a working copy behind HEAD with a false move at HEAD is refused, connected and unreachable | 28816ed (#145, RV-2267) | all five | FAILS beside `28816ed~1` |
+| X23 | test_shoalmark.py:5744 | the same with a real server, connected and stopped | 28816ed (#145, RV-2267) | all five | FAILS beside `28816ed~1` |
 | X24 | test_shoalmark.py:1015 | top-level `owner` and `[seats] owner` that differ are refused at configuration, exit 1 | #145, FM-024 | all five (2 cases each) | —, the rule is new in 0.19.0's FM-024 build |
 | X25 | test_shoalmark.py:1036 | an `owner` key inside another table is refused at configuration, exit 1 | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
 | X26 | test_shoalmark.py:811 | an identity under two seats is refused at configuration, exit 1 | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
@@ -245,31 +251,31 @@ control was its own release's.
 | X28 | test_shoalmark.py:973 | a session label that is another seat's own name, or that two seats claim, passes for neither | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
 | X29 | test_shoalmark.py:1374 | a transcript's content puts nothing into what `--whoami` prints or the hook writes; a value with a line break is no value | #145, FM-024 | all five | —, the feature is new in 0.19.0 |
 | X30 | test_shoalmark.py:1393 | two logs for one id: `--whoami` refuses, exit 2; the hook writes no trailer and the commit goes on | #145, FM-024 | all five | —, the feature is new in 0.19.0 |
-| X31 | test_shoalmark.py:7590 | every commit a merge carries is judged, by `--check` and at commit time | earlier release (FM-033) | all five | —, an earlier release's |
-| X32 | test_shoalmark.py:5079 | a merge's own change is judged under the merger | earlier release (FM-019) | all five | —, an earlier release's |
-| X33 | test_shoalmark.py:5456 | `signed` under Subversion is refused at configuration | earlier release (S4) | all five | —, an earlier release's |
-| X34 | test_shoalmark.py:5460 | …and so is a top-level `owner` with `signed` | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
-| X35 | test_shoalmark.py:7730 | a seat's unsigned change to the intent or the path, a renamed heading, a deleted or moved TRIAGE.md is refused | earlier release (FM-037) | all five | —, an earlier release's |
-| X36 | test_shoalmark.py:7764 | the Owner's signed commit passes; their email unsigned, or their key on a seat's commit, is refused | earlier release (FM-037) | all five | —, an earlier release's |
-| X37 | test_shoalmark.py:7777 | a merge is judged by a text no parent had | earlier release (FM-037) | all five | —, an earlier release's |
-| X38 | test_shoalmark.py:7794 | the commit-msg hook refuses a seat's such commit before it is made | earlier release (FM-037) | all five | —, an earlier release's |
-| X39 | test_shoalmark.py:7805 | …and a merge being made that brings one | earlier release (FM-037) | all five | —, an earlier release's |
-| X40 | test_shoalmark.py:7814 | `--queue` reads such a branch `wait: TRIAGE.md changed unsigned` | earlier release (FM-037) | all five | —, an earlier release's |
-| X41 | test_shoalmark.py:7828 | the Owner is read from the default branch's configuration, never the branch's | earlier release (FM-037) | all five | —, an earlier release's |
-| X42 | test_shoalmark.py:7846 | under Subversion the guard says it is out of scope | earlier release (FM-037) | all five | —, an earlier release's |
-| X43 | test_shoalmark.py:7866 | a key a branch adds to the signers file vouches for nothing; the default branch's file is read | earlier release (FM-037, AU-19) | all five | —, an earlier release's |
-| X44 | test_shoalmark.py:7873 | the Owner's real key verifies against the default branch's file; their signed change to it is accepted | earlier release (FM-037, AU-19) | all five | —, an earlier release's |
-| X45 | test_shoalmark.py:7893 | `--answer` verifies as the gate does, against the default branch's signers file | earlier release (FM-037) | all five | —, an earlier release's |
-| X46 | test_shoalmark.py:7906 | while the default branch has no signers file, nothing verifies against a checkout's copy | earlier release (FM-037) | all five | —, an earlier release's |
+| X31 | test_shoalmark.py:7620 | every commit a merge carries is judged, by `--check` and at commit time | earlier release (FM-033) | all five | —, an earlier release's |
+| X32 | test_shoalmark.py:5109 | a merge's own change is judged under the merger | earlier release (FM-019) | all five | —, an earlier release's |
+| X33 | test_shoalmark.py:5486 | `signed` under Subversion is refused at configuration | earlier release (S4) | all five | —, an earlier release's |
+| X34 | test_shoalmark.py:5490 | …and so is a top-level `owner` with `signed` | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
+| X35 | test_shoalmark.py:7760 | a seat's unsigned change to the intent or the path, a renamed heading, a deleted or moved TRIAGE.md is refused | earlier release (FM-037) | all five | —, an earlier release's |
+| X36 | test_shoalmark.py:7794 | the Owner's signed commit passes; their email unsigned, or their key on a seat's commit, is refused | earlier release (FM-037) | all five | —, an earlier release's |
+| X37 | test_shoalmark.py:7807 | a merge is judged by a text no parent had | earlier release (FM-037) | all five | —, an earlier release's |
+| X38 | test_shoalmark.py:7824 | the commit-msg hook refuses a seat's such commit before it is made | earlier release (FM-037) | all five | —, an earlier release's |
+| X39 | test_shoalmark.py:7835 | …and a merge being made that brings one | earlier release (FM-037) | all five | —, an earlier release's |
+| X40 | test_shoalmark.py:7844 | `--queue` reads such a branch `wait: TRIAGE.md changed unsigned` | earlier release (FM-037) | all five | —, an earlier release's |
+| X41 | test_shoalmark.py:7858 | the Owner is read from the default branch's configuration, never the branch's | earlier release (FM-037) | all five | —, an earlier release's |
+| X42 | test_shoalmark.py:7876 | under Subversion the guard says it is out of scope | earlier release (FM-037) | all five | —, an earlier release's |
+| X43 | test_shoalmark.py:7896 | a key a branch adds to the signers file vouches for nothing; the default branch's file is read | earlier release (FM-037, AU-19) | all five | —, an earlier release's |
+| X44 | test_shoalmark.py:7903 | the Owner's real key verifies against the default branch's file; their signed change to it is accepted | earlier release (FM-037, AU-19) | all five | —, an earlier release's |
+| X45 | test_shoalmark.py:7923 | `--answer` verifies as the gate does, against the default branch's signers file | earlier release (FM-037) | all five | —, an earlier release's |
+| X46 | test_shoalmark.py:7936 | while the default branch has no signers file, nothing verifies against a checkout's copy | earlier release (FM-037) | all five | —, an earlier release's |
 | X47 | test_shoalmark.py:350 | a vendored copy without its PIN is refused | earlier release (FM-011) | all five | —, an earlier release's |
 | X48 | test_shoalmark.py:352 | a vendored copy edited in place is refused by its own gate | earlier release (FM-011) | all five | —, an earlier release's |
 | X49 | test_shoalmark.py:1447 | `--vendor` refuses a target copy edited in place | earlier release (FM-011) | all five | —, an earlier release's |
 | X50 | test_shoalmark.py:1464 | a release is pinned with its manifest, and the consumer's `--check` checks it | earlier release (FM-011) | all five | —, an earlier release's |
 | X51 | test_shoalmark.py:1480 | a source that is no release is refused; `--allow-untagged` and `--partial` say so in the PIN | earlier release (FM-011) | all five | —, an earlier release's |
 | X52 | test_shoalmark.py:1498 | a hand-edited manifest is named and the copy called unverified | earlier release (FM-011) | all five | —, an earlier release's |
-| X53 | test_shoalmark.py:3424 | a deriver's non-zero exit refuses the run, nothing written | earlier release | all five | —, an earlier release's |
-| X54 | test_shoalmark.py:3452 | a deriver never reads the environment | earlier release | all five | —, an earlier release's |
-| X55 | test_shoalmark.py:3462 | a deriver past its bound is refused | earlier release | all five | —, an earlier release's |
+| X53 | test_shoalmark.py:3454 | a deriver's non-zero exit refuses the run, nothing written | earlier release | all five | —, an earlier release's |
+| X54 | test_shoalmark.py:3482 | a deriver never reads the environment | earlier release | all five | —, an earlier release's |
+| X55 | test_shoalmark.py:3492 | a deriver past its bound is refused | earlier release | all five | —, an earlier release's |
 | X56 | test_core.py:730 | `--queue` reads GitHub's fork flag | 12b7ea8 (#145, FM-006) | all five | FAILS beside `12b7ea8~1` (test_core.py from the head, run against that tool) |
 | X57 | test_core.py:734 | a fork's own READY is a wait | 12b7ea8 (#145, FM-006) | all five | FAILS beside `12b7ea8~1` (test_core.py from the head, run against that tool) |
 | X58 | test_core.py:738 | an answer-named fork waits for the Owner's reading | 12b7ea8 (#145, FM-006) | all five | FAILS beside `12b7ea8~1` (test_core.py from the head, run against that tool) |
@@ -278,35 +284,35 @@ control was its own release's.
 | X61 | test_core.py:755 | a fork inside another pull request's head waits | 12b7ea8 (#145, FM-006) | all five | FAILS beside `12b7ea8~1` (test_core.py from the head, run against that tool) |
 | X62 | test_core.py:736 | a same-repository pull request reads as it would with no fork open — must stay accepted | 12b7ea8 (#145, FM-006) | all five | must stay accepted — passes beside `12b7ea8~1` too |
 | X63 | test_core.py:762 | a conflicting fork waits for the Owner's reading | 12b7ea8 (#145, FM-006) | all five | FAILS beside `12b7ea8~1` (test_core.py from the head, run against that tool) |
-| X64 | test_shoalmark.py:8159 | a signed answer commit by someone who may not answer reads `wait: not an answerer`, the author named | earlier release | all five | —, an earlier release's |
-| X65 | test_shoalmark.py:8048 | a seat's commit below the Owner's signed answer reads `wait: a seat's commit on your answer branch` | earlier release (FM-031) | all five | —, an earlier release's |
-| X66 | test_shoalmark.py:8132 | a commit in the Owner's name that does not verify as them reads `wait: an unverified commit in your name on your answer branch` | earlier release (FM-031) | all five | —, an earlier release's |
-| X67 | test_shoalmark.py:8077 | a clone that has not fetched the base waits, the commits below unread | earlier release (FM-031) | all five | —, an earlier release's |
-| X68 | test_shoalmark.py:8161 | a signed answer this clone cannot verify is refused as unverifiable, naming the setting; the queue waits | earlier release | all five | —, an earlier release's |
-| X69 | test_shoalmark.py:4697 | four rights and no others: a fifth word in `[rights]` is refused, naming it | earlier release | all five | —, an earlier release's |
-| X70 | test_shoalmark.py:4685 | a seat without `ask` is refused for the ask it committed, naming the seat, the right and the id | earlier release | all five | —, an earlier release's |
-| X71 | test_shoalmark.py:4707 | a seat without `close` is refused before the commit exists, naming `close` | earlier release | all five | —, an earlier release's |
+| X64 | test_shoalmark.py:8189 | a signed answer commit by someone who may not answer reads `wait: not an answerer`, the author named | earlier release | all five | —, an earlier release's |
+| X65 | test_shoalmark.py:8078 | a seat's commit below the Owner's signed answer reads `wait: a seat's commit on your answer branch` | earlier release (FM-031) | all five | —, an earlier release's |
+| X66 | test_shoalmark.py:8162 | a commit in the Owner's name that does not verify as them reads `wait: an unverified commit in your name on your answer branch` | earlier release (FM-031) | all five | —, an earlier release's |
+| X67 | test_shoalmark.py:8107 | a clone that has not fetched the base waits, the commits below unread | earlier release (FM-031) | all five | —, an earlier release's |
+| X68 | test_shoalmark.py:8191 | a signed answer this clone cannot verify is refused as unverifiable, naming the setting; the queue waits | earlier release | all five | —, an earlier release's |
+| X69 | test_shoalmark.py:4727 | four rights and no others: a fifth word in `[rights]` is refused, naming it | earlier release | all five | —, an earlier release's |
+| X70 | test_shoalmark.py:4715 | a seat without `ask` is refused for the ask it committed, naming the seat, the right and the id | earlier release | all five | —, an earlier release's |
+| X71 | test_shoalmark.py:4737 | a seat without `close` is refused before the commit exists, naming `close` | earlier release | all five | —, an earlier release's |
 | X72 | test_shoalmark.py:891 | `planner`, and `principal` its former name, hold ask, close and triage and not answer, with no `[rights]` line, and the ask each makes passes | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
 | X73 | test_shoalmark.py:868 | `builder`, and `implementer` its former name, hold none of the four rights, and the ask each makes is refused, naming the seat and the right | #145, FM-024 | all five | —, the rule is new in 0.19.0's FM-024 build |
-| X74 | test_shoalmark.py:4806 | with `[seats]`, an answer from a seat without `answer` is refused, naming the seat and the right | earlier release | all five | —, an earlier release's |
-| X75 | test_shoalmark.py:4339 | with the old key, an answer by an author `answerers` does not name is refused | earlier release | all five | —, an earlier release's |
-| X76 | test_shoalmark.py:4341 | with the old key and nobody named, nobody answers | earlier release | all five | —, an earlier release's |
-| X77 | test_shoalmark.py:4768 | where `answerers` asks for a signature and the seat that answers for it is not signed, the configuration is refused, naming both lines and the two ways out | earlier release (FM-015) | all five | —, an earlier release's |
-| X78 | test_shoalmark.py:3762 | a logo shows in the header and as the favicon, and a script inside the SVG does nothing | earlier release | all five | —, an earlier release's |
-| X79 | test_shoalmark.py:3864 | a wordmark outside the grammar is refused whole, each case naming why | earlier release (0.18.2) | all five (31 cases each) | —, an earlier release's |
+| X74 | test_shoalmark.py:4836 | with `[seats]`, an answer from a seat without `answer` is refused, naming the seat and the right | earlier release | all five | —, an earlier release's |
+| X75 | test_shoalmark.py:4369 | with the old key, an answer by an author `answerers` does not name is refused | earlier release | all five | —, an earlier release's |
+| X76 | test_shoalmark.py:4371 | with the old key and nobody named, nobody answers | earlier release | all five | —, an earlier release's |
+| X77 | test_shoalmark.py:4798 | where `answerers` asks for a signature and the seat that answers for it is not signed, the configuration is refused, naming both lines and the two ways out | earlier release (FM-015) | all five | —, an earlier release's |
+| X78 | test_shoalmark.py:3792 | a logo shows in the header and as the favicon, and a script inside the SVG does nothing | earlier release | all five | —, an earlier release's |
+| X79 | test_shoalmark.py:3894 | a wordmark outside the grammar is refused whole, each case naming why | earlier release (0.18.2) | all five (31 cases each) | —, an earlier release's |
 
 ## 3. The executed checks
 
 | # | the check | how, and where | result |
 |---|---|---|---|
-| E1 | the history replay: every judgement of a signed line or a signature on `main`'s history, by the tool before the signed identity's change (`79be49d`) and by the head | `python3 work-tracker/evidence/FM-006/signed-history-replay.py --main origin/main --before 79be49d --after d443cf5d38c0f65d0e85f2ead2ab80a55b6be70c`, 2026-10-02 14:15 CEST, macOS, Python 3.14 (the same at `90abab9`, 13:09) | `origin/main` at `d9c154b`: 1248 commits, 171 signed — 142 PGP (all committed by GitHub), 29 SSH. The lint at the tip: 0 signature lines before, 0 after. `answer_reading`: 171 judged, 29 passed before and after. FM-037's guard: 8 judged, 8 passed before and after. **No new refusal**; exit 0 |
+| E1 | the history replay: every judgement of a signed line or a signature on `main`'s history, by the tool before the signed identity's change (`79be49d`) and by the head | `python3 work-tracker/evidence/FM-006/signed-history-replay.py --main origin/main --before 79be49d --after 6e2d689c950a763c73d79ffdebead54fb8d6794f`, 2026-10-02 18:30 CEST, macOS, Python 3.14 (the same at `d443cf5`, 14:15, and at `90abab9`, 13:09) | `origin/main` at `d9c154b`: 1248 commits, 171 signed — 142 PGP (all committed by GitHub), 29 SSH. The lint at the tip: 0 signature lines before, 0 after. `answer_reading`: 171 judged, 29 passed before and after. FM-037's guard: 8 judged, 8 passed before and after. **No new refusal**; exit 0 |
 | E2 | the common security scanners on the final head, every hit triaged | the Auditor's, at the final head | the Auditor's result is added here as evidence |
 | E3 | the re-run of the report's reproductions on the final head | the Auditor's, at the final head | the Auditor's result is added here as evidence |
-| E4 | an X.509 signature on a signed line (C13) | T62's check, run once with `run-one-check.py` against the head, in a scratch clone at `d443cf5` whose suite writes the commit's signature header with an X.509 armour (an inert, invalid block) in place of the PGP one; 2026-10-02 14:17 CEST, macOS (and once before at `90abab9`, the same result) | refused on the signed line with exactly `sign with SSH; GPG returns with a fingerprint binding`, exit 4 — the check passes. The tool tells the kind from the commit's own header (`signature_kind`: ssh, pgp, x509, other) and refuses every kind but SSH on a signed line |
+| E4 | an X.509 signature on a signed line (C13) | T62's check, run once with `run-one-check.py` against the head, in a scratch clone at `6e2d689` whose suite writes the commit's signature header with an X.509 armour (an inert, invalid block) in place of the PGP one; 2026-10-02 18:30 CEST, macOS (the same at `d443cf5`, 14:17, and once before at `90abab9`) | refused on the signed line with exactly `sign with SSH; GPG returns with a fingerprint binding`, exit 4 — the check passes. The tool tells the kind from the commit's own header (`signature_kind`: ssh, pgp, x509, other) and refuses every kind but SSH on a signed line |
 | E5 | a hook runner's entry where the copy is missing (C10) | `python3 -I <a path that does not exist> --root . --session-check`, macOS, Python 3.14 | `can't open file …: [Errno 2] No such file or directory`, exit 2 — a non-zero exit, so the runner refuses the commit |
 | E6 | the notes' checksum (C29) | set last, after the cold review, on the final head (the Order) | the SHA-256 both notes name is added here as evidence, with the Auditor's recomputation |
-| E7 | security reporting (C30) | `SECURITY.md` at `d443cf5` (unchanged since `e0a21dd`) | present: reports go privately through GitHub's vulnerability reporting form; no credentials, private records or exploit details in public |
-| E8 | the negative controls of the fork checks (X56–X63), which live in `test_core.py`, where `run-one-check.py` does not reach | `test_core.py` from `90abab9` — unchanged at `d443cf5` — run once against the tool at `12b7ea8~1` (`2c00aba`) in a scratch clone, macOS | the seven fork checks FAIL there; X62, the same-repository pull request, passes there — it must stay accepted |
-| E9 | no dependency, and no network of the tool's own (C41) | `shoalmark.py` at `3bd36fc` (the tool as at `d443cf5`): its imports read with Python's `ast` against `sys.stdlib_module_names`, and every program it starts read from its `subprocess` calls; 2026-10-02 15:44 CEST, macOS, Python 3.14 | every import is the standard library's; of its network modules only `urllib.parse`, which parses a path (`shoalmark.py:48`, used at `:5431`) — no `socket`, `ssl`, `http` or `urllib.request`. The programs that reach the repository's host are git and gh, and svn in a Subversion working copy; the others it starts are itself (`--html-only`), the repository's deriver and the system's own notification command |
+| E7 | security reporting (C30) | `SECURITY.md` at `6e2d689` (unchanged since `e0a21dd`) | present: reports go privately through GitHub's vulnerability reporting form; no credentials, private records or exploit details in public |
+| E8 | the negative controls of the fork checks (X56–X63), which live in `test_core.py`, where `run-one-check.py` does not reach | `test_core.py` from `90abab9` — unchanged at `6e2d689` — run once against the tool at `12b7ea8~1` (`2c00aba`) in a scratch clone, macOS | the seven fork checks FAIL there; X62, the same-repository pull request, passes there — it must stay accepted |
+| E9 | no dependency, and no network of the tool's own (C41) | `shoalmark.py` at `6e2d689`: its imports read with Python's `ast` against `sys.stdlib_module_names`, and every program it starts read from its `subprocess` calls; 2026-10-02 18:32 CEST, macOS, Python 3.14 (the same at `3bd36fc`, 15:44) | every import is the standard library's; of its network modules only `urllib.parse`, which parses a path (`shoalmark.py:48`, used at `:5452`) — no `socket`, `ssl`, `http` or `urllib.request`. The programs that reach the repository's host are git and gh, and svn in a Subversion working copy; the others it starts are itself (`--html-only`), the repository's deriver and the system's own notification command |
 | E10 | the seats' GitHub Apps (C42) | GitHub's public record of each seat App `shoalmark.toml` names — planner, builder, reviewer, go-to-market, designer, auditor, research — read with `gh api /apps/<slug>`, 2026-10-02 15:41 CEST | each is owned by the organisation `shoalmark`, with no permissions and no events |
-| E11 | the built-in seats' rights, and `[rights] planner = []` (C38) | the tool at `3bd36fc` (as at `d443cf5`), loaded in a scratch repository with an inert configuration naming `owner`, `planner`, `reviewer` and `builder` at example addresses; `holds()` read for each seat and right, once with no `[rights]` line and once with `[rights] planner = []`; 2026-10-02 15:44 CEST, macOS, Python 3.14 | with no line: the Owner answer · ask · close · triage, `planner` ask · close · triage, `reviewer` triage, `builder` none. With `[rights] planner = []`: `planner` none, the others unchanged — a repository's own `planner` kept as it was |
+| E11 | the built-in seats' rights, and `[rights] planner = []` (C38) | the tool at `6e2d689`, loaded in a scratch repository with an inert configuration naming `owner`, `planner`, `reviewer` and `builder` at example addresses; `holds()` read for each seat and right, once with no `[rights]` line and once with `[rights] planner = []`; 2026-10-02 18:32 CEST, macOS, Python 3.14 (the same at `3bd36fc`, 15:44) | with no line: the Owner answer · ask · close · triage, `planner` ask · close · triage, `reviewer` triage, `builder` none. With `[rights] planner = []`: `planner` none, the others unchanged — a repository's own `planner` kept as it was |
