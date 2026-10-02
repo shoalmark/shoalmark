@@ -4193,9 +4193,13 @@ def svn_last_worked_on(path):
 def repos_naming():
     """{tracker id: the submodules whose branch names or commit subjects name it} — where the work happened,
     from git alone. For the worksheet only: eight `git log`s are too slow for a commit hook. A submodule that
-    is not checked out is skipped — `git -C` on its empty directory would answer from the parent."""
+    is not checked out is skipped — `git -C` on its empty directory would answer from the parent — and so is one whose path resolves outside the
+    repository, symlinks resolved: no git runs there."""
     modules, found = ROOT / ".gitmodules", {}
+    top = os.path.normcase(os.path.realpath(ROOT))
     for sub in re.findall(r"^\s*path\s*=\s*(\S+)", board_text(modules) or "", re.M):      # the reading rule
+        if not os.path.normcase(os.path.realpath(_norm(ROOT / sub))).startswith(top.rstrip(os.sep) + os.sep):
+            continue
         if not (ROOT / sub / ".git").exists():
             continue
         said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True, encoding="utf-8", errors="replace",

@@ -2986,6 +2986,37 @@ else:
     _skipped("FM-006 · a private security report · the PIN's names · the control", 1, f"this clone does not hold {_SAME_REV}")
 fm.configure(HERE)
 
+# --- `--triage` and the submodules (the Owner's ruling filed in FM-006, *The fix round after the critical review*): a `.gitmodules` path that resolves outside the
+# repository, symlinks resolved, is skipped — no git runs there
+def _sm(rev=None):
+    """`--triage`, watched, where `.gitmodules` names `../outside-a` and — where symlinks can be made — `inner`, a symlink to `outside-b`: each a git repository
+    beside the repository, outside it."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; base_ = root.parent
+        home_ = root / "docs/work-tracker/TRIAGE.md"; home_.write_text(home_.read_text(encoding="utf-8").replace("1.\n", "1. MSR-001 to its end.\n"), encoding="utf-8")
+        outs_ = [base_ / "outside-a"] + ([base_ / "outside-b"] if _SYMLINKS else [])
+        for o_ in outs_:
+            o_.mkdir(); git(o_, "init", "-q"); git(o_, "commit", "-q", "--allow-empty", "-m", "MSR-001 inert")
+        (root / ".gitmodules").write_text('[submodule "a"]\n\tpath = ../outside-a\n' + ('[submodule "b"]\n\tpath = inner\n' if _SYMLINKS else ""), encoding="utf-8")
+        if _SYMLINKS:
+            os.symlink(base_ / "outside-b", root / "inner", target_is_directory=True)
+        mark_ = marks / "started"; env_ = _watch(marks / "watch", mark_, started=outs_)
+        c_, o_, e_ = _tool_run(tool_, root, "--triage", env=env_)
+        g_ = dict(code=c_, said=(o_ + e_).strip(), started=mark_.read_text(encoding="utf-8").split() if mark_.exists() else [], sheet=any((root / "docs/work-tracker/evidence/triage").glob("triage-*.md")))
+        rm_git(root)
+    return g_
+def _sm_ok(g):
+    return g["code"] == 0 and g["sheet"] and g["started"] == []
+g_ = _sm()
+check(f"FM-006 · a private security report · `--triage` and the submodules · a `.gitmodules` path that resolves outside the repository is skipped: no git is started "
+      f"there, and the worksheet is written (saw exit {g_['code']}, started {g_['started']})", _sm_ok(g_))
+if _HAVE_SAME:
+    c_ = _sm(_SAME_REV)
+    check(f"FM-006 · a private security report · `--triage` and the submodules · …the control: beside {_SAME_REV}'s tool this check FAILS", not _sm_ok(c_))
+else:
+    _skipped("FM-006 · a private security report · `--triage` and the submodules · the control", 1, f"this clone does not hold {_SAME_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
