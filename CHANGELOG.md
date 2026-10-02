@@ -41,6 +41,8 @@ FM-040, FM-041 and FM-032).
 - **The board's link (FM-006).** The default run and `--html-only` print one line, `board: file:///…/index.html`, where the board was written; `--print-written` prints none.
 - Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks folder inside the working tree; run `--install-hook` on your default branch again after upgrading.
 - Security, from a private report: a signed identity configured by name, or a signer whose identity merely contained the address, could let another trusted signer's commit count as that identity's. A signed identity is now an email address only, matched exactly against the SSH signer; the signature must be SSH, read from the commit itself, and good under the default branch's signers file. *On upgrade:* a `signed` identity that is not an email — under `owner`, `[seats]` or `answerers` — is refused when the configuration is read, exit 1, in one line: write the email the signers file names for the key (for `answerers`, as `owner = "<email> signed"`). A GPG or X.509 signature on a signed line is refused with `sign with SSH; GPG returns with a fingerprint binding`. This fix has no advisory of its own; this line is its record.
+- Security, from a private report: the board did not escape everything a tracker brings for the place it lands, and it rendered a tracker's links and images of any kind. Everything it renders from a tracker or the configuration is now escaped for its place, and a link or an image is http(s), mailto or relative. *On upgrade:* a `blob` that is not an http(s) URL makes no forge link, and the run says so.
+- Security, from a private report: every run reads and writes a file of the tree — a tracker, the configuration, a theme, the board — only as a regular file inside the repository, never through a symlink; a destination a person names (`--vendor`, `--brand`, `--standup FILE.ics`) is judged where it resolves; a vendored copy's PIN is read only for the copy's own files, and `--triage` runs no git in a submodule path outside the repository. *On upgrade:* such a file that is a symlink, or not a regular file, is refused in one line, exit 4, and the board's refresh leaves it and names it; put the file itself there. `--install-hook` refuses, writing nothing, where git reads a setting, or an include's target, from a file inside a working tree.
 
 - **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,
@@ -127,8 +129,10 @@ FM-040, FM-041 and FM-032).
   destinations before upload, and states the project’s last recorded signing tier in English and German.
 - **Agent contract links (FM-006):** house rules and licence links resolve to the public repository;
   the site check validates local and repository-file destinations in the rendered contract.
-- **Commits give quick, visible feedback (FM-006):** staged Python syntax and the focused core suite
-  replace the silent two-interpreter full-suite hook. Full suites remain required in PR CI and run on tags.
+- **Commits give quick, visible feedback (FM-006):** commits run shoalmark's own hooks from the copy of the tool in
+  the git directory: the session, tracker and judgement gates. Before committing Python, run `python3 -m py_compile`
+  on the changed files and `python3 -u test_core.py`. Both full suites run in the required GitHub matrix for non-draft
+  PRs, on release tags, and when dispatched by hand.
 - **Public contribution checks (FM-006):** every non-draft PR revision runs CI. Documentation builds
   pin Zensical and verify published entry points, contract inclusion and migration URLs before upload.
   Security reporting, contribution guidance, issue templates and dependency update configuration are provided.
