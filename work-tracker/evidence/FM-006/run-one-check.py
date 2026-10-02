@@ -7,7 +7,8 @@ failed, or the block stopped — a test that cannot run against the old tool fai
 
     python3 work-tracker/evidence/FM-006/run-one-check.py --tool <fix>~1 "<the check's name, or a part of it>"
 
-Without `--tool` it runs against HEAD. It writes nothing in this repository.
+A check whose name the suite builds from a table (`case {key}: {what}`) is reached with `--block "<text of its block's source>"` beside the name of the
+one case. Without `--tool` it runs against HEAD. It writes nothing in this repository.
 """
 
 import argparse
@@ -41,6 +42,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("name", help="the check's name, or a part of it")
     ap.add_argument("--tool", default="HEAD", help="the revision whose tool the check runs against (default HEAD)")
+    ap.add_argument("--block", help="text of the block's own source, where the check's name is built from a table and appears in no block")
     args = ap.parse_args()
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     with tempfile.TemporaryDirectory() as d:
@@ -56,6 +58,8 @@ def main():
         scored = [(sum(p in (ast.get_source_segment(src, n) or "") for p in parts), -i, n) for i, n in enumerate(blocks)]
         best = max(scored, default=(0, 0, None), key=lambda x: (x[0], x[1]))
         target = best[2] if best[0] else None
+        if args.block:                                      # the block named by its own text
+            target = next((n for n in blocks if args.block in (ast.get_source_segment(src, n) or "")), None)
         if target is None:
             print(f"run-one-check: no block of test_shoalmark.py holds {args.name!r}", file=sys.stderr)
             return 2
