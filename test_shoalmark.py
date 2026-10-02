@@ -2722,6 +2722,33 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- the triage worksheet under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--triage` asks the
+# rule for its worksheet before the worksheet's folder is made — where the evidence folder is a symlink, it is refused in one line naming the worksheet, exit 4, nothing made
+def _tw(rev=None):
+    """`--triage` where the tracker folder's `evidence` is a symlink to an empty folder beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"
+        home_ = root / "docs/work-tracker/TRIAGE.md"; home_.write_text(home_.read_text(encoding="utf-8").replace("1.\n", "1. MSR-001 to its end.\n"), encoding="utf-8")
+        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_)
+        c_, o_, e_ = _tool_run(tool_, root, "--triage")
+        g_ = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], sheet=f"docs/work-tracker/evidence/triage/triage-{datetime.date.today().isoformat()}.md")
+        rm_git(root)
+    return g_
+def _tw_ok(g):
+    return g["code"] == fm.EXIT_LINT and g["err"] == f"shoalmark: {g['sheet']} {_WR_SAYS}" and g["empty"]
+if _SYMLINKS:
+    g_ = _tw()
+    check(f"FM-006 · a private security report · the write rule · `--triage` where the evidence folder is a symlink: refused in one line naming the worksheet, exit 4, "
+          f"and no folder or file is made through it (saw {g_['err'][-110:]!r})", _tw_ok(g_))
+    if _HAVE_RR:
+        c_ = _tw(_RR_REV)
+        check(f"FM-006 · a private security report · the write rule · the triage worksheet · …the control: beside {_RR_REV}'s tool this check FAILS", not _tw_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · the triage worksheet's control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · the triage worksheet", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

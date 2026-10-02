@@ -8478,6 +8478,7 @@ def main(argv=None):
             return EXIT_LINT
         today = datetime.date.today().isoformat()
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
+        write_rule(out)                                     # the write rule, before its folder is made — as for the derived files
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
         superseded = []
