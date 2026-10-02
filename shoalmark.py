@@ -8056,12 +8056,15 @@ def hooks_copy_drift():
     return ""
 
 
-def worktree_tops():
-    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved."""
+def worktree_tops(live=False):
+    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved. `live`: only
+    those it does not mark `prunable` — a worktree whose folder is gone has no tree, and no hook runs there."""
     tops = {os.path.realpath(ROOT)}
-    for line in (git_out("worktree", "list", "--porcelain") or "").splitlines():
-        if line.startswith("worktree "):
-            tops.add(os.path.realpath(line[len("worktree "):]))
+    for record in (git_out("worktree", "list", "--porcelain") or "").split("\n\n"):
+        lines = record.splitlines()
+        top = next((l[len("worktree "):] for l in lines if l.startswith("worktree ")), None)
+        if top and not (live and any(l == "prunable" or l.startswith("prunable ") for l in lines)):
+            tops.add(os.path.realpath(top))
     return sorted(tops)
 
 
@@ -8091,40 +8094,46 @@ def config_file_problem():
     symlinks resolved, inside a working tree of this repository and outside its git directory (an `include.path` into the tree, say), so a branch can
     change what git runs — a hooks folder, a filter, a program. Read from `git config --list --show-origin` and judged as the hooks folder is: against
     every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass. The target of every include
-    setting is judged the same way (`include_targets`): conditional ones whether or not the condition holds, and whether or not the target exists yet."""
-    out = subprocess.run(["git", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    tops = [os.path.normcase(t) for t in worktree_tops()]
-    for origin in (out.stdout.split("\0")[0::2] if out.returncode == 0 else []):
-        if not origin.startswith("file:"):
-            continue
-        where = origin[len("file:"):]
-        real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(ROOT, where)))
-        if in_git_dir(real):
-            continue
-        top = next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
-        if top:
-            return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
-                    f"copy is written; keep that setting in .git/config or outside every working tree")
-    for holder, target in include_targets(out.stdout.split("\0") if out.returncode == 0 else []):
-        real = os.path.normcase(os.path.realpath(target))
-        if in_git_dir(real):
-            continue
-        top = next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
-        if top:
-            return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
-                    f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
+    setting is judged the same way (`include_targets`): conditional ones whether or not the condition holds, and whether or not the target exists yet. The
+    settings are read from EVERY working tree, as each reads them — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`) —
+    as the hooks folder is judged in every one; a worktree marked `prunable` is skipped (`worktree_tops`)."""
+    tops = [os.path.normcase(t) for t in worktree_tops(live=True)]
+    inside = lambda real: next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
+    for here in tops:
+        out = subprocess.run(["git", "-C", here, "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", env=nested_git_env())
+        listing = out.stdout.split("\0") if out.returncode == 0 else []
+        for origin in listing[0::2]:
+            if not origin.startswith("file:"):
+                continue
+            where = origin[len("file:"):]
+            real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(here, where)))
+            if in_git_dir(real):
+                continue
+            top = inside(real)
+            if top:
+                return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
+                        f"copy is written; keep that setting in .git/config or outside every working tree")
+        for holder, target in include_targets(listing, here):
+            real = os.path.normcase(os.path.realpath(target))
+            if in_git_dir(real):
+                continue
+            top = inside(real)
+            if top:
+                return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
+                        f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
     return ""
 
 
 INCLUDE_KEY = re.compile(r"include(?:if\..*)?\.path", re.I | re.S)     # `include.path`, and `includeIf.<condition>.path` whatever the condition
 
 
-def include_targets(listing):
+def include_targets(listing, here=None):
     """Every include setting of git's configuration, as (the file that holds it, or None for the command line; its target). The target is taken as
     written, whether or not it exists: `~` from the home folder, `%(prefix)/` from git's own, any other relative target from the folder of the file that
     holds it. A target that is a file is read for its own include settings in turn, whatever its condition. `listing` is `git config --list --show-origin
-    -z` split at its NULs."""
-    at = lambda origin: os.path.join(ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
+    -z` split at its NULs, run in the working tree `here` (the repository's root where none is named): a relative origin is read from there."""
+    at = lambda origin: os.path.join(here or ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
     todo = [(at(o), *e.partition("\n")[::2]) for o, e in zip(listing[0::2], listing[1::2])]
     found, read = [], set()
     while todo:

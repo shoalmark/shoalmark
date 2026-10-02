@@ -2886,6 +2886,47 @@ else:
     _skipped("FM-006 · a private security report · `--vendor` reads only what it copies", 2, "this system makes no symlink or no FIFO here")
 fm.configure(HERE)
 
+# --- every worktree's configuration (RV-2315, the Owner's ruling filed in FM-006, *The fix round after the critical review*): `--install-hook`'s configuration
+# check judges the settings each worktree reads, its own configuration included — an include in a linked worktree's own configuration that points into a working
+# tree is refused when it runs from the main worktree, and nothing is written; a worktree marked `prunable` is skipped, never refused
+def _wc(kind, rev=None):
+    """`--install-hook` from the main worktree, beside a linked worktree: `own` — the linked worktree's own configuration (`config.worktree`) holds an include
+    whose target is a file inside the main working tree; `prunable` — the linked worktree's folder is gone."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); named_ = root / "inert.gitconfig"
+        if kind == "own":
+            named_.write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "extensions.worktreeConfig", "true"); git(base / "wt", "config", "--worktree", "include.path", str(named_))
+        else:
+            shutil.rmtree(base / "wt")
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(),
+                  prunable="prunable" in subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout)
+        rm_git(root)
+    return g_
+def _wc_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and g["err"].startswith("--install-hook: ") and g["named"] in g["err"]
+            and "inside the working tree " in g["err"] and "where a branch can change what git runs — no hook and no copy is written" in g["err"] and g["hooks"] == [] and not g["copy"])
+_WC_REV = "f88546f"
+_HAVE_WC = _has_rev(_WC_REV)
+g_ = _wc("own")
+check(f"FM-006 · a private security report · every worktree's configuration · an include in a linked worktree's own configuration, pointing into a working tree: "
+      f"`--install-hook` from the main worktree refuses in one line naming it, and writes no hook and no copy (saw {g_['err'][:150]!r})", _wc_refused(g_))
+if _HAVE_WC:
+    c_ = _wc("own", _WC_REV)
+    check(f"FM-006 · a private security report · every worktree's configuration · …the control: beside {_WC_REV}'s tool this check FAILS", not _wc_refused(c_))
+else:
+    _skipped("FM-006 · a private security report · every worktree's configuration · the control", 1, f"this clone does not hold {_WC_REV}")
+g_ = _wc("prunable")
+check(f"FM-006 · a private security report · every worktree's configuration · beside a worktree marked `prunable` — its folder gone — `--install-hook` succeeds: "
+      f"exit 0, the hooks and the copy written (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:100]!r})",
+      g_["prunable"] and g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
