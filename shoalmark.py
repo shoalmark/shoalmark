@@ -7349,6 +7349,15 @@ def deriver_env():
 
 
 DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit; one that hangs must not hang the gate
+DERIVER_CHANGED = "the deriver changed: not run; run --install-hook to accept it"      # what a hook says where the tree's deriver is not the one accepted (RV-2300)
+
+
+def deriver_sum(exe):
+    """The sha256 of a deriver as it lies on disk — what `--install-hook` accepts for the hooks, and what a hook's run of the copy compares — or "" where it cannot be read."""
+    try:
+        return hashlib.sha256(pathlib.Path(exe).read_bytes()).hexdigest()
+    except OSError:
+        return ""
 
 
 def no_derived(trackers):
@@ -7361,7 +7370,8 @@ def no_derived(trackers):
 
 def run_deriver(trackers, mode="write", flags=()):
     """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run but `--html-only`'s: nothing
-    derived is stored, so nothing derived can be stale. stdin: every tracker's id, status, file and front matter.
+    derived is stored, so nothing derived can be stale. A hook's run of the copy runs it only where it is the deriver `--install-hook` last
+    accepted (its sha256 in the copy's `COPY`); a changed or new one is skipped there, with one line, and the run goes on as one with no deriver. stdin: every tracker's id, status, file and front matter.
     stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
     value key becomes a column in INDEX.md and on the board, and a view on the board. `_files: {path: text}` are other
     generated files: the deriver stays free of side effects — the core writes them, reports them under --print-written
@@ -7371,6 +7381,9 @@ def run_deriver(trackers, mode="write", flags=()):
     no_derived(trackers)
     exe = TRACKER_DIR / "derive"
     if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
+        return None, []
+    if HOOK_RUN and deriver_sum(exe) != copy_record().get("deriver"):    # a hook runs only the deriver accepted at the last `--install-hook`: a changed or new one is skipped
+        print(DERIVER_CHANGED, file=sys.stderr)
         return None, []
     # `mode` — write · check · read.
     # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
@@ -7805,7 +7818,8 @@ def install_copy():
     and only from this copy of the tool where it is a pinned one whose files pass their checksum (`pin_problems`, and each file's own hash, read once and written as read);
     where there is no pin — the tool runs from the repository's root, or from outside it — from the working tree's tool, and the first line says so. It also says which
     commit and branch it was taken from, and warns, without refusing, where that is not the default branch: the PIN it was checked against comes from the same tree, so a
-    copy installed from another branch carries that branch's tool."""
+    copy installed from another branch carries that branch's tool. Beside it, `COPY` records the command it was run with and the sha256 of the tree's deriver as it
+    is now: the one deriver a hook runs."""
     out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-common-dir"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode:
         return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
@@ -7827,6 +7841,8 @@ def install_copy():
         files[rel] = data
     if not pin.exists():
         lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
+    exe = TRACKER_DIR / "derive"                            # the deriver the hooks may run: this one, as it is now — a changed or new one is skipped in hooks until it is accepted here
+    accepted = deriver_sum(exe) if exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK)) else ""
     here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
     sha = (git_out("rev-parse", "--short", "HEAD") or "").strip() or "no commit yet"
     branch = (git_out("branch", "--show-current") or "").strip()
@@ -7838,12 +7854,14 @@ def install_copy():
         (stage / rel).write_bytes(data)
     put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by every hook it writes, and by nothing else\n"
         f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n"
-        f"cmd: {CMD_OWN}\n")
+        f"cmd: {CMD_OWN}\nderiver: {accepted or 'none'}\n")
     if target.is_symlink():
         target.unlink()
     shutil.rmtree(target, ignore_errors=True)
     os.replace(stage, target)
     lines.append(f"wrote {target} — the hooks' copy of the tool, {__version__}, from {HERE / 'shoalmark.py'} at {sha} on {branch or '(detached HEAD)'}")
+    if accepted:
+        lines.append(f"accepted {os.path.relpath(exe, ROOT).replace(os.sep, '/')} for the hooks — sha256 {accepted[:12]}: a hook runs it only while it is this one")
     if default is None:
         lines.append(f"warning: the default branch cannot be told here (no origin/HEAD, origin/main or origin/master) — the PIN this copy was checked against comes from the same tree, "
                      f"so a copy installed from a branch that is not the default one carries that branch's tool: run --install-hook on your default branch")

@@ -2086,8 +2086,15 @@ def _copy_hash(root):
     """The hooks' copy, every file of it with its name, as one hash — None where it is not there."""
     c_ = root / ".git" / fm.COPY_DIR
     return hashlib.sha1(b"".join(p_.relative_to(c_).as_posix().encode() + b"\0" + p_.read_bytes() for p_ in sorted(c_.rglob("*")) if p_.is_file())).hexdigest() if c_.is_dir() else None
-def _root_repo(base, rev=None):
-    """A scratch repository with the tool at its root — as it is here, or as `rev` had it — one tracker and its INDEX.md, committed, and `--install-hook` run from that tool."""
+def _deriver(marks, name):
+    """A deriver that derives nothing and, run, leaves the marker `name` beside the repository — inert."""
+    return f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(marks / name)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n'
+def _put_deriver(root, marks, name):
+    d_ = root / "docs/work-tracker/derive"; d_.write_text(_deriver(marks, name), encoding="utf-8"); d_.chmod(0o755)
+    return d_
+def _root_repo(base, rev=None, deriver=None):
+    """A scratch repository with the tool at its root — as it is here, or as `rev` had it — one tracker and its INDEX.md, and the deriver `deriver` names where it names
+    one, committed, and `--install-hook` run from that tool. The markers setup's own runs left are cleared."""
     base = Path(base).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
     git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE")
     if rev:
@@ -2095,8 +2102,12 @@ def _root_repo(base, rev=None):
     else:
         for rel_ in fm.copy_files():
             (root / rel_).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel_, root / rel_)
+    if deriver:
+        _put_deriver(root, marks, deriver)
     _tool_run(root / "shoalmark.py", root); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
     inst = _tool_run(root / "shoalmark.py", root, "--install-hook")
+    for m_ in marks.iterdir():
+        m_.unlink()
     fm.configure(HERE)
     return root, marks, inst
 def _tree_tool_changed(root, marks):
@@ -2214,6 +2225,50 @@ else:
     SKIPS.append(("FM-006 · a private security report · RV-2300 · the bound at commit time and a missing copy", 3, "not run on Windows here"))
 if not _HAVE_RV:
     SKIPS.append(("FM-006 · a private security report · RV-2300 · the controls", 4, f"this clone does not hold {_RV_REV}"))
+fm.configure(HERE)
+
+# --- RV-2300 (a private security report): the deriver in hooks — a hook runs the tree's deriver only where it is the one accepted at the last `--install-hook` ----------------
+def _rv_deriver(rev=None):
+    """A deriver accepted at `--install-hook` runs in a commit's hook; then the same deriver changed, committed with the hooks running."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev, deriver="accepted"); exe_ = root / "docs/work-tracker/derive"; sum_ = hashlib.sha256(exe_.read_bytes()).hexdigest()
+        rec_ = (root / ".git" / fm.COPY_DIR / "COPY").read_text(encoding="utf-8") if (root / ".git" / fm.COPY_DIR / "COPY").is_file() else ""
+        _hook_changed(root, "the accepted deriver runs"); git(root, "add", "-A"); c1_ = _hooked(root, "commit", "-qm", "the accepted deriver")
+        g_ = dict(inst=inst, sum=sum_, rec=rec_, ran=(marks / "accepted").exists(), code1=c1_[0], said1=c1_[1])
+        _put_deriver(root, marks, "changed"); _hook_changed(root, "a changed deriver is skipped"); git(root, "add", "-A"); c2_ = _hooked(root, "commit", "-qm", "the deriver changed")
+        staged_ = subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, env=_ENV).stdout
+        g_.update(code2=c2_[0], said2=c2_[1], changed_ran=(marks / "changed").exists(), staged2="docs/work-tracker/INDEX.md" in staged_ and "docs/work-tracker/derive" in staged_)
+        rm_git(root)
+    return g_
+def _rv_accepted_ok(g):
+    return (g["inst"][0] == 0 and f"accepted docs/work-tracker/derive for the hooks — sha256 {g['sum'][:12]}" in g["inst"][1] and f"deriver: {g['sum']}\n" in g["rec"]
+            and g["ran"] and g["code1"] == 0 and fm.DERIVER_CHANGED not in g["said1"])
+def _rv_changed_ok(g):
+    return g["code2"] == 0 and g["said2"].splitlines().count(fm.DERIVER_CHANGED) == 1 and not g["changed_ran"] and g["staged2"]
+g_ = _rv_deriver()
+check(f"FM-006 · a private security report · RV-2300 · `--install-hook` accepts the tree's deriver for the hooks — its sha256 recorded with the copy, and said — and a commit's hook runs that deriver "
+      f"(saw {[l_ for l_ in g_['inst'][1].splitlines() if l_.startswith('accepted')]!r}, ran {g_['ran']})", _rv_accepted_ok(g_))
+check(f"FM-006 · a private security report · RV-2300 · a changed deriver is not run in a hook: the commit is made, INDEX.md staged, and the hook says exactly `{fm.DERIVER_CHANGED}`, once "
+      f"(saw ran {g_['changed_ran']}, {g_['said2'][-120:]!r})", _rv_changed_ok(g_))
+def _rv_new_deriver(rev=None):
+    """No deriver at `--install-hook`; a new one, committed with the hooks running."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev)
+        rec_ = (root / ".git" / fm.COPY_DIR / "COPY").read_text(encoding="utf-8") if (root / ".git" / fm.COPY_DIR / "COPY").is_file() else ""
+        _put_deriver(root, marks, "new"); _hook_changed(root, "a new deriver is skipped"); git(root, "add", "-A"); c_ = _hooked(root, "commit", "-qm", "a new deriver")
+        g_ = dict(rec=rec_, code=c_[0], said=c_[1], ran=(marks / "new").exists())
+        rm_git(root)
+    return g_
+def _rv_new_ok(g):
+    return "deriver: none\n" in g["rec"] and g["code"] == 0 and g["said"].splitlines().count(fm.DERIVER_CHANGED) == 1 and not g["ran"]
+g_ = _rv_new_deriver()
+check(f"FM-006 · a private security report · RV-2300 · a new deriver — none was there at `--install-hook` — is not run in a hook either, with the same line (saw ran {g_['ran']}, {g_['said'][-100:]!r})", _rv_new_ok(g_))
+if _HAVE_RV:
+    c_, n_ = _rv_deriver(_RV_REV), _rv_new_deriver(_RV_REV)
+    check(f"FM-006 · a private security report · RV-2300 · …the control: beside {_RV_REV}'s tool all three checks FAIL — it accepts no deriver, and its commit hook runs the changed one and the new one "
+          f"(saw changed ran {c_['changed_ran']}, new ran {n_['ran']})", not _rv_accepted_ok(c_) and not _rv_changed_ok(c_) and not _rv_new_ok(n_))
+else:
+    SKIPS.append(("FM-006 · a private security report · RV-2300 · the deriver's control", 1, f"this clone does not hold {_RV_REV}"))
 fm.configure(HERE)
 
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
