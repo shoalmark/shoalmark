@@ -746,6 +746,22 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       default, and a linked worktree with a relative `core.hooksPath`. The 35 seconds stay; the commit's refusal line
       names `SHOALMARK_BOARD_SECONDS` as the way to raise it. The warning off the default branch names a PIN only where
       the repository pins one. The drift line printed more than once on one commit is 0.19.1's.
+    - *The fix round after the critical review* (the Owner's rulings, 2026-10-02, morning, on reviewer-80's findings at
+      `1b65331`): in every run, the tool reads a tracker, its configuration and every file of the tree only as a regular
+      file inside the repository, following no symlink. The board's refresh skips such a file with its line, as now;
+      every other run — a hook's, or one started by hand — refuses in one line naming the file. Tests with an inert
+      marker, for a hook's run and a run by hand. `--install-hook` refuses, in one line and writing nothing, where any
+      git configuration value comes from a file inside a working tree, judged as the hooks folder is; with its test. The
+      checks assert the filed lines as literal text, not the tool's constants; in the final recorded pass of the
+      negative controls, the checkout and merge hooks' controls run against v0.18.6, whose hooks ran the tree's tool,
+      and a row whose feature is new, or that checks something must stay accepted, says so. RV-2304: `AGENTS.md`'s
+      *Checks* line becomes the Owner's text — “**Checks:** commits run shoalmark's own hooks, from the copy of the tool
+      in the git directory: the session, tracker and judgement gates. Before committing Python, run `python3 -m
+      py_compile` on the changed files and `python3 -u test_core.py`. Both full suites run in the required GitHub matrix
+      for non-draft PRs when opened, updated, reopened or marked ready, on release tags, and when dispatched by hand.
+      The Owner authorized these PR triggers on 2026-09-29 and these hooks on 2026-10-02. Say when a tag is due; never
+      create one.” RV-2305, RV-2306 and RV-2307 are 0.19.1's. implementer-81 builds the round on Opus; then
+      reviewer-80's scoped check and READY.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
