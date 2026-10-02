@@ -774,6 +774,10 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       comments that call the Owner “he” or “his” say they/them — comments only. For 0.19.1: `--init`'s files written
       before a refusal; and, P3, the hooks-folder and configuration checks compare paths case-sensitively on macOS,
       whose default file system is not — their inputs come from the person's own configuration, never a branch.
+      RV-2314 and RV-2315 (the Owner's rulings, the same morning, on reviewer-80's check at `f88546f`), in this build:
+      `--vendor` reads only the files it copies, each judged by the reading rule; the configuration check judges the
+      settings each worktree reads, its own configuration included, as the hooks folder is judged in every worktree. One
+      commit each, with its test.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
