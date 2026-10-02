@@ -352,17 +352,22 @@ def tracker_folder_problem(what="the board is not refreshed"):
 _TRACKED = None
 
 
+def tracked_board_rels():
+    """What git tracks of the board's files — the page and its views — as git names them, relative to the repository, with one read-only call. Where there is
+    no git, none."""
+    if vcs() != "git":
+        return []
+    rels = [HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()]
+    out = subprocess.run(["git", "ls-files", "-z", "--", *(":(literal)" + r for r in rels)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                         errors="replace", env=nested_git_env()).stdout
+    return [r for r in out.split("\x00") if r]
+
+
 def tracked_board_files():
-    """What git tracks of the board's files — the page and its views — read once per run, with one read-only call. Where there is no git, none."""
+    """What git tracks of the board's files (`tracked_board_rels`), as paths, read once per run. Where there is no git, none."""
     global _TRACKED
     if _TRACKED is None:
-        if vcs() != "git":
-            _TRACKED = set()
-        else:
-            rels = [HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()]
-            out = subprocess.run(["git", "ls-files", "-z", "--", *(":(literal)" + r for r in rels)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                                 errors="replace", env=nested_git_env()).stdout
-            _TRACKED = {_norm(ROOT / r) for r in out.split("\x00") if r}
+        _TRACKED = {_norm(ROOT / r) for r in tracked_board_rels()}
     return _TRACKED
 
 
