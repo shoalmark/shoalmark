@@ -2839,6 +2839,53 @@ else:
     _skipped("FM-006 · a private security report · the write rule · before a folder is made", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- `--vendor` reads only what it copies (RV-2314, the Owner's ruling filed in FM-006, *The fix round after the critical review*): a file the PIN names that is
+# not among the files it copies is never opened, and the run goes on — the file left where it is, the new PIN without its name
+_VR_REV = "f88546f"
+_HAVE_VR = _has_rev(_VR_REV)
+_FIFOS = hasattr(os, "mkfifo")
+def _opened(cmd, fifo, out, env, cwd):
+    """Run `cmd`, its output to the file `out`; whether any process opened `fifo` to read while it ran — a writer's non-blocking open succeeds only then.
+    Nothing is written into it: the writer closes at once, and the reader reads an empty file."""
+    with open(out, "w", encoding="utf-8") as f_:
+        p_ = subprocess.Popen(cmd, cwd=str(cwd), stdout=f_, stderr=subprocess.STDOUT, env=env); seen_ = False; end_ = time.monotonic() + 300
+        while p_.poll() is None and time.monotonic() < end_:
+            try:
+                os.close(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK)); seen_ = True
+            except OSError:
+                time.sleep(0.01)
+        if p_.poll() is None:
+            p_.kill()
+        p_.wait()
+    return seen_, p_.returncode, Path(out).read_text(encoding="utf-8")
+def _vr(rev=None):
+    """`--vendor vend` run twice from the tool at the repository's root; before the second run, the PIN names one more file, `extra/notes.txt` — a
+    symlink to a FIFO beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; argv_ = [sys.executable, str(tool_), "--root", str(root), "--vendor", "vend", "--partial", "--allow-untagged"]
+        first_ = subprocess.run(argv_, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        fifo_ = marks / "fifo"; os.mkfifo(fifo_); (root / "vend/extra").mkdir(); os.symlink(fifo_, root / "vend/extra/notes.txt")
+        pin_ = root / "vend/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  extra/notes.txt\n", encoding="utf-8")
+        seen_, code_, said_ = _opened(argv_, fifo_, marks / "out.txt", _ENV, root)
+        g_ = dict(first=first_.returncode, seen=seen_, code=code_, said=said_.strip(), link=os.path.islink(root / "vend/extra/notes.txt") and os.readlink(root / "vend/extra/notes.txt") == str(fifo_),
+                  pin="extra/notes.txt" not in pin_.read_text(encoding="utf-8"))
+        rm_git(root)
+    return g_
+def _vr_ok(g):
+    return g["first"] == 0 and not g["seen"] and g["code"] == 0 and g["link"] and g["pin"]
+if _SYMLINKS and _FIFOS:
+    g_ = _vr()
+    check(f"FM-006 · a private security report · `--vendor` reads only what it copies · a file the PIN names that it does not copy is never opened, and the run goes "
+          f"on: the file left where it is, the new PIN without its name (saw opened={g_['seen']}, exit {g_['code']}, {g_['said'][-100:]!r})", _vr_ok(g_))
+    if _HAVE_VR:
+        c_ = _vr(_VR_REV)
+        check(f"FM-006 · a private security report · `--vendor` reads only what it copies · …the control: beside {_VR_REV}'s tool this check FAILS", not _vr_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · `--vendor` reads only what it copies · the control", 1, f"this clone does not hold {_VR_REV}")
+else:
+    _skipped("FM-006 · a private security report · `--vendor` reads only what it copies", 2, "this system makes no symlink or no FIFO here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

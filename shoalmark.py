@@ -7668,9 +7668,10 @@ def vendor(dest, partial=False, allow_untagged=False):
     for rel in copied + ["PIN"]:                            # the write rule for every file it writes, as the path is written, before anything is read or written
         write_rule(pathlib.Path(dest).absolute() / rel)
     dest = pathlib.Path(dest).resolve()
-    had = (dest / "VERSION").read_text(encoding="utf-8").strip() if (dest / "VERSION").exists() else ""
-    edited = [l.partition("  ")[2] for l in ((dest / "PIN").read_text(encoding="utf-8").splitlines() if (dest / "PIN").exists() else [])
-              if not l.startswith("#") and l.partition("  ")[2] and (dest / l.partition("  ")[2]).exists()
+    had = (board_text(dest / "VERSION") or "").strip()     # the reading rule
+    # the file a PIN line names is read only where the copy would overwrite it — one of `copied` — and under the reading rule
+    edited = [l.partition("  ")[2] for l in (board_text(dest / "PIN") or "").splitlines()
+              if not l.startswith("#") and l.partition("  ")[2] in copied and board_isfile(dest / l.partition("  ")[2])
               and digest(dest / l.partition("  ")[2]) != l.partition("  ")[0]]
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
