@@ -2928,7 +2928,9 @@ check(f"FM-006 · a private security report · every worktree's configuration ·
 fm.configure(HERE)
 
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
-# opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it
+# opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it.
+# Windows hands the hook a program's arguments as one command line: its words are read as `list2cmdline` writes them. Before a check leans on the hook for a
+# start, `_watch_sees_start` proves it sees one here; where it does not, the check skips, saying so
 _SAME_REV = "4087e23"
 _HAVE_SAME = _has_rev(_SAME_REV)
 def _watch(where, mark, opened=(), started=()):
@@ -2936,17 +2938,24 @@ def _watch(where, mark, opened=(), started=()):
     where = Path(where); where.mkdir(parents=True, exist_ok=True)
     (where / "sitecustomize.py").write_text(
         "import os, sys\n"
-        f"_OPENED, _STARTED, _MARK = {sorted(os.path.realpath(p_) for p_ in opened)!r}, {sorted(os.path.realpath(p_) for p_ in started)!r}, {str(mark)!r}\n"
+        f"_OPENED, _STARTED, _MARK = {sorted(os.path.normcase(os.path.realpath(p_)) for p_ in opened)!r}, {sorted(os.path.normcase(os.path.realpath(p_)) for p_ in started)!r}, {str(mark)!r}\n"
+        "import re\n"
         "_IN = [False]\n"
         "def _real(a):\n"
-        "    return os.path.realpath(os.fsdecode(a)) if isinstance(a, (str, bytes, os.PathLike)) else None\n"
+        "    return os.path.normcase(os.path.realpath(os.fsdecode(a))) if isinstance(a, (str, bytes, os.PathLike)) else None\n"
+        "def _words(a):\n"
+        "    if isinstance(a, (list, tuple)):\n"
+        "        return list(a)\n"
+        "    if isinstance(a, str):\n"
+        "        return [q or w for q, w in re.findall(r'\"([^\"]*)\"|(\\S+)', a)]\n"
+        "    return [a]\n"
         "def _seen(event, args):\n"
         "    if _IN[0]:\n"
         "        return\n"
         "    _IN[0] = True\n"
         "    try:\n"
         "        hit = (event == 'open' and args and _real(args[0]) in _OPENED) or (event in ('subprocess.Popen', 'os.posix_spawn', 'os.spawn', 'os.exec') and len(args) > 1\n"
-        "               and any(_real(a) in _STARTED for a in (args[1] if isinstance(args[1], (list, tuple)) else [args[1]])))\n"
+        "               and any(_real(a) in _STARTED for a in _words(args[1])))\n"
         "        if hit:\n"
         "            with open(_MARK, 'a') as f:\n"
         "                f.write(event + '\\n')\n"
@@ -2956,6 +2965,13 @@ def _watch(where, mark, opened=(), started=()):
         "        _IN[0] = False\n"
         "sys.addaudithook(_seen)\n", encoding="utf-8")
     return dict(_ENV, PYTHONPATH=str(where))
+def _watch_sees_start(env, mark, path):
+    """Whether the watch in `env` sees a program started with `path` among its arguments — the hook's own proof, here, before a check leans on it. The marker
+    it leaves is cleared."""
+    subprocess.run([sys.executable, "-c", "import subprocess, sys; subprocess.run(['git', '-C', sys.argv[1], '--version'], capture_output=True)", str(path)],
+                   capture_output=True, env=env)
+    seen_ = Path(mark).exists(); Path(mark).unlink(missing_ok=True)
+    return seen_
 
 # --- the PIN's names (RV-2316, the Owner's ruling filed in FM-006, *The fix round after the critical review*): the gate reads only the files a vendored copy's PIN
 # names inside the copy — a name outside it is refused in one line, and the file it names is never opened
@@ -3000,21 +3016,26 @@ def _sm(rev=None):
         (root / ".gitmodules").write_text('[submodule "a"]\n\tpath = ../outside-a\n' + ('[submodule "b"]\n\tpath = inner\n' if _SYMLINKS else ""), encoding="utf-8")
         if _SYMLINKS:
             os.symlink(base_ / "outside-b", root / "inner", target_is_directory=True)
-        mark_ = marks / "started"; env_ = _watch(marks / "watch", mark_, started=outs_)
+        mark_ = marks / "started"; env_ = _watch(marks / "watch", mark_, started=outs_); live_ = all(_watch_sees_start(env_, mark_, o_) for o_ in outs_)
         c_, o_, e_ = _tool_run(tool_, root, "--triage", env=env_)
-        g_ = dict(code=c_, said=(o_ + e_).strip(), started=mark_.read_text(encoding="utf-8").split() if mark_.exists() else [], sheet=any((root / "docs/work-tracker/evidence/triage").glob("triage-*.md")))
+        g_ = dict(live=live_, code=c_, said=(o_ + e_).strip(), started=mark_.read_text(encoding="utf-8").split() if mark_.exists() else [],
+                  sheet=any((root / "docs/work-tracker/evidence/triage").glob("triage-*.md")))
         rm_git(root)
     return g_
 def _sm_ok(g):
     return g["code"] == 0 and g["sheet"] and g["started"] == []
 g_ = _sm()
-check(f"FM-006 · a private security report · `--triage` and the submodules · a `.gitmodules` path that resolves outside the repository is skipped: no git is started "
-      f"there, and the worksheet is written (saw exit {g_['code']}, started {g_['started']})", _sm_ok(g_))
-if _HAVE_SAME:
-    c_ = _sm(_SAME_REV)
-    check(f"FM-006 · a private security report · `--triage` and the submodules · …the control: beside {_SAME_REV}'s tool this check FAILS", not _sm_ok(c_))
+if g_["live"]:
+    check(f"FM-006 · a private security report · `--triage` and the submodules · a `.gitmodules` path that resolves outside the repository is skipped: no git is started "
+          f"there, and the worksheet is written (saw exit {g_['code']}, started {g_['started']})", _sm_ok(g_))
+    c_ = _sm(_SAME_REV) if _HAVE_SAME else None
+    if c_ and c_["live"]:
+        check(f"FM-006 · a private security report · `--triage` and the submodules · …the control: beside {_SAME_REV}'s tool this check FAILS", not _sm_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · `--triage` and the submodules · the control", 1,
+                 f"this clone does not hold {_SAME_REV}" if not c_ else "the audit hook here does not see the programs a run starts")
 else:
-    _skipped("FM-006 · a private security report · `--triage` and the submodules · the control", 1, f"this clone does not hold {_SAME_REV}")
+    _skipped("FM-006 · a private security report · `--triage` and the submodules", 2, "the audit hook here does not see the programs a run starts")
 fm.configure(HERE)
 
 # --- destinations a person names (the Owner's ruling filed in FM-006, *The fix round after the critical review*, with RV-2316, and RV-2317): `--vendor DIR`,
