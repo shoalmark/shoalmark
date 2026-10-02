@@ -2559,6 +2559,42 @@ else:
     _skipped("FM-006 · a private security report · the reading rule", 7, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- the git configuration's files (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): `--install-hook`
+# refuses, in one line and writing nothing, where a git configuration value comes from a file inside a working tree — judged as the hooks folder is
+def _cfg_files(kind, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); at_ = root
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "include":                   # a value from a file inside the working tree
+            (root / "shared.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8"); git(root, "config", "include.path", "../shared.gitconfig"); named_ = root / "shared.gitconfig"
+        elif kind == "worktree":                # a value from a file inside another worktree's tree
+            git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); (base / "wt/shared.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "include.path", str(base / "wt/shared.gitconfig")); named_ = base / "wt/shared.gitconfig"
+        else:
+            named_ = None
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        c_, o_, e_ = _tool_run(tool_, at_, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=str(named_.resolve()) if named_ else "", hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+                  copy=(root / ".git" / fm.COPY_DIR).exists())
+        rm_git(root)
+    return g_
+def _cfg_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and g["err"].startswith(f"--install-hook: git reads configuration from {g['named']}, inside the working tree ")
+            and "where a branch can change what git runs — no hook and no copy is written" in g["err"] and g["hooks"] == [] and not g["copy"])
+for kind_, what_ in (("include", "a value from a configuration file inside the working tree"), ("worktree", "a value from a configuration file inside another worktree's tree")):
+    g_ = _cfg_files(kind_)
+    check(f"FM-006 · a private security report · the git configuration's files · {what_}: `--install-hook` refuses in one line naming the file and why, and writes no hook and no copy "
+          f"(saw {g_['err'][:140]!r})", _cfg_refused(g_))
+    if _HAVE_RR:
+        c_ = _cfg_files(kind_, _RR_REV)
+        check(f"FM-006 · a private security report · the git configuration's files · …the control: beside {_RR_REV}'s tool this check FAILS", not _cfg_refused(c_))
+g_ = _cfg_files("default")
+check(f"FM-006 · a private security report · the git configuration's files · the default configuration is accepted — `.git/config` sits in the git directory (saw exit {g_['code']}, {g_['hooks'][:3]})",
+      g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
+if not _HAVE_RR:
+    _skipped("FM-006 · a private security report · the git configuration's files · the controls", 2, f"this clone does not hold {_RR_REV}")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

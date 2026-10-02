@@ -8021,6 +8021,27 @@ def hooks_folder_problem(hooks):
     return ""
 
 
+def config_file_problem():
+    """Why `--install-hook` writes nothing because of where git reads its configuration from, in one line — or "": a value comes from a file that resolves,
+    symlinks resolved, inside a working tree of this repository and outside its git directory (an `include.path` into the tree, say), so a branch can
+    change what git runs — a hooks folder, a filter, a program. Read from `git config --list --show-origin` and judged as the hooks folder is: against
+    every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass."""
+    out = subprocess.run(["git", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    tops = [os.path.normcase(t) for t in worktree_tops()]
+    for origin in (out.stdout.split("\0")[0::2] if out.returncode == 0 else []):
+        if not origin.startswith("file:"):
+            continue
+        where = origin[len("file:"):]
+        real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(ROOT, where)))
+        if in_git_dir(real):
+            continue
+        top = next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
+        if top:
+            return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
+                    f"copy is written; keep that setting in .git/config or outside every working tree")
+    return ""
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
@@ -8031,8 +8052,8 @@ def install_hook():
         print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT
     hooks = (ROOT / out.stdout.strip()).resolve()
-    refused = hooks_folder_problem(hooks)
-    if refused:                                             # a hooks folder a branch can change runs what the branch names: no hook, and no copy
+    refused = hooks_folder_problem(hooks) or config_file_problem()
+    if refused:                                             # a hooks folder, or a configuration file, a branch can change runs what the branch names: no hook, and no copy
         print(refused, file=sys.stderr)
         return EXIT_LINT
     hooks.mkdir(parents=True, exist_ok=True)
