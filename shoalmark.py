@@ -176,10 +176,10 @@ def vcs():
 # the board's refresh leaves such a file unwritten with its line (`board_write`); a hook's run of the copy refuses (`guard_write`, the commit refused);
 # every other run refuses in one line naming the file, exit 4, before anything is written (`refuse_tree_write`).
 def tree_write(path):
-    """Whether a write lands in the tree this run tracks — inside the repository as written and outside its git directory, or in the tracker folder
-    wherever that is. A destination a person names elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not."""
-    p, td = _norm(path), _norm(TRACKER_DIR)
-    return (in_tree(path) and not in_git_dir(path)) or p == td or p.startswith(td.rstrip(os.sep) + os.sep)
+    """Whether a write lands in the tree this run tracks — inside the repository as written, outside its git directory. A destination a person names
+    elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not; a tracker folder outside the repository is refused
+    before any run reads it (`load_trackers`)."""
+    return in_tree(path) and not in_git_dir(path)
 
 
 def write_rule(path):
@@ -3863,7 +3863,8 @@ def write_views(trackers):
         if SAFE_READS:
             left_alone(VIEW_DIR, "a symlink, or not a directory")    # the board's run writes no view through a symlink or over a file
             return
-        view_dir_refused()
+        if SAFE_WRITES or in_tree(VIEW_DIR):                # the write rule: a folder of the tree
+            view_dir_refused()
     VIEW_DIR.mkdir(exist_ok=True)
     keep = set()
     recover_relations(trackers)
@@ -8553,7 +8554,7 @@ def main(argv=None):
         try:
             for target in ([] if DERIVER_LEFT else [OUT]) + [HTML_OUT, *sorted(DERIVED_FILES)]:     # the write rule for every file this run writes, before it writes one
                 write_rule(target)
-            if os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+            if os.path.lexists(VIEW_DIR) and (SAFE_WRITES or in_tree(VIEW_DIR)) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
                 view_dir_refused()
             if DERIVER_LEFT:                                        # a hook ran no deriver: INDEX.md and what it derives stay as staged, never rewritten without its columns
                 print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
