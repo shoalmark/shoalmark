@@ -177,8 +177,8 @@ def vcs():
 # every other run refuses in one line naming the file, exit 4, before anything is written (`refuse_tree_write`).
 def tree_write(path):
     """Whether a write lands in the tree this run tracks — inside the repository as written, outside its git directory. A destination a person names
-    elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not; a tracker folder outside the repository is refused
-    before any run reads it (`load_trackers`)."""
+    elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not — a named one is resolved once, where it is named, and
+    judged again under the folder it resolves to; a tracker folder outside the repository is refused before any run reads it (`load_trackers`)."""
     return in_tree(path) and not in_git_dir(path)
 
 
@@ -1665,7 +1665,10 @@ def standup(trackers, invite=None):
                  f"DTSTART:{f(start)}", f"DTEND:{f(end)}", "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
                  f"SUMMARY:{name} — standup: what needs you", f"DESCRIPTION:Run `{CMD} --standup` — or open the board: its first lines are the agenda.",
                  "END:VEVENT", "END:VCALENDAR"]
-        put(pathlib.Path(invite), "\r\n".join(lines) + "\r\n")      # the write rule (`put`); a calendar file ends its lines with CRLF, on every system — `put` writes them as they are
+        named = pathlib.Path(invite).absolute()
+        out = pathlib.Path(os.path.realpath(named.parent)) / named.name      # a destination a person names: its folder resolved once, where it is named
+        write_rule(named)                                   # the write rule, as the path is named; `put` asks it again where it resolves
+        put(out, "\r\n".join(lines) + "\r\n")              # a calendar file ends its lines with CRLF, on every system — `put` writes them as they are
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
     way = on_their_way(trackers)
@@ -3754,16 +3757,18 @@ def brand_report(dest=None, theme=None):
         if theme not in names:
             print(f"--from {theme}: the tool ships no such theme — {' or '.join(names) if names else 'this copy ships none'}; nothing was written", file=sys.stderr)
             return 2
-        dest, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
+        named, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
+        dest = pathlib.Path(os.path.realpath(named))        # a destination a person names: resolved once, where it is named
         rels = [r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")]
-        for rel in rels:                                    # the write rule for every file it may write, before the first folder or copy is made
+        for rel in rels:                                    # the write rule for every file it may write — as the path is named, and under the folder it resolves
+            write_rule(named / rel)                         # to — before the first folder or copy is made
             write_rule(dest / rel)
         print(f"the {theme} theme — a starter from {src}")
         for rel in rels:
             if (dest / rel).exists():
-                print(f"kept {dest / rel} — it is there already; delete it to start from {theme}")
+                print(f"kept {named / rel} — it is there already; delete it to start from {theme}")
                 continue
-            (dest / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src / rel, dest / rel); print(f"wrote {dest / rel}")
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src / rel, dest / rel); print(f"wrote {named / rel}")
         print(f"yours to change; a board wears it from a brand place — <tracker dir>/brand/, or ~/.config/shoalmark/ for you alone (`--brand` lists them)")
         return EXIT_OK
     if dest:
@@ -7672,9 +7677,11 @@ def vendor(dest, partial=False, allow_untagged=False):
     (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
     in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
     copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]   # the themes it ships travel, pinned (FM-002)
-    for rel in copied + ["PIN"]:                            # the write rule for every file it writes, as the path is written, before anything is read or written
-        write_rule(pathlib.Path(dest).absolute() / rel)
-    dest = pathlib.Path(dest).resolve()
+    named = pathlib.Path(dest).absolute()
+    dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
+    for rel in copied + ["PIN"]:                            # the write rule for every file it writes — as the path is named, and under the folder it resolves to —
+        write_rule(named / rel)                             # before anything is read or written
+        write_rule(dest / rel)
     had = (board_text(dest / "VERSION") or "").strip()     # the reading rule
     # the file a PIN line names is read only where the copy would overwrite it — one of `copied` — and under the reading rule
     edited = [l.partition("  ")[2] for l in (board_text(dest / "PIN") or "").splitlines()
