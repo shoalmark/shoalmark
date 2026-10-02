@@ -264,25 +264,42 @@ def left_alone(path, why):
         BOARD_LEFT.append((rel, why))
 
 
+# THE READING RULE (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): in EVERY run, a file of
+# the tree — a tracker, the configuration, TRIAGE.md, a theme, the labels, a worksheet, a file the configuration names — is read only where it is a regular
+# file inside the repository, reached through no symlink. `board_isfile` and `board_text` are the rule, and every reader of the tree asks them. The
+# board's refresh leaves such a file unread and names it once at its end; every other run refuses in one line naming it (`refuse_tree_file`).
 def board_isfile(path):
-    """`path.is_file()` — and, in the board's run, only where the file is the tree's to read: a regular file inside the repository, through no symlink.
-    A file of the tree that is none of these is left unread, and named once at the end."""
+    """`path.is_file()` under the reading rule: a file of the tree only where it is a regular file inside the repository, through no symlink. One that is
+    there and is not: in the board's run left unread, and named once at the end; in every other run, the run is refused (`refuse_tree_file`)."""
     path = pathlib.Path(path)
-    if not SAFE_READS or not in_tree(path):
+    if not in_tree(path):
         return path.is_file()
     if real_inside(path) and path.is_file():
         return True
     if os.path.lexists(path):
-        left_alone(path, "a symlink, or not a regular file" if not real_inside(path) else "not a regular file")
+        why = "a symlink, or reached through one" if not real_inside(path) else "not a regular file"
+        if SAFE_READS:
+            left_alone(path, "a symlink, or not a regular file" if not real_inside(path) else why)
+        else:
+            refuse_tree_file(path, why)
     return False
 
 
 def board_text(path):
-    """A file's text, or None where it is not there — in the board's run, where it is not a regular file inside the repository either."""
+    """A file's text, or None where it is not there — under the reading rule (`board_isfile`)."""
     path = pathlib.Path(path)
-    if SAFE_READS and in_tree(path) and not board_isfile(path):
+    if in_tree(path) and not board_isfile(path):
         return None
     return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def refuse_tree_file(path, why):
+    """A run other than the board's refresh meets a file of the tree it may not read: one line naming it, and the run ends — exit 4, the lint code, as
+    every refusal of the gate's: a commit's hook that exits 4 refuses the commit, and `--check` in CI fails on it. Never a traceback, nothing written."""
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/") if in_tree(path) else str(path)
+    print(f"shoalmark: {rel} is {why} — the tool reads a file of the tree only as a regular file inside the repository, following no symlink: "
+          "nothing is read from it and nothing is written; put the file itself there", file=sys.stderr)
+    raise SystemExit(EXIT_LINT)
 
 
 def tracker_folder_problem(what="the board is not refreshed"):
@@ -2738,7 +2755,7 @@ def dirty_refusal(git, dirty):
     left = []
     for p_ in dirty:
         name = p_.rsplit("/", 1)[-1]
-        if not KIND_RE.match(name) or not (top / p_).is_file():
+        if not KIND_RE.match(name) or not board_isfile(top / p_):      # the reading rule
             continue
         now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
         was_ = (parse_frontmatter(git("show", f"HEAD:{p_}").stdout)[0].get("answer") or "").strip()
@@ -3833,7 +3850,7 @@ def latest_verdicts():
     its reason live in the pass's worksheet, never in the tracker; the page shows them where the tracker is read."""
     out = {}
     for sheet in sorted((TRACKER_DIR / "evidence" / "triage").glob("triage-*.md")):
-        if SAFE_READS and not board_isfile(sheet):
+        if not board_isfile(sheet):                          # the reading rule
             continue
         for tid, verdict, line, error in sheet_rows(sheet.read_text(encoding="utf-8")):
             if tid and verdict and not error:
@@ -4129,7 +4146,7 @@ def repos_naming():
     from git alone. For the worksheet only: eight `git log`s are too slow for a commit hook. A submodule that
     is not checked out is skipped — `git -C` on its empty directory would answer from the parent."""
     modules, found = ROOT / ".gitmodules", {}
-    for sub in re.findall(r"^\s*path\s*=\s*(\S+)", modules.read_text(encoding="utf-8"), re.M) if modules.exists() else []:
+    for sub in re.findall(r"^\s*path\s*=\s*(\S+)", board_text(modules) or "", re.M):      # the reading rule
         if not (ROOT / sub / ".git").exists():
             continue
         said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -7472,7 +7489,7 @@ def run_deriver(trackers, mode="write", flags=()):
 
 
 def load_trackers():
-    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name) and (not SAFE_READS or board_isfile(p))]))
+    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name) and board_isfile(p)]))      # the reading rule
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
@@ -7487,16 +7504,17 @@ def pin_problems():
         return []
     pin = tool / "PIN"
     here = str(tool.relative_to(ROOT).as_posix()) if ROOT in tool.parents else str(tool)
-    if not pin.exists():
+    pin_text = board_text(pin)                              # the reading rule: the tool in the tree is a file of the tree too
+    if pin_text is None:
         # the tool sitting INSIDE the repository it tracks, and not at its root, is a vendored copy — and a vendored
         # copy without its PIN has had its integrity check switched off, silently
         return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in tool.parents else []
     out = []
-    for line in pin.read_text(encoding="utf-8").splitlines():
+    for line in pin_text.splitlines():
         if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
             continue
         want, _, rel = line.partition("  ")
-        if rel and not (tool / rel).exists():               # the working tree lacks it — the checkout's finding (FM-034)
+        if rel and not board_isfile(tool / rel):            # the working tree lacks it — the checkout's finding (FM-034)
             out.append(f"{here}/{rel}: the PIN names it, and {CHECKOUT_MARKS[1]} — restore it from git, or run --vendor again")
         elif rel and digest(tool / rel) != want:
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
@@ -8054,7 +8072,7 @@ def init(key=None):
         configure(ROOT)
     section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), state=HEAD["state"], cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
     agents = ROOT / "AGENTS.md"
-    have = agents.read_text(encoding="utf-8") if agents.exists() else ""
+    have = board_text(agents) or ""                         # the reading rule
     if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
         a = have.index(LEGACY_CONTRACT[0]); have = have[:a] + have[have.index(LEGACY_CONTRACT[1]) + len(LEGACY_CONTRACT[1]):].lstrip("\n")
     if CONTRACT_BEGIN in have and CONTRACT_END in have:
@@ -8069,7 +8087,7 @@ def init(key=None):
         put(claude, "# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n")
         wrote.append(claude)
     ignore, rel = ROOT / ".gitignore", TRACKER_DIR.relative_to(ROOT).as_posix()
-    have = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
+    have = board_text(ignore) or ""
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
     if vcs() == "svn":                                      # Subversion ignores by property, not by file
         svn_ignore_board()
@@ -8163,7 +8181,7 @@ def new_tracker(words, trackers, tags_arg=None):
     for score, t in near:
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
     house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
-    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
+    template = board_text(house) or TRACKER_TEMPLATE        # the reading rule
     frozen = filing_freeze(trackers)
     tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
     if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
@@ -8386,10 +8404,10 @@ def main(argv=None):
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
         superseded = []
-        applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today, superseded) if sheets else ([], [])
+        applied, errors = apply_worksheet(board_text(sheets[-1]) or "", sheets[-1] == out, trackers, today, superseded) if sheets else ([], [])      # the reading rule
         trackers = load_trackers()
         run_deriver(trackers, "write", args.derive_flag)
-        earlier = out.read_text(encoding="utf-8") if out.exists() else ""
+        earlier = board_text(out) or ""
         text, left = triage_worksheet(trackers, today, last_worked_on, earlier, repos_naming())
         put(out, text)
         print(TRIAGE_RULES.format(path=out.relative_to(ROOT).as_posix(), left=left, home=home.relative_to(ROOT).as_posix(), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
@@ -8442,12 +8460,12 @@ def main(argv=None):
 
     drifted = False
     if args.check:
-        on_disk = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
+        on_disk = board_text(OUT) or ""                     # the reading rule
         drifted = drift_normalize(on_disk) != drift_normalize(body)
         if drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
         for path, text in sorted(DERIVED_FILES.items()):
-            if not path.exists() or path.read_text(encoding="utf-8") != text:
+            if board_text(path) != text:
                 drifted = True
                 print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
         if not drifted:

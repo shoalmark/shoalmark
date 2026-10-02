@@ -587,6 +587,21 @@ def run_safe(root, *argv, git_env=None):
         return (e.code if isinstance(e.code, int) else 2), "", ""
 
 
+def run_caught(root, *argv):
+    """`run`, where the run may end in `SystemExit` — a refusal the tool says in one line before it ends: (its code, stdout, stderr), what it printed kept."""
+    out, err = io.StringIO(), io.StringIO()
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            try:
+                code = fm.main(["--root", str(root), *argv])
+            except SystemExit as e:
+                code = e.code if isinstance(e.code, int) else 1
+    finally:
+        os.environ.update(saved)
+    return code, out.getvalue(), err.getvalue()
+
+
 # --- FM-024 S1+S2: a seat's commit names its session — the trailer the hook appends, and an id when a harness has none --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -2481,6 +2496,67 @@ if _HAVE_RV:
     check(f"FM-006 · the refresh after a pull · …the control: `git pull --rebase` with local commits beside {_RV_REV}'s hooks FAILS — no hook refreshes the board after the replay (saw differing {c_['differs']})", not _pull_ok(c_))
 else:
     _skipped("FM-006 · the refresh after a pull · the control", 1, f"this clone does not hold {_RV_REV}")
+fm.configure(HERE)
+
+# --- the reading rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): in every run a file of the tree is
+# read only as a regular file inside the repository, following no symlink — the board's refresh skips it with its line, every other run refuses in one line naming it.
+# The inert marker is a word that would show up in INDEX.md or on the board.
+_RR_REV, _RR_MARK = "1b65331", "OUTSIDE-WORD"
+_HAVE_RR = _has_rev(_RR_REV)
+_RR_SAYS = "is a symlink, or reached through one — the tool reads a file of the tree only as a regular file inside the repository, following no symlink: nothing is read from it and nothing is written; put the file itself there"
+def _rr_link(root, outside, rel, text):
+    """A file of the tree made a symlink — the case the rule refuses."""
+    target_ = outside / rel.replace("/", "_"); target_.write_text(text, encoding="utf-8")
+    (root / rel).unlink(missing_ok=True); os.symlink(target_, root / rel)
+def _rr(rev=None):
+    """The runs the rule governs — a commit's hook, `--check` by hand, the board's refresh — each meeting a tracker that is a symlink; then `--check` meeting
+    the configuration and TRIAGE.md, each a symlink."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); out_ = marks / "outside"; out_.mkdir(); tool_ = root / "shoalmark.py"; g_ = {}
+        linked_ = "docs/work-tracker/MSR-002-x.md"
+        _rr_link(root, out_, linked_, _NEW_TRACKER.format(title="LINKED").replace("MSR-009", "MSR-002").replace('hook: "h"', f'hook: "{_RR_MARK}"'))
+        git(root, "add", "-A"); h_ = _head(root); c_ = _hooked(root, "commit", "-qm", "a tracker linked outside")
+        index_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8"); page_ = (root / "docs/work-tracker/index.html")
+        g_["hook"] = dict(code=c_[0], said=c_[1], head=_head(root) == h_, clean=_RR_MARK not in index_ and (not page_.is_file() or _RR_MARK not in page_.read_text(encoding="utf-8")))
+        g_["check"] = _tool_run(tool_, root, "--check")
+        b_ = _tool_run(tool_, root, "--html-only")
+        g_["board"] = dict(code=b_[0], said=b_[1] + b_[2], clean=_RR_MARK not in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
+        os.unlink(root / linked_); git(root, "reset", "-q", "--hard")
+        for key_, rel_ in (("config", "shoalmark.toml"), ("triage", "docs/work-tracker/TRIAGE.md")):
+            keep_ = (root / rel_).read_text(encoding="utf-8"); _rr_link(root, out_, rel_, keep_ + f"\n# {_RR_MARK}\n")
+            g_[key_] = _tool_run(tool_, root, "--check"); os.unlink(root / rel_); (root / rel_).write_text(keep_, encoding="utf-8")
+        rm_git(root)
+    return g_
+def _rr_one(said, rel):
+    lines_ = [l_ for l_ in said.strip().splitlines() if l_.strip()]
+    return lines_[-1:] == [f"shoalmark: {rel} {_RR_SAYS}"] and "Traceback" not in said and _RR_MARK not in said
+def _rr_hook_ok(g):
+    return g["hook"]["code"] != 0 and g["hook"]["head"] and g["hook"]["clean"] and _rr_one(g["hook"]["said"], "docs/work-tracker/MSR-002-x.md")
+def _rr_check_ok(g, key, rel):
+    c_, o_, e_ = g[key]
+    return c_ == fm.EXIT_LINT and len(e_.strip().splitlines()) == 1 and _rr_one(e_, rel) and _RR_MARK not in o_
+def _rr_board_ok(g):
+    return g["board"]["code"] == 0 and "board: left alone — docs/work-tracker/MSR-002-x.md (a symlink, or not a regular file)" in g["board"]["said"] and g["board"]["clean"]
+if _SYMLINKS:
+    g_ = _rr()
+    check(f"FM-006 · a private security report · the reading rule · a commit's hook meets a tracker that is a symlink: the commit is refused in one line naming it, "
+          f"and INDEX.md and the board carry nothing of it (saw {g_['hook']['said'][-160:]!r})", _rr_hook_ok(g_))
+    check(f"FM-006 · a private security report · the reading rule · `--check` by hand meets it: refused in one line naming it, exit 4 (saw {g_['check'][2].strip()[-140:]!r})",
+          _rr_check_ok(g_, "check", "docs/work-tracker/MSR-002-x.md"))
+    check(f"FM-006 · a private security report · the reading rule · the board's refresh meets it: skipped with its line, the board refreshed without it (saw {g_['board']['said'][:120]!r})", _rr_board_ok(g_))
+    check(f"FM-006 · a private security report · the reading rule · the configuration, and TRIAGE.md in the folder it names, each a symlink: `--check` is refused "
+          f"in one line naming it, exit 4 (saw {g_['config'][2].strip()[-120:]!r})",
+          _rr_check_ok(g_, "config", "shoalmark.toml") and _rr_check_ok(g_, "triage", "docs/work-tracker/TRIAGE.md"))
+    if _HAVE_RR:
+        c_ = _rr(_RR_REV)
+        check(f"FM-006 · a private security report · the reading rule · …the control: beside {_RR_REV}'s tool the commit's hook check FAILS", not _rr_hook_ok(c_))
+        check(f"FM-006 · a private security report · the reading rule · …the control: beside {_RR_REV}'s tool the checks of `--check`, the configuration and TRIAGE.md FAIL",
+              not _rr_check_ok(c_, "check", "docs/work-tracker/MSR-002-x.md") and not _rr_check_ok(c_, "config", "shoalmark.toml") and not _rr_check_ok(c_, "triage", "docs/work-tracker/TRIAGE.md"))
+        check(f"FM-006 · a private security report · the reading rule · with {_RR_REV}'s tool the board's refresh skips it as well — a property, no control", _rr_board_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the reading rule · the controls", 3, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the reading rule", 7, "this system makes no symlink here")
 fm.configure(HERE)
 
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
@@ -4657,14 +4733,15 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = made5_(514, f"in {pair5_[2]}")
     check("FM-005 · RV-2155 · …alone, they say what is wrong: *names more than one commit — write more of its hash*, and the way through",
           code == fm.EXIT_LINT and f"AP-514: moved to `Shipped` with no commit behind it — `{pair5_[2]}` names more than one commit — write more of its hash. " in err and "(no such commit)" not in err and way5_(err))
-    # RV-2154: a tracker that is a link to a file outside the repository stops no run in a traceback
+    # RV-2154: a tracker that is a symlink is refused in one line by every run but the board's, never in a traceback
     if os.name != "nt":
         with tempfile.TemporaryDirectory() as out_:
             target_ = Path(out_).resolve() / "outside-AP-590.md"; linked_ = tracker(root, "AP-590", body=nothing5_, title="a link"); target_.write_text(linked_.read_text(encoding="utf-8"), encoding="utf-8")
             linked_.unlink(); linked_.symlink_to(target_)
-            code, _, err = run(root); code_c, _, err_c = run(root, "--check"); linked_.unlink()
-        check(f"FM-005 · RV-2154 · a tracker file that is a link to a file outside the repository stops no run — the rule reads it as no tracker of the repository, with no traceback (saw {code}, {code_c})",
-              "Traceback" not in err + err_c and code == 0 and code_c == 0)
+            code, _, err = run_caught(root); code_c, _, err_c = run_caught(root, "--check"); linked_.unlink()
+        said_ = "docs/work-tracker/AP-590-x.md is a symlink, or reached through one — the tool reads a file of the tree only as a regular file inside the repository, following no symlink"
+        check(f"FM-005 · RV-2154 · a tracker that is a symlink is refused in one line naming it, exit 4, by every run but the board's — never a traceback (saw {code}, {code_c})",
+              "Traceback" not in err + err_c and code == code_c == fm.EXIT_LINT and said_ in err and said_ in err_c and len(err.strip().splitlines()) == len(err_c.strip().splitlines()) == 1)
     rm_git(root)
 fm.configure(HERE)
 
