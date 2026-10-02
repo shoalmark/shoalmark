@@ -387,18 +387,6 @@ def tracked_board_page(line):
             f"<title>board not written</title></head><body><p>{html_escape(line)}</p></body></html>\n")
 
 
-def tracked_board_refused():
-    """`--check` (the cold review's F1): a file of the board git tracks is refused in one line naming it, exit 4, as a file of the tree the tool may not read is.
-    Read fresh for this repository."""
-    global _TRACKED
-    _TRACKED = None
-    rels = tracked_board_rels()
-    if rels:
-        print(f"shoalmark: {rels[0]} is a file of the board git tracks — the board's files are the tool's to write and are never committed: nothing is read "
-              "from it; untrack it (`git rm --cached`), and the board's run writes the board", file=sys.stderr)
-        raise SystemExit(EXIT_LINT)
-
-
 def unwritable(path):
     """Why the board's run, or a hook's run of the copy, does not write one of the board's files, or "": `write_problem`'s reason — and, in the board's run, that git
     tracks it (a commit's hook rewrites a board a repository tracks, as it always has)."""
@@ -8542,8 +8530,6 @@ def main(argv=None):
         if words:
             answer_step(words[0].upper(), 1, "reading the trackers", verb)
     trackers = load_trackers()
-    if args.check:                                          # the cold review's F1: a file of the board git tracks is refused, before anything is read or started
-        tracked_board_refused()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
     mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
