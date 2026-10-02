@@ -2664,7 +2664,7 @@ def _cal(rev=None):
         g_["standup"] = dict(code=c_, err=e_.strip(), same=target_.read_text(encoding="utf-8") == "UNCHANGED\n")
         c_, o_, e_ = _tool_run(tool_, root, "--standup", "plain.ics")
         g_["standup"]["plain"] = (root / "plain.ics").read_bytes() if c_ == 0 and (root / "plain.ics").is_file() else b""
-        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_)
+        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_, target_is_directory=True)
         c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002")
         g_["invite"] = dict(code=c_, err=e_.strip(), same=sorted(os.listdir(away_)) == [])
         os.unlink(ev_)
@@ -2701,7 +2701,7 @@ def _cp(rev=None):
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
         for key_, argv_ in (("brand", ("--brand", "brandx", "--from", "monochrome")), ("vendor", ("--vendor", "vend", "--partial", "--allow-untagged"))):
-            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1])
+            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1], target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
             g_[key_] = dict(code=c_, err=e_.strip(), out=o_.strip(), empty=sorted(os.listdir(away_)) == [])
         rm_git(root)
@@ -2729,7 +2729,7 @@ def _tw(rev=None):
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"
         home_ = root / "docs/work-tracker/TRIAGE.md"; home_.write_text(home_.read_text(encoding="utf-8").replace("1.\n", "1. MSR-001 to its end.\n"), encoding="utf-8")
-        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_)
+        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_, target_is_directory=True)
         c_, o_, e_ = _tool_run(tool_, root, "--triage")
         g_ = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], sheet=f"docs/work-tracker/evidence/triage/triage-{datetime.date.today().isoformat()}.md")
         rm_git(root)
@@ -2790,7 +2790,7 @@ def _inc(kind, rev=None):
             git(root, "config", "include.path", "../later.gitconfig"); named_ = root / "later.gitconfig"
         tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
         c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
-        g_ = dict(code=c_, err=e_.strip(), named=str(named_), holder=str(root / ".git" / "config"), top=str(root),
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)), holder=os.path.realpath(root / ".git" / "config"), top=os.path.normcase(os.path.realpath(root)),
                   hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(), exists=named_.exists())
         rm_git(root)
     return g_
@@ -2818,7 +2818,7 @@ def _wf(rev=None):
         base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir(); git(root, "init", "-q"); g_ = {}
         tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
         for key_, link_, argv_ in (("brand", "brandy", ("--brand", "brandy/starter")), ("init", "docs", ("--init", "--key", "msr"))):
-            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_)
+            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_, target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
             g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists())
         rm_git(root)
