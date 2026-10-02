@@ -2623,6 +2623,33 @@ elif _SYMLINKS:
     _skipped("FM-006 · a private security report · the write rule · the control", 1, f"this clone does not hold {_RR_REV}")
 fm.configure(HERE)
 
+# --- a deriver that is a symlink (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): a run by hand refuses it in one
+# line naming it, exit 4, and starts nothing
+_DL_LINE = ("shoalmark: docs/work-tracker/derive is a symlink, or reached through one — the tool runs a deriver only as a regular file inside the repository, following no "
+            "symlink: nothing is run and nothing is written; put the deriver itself there")
+def _dl(rev=None):
+    """A run by hand where the deriver is a symlink; the deriver leaves an inert marker if it is started."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); target_ = marks / "derive"; target_.write_text(_deriver(marks, "deriver-ran"), encoding="utf-8"); target_.chmod(0o755)
+        os.symlink(target_, root / "docs/work-tracker/derive")
+        c_, o_, e_ = _tool_run(root / "shoalmark.py", root)
+        g_ = dict(code=c_, err=e_.strip(), ran=(marks / "deriver-ran").exists())
+        rm_git(root)
+    return g_
+def _dl_ok(g):
+    return g["code"] == fm.EXIT_LINT and g["err"] == _DL_LINE and not g["ran"]
+if _SYMLINKS:
+    g_ = _dl()
+    check(f"FM-006 · a private security report · a deriver that is a symlink · a run by hand refuses it in one line naming it, exit 4, and starts nothing (saw {g_['err'][-110:]!r})", _dl_ok(g_))
+    if _HAVE_RR:
+        c_ = _dl(_RR_REV)
+        check(f"FM-006 · a private security report · a deriver that is a symlink · …the control: beside {_RR_REV}'s tool this check FAILS", not _dl_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · a deriver that is a symlink · the control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · a deriver that is a symlink", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
 # the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
 _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout

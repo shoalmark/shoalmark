@@ -7480,6 +7480,11 @@ def run_deriver(trackers, mode="write", flags=()):
     global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
     no_derived(trackers)
     exe = TRACKER_DIR / "derive"
+    if not HOOK_RUN and os.path.lexists(exe) and not (real_inside(exe) and os.path.isfile(exe)):     # a deriver that is a symlink starts nothing
+        rel = os.path.relpath(exe, ROOT).replace(os.sep, "/") if in_tree(exe) else str(exe)
+        print(f"shoalmark: {rel} is a symlink, or reached through one — the tool runs a deriver only as a regular file inside the repository, following no "
+              "symlink: nothing is run and nothing is written; put the deriver itself there", file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
     if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
         return None, []
     if HOOK_RUN:                                            # a hook starts no deriver: the run leaves what it derives as staged (`main`)
