@@ -765,6 +765,11 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       Added to the round (the Owner's rulings, the same morning): every run writes only regular files inside the
       repository, never through a symlink, and otherwise refuses in one line, with a test; a deriver that is a symlink
       is refused in one line. One check's older Windows guard and the drift line printed more than once are 0.19.1's.
+      RV-2313 (the Owner's ruling, the same morning): the configuration check judges the target of every include
+      setting, conditional ones included, as written — resolved from the file that holds it, whether or not its
+      condition holds and whether or not the target exists when `--install-hook` runs; a target inside a working tree is
+      refused like any other configuration file there. Tests: a conditional include into the tree, and an include whose
+      target does not exist yet.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
