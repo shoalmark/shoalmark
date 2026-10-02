@@ -795,6 +795,13 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
       may pass. `pin_report()` reads the running copy's PIN and VERSION under the reading rule, with a test. Notes: the
       CHANGELOG's line on commits says what `AGENTS.md:52` says, and 0.19.0 gains two security lines, as the Owner wrote
       them. Then reviewer-80's scoped check, the push, READY, and one CI run the Owner dispatches; the ledger names it.
+      *The cold review's F1* (the Owner's rulings, the same day, on the cold review at `df4f266`, which the Owner accepts
+      as the release bar's cold review): P2, fixed before the tag, at critical tier. No page the board's run writes loads
+      a board file git tracks; where git tracks any file of the board's folder, the run leaves a page that loads nothing
+      and names that file, and prints that line instead of the link; `--check` refuses a tracked board file. A test with
+      inert content, its control failing beside `df4f266`'s tool. Then reviewer-80's scoped check, the Owner's CI on the
+      new head, READY; the ledger's new rows, every CI column from that run, and reviewer-80's check of it; the
+      Auditor's final-head checks; the cold session's re-run of F1; E2, E3 and E6; ready, the merge and the tag.
     - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
       release whose next outside security scan finds nothing new, and where every finding of the private security report
       is fixed or visibly next.
