@@ -517,6 +517,11 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
   second, small round on top; the pull request stays a draft until both are in, so CI runs once, on the final head, and the
   final review's scoped check covers both rounds. The merge waits on CI and the cold audit's verdict. If the bundle is not merged
   by 22:00 CEST, the date goes back to 2026-10-02 and the tag moves to the next morning.
+  **Moved** (the Owner's ruling, 2026-10-01, evening): v0.19.0 is not tagged on 2026-10-01; `main` carries the bundle untagged
+  (`d9c154b`). The release day is 2026-10-02, the tag before 09:00 CEST, or later if a check needs it: the CHANGELOG's heading
+  carries 2026-10-02 and the landing's footer *v0.19.0, released 2 October 2026 —*; the player stats stay as read at the cut.
+  **No date** (the Owner's ruling, 2026-10-02, night): v0.19.0 is tagged when it is done (*The release bar*, under *The
+  board's refresh, from a trusted copy*); the CHANGELOG's heading and the landing's footer carry the day of the tag.
 - **The Owner's run sheet** — `work-tracker/evidence/FM-006/release-v0-19-0-owner-run-sheet.md`, about 40 lines of numbered
   copy-paste steps, each with its expected output and one line to paste back. Before the tag: `gh repo edit` with the site's
   description line, the homepage `https://shoalmark.github.io/shoalmark/` and topics (proposed there, the Owner's to set), and the
@@ -658,6 +663,198 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
     fails on POSIX too before the fix. Test only: `shoalmark.py` and the notes are untouched, so the checksum `22cd0e9e…`
     stands. The final review checks that one change; CI on the new head runs every suite, so the local full run is skipped;
     the Owner merges when CI is 9/9.
+  - **The board's refresh, from a trusted copy** (the Owner's ruling, 2026-10-01, evening; a private security report):
+    refreshing the board after a pull, a merge or a checkout is a required feature, and it comes back in a form no branch
+    can abuse.
+    - *The design: a trusted copy that only reads.* The `post-checkout` and `post-merge` hooks run a copy of the tool kept in
+      the common git directory, shared by every worktree and outside any working tree. Only `--install-hook` writes or
+      replaces it, and only from a pinned copy whose files pass their checksum check; where the repository has no pinned
+      copy, from the working tree's tool, and it says so. That run executes nothing from the tree — no deriver, no other
+      program, nothing imported from it; read-only git only — runs as `--html-only` and prints the board's link. It reads
+      only regular files inside the repository: the tracker folder must resolve inside it, and symlinks are not followed.
+      It writes only the board's files inside the tracker folder, never through a symlink and never over a file git
+      tracks. Everything rendered from a tracker is escaped for where it lands (HTML text, attributes, script data); links
+      are limited to safe kinds, and `javascript:` and `data:` are refused. Where the repository pins another version than
+      the copy's own, the hook still refreshes and prints one line: “the hooks' copy is <its>, the repository pins
+      <pinned>: run --install-hook”. The hook never blocks a checkout or a merge; on failure it prints one line. The
+      `pre-commit`, `prepare-commit-msg` and `commit-msg` hooks keep running the working tree's tool.
+    - *Added the same evening* (the Owner's rulings): `--install-hook` says which commit and branch it copied the trusted
+      copy from, and warns, without refusing, where that is not the repository's default branch — the PIN it checks
+      against comes from the same tree. The board's run ends itself after 35 seconds, so a checkout or a merge never waits
+      longer for it. The board's link prints only for a board the run wrote; where `index.html` is tracked or a symlink,
+      the refusal prints instead. The board and its tracker pages reload themselves when the tab becomes visible again,
+      keeping the scroll position, and never while a dialog is open or a field has input; nothing new is loaded — no
+      polling, no second file, no server.
+    - *This repository:* lefthook reads `lefthook.yml` from the working tree, so lefthook keeps its commit-time hooks —
+      `pre-commit`, `prepare-commit-msg` and `commit-msg` — and runs nothing after a merge or a checkout; shoalmark's own
+      hooks, with the trusted copy, do the refresh. After the merge, `--install-hook` on `main` writes them and the copy.
+    - *Texts:* the CHANGELOG's line for the private security report is replaced — the checkout and merge hooks run a copy
+      of the tool kept in the git directory, which runs nothing a branch brings; run `--install-hook` on your default
+      branch again after upgrading. The setup pages say the board is rebuilt on every commit, and on every checkout and
+      merge with git; on Subversion, on a commit through TortoiseSVN or when the tool runs — no new Subversion hook in
+      this change. The README's hooks section and `--help` name the copy and say to run `--install-hook` on your default
+      branch. Both notes' way back also removes the copy in the git directory. The date goes back (*The release day*,
+      above).
+    - *Tests:* one for each case the report names, each a branch checked out or merged that must run nothing and write
+      nothing outside the tracker folder; a version drift prints its line; a re-run of `--install-hook` replaces the copy;
+      worktrees share it; `--install-hook` on a branch that is not the default prints its warning; a branch committing
+      `index.html` gets no link; the board's template carries the reload, and no reload path loads another file.
+    - *Order:* a new branch from `main` `d9c154b`, one pull request; built on 2026-10-01; the final review at critical tier
+      (seats and security) comes first, and the pull request is opened, as a draft, only after it is cleared; a cold
+      review by another model family and an outside check the Owner arranges, on 2026-10-02 from 07:00; then the notes'
+      checksum, last, the full local run, CI 9/9, the merge and the tag. The scope is frozen: nothing new joins this
+      build unless it is a security finding in this change; everything else goes to 0.19.1.
+    - *RV-2300, fixed in this build* (the Owner's ruling, 2026-10-02, night, on the final review's finding): one rule —
+      no hook shoalmark installs runs anything the tree brought. It replaces the design's last sentence and *This
+      repository* above. Every hook shoalmark installs runs the trusted copy: `pre-commit`, `prepare-commit-msg` and
+      `commit-msg` as well as `post-checkout` and `post-merge`; no hook runs the tree's tool. A hook runs the tree's
+      deriver only if it equals the one accepted at the last `--install-hook`, whose checksum is recorded with the copy;
+      a changed or new deriver is skipped in hooks, with one line: “the deriver changed: not run; run --install-hook to
+      accept it”. Where the tree's tool differs from the copy, the hook judges with the copy and prints the drift line.
+      Explicit runs — a person, an agent, CI — run the tree's tool as today. This repository: lefthook's `pre-commit`,
+      `prepare-commit-msg` and `commit-msg` are replaced by shoalmark's own installed hooks, because lefthook reads
+      `lefthook.yml` from the merged tree; developing the tool means installing the branch's copy deliberately, with its
+      warning. Tests, each in a throwaway repository with the copy installed: a merge (clean and conflicted), a
+      cherry-pick, a revert, a rebase and `git am`, each bringing a changed tool and a changed deriver — nothing from the
+      tree runs, and no hook writes the copy; an accepted deriver runs, and a changed one is skipped with its line. Texts:
+      the README's hooks section, the CHANGELOG's line for the private security report, and the notes' way back where it
+      changes. Then the final review at critical tier of the whole change, the cold review and the Owner's outside check,
+      the notes' checksum last, the full local run, CI 9/9, the merge and the tag — the tag waits for the reviews, not for
+      09:00.
+    - *The refresh after a pull* (the Owner's rulings, 2026-10-02, night): `git pull --rebase` with local commits, and
+      `git rebase`, run `post-checkout` before the local commits are replayed and no refresh hook after, so the board
+      would show the remote's trackers without the local ones. `--install-hook` also installs `post-rewrite`, which runs
+      the copy as `post-checkout` and `post-merge` do. A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop`
+      run no hook that writes the board, and on Subversion nothing refreshes it after `svn update`: the README's hooks
+      section says so in one line, naming `--html-only` as the rebuild; hooks for these are 0.19.1's. The reload keeps
+      the filter, as it keeps the scroll position, and the search box no longer holds it back. Tests, one per operation,
+      that the board after it equals a fresh `--html-only` of the tree: a switch, a pull fast-forward, a pull with a
+      merge, `pull --rebase` with local commits, a clean merge, a conflicted merge at its resolving commit, and a squash
+      merge. RV-2300's `git am` case is `git am` followed by the next commit: `git am` runs none of the hooks, and a
+      cherry-pick, a revert and a rebase's replay run only `prepare-commit-msg`.
+    - *No deriver in hooks* (the Owner's rulings, 2026-10-02, night, on the Builder's findings at `fc5f197`): it
+      replaces R2 under *RV-2300, fixed in this build*. No hook runs a deriver; `--install-hook` accepts none, and the
+      copy's record has no `deriver:` field. In a repository with a deriver, the commit hook leaves `INDEX.md` and the
+      derived files as staged — it never rewrites them without the derived columns — and prints one line: the deriver
+      runs only in explicit runs; run the tool before committing; CI's `--check` holds it. Tests: in a repository with a
+      deriver, no hook starts it after a commit, a clean and a conflicted merge, a cherry-pick and a rebase, and
+      `INDEX.md` is left as staged. `--install-hook` refuses a hooks folder that resolves, symlinks resolved, inside the
+      working tree and outside the git directory, with one line naming the README's hook-runner section; the default
+      `.git/hooks` and a folder outside the repository stay accepted. A relative `core.hooksPath` resolves in the
+      working tree of whichever worktree the hook runs in, so `--install-hook` judges the folder against every working
+      tree `git worktree list` names, not only its own. Tests: an in-tree `core.hooksPath`, a symlink into the tree, the
+      default, and a linked worktree with a relative `core.hooksPath`. The 35 seconds stay; the commit's refusal line
+      names `SHOALMARK_BOARD_SECONDS` as the way to raise it. The warning off the default branch names a PIN only where
+      the repository pins one. The drift line printed more than once on one commit is 0.19.1's.
+    - *The fix round after the critical review* (the Owner's rulings, 2026-10-02, morning, on reviewer-80's findings at
+      `1b65331`): in every run, the tool reads a tracker, its configuration and every file of the tree only as a regular
+      file inside the repository, following no symlink. The board's refresh skips such a file with its line, as now;
+      every other run — a hook's, or one started by hand — refuses in one line naming the file. Tests with an inert
+      marker, for a hook's run and a run by hand. `--install-hook` refuses, in one line and writing nothing, where any
+      git configuration value comes from a file inside a working tree, judged as the hooks folder is; with its test. The
+      checks assert the filed lines as literal text, not the tool's constants; in the final recorded pass of the
+      negative controls, the checkout and merge hooks' controls run against v0.18.6, whose hooks ran the tree's tool,
+      and a row whose feature is new, or that checks something must stay accepted, says so. RV-2304: `AGENTS.md`'s
+      *Checks* line becomes the Owner's text — “**Checks:** commits run shoalmark's own hooks, from the copy of the tool
+      in the git directory: the session, tracker and judgement gates. Before committing Python, run `python3 -m
+      py_compile` on the changed files and `python3 -u test_core.py`. Both full suites run in the required GitHub matrix
+      for non-draft PRs when opened, updated, reopened or marked ready, on release tags, and when dispatched by hand.
+      The Owner authorized these PR triggers on 2026-09-29 and these hooks on 2026-10-02. Say when a tag is due; never
+      create one.” RV-2305, RV-2306 and RV-2307 are 0.19.1's. implementer-81 builds the round on Opus; then
+      reviewer-80's scoped check and READY.
+      Added to the round (the Owner's rulings, the same morning): every run writes only regular files inside the
+      repository, never through a symlink, and otherwise refuses in one line, with a test; a deriver that is a symlink
+      is refused in one line. One check's older Windows guard and the drift line printed more than once are 0.19.1's.
+      RV-2313 (the Owner's ruling, the same morning): the configuration check judges the target of every include
+      setting, conditional ones included, as written — resolved from the file that holds it, whether or not its
+      condition holds and whether or not the target exists when `--install-hook` runs; a target inside a working tree is
+      refused like any other configuration file there. Tests: a conditional include into the tree, and an include whose
+      target does not exist yet.
+      Also in this round (the Owner's rulings, the same morning, on the Builder's findings at `83eb0dc`): the tool's
+      comments that call the Owner “he” or “his” say they/them — comments only. For 0.19.1: `--init`'s files written
+      before a refusal; and, P3, the hooks-folder and configuration checks compare paths case-sensitively on macOS,
+      whose default file system is not — their inputs come from the person's own configuration, never a branch.
+      RV-2314 and RV-2315 (the Owner's rulings, the same morning, on reviewer-80's check at `f88546f`), in this build:
+      `--vendor` reads only the files it copies, each judged by the reading rule; the configuration check judges the
+      settings each worktree reads, its own configuration included, as the hooks folder is judged in every worktree. One
+      commit each, with its test. On RV-2315 (the Owner's ruling, the same morning): a worktree that `git worktree list`
+      marks prunable — its folder gone — is skipped by the configuration check, never refused and never a crash; it has
+      no tree, and no hook runs there. Test: `--install-hook` succeeds beside a prunable worktree.
+      RV-2316 (the Owner's ruling, the same morning, on reviewer-80's check at `4087e23`), in this build, with two more of
+      the same rule (the Owner's rulings): the gate reads only the files a vendored copy's PIN names inside the copy, and
+      a name outside it is refused in one line, unread; `--triage` skips a submodule path from `.gitmodules` that resolves
+      outside the repository, and runs no git there; a destination a person names (`--vendor`, `--brand --from`, a
+      calendar file) is resolved once, where it is named, and the write rule then judges every file under the resolved
+      folder. One commit and one test each, each test failing beside `4087e23`'s tool. RV-2317 (the Owner's ruling, the
+      same morning, on reviewer-80's check at `e8d2eea`), in this build, a fourth commit: `--brand DIR` without `--from`
+      judges each file as named and under the resolved folder, before the folder is made; one more row in the
+      destinations test, failing beside `4087e23`'s tool.
+      *The Windows round* (the Owner's rulings, the same day, on CI run 36998106048 at `90abab9`, red on both Windows
+      jobs): the three checks that fail there and the stop of the suite are fixed, each fix saying whether the tool or
+      the test was wrong; a check that cannot observe on Windows skips there, visibly, with its reason, and no control
+      may pass. `pin_report()` reads the running copy's PIN and VERSION under the reading rule, with a test. Notes: the
+      CHANGELOG's line on commits says what `AGENTS.md:52` says, and 0.19.0 gains two security lines, as the Owner wrote
+      them. Then reviewer-80's scoped check, the push, READY, and one CI run the Owner dispatches; the ledger names it.
+      *The cold review's F1* (the Owner's rulings, the same day, on the cold review at `df4f266`, which the Owner accepts
+      as the release bar's cold review): P2, fixed before the tag, at critical tier. No page the board's run writes loads
+      a board file git tracks; where git tracks a view of the board — a file of its `view/` folder — and not the page,
+      the run leaves a page that loads nothing and names that file, and prints that line instead of the link; a page git
+      tracks, alone or with a view, is left as committed, with its line and no link, as before, and the board's run
+      writes over no file git tracks (amended the same day, the Owner's rulings, on the Planner's point at `7f8d163` and
+      on CI run 37029025288). A test with inert content, its control failing beside `df4f266`'s tool.
+      Then reviewer-80's scoped check, the Owner's CI on the new head, READY; the ledger's new rows, every CI column from
+      that run, and reviewer-80's check of it; the Auditor's final-head checks; the Auditor's re-run of F1, the ledger's
+      E12, in place of the cold session's (the Owner's ruling); E2, E3 and E6; ready, the merge and the tag.
+    - *The release bar* (the Owner's rulings, 2026-10-02, night): v0.19.0 is tagged when it is done, with no date — a
+      release whose next outside security scan finds nothing new, and where every finding of the private security report
+      is fixed or visibly next.
+      - *Added to this build — the signed identity:* a `signed` identity is an email, and it verifies by SSH only: the
+        commit's signature is SSH, good under the default branch's signers file as today, and its principal equals the
+        email exactly. A GPG signature on a signed line is refused with one line: “sign with SSH; GPG returns with a
+        fingerprint binding”; so is any other kind that is not SSH. A `signed` identity that is not an email — under
+        `owner`, `[seats]` or `answerers` — is refused at configuration, exit 1, with one line on how to migrate. Tests:
+        a commit under the Owner's email signed with another trusted key is refused; a principal that contains the email
+        without equalling it is refused; the exact one passes; a name-only `signed` identity is refused at
+        configuration; a trusted GPG key whose user ID carries the Owner's email is refused. Texts: README §*Seats* and
+        the `answerers` row, the signing pages (SSH for signed lines), the setup pages, and one CHANGELOG upgrade line.
+        The change gets no advisory of its own, so the line says it is a security fix and opens with the reason:
+        “Security, from a private report: a signed identity configured by name, or a signer whose identity merely
+        contained the address, could let another trusted signer's commit count as that identity's. A signed identity is
+        now an email address only, matched exactly against the SSH signer; …”, then the migration step as built. FM-037
+        records its part as fixed here. `main`'s history is replayed under the new rule: every judgement of a signed
+        line or a signature, by the tool before and after — no new refusal, GitHub's own PGP-signed merge commits
+        included; the result is a row of the ledger.
+      - *Added to this build — hook runners:* the README's entries for a repository with its own hook runner run the
+        trusted copy, and the text says plainly that a hook runner reads its configuration from the tree, so a merged
+        branch's configuration runs whatever it names; shoalmark's own `--install-hook` is the safe default. This
+        repository's `lefthook.yml` goes: before its commit, lefthook's three commit-time hooks on the Owner's machine
+        are set aside and `--install-hook` from this branch writes shoalmark's hooks and the copy, which judge every
+        worktree's commits until `--install-hook` on `main` after the merge. The tests run explicitly and in CI.
+      - *Next, no date:* the report's two remaining findings are 0.19.1's first work, in the private advisory set only.
+      - *Evidence before the tag:* a ledger in `work-tracker/evidence/FM-006/` — one row per security claim in the
+        CHANGELOG, the README and the notes, each naming its test, an executed check, or “cut”; no attack steps — built
+        by the Planner after the code lands and checked by reviewer-80 and the Auditor; reviewer-80's critical review of
+        the whole change; a cold review by another model family, with no time limit; the Auditor's re-run of the
+        report's reproductions on the final head and of the common security scanners, every hit triaged.
+      - *The tests:* every finding fixed in v0.19.0 has a test in `test_shoalmark.py` that must pass in full CI on the
+        final head. The ledger shows for each security test the CI jobs it ran on, and where it skipped, with the
+        reason; no security test may skip on every job, and nothing the release notes claim may rest on a test that ran
+        on only some systems unless the claim says which. Each security test's negative control — the test failing
+        against the tool as it was before its fix — is run once and recorded. The history replay, the scanners and the
+        Auditor's re-run of the report's reproductions are rows of the ledger with their results. The report's two
+        remaining findings get their tests with their fixes in 0.19.1, not before.
+      - *Gate:* no open P1 or P2; every finding of the report carries a status; the advisories say only what was tested.
+        Then the notes' checksum, last, the full local run, CI 9/9 and the merge.
+      - *Order* (the Owner's rulings, 2026-10-02, night; it replaces the orders above): after the Builder's last push —
+        the signed identity and the tests' record in — reviewer-80's critical review of the whole change, `d9c154b` to
+        the final head, until READY with no open P1 or P2; then the draft pull request, which the Owner opens, and CI
+        9/9 on it, dispatched by the Owner by hand; then the ledger, which names the CI run it reads (its URL) and the
+        commit it ran on — every commit after that one is evidence or notes only — with reviewer-80's scoped check of
+        it; then the Auditor's final-head checks — the commits against the rulings, the ledger, the re-run of the
+        report's reproductions and the scanners; only then the cold review, on a head nobody expects to change: a fix
+        after it gets reviewer-80's scoped check and the Auditor's verification, and a second cold round only for a P1.
+        Then the notes' checksum, last, the full local run, and the final CI from marking the pull request ready for
+        review, with no second dispatch; the merge and the tag.
 
   The final review's scoped check covers both rounds and runs F1's control; then the full local run. The second fail-open is
   built on top of `3ed5268` while that check and the full run continue there as the early warning; then a scoped check of the

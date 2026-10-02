@@ -58,7 +58,9 @@ Werkzeug lehnt sie in jeder Tabelle außer `[seats]` ab, wo `owner` als alte Sch
 seiner eigenen Identität, einmal in seinem eigenen Worktree eingestellt
 (`git config --worktree user.email builder@seat`), und hat nur seine eigenen Rechte: Der Eigner (`owner`) antwortet, der
 Planner fragt, schließt und sichtet, der Reviewer sichtet, der Builder baut. Die Sitze heißen `planner` und `builder`; `principal` und `implementer`, ihre früheren Namen, gelten weiter und haben dieselben Rechte. Das ältere
-`answerers = ["ihrname signed"]` gilt weiter, wo es weder `owner` noch `[seats]` gibt.
+`answerers = ["ihrname"]` gilt weiter, wo es weder `owner` noch `[seats]` gibt. Eine Identität mit `signed` ist eine
+E-Mail-Adresse und wird über SSH geprüft (siehe „Ihre Antwort ist Ihr Commit“); jede andere lehnt das Werkzeug schon beim
+Lesen der Konfiguration ab.
 
 **Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
 und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
@@ -73,8 +75,8 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 
 ## 6. Die Tafel öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit neu gebaut. Ihre erste
-Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
+`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und
+Merge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

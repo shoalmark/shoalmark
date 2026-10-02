@@ -32,7 +32,7 @@ fertig ist?
 
 **2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.19.0` in einen Ordner **außerhalb** eurer
 Arbeitskopie. Die Datei `shoalmark.py` hat — mit `\n`-Zeilenenden — den SHA-256
-`22cd0e9e3c6014d79184229c4b64063f9c26d49120decc52c77c4aeedc57ad7c`. Es ist eine Datei; lest sie, bevor ihr sie startet.
+`e94f0bcb43844f9277fc8bb2f9441748e0a42e148e342a8969aa4519c4b0fe07`. Es ist eine Datei; lest sie, bevor ihr sie startet.
 
 **3. Aufsetzen.** In einem leeren Wegwerf-Ordner `probe/` (auf Windows `python`, sonst `python3`):
 
@@ -73,9 +73,10 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
   Kommandozeile kennt keinen Client-Hook — vor jedem `svn commit` das Werkzeug laufen lassen und die `INDEX.md`
   mit einchecken; TortoiseSVN führt das Gate nach `--install-hook` selbst aus und fragt einmal um Erlaubnis.
 - Rückweg: zuerst aus eurem Hook-Ordner (`.git/hooks/` oder dem, den `core.hooksPath` nennt) alles entfernen, was
-  `tools/shoalmark/shoalmark.py` aufruft: die mit `# shoalmark` markierten Hooks und die Zeile, die ihr einem eigenen
-  Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties). Löscht ihr das Werkzeug vorher, werden Commits
-  abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml` und den shoalmark-Block in `AGENTS.md` löschen. Der
+  die Kopie des Werkzeugs im Git-Verzeichnis aufruft: die mit `# shoalmark` markierten Hooks und die Zeile, die ihr einem
+  eigenen Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties, die `tools/shoalmark/shoalmark.py`
+  aufrufen). Löscht ihr die Kopie — unter Subversion das Werkzeug — vorher, werden Commits abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml`, den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen
+  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der
   Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.
 
 ## Anforderungen — eine Probe, keine Anweisung (Stufe 0: nur die Konvention)

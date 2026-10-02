@@ -31,7 +31,7 @@ now? (d) What is blocked, and by what? (e) How can you tell that item 12 is done
 
 **2. Check what you run.** Fetch the repository at the tag `v0.19.0` into a folder **outside** your working copy. The
 file `shoalmark.py` has — with `\n` line endings — the SHA-256
-`22cd0e9e3c6014d79184229c4b64063f9c26d49120decc52c77c4aeedc57ad7c`. It is one file; read it before you run it.
+`e94f0bcb43844f9277fc8bb2f9441748e0a42e148e342a8969aa4519c4b0fe07`. It is one file; read it before you run it.
 
 **3. Set up.** In an empty throwaway folder `probe/` (`python` on Windows, otherwise `python3`):
 
@@ -74,9 +74,11 @@ copy the board's two lines in `.gitignore`.
   has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it; TortoiseSVN runs
   the gate itself after `--install-hook` and asks permission once.
 - Way back: first remove from your hooks folder (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls
-  `tools/shoalmark/shoalmark.py`: the hooks marked `# shoalmark`, and the line you added to a hook of your own (on
-  Subversion, the `tsvn:` hook properties). Delete the tool before that, and commits are refused. Then delete
-  `tools/shoalmark/`, `shoalmark.toml` and the shoalmark block in `AGENTS.md`. The tracker folder can stay: its entries
+  the copy of the tool in the git directory: the hooks marked `# shoalmark`, and the line you added to a hook of your own
+  (on Subversion, the `tsvn:` hook properties, which call `tools/shoalmark/shoalmark.py`). Delete the copy — on
+  Subversion, the tool — before that, and commits are refused. Then delete
+  `tools/shoalmark/`, `shoalmark.toml`, the shoalmark block in `AGENTS.md` and the copy in the git directory
+  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries
   are plain Markdown.
 
 ## Requirements — a trial, not an instruction (Stage 0: the convention only)

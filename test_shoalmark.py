@@ -36,6 +36,7 @@ fm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fm)
 
 FAILS = []
+_VERSION = (HERE / "VERSION").read_text(encoding="utf-8").strip()      # the release's own version, as the VERSION file says it — what the filed lines name
 
 
 def check(name, ok):
@@ -394,9 +395,10 @@ with tempfile.TemporaryDirectory() as d:
           code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out and "](" not in out)
     code, out, _ = run(root, "--install-hook")
     hook = root / ".git/hooks/pre-commit"
-    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote",
+    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote — and the checkout and merge hooks that refresh the board from the copy of the tool it keeps in the git directory",
           code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text()
-          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"])      # nothing runs after a checkout or a merge
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "post-checkout", "post-merge", "post-rewrite", "pre-commit", "prepare-commit-msg"]
+          and (root / ".git/shoalmark-trusted/shoalmark.py").read_bytes() == (HERE / "shoalmark.py").read_bytes() and (root / ".git/shoalmark-trusted/COPY").is_file())
     git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
     check("the installed hook runs on a real commit and stages the regenerated INDEX" + said, git2.returncode == 0
@@ -407,29 +409,7 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 
-# --- a private security report: after a checkout or a merge nothing shoalmark installed runs, and `--html-only` never runs the deriver -----------------
-# A branch can bring an executable `<tracker dir>/derive`; the tool runs it, so a hook that ran the tool after a checkout or a merge ran what the branch brought.
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the base")
-    code_i, out_i, _ = run(root, "--install-hook")
-    hooks_, marker_ = root / ".git/hooks", root / "derived-marker"
-    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    hooked_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)      # the installed hooks run
-    git(root, "switch", "-q", "-c", "brings-a-deriver")
-    derive_ = root / "docs/work-tracker/derive"
-    derive_.write_text(f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(marker_)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n', encoding="utf-8"); derive_.chmod(0o755)
-    git(root, "add", "-A"); git(root, "commit", "-qm", "a branch that brings an executable deriver")          # past the hooks, as its author made it
-    sw_ = [hooked_("switch", "-q", trunk_), hooked_("switch", "-q", "brings-a-deriver"), hooked_("switch", "-q", trunk_)]
-    merged_ = hooked_("merge", "--no-ff", "-q", "brings-a-deriver", "-m", "merge the branch")
-    code_h, _, _ = run(root, "--html-only")
-    check(f"FM-006 · a private security report · `--install-hook` writes the three hooks that judge a commit and none that runs after a checkout or a merge; with a branch that brings an executable deriver, "
-          f"`git switch` to it, back, and a merge of it run nothing — and neither does `--html-only` (saw {sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith('.sample'))}, marker {marker_.exists()})",
-          code_i == 0 and sorted(p_.name for p_ in hooks_.iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"] and "removed" not in out_i
-          and all(r_.returncode == 0 for r_ in sw_ + [merged_]) and code_h == 0 and not marker_.exists())
-    run(root)
-    check("FM-006 · a private security report · …and the control: the default run does run that deriver, so the marker was a real test of the hooks", marker_.exists())
-    rm_git(root)
+# --- a private security report: the checkout and merge hooks run the copy of the tool kept in the git directory, and no more than `--html-only` — their cases are further on, beside the board's run -------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); run(root, "--init", "--key", "msr")
@@ -437,14 +417,16 @@ with tempfile.TemporaryDirectory() as d:
     old_ = "#!/bin/sh\n# shoalmark — refresh the git-ignored board\npython3 tools/shoalmark/shoalmark.py --html-only || true\n"
     for name_ in ("post-merge", "post-checkout"):
         (hooks_ / name_).write_text(old_, encoding="utf-8"); (hooks_ / name_).chmod(0o755)
-    code_1, out_1, err_1 = run(root, "--install-hook"); gone_ = not (hooks_ / "post-merge").exists() and not (hooks_ / "post-checkout").exists()
+    code_1, out_1, err_1 = run(root, "--install-hook")
     mine_ = b"#!/bin/sh\n# somebody else's hook\necho mine\n"
+    new_co_, new_mg_ = (hooks_ / "post-checkout").read_text(encoding="utf-8"), (hooks_ / "post-merge").read_text(encoding="utf-8")
     (hooks_ / "post-checkout").write_bytes(mine_); (hooks_ / "post-merge").write_text(old_, encoding="utf-8")
     code_2, out_2, err_2 = run(root, "--install-hook")
-    check(f"FM-006 · a private security report · run again, `--install-hook` removes the `post-checkout` and `post-merge` an older copy wrote — one line for each, saying so — and a `post-checkout` that is not shoalmark's is left byte for byte (saw {code_1}, {code_2})",
-          code_1 == 0 and gone_
-          and f"removed {hooks_ / 'post-checkout'} — it ran after every checkout; nothing shoalmark installed runs then now" in out_1 and f"removed {hooks_ / 'post-merge'} — it ran after every merge; nothing shoalmark installed runs then now" in out_1
-          and code_2 == 0 and (hooks_ / "post-checkout").read_bytes() == mine_ and not (hooks_ / "post-merge").exists() and "post-checkout" not in out_2 + err_2 and f"removed {hooks_ / 'post-merge'}" in out_2)
+    check("FM-006 · a private security report · `--install-hook` replaces the `post-checkout` and `post-merge` an older copy wrote — they ran the working tree's tool — with the copy's own, which name the git directory's copy and never the tree's tool; "
+          "and a `post-checkout` that is not shoalmark's is left byte for byte, named with the line to add, exit 4",
+          code_1 == 0 and "tools/shoalmark" not in new_co_ + new_mg_ and "shoalmark-trusted/shoalmark.py" in new_co_ and "shoalmark-trusted/shoalmark.py" in new_mg_ and "--html-only" in new_co_ and "removed" not in out_1 + err_1
+          and code_2 == fm.EXIT_LINT and (hooks_ / "post-checkout").read_bytes() == mine_ and "shoalmark-trusted" in err_2 and "left alone" in err_2
+          and (hooks_ / "post-merge").read_text(encoding="utf-8") == new_mg_)
     rm_git(root)
 fm.configure(HERE)
 
@@ -464,6 +446,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "control": "FM-039 · a Chrome slow to start, the board's budget counted beyond its control",
     "board": "the board, rendered in a browser",
     "story": "FM-005 · a story's header counts its chapters shipped, closed and open apart, rendered",
+    "escape": "FM-006 · a private security report · what a tracker's text can make of the board, rendered — no script, no `javascript:` link, no `data:` image",
     "search": "FM-020 · a whole id searched, rendered",
     "progress": "FM-021 · the empty progress section, rendered",
     "cell": "the board's cell shows the display form, rendered",
@@ -565,6 +548,12 @@ def skip(key, why):
     print(f"  skip  {_BLOCKS.get(key, key)} — {why}; {SKIPS[-1][1]} check(s) did not run")
 
 
+def _skipped(name, n, why):
+    """A block that cannot run here says so at once, by name, with its reason and how many checks it holds — as `skip` does — and the run's last line names it again."""
+    SKIPS.append((name, n, why))
+    print(f"  skip  {name} — {why}; {n} check(s) did not run")
+
+
 def skipped_line():
     """The run's last word on skips, zero or not — so a run with skips is never read as a full pass."""
     if not SKIPS:
@@ -597,6 +586,21 @@ def run_safe(root, *argv, git_env=None):
         return run(root, *argv, git_env=git_env)
     except SystemExit as e:
         return (e.code if isinstance(e.code, int) else 2), "", ""
+
+
+def run_caught(root, *argv):
+    """`run`, where the run may end in `SystemExit` — a refusal the tool says in one line before it ends: (its code, stdout, stderr), what it printed kept."""
+    out, err = io.StringIO(), io.StringIO()
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            try:
+                code = fm.main(["--root", str(root), *argv])
+            except SystemExit as e:
+                code = e.code if isinstance(e.code, int) else 1
+    finally:
+        os.environ.update(saved)
+    return code, out.getvalue(), err.getvalue()
 
 
 # --- FM-024 S1+S2: a seat's commit names its session — the trailer the hook appends, and an id when a harness has none --
@@ -1031,7 +1035,7 @@ with tempfile.TemporaryDirectory() as d:
     table_of = lambda label: label.split("]")[0] + "]"
     check(f"FM-024 D2 · 5 of 7 · an `owner` key inside an unrelated table is refused at configuration — exit 1, one line, naming the table and where it belongs (saw {[(t.split(',')[0], r.returncode) for t, r in unrelated.items()]})",
           all(one_line(r) and f"`owner` is inside `{table_of(t)}`, where it does not name the Owner" in r.stderr
-              and 'put it at the top of the file, before any table: `owner = "<identity> signed"`' in r.stderr for t, r in unrelated.items()))
+              and 'put it at the top of the file, before any table: `owner = "<email> signed"`' in r.stderr for t, r in unrelated.items()))
     read_(f'{base_cfg}\n[rights]\nowner = ["answer"]\n'); rights_list = sorted(fm.SEAT_RIGHTS["owner"])
     r_obj = cli(f'[owner]\nname = "x"\n{base_cfg}')
     check(f"FM-024 D2 · 5 of 7 · …a seat's rights keep the name `owner` (a list under `[rights]` reads: {rights_list}); a table `[owner]` is refused as no key at the top (saw {r_obj.returncode}, {r_obj.stderr.strip()[:130]!r})",
@@ -1068,13 +1072,13 @@ with tempfile.TemporaryDirectory() as d:
           and "owner (" not in said_no and "The seats are: planner (planner@seat). The Owner, who is not a seat, is you@example.org." in said_old
           and "The seats are: planner (planner@seat). A seat wears its badge" in said_none and "The Owner" not in said_none)
     # where a message points at the line that asks a signature, the Owner named at the top is `owner`, a line of its own; under the old spelling it stays `[seats] owner`
-    r_top = cli(f'owner = "alice"\nanswerers = ["alice signed"]\n{base_cfg}'); r_old = cli(f'answerers = ["alice signed"]\n{base_cfg}\n[seats]\nowner = "alice"\n')
+    r_top = cli(f'owner = "alice@x"\nanswerers = ["alice@x signed"]\n{base_cfg}'); r_old = cli(f'answerers = ["alice@x signed"]\n{base_cfg}\n[seats]\nowner = "alice@x"\n')    # a signed identity is an email
     read_(f'owner = "alice"\n{base_cfg}\n[seats]\n{PLANNER}'); at_top = getattr(fm, "at_top", lambda seat: None); top_, old_seat_ = at_top("owner"), at_top("planner")
     read_(f'{base_cfg}\n[seats]\nowner = "alice"\n{PLANNER}'); old_spelling_ = at_top("owner")
     check(f"FM-024 D2 · the lines that point at where the Owner's signature is asked say `owner` when it is named at the top, and `[seats] owner` under the old spelling (saw {r_top.returncode}, {r_old.returncode})",
-          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to `owner` (`owner = \"alice signed\"`), or remove `answerers`" in r_top.stderr
+          r_top.returncode == r_old.returncode == fm.EXIT_LINT and '`owner = "alice@x"`' in r_top.stderr and "`[seats] owner" not in r_top.stderr and "Add `signed` to `owner` (`owner = \"alice@x signed\"`), or remove `answerers`" in r_top.stderr
           and "`owner` and `[seats]` alone decide who may answer" in r_top.stderr and "the Owner, who answers for it" in r_top.stderr
-          and '`[seats] owner = "alice"`' in r_old.stderr and top_ is True and old_seat_ is False and old_spelling_ is False)
+          and '`[seats] owner = "alice@x"`' in r_old.stderr and top_ is True and old_seat_ is False and old_spelling_ is False)
     check("FM-024 D2 · `--schema` has an `owner` entry — top level, one identity or a list, the old spelling, the refusals — and the `[seats] <seat>` text reads the Owner and three seats with their rights built in",
           (lambda t: "| `owner` | one identity, or a list of them, as a `[seats]` value" in t and "`[seats] owner` is still read, as its old spelling" in t and "are refused at configuration" in t
                      and "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same" in t
@@ -1567,6 +1571,1726 @@ if _browser("control"):
     _own = float((re.search(r"^control: (\d+\.\d) s$", _late.stdout, re.M) or [None, "0"])[1])
     check(f"FM-039 · a Chrome 5 s slower to start than this one — its control on a blank page took {_own} s — renders the healthy board and passes: the budget is 5 s beyond the control, the page's own cost, not 5 s of wall-clock time, which Chrome's start alone would spend (saw {_late.stdout.strip()[-260:]!r})",
           _own >= 5 and _late.returncode == 0 and _late.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _late.stdout)
+
+# --- FM-006: a private security report — everything the board renders from a tracker is escaped for where it lands --------------------------------------
+# Inert markers only: a hostile string here does nothing but stand where a tag, a comment or a link would be.
+HOSTILE = "</script><b id=\"pwn1\">x</b><!--<script>alert(1)//"
+def _hostile_repo(root, blob="javascript:alert(1)//"):
+    (root / "shoalmark.toml").write_text(f'name = "</title><b id=pwn2>"\nblob = "{blob}"\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+    body = ('## What is true now\n\n**One thing is left.** <img src=x onerror="document.body.dataset.pwn=1"> <script>document.body.dataset.pwn=2</script>\n\n'
+            '[js](javascript:document.body.dataset.pwn=3) [tab](java\tscript:alert(1)) [ent](&#106;avascript:alert(1)) [ok](https://example.org/a)\n\n'
+            '![data](data:image/png;base64,AAAA) ![ok](https://example.org/a.png)\n\n## Done when\n\nit is.\n')
+    tracker(root, "MSR-001", extra=f'tags: bug\n', body=body, title=HOSTILE)
+    p_ = next((root / "docs/work-tracker").glob("MSR-001-*.md")); p_.write_text(p_.read_text(encoding="utf-8").replace('hook: "h of MSR-001"', 'hook: "' + HOSTILE.replace('"', "'") + '"'), encoding="utf-8")
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); _hostile_repo(root)
+    code_, _, err_ = run(root, "--html-only"); page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); view_ = (root / "docs/work-tracker/view/MSR-001.js").read_text(encoding="utf-8")
+    check("FM-006 · a private security report · a tracker's text — its title, its hook, the Markdown of its body — and the configuration's name and `blob` reach the page only as escaped data: "
+          "no tag, comment or `</script>` of theirs stands in the page or its view, and a forge link of another kind than http(s) is not made",
+          code_ == 0 and '<b id="pwn1">' not in page_ and "<b id=pwn2>" not in page_ and "<!--<script>" not in page_ and "</script><b" not in page_ and "<script>alert" not in page_
+          and "\\u003c/script\\u003e" in page_ and "&lt;/title&gt;" in page_ and "const BLOB=\"\"," in page_ and "not an http(s) URL" in err_
+          and "<img src=x" not in view_ and "<script>document" not in view_ and "\\u003cimg src=x" in view_)
+    check("FM-006 · a private security report · the page's own code refuses what it must: a link or an image of a kind other than http(s), mailto or a relative path is not made — the Markdown renderer's, and the page's last word on the DOM",
+          "safeUrl=u=>" in page_ and "link(k){return safeUrl(k.href)" in page_ and "image(k){return safeUrl(k.href)" in page_ and 'if(!safeUrl(h)){a.removeAttribute("href");continue}' in page_
+          and 'renderer:{html:k=>esc(k.raw||k.text||"")' in page_)
+    rm_git(root)
+fm.configure(HERE)
+if _browser("escape"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); _hostile_repo(root, blob="https://example.org/r/")
+            run(root, "--html-only")
+            dom_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri() + "#=MSR-001"]).stdout
+            md_ = re.sub(r"<script\b.*?</script>", "", dom_, flags=re.S)  # the page's own code is not what it rendered
+            md_ = md_[md_.find('<div class="md">'):md_.find("</article>")]
+            hrefs_, srcs_ = re.findall(r'<a [^>]*href="([^"]*)"', md_), re.findall(r'<img [^>]*src="([^"]*)"', md_)
+            check("FM-006 · a private security report · rendered, a tracker's Markdown makes no script and no unsafe link: its tags stand as text (no element carries `onerror`, none is a `<script>`, nothing set `data-pwn`); "
+                  "its `javascript:` links in every spelling — plain, with a tab, as an entity — make no link and their text stays; its `data:` image is not made and its alt text stays; "
+                  "the http(s) link and image are kept (saw links " + repr(hrefs_) + ", images " + repr(srcs_) + ")",
+                  "data-pwn" not in dom_ and not re.search(r"<[a-z][^>]* onerror=", md_) and "<script" not in md_ and "&lt;script&gt;" in md_
+                  and hrefs_ == ["https://example.org/a"] and srcs_ == ["https://example.org/a.png"]
+                  and "<p>js [tab]" in md_ and " ent <a " in md_ and "<p>data <img" in md_)
+    except _ChromeFailed as e_:
+        _hung("escape", e_)
+
+# --- FM-006: a private security report — the board's run reads only regular files inside the repository, starts only read-only git, writes only the board --------------
+# Inert markers only: a file that would appear, a sentinel text in a file outside the repository. Each control runs the tool as it was before (ae3c9e9) and must fail there.
+_has_rev = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+def _old_tool(into, rev="ae3c9e9"):
+    """The tool as it was before the board's run was read-only, beside its vendored `marked` — a control that must fail on it."""
+    into = Path(into); (into / "vendor").mkdir(parents=True, exist_ok=True)
+    (into / "shoalmark.py").write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:shoalmark.py"], capture_output=True, env=_ENV).stdout)
+    for f_ in (HERE / "vendor").glob("marked-*.js"):
+        shutil.copy(f_, into / "vendor" / f_.name)
+    shutil.copy(HERE / "VERSION", into / "VERSION")
+    return into / "shoalmark.py"
+def _tool_run(tool, root, *a, env=None):
+    """The tool as a program — what a hook starts, with the import-time configuration read and all."""
+    r_ = subprocess.run([sys.executable, str(tool), "--root", str(root), *a], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+    return r_.returncode, r_.stdout, r_.stderr
+def _tree(root, skip=()):
+    """Every path of a tree outside `.git` and `skip`: what it is, and its content or its link — a listing to compare before and after."""
+    out_ = {}
+    for dp_, dn_, fn_ in os.walk(root):
+        dn_[:] = [d_ for d_ in dn_ if d_ != ".git"]
+        for n_ in dn_ + fn_:
+            p_ = Path(dp_) / n_; rel_ = p_.relative_to(root).as_posix()
+            if any(rel_ == k_ or rel_.startswith(k_ + "/") for k_ in skip):
+                continue
+            out_[rel_] = ("link", os.readlink(p_)) if p_.is_symlink() else ("dir",) if p_.is_dir() else ("file", hashlib.sha1(p_.read_bytes()).hexdigest())
+    return out_
+def _can_symlink():
+    with tempfile.TemporaryDirectory() as d_:
+        try:
+            os.symlink(Path(d_) / "a", Path(d_) / "b"); return True
+        except (OSError, NotImplementedError, AttributeError):
+            return False
+_SYMLINKS = os.environ.get("SHOALMARK_NO_SYMLINK_TESTS") is None and _can_symlink()
+def _board_repo(root, key="msr"):
+    git(root, "init", "-q"); run(root, "--init", "--key", key); tracker(root, f"{key.upper()}-001")
+    return root / "docs/work-tracker"
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); tdir_ = _board_repo(root)
+    gi_ = (root / ".gitignore").read_text(encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "x")
+    before_ = _tree(root, skip=("docs/work-tracker",))
+    code_, out_, err_ = run(root, "--html-only")
+    after_ = _tree(root, skip=("docs/work-tracker",)); wrote_ = sorted(set(_tree(root)) - set(_tree(root, skip=("docs/work-tracker/index.html", "docs/work-tracker/view"))))
+    check("FM-006 · a private security report · the board's run writes the board and nothing else: its page and its `view/<ID>.js`, inside the tracker folder, and the tree outside it is "
+          "byte for byte what it was (saw " + repr(wrote_) + ")",
+          code_ == 0 and out_.startswith("board: file:") and before_ == after_ and wrote_ == ["docs/work-tracker/index.html", "docs/work-tracker/view", "docs/work-tracker/view/MSR-001.js"])
+    c2_, o2_, e2_ = run(root, "--html-only", "--check")
+    check("FM-006 · a private security report · `--html-only` stands alone, with `--root`: another run named beside it is refused, one line, exit 2, nothing written",
+          c2_ == 2 and "stands alone" in e2_ and "--check" in e2_ and o2_ == "" and len(e2_.strip().splitlines()) == 1)
+    rm_git(root)
+
+# what a git call may be: the subprocess list of the board's run, each one read-only (the tripwire holds the run to this list, in the interpreter)
+_RO_ = [["git", "log", "-1", "--format=%H"], ["git", "-c", "core.quotePath=false", "show", "HEAD:x"], ["git", "branch", "--show-current"], ["git", "config", "user.name"],
+        ["git", "config", "--path", "--get", "gpg.ssh.allowedSignersFile"], ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"], ["git", "ls-files", "-z", "--", ":(literal)a"],
+        ["git", "worktree", "list", "--porcelain"], ["git", "cat-file", "--batch-check"], ["git", "rev-parse", "--git-path", "MERGE_HEAD"], ["git", "diff", "--quiet", "HEAD", "--", "x"],
+        ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin/answer/"], ["git", "var", "GIT_AUTHOR_IDENT"],
+        ["git", "-c", "gpg.ssh.allowedSignersFile=/tmp/x", "log", "-1", "--format=%G?", "abc"], ["C:\\Program Files\\Git\\cmd\\git.exe", "log"]]
+_NOT_ = [["git", "fetch", "--quiet", "origin"], ["gh", "pr", "list"], ["svn", "blame", "x"], ["git", "-C", "/x", "fetch"], ["git", "-c", "core.sshCommand=x", "log"], ["git", "branch", "x"],
+         ["git", "config", "user.name", "x"], ["git", "config", "--global", "user.name", "x"], ["git", "symbolic-ref", "HEAD", "refs/heads/x"], ["git", "log", "--output=/tmp/x"],
+         ["git", "interpret-trailers", "--in-place", "f"], ["git", "commit", "-m", "x"], ["git", "checkout", "x"], ["git", "worktree", "add", "x"], ["/bin/sh", "-c", "git log"],
+         ["git"], [], "git log", ["git", "-c", "core.fsmonitor=x", "status"], ["git", "update-ref", "-d", "x"], ["git", "gc"]]
+_CMDS_ = [["git", "log", "-1", "--format=%H%n%an"], ["git", "-C", "C:\\a b\\c", "show", "x:y z"], ["git", "log", "--grep", 'say "hi"', "--", "C:\\x y\\"], ["git", "log", ""], ["git", "a\\\\b", "c\\"]]
+check("FM-006 · a private security report · the board's run starts read-only git and nothing else: the calls it makes pass, and `fetch`, `gh`, `svn`, a write form of `config`, `branch` or `symbolic-ref`, "
+      "`--output`, a `-c` other than the two the tool uses, a shell and a bare string do not; a Windows command line is read back to its list, as `subprocess` writes it",
+      all(fm.read_only_git(a_) for a_ in _RO_) and not any(fm.read_only_git(a_) for a_ in _NOT_) and all(fm.split_cmdline(subprocess.list2cmdline(a_)) == a_ for a_ in _CMDS_))
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); _board_repo(root); run(root, "--html-only"); fm.configure(root)
+    saw_ = {}
+    mark_ = root / "marker-ran"
+    fake_ = root / "bin"; fake_.mkdir()
+    (fake_ / "svn").write_text(f'#!/bin/sh\ntouch "{mark_.as_posix()}"\n', encoding="utf-8"); (fake_ / "svn").chmod(0o755)
+    (root / "link-target").write_text("x", encoding="utf-8")
+    if _SYMLINKS:
+        os.symlink(root / "docs", root / "dlink"); os.symlink(root / "link-target", root / "flink")
+    attempts_ = [("svn", lambda: subprocess.run(["svn", "--version"], capture_output=True)), ("gh", lambda: subprocess.run(["gh", "--version"], capture_output=True)),
+                 ("git fetch", lambda: subprocess.run(["git", "fetch", "--quiet", "origin"], cwd=root, capture_output=True)),
+                 ("os.system", lambda: os.system("echo x")), ("a file written", lambda: open(root / "evil.txt", "w").write("x")),
+                 ("a file written in the tracker folder that is no board file", lambda: open(root / "docs/work-tracker/notes.md", "w").write("x")),
+                 ("a rename", lambda: os.rename(root / "link-target", root / "moved")), ("a removal", lambda: os.remove(root / "link-target")),
+                 ("a directory made", lambda: os.mkdir(root / "newdir")), ("a copy", lambda: shutil.copyfile(root / "link-target", root / "copied"))]
+    if _SYMLINKS:
+        attempts_ += [("a folder listed through a symlink", lambda: os.listdir(root / "dlink")), ("a file read through a symlink", lambda: open(root / "flink").read())]
+    saved_path_ = os.environ["PATH"]; os.environ["PATH"] = str(fake_) + os.pathsep + saved_path_
+    fm.TRIPPED.clear(); fm.arm_tripwire()
+    try:
+        for name_, f_ in attempts_:
+            try:
+                f_(); saw_[name_] = "ran"
+            except fm.ReadOnlyRun:
+                saw_[name_] = "refused"
+        ok_git_ = subprocess.run(["git", "rev-parse", "--git-dir"], cwd=root, capture_output=True, text=True).returncode == 0
+        fm.board_write(fm.HTML_OUT, "page")     # the board's own file, in the board's run
+    finally:
+        fm._TRIPWIRE = False; os.environ["PATH"] = saved_path_
+    check("FM-006 · a private security report · the tripwire holds the run where Python does the thing: `svn`, `gh`, `git fetch`, a shell, a write that is no board file, a rename, a removal, a directory, a copy, "
+          "a listing and a read through a symlink are each refused — nothing ran (no marker), nothing was written — and read-only git and the board's own page go through (saw " + repr(saw_) + ")",
+          all(v_ == "refused" for v_ in saw_.values()) and ok_git_ and not mark_.exists() and not (root / "evil.txt").exists() and not (root / "moved").exists() and not (root / "newdir").exists()
+          and not (root / "copied").exists() and not (root / "docs/work-tracker/notes.md").exists() and fm.HTML_OUT.read_text(encoding="utf-8") == "page" and len(fm.TRIPPED) == len(saw_))
+    rm_git(root)
+# …and in a process that has not yet used `tempfile`, as a hook's run is: the temporary file the signers are verified against is made — `tempfile` finds its directory under a lock of its own, on the
+# first `os.open` it makes, and a tripwire that asked for the directory then would wait for ever for a lock its own thread holds. A control: a hook that does ask waits, and is killed.
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr")
+    fresh_ = lambda body, t=20: subprocess.run([sys.executable, "-c", f"import sys, os, tempfile; sys.path.insert(0, {str(HERE)!r}); import shoalmark as fm; fm.configure({str(root)!r}); {body}"],
+                                         capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV, timeout=t)
+    r_ = fresh_("fm.arm_tripwire(); fd, tmp = tempfile.mkstemp(prefix='shoalmark-signers-'); os.close(fd); os.remove(tmp); print('made and removed')")
+    try:
+        fresh_("sys.addaudithook(lambda e, a: tempfile.gettempdir() if e == 'open' else None); tempfile.mkstemp()", t=6).returncode; waited_ = False
+    except subprocess.TimeoutExpired:
+        waited_ = True
+    check("FM-006 · a private security report · the tripwire, armed in a process that has not used `tempfile`, lets the signers' temporary file be made and removed — it does not ask `tempfile` for its directory inside the event; "
+          f"the control, a hook that does, waits on a lock its own thread holds and is killed after 6 s (saw {r_.stdout.strip()!r} · the control waited: {waited_})",
+          r_.returncode == 0 and r_.stdout.strip() == "made and removed" and waited_)
+    rm_git(root)
+fm.configure(HERE)
+
+# no Subversion call: a working copy that asks `svn blame` for who set `next: owner` — the board's run asks nothing of it. What starts `svn` is seen by a
+# stand-in in Python, on every system: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process starts a program
+# named `svn` — before the tool's own tripwire could refuse it, so even an attempt shows
+if _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
+        root = Path(d).resolve(); (root / ".svn").mkdir(); run(root, "--init", "--key", "msr")
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", 'owner = "o@x"\n\n[seats]\nbuilder = "b@x"\n\n[kinds]', 1), encoding="utf-8")
+        tracker(root, "MSR-001", extra='next: owner\nask: "Which one?"\n', title="asks")
+        seen_ = Path(o) / "seen"; seen_.mkdir(); mark_ = Path(o) / "svn-ran"
+        (seen_ / "sitecustomize.py").write_text(
+            "import os, re, sys\n"
+            "def _seen(event, args):\n"
+            "    if event in ('subprocess.Popen', 'os.spawn', 'os.posix_spawn', 'os.exec'):\n"
+            "        words = [w for w in re.split(r'[^A-Za-z0-9._-]+', ' '.join(str(a) for a in (args[0], args[1]) if a is not None)) if w]\n"
+            "        if any(w.lower() in ('svn', 'svn.exe') for w in words[:3]):\n"
+            f"            open({str(mark_)!r}, 'a').write('svn\\n')\n"
+            "sys.addaudithook(_seen)\n", encoding="utf-8")
+        env_ = dict(_ENV, PYTHONPATH=str(seen_))
+        new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only", env=env_); ran_new_ = mark_.exists(); mark_.unlink(missing_ok=True)
+        old_ = _tool_run(_old_tool(Path(o) / "old"), root, "--html-only", env=env_); ran_old_ = mark_.exists()
+        check(f"FM-006 · a private security report · in a Subversion working copy the board's run starts no `svn`: with a seat to check and an ask to place, it writes the board and the marker never appears; "
+              f"the tool before it ran `svn` for the same repository (saw exit {new_[0]}, marker new {ran_new_} · old {ran_old_})",
+              new_[0] == 0 and not ran_new_ and (root / "docs/work-tracker/index.html").exists() and ran_old_)
+else:
+    _skipped("FM-006 · the board's run starts no `svn`", 1, "this clone does not hold ae3c9e9")
+
+# what it reads: only regular files inside the repository — a tracker, the configuration, the Owner's path, the brand's files, a triage worksheet, each a symlink to a file outside
+if _SYMLINKS and _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
+        base_, out_dir_ = Path(d).resolve(), Path(o).resolve()
+        root = base_ / "repo"; root.mkdir(); tdir_ = _board_repo(root)
+        (tdir_ / "brand").mkdir(); (tdir_ / "evidence/triage").mkdir(parents=True)
+        label_ = next(iter(fm.LABELS))
+        outside_ = {"tracker": ("MSR-002-x.md", "---\nid: MSR-002\nstatus: In Progress\nconsidered: none\nhook: \"h\"\n---\n\n# MSR-002 — OUTSIDE-TRACKER\n\n## What is true now\n\n**One thing.**\n\n## Done when\n\nit is.\n", tdir_ / "MSR-002-x.md"),
+                    "home": ("TRIAGE.md", "# Triage\n\n## The intent\n\n- **for** — OUTSIDE-INTENT\n\n## The current path\n\nOUTSIDE-PATH is the road\n\n## Passes\n\n", tdir_ / "TRIAGE.md"),
+                    "theme": ("theme.css", ":root{--bg:#123456;--ink:#fedcba}\n", tdir_ / "brand/theme.css"),
+                    "labels": ("labels.yaml", f"{label_}: OUTSIDE-LABEL\n", tdir_ / "brand/labels.yaml"),
+                    "wordmark": ("wordmark.svg", '<svg viewBox="0 0 8 8" height="8"><title>OUTSIDE-WORDMARK</title><path d="M0 0h8v8z" fill="currentColor"/></svg>\n', tdir_ / "brand/wordmark.svg"),
+                    "sheet": ("triage-2026-01-01.md", "| Tracker | Verdict | Reason |\n|---|---|---|\n| [MSR-001](../MSR-001-x.md) | keep P1 | OUTSIDE-REASON |\n", tdir_ / "evidence/triage/triage-2026-01-01.md")}
+        (tdir_ / "TRIAGE.md").unlink()
+        for key_, (name_, text_, link_) in outside_.items():
+            (out_dir_ / name_).write_text(text_, encoding="utf-8"); os.symlink(out_dir_ / name_, link_)
+        (out_dir_ / "config.toml").write_text('name = "OUTSIDE-NAME"\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        markers_ = ("OUTSIDE-TRACKER", "OUTSIDE-INTENT", "OUTSIDE-PATH", "#123456", "OUTSIDE-LABEL", "OUTSIDE-WORDMARK", "OUTSIDE-REASON")
+        listing_ = _tree(out_dir_)
+        c_new_, o_new_, e_new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); page_new_ = (tdir_ / "index.html").read_text(encoding="utf-8"); views_new_ = "".join(p_.read_text(encoding="utf-8") for p_ in (tdir_ / "view").glob("*.js"))
+        view1_, view2_ = (tdir_ / "view/MSR-001.js").exists(), (tdir_ / "view/MSR-002.js").exists()
+        (tdir_ / "index.html").unlink()
+        c_old_, o_old_, e_old_ = _tool_run(_old_tool(out_dir_.parent / (out_dir_.name + "-old")), root, "--html-only"); page_old_ = (tdir_ / "index.html").read_text(encoding="utf-8")
+        check("FM-006 · a private security report · the board's run reads no symlink: a tracker, the Owner's page, a theme, the labels, a wordmark and a triage worksheet that are each a symlink to a file outside the repository "
+              f"are left unread — none of their words is in the board, one line names them, exit 0 — and the tool before it read every one (saw exit {c_new_}, left alone: {[l_ for l_ in e_new_.splitlines() if 'left alone' in l_][:1]})",
+              c_new_ == 0 and not any(m_ in page_new_ or m_ in views_new_ for m_ in markers_) and "board: left alone" in e_new_ and "MSR-002-x.md" in e_new_ and "brand/theme.css" in e_new_
+              and len(e_new_.strip().splitlines()) == 1 and view1_ and not view2_
+              and all(m_ in page_old_ for m_ in markers_ if m_ != "OUTSIDE-WORDMARK") and _tree(out_dir_) == listing_)
+        # the configuration: a symlink to a file outside — not read, so its `name` is not the board's
+        (tdir_ / "index.html").unlink(); (root / "shoalmark.toml").rename(root / "shoalmark.keep"); os.symlink(out_dir_ / "config.toml", root / "shoalmark.toml")
+        c_cfg_, o_cfg_, e_cfg_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); page_cfg_ = (tdir_ / "index.html").read_text(encoding="utf-8")
+        (tdir_ / "index.html").unlink(); c_cfgo_, _, _ = _tool_run(_old_tool(out_dir_.parent / (out_dir_.name + "-old")), root, "--html-only"); page_cfgo_ = (tdir_ / "index.html").read_text(encoding="utf-8")
+        check("FM-006 · a private security report · the configuration that is a symlink to a file outside the repository is not read — its `name` is not the board's, and the tool before it was",
+              c_cfg_ == 0 and "OUTSIDE-NAME" not in page_cfg_ and "OUTSIDE-NAME" in page_cfgo_)
+        rm_git(root)
+elif not _SYMLINKS:
+    _skipped("FM-006 · the board's run reads no symlink", 2, "this system makes no symlink here")
+
+# where it works: the tracker folder must resolve inside the repository
+if _SYMLINKS and _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); tdir_ = _board_repo(root)
+        elsewhere_ = base_ / "elsewhere"; shutil.copytree(tdir_, elsewhere_, ignore=shutil.ignore_patterns("index.html", "view"))
+        old_ = _old_tool(base_ / "old")
+        # (a) `tracker_dir` names a folder outside — in the configuration a branch brings
+        cfg_ = (root / "shoalmark.toml").read_text(encoding="utf-8"); (root / "shoalmark.toml").write_text(re.sub(r'tracker_dir = "[^"]*"', 'tracker_dir = "../elsewhere"', cfg_), encoding="utf-8")
+        listing_ = _tree(elsewhere_); c_a_, o_a_, e_a_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); same_a_ = _tree(elsewhere_) == listing_
+        c_ao_, _, _ = _tool_run(old_, root, "--html-only"); wrote_old_a_ = _tree(elsewhere_) != listing_
+        for p_ in (elsewhere_ / "index.html",): p_.unlink(missing_ok=True)
+        shutil.rmtree(elsewhere_ / "view", ignore_errors=True)
+        # (b) the tracker folder is a symlink to a folder outside, and (c) to one inside
+        (root / "shoalmark.toml").write_text(cfg_, encoding="utf-8"); shutil.rmtree(tdir_); os.symlink(elsewhere_, tdir_)
+        listing_ = _tree(elsewhere_); c_b_, o_b_, e_b_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); same_b_ = _tree(elsewhere_) == listing_
+        c_bo_, _, _ = _tool_run(old_, root, "--html-only"); wrote_old_b_ = _tree(elsewhere_) != listing_
+        tdir_.unlink(); inside_ = root / "docs/real-tracker"; shutil.copytree(elsewhere_, inside_, ignore=shutil.ignore_patterns("index.html", "view")); os.symlink(inside_, tdir_)
+        listing_ = _tree(inside_); c_c_, o_c_, e_c_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); same_c_ = _tree(inside_) == listing_
+        check("FM-006 · a private security report · the tracker folder must resolve inside the repository: named outside by the configuration, or a symlink to a folder outside, or one inside — each refused with one line, "
+              "exit 4, nothing written there, no link; the tool before it wrote the board into the folder outside both times "
+              f"(saw {e_a_.strip()[:90]!r} · {e_b_.strip()[:80]!r} · {e_c_.strip()[:80]!r})",
+              c_a_ == c_b_ == c_c_ == fm.EXIT_LINT and same_a_ and same_b_ and same_c_ and o_a_ == o_b_ == o_c_ == "" and wrote_old_a_ and wrote_old_b_
+              and all(len(e_.strip().splitlines()) == 1 for e_ in (e_a_, e_b_, e_c_)) and "not inside the repository" in e_a_ and "resolves outside the repository" in e_b_ and "reached through, a symlink" in e_c_)
+        rm_git(root)
+elif not _SYMLINKS:
+    _skipped("FM-006 · the tracker folder must resolve inside the repository", 1, "this system makes no symlink here")
+
+# what it writes: the board's files, inside the tracker folder, never through a symlink and never over a file git tracks — and its link only for a board it wrote
+if _has_rev("ae3c9e9"):
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
+        base_, out_dir_ = Path(d).resolve(), Path(o).resolve(); root = base_ / "repo"; root.mkdir(); tdir_ = _board_repo(root)
+        old_ = _old_tool(base_ / "old"); view_ = tdir_ / "view"
+        # (a) the page is tracked by git — committed, stale — and a view with it
+        view_.mkdir(); (tdir_ / "index.html").write_text("STALE PAGE", encoding="utf-8"); (view_ / "MSR-001.js").write_text("STALE VIEW", encoding="utf-8")
+        git(root, "add", "-f", "docs/work-tracker/index.html", "docs/work-tracker/view/MSR-001.js"); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "x")
+        c_a_, o_a_, e_a_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); kept_a_ = (tdir_ / "index.html").read_text(encoding="utf-8") == "STALE PAGE" and (view_ / "MSR-001.js").read_text(encoding="utf-8") == "STALE VIEW"
+        clean_a_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout.strip() == ""
+        c_ao_, o_ao_, _ = _tool_run(old_, root, "--html-only"); over_a_ = (tdir_ / "index.html").read_text(encoding="utf-8") != "STALE PAGE"
+        git(root, "checkout", "-q", "--", ".")
+        check("FM-006 · a private security report · a page git tracks is not written over, nor its views: the files stay as committed, the tree is clean, one line says so and the board's link is not printed in its place; "
+              f"the tool before it wrote over them and printed the link (saw {e_a_.strip()[:140]!r})",
+              c_a_ == 0 and kept_a_ and clean_a_ and o_a_ == "" and "left alone" in e_a_ and "index.html (git tracks it)" in e_a_ and len(e_a_.strip().splitlines()) == 1 and over_a_ and o_ao_.startswith("board: "))
+        # (b) the page is a symlink — to a file outside; the board's other files are written
+        git(root, "rm", "-q", "--cached", "-f", "docs/work-tracker/index.html", "docs/work-tracker/view/MSR-001.js"); (tdir_ / "index.html").unlink(); shutil.rmtree(view_)
+        if _SYMLINKS:
+            (out_dir_ / "target.html").write_text("SENTINEL", encoding="utf-8"); os.symlink(out_dir_ / "target.html", tdir_ / "index.html")
+            c_b_, o_b_, e_b_ = _tool_run(HERE / "shoalmark.py", root, "--html-only"); kept_b_ = (out_dir_ / "target.html").read_text(encoding="utf-8") == "SENTINEL" and (tdir_ / "index.html").is_symlink()
+            c_bo_, o_bo_, _ = _tool_run(old_, root, "--html-only"); over_b_ = (out_dir_ / "target.html").read_text(encoding="utf-8") != "SENTINEL"
+            check("FM-006 · a private security report · a page that is a symlink is not written through: the file it points to outside the repository is untouched, the views beside it are written, one line says so "
+                  f"and no link is printed; the tool before it wrote through the link (saw {e_b_.strip()[:140]!r})",
+                  c_b_ == 0 and kept_b_ and o_b_ == "" and "index.html (a symlink" in e_b_ and len(e_b_.strip().splitlines()) == 1 and (view_ / "MSR-001.js").exists() and over_b_ and o_bo_.startswith("board: "))
+            # (c) `view/` is a symlink to a folder outside
+            (tdir_ / "index.html").unlink(); shutil.rmtree(view_); (out_dir_ / "views").mkdir(); os.symlink(out_dir_ / "views", view_); listing_ = _tree(out_dir_)
+            c_c_, o_c_, e_c_ = _tool_run(HERE / "shoalmark.py", root, "--html-only")
+            check("FM-006 · a private security report · `view/` that is a symlink to a folder outside is not written into: nothing appears there, the page is written and its link printed, one line names the folder "
+                  f"(saw {e_c_.strip()[:120]!r})",
+                  c_c_ == 0 and _tree(out_dir_) == listing_ and o_c_.startswith("board: ") and (tdir_ / "index.html").is_file() and "view (a symlink" in e_c_ and len(e_c_.strip().splitlines()) == 1)
+        else:
+            _skipped("FM-006 · the board's run writes through no symlink", 2, "this system makes no symlink here")
+        rm_git(root)
+else:
+    _skipped("FM-006 · what the board's run writes", 3, "this clone does not hold ae3c9e9")
+
+# --- FM-006: a private security report — the checkout and merge hooks run the copy: one case each, a branch checked out and merged, beside the tool it would have run instead ---------------
+# Every case is a scratch repository with the tool vendored in it and `--install-hook` run from that tool, a branch that brings the case, and `git switch` to it, back, and a fast-forward merge of it —
+# the hooks running. What must hold: nothing the branch brings runs (a marker file would appear), nothing is written outside the tracker folder (`git status --ignored` outside it is empty, and
+# the folder outside the repository is as it was), and the board inside the tracker folder is refreshed. The control is the tool as it was before this report's first fix, vendored the same
+# way, with the hooks it wrote — which run the working tree's tool after a checkout and a merge: each case's check must fail there, and the check says what it saw.
+_OLD_REV = "fec3413~1"
+def _old_tree(into, rev):
+    """The tool as `rev` had it — its file, its VERSION, its vendored `marked` and its brand — laid out as a consumer vendors it."""
+    into = Path(into)
+    for n_ in subprocess.run(["git", "-C", str(HERE), "ls-tree", "-r", "--name-only", rev], capture_output=True, text=True, env=_ENV).stdout.split("\n"):
+        if n_ in ("shoalmark.py", "VERSION", "NOTICE") or n_.startswith(("vendor/", "brand/")):
+            (into / n_).parent.mkdir(parents=True, exist_ok=True)
+            (into / n_).write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{n_}"], capture_output=True, env=_ENV).stdout)
+def _hooked(root, *a, env=None):
+    """git with the hooks running, as a person's own command runs them."""
+    r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+    return r_.returncode, (r_.stdout + r_.stderr).strip()
+def _outside_dirty(root):
+    """What the working tree holds beyond its commit, outside the tracker folder: modified, untracked and ignored paths."""
+    out_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
+    return [l_ for l_ in out_.splitlines() if "docs/work-tracker/" not in l_]
+def _snap(root):
+    t_ = root / "docs/work-tracker"
+    return {"page": (t_ / "index.html").read_text(encoding="utf-8") if (t_ / "index.html").is_file() and not (t_ / "index.html").is_symlink() else None,
+            "views": sorted(p_.name for p_ in (t_ / "view").glob("*.js")) if (t_ / "view").is_dir() else [],
+            "viewtext": "".join(p_.read_text(encoding="utf-8") for p_ in (t_ / "view").glob("*.js")) if (t_ / "view").is_dir() else ""}
+_NEW_TRACKER = "---\nid: MSR-009\nstatus: In Progress\nconsidered: none\nhook: \"h\"\n---\n\n# MSR-009 — {title}\n\n## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n"
+def _hook_scenario(base, payload, control=None, steps=None):
+    """Build the scratch repository for one case, run it, and report what was seen. `control`: None — the copy's hooks, the tool vendored now; "old" — the tool as it was, with its own hooks;
+    "repoint" — the tool vendored now, its hooks pointed at the working tree's tool instead of the copy."""
+    base = Path(base).resolve(); root, out_ = base / "repo", base / "outside"; root.mkdir(); out_.mkdir()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE")
+    tool, mark_ = root / "tools/shoalmark", base / "marker"
+    if control == "old":
+        _old_tree(tool, _OLD_REV)
+    else:
+        subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(tool), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    trunk = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    inst = _tool_run(tool / "shoalmark.py", root, "--install-hook")
+    if control == "repoint":
+        for n_ in ("post-checkout", "post-merge"):
+            (root / f".git/hooks/{n_}").write_text(f'#!/bin/sh\n# shoalmark — the working tree\'s tool, not the copy\n{fm.PY} tools/shoalmark/shoalmark.py --root "$(git rev-parse --show-toplevel)" --html-only || true\n', encoding="utf-8")
+    git(root, "switch", "-q", "-c", "payload")
+    payload(root, tool, base, out_, mark_)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the case")
+    git(root, "switch", "-q", trunk)
+    outside_before = _tree(out_); got = {}
+    got["sw"] = _hooked(root, "switch", "-q", "payload"); got["snap1"], got["dirty1"] = _snap(root), _outside_dirty(root)
+    got["back"] = _hooked(root, "switch", "-q", trunk); got["snap2"], got["dirty2"] = _snap(root), _outside_dirty(root)
+    got["merge"] = _hooked(root, "merge", "--ff-only", "-q", "payload"); got["snap3"], got["dirty3"] = _snap(root), _outside_dirty(root)
+    got.update(root=root, tool=tool, out=out_, inst=inst, marker=mark_.exists(), outside_same=_tree(out_) == outside_before, trunk=trunk, base=base)
+    if steps:
+        steps(got)
+    return got
+def _hook_ops_ok(g):
+    return g["sw"][0] == 0 and g["back"][0] == 0 and g["merge"][0] == 0
+def _refreshed(g, word):
+    return word in (g["snap1"]["page"] or "") and "MSR-009.js" in g["snap1"]["views"] and word not in (g["snap2"]["page"] or "") and word in (g["snap3"]["page"] or "") and "MSR-009.js" in g["snap3"]["views"]
+def _add_tracker(root, title):
+    (root / "docs/work-tracker/MSR-009-x.md").write_text(_NEW_TRACKER.format(title=title), encoding="utf-8")
+def _case_clean(g):
+    return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"]
+            and "run --install-hook" not in g["sw"][1] + g["back"][1] + g["merge"][1])      # the copy is what the repository pins: no drift line
+def _saw(g):
+    return f"marker {g['marker']}, outside the tracker folder {g['dirty1'] + g['dirty3'] or 'untouched'}, folder beyond the repository {'as it was' if g['outside_same'] else 'CHANGED'}, ops {[g[k][0] for k in ('sw', 'back', 'merge')]}"
+_HAVE_OLD = _has_rev(_OLD_REV)
+_CASES = []     # (name, the case's payload, what must hold of the copy's run, what the control saw, what must fail on the control)
+def _pl_deriver(root, tool, base, out_, mark_):
+    d_ = root / "docs/work-tracker/derive"; d_.write_text(f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(mark_)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n', encoding="utf-8"); d_.chmod(0o755)
+    _add_tracker(root, "REFRESHED-1")
+def _pl_tool(root, tool, base, out_, mark_):
+    src_ = tool / "shoalmark.py"; src_.write_text(src_.read_text(encoding="utf-8").replace("import tempfile\n", f"import tempfile\nopen({str(mark_)!r}, 'a').write('ran')\n", 1), encoding="utf-8")
+    if (tool / "PIN").exists():     # a PIN that matches the changed tool: the working tree's gate would pass it
+        pin_ = (tool / "PIN").read_text(encoding="utf-8").splitlines()
+        (tool / "PIN").write_text("\n".join(f"{fm.digest(src_)}  shoalmark.py" if l_.endswith("  shoalmark.py") else l_ for l_ in pin_) + "\n", encoding="utf-8")
+    _add_tracker(root, "REFRESHED-2")
+def _pl_script(root, tool, base, out_, mark_):
+    hostile_ = "</script><b id=\"pwn1\">x</b><!--<script>document.title='ran'//"
+    t_ = next((root / "docs/work-tracker").glob("MSR-001-*.md"))
+    t_.write_text(t_.read_text(encoding="utf-8").replace("# MSR-001 — BASE", "# MSR-001 — " + hostile_).replace('hook: "h of MSR-001"', 'hook: "' + hostile_.replace('"', "'") + '"')
+                  .replace("**One thing is left.**", "**One thing is left.** " + hostile_ + " <img src=x onerror=\"document.title='ran'\">"), encoding="utf-8")
+    _add_tracker(root, "REFRESHED-3")
+def _pl_link(root, tool, base, out_, mark_):
+    c_ = root / "shoalmark.toml"; c_.write_text(c_.read_text(encoding="utf-8").replace("[kinds]", 'blob = "javascript:alert(1)//"\n\n[kinds]', 1), encoding="utf-8")
+    t_ = next((root / "docs/work-tracker").glob("MSR-001-*.md")); t_.write_text(t_.read_text(encoding="utf-8").replace("**One thing is left.**", "**One thing is left.** [a](javascript:alert(1)) [b](data:text/html;base64,AAAA) ![c](data:image/png;base64,AAAA)"), encoding="utf-8")
+    _add_tracker(root, "REFRESHED-4")
+def _pl_outside(root, tool, base, out_, mark_):
+    for t_ in (root / "docs/work-tracker").glob("MSR-*.md"):
+        shutil.copy(t_, out_ / t_.name)
+    c_ = root / "shoalmark.toml"; c_.write_text(re.sub(r'tracker_dir = "[^"]*"', 'tracker_dir = "../outside"', c_.read_text(encoding="utf-8")), encoding="utf-8")
+def _pl_page_link(root, tool, base, out_, mark_):
+    (base / "outside").joinpath("target.html").write_text("SENTINEL", encoding="utf-8"); os.symlink(base / "outside" / "target.html", root / "docs/work-tracker/index.html")
+    git(root, "add", "-f", "docs/work-tracker/index.html"); _add_tracker(root, "REFRESHED-6")
+def _pl_page_tracked(root, tool, base, out_, mark_):
+    (root / "docs/work-tracker/index.html").write_text("STALE PAGE", encoding="utf-8"); git(root, "add", "-f", "docs/work-tracker/index.html"); _add_tracker(root, "REFRESHED-6B")
+def _pl_tracker_link(root, tool, base, out_, mark_):
+    (out_ / "T.md").write_text(_NEW_TRACKER.format(title="OUTSIDE-TRACKER").replace("MSR-009", "MSR-002"), encoding="utf-8"); os.symlink(out_ / "T.md", root / "docs/work-tracker/MSR-002-x.md")
+    _add_tracker(root, "REFRESHED-7")
+def _pl_plain(root, tool, base, out_, mark_):
+    _add_tracker(root, "REFRESHED-P")
+def _ok1(g): return _case_clean(g) and _refreshed(g, "REFRESHED-1")
+def _ok2(g):     # the tool the branch brings differs from the copy: the hook says so once, after the checkout and the merge, and not back on the trunk (RV-2300)
+    line_ = f"the hooks' copy is {_VERSION}, and the repository's tool differs from it: run --install-hook"
+    return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and _refreshed(g, "REFRESHED-2")
+            and g["sw"][1].splitlines().count(line_) == 1 and g["merge"][1].splitlines().count(line_) == 1 and "run --install-hook" not in g["back"][1])
+def _ok3(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-3") and "<!--<script>" not in g["snap1"]["page"] + g["snap3"]["page"] and "</script><b" not in g["snap1"]["page"] + g["snap1"]["viewtext"]
+                     and "\\u003c!--\\u003cscript\\u003e" in g["snap1"]["page"] and "<img" not in g["snap1"]["viewtext"] and "\\u003cimg" in g["snap1"]["viewtext"])
+def _ok4(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-4") and 'BLOB=""' in g["snap1"]["page"] and "javascript:alert(1)//" not in g["snap1"]["page"] and "safeUrl" in g["snap1"]["page"]
+                     and "[a](javascript:alert(1))" in g["snap1"]["viewtext"])
+def _ok5(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and "not inside the repository" in g["sw"][1] and "not inside the repository" in g["merge"][1]
+                     and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
+def _ok6(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and g["outside_same"] and (g["out"] / "target.html").read_text(encoding="utf-8") == "SENTINEL"
+                     and "MSR-009.js" in g["snap1"]["views"] and "index.html (a symlink" in g["sw"][1] and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
+def _ok6b(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and (g["root"] / "docs/work-tracker/index.html").read_text(encoding="utf-8") == "STALE PAGE"
+                      and "MSR-009.js" in g["snap1"]["views"] and "index.html (git tracks it)" in g["sw"][1] and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
+def _ok7(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and g["outside_same"] and _refreshed(g, "REFRESHED-7") and "OUTSIDE-TRACKER" not in g["snap1"]["page"] + g["snap1"]["viewtext"] + g["snap3"]["page"]
+                     and "MSR-002.js" not in g["snap1"]["views"] and "MSR-002-x.md" in g["sw"][1] and len(g["sw"][1].splitlines()) == 2)
+_CASE_TABLE = [("1", "a branch that brings an executable deriver", _pl_deriver, _ok1, False), ("2", "a branch that changes `tools/shoalmark/` and its PIN to match", _pl_tool, _ok2, False),
+               ("3", "a tracker whose text carries a script", _pl_script, _ok3, False), ("4", "a `javascript:` link — in a tracker and as the forge prefix", _pl_link, _ok4, False),
+               ("5", "a tracker folder outside the repository", _pl_outside, _ok5, False), ("6", "`index.html` committed as a symlink", _pl_page_link, _ok6, True),
+               ("6b", "`index.html` committed as a file git tracks", _pl_page_tracked, _ok6b, False), ("7", "a tracker committed as a symlink", _pl_tracker_link, _ok7, True)]
+_SEEN = {}
+for key_, what_, pl_, ok_, needs_link_ in _CASE_TABLE:
+    if needs_link_ and not _SYMLINKS:
+        _skipped(f"FM-006 · a private security report · case {key_}, {what_}", 2, "this system makes no symlink here"); continue
+    with tempfile.TemporaryDirectory() as d:
+        g_ = _hook_scenario(d, pl_); _SEEN[key_] = dict(ok=ok_(g_), saw=_saw(g_), out=g_["sw"][1][:160])
+        check(f"FM-006 · a private security report · case {key_}: {what_} — checked out, left, and merged with the copy's hooks in place, it runs nothing, writes nothing outside the tracker folder, "
+              f"and the board inside it is refreshed where it can be (saw {_saw(g_)}; hook said {g_['sw'][1][:120]!r})", _SEEN[key_]["ok"])
+        rm_git(g_["root"])
+    if not _HAVE_OLD:
+        continue
+    with tempfile.TemporaryDirectory() as d:
+        c_ = _hook_scenario(d, pl_, control="old")
+        said_ = {"1": f"marker {c_['marker']}", "2": f"marker {c_['marker']}", "3": f"`<!--<script>` in the page: {'<!--<script>' in (c_['snap1']['page'] or '')}", "4": f"the forge prefix in the page: {re.findall(r'BLOB=[^,]*', c_['snap1']['page'] or '')[:1]}",
+                 "5": f"the folder beyond the repository changed: {not c_['outside_same']}", "6": f"the file the link points to: {(c_['out'] / 'target.html').read_text(encoding='utf-8')[:12] if (c_['out'] / 'target.html').exists() else None!r}",
+                 "6b": f"the tracked page: {(c_['root'] / 'docs/work-tracker/index.html').read_text(encoding='utf-8')[:14]!r}", "7": f"the outside tracker in the board: {'OUTSIDE-TRACKER' in (c_['snap1']['page'] or '')}"}[key_]
+        check(f"FM-006 · a private security report · case {key_}, the control: with the tool as it was and its own hooks — which run the working tree's tool after a checkout and a merge — the same check FAILS (it saw {said_})", not ok_(c_))
+        rm_git(c_["root"])
+if not _HAVE_OLD:
+    _skipped("FM-006 · a private security report · the cases' controls", len(_CASE_TABLE), f"this clone does not hold {_OLD_REV}")
+# case 2, the one the working tree's tool being the new tool does not protect: the hook pointed at it instead of the copy runs what the branch changed
+with tempfile.TemporaryDirectory() as d:
+    c_ = _hook_scenario(d, _pl_tool, control="repoint")
+    check(f"FM-006 · a private security report · case 2, the control with the tool vendored now: the hooks pointed at the working tree's tool instead of the copy run the changed tool — the marker appears, the check fails (saw {_saw(c_)})", not _ok2(c_) and c_["marker"])
+    rm_git(c_["root"])
+
+
+# a copy that hangs — here its main thread waits, as it did on a lock — is stopped by its own bound, and the hook prints one line and returns: the checkout never waits on it
+with tempfile.TemporaryDirectory() as d:
+    def _steps_hang(g):
+        copy_ = g["root"] / ".git/shoalmark-trusted/shoalmark.py"; txt_ = copy_.read_text(encoding="utf-8")
+        hang_ = "        trackers = load_trackers()\n        no_derived(trackers)"
+        assert hang_ in txt_
+        copy_.write_text(txt_.replace(hang_, "        __import__('time').sleep(25)\n" + hang_, 1), encoding="utf-8")        # the copy's main thread waits, as it did on a lock
+        env_ = dict(_ENV, SHOALMARK_BOARD_SECONDS="2")
+        t0_ = time.monotonic(); g["hung"] = _hooked(g["root"], "switch", "-q", "payload", env=env_); g["hung_s"] = time.monotonic() - t0_
+        g["hung_at"] = subprocess.run(["git", "-C", str(g["root"]), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    g_ = _hook_scenario(d, _pl_plain, steps=_steps_hang)
+    check(f"FM-006 · a private security report · a copy that hangs is bounded: a copy whose main thread waits 25 s is stopped by its own bound (2 s here, 35 s by default), the hook prints one line, and the checkout succeeds "
+          f"in {g_['hung_s']:.0f} s on the branch asked for (saw {g_['hung'][1]!r})",
+          g_["hung"][0] == 0 and g_["hung_at"] == "payload" and g_["hung_s"] < 15 and g_["hung"][1] == "shoalmark: the board is not refreshed (exit 4): the board's run took longer than 2 s and was stopped")
+    rm_git(g_["root"])
+# …and what the copy and its hooks do beside the cases: a version drift, a re-run, two worktrees, a copy that fails, a missing copy, the default branch, a pin that fails, `core.hooksPath`
+def _pl_drift(root, tool, base, out_, mark_):
+    (tool / "VERSION").write_text("9.9.9\n", encoding="utf-8")
+    (tool / "PIN").write_text("\n".join(re.sub(r"^# shoalmark \d+\.\d+\.\d+", "# shoalmark 9.9.9", l_) if l_.startswith("# shoalmark") else f"{fm.digest(tool / 'VERSION')}  VERSION" if l_.endswith("  VERSION") else l_
+                                          for l_ in (tool / "PIN").read_text(encoding="utf-8").splitlines()) + "\n", encoding="utf-8")
+    _add_tracker(root, "REFRESHED-D")
+with tempfile.TemporaryDirectory() as d:
+    g_ = _hook_scenario(d, _pl_drift); line_ = f"the hooks' copy is {_VERSION}, the repository pins 9.9.9: run --install-hook"
+    check(f"FM-006 · a private security report · a version drift: where the repository pins another version than the copy's own, the hook still refreshes the board and prints exactly `{line_}` — after the checkout and after the merge, "
+          f"and nothing the branch brought ran (saw {g_['sw'][1][-150:]!r})",
+          _hook_ops_ok(g_) and not g_["marker"] and line_ in g_["sw"][1].splitlines() and line_ in g_["merge"][1].splitlines() and line_ not in g_["back"][1].splitlines()
+          and "REFRESHED-D" in g_["snap1"]["page"] and "MSR-009.js" in g_["snap1"]["views"] and "board: file" in g_["sw"][1] and g_["dirty1"] == g_["dirty3"] == [])
+    rm_git(g_["root"])
+def _steps_copy(g):
+    root, tool, base = g["root"], g["tool"], g["base"]; common = root / ".git"; copy_ = common / "shoalmark-trusted"; x = {}
+    # a re-run of `--install-hook` replaces the copy: tamper with it, run again
+    (copy_ / "shoalmark.py").write_text((copy_ / "shoalmark.py").read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8"); (copy_ / "COPY").unlink()
+    gone_theme_ = next((p_ for p_ in (copy_ / "brand").rglob("*") if p_.is_file()), None); gone_theme_.unlink() if gone_theme_ else None
+    x["rerun"] = _tool_run(tool / "shoalmark.py", root, "--install-hook")
+    x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and (not gone_theme_ or gone_theme_.is_file()) and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
+    # two worktrees share the one copy: a second one, made with the hooks running, gets its board from it — and a stub put in its place answers in both
+    x["wt"] = _hooked(root, "worktree", "add", "-q", str(base / "wt2"), "-b", "other")
+    wt2 = base / "wt2"
+    x["wt_board"] = (wt2 / "docs/work-tracker/index.html").is_file() and "BASE" in (wt2 / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+    x["wt_common"] = subprocess.run(["git", "-C", str(wt2), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    x["copies"] = sorted(p_.relative_to(base).as_posix() for p_ in base.rglob(fm.COPY_DIR) if p_.is_dir())
+    (copy_ / "shoalmark.py").write_text("import sys\nprint('STUB-COPY-RAN')\n", encoding="utf-8")
+    x["stub_main"] = _hooked(root, "switch", "-q", g["trunk"]); x["stub_wt"] = _hooked(wt2, "switch", "-q", "-c", "other2")
+    # a copy that fails: one line, and the checkout still succeeds
+    (copy_ / "shoalmark.py").write_text("import sys\nprint('boom')\nprint('and more')\nsys.exit(7)\n", encoding="utf-8")
+    x["fail"] = _hooked(root, "switch", "-q", "payload"); x["fail_at"] = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    # and a copy that is not there
+    shutil.rmtree(copy_); x["missing"] = _hooked(root, "switch", "-q", g["trunk"]); x["missing_at"] = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    g["x"] = x
+with tempfile.TemporaryDirectory() as d:
+    g_ = _hook_scenario(d, _pl_plain, steps=_steps_copy); x_ = g_["x"]
+    check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file, a missing marker and a missing theme file are as the pinned tool has them again", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
+    check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had its board from it, its git directory is the first one's, there is one `shoalmark-trusted` in all, "
+          f"and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
+          x_["wt"][0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve() and x_["copies"] == ["repo/.git/shoalmark-trusted"]
+          and "STUB-COPY-RAN" in x_["stub_main"][1] and "STUB-COPY-RAN" in x_["stub_wt"][1] and x_["stub_main"][0] == 0 and x_["stub_wt"][0] == 0)
+    check(f"FM-006 · a private security report · a copy that fails prints one line and the checkout still succeeds — exit 0, on the branch asked for (saw {x_['fail'][1]!r}); a copy that is not there is one line too, "
+          f"naming `--install-hook` (saw {x_['missing'][1]!r})",
+          x_["fail"][0] == 0 and x_["fail_at"] == "payload" and len(x_["fail"][1].splitlines()) == 1 and x_["fail"][1].startswith("shoalmark: the board is not refreshed (exit 7)") and x_["fail"][1].endswith("and more")
+          and x_["missing"][0] == 0 and x_["missing_at"] == g_["trunk"] and len(x_["missing"][1].splitlines()) == 1 and "run --install-hook" in x_["missing"][1])
+    rm_git(g_["root"]); subprocess.run(["git", "-C", str(g_["base"] / "wt2"), "--version"], capture_output=True) if False else None
+# the default branch: `--install-hook` names the commit and the branch it took the copy from, and warns — still installing — where that is not the default branch, or where that cannot be told
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    c0_, o0_, e0_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+    git(root, "update-ref", "refs/remotes/origin/main", "HEAD"); git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+    git(root, "switch", "-q", "-c", "feature"); shutil.rmtree(root / ".git/shoalmark-trusted")
+    c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); installed_ = (root / ".git/shoalmark-trusted/shoalmark.py").is_file()
+    git(root, "switch", "-q", trunk_ if trunk_ == "main" else "-c", *(["main"] if trunk_ != "main" else [])) if trunk_ == "main" else git(root, "branch", "-m", trunk_, "main")
+    c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+    check(f"FM-006 · a private security report · `--install-hook` says which commit and branch it took the copy from; where the default branch cannot be told it says so and warns, and installs (saw {e0_.strip()[:200]!r})",
+          c0_ == 0 and f"at {sha_} on {trunk_}" in o0_ and "the default branch cannot be told here" in e0_ and "run --install-hook on your default branch" in e0_ and (root / ".git/shoalmark-trusted/shoalmark.py").is_file()
+          and "this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool" in o0_)
+    check(f"FM-006 · a private security report · `--install-hook` on a branch that is not the default branch warns, names it and the default branch, and still installs (saw {e1_.strip()[:230]!r})",
+          c1_ == 0 and installed_ and "warning: feature is not main, the default branch" in e1_ and "carries that branch's tool: run --install-hook on main" in e1_ and "on feature" in o1_)
+    check("FM-006 · a private security report · …and on the default branch it says which commit and branch, and warns of nothing", c2_ == 0 and "warning" not in e2_ and "on main" in o2_ and e2_.strip() == "")
+    rm_git(root)
+# a pinned copy whose file differs from its PIN is refused — the hooks' copy is not written, nor the hooks that run it
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"], cwd=str(base_), capture_output=True, env=_ENV, check=True)
+    (root / "tools/shoalmark/shoalmark.py").write_text((root / "tools/shoalmark/shoalmark.py").read_text(encoding="utf-8") + "\n# changed in place\n", encoding="utf-8")
+    c_, o_, e_ = _tool_run(root / "tools/shoalmark/shoalmark.py", root, "--install-hook")
+    check(f"FM-006 · a private security report · a pinned copy whose file differs from its PIN is refused: exit 4, the hooks' copy is not written, and no hook — every one runs the copy (RV-2300) (saw {e_.strip()[:200]!r})",
+          c_ == fm.EXIT_LINT and "differs from its PIN" in e_ and "not written" in e_ and "no hook is written" in e_ and not (root / ".git/shoalmark-trusted").exists()
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == [])
+    rm_git(root)
+# `core.hooksPath` is respected: the hooks are where git looks for them — here a folder outside the repository (one inside the working tree is refused) — and run the copy in the git directory
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); hp_ = base_ / "hooks"
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    git(root, "config", "core.hooksPath", str(hp_)); git(root, "switch", "-q", "-c", "other")
+    c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); sw_ = _hooked(root, "switch", "-q", "-")
+    check(f"FM-006 · a private security report · `core.hooksPath` is respected: the checkout and merge hooks are written where it points, outside the repository, not in `.git/hooks`, and a checkout runs the copy from there (saw {sw_[1][:100]!r})",
+          c_ == 0 and (hp_ / "post-checkout").is_file() and (hp_ / "post-merge").is_file() and (hp_ / "post-rewrite").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
+          and sw_[1].startswith("board: file:") and "BASE" in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
+    rm_git(root)
+
+# --- RV-2300 (a private security report): every hook `--install-hook` writes runs the copy — the commit's hooks too — and none runs the tree's tool ----------------
+# A scratch repository with the tool at its root, as this repository has it. Inert markers only: "the tree's tool ran" is a file that would appear beside the repository,
+# "a hook wrote the copy" is the copy's hash, changed. Each control is the same check beside 79be49d's tool, whose commit hooks ran the working tree's tool: it must fail there.
+_RV_REV = "79be49d"
+_HAVE_RV = _has_rev(_RV_REV)
+_HOOK_NAMES = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-checkout", "post-merge", "post-rewrite")
+def _copy_hash(root):
+    """The hooks' copy, every file of it with its name, as one hash — None where it is not there."""
+    c_ = root / ".git" / fm.COPY_DIR
+    return hashlib.sha1(b"".join(p_.relative_to(c_).as_posix().encode() + b"\0" + p_.read_bytes() for p_ in sorted(c_.rglob("*")) if p_.is_file())).hexdigest() if c_.is_dir() else None
+def _deriver(marks, name):
+    """A deriver that derives nothing and, run, leaves the marker `name` beside the repository — inert."""
+    return f'#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nopen({str(marks / name)!r}, "a").write("ran\\n")\nsys.stdout.write("{{}}")\n'
+def _put_deriver(root, marks, name):
+    d_ = root / "docs/work-tracker/derive"; d_.write_text(_deriver(marks, name), encoding="utf-8"); d_.chmod(0o755)
+    return d_
+def _root_repo(base, rev=None, deriver=None):
+    """A scratch repository with the tool at its root — as it is here, or as `rev` had it — one tracker and its INDEX.md, and the deriver `deriver` names where it names
+    one, committed, and `--install-hook` run from that tool. The markers setup's own runs left are cleared."""
+    base = Path(base).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE")
+    if rev:
+        _old_tree(root, rev)
+    else:
+        for rel_ in fm.copy_files():
+            (root / rel_).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel_, root / rel_)
+    if deriver:
+        _put_deriver(root, marks, deriver)
+    _tool_run(root / "shoalmark.py", root); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    inst = _tool_run(root / "shoalmark.py", root, "--install-hook")
+    for m_ in marks.iterdir():
+        m_.unlink()
+    fm.configure(HERE)
+    return root, marks, inst
+def _tree_tool_changed(root, marks):
+    """The tree's tool changed as a branch can change it: run, it leaves a marker beside the repository and adds a comment line to the hooks' copy — both inert."""
+    src_, copy_ = root / "shoalmark.py", root / ".git" / fm.COPY_DIR / "shoalmark.py"
+    add_ = (f"open({str(marks / 'tool')!r}, 'a').write('ran\\n')\n"
+            f"if __import__('os').path.isfile({str(copy_)!r}): open({str(copy_)!r}, 'a').write('# the tree tool wrote this line\\n')\n")
+    src_.write_text(src_.read_text(encoding="utf-8").replace("import tempfile\n", "import tempfile\n" + add_, 1), encoding="utf-8")
+def _hook_changed(root, said):
+    """A tracker's hook changed — what INDEX.md shows, so the commit's hook regenerates and stages it."""
+    t_ = root / "docs/work-tracker/MSR-001-x.md"; t_.write_text(re.sub(r'hook: "[^"]*"', f'hook: "{said}"', t_.read_text(encoding="utf-8")), encoding="utf-8")
+def _head(root):
+    return subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+def _rv_hooks(rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev)
+        texts_ = {n_: (root / ".git/hooks" / n_).read_text(encoding="utf-8") if (root / ".git/hooks" / n_).is_file() else "" for n_ in _HOOK_NAMES}
+        record_ = (root / ".git" / fm.COPY_DIR / "COPY").read_text(encoding="utf-8") if (root / ".git" / fm.COPY_DIR / "COPY").is_file() else ""
+        rm_git(root)
+    return (inst[0] == 0 and all('/shoalmark-trusted/shoalmark.py"' in t_ and ' -I "$copy" --root "$root" ' in t_ for t_ in texts_.values())
+            and not any(re.search(r"\b(python3?|py)\s+(\S*/)?shoalmark\.py\b", t_) for t_ in texts_.values()) and f"cmd: {fm.PY} shoalmark.py\n" in record_), texts_["pre-commit"]
+ok_, _pc = _rv_hooks()
+check("FM-006 · a private security report · RV-2300 · every hook `--install-hook` writes — `pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-checkout`, `post-merge` and `post-rewrite` — runs the copy in the git "
+      "directory, with `-I`, against the worktree they run in; none names the tree's tool, and the copy records the command a person runs, for its messages", ok_)
+if _HAVE_RV:
+    ok_, _pc = _rv_hooks(_RV_REV)
+    check(f"FM-006 · a private security report · RV-2300 · …the control: beside {_RV_REV}'s tool the same check FAILS — its commit hooks run the working tree's tool (saw {[l_ for l_ in _pc.splitlines() if 'shoalmark.py' in l_][:1]!r})", not ok_)
+def _rv_commit(rev=None):
+    """A branch that changes the tree's tool, committed with the hooks running — then an explicit run of the tree's tool, as a person, an agent or CI runs it."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); h0_ = _copy_hash(root)
+        git(root, "switch", "-q", "-c", "change"); _tree_tool_changed(root, marks); _hook_changed(root, "the tool changed"); git(root, "add", "-A")
+        c_ = _hooked(root, "commit", "-qm", "the tool changed"); staged_ = subprocess.run(["git", "-C", str(root), "show", "--name-only", "--format=", "HEAD"], capture_output=True, text=True, env=_ENV).stdout
+        g_ = dict(code=c_[0], said=c_[1], marker=(marks / "tool").exists(), copy_same=_copy_hash(root) == h0_, staged="docs/work-tracker/INDEX.md" in staged_)
+        _tool_run(root / "shoalmark.py", root, "--check"); g_["explicit"] = (marks / "tool").exists()
+        (root / "VERSION").write_text("9.9.9\n", encoding="utf-8"); git(root, "add", "-A"); c2_ = _hooked(root, "commit", "-qm", "another version"); g_.update(code2=c2_[0], said2=c2_[1])
+        rm_git(root)
+    return g_
+_LINE2 = f"the hooks' copy is {_VERSION}, and the repository's tool differs from it: run --install-hook"
+_LINE1 = f"the hooks' copy is {_VERSION}, the repository pins 9.9.9: run --install-hook"
+def _rv_commit_ok(g):
+    return g["code"] == 0 and not g["marker"] and g["copy_same"] and g["staged"] and g["explicit"]
+def _rv_drift_ok(g):
+    return g["code"] == 0 and g["said"].splitlines().count(_LINE2) == 3 and g["code2"] == 0 and g["said2"].splitlines().count(_LINE1) == 3
+g_ = _rv_commit()
+check(f"FM-006 · a private security report · RV-2300 · a commit's hooks run the copy, never the tree's tool: a commit that brings a changed tool runs nothing of it, the copy is as it was, "
+      f"and INDEX.md is regenerated and staged by the copy; an explicit run runs the tree's tool, as ever (saw marker {g_['marker']}, copy unchanged {g_['copy_same']}, explicit {g_['explicit']})", _rv_commit_ok(g_))
+check(f"FM-006 · a private security report · RV-2300 · where the tree's tool differs from the copy, each commit hook judges with the copy and says so once: `{_LINE2}` where the versions match, "
+      f"and the filed line `{_LINE1}` where they do not (saw {g_['said'][:160]!r})", _rv_drift_ok(g_))
+if _HAVE_RV:
+    c_ = _rv_commit(_RV_REV)
+    check(f"FM-006 · a private security report · RV-2300 · …the control: beside {_RV_REV}'s tool both checks FAIL — its commit hooks run the changed tool (saw marker {c_['marker']}, copy unchanged {c_['copy_same']}) "
+          f"and say no drift line", not _rv_commit_ok(c_) and not _rv_drift_ok(c_))
+def _rv_writes(rev=None):
+    """What a commit's hook writes: INDEX.md committed as a symlink to a file beside the repository, then a configuration whose tracker folder is inside the git directory."""
+    g_ = {}
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); out_ = marks / "outside.md"; out_.write_text("SENTINEL", encoding="utf-8")
+        if _SYMLINKS:
+            git(root, "switch", "-q", "-c", "link"); (root / "docs/work-tracker/INDEX.md").unlink(); os.symlink(out_, root / "docs/work-tracker/INDEX.md")
+            _hook_changed(root, "through the link"); git(root, "add", "-A"); h_ = _head(root); c_ = _hooked(root, "commit", "-qm", "through the link")
+            g_.update(link_code=c_[0], link_said=c_[1], link_out=out_.read_text(encoding="utf-8"), link_head=_head(root) == h_)
+            git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "-")
+        c_t = root / "shoalmark.toml"; c_t.write_text(re.sub(r'tracker_dir = "[^"]*"', f'tracker_dir = ".git/shoalmark-trusted"', c_t.read_text(encoding="utf-8")), encoding="utf-8")
+        git(root, "add", "-A"); h0_, h_ = _copy_hash(root), _head(root); c_ = _hooked(root, "commit", "-qm", "the tracker folder in the git directory")
+        g_.update(git_code=c_[0], git_said=c_[1], git_copy_same=_copy_hash(root) == h0_)
+        rm_git(root)
+    return g_
+_LINK_LINE = "shoalmark: the hooks' copy stopped: it would write docs/work-tracker/INDEX.md, a symlink, or reached through one — the commit is refused"
+_GITDIR_LINE = "the tracker folder .git/shoalmark-trusted is inside the git directory, where the hooks and their copy are — nothing is written, and the commit is refused"
+def _rv_link_ok(g):
+    return g["link_code"] != 0 and g["link_said"].splitlines()[-1:] == [_LINK_LINE] and g["link_out"] == "SENTINEL" and g["link_head"]
+def _rv_gitdir_ok(g):
+    return g["git_code"] != 0 and g["git_said"].splitlines()[-1:] == [_GITDIR_LINE] and g["git_copy_same"]
+g_ = _rv_writes()
+if _SYMLINKS:
+    check(f"FM-006 · a private security report · RV-2300 · what a commit's hook writes stays inside the repository and never goes through a symlink: INDEX.md committed as a symlink to a file beside it "
+          f"refuses the commit with one line, and that file is as it was (saw {g_['link_said'][-170:]!r})", _rv_link_ok(g_))
+else:
+    _skipped("FM-006 · a private security report · RV-2300 · a commit's hook writes through no symlink", 1, "this system makes no symlink here")
+check(f"FM-006 · a private security report · RV-2300 · no hook writes the copy: a configuration whose tracker folder is inside the git directory refuses the commit with one line, "
+      f"and the copy is as it was (saw {g_['git_said'][-170:]!r})", _rv_gitdir_ok(g_))
+if _HAVE_RV:
+    c_ = _rv_writes(_RV_REV)
+    check(f"FM-006 · a private security report · RV-2300 · …the control: beside {_RV_REV}'s tool both checks FAIL — its commit hook writes through the link (the file beside it says "
+          f"{c_.get('link_out', 'SENTINEL')[:20]!r}) and into the copy (copy unchanged {c_['git_copy_same']})", (not _SYMLINKS or not _rv_link_ok(c_)) and not _rv_gitdir_ok(c_))
+def _rv_bound(rev=None):
+    """A commit's hook whose copy does not finish — its main thread waits — under a 2 s bound; then a copy that is not there."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); copy_ = root / ".git" / fm.COPY_DIR / "shoalmark.py"; txt_ = copy_.read_text(encoding="utf-8")
+        wait_ = "    COMMITTING = True\n    problems = session_problems()\n"
+        assert wait_ in txt_
+        copy_.write_text(txt_.replace(wait_, "    COMMITTING = True\n    __import__('time').sleep(25)\n    problems = session_problems()\n", 1), encoding="utf-8")
+        h_ = _head(root); t0_ = time.monotonic(); c_ = _hooked(root, "commit", "--allow-empty", "-qm", "bounded", env=dict(_ENV, SHOALMARK_BOARD_SECONDS="2"))
+        g_ = dict(code=c_[0], said=c_[1], took=time.monotonic() - t0_, head_same=_head(root) == h_)
+        shutil.rmtree(root / ".git" / fm.COPY_DIR); c_ = _hooked(root, "commit", "--allow-empty", "-qm", "no copy"); g_.update(gone_code=c_[0], gone_said=c_[1], gone_head=_head(root) == h_)
+        rm_git(root)
+    return g_
+_BOUND_LINE = "shoalmark: the hook's run took longer than 2 s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer"
+_GONE_LINE = "shoalmark: the commit is refused — the hooks' copy of the tool is not in the git directory: run --install-hook"
+def _rv_bound_ok(g):
+    return g["code"] != 0 and g["took"] < 15 and g["said"].splitlines()[-1:] == [_BOUND_LINE] and g["head_same"]
+def _rv_gone_ok(g):
+    return g["gone_code"] != 0 and g["gone_said"] == _GONE_LINE and g["gone_head"]
+g_ = _rv_bound()
+check(f"FM-006 · a private security report · RV-2300 · the 35-second bound covers a commit's hooks too, and there it fails closed: a copy whose main thread waits 25 s is stopped by its bound "
+      f"(2 s here), and the commit is refused with one line naming `SHOALMARK_BOARD_SECONDS` as the way to raise it, in {g_['took']:.0f} s (saw {g_['said'][-120:]!r})", _rv_bound_ok(g_))
+check(f"FM-006 · a private security report · RV-2300 · a commit's hook whose copy is not in the git directory refuses the commit with one line naming `--install-hook` (saw {g_['gone_said']!r})", _rv_gone_ok(g_))
+if _HAVE_RV:
+    c_ = _rv_bound(_RV_REV)
+    check(f"FM-006 · a private security report · RV-2300 · …the control: beside {_RV_REV}'s tool both checks FAIL — its commit hooks run the tree's tool, so the commit is made whatever the copy does "
+          f"(saw exits {c_['code']} and {c_['gone_code']})", not _rv_bound_ok(c_) and not _rv_gone_ok(c_))
+if not _HAVE_RV:
+    _skipped("FM-006 · a private security report · RV-2300 · the controls", 4, f"this clone does not hold {_RV_REV}")
+fm.configure(HERE)
+
+# --- No deriver in hooks (the Owner's ruling filed in FM-006): a hook's run of the copy starts no deriver, and the commit's hook leaves INDEX.md as staged ------------------
+# A repository with a deriver that leaves an inert marker when it runs. Each control is the same operation beside fc5f197's tool, whose `--install-hook` accepted a deriver and
+# whose commit hook ran it: only `pre-commit` ever started one, so the operations that run no `pre-commit` — a clean merge, a cherry-pick, a rebase — hold beside it as well.
+_ND_REV = "fc5f197"
+_HAVE_ND = _has_rev(_ND_REV)
+_ND_LINE = (f"shoalmark: the deriver runs only in explicit runs — INDEX.md and the files it derives are left as staged: run `{fm.PY} shoalmark.py` before committing; "
+            "CI's `--check` holds them")      # the filed line, written out; the interpreter's name is this system's
+def _nd_op(op, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev, deriver="deriver")
+        trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        (root / "conflict.txt").write_text("base\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a file both sides change")
+        git(root, "switch", "-q", "-c", "side"); _hook_changed(root, "changed on the side"); (root / "conflict.txt").write_text("side\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "the side"); git(root, "switch", "-q", trunk_)
+        index0_ = (root / "docs/work-tracker/INDEX.md").read_bytes()
+        if op == "commit":
+            _hook_changed(root, "changed here"); git(root, "add", "-A"); c_ = _hooked(root, "commit", "-qm", "a tracker changed")
+        elif op == "merge":
+            (root / "trunk.txt").write_text("trunk\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves on")
+            c_ = _hooked(root, "merge", "--no-ff", "--no-edit", "side")
+        elif op == "conflicted":
+            (root / "conflict.txt").write_text("trunk\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves on")
+            stop_ = _hooked(root, "merge", "--no-edit", "side"); (root / "conflict.txt").write_text("resolved\n", encoding="utf-8"); git(root, "add", "conflict.txt")
+            c_ = _hooked(root, "commit", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, c_[1])
+        elif op == "cherry-pick":
+            c_ = _hooked(root, "cherry-pick", "side")
+        else:
+            git(root, "switch", "-q", "-c", "work"); (root / "work.txt").write_text("work\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "work")
+            c_ = _hooked(root, "rebase", "side")
+        head_index_ = subprocess.run(["git", "-C", str(root), "show", "HEAD:docs/work-tracker/INDEX.md"], capture_output=True, env=_ENV).stdout
+        g_ = dict(code=c_[0], said=c_[1], ran=(marks / "deriver").exists(), kept=head_index_ == index0_ and (root / "docs/work-tracker/INDEX.md").read_bytes() == index0_)
+        rm_git(root)
+    return g_
+def _nd_ok(g, op):
+    return g["code"] == 0 and not g["ran"] and g["kept"] and (op not in ("commit", "conflicted") or g["said"].splitlines().count(_ND_LINE) == 1)
+_ND_OPS = (("commit", "a commit that changes a tracker — `pre-commit` says it in one line"), ("merge", "a clean merge"),
+           ("conflicted", "a conflicted merge, at its resolving commit — `pre-commit` says it in one line"), ("cherry-pick", "a cherry-pick"), ("rebase", "a rebase"))
+for op_, what_ in _ND_OPS:
+    g_ = _nd_op(op_)
+    check(f"FM-006 · a private security report · no deriver in hooks · {what_}: in a repository with a deriver, no hook starts it, and INDEX.md is left as staged "
+          f"(saw exit {g_['code']}, deriver ran {g_['ran']}, INDEX.md kept {g_['kept']})", _nd_ok(g_, op_))
+    if _HAVE_ND and op_ in ("commit", "conflicted"):
+        c_ = _nd_op(op_, _ND_REV)
+        check(f"FM-006 · a private security report · no deriver in hooks · …the control: {op_} beside {_ND_REV}'s tool FAILS — its commit hook ran the deriver it had accepted and rewrote "
+              f"INDEX.md (saw deriver ran {c_['ran']}, INDEX.md kept {c_['kept']})", not _nd_ok(c_, op_))
+if not _HAVE_ND:
+    _skipped("FM-006 · a private security report · no deriver in hooks · the controls", 2, f"this clone does not hold {_ND_REV}")
+check(f"FM-006 · a private security report · no deriver in hooks · the line a commit's hook says where it starts no deriver names the tool's command and CI's `--check`: `{_ND_LINE}`",
+      "runs only in explicit runs" in _ND_LINE and f"run `{fm.PY} shoalmark.py` before committing" in _ND_LINE and "CI's `--check` holds them" in _ND_LINE)
+# the hooks folder: `--install-hook` refuses one a branch can change — inside a working tree, outside the git directory — and writes no hook and no copy
+def _hooks_folder(kind, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); at_ = root
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "in-tree":
+            git(root, "config", "core.hooksPath", "githooks"); folder_ = root / "githooks"
+        elif kind == "link":
+            (root / "inside").mkdir(); os.symlink(root / "inside", base / "hooks-link"); git(root, "config", "core.hooksPath", str(base / "hooks-link")); folder_ = root / "inside"
+        elif kind == "worktree":
+            git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); at_ = base / "wt"; folder_ = root / ".git/hooks"
+        elif kind == "worktree-relative":       # a relative `core.hooksPath` resolves in the working tree of whichever worktree a hook runs in
+            git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); git(root, "config", "core.hooksPath", "githooks"); at_ = base / "wt"; folder_ = base / "wt/githooks"
+        elif kind == "nested-relative":         # `../hooks` lies outside the main working tree, and inside it where a linked worktree nested in it resolves it
+            git(root, "worktree", "add", "-q", str(root / "nested/wt"), "-b", "wt"); git(root, "config", "core.hooksPath", "../hooks"); folder_ = base / "hooks"
+        else:
+            folder_ = root / ".git/hooks"
+        if rev:
+            _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
+        else:
+            tool_ = HERE / "shoalmark.py"
+        c_, o_, e_ = _tool_run(tool_, at_, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), hooks=sorted(p_.name for p_ in folder_.iterdir() if not p_.name.endswith(".sample")) if folder_.is_dir() else [],
+                  copy=(root / ".git" / fm.COPY_DIR / "shoalmark.py").is_file())
+        rm_git(root)
+    return g_
+def _hooks_refused(g):
+    return g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and "where a branch can change the hooks themselves" in g["err"] and "§Sessions" in g["err"] and g["hooks"] == [] and not g["copy"]
+def _hooks_written(g):
+    return g["code"] == 0 and "pre-commit" in g["hooks"] and "post-rewrite" in g["hooks"] and g["copy"]
+g_ = _hooks_folder("in-tree")
+check(f"FM-006 · a private security report · no deriver in hooks · `--install-hook` refuses a `core.hooksPath` inside the working tree, with one line naming the README's hook-runner paragraph, "
+      f"and writes no hook and no copy (saw {g_['err'][:150]!r})", _hooks_refused(g_))
+if _SYMLINKS:
+    g_ = _hooks_folder("link")
+    check(f"FM-006 · a private security report · no deriver in hooks · …and a hooks folder outside the repository that is a symlink into the working tree, resolved (saw {g_['err'][:110]!r})", _hooks_refused(g_))
+else:
+    _skipped("FM-006 · a private security report · no deriver in hooks · a hooks folder that is a symlink into the tree", 1, "this system makes no symlink here")
+for kind_, what_ in (("worktree-relative", "a linked worktree with a relative `core.hooksPath`, which resolves inside the working tree a hook runs in"),
+                     ("nested-relative", "a relative `core.hooksPath` that lies outside the working tree installed from, and inside it where a linked worktree nested in it resolves it")):
+    g_ = _hooks_folder(kind_)
+    check(f"FM-006 · a private security report · no deriver in hooks · …and {what_}: judged against every working tree, refused (saw {g_['err'][:110]!r})", _hooks_refused(g_))
+g_, w_ = _hooks_folder("default"), _hooks_folder("worktree")
+check(f"FM-006 · a private security report · no deriver in hooks · the default `.git/hooks` is written, and so is a linked worktree's, the common git directory's (saw {g_['hooks']}, {w_['hooks']})",
+      _hooks_written(g_) and _hooks_written(w_))
+if _HAVE_ND:
+    c_ = _hooks_folder("in-tree", _ND_REV)
+    check(f"FM-006 · a private security report · no deriver in hooks · …the control: beside {_ND_REV}'s tool a `core.hooksPath` inside the working tree is written into (saw {c_['hooks']})", not _hooks_refused(c_))
+# the off-main warning names a PIN only where the repository pins one
+def _off_main(pinned, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); fm.configure(HERE)
+        if pinned:
+            subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+            tool_ = root / "tools/shoalmark/shoalmark.py"
+        elif rev:
+            _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
+        else:
+            tool_ = HERE / "shoalmark.py"
+        git(root, "add", "-A"); git(root, "commit", "-qm", "base"); git(root, "update-ref", "refs/remotes/origin/main", "HEAD"); git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+        git(root, "switch", "-q", "-c", "feature"); c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
+        rm_git(root)
+    return c_, [l_ for l_ in e_.splitlines() if l_.startswith("warning:")]
+c0_, w0_ = _off_main(False); c1_, w1_ = _off_main(True)
+_PIN_SAID = "the PIN this copy was checked against comes from the same tree"
+check(f"FM-006 · a private security report · no deriver in hooks · the off-main warning names a PIN only where the repository pins one (saw {w0_!r} and {w1_[:1]!r})",
+      c0_ == 0 and len(w0_) == 1 and "warning: feature is not main, the default branch" in w0_[0] and "PIN" not in w0_[0] and len(w1_) == 1 and _PIN_SAID in w1_[0])
+if _HAVE_ND:
+    c_, wc_ = _off_main(False, _ND_REV)
+    check(f"FM-006 · a private security report · no deriver in hooks · …the control: beside {_ND_REV}'s tool the unpinned warning names a PIN (saw {wc_[:1]!r})", any("PIN" in l_ for l_ in wc_))
+fm.configure(HERE)
+
+# --- RV-2300 (a private security report): what a branch brings by every way git brings it — a merge, clean and conflicted, a cherry-pick, a revert, a rebase and `git am` -------
+# Each in a scratch repository with the copy installed and its deriver accepted; the branch brings a changed tool and a changed deriver. Nothing of the tree runs (no marker
+# appears beside the repository) and no hook writes the copy (its hash is as it was). The control is the same operation beside 79be49d's tool.
+def _rv_op(op, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev, deriver="accepted"); base_ = Path(d).resolve()
+        trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        (root / "conflict.txt").write_text("base\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a file both sides change")
+        git(root, "switch", "-q", "-c", "payload")
+        _tree_tool_changed(root, marks); _put_deriver(root, marks, "changed"); _add_tracker(root, "BROUGHT")
+        (root / "conflict.txt").write_text("payload\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the branch: a changed tool and a changed deriver")
+        git(root, "switch", "-q", trunk_)
+        if op in ("merge", "conflicted"):
+            (root / ("conflict.txt" if op == "conflicted" else "trunk.txt")).write_text("trunk\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk moves on")
+        elif op == "revert":
+            git(root, "merge", "-q", "--ff-only", "payload"); git(root, "revert", "--no-edit", "HEAD")      # the change, then its undoing: reverting the undoing brings it back
+        elif op == "rebase":
+            git(root, "switch", "-q", "-c", "work"); (root / "work.txt").write_text("work\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "work to rebase")
+        h0_, head_ = _copy_hash(root), _head(root)
+        if op == "merge":
+            c_ = _hooked(root, "merge", "--no-ff", "--no-edit", "payload")
+        elif op == "conflicted":
+            stop_ = _hooked(root, "merge", "--no-edit", "payload"); (root / "conflict.txt").write_text("resolved\n", encoding="utf-8"); git(root, "add", "conflict.txt")
+            c_ = _hooked(root, "commit", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, stop_[1] + "\n" + c_[1])
+        elif op == "cherry-pick":
+            c_ = _hooked(root, "cherry-pick", "payload")
+        elif op == "revert":
+            c_ = _hooked(root, "revert", "--no-edit", "HEAD")
+        elif op == "rebase":
+            c_ = _hooked(root, "rebase", "payload")
+        else:                               # `git am` runs none of the hooks: the next commit is where they run on what it brought
+            patch_ = base_ / "brought.patch"
+            patch_.write_bytes(subprocess.run(["git", "-C", str(root), "format-patch", "-1", "--stdout", "payload"], capture_output=True, env=_ENV).stdout)
+            c_ = _hooked(root, "am", str(patch_))
+            _hook_changed(root, "the commit after it"); git(root, "add", "-A"); n_ = _hooked(root, "commit", "-qm", "the commit after it"); c_ = (c_[0] or n_[0], c_[1] + "\n" + n_[1])
+        brought_ = (root / "docs/work-tracker/MSR-009-x.md").is_file() and "the tree tool wrote" in (root / "shoalmark.py").read_text(encoding="utf-8")
+        g_ = dict(code=c_[0], said=c_[1], moved=_head(root) != head_, brought=brought_, tool=(marks / "tool").exists(), deriver=(marks / "changed").exists(),
+                  copy_same=_copy_hash(root) == h0_)
+        rm_git(root)
+    return g_
+def _rv_op_ok(g, op):
+    return (g["code"] == 0 and g["moved"] and g["brought"] and not g["tool"] and not g["deriver"] and g["copy_same"]
+            and _LINE2 in g["said"].splitlines() and (op not in ("conflicted", "am") or _ND_LINE in g["said"].splitlines()))
+_RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and `post-merge` run"),
+           ("conflicted", "a merge, conflicted and finished with `git commit` — at its resolving commit `pre-commit`, `prepare-commit-msg` and `commit-msg` run"),
+           ("cherry-pick", "a cherry-pick — it runs only `prepare-commit-msg`"), ("revert", "a revert — it runs only `prepare-commit-msg`"),
+           ("rebase", "a rebase — `post-checkout` before its replay, which runs only `prepare-commit-msg`, and `post-rewrite` after"),
+           ("am", "`git am`, which runs none of the hooks, and the next commit, which runs `pre-commit`, `prepare-commit-msg` and `commit-msg` on what it brought"))
+for op_, what_ in _RV_OPS:
+    g_ = _rv_op(op_)
+    check(f"FM-006 · a private security report · RV-2300 · {what_}: it brings a changed tool and a changed deriver, and nothing of the tree runs, no hook writes the copy"
+          + ", and the hooks that run judge with the copy and say it differs" + (", the commit's hook saying it starts no deriver" if op_ in ("conflicted", "am") else "")
+          + f" (saw exit {g_['code']}, tool ran {g_['tool']}, deriver ran {g_['deriver']}, copy unchanged {g_['copy_same']})", _rv_op_ok(g_, op_))
+    if not _HAVE_RV:
+        continue
+    c_ = _rv_op(op_, _RV_REV)
+    check(f"FM-006 · a private security report · RV-2300 · …the control: {op_} beside {_RV_REV}'s tool FAILS — its commit hooks run what the branch brought (saw tool ran {c_['tool']}, "
+          f"deriver ran {c_['deriver']}, copy unchanged {c_['copy_same']})", not _rv_op_ok(c_, op_))
+if not _HAVE_RV:
+    _skipped("FM-006 · a private security report · RV-2300 · the operations' controls", len(_RV_OPS), f"this clone does not hold {_RV_REV}")
+fm.configure(HERE)
+
+# --- FM-006: the refresh after a pull — after each way a clone's tree moves, the board equals a fresh `--html-only` of it, byte for byte, nothing normalised --------------
+# A bare origin, an upstream clone that pushes, and a clone with the hooks installed. "Fresh" is the same copy run by hand afterwards: what differs is what no hook refreshed.
+def _board_files(root):
+    t_ = root / "docs/work-tracker"
+    return {"index.html": (t_ / "index.html").read_bytes() if (t_ / "index.html").is_file() else None, **{f"view/{p_.name}": p_.read_bytes() for p_ in sorted((t_ / "view").glob("*.js"))}}
+def _pull_scenario(op, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); origin_, up_, me_ = base / "origin.git", base / "up", base / "me"
+        subprocess.run(["git", "init", "-q", "--bare", str(origin_)], check=True, capture_output=True, env=_ENV)
+        up_.mkdir(); git(up_, "init", "-q"); run(up_, "--init", "--key", "msr"); tracker(up_, "MSR-001", title="BASE"); run(up_); fm.configure(HERE)
+        git(up_, "add", "-A"); git(up_, "commit", "-qm", "base"); git(up_, "remote", "add", "origin", str(origin_))
+        trunk_ = subprocess.run(["git", "-C", str(up_), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); git(up_, "push", "-q", "-u", "origin", trunk_)
+        subprocess.run(["git", "clone", "-q", str(origin_), str(me_)], check=True, capture_output=True, env=_ENV)
+        if rev:
+            _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
+        else:
+            tool_ = HERE / "shoalmark.py"
+        inst_ = _tool_run(tool_, me_, "--install-hook"); _hooked(me_, "switch", "-q", trunk_)
+        upstream_ = lambda tid, title: (tracker(up_, tid, title=title), git(up_, "add", "-A"), git(up_, "commit", "-qm", title), git(up_, "push", "-q", "origin", trunk_))
+        local_ = lambda tid, title: (tracker(me_, tid, title=title), git(me_, "add", "-A"), git(me_, "commit", "-qm", title))
+        want_ = []
+        if op == "switch":
+            git(me_, "switch", "-q", "-c", "other"); local_("MSR-002", "ON-THE-OTHER-BRANCH"); git(me_, "switch", "-q", trunk_); c_ = _hooked(me_, "switch", "-q", "other"); want_ = ["ON-THE-OTHER-BRANCH"]
+        elif op == "pull-ff":
+            upstream_("MSR-003", "FROM-UPSTREAM"); c_ = _hooked(me_, "pull", "-q", "--ff-only"); want_ = ["FROM-UPSTREAM"]
+        elif op in ("pull-merge", "pull-rebase"):
+            upstream_("MSR-003", "FROM-UPSTREAM"); local_("MSR-004", "MADE-HERE")
+            c_ = _hooked(me_, "pull", "-q", "--no-edit", "--no-rebase" if op == "pull-merge" else "--rebase"); want_ = ["FROM-UPSTREAM", "MADE-HERE"]
+        else:
+            git(me_, "switch", "-q", "-c", "feature")
+            if op == "conflicted":
+                t_ = me_ / "docs/work-tracker/MSR-001-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("One thing is left.", "ON-THE-FEATURE"), encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "feature")
+                git(me_, "switch", "-q", trunk_); t_.write_text(t_.read_text(encoding="utf-8").replace("One thing is left.", "ON-THE-TRUNK"), encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "trunk")
+                stop_ = _hooked(me_, "merge", "--no-edit", "feature")
+                t_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "RESOLVED-BY-HAND\n", t_.read_text(encoding="utf-8"), flags=re.S), encoding="utf-8"); git(me_, "add", "-A")
+                c_ = _hooked(me_, "commit", "-q", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, c_[1]); want_ = ["RESOLVED-BY-HAND"]
+            else:
+                local_("MSR-005", "ON-THE-FEATURE"); git(me_, "switch", "-q", trunk_); (me_ / "trunk.txt").write_text("trunk\n", encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "trunk")
+                if op == "merge":
+                    c_ = _hooked(me_, "merge", "--no-ff", "--no-edit", "feature")
+                else:
+                    sq_ = _hooked(me_, "merge", "--squash", "feature"); c_ = _hooked(me_, "commit", "-qm", "squashed"); c_ = (sq_[0] or c_[0], c_[1])
+                want_ = ["ON-THE-FEATURE"]
+        after_ = _board_files(me_)
+        subprocess.run([sys.executable, "-I", str(me_ / ".git" / fm.COPY_DIR / "shoalmark.py"), "--root", str(me_), "--html-only"], cwd=str(me_), capture_output=True, env=_ENV)
+        fresh_ = _board_files(me_)
+        g_ = dict(code=c_[0], inst=inst_[0], same=after_ == fresh_, differs=sorted(k_ for k_ in set(after_) | set(fresh_) if after_.get(k_) != fresh_.get(k_)),
+                  shown=all(w_.encode() in (fresh_.get("index.html") or b"") + b"".join(v_ for k_, v_ in fresh_.items() if k_.startswith("view/")) for w_ in want_))
+        rm_git(me_); rm_git(up_)
+    return g_
+def _pull_ok(g):
+    return g["code"] == 0 and g["same"] and g["shown"]
+_PULL_OPS = (("switch", "a switch"), ("pull-ff", "a pull, fast-forward"), ("pull-merge", "a pull with a merge"), ("pull-rebase", "`git pull --rebase` with local commits — `post-checkout` before the replay, `post-rewrite` after"),
+             ("merge", "a clean merge"), ("conflicted", "a conflicted merge, at its resolving commit"), ("squash", "a squash merge, at its commit"))
+for op_, what_ in _PULL_OPS:
+    g_ = _pull_scenario(op_)
+    check(f"FM-006 · the refresh after a pull · {what_}: the board after it equals a fresh `--html-only` of the tree, byte for byte, nothing normalised (saw exit {g_['code']}, differing {g_['differs']})", _pull_ok(g_))
+if _HAVE_RV:
+    c_ = _pull_scenario("pull-rebase", _RV_REV)
+    check(f"FM-006 · the refresh after a pull · …the control: `git pull --rebase` with local commits beside {_RV_REV}'s hooks FAILS — no hook refreshes the board after the replay (saw differing {c_['differs']})", not _pull_ok(c_))
+else:
+    _skipped("FM-006 · the refresh after a pull · the control", 1, f"this clone does not hold {_RV_REV}")
+fm.configure(HERE)
+
+# --- the reading rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): in every run a file of the tree is
+# read only as a regular file inside the repository, following no symlink — the board's refresh skips it with its line, every other run refuses in one line naming it.
+# The inert marker is a word that would show up in INDEX.md or on the board.
+_RR_REV, _RR_MARK = "1b65331", "OUTSIDE-WORD"
+_HAVE_RR = _has_rev(_RR_REV)
+_RR_SAYS = "is a symlink, or reached through one — the tool reads a file of the tree only as a regular file inside the repository, following no symlink: nothing is read from it and nothing is written; put the file itself there"
+def _rr_link(root, outside, rel, text):
+    """A file of the tree made a symlink — the case the rule refuses."""
+    target_ = outside / rel.replace("/", "_"); target_.write_text(text, encoding="utf-8")
+    (root / rel).unlink(missing_ok=True); os.symlink(target_, root / rel)
+def _rr(rev=None):
+    """The runs the rule governs — a commit's hook, `--check` by hand, the board's refresh — each meeting a tracker that is a symlink; then `--check` meeting
+    the configuration and TRIAGE.md, each a symlink."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); out_ = marks / "outside"; out_.mkdir(); tool_ = root / "shoalmark.py"; g_ = {}
+        linked_ = "docs/work-tracker/MSR-002-x.md"
+        _rr_link(root, out_, linked_, _NEW_TRACKER.format(title="LINKED").replace("MSR-009", "MSR-002").replace('hook: "h"', f'hook: "{_RR_MARK}"'))
+        git(root, "add", "-A"); h_ = _head(root); c_ = _hooked(root, "commit", "-qm", "a tracker linked outside")
+        index_ = (root / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8"); page_ = (root / "docs/work-tracker/index.html")
+        g_["hook"] = dict(code=c_[0], said=c_[1], head=_head(root) == h_, clean=_RR_MARK not in index_ and (not page_.is_file() or _RR_MARK not in page_.read_text(encoding="utf-8")))
+        g_["check"] = _tool_run(tool_, root, "--check")
+        b_ = _tool_run(tool_, root, "--html-only")
+        g_["board"] = dict(code=b_[0], said=b_[1] + b_[2], clean=_RR_MARK not in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
+        os.unlink(root / linked_); git(root, "reset", "-q", "--hard")
+        for key_, rel_ in (("config", "shoalmark.toml"), ("triage", "docs/work-tracker/TRIAGE.md")):
+            keep_ = (root / rel_).read_text(encoding="utf-8"); _rr_link(root, out_, rel_, keep_ + f"\n# {_RR_MARK}\n")
+            g_[key_] = _tool_run(tool_, root, "--check"); os.unlink(root / rel_); (root / rel_).write_text(keep_, encoding="utf-8")
+        rm_git(root)
+    return g_
+def _rr_one(said, rel):
+    lines_ = [l_ for l_ in said.strip().splitlines() if l_.strip()]
+    return lines_[-1:] == [f"shoalmark: {rel} {_RR_SAYS}"] and "Traceback" not in said and _RR_MARK not in said
+def _rr_hook_ok(g):
+    return g["hook"]["code"] != 0 and g["hook"]["head"] and g["hook"]["clean"] and _rr_one(g["hook"]["said"], "docs/work-tracker/MSR-002-x.md")
+def _rr_check_ok(g, key, rel):
+    c_, o_, e_ = g[key]
+    return c_ == fm.EXIT_LINT and len(e_.strip().splitlines()) == 1 and _rr_one(e_, rel) and _RR_MARK not in o_
+def _rr_board_ok(g):
+    return g["board"]["code"] == 0 and "board: left alone — docs/work-tracker/MSR-002-x.md (a symlink, or not a regular file)" in g["board"]["said"] and g["board"]["clean"]
+if _SYMLINKS:
+    g_ = _rr()
+    check(f"FM-006 · a private security report · the reading rule · a commit's hook meets a tracker that is a symlink: the commit is refused in one line naming it, "
+          f"and INDEX.md and the board carry nothing of it (saw {g_['hook']['said'][-160:]!r})", _rr_hook_ok(g_))
+    check(f"FM-006 · a private security report · the reading rule · `--check` by hand meets it: refused in one line naming it, exit 4 (saw {g_['check'][2].strip()[-140:]!r})",
+          _rr_check_ok(g_, "check", "docs/work-tracker/MSR-002-x.md"))
+    check(f"FM-006 · a private security report · the reading rule · the board's refresh meets it: skipped with its line, the board refreshed without it (saw {g_['board']['said'][:120]!r})", _rr_board_ok(g_))
+    check(f"FM-006 · a private security report · the reading rule · the configuration, and TRIAGE.md in the folder it names, each a symlink: `--check` is refused "
+          f"in one line naming it, exit 4 (saw {g_['config'][2].strip()[-120:]!r})",
+          _rr_check_ok(g_, "config", "shoalmark.toml") and _rr_check_ok(g_, "triage", "docs/work-tracker/TRIAGE.md"))
+    if _HAVE_RR:
+        c_ = _rr(_RR_REV)
+        check(f"FM-006 · a private security report · the reading rule · …the control: beside {_RR_REV}'s tool the commit's hook check FAILS", not _rr_hook_ok(c_))
+        check(f"FM-006 · a private security report · the reading rule · …the control: beside {_RR_REV}'s tool the checks of `--check`, the configuration and TRIAGE.md FAIL",
+              not _rr_check_ok(c_, "check", "docs/work-tracker/MSR-002-x.md") and not _rr_check_ok(c_, "config", "shoalmark.toml") and not _rr_check_ok(c_, "triage", "docs/work-tracker/TRIAGE.md"))
+        check(f"FM-006 · a private security report · the reading rule · with {_RR_REV}'s tool the board's refresh skips it as well — a property, no control", _rr_board_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the reading rule · the controls", 3, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the reading rule", 7, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- the git configuration's files (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): `--install-hook`
+# refuses, in one line and writing nothing, where a git configuration value comes from a file inside a working tree — judged as the hooks folder is
+def _cfg_files(kind, rev=None):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); at_ = root
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "include":                   # a value from a file inside the working tree
+            (root / "shared.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8"); git(root, "config", "include.path", "../shared.gitconfig"); named_ = root / "shared.gitconfig"
+        elif kind == "worktree":                # a value from a file inside another worktree's tree
+            git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); (base / "wt/shared.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "include.path", str(base / "wt/shared.gitconfig")); named_ = base / "wt/shared.gitconfig"
+        else:
+            named_ = None
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        c_, o_, e_ = _tool_run(tool_, at_, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)) if named_ else "", hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+                  copy=(root / ".git" / fm.COPY_DIR).exists())
+        rm_git(root)
+    return g_
+def _cfg_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and g["err"].startswith(f"--install-hook: git reads configuration from {g['named']}, inside the working tree ")
+            and "where a branch can change what git runs — no hook and no copy is written" in g["err"] and g["hooks"] == [] and not g["copy"])
+for kind_, what_ in (("include", "a value from a configuration file inside the working tree"), ("worktree", "a value from a configuration file inside another worktree's tree")):
+    g_ = _cfg_files(kind_)
+    check(f"FM-006 · a private security report · the git configuration's files · {what_}: `--install-hook` refuses in one line naming the file and why, and writes no hook and no copy "
+          f"(saw {g_['err'][:140]!r})", _cfg_refused(g_))
+    if _HAVE_RR:
+        c_ = _cfg_files(kind_, _RR_REV)
+        check(f"FM-006 · a private security report · the git configuration's files · …the control: beside {_RR_REV}'s tool this check FAILS", not _cfg_refused(c_))
+g_ = _cfg_files("default")
+check(f"FM-006 · a private security report · the git configuration's files · the default configuration is accepted — `.git/config` sits in the git directory (saw exit {g_['code']}, {g_['hooks'][:3]})",
+      g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
+if not _HAVE_RR:
+    _skipped("FM-006 · a private security report · the git configuration's files · the controls", 2, f"this clone does not hold {_RR_REV}")
+fm.configure(HERE)
+
+# --- the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): every run writes a file of the tree only as a
+# regular file inside the repository, never through a symlink; a run by hand refuses in one line naming the file, exit 4, and writes nothing
+_WR_SAYS = "is a symlink, or reached through one — the tool writes a file of the tree only as a regular file inside the repository, never through a symlink: nothing is written; put the file itself there"
+def _wr(rev=None):
+    """A run by hand that would write an INDEX.md that is a symlink."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; page_ = root / "docs/work-tracker/index.html"
+        target_ = marks / "target"; target_.write_text("UNCHANGED\n", encoding="utf-8")
+        sums_ = lambda: (hashlib.sha256(target_.read_bytes()).hexdigest(), hashlib.sha256(page_.read_bytes()).hexdigest() if page_.is_file() else None)
+        os.unlink(root / "docs/work-tracker/INDEX.md"); os.symlink(target_, root / "docs/work-tracker/INDEX.md"); before_ = sums_()
+        c_, o_, e_ = _tool_run(tool_, root)
+        g_ = dict(code=c_, err=e_.strip(), same=sums_() == before_)
+        rm_git(root)
+    return g_
+def _wr_ok(g):
+    return g["code"] == fm.EXIT_LINT and g["err"] == f"shoalmark: docs/work-tracker/INDEX.md {_WR_SAYS}" and g["same"]
+g_ = _wr()
+check(f"FM-006 · a private security report · the write rule · a run by hand meets an INDEX.md that is a symlink: refused in one line naming it, exit 4, nothing written — "
+      f"the symlink's target and the board unchanged (saw {g_['err'][-120:]!r})", _wr_ok(g_)) if _SYMLINKS else _skipped("FM-006 · a private security report · the write rule", 1, "this system makes no symlink here")
+if _SYMLINKS and _HAVE_RR:
+    c_ = _wr(_RR_REV)
+    check(f"FM-006 · a private security report · the write rule · …the control: beside {_RR_REV}'s tool this check FAILS", not _wr_ok(c_))
+elif _SYMLINKS:
+    _skipped("FM-006 · a private security report · the write rule · the control", 1, f"this clone does not hold {_RR_REV}")
+fm.configure(HERE)
+
+# --- a deriver that is a symlink (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): a run by hand refuses it in one
+# line naming it, exit 4, and starts nothing
+_DL_LINE = ("shoalmark: docs/work-tracker/derive is a symlink, or reached through one — the tool runs a deriver only as a regular file inside the repository, following no "
+            "symlink: nothing is run and nothing is written; put the deriver itself there")
+def _dl(rev=None):
+    """A run by hand where the deriver is a symlink; the deriver leaves an inert marker if it is started."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); target_ = marks / "derive"; target_.write_text(_deriver(marks, "deriver-ran"), encoding="utf-8"); target_.chmod(0o755)
+        os.symlink(target_, root / "docs/work-tracker/derive")
+        c_, o_, e_ = _tool_run(root / "shoalmark.py", root)
+        g_ = dict(code=c_, err=e_.strip(), ran=(marks / "deriver-ran").exists())
+        rm_git(root)
+    return g_
+def _dl_ok(g):
+    return g["code"] == fm.EXIT_LINT and g["err"] == _DL_LINE and not g["ran"]
+if _SYMLINKS:
+    g_ = _dl()
+    check(f"FM-006 · a private security report · a deriver that is a symlink · a run by hand refuses it in one line naming it, exit 4, and starts nothing (saw {g_['err'][-110:]!r})", _dl_ok(g_))
+    if _HAVE_RR:
+        c_ = _dl(_RR_REV)
+        check(f"FM-006 · a private security report · a deriver that is a symlink · …the control: beside {_RR_REV}'s tool this check FAILS", not _dl_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · a deriver that is a symlink · the control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · a deriver that is a symlink", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- the calendar files under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--standup FILE.ics`
+# and `--invite <id>` write a file of the tree only as a regular file inside the repository, never through a symlink, and their lines end in CRLF
+def _cal(rev=None):
+    """`--standup FILE.ics` at a calendar file that is a symlink, and `--invite <id>` where the evidence folder is a symlink; then each at a regular place."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
+        conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
+        due_ = (datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0) + datetime.timedelta(days=1)).isoformat()
+        tracker(root, "MSR-002", extra=f"next: run\ndue: {due_}\n", title="ACT")
+        target_ = marks / "cal.ics"; target_.write_text("UNCHANGED\n", encoding="utf-8"); os.symlink(target_, root / "cal.ics")
+        c_, o_, e_ = _tool_run(tool_, root, "--standup", "cal.ics")
+        g_["standup"] = dict(code=c_, err=e_.strip(), same=target_.read_text(encoding="utf-8") == "UNCHANGED\n")
+        c_, o_, e_ = _tool_run(tool_, root, "--standup", "plain.ics")
+        g_["standup"]["plain"] = (root / "plain.ics").read_bytes() if c_ == 0 and (root / "plain.ics").is_file() else b""
+        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_, target_is_directory=True)
+        c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002")
+        g_["invite"] = dict(code=c_, err=e_.strip(), same=sorted(os.listdir(away_)) == [])
+        os.unlink(ev_)
+        c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002"); ics_ = ev_ / "MSR-002" / "MSR-002-act.ics"
+        g_["invite"]["plain"] = ics_.read_bytes() if c_ == 0 and ics_.is_file() else b""
+        rm_git(root)
+    return g_
+def _cal_crlf(b):
+    return b.startswith(b"BEGIN:VCALENDAR\r\n") and b.endswith(b"END:VCALENDAR\r\n") and b.count(b"\n") == b.count(b"\r\n")
+def _cal_ok(g, key, rel):
+    return g[key]["code"] == fm.EXIT_LINT and g[key]["err"] == f"shoalmark: {rel} {_WR_SAYS}" and g[key]["same"] and _cal_crlf(g[key]["plain"])
+_CAL_CASES = (("standup", "cal.ics", "`--standup FILE.ics` at a calendar file that is a symlink"),
+              ("invite", "docs/work-tracker/evidence/MSR-002/MSR-002-act.ics", "`--invite <id>` where the evidence folder is a symlink"))
+if _SYMLINKS:
+    g_ = _cal()
+    for key_, rel_, what_ in _CAL_CASES:
+        check(f"FM-006 · a private security report · the write rule · {what_}: refused in one line naming the file, exit 4, nothing written through it; at a regular "
+              f"place the file is written, its lines ending in CRLF (saw {g_[key_]['err'][-120:]!r})", _cal_ok(g_, key_, rel_))
+    if _HAVE_RR:
+        c_ = _cal(_RR_REV)
+        for key_, rel_, what_ in _CAL_CASES:
+            check(f"FM-006 · a private security report · the write rule · {what_} · …the control: beside {_RR_REV}'s tool this check FAILS", not _cal_ok(c_, key_, rel_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · the calendar files' controls", 2, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · the calendar files", 4, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- the copies under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR --from THEME`
+# and `--vendor DIR` judge every file they would write before the first folder or copy is made — into a folder of the tree that is a symlink, each is refused in one
+# line naming the first file, exit 4, and nothing is written
+def _cp(rev=None):
+    """`--brand DIR --from monochrome` and `--vendor DIR`, each where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
+        for key_, argv_ in (("brand", ("--brand", "brandx", "--from", "monochrome")), ("vendor", ("--vendor", "vend", "--partial", "--allow-untagged"))):
+            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1], target_is_directory=True)
+            c_, o_, e_ = _tool_run(tool_, root, *argv_)
+            g_[key_] = dict(code=c_, err=e_.strip(), out=o_.strip(), empty=sorted(os.listdir(away_)) == [])
+        rm_git(root)
+    return g_
+_CP_FIRST = {"brand": "brandx/" + next(r_ for r_ in fm.theme_files() if r_.startswith("brand/themes/monochrome/"))[len("brand/themes/monochrome/"):], "vendor": "vend/shoalmark.py"}
+def _cp_ok(g):
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == f"shoalmark: {_CP_FIRST[k_]} {_WR_SAYS}" and g[k_]["out"] == "" and g[k_]["empty"] for k_ in ("brand", "vendor"))
+if _SYMLINKS:
+    g_ = _cp()
+    check(f"FM-006 · a private security report · the write rule · `--brand DIR --from THEME` and `--vendor DIR` into a folder of the tree that is a symlink: each is refused in "
+          f"one line naming the first file, exit 4, and nothing is written (saw {g_['brand']['err'][:90]!r}, {g_['vendor']['err'][:70]!r})", _cp_ok(g_))
+    if _HAVE_RR:
+        c_ = _cp(_RR_REV)
+        check(f"FM-006 · a private security report · the write rule · the copies · …the control: beside {_RR_REV}'s tool this check FAILS", not _cp_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · the copies' control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- the triage worksheet under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--triage` asks the
+# rule for its worksheet before the worksheet's folder is made — where the evidence folder is a symlink, it is refused in one line naming the worksheet, exit 4, nothing made
+def _tw(rev=None):
+    """`--triage` where the tracker folder's `evidence` is a symlink to an empty folder beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"
+        home_ = root / "docs/work-tracker/TRIAGE.md"; home_.write_text(home_.read_text(encoding="utf-8").replace("1.\n", "1. MSR-001 to its end.\n"), encoding="utf-8")
+        ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_, target_is_directory=True)
+        c_, o_, e_ = _tool_run(tool_, root, "--triage")
+        g_ = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], sheet=f"docs/work-tracker/evidence/triage/triage-{datetime.date.today().isoformat()}.md")
+        rm_git(root)
+    return g_
+def _tw_ok(g):
+    return g["code"] == fm.EXIT_LINT and g["err"] == f"shoalmark: {g['sheet']} {_WR_SAYS}" and g["empty"]
+if _SYMLINKS:
+    g_ = _tw()
+    check(f"FM-006 · a private security report · the write rule · `--triage` where the evidence folder is a symlink: refused in one line naming the worksheet, exit 4, "
+          f"and no folder or file is made through it (saw {g_['err'][-110:]!r})", _tw_ok(g_))
+    if _HAVE_RR:
+        c_ = _tw(_RR_REV)
+        check(f"FM-006 · a private security report · the write rule · the triage worksheet · …the control: beside {_RR_REV}'s tool this check FAILS", not _tw_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · the triage worksheet's control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · the triage worksheet", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- a folder named `derive` (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): it is no deriver — a run by hand
+# goes on without one and says nothing of it; the deriver's line is for a symlink alone
+_DF_REV = "ee6c28a"
+_HAVE_DF = _has_rev(_DF_REV)
+def _df(rev=None):
+    """A run by hand where the tracker folder holds a folder named `derive`."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); (root / "docs/work-tracker/derive").mkdir(); (root / "docs/work-tracker/derive/note.txt").write_text("inert\n", encoding="utf-8")
+        c_, o_, e_ = _tool_run(root / "shoalmark.py", root)
+        g_ = dict(code=c_, err=e_.strip(), index=(root / "docs/work-tracker/INDEX.md").is_file())
+        rm_git(root)
+    return g_
+def _df_ok(g):
+    return g["code"] == 0 and "derive" not in g["err"] and g["index"]
+g_ = _df()
+check(f"FM-006 · a private security report · a folder named `derive` is no deriver: a run by hand goes on, exit 0, and no line names it (saw exit {g_['code']}, {g_['err'][-100:]!r})", _df_ok(g_))
+if _HAVE_DF:
+    c_ = _df(_DF_REV)
+    check(f"FM-006 · a private security report · a folder named `derive` · …the control: beside {_DF_REV}'s tool this check FAILS", not _df_ok(c_))
+else:
+    _skipped("FM-006 · a private security report · a folder named `derive` · the control", 1, f"this clone does not hold {_DF_REV}")
+fm.configure(HERE)
+
+# --- every include setting's target (RV-2313, the Owner's ruling filed in FM-006, *The fix round after the critical review*): `--install-hook` judges the target of
+# every include setting, conditional ones whether or not the condition holds, and whether or not the target exists — one inside the working tree is refused in one
+# line, and no hook and no copy is written
+_INC_REV = "ee6c28a"
+_HAVE_INC = _has_rev(_INC_REV)
+def _inc(kind, rev=None):
+    """`--install-hook` where `.git/config` holds a conditional include whose condition does not hold, or an include whose target does not exist yet — each
+    target inside the working tree."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "conditional":
+            (root / "inert.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "includeIf.onbranch:no-such-branch.path", "../inert.gitconfig"); named_ = root / "inert.gitconfig"
+        else:
+            git(root, "config", "include.path", "../later.gitconfig"); named_ = root / "later.gitconfig"
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)), holder=os.path.realpath(root / ".git" / "config"), top=os.path.normcase(os.path.realpath(root)),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(), exists=named_.exists())
+        rm_git(root)
+    return g_
+def _inc_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1
+            and g["err"].startswith(f"--install-hook: an include setting in {g['holder']} names {g['named']}, inside the working tree {g['top']}, where a branch can change what git runs")
+            and "no hook and no copy is written" in g["err"] and g["hooks"] == [] and not g["copy"])
+for kind_, what_ in (("conditional", "a conditional include into the tree, its condition not holding"), ("missing", "an include into the tree whose target does not exist yet")):
+    g_ = _inc(kind_)
+    check(f"FM-006 · a private security report · every include setting's target · {what_}: `--install-hook` refuses in one line naming the setting's file and its target, "
+          f"and writes no hook and no copy (saw {g_['err'][:150]!r})", _inc_refused(g_) and g_["exists"] == (kind_ == "conditional"))
+    if _HAVE_INC:
+        c_ = _inc(kind_, _INC_REV)
+        check(f"FM-006 · a private security report · every include setting's target · {what_} · …the control: beside {_INC_REV}'s tool this check FAILS", not _inc_refused(c_))
+if not _HAVE_INC:
+    _skipped("FM-006 · a private security report · every include setting's target · the controls", 2, f"this clone does not hold {_INC_REV}")
+fm.configure(HERE)
+
+# --- the write rule before a folder is made (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR` and
+# `--init` ask the rule for every file they would write before the first folder is made — through a folder of the tree that is a symlink, each is refused in one line
+# naming the file, exit 4, and nothing is written
+def _wf(rev=None):
+    """`--brand DIR` and `--init`, each where a parent of the folder it would make is a symlink to an empty folder beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir(); git(root, "init", "-q"); g_ = {}
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        for key_, link_, argv_ in (("brand", "brandy", ("--brand", "brandy/starter")), ("init", "docs", ("--init", "--key", "msr"))):
+            away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_, target_is_directory=True)
+            c_, o_, e_ = _tool_run(tool_, root, *argv_)
+            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists())
+        rm_git(root)
+    return g_
+_WF_LINE = {"brand": f"shoalmark: brandy/starter/theme.css {_WR_SAYS}", "init": f"shoalmark: docs/work-tracker/TRIAGE.md {_WR_SAYS}"}
+def _wf_ok(g):
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _WF_LINE[k_] and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
+if _SYMLINKS:
+    g_ = _wf()
+    check(f"FM-006 · a private security report · the write rule · `--brand DIR` and `--init` through a folder of the tree that is a symlink: each is refused in one line "
+          f"naming the file, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
+    if _HAVE_RR:
+        c_ = _wf(_RR_REV)
+        check(f"FM-006 · a private security report · the write rule · before a folder is made · …the control: beside {_RR_REV}'s tool this check FAILS", not _wf_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the write rule · before a folder is made · the control", 1, f"this clone does not hold {_RR_REV}")
+else:
+    _skipped("FM-006 · a private security report · the write rule · before a folder is made", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- `--vendor` reads only what it copies (RV-2314, the Owner's ruling filed in FM-006, *The fix round after the critical review*): a file the PIN names that is
+# not among the files it copies is never opened, and the run goes on — the file left where it is, the new PIN without its name
+_VR_REV = "f88546f"
+_HAVE_VR = _has_rev(_VR_REV)
+_FIFOS = hasattr(os, "mkfifo")
+def _opened(cmd, fifo, out, env, cwd):
+    """Run `cmd`, its output to the file `out`; whether any process opened `fifo` to read while it ran — a writer's non-blocking open succeeds only then.
+    Nothing is written into it: the writer closes at once, and the reader reads an empty file."""
+    with open(out, "w", encoding="utf-8") as f_:
+        p_ = subprocess.Popen(cmd, cwd=str(cwd), stdout=f_, stderr=subprocess.STDOUT, env=env); seen_ = False; end_ = time.monotonic() + 300
+        while p_.poll() is None and time.monotonic() < end_:
+            try:
+                os.close(os.open(fifo, os.O_WRONLY | os.O_NONBLOCK)); seen_ = True
+            except OSError:
+                time.sleep(0.01)
+        if p_.poll() is None:
+            p_.kill()
+        p_.wait()
+    return seen_, p_.returncode, Path(out).read_text(encoding="utf-8")
+def _vr(rev=None):
+    """`--vendor vend` run twice from the tool at the repository's root; before the second run, the PIN names one more file, `extra/notes.txt` — a
+    symlink to a FIFO beside the repository."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; argv_ = [sys.executable, str(tool_), "--root", str(root), "--vendor", "vend", "--partial", "--allow-untagged"]
+        first_ = subprocess.run(argv_, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        fifo_ = marks / "fifo"; os.mkfifo(fifo_); (root / "vend/extra").mkdir(); os.symlink(fifo_, root / "vend/extra/notes.txt")
+        pin_ = root / "vend/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  extra/notes.txt\n", encoding="utf-8")
+        seen_, code_, said_ = _opened(argv_, fifo_, marks / "out.txt", _ENV, root)
+        g_ = dict(first=first_.returncode, seen=seen_, code=code_, said=said_.strip(), link=os.path.islink(root / "vend/extra/notes.txt") and os.readlink(root / "vend/extra/notes.txt") == str(fifo_),
+                  pin="extra/notes.txt" not in pin_.read_text(encoding="utf-8"))
+        rm_git(root)
+    return g_
+def _vr_ok(g):
+    return g["first"] == 0 and not g["seen"] and g["code"] == 0 and g["link"] and g["pin"]
+if _SYMLINKS and _FIFOS:
+    g_ = _vr()
+    check(f"FM-006 · a private security report · `--vendor` reads only what it copies · a file the PIN names that it does not copy is never opened, and the run goes "
+          f"on: the file left where it is, the new PIN without its name (saw opened={g_['seen']}, exit {g_['code']}, {g_['said'][-100:]!r})", _vr_ok(g_))
+    if _HAVE_VR:
+        c_ = _vr(_VR_REV)
+        check(f"FM-006 · a private security report · `--vendor` reads only what it copies · …the control: beside {_VR_REV}'s tool this check FAILS", not _vr_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · `--vendor` reads only what it copies · the control", 1, f"this clone does not hold {_VR_REV}")
+else:
+    _skipped("FM-006 · a private security report · `--vendor` reads only what it copies", 2, "this system makes no symlink or no FIFO here")
+fm.configure(HERE)
+
+# --- every worktree's configuration (RV-2315, the Owner's ruling filed in FM-006, *The fix round after the critical review*): `--install-hook`'s configuration
+# check judges the settings each worktree reads, its own configuration included — an include in a linked worktree's own configuration that points into a working
+# tree is refused when it runs from the main worktree, and nothing is written; a worktree marked `prunable` is skipped, never refused
+def _wc(kind, rev=None):
+    """`--install-hook` from the main worktree, beside a linked worktree: `own` — the linked worktree's own configuration (`config.worktree`) holds an include
+    whose target is a file inside the main working tree; `prunable` — the linked worktree's folder is gone."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); named_ = root / "inert.gitconfig"
+        if kind == "own":
+            named_.write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "extensions.worktreeConfig", "true"); git(base / "wt", "config", "--worktree", "include.path", str(named_))
+        else:
+            shutil.rmtree(base / "wt")
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        c_, o_, e_ = _tool_run(tool_, root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(),
+                  prunable="prunable" in subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout)
+        rm_git(root)
+    return g_
+def _wc_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and g["err"].startswith("--install-hook: ") and g["named"] in g["err"]
+            and "inside the working tree " in g["err"] and "where a branch can change what git runs — no hook and no copy is written" in g["err"] and g["hooks"] == [] and not g["copy"])
+_WC_REV = "f88546f"
+_HAVE_WC = _has_rev(_WC_REV)
+g_ = _wc("own")
+check(f"FM-006 · a private security report · every worktree's configuration · an include in a linked worktree's own configuration, pointing into a working tree: "
+      f"`--install-hook` from the main worktree refuses in one line naming it, and writes no hook and no copy (saw {g_['err'][:150]!r})", _wc_refused(g_))
+if _HAVE_WC:
+    c_ = _wc("own", _WC_REV)
+    check(f"FM-006 · a private security report · every worktree's configuration · …the control: beside {_WC_REV}'s tool this check FAILS", not _wc_refused(c_))
+else:
+    _skipped("FM-006 · a private security report · every worktree's configuration · the control", 1, f"this clone does not hold {_WC_REV}")
+g_ = _wc("prunable")
+check(f"FM-006 · a private security report · every worktree's configuration · beside a worktree marked `prunable` — its folder gone — `--install-hook` succeeds: "
+      f"exit 0, the hooks and the copy written (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:100]!r})",
+      g_["prunable"] and g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
+fm.configure(HERE)
+
+# --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
+# opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it.
+# Windows hands the hook a program's arguments as one command line: its words are read as `list2cmdline` writes them. Before a check leans on the hook for a
+# start, `_watch_sees_start` proves it sees one here, and before one leans on it for an open, `_watch_sees_open`; where it does not, the check skips, saying so
+_SAME_REV = "4087e23"
+_HAVE_SAME = _has_rev(_SAME_REV)
+def _watch(where, mark, opened=(), started=()):
+    """The environment of a run watched for opening `opened` or starting a program on `started` (paths, compared resolved); `mark` appears where it did."""
+    where = Path(where); where.mkdir(parents=True, exist_ok=True)
+    (where / "sitecustomize.py").write_text(
+        "import os, sys\n"
+        f"_OPENED, _STARTED, _MARK = {sorted(os.path.normcase(os.path.realpath(p_)) for p_ in opened)!r}, {sorted(os.path.normcase(os.path.realpath(p_)) for p_ in started)!r}, {str(mark)!r}\n"
+        "import re\n"
+        "_IN = [False]\n"
+        "def _real(a):\n"
+        "    return os.path.normcase(os.path.realpath(os.fsdecode(a))) if isinstance(a, (str, bytes, os.PathLike)) else None\n"
+        "def _words(a):\n"
+        "    if isinstance(a, (list, tuple)):\n"
+        "        return list(a)\n"
+        "    if isinstance(a, str):\n"
+        "        return [q or w for q, w in re.findall(r'\"([^\"]*)\"|(\\S+)', a)]\n"
+        "    return [a]\n"
+        "def _seen(event, args):\n"
+        "    if _IN[0]:\n"
+        "        return\n"
+        "    _IN[0] = True\n"
+        "    try:\n"
+        "        hit = (event == 'open' and args and _real(args[0]) in _OPENED) or (event in ('subprocess.Popen', 'os.posix_spawn', 'os.spawn', 'os.exec') and len(args) > 1\n"
+        "               and any(_real(a) in _STARTED for a in _words(args[1])))\n"
+        "        if hit:\n"
+        "            with open(_MARK, 'a') as f:\n"
+        "                f.write(event + '\\n')\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "    finally:\n"
+        "        _IN[0] = False\n"
+        "sys.addaudithook(_seen)\n", encoding="utf-8")
+    return dict(_ENV, PYTHONPATH=str(where))
+def _watch_sees_start(env, mark, path):
+    """Whether the watch in `env` sees a program started with `path` among its arguments — the hook's own proof, here, before a check leans on it. The marker
+    it leaves is cleared."""
+    subprocess.run([sys.executable, "-c", "import subprocess, sys; subprocess.run(['git', '-C', sys.argv[1], '--version'], capture_output=True)", str(path)],
+                   capture_output=True, env=env)
+    seen_ = Path(mark).exists(); Path(mark).unlink(missing_ok=True)
+    return seen_
+def _watch_sees_open(env, mark, path):
+    """Whether the watch in `env` sees `path` opened — the hook's own proof, here, before a check leans on it. The marker it leaves is cleared."""
+    subprocess.run([sys.executable, "-c", "import sys; open(sys.argv[1], 'rb').close()", str(path)], capture_output=True, env=env)
+    seen_ = Path(mark).exists(); Path(mark).unlink(missing_ok=True)
+    return seen_
+
+# --- the PIN's names (RV-2316, the Owner's ruling filed in FM-006, *The fix round after the critical review*): the gate reads only the files a vendored copy's PIN
+# names inside the copy — a name outside it is refused in one line, and the file it names is never opened
+def _pn(rev=None):
+    """A vendored copy at `tools/shoalmark` whose PIN names one more file, `../../../marks/outside.txt`, outside the copy; its `--check`, watched."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        src_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
+        outside_ = marks / "outside.txt"; outside_.write_text("inert\n", encoding="utf-8")
+        pin_ = root / "tools/shoalmark/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  ../../../marks/outside.txt\n", encoding="utf-8")
+        mark_ = marks / "opened"; env_ = _watch(marks / "watch", mark_, opened=[outside_]); live_ = _watch_sees_open(env_, mark_, outside_)
+        c_, o_, e_ = _tool_run(root / "tools/shoalmark/shoalmark.py", root, "--check", env=env_)
+        g_ = dict(live=live_, vendored=v_[0], code=c_, said=(o_ + e_).strip(), opened=mark_.exists())
+        rm_git(root)
+    return g_
+_PN_LINE = "tools/shoalmark/PIN names ../../../marks/outside.txt, outside the copy — a PIN names only the copy's own files; vendor again with --vendor"
+def _pn_ok(g):
+    return g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and sum(_PN_LINE in l_ for l_ in g["said"].splitlines()) == 1 and not g["opened"]
+g_ = _pn()
+if g_["live"]:
+    check(f"FM-006 · a private security report · the PIN's names · a name outside the copy: `--check` refuses it in one line, exit 4, and the file it names is never opened "
+          f"(saw exit {g_['code']}, opened={g_['opened']}, {next((l_ for l_ in g_['said'].splitlines() if 'outside the copy' in l_), '')[-90:]!r})", _pn_ok(g_))
+    c_ = _pn(_SAME_REV) if _HAVE_SAME else None
+    if c_ and c_["live"]:
+        check(f"FM-006 · a private security report · the PIN's names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _pn_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the PIN's names · the control", 1,
+                 f"this clone does not hold {_SAME_REV}" if not c_ else "the audit hook here does not see the files a run opens")
+else:
+    _skipped("FM-006 · a private security report · the PIN's names", 2, "the audit hook here does not see the files a run opens")
+fm.configure(HERE)
+
+# --- `--triage` and the submodules (the Owner's ruling filed in FM-006, *The fix round after the critical review*): a `.gitmodules` path that resolves outside the
+# repository, symlinks resolved, is skipped — no git runs there
+def _sm(rev=None):
+    """`--triage`, watched, where `.gitmodules` names `../outside-a` and — where symlinks can be made — `inner`, a symlink to `outside-b`: each a git repository
+    beside the repository, outside it."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; base_ = root.parent
+        home_ = root / "docs/work-tracker/TRIAGE.md"; home_.write_text(home_.read_text(encoding="utf-8").replace("1.\n", "1. MSR-001 to its end.\n"), encoding="utf-8")
+        outs_ = [base_ / "outside-a"] + ([base_ / "outside-b"] if _SYMLINKS else [])
+        for o_ in outs_:
+            o_.mkdir(); git(o_, "init", "-q"); git(o_, "commit", "-q", "--allow-empty", "-m", "MSR-001 inert")
+        (root / ".gitmodules").write_text('[submodule "a"]\n\tpath = ../outside-a\n' + ('[submodule "b"]\n\tpath = inner\n' if _SYMLINKS else ""), encoding="utf-8")
+        if _SYMLINKS:
+            os.symlink(base_ / "outside-b", root / "inner", target_is_directory=True)
+        mark_ = marks / "started"; env_ = _watch(marks / "watch", mark_, started=outs_); live_ = all(_watch_sees_start(env_, mark_, o_) for o_ in outs_)
+        c_, o_, e_ = _tool_run(tool_, root, "--triage", env=env_)
+        g_ = dict(live=live_, code=c_, said=(o_ + e_).strip(), started=mark_.read_text(encoding="utf-8").split() if mark_.exists() else [],
+                  sheet=any((root / "docs/work-tracker/evidence/triage").glob("triage-*.md")))
+        rm_git(root)
+    return g_
+def _sm_ok(g):
+    return g["code"] == 0 and g["sheet"] and g["started"] == []
+g_ = _sm()
+if g_["live"]:
+    check(f"FM-006 · a private security report · `--triage` and the submodules · a `.gitmodules` path that resolves outside the repository is skipped: no git is started "
+          f"there, and the worksheet is written (saw exit {g_['code']}, started {g_['started']})", _sm_ok(g_))
+    c_ = _sm(_SAME_REV) if _HAVE_SAME else None
+    if c_ and c_["live"]:
+        check(f"FM-006 · a private security report · `--triage` and the submodules · …the control: beside {_SAME_REV}'s tool this check FAILS", not _sm_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · `--triage` and the submodules · the control", 1,
+                 f"this clone does not hold {_SAME_REV}" if not c_ else "the audit hook here does not see the programs a run starts")
+else:
+    _skipped("FM-006 · a private security report · `--triage` and the submodules", 2, "the audit hook here does not see the programs a run starts")
+fm.configure(HERE)
+
+# --- destinations a person names (the Owner's ruling filed in FM-006, *The fix round after the critical review*, with RV-2316, and RV-2317): `--vendor DIR`,
+# `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics` resolve the destination once, where it is named, and the write rule judges every file under the
+# folder it resolves to — named through a folder outside the repository that resolves inside it, a file under it that is a symlink is refused in one line, and
+# the file it points to is unchanged
+def _nd(rev=None):
+    """Each command at a destination named through `marks/door-*`, a symlink to a folder inside the repository that holds one symlink: `--vendor` meets
+    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand --from` and `--brand DIR` meet `theme.css`, a
+    symlink to a file that is not there."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
+        conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
+        sums_ = lambda p_: hashlib.sha256(p_.read_bytes()).hexdigest() if p_.is_file() else None
+        for key_, inner_, there_, argv_ in (("vendor", "shoalmark.py", True, lambda door_: ("--vendor", str(door_), "--partial", "--allow-untagged")),
+                                             ("brand", "theme.css", False, lambda door_: ("--brand", str(door_), "--from", "monochrome")),
+                                             ("brand-starter", "theme.css", False, lambda door_: ("--brand", str(door_))),
+                                             ("standup", "cal.ics", True, lambda door_: ("--standup", str(door_ / "cal.ics")))):
+            folder_ = root / "dest" / key_; folder_.mkdir(parents=True); target_ = marks / f"target-{key_}"
+            if there_:
+                target_.write_text("UNCHANGED\n", encoding="utf-8")
+            os.symlink(target_, folder_ / inner_); door_ = marks / f"door-{key_}"; os.symlink(folder_, door_, target_is_directory=True)
+            before_ = sums_(target_)
+            c_, o_, e_ = _tool_run(tool_, root, *argv_(door_))
+            g_[key_] = dict(code=c_, err=e_.strip(), line=f"shoalmark: dest/{key_}/{inner_} {_WR_SAYS}", same=sums_(target_) == before_,
+                            only=sorted(os.listdir(folder_)) == [inner_])
+        rm_git(root)
+    return g_
+def _nd_ok(g):
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "brand-starter", "standup"))
+if _SYMLINKS:
+    g_ = _nd()
+    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics`, named through a folder "
+          f"outside the repository that resolves inside it, meet a file under it that is a symlink: each is refused in one line naming it, exit 4, the file it points "
+          f"to unchanged and nothing written (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
+    if _HAVE_SAME:
+        c_ = _nd(_SAME_REV)
+        check(f"FM-006 · a private security report · destinations a person names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _nd_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · destinations a person names · the control", 1, f"this clone does not hold {_SAME_REV}")
+else:
+    _skipped("FM-006 · a private security report · destinations a person names", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- the Windows round (the Owner's ruling filed in FM-006, *The fix round after the critical review*): a refusal said while the configuration is read is said in
+# UTF-8 whatever the console's code page — the one line is the same on every system
+_WIN_REV = "90abab9"
+_HAVE_WIN = _has_rev(_WIN_REV)
+def _cpage(rev=None):
+    """`--check` where the configuration is a symlink to a file beside the repository, the console's code page cp1252, as a Windows console's is."""
+    with tempfile.TemporaryDirectory() as d:
+        root, marks, inst = _root_repo(d, rev); target_ = marks / "shoalmark.toml"; target_.write_text((root / "shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "shoalmark.toml").unlink(); os.symlink(target_, root / "shoalmark.toml")
+        c_, o_, e_ = _tool_run(root / "shoalmark.py", root, "--check", env=dict(_ENV, PYTHONIOENCODING="cp1252"))
+        rm_git(root)
+    return c_, e_.strip()
+_CPAGE_LINE = f"shoalmark: shoalmark.toml {_RR_SAYS}"
+if _SYMLINKS:
+    c_, e_ = _cpage()
+    check(f"FM-006 · a private security report · the reading rule · the configuration a symlink, the console's code page cp1252: the one line is said in UTF-8, "
+          f"exit 4 (saw exit {c_}, {e_[:70]!r})", c_ == fm.EXIT_LINT and e_ == _CPAGE_LINE)
+    if _HAVE_WIN:
+        c_, e_ = _cpage(_WIN_REV)
+        check(f"FM-006 · a private security report · the reading rule · the configuration in cp1252 · …the control: beside {_WIN_REV}'s tool this check FAILS (saw {e_[:70]!r})",
+              not (c_ == fm.EXIT_LINT and e_ == _CPAGE_LINE))
+    else:
+        _skipped("FM-006 · a private security report · the reading rule · the configuration in cp1252 · the control", 1, f"this clone does not hold {_WIN_REV}")
+else:
+    _skipped("FM-006 · a private security report · the reading rule · the configuration in cp1252", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- the copy's own PIN and VERSION under the reading rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, the Windows round):
+# what `--check` reports of a vendored copy's PIN is read as `pin_problems` reads it — a VERSION that is a symlink is refused in one line, its text never reported
+_PR_MARK = "INERT-VERSION"
+def _pr(rev=None):
+    """A vendored copy at `tools/shoalmark` whose PIN no longer names VERSION, and whose VERSION is a symlink to a file beside the repository that carries
+    the inert marker; the copy's own `--check`."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        src_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
+        copy_ = root / "tools/shoalmark"; pin_ = copy_ / "PIN"
+        pin_.write_text("".join(l_ + "\n" for l_ in pin_.read_text(encoding="utf-8").splitlines() if not l_.endswith("  VERSION")), encoding="utf-8")
+        target_ = marks / "version.txt"; target_.write_text((copy_ / "VERSION").read_text(encoding="utf-8").strip() + f"-{_PR_MARK}\n", encoding="utf-8")
+        (copy_ / "VERSION").unlink(); os.symlink(target_, copy_ / "VERSION")
+        c_, o_, e_ = _tool_run(copy_ / "shoalmark.py", root, "--check")
+        g_ = dict(vendored=v_[0], code=c_, err=e_.strip(), said=o_ + e_)
+        rm_git(root)
+    return g_
+def _pr_ok(g):
+    return (g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and g["err"].splitlines()[-1:] == [f"shoalmark: tools/shoalmark/VERSION {_RR_SAYS}"]
+            and sum("tools/shoalmark/VERSION" in l_ for l_ in g["said"].splitlines()) == 1 and _PR_MARK not in g["said"])
+if _SYMLINKS:
+    g_ = _pr()
+    check(f"FM-006 · a private security report · the reading rule · `--check` reports a vendored copy's PIN under the rule: its VERSION a symlink, refused in one line "
+          f"naming it, exit 4, its text never reported (saw exit {g_['code']}, {g_['err'][-110:]!r})", _pr_ok(g_))
+    if _HAVE_WIN:
+        c_ = _pr(_WIN_REV)
+        check(f"FM-006 · a private security report · the reading rule · the copy's PIN and VERSION · …the control: beside {_WIN_REV}'s tool this check FAILS "
+              f"(saw marker reported: {_PR_MARK in c_['said']})", not _pr_ok(c_))
+    else:
+        _skipped("FM-006 · a private security report · the reading rule · the copy's PIN and VERSION · the control", 1, f"this clone does not hold {_WIN_REV}")
+else:
+    _skipped("FM-006 · a private security report · the reading rule · the copy's PIN and VERSION", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- a board file git tracks (the cold review's F1, the Owner's ruling filed in FM-006): no page the board's run writes loads it — the run leaves a page that loads
+# nothing and names the file, and says that line in place of the link
+_F1_REV, _F1_MARK = "df4f266", "INERT-VIEW"
+_HAVE_F1 = _has_rev(_F1_REV)
+_F1_LOADS = re.compile(r"<script|<link|<img|<iframe|<object|<embed|<audio|<video|<source|\bsrc\s*=|\bhref\s*=|url\(|@import", re.I)
+def _f1(rev=None):
+    """A repository whose `view/MSR-001.js` git tracks, its text the inert marker; the board's run, from the tool as it is or as `rev` had it."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); tdir_ = _board_repo(root); fm.configure(HERE)
+        (tdir_ / "view").mkdir(exist_ok=True); (tdir_ / "view/MSR-001.js").write_text(_F1_MARK + "\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "add", "-f", "docs/work-tracker/view/MSR-001.js"); git(root, "commit", "-qm", "a view tracked")
+        tool_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
+        b_ = _tool_run(tool_, root, "--html-only"); page_ = (tdir_ / "index.html").read_text(encoding="utf-8") if (tdir_ / "index.html").is_file() else ""
+        g_ = dict(code=b_[0], out=b_[1].strip(), err=b_[2].strip(), page=page_, view=(tdir_ / "view/MSR-001.js").read_text(encoding="utf-8"))
+        rm_git(root)
+    return g_
+def _f1_board_ok(g):
+    line_ = fm.tracked_board_line(["docs/work-tracker/view/MSR-001.js"])
+    return (g["code"] == 0 and g["page"] != "" and not _F1_LOADS.search(g["page"]) and "default-src 'none'" in g["page"] and fm.html_escape(line_) in g["page"]
+            and "docs/work-tracker/view/MSR-001.js" in g["page"] and _F1_MARK not in g["page"] and g["out"] == "" and g["err"] == line_ and g["view"] == _F1_MARK + "\n")
+g_ = _f1()
+check(f"FM-006 · the cold review's F1 · a view git tracks: the board's run leaves a page that loads nothing and names the file, and says that line in place of the link "
+      f"(saw exit {g_['code']}, out {g_['out'][:40]!r}, {g_['err'][:90]!r})", _f1_board_ok(g_))
+if _HAVE_F1:
+    c_ = _f1(_F1_REV)
+    check(f"FM-006 · the cold review's F1 · …the control: beside {_F1_REV}'s tool the board check FAILS (saw out {c_['out'][:40]!r})", not _f1_board_ok(c_))
+else:
+    _skipped("FM-006 · the cold review's F1 · the control", 1, f"this clone does not hold {_F1_REV}")
+fm.configure(HERE)
+
+# the texts: what a reader of the CHANGELOG, the setup pages, the notes, the README and `--help` is told of the copy and of the board's refresh — and the release's day
+_rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
+_help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+_help_ = re.sub(r"\s+", " ", _help_)
+_readme_ = re.sub(r"\s+", " ", _rd("README.md"))
+_NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
+                  "`svn update`: run `--html-only` to rebuild it.")
+check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer says the same day, and the player stats keep theirs",
+      "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
+      "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
+      and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
+      and 'v0.19.0, released 2 October 2026 — shoalmark 0.19.0 is the first public beta' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html"))
+check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
+      "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
+      and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
+      and not re.search(r"svn update|svn up\b", _readme_.replace(_NO_BOARD_LINE, "") + _help_ + _rd("docs/setup.md")))
+check("FM-006 · a private security report · the README's hooks section says in one line what writes no board — a cherry-pick, a revert, `git am`, `reset --hard`, `stash pop`, and `svn update` on "
+      "Subversion — naming `--html-only` as the rebuild; it is the one place the README names `svn update`", _NO_BOARD_LINE in _readme_ and "svn update" not in _readme_.replace(_NO_BOARD_LINE, ""))
+check("FM-006 · a private security report · the README and `--help` name the copy: where it is kept, who writes it, what it runs, and that `--install-hook` is run on the default branch and again after an upgrade",
+      "`shoalmark-trusted/`" in _rd("README.md") and "run `--install-hook` on your default branch, and again after upgrading" in _readme_ and "a copy of the tool kept in the git directory" in _rd("README.md")
+      and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_ and "from the copy of the tool kept in the git directory" in _help_)
+check("FM-006 · a private security report · RV-2300 · the README's hooks section and `--help` say every hook runs the copy — the commit's hooks too, failing closed — that no hook runs the deriver and a hooks "
+      "folder inside the working tree is refused (No deriver in hooks), and that developing the tool means installing the branch's copy deliberately; neither says a commit's hook runs the working tree's tool",
+      "`--install-hook` writes six hooks, and every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
+      and "No hook runs the repository's deriver" in _readme_ and "`--install-hook` refuses a hooks folder inside the working tree" in _readme_ and "(`SHOALMARK_BOARD_SECONDS` gives it longer)" in _readme_
+      and "last accepted it" not in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
+      and "which run the tool in the working tree" not in _readme_
+      and "every one running a COPY of the tool this keeps in the git directory" in _help_ and "no hook runs the deriver — explicit runs do" in _help_ and "A hooks folder inside the working tree is refused" in _help_ and "run the working tree's tool" not in _help_)
+check("FM-006 · a private security report · the README's entries for a repository with its own hook runner run the copy with the installed hooks' invocation, say what an entry does where the copy is "
+      "missing, and say plainly that a hook runner reads its configuration from the tree, `--install-hook` being the safe default; this repository keeps no `lefthook.yml`",
+      all(f'run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" {flag_}' in _rd("README.md")
+          for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))
+      and "tools/shoalmark/shoalmark.py --session-check" not in _rd("README.md") and "Python cannot open the file, exit 2 — and the runner refuses the commit" in _readme_
+      and "A hook runner reads its configuration from the tree, so a merged branch's configuration runs whatever it names" in _readme_
+      and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
+check("FM-006 · a private security report · both notes' way back removes what calls the copy, then the copy in the git directory (RV-2300), and the rest of it is as it was",
+      "the shoalmark block in `AGENTS.md` and the copy in the git directory\n  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries" in _rd("ADOPT.md")
+      and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Tracker-Ordner kann bleiben" in _rd("ADOPT.de.md")
+      and "everything that calls\n  the copy of the tool in the git directory: the hooks marked `# shoalmark`" in _rd("ADOPT.md") and "Delete the copy — on\n  Subversion, the tool — before that, and commits are refused." in _rd("ADOPT.md")
+      and "alles entfernen, was\n  die Kopie des Werkzeugs im Git-Verzeichnis aufruft" in _rd("ADOPT.de.md") and "Löscht ihr die Kopie — unter Subversion das Werkzeug — vorher, werden Commits abgelehnt." in _rd("ADOPT.de.md"))
+
+# --- FM-006: the board and its tracker pages reload themselves when the tab is visible again — the same page and nothing else ------------------------------------------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root, "--html-only")
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); views_ = [p_.read_text(encoding="utf-8") for p_ in (root / "docs/work-tracker/view").glob("*.js")]
+    block_ = re.search(r"// reload: begin.*?// reload: end", page_, re.S)
+    block_ = block_.group(0) if block_ else ""
+    check("FM-006 · the board reloads · the template carries it: the page that is the board and, under `#=ID`, every tracker's page — one document, a tracker's own file `view/<ID>.js` is data and carries none — reloads on `visibilitychange` "
+          "to visible, keeps its scroll position (`sessionStorage`), and not while a dialog is open or a field holds input",
+          bool(block_) and 'document.addEventListener("visibilitychange"' in block_ and block_.count("location.reload()") == 1 and "shoalmark.keep" in block_ and "scrollY" in block_ and '$("dlg").open' in block_
+          and "textarea,select" in block_ and 'hiddenAt' in block_ and "scrollTo(0,want" in page_ and all(v_.startswith("V(") and "reload" not in v_ and "visibilitychange" not in v_ for v_ in views_) and views_)
+    check("FM-006 · the board reloads · RV-2302 · the template: the search box is no field that holds the reload back, and its filter is kept across the reload with the scroll position, then put back",
+          "input:not(#q):not([type=radio])" in block_ and 'q:$("q").value' in block_ and 'wantQ=typeof k.q=="string"?k.q:null' in block_ and '$("q").value=wantQ??h' in page_)
+    check("FM-006 · the board reloads · no reload path loads another file: nothing in that code fetches, makes a request, polls, sets a timer, opens a socket, makes an element or names a URL — it is `location.reload()`, the same page",
+          bool(block_) and not re.search(r"fetch\s*\(|XMLHttpRequest|setInterval|setTimeout|requestAnimationFrame|requestIdleCallback|WebSocket|EventSource|sendBeacon|new\s+Worker|importScripts|import\s*\(|createElement|new\s+Image|\.src\s*=|\.href\s*=|https?:|file:|//[a-z0-9.-]+\.[a-z]{2,}",
+                                         re.sub(r"//[^\n]*", "", block_)) and "location.assign" not in block_ and "location.replace" not in block_ and "location.href" not in block_)
+    (root / "reload-block.js").write_text(block_, encoding="utf-8")
+    if _have_node_ := shutil.which("node"):
+        (root / "reload-harness.js").write_text(r"""
+const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8");
+function run(o){
+  const calls=[],store=Object.assign({},o.store||{});let handler=null;
+  const sandbox={$:id=>({dlg:{open:!!o.dialog},q:{value:o.q||""}})[id],
+    document:{visibilityState:"visible",addEventListener:(t,f)=>{if(t=="visibilitychange")handler=f},
+      querySelectorAll:sel=>(o.fields||[]).map(v=>typeof v=="string"?{id:"f",value:v}:v).filter(e=>!(e.id=="q"&&sel.includes(":not(#q)")))},
+    sessionStorage:o.broken?{getItem(){throw new Error("no storage")},setItem(){throw new Error("no storage")},removeItem(){throw new Error("no storage")}}
+      :{getItem:k=>k in store?store[k]:null,setItem:(k,v)=>{store[k]=v},removeItem:k=>{delete store[k]}},
+    location:{hash:o.hash||"#=MSR-001",reload:()=>calls.push("reload")},scrollY:240,Date,JSON};
+  vm.createContext(sandbox);
+  const [want,wantQ]=vm.runInContext(code+"\n;[want,wantQ]",sandbox);
+  for(const st of o.events||[]){sandbox.document.visibilityState=st;handler()}
+  return {calls,keep:store["shoalmark.keep"]?JSON.parse(store["shoalmark.keep"]):null,want,wantQ,left:Object.keys(store)};
+}
+const now=Date.now(),away=["hidden","visible"],out={};
+out.away=run({events:away});
+out.never=run({events:["visible"]});
+out.dialog=run({events:away,dialog:true});
+out.typed=run({events:away,fields:["abc"]});
+out.empty=run({events:away,fields:[""]});
+out.twice=run({events:["hidden","visible","visible"]});
+out.back=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,t:now})}});
+out.stale=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,t:now-60000})}});
+out.other=run({store:{"shoalmark.keep":JSON.stringify({h:"#",y:512,t:now})}});
+out.broken=run({events:away,broken:true});
+out.filter=run({events:away,fields:[{id:"q",value:"MSR-0"}],q:"MSR-0"});
+out.filterAndField=run({events:away,fields:[{id:"q",value:"MSR-0"},"typed"],q:"MSR-0"});
+out.backq=run({store:{"shoalmark.keep":JSON.stringify({h:"#=MSR-001",y:512,q:"MSR-0",t:now})}});
+console.log(JSON.stringify(out));
+""", encoding="utf-8")
+        r_ = subprocess.run([_have_node_, str(root / "reload-harness.js"), str(root / "reload-block.js")], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        try:
+            o_ = json.loads(r_.stdout)
+        except ValueError:
+            o_ = {}
+        ok_ = lambda k, **kw: all(o_.get(k, {}).get(a_) == v_ for a_, v_ in kw.items())
+        check("FM-006 · the board reloads · its logic, run: away and back it reloads once and keeps its place (the address and the scroll position) — and not when it was never away, not with a dialog open, not with a field that holds input, "
+              "and one that is empty does not stop it; a second `visible` without a `hidden` between is no second reload; where `sessionStorage` is not there it still reloads (saw " + repr({k_: v_["calls"] for k_, v_ in o_.items()}) + ")",
+              ok_("away", calls=["reload"]) and o_["away"]["keep"]["h"] == "#=MSR-001" and o_["away"]["keep"]["y"] == 240 and ok_("never", calls=[]) and ok_("dialog", calls=[]) and ok_("typed", calls=[]) and ok_("empty", calls=["reload"])
+              and ok_("twice", calls=["reload"]) and ok_("broken", calls=["reload"]))
+        check("FM-006 · the board reloads · back from a reload the page takes the scroll position it kept — once, for that address, within seconds; a stale one, or another page's, is not taken",
+              ok_("back", want=512, left=[]) and ok_("stale", want=None, left=[]) and ok_("other", want=None, left=[]))
+        check("FM-006 · the board reloads · RV-2302 · its logic, run: a filter in the search box, typed or linked, no longer holds the reload back, and it is kept and taken back with the scroll position; "
+              "another field holding input still holds it back (saw " + repr({k_: (o_.get(k_, {}).get("calls"), o_.get(k_, {}).get("wantQ")) for k_ in ("filter", "filterAndField", "backq")}) + ")",
+              ok_("filter", calls=["reload"]) and (o_.get("filter", {}).get("keep") or {}).get("q") == "MSR-0" and ok_("filterAndField", calls=[]) and ok_("backq", want=512, wantQ="MSR-0", left=[]))
+    else:
+        SKIPS.append(("FM-006 · the board reloads · its logic, run", 3, "no Node here"))
+    rm_git(root)
 
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
@@ -2628,16 +4352,17 @@ with tempfile.TemporaryDirectory() as tmp:
     check("an answer committed by the answerer passes: the ask leaves the Owner's queue and appears under --answered, with the question, the answer and who answered",
           code == 0 and "AP-060" not in q_ and "1 ANSWERED, NOT YET ACTED ON" in a_ and "answer: accepted — count one week first" in a_ and "by holgo" in a_)
     # `signed`: a git author is a string; the commit must VERIFY. A throwaway SSH key, trusted by the repository alone.
-    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    (root / "shoalmark.toml").write_text('owner = "h@x signed"\nname = "q"\n[kinds]\nAP = "Work"\n[seats]\nplanner = "s@x"\n', encoding="utf-8")       # a signed identity is an email (FM-024); the asks are the planner's
     code, _, err = run(root)
-    check("`answerers = [\"holgo signed\"]`: an unsigned answer is refused even though its author string is right — a git author is only a string", code == fm.EXIT_LINT and "does not verify" in err + _)
+    check("`owner = \"h@x signed\"`: an unsigned answer is refused even though its author string is right — a git author is only a string", code == fm.EXIT_LINT and "does not verify" in err + _)
     key = root / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, capture_output=True)
-    (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text(), encoding="utf-8")
+    other_ = root / "o"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other_)], check=True, capture_output=True)
+    (root / "signers").write_text("h@x " + key.with_suffix(".pub").read_text() + "other@x " + other_.with_suffix(".pub").read_text(), encoding="utf-8")
     git(root, "config", "gpg.format", "ssh"); git(root, "config", "user.signingkey", str(key)); git(root, "config", "gpg.ssh.allowedSignersFile", str(root / "signers"))
     git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>"); code, _, err = run(root)
     check("a signed answer under a key the repository trusts verifies and passes", code == 0 and "does not verify" not in err)
-    git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <other@x>"); code, _, err = run(root)
-    check("signed by the key, but as an identity the signers file does not tie to it — refused: the key and the name must agree", code == fm.EXIT_LINT and "does not verify" in err + _)
+    git(root, "-c", f"user.signingkey={other_}", "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>"); code, _, err = run(root)
+    check("signed by a key the signers file trusts for another identity — refused: the key and the identity must agree", code == fm.EXIT_LINT and "does not verify" in err + _)
     git(root, "commit", "-q", "--amend", "--no-edit", "-S", "--author=holgo <h@x>")
     (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     ans.write_text(ans.read_text().replace("answered-by: holgo\n", "answered-by: intruder\n"), encoding="utf-8"); code, _, err = run(root)
@@ -2779,7 +4504,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(root / "signers")), ("commit.gpgsign", "false")):
         git(root, "config", k_, v_)
     git(root, "remote", "add", "origin", str(base / "origin.git"))
-    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["holgo signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    (root / "shoalmark.toml").write_text('owner = "h@x signed"\nname = "q"\n[kinds]\nAP = "Work"\n[seats]\nplanner = "s@x"\n', encoding="utf-8")       # a signed identity is an email (FM-024); the asks are the planner's
     # the tracker discusses its own keys, as FM-007 itself does: "an `answer:` counts only from the account it is filed
     # from" is the sentence the pre-mortem's rule is written in, and it sits in the body of the very tracker it governs
     ap70_ = tracker(root, "AP-070", extra=f'next: owner\nask: "Move the merge to the Principal?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "count one week first"\n', title="the ask",
@@ -3066,21 +4791,21 @@ with tempfile.TemporaryDirectory() as tmp:
     cfg_("", "")
     tracker(root, "AP-700", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=p <p@seat>")     # asked by the principal, which signs nothing
-    cfg_('["alice signed"]', 'owner = "alice signed"'); code_a, _, err_a = run(root, "--check")
+    cfg_('["alice@x signed"]', 'owner = "alice@x signed"'); code_a, _, err_a = run(root, "--check")      # a signed identity is an email (FM-024)
     check("FM-015 · `answerers` signed and the seat that answers for it signed — clean, and told `answerers` is not read here and can go",
           code_a == 0 and "answerers" in err_a and "here it is not read for answers" in err_a and "is not signed" not in err_a)
-    cfg_('["alice signed"]', 'owner = "alice"'); code_b, _, err_b = run(root, "--check")
+    cfg_('["alice@x signed"]', 'owner = "alice@x"'); code_b, _, err_b = run(root, "--check")
     check("FM-015 · `answerers` signed and the seat that answers for it NOT signed — REFUSED, naming both lines and the two ways out",
-          code_b == fm.EXIT_LINT and '`answerers = ["alice signed"]` asks for a signed answer' in err_b and '`[seats] owner = "alice"`' in err_b
-          and 'Add `signed` to the seat (`owner = "alice signed"`), or remove `answerers`' in err_b)
+          code_b == fm.EXIT_LINT and '`answerers = ["alice@x signed"]` asks for a signed answer' in err_b and '`[seats] owner = "alice@x"`' in err_b
+          and 'Add `signed` to the seat (`owner = "alice@x signed"`), or remove `answerers`' in err_b)
     code_c, _, err_c = run(root, "--answer", "AP-700", "accept")
     check("FM-015 · …and `--answer` refuses the same way before it touches anything — it would have committed unsigned",
-          code_c == fm.EXIT_LINT and '`[seats] owner = "alice"`' in err_c and "answering AP-700 — 2/4" not in err_c
+          code_c == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_c and "answering AP-700 — 2/4" not in err_c
           and subprocess.run(["git", "-C", str(root), "branch", "--list", "answer/ap-700"], capture_output=True, text=True, env=_ENV).stdout.strip() == "")
-    cfg_('["alice signed"]', 'owner = "alice@x"'); code_d, _, err_d = run(root, "--check")
-    check("FM-015 · where no seat is spelled like the `answerers` entry — a name there, an email here — the seats holding `answer` stand in for it, and an unsigned one is refused",
-          code_d == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_d and "no seat is spelled `alice`" in err_d)
-    cfg_('["alice signed"]', ""); code_e, _, err_e = run(root, "--check")
+    cfg_('["alice2@x signed"]', 'owner = "alice@x"'); code_d, _, err_d = run(root, "--check")
+    check("FM-015 · where no seat is spelled like the `answerers` entry — another address there, this one here — the seats holding `answer` stand in for it, and an unsigned one is refused",
+          code_d == fm.EXIT_LINT and '`[seats] owner = "alice@x"`' in err_d and "no seat is spelled `alice2@x`" in err_d)
+    cfg_('["alice@x signed"]', ""); code_e, _, err_e = run(root, "--check")
     check("FM-015 · no `[seats]` — `answerers` is read, and the note is today's, with its removal anchored to 0.17.3",
           code_e == 0 and "and still works" in err_e and "the release after 0.17.3" in err_e and "is not signed" not in err_e)
     cfg_("", 'owner = "alice"'); code_f, _, err_f = run(root, "--check")
@@ -3632,14 +5357,15 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = made5_(514, f"in {pair5_[2]}")
     check("FM-005 · RV-2155 · …alone, they say what is wrong: *names more than one commit — write more of its hash*, and the way through",
           code == fm.EXIT_LINT and f"AP-514: moved to `Shipped` with no commit behind it — `{pair5_[2]}` names more than one commit — write more of its hash. " in err and "(no such commit)" not in err and way5_(err))
-    # RV-2154: a tracker that is a link to a file outside the repository stops no run in a traceback
+    # RV-2154: a tracker that is a symlink is refused in one line by every run but the board's, never in a traceback
     if os.name != "nt":
         with tempfile.TemporaryDirectory() as out_:
             target_ = Path(out_).resolve() / "outside-AP-590.md"; linked_ = tracker(root, "AP-590", body=nothing5_, title="a link"); target_.write_text(linked_.read_text(encoding="utf-8"), encoding="utf-8")
             linked_.unlink(); linked_.symlink_to(target_)
-            code, _, err = run(root); code_c, _, err_c = run(root, "--check"); linked_.unlink()
-        check(f"FM-005 · RV-2154 · a tracker file that is a link to a file outside the repository stops no run — the rule reads it as no tracker of the repository, with no traceback (saw {code}, {code_c})",
-              "Traceback" not in err + err_c and code == 0 and code_c == 0)
+            code, _, err = run_caught(root); code_c, _, err_c = run_caught(root, "--check"); linked_.unlink()
+        said_ = "docs/work-tracker/AP-590-x.md is a symlink, or reached through one — the tool reads a file of the tree only as a regular file inside the repository, following no symlink"
+        check(f"FM-005 · RV-2154 · a tracker that is a symlink is refused in one line naming it, exit 4, by every run but the board's — never a traceback (saw {code}, {code_c})",
+              "Traceback" not in err + err_c and code == code_c == fm.EXIT_LINT and said_ in err and said_ in err_c and len(err.strip().splitlines()) == len(err_c.strip().splitlines()) == 1)
     rm_git(root)
 fm.configure(HERE)
 
@@ -3755,11 +5481,11 @@ else:
         check("S4 · under Subversion the seat is the server's account: the ask committed by an account that is no seat is refused, naming it — and the one from the seat that holds `ask` passes",
               code == fm.EXIT_LINT and "C2-002: `next: owner` puts a question in front of the Owner" in err and "`stranger` is not a seat" in err
               and "--worktree user.email" not in err and "C2-003" not in err)
-        (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal signed"\n', encoding="utf-8")
+        (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal@example.org signed"\n', encoding="utf-8")      # a signed identity is an email (FM-024)
         code, _, err = run(root)
         check("S4 · `signed` under Subversion is refused as meaningless — the server authenticated the commit; name the account alone",
               code == fm.EXIT_LINT and "asks for a signature, and Subversion has none to give" in err and "Name the SVN account alone" in err)
-        (root / "shoalmark.toml").write_text('owner = "holgo signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
+        (root / "shoalmark.toml").write_text('owner = "holgo@example.org signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
         code, _, err = run(root)
         check(f"S4 · RV-2200 · the Owner named at the top with `signed` under Subversion is refused as `owner`, never under `[seats]` (saw {err.strip()[-200:]!r})",
               code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and Subversion has none to give" in err)
@@ -4032,7 +5758,7 @@ with tempfile.TemporaryDirectory() as d:
     agents, hook = (root / "AGENTS.md").read_text(), (root / ".git/hooks/pre-commit").read_text()
     check("a contract block and a hook written under the old name are replaced, not stranded — the repository's own text is kept",
           code == 0 and "old rules" not in agents and "fathom-mark" not in agents and agents.count(fm.CONTRACT_BEGIN) == 1 and "kept." in agents and agents.startswith("# mine")
-          and "fathom" not in hook and "shoalmark.py --print-written" in hook)
+          and "fathom" not in hook and 'shoalmark-trusted/shoalmark.py"' in hook and '--root "$root" --print-written' in hook)
 fm.configure(HERE)
 
 # --- FM-031 S2: the queue in one view — every open pull request, ONE action, in the order the Owner takes them -------
@@ -5289,9 +7015,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
     code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
     board_ = page_(root)
-    check(f"FM-030 · 0.18.6 · with the hooks installed — which run nothing after a checkout — `--answer` and `--done` end on the branch they started on, the command rebuilds the board itself, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
-          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
-          and "the board is rebuilt — no checkout hook rebuilt it" in out_d
+    check(f"FM-030 · 0.18.6 · with the hooks installed — whose checkout hook runs the copy of the tool kept in the git directory — `--answer` and `--done` end on the branch they started on, the checkout hook rebuilds the board and the command says so, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook — it reads the branch just pushed" in out_a
+          and "the board was rebuilt by the checkout hook — it reads the branch just pushed" in out_d
           and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
     run(other, "--html-only"); before_ = page_(other)
     git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)
@@ -5498,6 +7224,192 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-036 · F · a superseded row claims no rank: the later row of one tracker and another tracker's row may not both hold #2 (saw {e_})",
           e_ == ["AP-031: `keep P2 #2 build` — #2 is already claimed by AP-030 on this sheet; a rank names one tracker"] and sup_ == ["AP-030: `keep P1 #1 build` — superseded on this sheet by the later row, `keep P1 #2 build`"])
     rm_git(root)
+fm.configure(HERE)
+
+# --- the signed identity (FM-024; the Owner's ruling filed in FM-006, *The release bar*, on a private security report) ----------------------------------------------
+# A `signed` identity is an email, and it verifies by SSH only: the signature, read from the commit's own header, is SSH; `%G?` is G under the default branch's
+# signers file; the principal EQUALS the configured email — never one that contains it, never the commit's author standing in for it. Throwaway keys made by
+# `ssh-keygen` (and `gpg` in a throwaway home, where there is one); every signature is a test key's. Each control is the same check beside 79be49d's tool.
+_SIG_REV = "79be49d"
+_HAVE_SIG = _has_rev(_SIG_REV)
+_SIG_LINE = "sign with SSH; GPG returns with a fingerprint binding"      # the filed line, written out
+def _sig_keys(base, *principals):
+    """One throwaway SSH key per principal, and a signers file beside the repository naming each — {principal: key file}."""
+    keys_ = {}
+    for i_, p_ in enumerate(principals):
+        k_ = base / f"key{i_}"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(k_)], check=True, capture_output=True); keys_[p_] = k_
+    (base / "signers").write_text("".join(f"{p_} {k_.with_suffix('.pub').read_text(encoding='utf-8')}" for p_, k_ in keys_.items()), encoding="utf-8")
+    return keys_
+def _sig_old(into):
+    """79be49d's tool, laid out beside the repository: its path, and the module it is, loaded apart from this one."""
+    into = Path(into); into.mkdir(parents=True, exist_ok=True); _old_tree(into, _SIG_REV)
+    spec_ = importlib.util.spec_from_file_location("fm_before_the_signed_identity", into / "shoalmark.py"); m_ = importlib.util.module_from_spec(spec_); spec_.loader.exec_module(m_)
+    return into / "shoalmark.py", m_
+_SIG_CFG = 'name = "s"\nowner = "h@x signed"\n[kinds]\nSG = "Work"\n[seats]\nplanner = "p@x signed"\n'
+def _sig_lint(case, variant, tool, gnupg=None):
+    """The gate's lint on one signed line in a scratch repository. `case`: the Owner's `answer`, the planner's `next: owner` ask, or the planner's `close`.
+    `variant`: `exact` — the seat's email, signed with the key the signers file trusts for it; `name` — an author whose name is the seat's email and whose
+    email is another signer's, signed with that signer's trusted key; `contains` — the seat's email, signed with a key trusted for a principal that contains
+    it; `gpg` — the Owner's email, signed by a GPG key whose user ID carries it (`gnupg`: its home and fingerprint); `pgp` — the Owner's email, the commit
+    object written with git's plumbing and a PGP-armoured signature header, no `gpg` needed. (exit, what the tool said)."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, env=_ENV)
+        keys_ = _sig_keys(base, "h@x", "p@x", "o@x", "xh@x", "xp@x")
+        for k_, v_ in (("gpg.format", "ssh"), ("gpg.ssh.allowedSignersFile", str(base / "signers")), ("commit.gpgsign", "false")):
+            git(root, "config", k_, v_)
+        (root / "shoalmark.toml").write_text(_SIG_CFG, encoding="utf-8")
+        since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        seat_ = "h@x" if case == "answer" else "p@x"
+        author_ = {"name": f"{seat_} <o@x>"}.get(variant, f"them <{seat_}>")
+        asked_ = f'next: build\nask: "Ship it?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+        tracker(root, "SG-001", extra=asked_ if case == "answer" else "")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+        if case == "answer":
+            tracker(root, "SG-001", extra=asked_ + f'answer: "accepted"\nanswered: {since_}\nanswered-by: {author_.split(" <")[0]}\n')
+        elif case == "ask":
+            tracker(root, "SG-001", extra=asked_.replace("next: build", "next: owner"))
+        else:
+            tracker(root, "SG-001", status="Closed")
+        git(root, "add", "-A")
+        env_ = dict(_ENV, **({"GNUPGHOME": gnupg[0]} if gnupg else {}))
+        if variant == "pgp":
+            tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
+            parent_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+            obj_ = (f"tree {tree_}\nparent {parent_}\nauthor {author_} 1700000000 +0000\ncommitter {author_} 1700000000 +0000\n"
+                    "gpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEEAAAAAAAAAAAAAAAAAAAAAAAAAAAFAmUAAAAACgkQAAAAAAAAAAA=\n =AAAA\n -----END PGP SIGNATURE-----\n\nSG-001: the signed line\n")
+            made_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=obj_.encode("utf-8"), capture_output=True, env=_ENV)   # bytes: `\n` as written
+            new_ = made_.stdout.decode("utf-8", "replace").strip()
+            if made_.returncode != 0 or not new_:                # said in the check that leans on it, never a stop of the suite
+                rm_git(root)
+                return None, "hash-object refused the commit object: " + made_.stderr.decode("utf-8", "replace").strip()
+            git(root, "update-ref", "HEAD", new_)
+        else:
+            how_ = (["-c", "gpg.format=openpgp", "-c", f"user.signingkey={gnupg[1]}"] if variant == "gpg"
+                    else ["-c", f"user.signingkey={keys_[{'exact': seat_, 'name': 'o@x', 'contains': 'x' + seat_}[variant]]}"])
+            subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", *how_, "commit", "-qm", "SG-001: the signed line", "-S", f"--author={author_}"],
+                           check=True, capture_output=True, env=env_)
+        c_, o_, e_ = _tool_run(tool, root, env=env_)
+        rm_git(root)
+    return c_, o_ + e_
+def _sig_lint_ok(said):
+    """exact passes; another trusted signer under an author that carries the identity, and a principal that only contains it, are refused."""
+    return "does not verify" not in said["exact"][1] and all("does not verify" in said[v_][1] for v_ in ("name", "contains"))
+_SIG_CASES = (("answer", "the Owner's answer (`verified_as`, as the lint's answer rule calls it)"), ("ask", "a signed seat's `next: owner` ask (the lint's ask rule)"),
+              ("close", "a signed seat's `close` (the lint's rights rule)"))
+with tempfile.TemporaryDirectory() as d_old_:
+    old_tool_, old_fm_ = _sig_old(Path(d_old_) / "tool") if _HAVE_SIG else (None, None)
+    for case_, what_ in _SIG_CASES:
+        said_ = {v_: _sig_lint(case_, v_, HERE / "shoalmark.py") for v_ in ("exact", "name", "contains")}
+        check(f"FM-024 · a private security report · the signed identity · {what_}: the exact principal passes; another trusted signer's key under an author that carries the "
+              f"identity as its name is refused, and so is a principal that contains the email without equalling it (saw exits {[said_[v_][0] for v_ in ('exact', 'name', 'contains')]})",
+              _sig_lint_ok(said_))
+        if old_tool_:
+            old_ = {v_: _sig_lint(case_, v_, old_tool_) for v_ in ("exact", "name", "contains")}
+            check(f"FM-024 · a private security report · the signed identity · …the control: {case_} beside {_SIG_REV}'s tool FAILS — it let the author stand in, or took a principal that "
+                  f"contains the email (saw refused: {[v_ for v_ in ('name', 'contains') if 'does not verify' in old_[v_][1]]})", not _sig_lint_ok(old_))
+    # a GPG signature on a signed line is refused with one line — a commit object written with git's own plumbing, no `gpg` needed …
+    c_, said_ = _sig_lint("answer", "pgp", HERE / "shoalmark.py")
+    check(f"FM-024 · a private security report · the signed identity · a commit whose signature header is PGP-armoured, written with git's plumbing, is refused on a signed line with exactly "
+          f"`{_SIG_LINE}` (saw {said_[-160:]!r})", c_ == fm.EXIT_LINT and _SIG_LINE in said_)
+    if old_tool_:
+        c_, said_ = _sig_lint("answer", "pgp", old_tool_)
+        check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool the PGP header gets no such line", c_ is not None and _SIG_LINE not in said_)
+    # … and a trusted GPG key whose user ID carries the Owner's email, with real `gpg` in a throwaway home
+    if shutil.which("gpg"):
+        gh_ = tempfile.mkdtemp(); os.chmod(gh_, 0o700); genv_ = dict(_ENV, GNUPGHOME=gh_)
+        subprocess.run(["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-gen-key", "holgo <h@x>", "ed25519", "sign", "never"], capture_output=True, env=genv_)
+        fpr_ = next((l_.split(":")[9] for l_ in subprocess.run(["gpg", "--batch", "--with-colons", "--list-keys", "h@x"], capture_output=True, text=True, env=genv_).stdout.splitlines() if l_.startswith("fpr")), "")
+        if fpr_:
+            c_, said_ = _sig_lint("answer", "gpg", HERE / "shoalmark.py", (gh_, fpr_))
+            check(f"FM-024 · a private security report · the signed identity · a trusted GPG key whose user ID carries the Owner's email signs the answer: refused with exactly `{_SIG_LINE}` "
+                  f"(saw {said_[-140:]!r})", c_ == fm.EXIT_LINT and _SIG_LINE in said_)
+            if old_tool_:
+                c_, said_ = _sig_lint("answer", "gpg", old_tool_, (gh_, fpr_))
+                check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that GPG-signed answer passes (saw exit {c_})", "does not verify" not in said_ and _SIG_LINE not in said_)
+        else:
+            _skipped("FM-024 · the signed identity · a trusted GPG key", 2, "gpg made no key here")
+        subprocess.run(["gpgconf", "--kill", "gpg-agent"], capture_output=True, env=genv_) if shutil.which("gpgconf") else None
+        shutil.rmtree(gh_, ignore_errors=True)
+    else:
+        _skipped("FM-024 · the signed identity · a trusted GPG key whose user ID carries the Owner's email", 2, "no `gpg` here")
+    # a `signed` identity that is not an email is refused when the configuration is read: exit 1, one line on how to migrate — under `owner`, `[seats]` and `answerers`
+    def _sig_cfg(text, tool):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); git(root, "init", "-q"); (root / "shoalmark.toml").write_text(text, encoding="utf-8"); tracker(root, "SG-001")
+            c_, o_, e_ = _tool_run(tool, root, "--check"); rm_git(root)
+        return c_, e_.strip()
+    for where_, text_, line_ in (("`owner`", 'name = "s"\nowner = "holgo signed"\n[kinds]\nSG = "Work"\n', '`"<email> signed"`'),
+                                 ("`[seats] planner`", 'name = "s"\n[kinds]\nSG = "Work"\n[seats]\nplanner = ["p@x", "planner signed"]\n', '`"<email> signed"`'),
+                                 ("`answerers`", 'name = "s"\nanswerers = ["holgo signed"]\n[kinds]\nSG = "Work"\n', '`owner = "<email> signed"`, before any table')):
+        c_, e_ = _sig_cfg(text_, HERE / "shoalmark.py")
+        check(f"FM-024 · a private security report · the signed identity · a name-only `signed` identity under {where_} is refused when the configuration is read — exit 1, one line saying to "
+              f"write the email the signers file names for the key (saw {e_[-170:]!r})",
+              c_ == 1 and len(e_.splitlines()) == 1 and "as signed, and a signed identity is an email address — write the email the signers file names for the key" in e_ and line_ in e_)
+        if old_tool_:
+            c_, e_ = _sig_cfg(text_, old_tool_)
+            check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that configuration is read (saw exit {c_})", c_ != 1)
+    c_, e_ = _sig_cfg('name = "s"\nowner = ["holgo", "h@x signed"]\n[kinds]\nSG = "Work"\n[seats]\nplanner = "planner"\n', HERE / "shoalmark.py")
+    check(f"FM-024 · the signed identity · an identity without `signed` stays as it is, a name included (saw exit {c_})", c_ != 1 and "signed identity is an email" not in e_)
+    # the readings of a signed line outside the lint: FM-037's guard, `--queue`'s, the board's and `--owner`'s (`on_their_way`), and `--answer`'s own check
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); root = _way_repo(base)
+        extra_ = {p_: base / f"x{i_}" for i_, p_ in enumerate(("o@x", "xh@x"))}
+        for p_, k_ in extra_.items():
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(k_)], check=True, capture_output=True)
+        (base / "signers").write_text((base / "signers").read_text(encoding="utf-8") + "".join(f"{p_} {k_.with_suffix('.pub').read_text(encoding='utf-8')}" for p_, k_ in extra_.items()), encoding="utf-8")
+        since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        sha_ = lambda ref: subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+        heads_ = {}
+        for tid_, (author_, key_) in {"AP-501": ("holgo <h@x>", base / "k"), "AP-502": ("h@x <o@x>", extra_["o@x"]), "AP-504": ("holgo <h@x>", extra_["xh@x"])}.items():
+            git(root, "switch", "-q", "-c", f"answer/{tid_.lower()}", "main"); t_ = next((root / "docs/work-tracker").glob(f"{tid_}-*.md"))
+            t_.write_text(t_.read_text(encoding="utf-8").replace("next: owner\n", f'next: owner\nanswer: "accepted"\nanswered: {since_}\nanswered-by: {author_.split(" <")[0]}\n'), encoding="utf-8")
+            git(root, "add", "-A"); git(root, "-c", f"user.signingkey={key_}", "commit", "-qm", f"{tid_}: accepted", "-S", f"--author={author_}")
+            git(root, "push", "-q", "origin", f"answer/{tid_.lower()}"); heads_[tid_] = sha_("HEAD"); git(root, "switch", "-q", "main")
+        def _readings(mod):
+            mod.configure(root)
+            queue_ = {tid_: mod.answer_reading(h_)[0] for tid_, h_ in heads_.items()}
+            way_ = mod.on_their_way(mod.load_trackers()); board_ = {tid_: way_.get(tid_, {}).get("said", "")[:5] for tid_ in heads_}
+            guard_ = {tid_: mod.guard_verdicts([(h_, "s", "TRIAGE.md", [("intent", "")])], mod.owners_at(None))[0][4] for tid_, h_ in heads_.items()}
+            return queue_, board_, guard_
+        q_, b_, g_ = _readings(fm); owner_ = run(root, "--owner")[1]
+        _read_ok = lambda q, b, g: (q == {"AP-501": "merge", "AP-502": "wait", "AP-504": "wait"} and b == {"AP-501": "merge", "AP-502": "wait:", "AP-504": "wait:"}
+                                    and g == {"AP-501": "signed", "AP-502": "refused", "AP-504": "refused"})
+        check(f"FM-024 · a private security report · the signed identity · `--queue`'s reading of an answer, the board's and `--owner`'s *signed* (`on_their_way`) and FM-037's guard each take the "
+              f"exact principal only — not another trusted signer under the identity as the author's name, not a principal that contains it (saw {q_}, {b_}, {g_})", _read_ok(q_, b_, g_))
+        check("FM-024 · a private security report · the signed identity · `--owner` shows only the exact principal's answer as signed",
+              re.search(r"AP-501 .*· signed ·", owner_) is not None and not re.search(r"AP-50[24] .*· signed ·", owner_))
+        if old_fm_:
+            q_, b_, g_ = _readings(old_fm_); fm.configure(root)
+            check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool those readings take the others too (saw {q_}, {b_}, {g_})", not _read_ok(q_, b_, g_))
+        # `--answer`'s own check, after its commit: an author whose name is the Owner's email, signing with another trusted signer's key, is never pushed
+        for k_, v_ in (("user.name", "h@x"), ("user.email", "o@x"), ("user.signingkey", str(extra_["o@x"]))):
+            git(root, "config", k_, v_)
+        code_, _o, err_ = run(root, "--answer", "AP-505", "accept")
+        pushed_ = "answer/ap-505" in subprocess.run(["git", "-C", str(root), "ls-remote", "origin"], capture_output=True, text=True, env=_ENV).stdout
+        check(f"FM-024 · a private security report · the signed identity · `--answer` committed under the Owner's email as its name with another trusted signer's key: it does not verify, and it is "
+              f"NOT pushed (saw exit {code_}, pushed {pushed_})", code_ != 0 and not pushed_ and "does not verify as" in err_)
+        if old_tool_:
+            git(root, "reset", "-q", "--hard", "origin/main"); git(root, "switch", "-q", "main")
+            subprocess.run(["git", "-C", str(root), "branch", "-D", "answer/ap-505"], capture_output=True, env=_ENV)
+            c_, o_, e_ = _tool_run(old_tool_, root, "--answer", "AP-505", "accept", env={k_: v_ for k_, v_ in _ENV.items() if not k_.startswith("GIT_AUTHOR") and not k_.startswith("GIT_COMMITTER")})
+            pushed_ = "answer/ap-505" in subprocess.run(["git", "-C", str(root), "ls-remote", "origin"], capture_output=True, text=True, env=_ENV).stdout
+            check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that answer is pushed (saw exit {c_})", pushed_)
+        rm_git(root)
+if not _HAVE_SIG:
+    _skipped("FM-024 · the signed identity · the controls", 10, f"this clone does not hold {_SIG_REV}")
+_rd_ = lambda rel: re.sub(r"\s+", " ", (HERE / rel).read_text(encoding="utf-8"))
+check("FM-024 · a private security report · the signed identity · the texts: README §Seats and its `answerers` and refusal rows, both signing pages (SSH only, no GPG route, the refusal line), "
+      "both setup pages, the configuration reference, and the CHANGELOG's security line, which opens with its reason",
+      "**A `signed` identity is an email address, and it verifies by SSH only:**" in _rd_("README.md") and f"`{_SIG_LINE}`" in _rd_("README.md")
+      and "or import the key (GPG)" not in _rd_("README.md") and '`["name signed"]`' not in _rd_("README.md")
+      and all("Route B" not in _rd_(r_) and "Weg B" not in _rd_(r_) and _SIG_LINE in _rd_(r_) and "gpg --list-secret-keys" not in _rd_(r_) for r_ in ("docs/signing.md", "docs/de/signing.md"))
+      and "A `signed` identity is an email address, verified by SSH" in _rd_("docs/setup.md") and "Eine Identität mit `signed` ist eine E-Mail-Adresse und wird über SSH geprüft" in _rd_("docs/de/setup.md")
+      and '`answerers = ["yourname signed"]`' not in _rd_("docs/setup.md") + _rd_("docs/signing.md") and '`answerers = ["ihrname signed"]`' not in _rd_("docs/de/setup.md") + _rd_("docs/de/signing.md")
+      and "<email or name> signed" not in fm.render_schema() and '`"<email> signed"` — a signed identity is an email' in fm.render_schema()
+      and ("- Security, from a private report: a signed identity configured by name, or a signer whose identity merely contained the address, could let another trusted signer's commit count as "
+           "that identity's. A signed identity is now an email address only, matched exactly against the SSH signer; ") in _rd_("CHANGELOG.md")
+      and "This fix has no advisory of its own" in _rd_("CHANGELOG.md"))
 fm.configure(HERE)
 
 # --- FM-029, 0.18.4 G: the record `--clear-ask` writes names the commit that signed the answer — `**signed** — <sha> ·
@@ -5883,7 +7795,7 @@ with tempfile.TemporaryDirectory() as tmp:
           g_sig_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-signed` since origin/main, 1 change them or their signers file, each their own commit")
           and len(g_forge_[0]) == 1 and "— the Owner's email, unsigned — a git author is a string anyone can type: not the Owner's signed commit" in g_forge_[0][0]
           and len(g_ok_seat_[0]) == 1 and "its author `implementer@seat` is not the Owner" in g_ok_seat_[0][0]
-          and len(g_sk_[0]) == 1 and f'refused: commit {c_sk_[:7]} "AP-037: a seat\'s key, his name" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — signed as `implementer@seat`, not as its author `h@x`' in g_sk_[0][0])
+          and len(g_sk_[0]) == 1 and f'refused: commit {c_sk_[:7]} "AP-037: a seat\'s key, his name" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — signed as `implementer@seat`, not as the Owner\'s `h@x`' in g_sk_[0][0])
     git(root, "switch", "-q", "ap/037-signed"); code37s_, _o, err37s_ = run(root, "--check")
     check(f"FM-037 · end to end: the branch that carries the Owner's signed commit passes `--check` (saw {err37s_.strip()[-200:]!r})", code37s_ == 0)
     # a merge (FM-019): the text it carries from a parent was judged on the commit that made it; a text no parent had is its own
@@ -6001,6 +7913,10 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("user.name", "holgo"), ("user.email", "h@x"), ("user.signingkey", str(rkey_))):
         git(root, "config", k_, v_)
     code_r1_, out_r1_, err_r1_ = run(root, "--answer", "AP-051", "accept")
+    left37_ = subprocess.run(["pgrep", "-f", f"shoalmark.py --root {root} --html-only"], capture_output=True, text=True).returncode if shutil.which("pgrep") else 1
+    check("FM-006 · a private security report · an act with the copy's hooks installed finishes, and the hook's run ends: `--answer` switches branches with the copy's checkout hook running — here in a clone whose signers file sits "
+          "in the checkout, where the copy makes the temporary file it verifies against — and returns, no process of the copy is left, and the board is there (saw exit "
+          f"{code_r1_}, {'no process left' if left37_ == 1 else 'A PROCESS IS LEFT'})", isinstance(code_r1_, int) and left37_ == 1 and (root / "docs/work-tracker/index.html").is_file())
     pushed_r1_ = "answer/ap-051" in subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
     code_r1c_, _o, err_r1c_ = run(root, "--check")                     # on `answer/ap-051`, where the refusal left him
     held_r1_ = "it is signed, but not with a key `docs/work-tracker/allowed_signers` on origin/main holds for that identity — a new key verifies once it is there: the Owner's signed commit to that file, merged into origin/main first"
@@ -6060,7 +7976,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
         git(root, "config", k_, v_)
     run(root, "--init", "--key", "msr")
-    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text('owner = "t@t signed"\n' + cfg_.read_text())       # a signed identity is an email (FM-024)
     sha = lambda ref="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
     since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
     tr_ = tracker(root, "MSR-001", extra=f'next: owner\nask: "Ship it?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n')
@@ -6077,10 +7993,10 @@ with tempfile.TemporaryDirectory() as tmp:
     fm.configure(root)
     read_ = lambda: [a_ for _p, _k, a_, _d in _no_git_env(lambda: fm.queue_actions(prs))]
     trusted_ = read_()
-    plain_cfg = cfg_.read_text(); cfg_.write_text(plain_cfg.replace('answerers = ["t signed"]\n', "") + '\n[seats]\nowner = "t signed"\n'); fm.configure(root)
-    by_name_ = read_(); cfg_.write_text(plain_cfg); fm.configure(root)
-    check(f"R1 · with `[seats]` naming the Owner by his git name, as the gate matches a seat (email or name), his signed answer reads `merge: your answer` (saw {by_name_})",
-          by_name_ == ["merge: your answer", "wait: unsigned answer", "wait: not an answerer (m@m)"])
+    plain_cfg = cfg_.read_text(); cfg_.write_text(plain_cfg.replace('owner = "t@t signed"\n', 'owner = "t signed"\n')); by_name_ = _try(lambda: fm.configure(root))
+    cfg_.write_text(plain_cfg); fm.configure(root)
+    check("R1 · FM-024 · a `signed` Owner named by their git name is refused at configuration — a signed identity is an email, matched exactly against the SSH signer",
+          by_name_ is False)
     # FM-031, 0.18.4 · an answer branch is read by its answer commit — the one that wrote `answer:` — where only review files
     # follow it: the Reviewer's docs pass on the answer read `not an answerer (reviewer@seat)` by its head (the parent's PRs 836,
     # 849, 853 — its review file beside the tracker's evidence, as the parent files it); a seat's other change is read as before
@@ -6292,7 +8208,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(key)), ("gpg.ssh.allowedSignersFile", str(base / "signers"))):
         git(root, "config", k_, v_)
     run(root, "--init", "--key", "msr")
-    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("[kinds]", 'answerers = ["t signed"]\n\n[kinds]', 1))
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text('owner = "t@t signed"\n' + cfg_.read_text())       # a signed identity is an email (FM-024)
     since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
     ask_ = lambda q: f'next: owner\nask: "{q}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
     trs_ = [tracker(root, "MSR-001", extra=ask_("Ship the importer?")), tracker(root, "MSR-002", extra=ask_("Ship the exporter?"))]
@@ -6316,7 +8232,8 @@ with tempfile.TemporaryDirectory() as tmp:
     (fresh_ / "docs/work-tracker/INDEX.md").write_text(tomorrow_, encoding="utf-8"); later_ = run(fresh_, "--check")[1]
     check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one under `drift_normalize` — the date aside, so on another day too — and `--check` reads it so (saw {err_.strip()!r})",
           code_ == fm.EXIT_LINT and len(said_) == 1 and "STALE" not in out_ + err_ and "INDEX.md is up to date" in out_
-          and said_[0] == f"  checkout: it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see {fm.SIGNING_PAGE} — 2 signed commit(s) it could not check: MSR-001 `{signed_[0][:10]}`, MSR-002 `{signed_[1][:10]}`"
+          and said_[0].startswith(f"  checkout: it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see {fm.SIGNING_PAGE} — 2 signed commit(s) it could not check: ")
+          and f"MSR-001 `{signed_[0][:10]}`" in said_[0] and f"MSR-002 `{signed_[1][:10]}`" in said_[0]      # in the order the rules met them: under `[seats]` the rights rule first, newest first
           and "FAILED: this checkout's own finding — the ledger is sound" in err_ and "ledger-integrity" not in err_
           and fm.drift_normalize(generated_) == fm.drift_normalize(index_) and "INDEX.md is up to date" in later_
           and fm.drift_normalize(tomorrow_) == fm.drift_normalize(index_) and tomorrow_ != index_

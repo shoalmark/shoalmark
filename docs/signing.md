@@ -175,18 +175,7 @@ step says *both*.
    its line out of the signers file, and delete it under *Signing keys* on the forge. It stays under
    *Authentication keys*, and keeps pushing.
 
-## Route B — sign with a GPG key (git)
-
-```
-gpg --list-secret-keys --keyid-format long      # find your key id
-git config user.signingkey <KEYID>
-```
-
-Leave `gpg.format` unset. The key's user id must carry the email you commit with. Export the public key
-(`gpg --armor --export <KEYID>`) and add it on the forge under *GPG keys*.
-
-The tiers hold here too. A key whose passphrase `gpg-agent` or the Keychain keeps signs for anything on your account
-— tier 0. A key on a token that needs your touch at every signature is the strong route.
+**A signed line verifies by SSH only.** A GPG signature on it is refused: `sign with SSH; GPG returns with a fingerprint binding`.
 
 ## Telling the tool who answers
 
@@ -196,9 +185,10 @@ In `shoalmark.toml`:
 owner = "you@example.org signed"
 ```
 
-At the top of the file, before any table. `you@example.org` is the email you commit with (or your git author name, or the Subversion account). `signed` asks
-for a verified signature — drop it only under Subversion. Nobody holds the answer right unless you name them: nobody
-may answer by default, on purpose. `[seats] owner` is the old spelling and still reads; the older `answerers = ["yourname signed"]` still works where there is no `owner` and no `[seats]`.
+At the top of the file, before any table. `you@example.org` is the email the signers file names for your key: a `signed` identity is an email address,
+and any other is refused when the configuration is read (exit 1). `signed` asks for an SSH signature whose principal is
+exactly that email — drop it only under Subversion, where the identity is your server account. Nobody holds the answer
+right unless you name them: nobody may answer by default, on purpose. `[seats] owner` is the old spelling and still reads; the older `answerers = ["yourname"]` still reads where there is no `owner` and no `[seats]` — for a signed answer, write the `owner` line.
 
 ## Check it
 
@@ -209,8 +199,8 @@ git reset --soft HEAD~1
 ```
 
 The first line asks for your passphrase at tier 2, for your PIN and a touch or for Touch ID at tier 3 — and for
-nothing at tier 0. The second prints `G`, then the email the key is trusted for, then your author email; the last two
-must agree. The third drops the test commit.
+nothing at tier 0. The second prints `G`, then the email the key is trusted for — it must be your `owner` email
+exactly — then your author email. The third drops the test commit.
 
 **Then answer an ask.** On the board, *accept* or *reject* opens a dialog with the question, its choices and what it
 holds up; OK gives you one command. Run it in a terminal, in the repository:
@@ -248,7 +238,9 @@ key. Under Subversion this guard is out of scope: its working copy carries no si
 | *an answer, but no seat in `[seats]` holds the `answer` right* (or *`answerers` … names nobody*) | write the `owner` line above |
 | *the answer is not committed yet* | commit it — the commit is the record |
 | *`answered-by: x` but the git author of the answer is `y`* | someone else committed your answer; it does not count |
-| *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file on the default branch does not tie to your email — a new key counts once it is merged there |
+| *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file on the default branch does not tie to exactly your email — a new key counts once it is merged there |
+| *sign with SSH; GPG returns with a fingerprint binding* | the answer is signed with a GPG key: sign it with your SSH key (Route A) |
+| *`owner` names `x` as signed, and a signed identity is an email address* | write the email the signers file names for your key |
 | a *note* that the author is unverified | you wrote `["name"]` without `signed` under git — it works, and it proves nothing |
 | *refused: commit … changes the text under `## The intent`* (or `## The current path`) | a commit on that branch that is not yours, signed, changed your two sections — it does not merge |
 | *… the Owner's email, unsigned* | a commit carries your email and no signature: you forgot `-S`, or someone typed your email |
