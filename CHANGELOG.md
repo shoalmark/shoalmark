@@ -39,7 +39,7 @@ FM-040, FM-041 and FM-032).
   now. *On upgrade:* a `close`, `answer` or `triage` made that way is refused by the hook, where only `--check` refused it; run `--install-hook`
   again so the hook also runs the gate for a name git quotes.
 - **The board's link (FM-006).** The default run and `--html-only` print one line, `board: file:///…/index.html`, where the board was written; `--print-written` prints none.
-- The checkout and merge hooks run a copy of the tool kept in the git directory, which runs nothing a branch brings; run `--install-hook` on your default branch again after upgrading.
+- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, and runs the repository's deriver only as `--install-hook` last accepted it; run `--install-hook` on your default branch again after upgrading.
 
 - **They/them/their for the Owner and any person; seat names English only (FM-006) — rewording, not product growth.**
   The Owner's rulings of 2026-09-30: a person — the Owner, a reader, an adopter — is *they*, a seat and the tool stay *it*,

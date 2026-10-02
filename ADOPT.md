@@ -74,8 +74,9 @@ copy the board's two lines in `.gitignore`.
   has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it; TortoiseSVN runs
   the gate itself after `--install-hook` and asks permission once.
 - Way back: first remove from your hooks folder (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls
-  `tools/shoalmark/shoalmark.py`: the hooks marked `# shoalmark`, and the line you added to a hook of your own (on
-  Subversion, the `tsvn:` hook properties). Delete the tool before that, and commits are refused. Then delete
+  the copy of the tool in the git directory: the hooks marked `# shoalmark`, and the line you added to a hook of your own
+  (on Subversion, the `tsvn:` hook properties, which call `tools/shoalmark/shoalmark.py`). Delete the copy — on
+  Subversion, the tool — before that, and commits are refused. Then delete
   `tools/shoalmark/`, `shoalmark.toml`, the shoalmark block in `AGENTS.md` and the copy in the git directory
   (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries
   are plain Markdown.
