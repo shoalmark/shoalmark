@@ -36,6 +36,7 @@ fm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fm)
 
 FAILS = []
+_VERSION = (HERE / "VERSION").read_text(encoding="utf-8").strip()      # the release's own version, as the VERSION file says it — what the filed lines name
 
 
 def check(name, ok):
@@ -1959,7 +1960,7 @@ def _pl_plain(root, tool, base, out_, mark_):
     _add_tracker(root, "REFRESHED-P")
 def _ok1(g): return _case_clean(g) and _refreshed(g, "REFRESHED-1")
 def _ok2(g):     # the tool the branch brings differs from the copy: the hook says so once, after the checkout and the merge, and not back on the trunk (RV-2300)
-    line_ = f"the hooks' copy is {fm.__version__}, and the repository's tool differs from it: run --install-hook"
+    line_ = f"the hooks' copy is {_VERSION}, and the repository's tool differs from it: run --install-hook"
     return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and _refreshed(g, "REFRESHED-2")
             and g["sw"][1].splitlines().count(line_) == 1 and g["merge"][1].splitlines().count(line_) == 1 and "run --install-hook" not in g["back"][1])
 def _ok3(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-3") and "<!--<script>" not in g["snap1"]["page"] + g["snap3"]["page"] and "</script><b" not in g["snap1"]["page"] + g["snap1"]["viewtext"]
@@ -2027,7 +2028,7 @@ def _pl_drift(root, tool, base, out_, mark_):
                                           for l_ in (tool / "PIN").read_text(encoding="utf-8").splitlines()) + "\n", encoding="utf-8")
     _add_tracker(root, "REFRESHED-D")
 with tempfile.TemporaryDirectory() as d:
-    g_ = _hook_scenario(d, _pl_drift); line_ = f"the hooks' copy is {fm.__version__}, the repository pins 9.9.9: run --install-hook"
+    g_ = _hook_scenario(d, _pl_drift); line_ = f"the hooks' copy is {_VERSION}, the repository pins 9.9.9: run --install-hook"
     check(f"FM-006 · a private security report · a version drift: where the repository pins another version than the copy's own, the hook still refreshes the board and prints exactly `{line_}` — after the checkout and after the merge, "
           f"and nothing the branch brought ran (saw {g_['sw'][1][-150:]!r})",
           _hook_ops_ok(g_) and not g_["marker"] and line_ in g_["sw"][1].splitlines() and line_ in g_["merge"][1].splitlines() and line_ not in g_["back"][1].splitlines()
@@ -2057,9 +2058,9 @@ def _steps_copy(g):
 with tempfile.TemporaryDirectory() as d:
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_copy); x_ = g_["x"]
     check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file, a missing marker and a missing theme file are as the pinned tool has them again", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
-    check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had its board from it, its git directory is the first one's, there is one `{fm.COPY_DIR}` in all, "
+    check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had its board from it, its git directory is the first one's, there is one `shoalmark-trusted` in all, "
           f"and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
-          x_["wt"][0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve() and x_["copies"] == [f"repo/.git/{fm.COPY_DIR}"]
+          x_["wt"][0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve() and x_["copies"] == ["repo/.git/shoalmark-trusted"]
           and "STUB-COPY-RAN" in x_["stub_main"][1] and "STUB-COPY-RAN" in x_["stub_wt"][1] and x_["stub_main"][0] == 0 and x_["stub_wt"][0] == 0)
     check(f"FM-006 · a private security report · a copy that fails prints one line and the checkout still succeeds — exit 0, on the branch asked for (saw {x_['fail'][1]!r}); a copy that is not there is one line too, "
           f"naming `--install-hook` (saw {x_['missing'][1]!r})",
@@ -2155,7 +2156,7 @@ def _rv_hooks(rev=None):
         texts_ = {n_: (root / ".git/hooks" / n_).read_text(encoding="utf-8") if (root / ".git/hooks" / n_).is_file() else "" for n_ in _HOOK_NAMES}
         record_ = (root / ".git" / fm.COPY_DIR / "COPY").read_text(encoding="utf-8") if (root / ".git" / fm.COPY_DIR / "COPY").is_file() else ""
         rm_git(root)
-    return (inst[0] == 0 and all(f'/{fm.COPY_DIR}/shoalmark.py"' in t_ and ' -I "$copy" --root "$root" ' in t_ for t_ in texts_.values())
+    return (inst[0] == 0 and all('/shoalmark-trusted/shoalmark.py"' in t_ and ' -I "$copy" --root "$root" ' in t_ for t_ in texts_.values())
             and not any(re.search(r"\b(python3?|py)\s+(\S*/)?shoalmark\.py\b", t_) for t_ in texts_.values()) and f"cmd: {fm.PY} shoalmark.py\n" in record_), texts_["pre-commit"]
 ok_, _pc = _rv_hooks()
 check("FM-006 · a private security report · RV-2300 · every hook `--install-hook` writes — `pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-checkout`, `post-merge` and `post-rewrite` — runs the copy in the git "
@@ -2174,8 +2175,8 @@ def _rv_commit(rev=None):
         (root / "VERSION").write_text("9.9.9\n", encoding="utf-8"); git(root, "add", "-A"); c2_ = _hooked(root, "commit", "-qm", "another version"); g_.update(code2=c2_[0], said2=c2_[1])
         rm_git(root)
     return g_
-_LINE2 = f"the hooks' copy is {fm.__version__}, and the repository's tool differs from it: run --install-hook"
-_LINE1 = f"the hooks' copy is {fm.__version__}, the repository pins 9.9.9: run --install-hook"
+_LINE2 = f"the hooks' copy is {_VERSION}, and the repository's tool differs from it: run --install-hook"
+_LINE1 = f"the hooks' copy is {_VERSION}, the repository pins 9.9.9: run --install-hook"
 def _rv_commit_ok(g):
     return g["code"] == 0 and not g["marker"] and g["copy_same"] and g["staged"] and g["explicit"]
 def _rv_drift_ok(g):
@@ -2199,13 +2200,13 @@ def _rv_writes(rev=None):
             _hook_changed(root, "through the link"); git(root, "add", "-A"); h_ = _head(root); c_ = _hooked(root, "commit", "-qm", "through the link")
             g_.update(link_code=c_[0], link_said=c_[1], link_out=out_.read_text(encoding="utf-8"), link_head=_head(root) == h_)
             git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "-")
-        c_t = root / "shoalmark.toml"; c_t.write_text(re.sub(r'tracker_dir = "[^"]*"', f'tracker_dir = ".git/{fm.COPY_DIR}"', c_t.read_text(encoding="utf-8")), encoding="utf-8")
+        c_t = root / "shoalmark.toml"; c_t.write_text(re.sub(r'tracker_dir = "[^"]*"', f'tracker_dir = ".git/shoalmark-trusted"', c_t.read_text(encoding="utf-8")), encoding="utf-8")
         git(root, "add", "-A"); h0_, h_ = _copy_hash(root), _head(root); c_ = _hooked(root, "commit", "-qm", "the tracker folder in the git directory")
         g_.update(git_code=c_[0], git_said=c_[1], git_copy_same=_copy_hash(root) == h0_)
         rm_git(root)
     return g_
 _LINK_LINE = "shoalmark: the hooks' copy stopped: it would write docs/work-tracker/INDEX.md, a symlink, or reached through one — the commit is refused"
-_GITDIR_LINE = f"the tracker folder .git/{fm.COPY_DIR} is inside the git directory, where the hooks and their copy are — nothing is written, and the commit is refused"
+_GITDIR_LINE = "the tracker folder .git/shoalmark-trusted is inside the git directory, where the hooks and their copy are — nothing is written, and the commit is refused"
 def _rv_link_ok(g):
     return g["link_code"] != 0 and g["link_said"].splitlines()[-1:] == [_LINK_LINE] and g["link_out"] == "SENTINEL" and g["link_head"]
 def _rv_gitdir_ok(g):
@@ -2257,7 +2258,8 @@ fm.configure(HERE)
 # whose commit hook ran it: only `pre-commit` ever started one, so the operations that run no `pre-commit` — a clean merge, a cherry-pick, a rebase — hold beside it as well.
 _ND_REV = "fc5f197"
 _HAVE_ND = _has_rev(_ND_REV)
-_ND_LINE = fm.DERIVER_HOOK_LINE.format(cmd=f"{fm.PY} shoalmark.py")
+_ND_LINE = (f"shoalmark: the deriver runs only in explicit runs — INDEX.md and the files it derives are left as staged: run `{fm.PY} shoalmark.py` before committing; "
+            "CI's `--check` holds them")      # the filed line, written out; the interpreter's name is this system's
 def _nd_op(op, rev=None):
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev, deriver="deriver")
@@ -2627,7 +2629,8 @@ check("FM-006 · a private security report · RV-2300 · the README's hooks sect
       and "every one running a COPY of the tool this keeps in the git directory" in _help_ and "no hook runs the deriver — explicit runs do" in _help_ and "A hooks folder inside the working tree is refused" in _help_ and "run the working tree's tool" not in _help_)
 check("FM-006 · a private security report · the README's entries for a repository with its own hook runner run the copy with the installed hooks' invocation, say what an entry does where the copy is "
       "missing, and say plainly that a hook runner reads its configuration from the tree, `--install-hook` being the safe default; this repository keeps no `lefthook.yml`",
-      all(f"run: python3 -I {fm.COPY_AT} {flag_}" in _rd("README.md") for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))
+      all(f'run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" {flag_}' in _rd("README.md")
+          for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))
       and "tools/shoalmark/shoalmark.py --session-check" not in _rd("README.md") and "Python cannot open the file, exit 2 — and the runner refuses the commit" in _readme_
       and "A hook runner reads its configuration from the tree, so a merged branch's configuration runs whatever it names" in _readme_
       and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
@@ -5170,7 +5173,7 @@ with tempfile.TemporaryDirectory() as d:
     agents, hook = (root / "AGENTS.md").read_text(), (root / ".git/hooks/pre-commit").read_text()
     check("a contract block and a hook written under the old name are replaced, not stranded — the repository's own text is kept",
           code == 0 and "old rules" not in agents and "fathom-mark" not in agents and agents.count(fm.CONTRACT_BEGIN) == 1 and "kept." in agents and agents.startswith("# mine")
-          and "fathom" not in hook and f'{fm.COPY_DIR}/shoalmark.py"' in hook and '--root "$root" --print-written' in hook)
+          and "fathom" not in hook and 'shoalmark-trusted/shoalmark.py"' in hook and '--root "$root" --print-written' in hook)
 fm.configure(HERE)
 
 # --- FM-031 S2: the queue in one view — every open pull request, ONE action, in the order the Owner takes them -------
@@ -6644,7 +6647,7 @@ fm.configure(HERE)
 # `ssh-keygen` (and `gpg` in a throwaway home, where there is one); every signature is a test key's. Each control is the same check beside 79be49d's tool.
 _SIG_REV = "79be49d"
 _HAVE_SIG = _has_rev(_SIG_REV)
-_SIG_LINE = fm.SIGN_WITH_SSH
+_SIG_LINE = "sign with SSH; GPG returns with a fingerprint binding"      # the filed line, written out
 def _sig_keys(base, *principals):
     """One throwaway SSH key per principal, and a signers file beside the repository naming each — {principal: key file}."""
     keys_ = {}
