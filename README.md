@@ -415,23 +415,31 @@ From: a9f3c2d1/reviewer-1 reviewer (reviewer-2) · claude-opus-4-8 · high
 ```
 
 A repository
-with its own hook runner adds three entries — with lefthook, the session rule on every commit, the trailers, and the
-judgement of the commit with its message:
+with its own hook runner adds three entries, each running the copy of the tool in the git directory as `--install-hook`'s
+own hooks do — with lefthook, the session rule on every commit, the trailers, and the judgement of the commit with its
+message:
 
 ```yaml
 pre-commit:
   commands:
     session:                     # the session rule on EVERY commit, a tracker staged or not
-      run: python3 tools/shoalmark/shoalmark.py --session-check
+      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --session-check
 prepare-commit-msg:
   commands:
     session:
-      run: python3 tools/shoalmark/shoalmark.py --session-trailer {1}
+      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --session-trailer {1}
 commit-msg:
   commands:
     judged:                      # where `judged_before_build` is on: the commit judged with its subject (FM-033)
-      run: python3 tools/shoalmark/shoalmark.py --commit-msg {1}
+      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --commit-msg {1}
 ```
+
+Run `--install-hook` once, on your default branch, so the copy is there: it writes the copy, leaves the runner's own hooks
+alone and names each with the line to add, exit 4. Where the copy is missing, each entry fails — Python cannot open the
+file, exit 2 — and the runner refuses the commit until `--install-hook` writes it again. **A hook runner reads its
+configuration from the tree, so a merged branch's configuration runs whatever it names**: these entries keep the tool
+out of a branch's reach, not the runner's configuration. shoalmark's own `--install-hook` is the safe default — its
+hooks are plain files in the hooks folder git reads, and they run only the copy.
 
 **The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's head
 before merge. A bypass of the hook alone, which `--check` catches, is P3.** Git's `--no-verify` skips any hook by

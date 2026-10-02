@@ -2359,6 +2359,12 @@ check("FM-006 · a private security report · RV-2300 · the README's hooks sect
       and "A hook runs the repository's deriver only as `--install-hook` last accepted it" in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
       and "which run the tool in the working tree" not in _readme_
       and "every one running a COPY of the tool this keeps in the git directory" in _help_ and "a hook runs the deriver only as this last accepted it" in _help_ and "run the working tree's tool" not in _help_)
+check("FM-006 · a private security report · the README's entries for a repository with its own hook runner run the copy with the installed hooks' invocation, say what an entry does where the copy is "
+      "missing, and say plainly that a hook runner reads its configuration from the tree, `--install-hook` being the safe default; this repository keeps no `lefthook.yml`",
+      all(f"run: python3 -I {fm.COPY_AT} {flag_}" in _rd("README.md") for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))
+      and "tools/shoalmark/shoalmark.py --session-check" not in _rd("README.md") and "Python cannot open the file, exit 2 — and the runner refuses the commit" in _readme_
+      and "A hook runner reads its configuration from the tree, so a merged branch's configuration runs whatever it names" in _readme_
+      and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
 check("FM-006 · a private security report · both notes' way back removes what calls the copy, then the copy in the git directory (RV-2300), and the rest of it is as it was",
       "the shoalmark block in `AGENTS.md` and the copy in the git directory\n  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries" in _rd("ADOPT.md")
       and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Tracker-Ordner kann bleiben" in _rd("ADOPT.de.md")
