@@ -2839,6 +2839,37 @@ else:
     _skipped("FM-006 · a private security report · the write rule · before a folder is made", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- `--init` writes nothing before a refusal (the Owner's ruling of 2026-10-03, v0.19.1): every file `--init` may write is judged before the first is
+# written — a refusal on one it writes after the configuration and TRIAGE.md leaves the tree as it was
+def _iw(kind):
+    """`--init` in a fresh git repository where a file it writes after the configuration and TRIAGE.md is a symlink to an inert file beside the repository:
+    `agents` — AGENTS.md; `claude` — CLAUDE.md, its target not there; `ignore` — .gitignore. The tree, `git status` and the folder beside it, before and after."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir(); git(root, "init", "-q")
+        rel_ = {"agents": "AGENTS.md", "claude": "CLAUDE.md", "ignore": ".gitignore"}[kind]; target_ = marks / "inert.md"
+        if kind != "claude":
+            target_.write_text("inert\n", encoding="utf-8")
+        os.symlink(target_, root / rel_)
+        seen_ = lambda: (_tree(root), subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, env=_ENV).stdout,
+                         _tree(marks))
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr")
+        after_ = seen_()
+        g_ = dict(code=c_, err=e_.strip(), out=o_.strip(), rel=rel_, same=before_ == after_, made=sorted(set(after_[0]) - set(before_[0])))
+        rm_git(root)
+    return g_
+def _iw_ok(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and g["err"].startswith(f"shoalmark: {g['rel']} is a symlink, or reached through one — the tool ")
+            and g["out"] == "" and g["same"])
+if _SYMLINKS:
+    for kind_, what_ in (("agents", "AGENTS.md a symlink"), ("claude", "CLAUDE.md a symlink to a file not there"), ("ignore", ".gitignore a symlink")):
+        g_ = _iw(kind_)
+        check(f"FM-006 · `--init` writes nothing before a refusal · {what_}: refused in one line naming it, exit 4, and the tree, `git status` and the folder "
+              f"beside it are as they were (saw exit {g_['code']}, made {g_['made']}, {g_['err'][:110]!r})", _iw_ok(g_))
+else:
+    _skipped("FM-006 · `--init` writes nothing before a refusal", 3, "this system makes no symlink here")
+fm.configure(HERE)
+
 # --- `--vendor` reads only what it copies (RV-2314, the Owner's ruling filed in FM-006, *The fix round after the critical review*): a file the PIN names that is
 # not among the files it copies is never opened, and the run goes on — the file left where it is, the new PIN without its name
 _VR_REV = "f88546f"

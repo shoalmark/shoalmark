@@ -8341,8 +8341,15 @@ def init(key=None):
     fresh_config = not (ROOT / CONFIG_NAME).exists()
     made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
                                             (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
-    for path, _text in made:                                # the write rule for both, before a folder is made
-        write_rule(path)
+    agents, claude, ignore, svn = ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / ".gitignore", vcs() == "svn"
+    had_agents, had_ignore = board_text(agents) or "", board_text(ignore) or ""        # the reading rule, before anything is written
+    if svn:                                                 # the tracker folder `svn:ignore` is set on, judged as `svn_ignore_board` judges it
+        refused = tracker_folder_problem("no folder is made there, and the board is not ignored")
+        if refused:
+            print(refused, file=sys.stderr)
+            raise SystemExit(EXIT_LINT)
+    for path in [path for path, _text in made] + [agents] + ([] if claude.exists() else [claude]) + ([ignore] if not svn and (vcs() == "git" or ignore.exists()) else []):
+        write_rule(path)                                    # the write rule for every file --init may write, before the first is written or a folder made
     for path, text in made:
         path.parent.mkdir(parents=True, exist_ok=True)
         put(path, text)
@@ -8350,8 +8357,7 @@ def init(key=None):
     if fresh_config:
         configure(ROOT)
     section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), state=HEAD["state"], cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
-    agents = ROOT / "AGENTS.md"
-    have = board_text(agents) or ""                         # the reading rule
+    have = had_agents
     if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
         a = have.index(LEGACY_CONTRACT[0]); have = have[:a] + have[have.index(LEGACY_CONTRACT[1]) + len(LEGACY_CONTRACT[1]):].lstrip("\n")
     if CONTRACT_BEGIN in have and CONTRACT_END in have:
@@ -8361,14 +8367,12 @@ def init(key=None):
     if new != have:
         put(agents, new)
         wrote.append(agents)
-    claude = ROOT / "CLAUDE.md"
     if not claude.exists():                                 # Claude Code reads CLAUDE.md, not AGENTS.md — a router, never a second copy
         put(claude, "# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n")
         wrote.append(claude)
-    ignore, rel = ROOT / ".gitignore", TRACKER_DIR.relative_to(ROOT).as_posix()
-    have = board_text(ignore) or ""
+    rel, have = TRACKER_DIR.relative_to(ROOT).as_posix(), had_ignore
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
-    if vcs() == "svn":                                      # Subversion ignores by property, not by file
+    if svn:                                                 # Subversion ignores by property, not by file
         svn_ignore_board()
     elif lines and (vcs() == "git" or ignore.exists()):     # no version control here (yet): nothing to ignore for
         put(ignore, have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n")
