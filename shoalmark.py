@@ -8115,15 +8115,24 @@ def hooks_folder_problem(hooks):
     said = (git_out("config", "--path", "--get", "core.hooksPath") or "").strip()
     seen = [hooks] if not said or os.path.isabs(said) else [os.path.join(top, said) for top in tops]
     for where in seen:
-        real = os.path.normcase(os.path.realpath(where))
-        if in_git_dir(real):
-            continue
-        for top in tops:
-            top = os.path.normcase(top)
-            if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
-                return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
-                        f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
+        top = tree_holding(os.path.normcase(os.path.realpath(where)), tops)
+        if top:
+            return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
+                    f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
     return ""
+
+
+def tree_holding(real, tops):
+    """The working tree of `tops` that the path `real` is, or lies in, outside the repository's git directories (`in_git_dir`) — or None: the judgement
+    the hooks folder and the configuration check share. Both are compared `os.path.normcase`d, and the tree is returned so."""
+    if in_git_dir(real):
+        return None
+    real = os.path.normcase(real)
+    for top in tops:
+        top = os.path.normcase(top)
+        if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
+            return top
+    return None
 
 
 def config_file_problem():
@@ -8135,7 +8144,6 @@ def config_file_problem():
     settings are read from EVERY working tree, as each reads them — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`) —
     as the hooks folder is judged in every one; a worktree marked `prunable` is skipped (`worktree_tops`)."""
     tops = [os.path.normcase(t) for t in worktree_tops(live=True)]
-    inside = lambda real: next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
     for here in tops:
         out = subprocess.run(["git", "-C", here, "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                              errors="replace", env=nested_git_env())
@@ -8145,17 +8153,13 @@ def config_file_problem():
                 continue
             where = origin[len("file:"):]
             real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(here, where)))
-            if in_git_dir(real):
-                continue
-            top = inside(real)
+            top = tree_holding(real, tops)
             if top:
                 return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
                         f"copy is written; keep that setting in .git/config or outside every working tree")
         for holder, target in include_targets(listing, here):
             real = os.path.normcase(os.path.realpath(target))
-            if in_git_dir(real):
-                continue
-            top = inside(real)
+            top = tree_holding(real, tops)
             if top:
                 return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
                         f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
