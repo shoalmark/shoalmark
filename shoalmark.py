@@ -5249,12 +5249,30 @@ def rights_problems(trackers):
     transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
     no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
     pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
-    the author of each line is the one the server authenticated, so the transitions are read from the lines."""
+    the author of each line is the one the server authenticated, so the transitions are read from the lines. A tracker
+    Subversion holds no committed revision of — added, replaced, or not yet `svn add`ed: its blame answers so — has no
+    author to read until the commit is made, so it may carry no line a right guards: where it does, it is refused before
+    the commit, in one line naming the rights (the Owner's ruling of 2026-10-03, v0.19.1)."""
     if not SEATS or vcs() not in ("git", "svn"):
         return []
     out = []
     if vcs() == "svn":
         for t in trackers:
+            fm_ = t.get("fm", {})
+            guarded = [r for r, on in (("answer", any((fm_.get(k) or "").strip() for k in ("answer", "answered", "answered-by"))), ("ask", t.get("next") == "owner"),
+                                       ("close", t["status"] not in OPEN_STATUSES), ("triage", any((fm_.get(k) or "").strip() for k in TRIAGE_KEYS))) if on]
+            if guarded:
+                try:
+                    fresh = not svn_blame((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())      # no committed revision: no line has an author
+                except SvnUnreadable as e:
+                    out += blame_refusal(t, e)
+                    continue
+                if fresh:
+                    named = " and ".join([", ".join(f"`{r}`" for r in guarded[:-1]), f"`{guarded[-1]}`"] if len(guarded) > 1 else [f"`{guarded[0]}`"])
+                    out.append(f'{t["id"]}: is not committed yet, and it carries {"a line" if len(guarded) == 1 else "lines"} that {named} guard{"s" if len(guarded) == 1 else ""} — '
+                               'on Subversion who makes a commit is known only once it is made, so a tracker not yet committed may carry no protected state. '
+                               'File it open, with no such line, and make that change in a commit of its own')
+                    continue
             for right, needle in (("answer", "answer:"), ("close", "status:"), ("triage", "considered:")):
                 if right == "close" and t["status"] in OPEN_STATUSES:
                     continue
@@ -7259,6 +7277,8 @@ def lint(trackers, committing=False):
                     pass                                 # refused above: who wrote the answer cannot be read
                 elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
+                elif how == "uncommitted" and SEATS and vcs() == "svn":
+                    pass                                 # a tracker Subversion holds no revision of: the rights refuse it, in one line (`rights_problems`)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
                 elif SEATS and not holds(seat, "answer"):

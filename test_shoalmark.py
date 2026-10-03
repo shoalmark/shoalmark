@@ -5746,6 +5746,67 @@ if _SVN:
                   code_sc == fm.EXIT_LINT and "C5-302: moved to `Shipped` with no revision behind it" in err_sc and code_ss == fm.EXIT_LINT and said5_ in err_ss and "no revision behind it" not in err_ss)
     fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: on Subversion, a tracker not yet committed carries no protected state — refused before the commit, in one line ------
+# The Owner's ruling of 2026-10-03: protected state in a tracker not yet committed is refused before the commit (fail closed), with one line saying why.
+if not _SVN:
+    print("  skip  FM-006 · v0.19.1 · a tracker not yet committed, on Subversion · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c6")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wt6_ = root / "docs/work-tracker"
+        said6_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_]          # every line that names the tracker
+        def new6_(id_, extra_="", status_="In Progress", add_=True):
+            """A tracker filed in the working copy and not committed — `svn add`ed where `add_`, else left unversioned."""
+            p_ = wt6_ / f"{id_}-x.md"
+            p_.write_text(f'---\nid: {id_}\nstatus: {status_}\nconsidered: none\n{extra_}hook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+            if add_:
+                svn("add", str(p_), cwd=root)
+            return p_
+        def gone6_(*ps_):
+            """The trackers taken out of the working copy again, as if never filed."""
+            for p_ in ps_:
+                svn("revert", str(p_), cwd=root); p_.unlink()
+            run(root)
+        ask6_ = 'next: owner\nask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
+        for key_, extra_, status_, right_ in (("close", "", "Closed", "close"),
+                                              ("answer", 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\n', "In Progress", "answer"),
+                                              ("triage", "tier: P1\n", "In Progress", "triage"),
+                                              ("ask", ask6_, "In Progress", "ask")):
+            p_ = new6_("C6-010", extra_, status_)
+            code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-010"); code_d, _, err_d = run(root)
+            gone6_(p_)
+            check(f"FM-006 · v0.19.1 · case {key_}: a new tracker carrying a line `{right_}` guards, `svn add`ed and not committed — `--check` and the default run refuse it before the commit, exit 4, in one line naming the tracker and `{right_}` (saw {code}, {code_d}, {len(lines_)})",
+                  code == fm.EXIT_LINT and code_d == fm.EXIT_LINT and said6_(err_d, "C6-010") == lines_ and len(lines_) == 1 and lines_[0].startswith("C6-010: is not committed yet") and f"`{right_}`" in lines_[0]
+                  and "who makes a commit is known only once it is made" in lines_[0] and "File it open, with no such line, and make that change in a commit of its own" in lines_[0])
+        p_ = new6_("C6-011", "tier: P1\n" + ask6_, "Closed", add_=False)
+        code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-011")
+        check(f"FM-006 · v0.19.1 · an unversioned new tracker — never `svn add`ed — carrying `close`, `ask` and `triage` lines is refused too, in one line naming all three (saw {code}, {len(lines_)})",
+              code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-011: is not committed yet, and it carries lines that `ask`, `close` and `triage` guard"))
+        # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line
+        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
+        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        hook6_("start"); pre_ = hook6_("pre")
+        check(f"FM-006 · v0.19.1 · `--tsvn-hook pre`, as TortoiseSVN calls it, refuses the same tracker with the same line, exit 4 (saw {pre_.returncode})",
+              pre_.returncode == fm.EXIT_LINT and said6_(pre_.stdout + pre_.stderr, "C6-011") == lines_)
+        gone6_(p_)
+        # an open tracker with no protected line passes before its commit, beside one that is refused — and, committed by the Owner's account, after it
+        open_, closed_ = new6_("C6-012"), new6_("C6-013", status_="Closed")
+        code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-013")
+        gone6_(closed_); run(root)
+        code_o, _, err_o = run(root, "--check")
+        svn("add", "--force", ".", cwd=root); svn("commit", "-m", "C6-012 filed", "--username", "holgo", cwd=root); svn("update", cwd=root)
+        run(root); code_c, _, err_c = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · a new tracker with no protected line passes — beside one filed `Closed`, refused alone — before its commit, and committed by the Owner's account (saw {code}, {len(lines_)}, {code_o}, {code_c})",
+              code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-013: is not committed yet") and not said6_(err, "C6-012") and code_o == 0 and code_c == 0
+              and not said6_(err_o + err_c, "C6-012"))
+    fm.configure(HERE)
+
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
