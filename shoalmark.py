@@ -45,6 +45,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import unicodedata
 import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -8182,7 +8183,8 @@ def tree_holding(real, trees):
 
 def git_dir_holding(real):
     """Whether the path `real`, resolved, lies in one of the repository's git directories as the file system compares paths: as `in_git_dir` finds it, or —
-    where `os.path.normcase` keeps case — spelled so in another case, its ancestor there being that git directory by the file system's own identity."""
+    where `os.path.normcase` keeps case — spelled so in another case or Unicode normalization (`fs_fold`), its ancestor there being that git directory by
+    the file system's own identity."""
     if in_git_dir(real):
         return True
     if os.path.normcase("A") != "A":
@@ -8190,7 +8192,7 @@ def git_dir_holding(real):
     parts = real.rstrip(os.sep).split(os.sep)
     for gd in git_dirs():
         named = gd.rstrip(os.sep).split(os.sep)
-        if len(parts) >= len(named) and [p.casefold() for p in parts[:len(named)]] == [p.casefold() for p in named]:
+        if len(parts) >= len(named) and [fs_fold(p) for p in parts[:len(named)]] == [fs_fold(p) for p in named]:
             same = fs_identity(os.sep.join(parts[:len(named)]))
             if same is not None and same == fs_identity(gd):
                 return True
@@ -8208,7 +8210,7 @@ def fs_identity(path):
 
 def fs_chain(path):
     """The path `path`, resolved, as the file system knows it: for it and each of its ancestors that has an identity (`fs_identity`), nearest first,
-    (that identity, and the names of the path below it, case-folded)."""
+    (that identity, and the names of the path below it, folded as `fs_fold` folds them)."""
     chain, below = [], []
     while True:
         ident = fs_identity(path)
@@ -8217,8 +8219,14 @@ def fs_chain(path):
         parent = os.path.dirname(path)
         if parent == path:
             return chain
-        below.insert(0, os.path.basename(path).casefold())
+        below.insert(0, fs_fold(os.path.basename(path)))
         path = parent
+
+
+def fs_fold(name):
+    """A file's name as a file system that ignores case and Unicode normalization compares it — macOS's default one does both: case-folded, and in one
+    normalization (NFD) before and after."""
+    return unicodedata.normalize("NFD", unicodedata.normalize("NFD", name).casefold())
 
 
 def config_file_problem():

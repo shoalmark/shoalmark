@@ -3041,6 +3041,48 @@ for kind_, what_ in (("include", "an include whose target, there, is spelled in 
           f"(saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_refused(g_) if kind_ == "hooks" else _wc_refused(g_))
 fm.configure(HERE)
 
+# --- paths compared as the file system compares them, Unicode normalization alike (the Owner's ruling of 2026-10-03, v0.19.1): where the file system ignores
+# Unicode normalization, a name spelled in the other normalization is the same name — inside a removed worktree's folder, and in the git directory's path
+_NFC, _NFD = "caf\u00e9", "cafe\u0301"
+def _un(kind):
+    """`--install-hook` where a folder is named in one Unicode normalization (NFC) and the git configuration spells its name in the other (NFD), the setting
+    appended to `.git/config` as text: `gone` — an include whose target lies inside a linked worktree's folder `café-wt`, the worktree since removed;
+    `git-dir` — the repository's folder is `café-repo`, and `core.hooksPath` is its git directory's `hooks`. First, in the same temporary folder, whether the
+    file system ignores Unicode normalization there: a folder made under its NFC name is found under its NFD name, the same folder."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); (base / _NFC).mkdir()
+        if not ((base / _NFD).exists() and os.path.samefile(base / _NFC, base / _NFD)):
+            return dict(blind=False)
+        root = base / (_NFC + "-repo" if kind == "git-dir" else "repo"); root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "gone":
+            git(root, "worktree", "add", "-q", str(base / (_NFC + "-wt")), "-b", "gone"); shutil.rmtree(base / (_NFC + "-wt"))
+            named_ = base / (_NFD + "-wt") / "inert.gitconfig"; line_ = f"[include]\n\tpath = {named_}\n"
+        else:
+            named_ = base / (_NFD + "-repo") / ".git" / "hooks"; line_ = f"[core]\n\thooksPath = {named_}\n"
+        with open(root / ".git" / "config", "a", encoding="utf-8") as f_:
+            f_.write(line_)
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        g_ = dict(blind=True, code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)), copy=(root / ".git" / fm.COPY_DIR / "shoalmark.py").is_file(),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+                  prunable="prunable" in subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout)
+        rm_git(root)
+    return g_
+for kind_, what_ in (("gone", "an include whose target lies inside a removed worktree's folder, its name spelled in the other Unicode normalization"),
+                     ("git-dir", "a `core.hooksPath` that is the git directory's `hooks`, the repository's folder named in the other Unicode normalization")):
+    g_ = _un(kind_)
+    if not g_["blind"]:
+        _skipped(f"FM-006 · paths compared as the file system compares them, Unicode normalization alike · {what_}", 1,
+                 "this file system tells Unicode normalizations apart here: a folder is not found under its name in the other normalization")
+        continue
+    if kind_ == "git-dir":
+        check(f"FM-006 · paths compared as the file system compares them, Unicode normalization alike · {what_}: `--install-hook` succeeds, exit 0, the hooks written "
+              f"in the git directory and the copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_written(g_))
+        continue
+    check(f"FM-006 · paths compared as the file system compares them, Unicode normalization alike · {what_}: `--install-hook` refuses in one line naming it, and "
+          f"writes no hook and no copy (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:200]!r})", g_["prunable"] and _wc_refused(g_))
+fm.configure(HERE)
+
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
 # opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it.
 # Windows hands the hook a program's arguments as one command line: its words are read as `list2cmdline` writes them. Before a check leans on the hook for a
