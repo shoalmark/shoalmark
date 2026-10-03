@@ -5164,6 +5164,89 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: a merge a merge brings is judged by its own result — nested at any depth, against each of its parents, under its own author ---
+# The Owner's ruling of 2026-10-03: every merge's own result is judged against each parent under that merge's author, nested merges included.
+with tempfile.TemporaryDirectory() as tmp:
+    baseN_ = Path(tmp).resolve(); root = baseN_ / "r"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    seatsN_ = lambda p_: f'name = "n"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "{p_}"\nimplementer = "implementer@seat"\n'
+    (root / "shoalmark.toml").write_text(seatsN_("principal@seat"), encoding="utf-8")
+    for n_ in range(701, 711):
+        tracker(root, f"AP-{n_}", title="worked on")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    trunkN_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    shaN_ = lambda rev="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev], capture_output=True, text=True, env=_ENV).stdout.strip()
+    t0N_, sidesN_ = shaN_(), []
+    editN_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
+    closeN_ = lambda n_: lambda: editN_(n_, "status: In Progress", "status: Closed")
+    tierN_ = lambda n_: lambda: editN_(n_, "considered: none\n", "considered: none\ntier: P1\n")
+    forgeN_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
+                                        env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+
+    def nestedN_(own_, by_, key_=None):
+        """On the branch checked out: a side branch merged into it whose result `own_` edits — the merge's own change; a clean merge where `own_`
+        is None — committed by `by_` (SSH-signed with `key_`), then an ordinary commit on top. Returns the merge's commit."""
+        here_, side_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(), f"side-{len(sidesN_)}"
+        sidesN_.append(side_); git(root, "switch", "-q", "-c", side_)
+        (root / f"{side_}.txt").write_text("on the side\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "on the side", "--author=p <principal@seat>")
+        git(root, "switch", "-q", here_); git(root, "merge", "-q", "--no-ff", "--no-commit", side_)
+        if own_:
+            own_(); run(root); git(root, "add", "-A")
+        git(root, *(["-c", f"user.signingkey={key_}"] if key_ else []), "commit", "-q", *(["-S"] if key_ else []), "-m", f"merge {side_}", f"--author={by_}")
+        merge_ = shaN_()
+        (root / f"{side_}-top.txt").write_text("on top\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "an ordinary commit on top", "--author=p <principal@seat>")
+        return merge_
+
+    def outerN_(br_):
+        """The trunk moves on, and the forge's identity — no seat — merges `br_` into it; `--check` reads that merge. The trunk is put back after."""
+        git(root, "switch", "-q", trunkN_); (root / "notes.txt").write_text(f"trunk, before {br_}\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+        mg_ = forgeN_("merge", "--no-ff", "-q", br_, "-m", f"Merge pull request from {br_}")
+        code_, out_, err_ = run(root, "--check")
+        git(root, "reset", "-q", "--hard", t0N_)
+        return (code_ if mg_.returncode == 0 else -1), out_, err_
+
+    for key_, own_, id_, right_ in (("close", closeN_(701), "AP-701", "close"), ("triage", tierN_(702), "AP-702", "triage")):
+        git(root, "switch", "-q", "-c", f"pr/{key_}", t0N_); n_ = nestedN_(own_, "i <implementer@seat>")
+        code, _, err = outerN_(f"pr/{key_}")
+        check(f"FM-006 · v0.19.1 · case {key_}: a nested merge's own `{right_}` by a seat without `{right_}`, an ordinary commit on top of it, then an outer merge by the forge — "
+              f"`--check` at the outer merge refuses it, exit 4, naming the nested merge's commit (saw {code})",
+              code == fm.EXIT_LINT and f"{id_}: in `{n_[:10]}` (implementer@seat), which the merge brings — this change is a `{right_}` — "
+                                       f"`implementer@seat` is the seat `implementer`, which does not hold `{right_}`" in err)
+    # three nested merges, one outer merge: a clean one by the implementer, one whose own close is the principal's, one whose own close is the implementer's
+    git(root, "switch", "-q", "-c", "pr/three", t0N_)
+    clean_, holder_, bad_ = nestedN_(None, "i <implementer@seat>"), nestedN_(closeN_(703), "p <principal@seat>"), nestedN_(closeN_(704), "i <implementer@seat>")
+    code, _, err = outerN_("pr/three")
+    said_ = [l_ for l_ in err.splitlines() if "which the merge brings" in l_]
+    check(f"FM-006 · v0.19.1 · a clean nested merge adds no refusal — of three nested merges one outer merge brings, only the one whose own `close` is a seat's without `close` is refused (saw {code}, {len(said_)})",
+          code == fm.EXIT_LINT and len(said_) == 1 and f"AP-704: in `{bad_[:10]}`" in said_[0] and clean_[:10] not in err)
+    check(f"FM-006 · v0.19.1 · a nested merge whose own `close` is a seat's that holds `close` passes — of three nested merges one outer merge brings, only the one whose own `close` is a seat's without `close` is refused (saw {code}, {len(said_)})",
+          code == fm.EXIT_LINT and len(said_) == 1 and f"AP-704: in `{bad_[:10]}`" in said_[0] and holder_[:10] not in err and "AP-703" not in err)
+    # the merge being committed now: `MERGE_HEAD` brings a nested merge, and the commit-time run reads it
+    git(root, "switch", "-q", "-c", "pr/now", t0N_); now_ = nestedN_(closeN_(706), "i <implementer@seat>")
+    git(root, "switch", "-q", trunkN_); (root / "notes.txt").write_text("trunk, before pr/now\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+    git(root, "merge", "-q", "--no-ff", "--no-commit", "pr/now"); git(root, "add", "-A")
+    code, _, err = run(root, "--print-written")
+    git(root, "reset", "-q", "--hard", t0N_)                                                  # the merge left unmade, and the trunk put back
+    check(f"FM-006 · v0.19.1 · the merge being committed now (`MERGE_HEAD`) brings a nested merge whose own `close` is a seat's without `close` — the commit-time run refuses it, exit 4, naming that merge's commit (saw {code})",
+          code == fm.EXIT_LINT and f"AP-706: in `{now_[:10]}` (implementer@seat), which the merge brings — this change is a `close`" in err)
+    # `signed`: the nested merge's own change is verified against that merge's own signature
+    keyN_ = baseN_ / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(keyN_)], check=True, capture_output=True)
+    (baseN_ / "signers").write_text("principal@seat " + keyN_.with_suffix(".pub").read_text(), encoding="utf-8")
+    git(root, "config", "gpg.format", "ssh"); git(root, "config", "gpg.ssh.allowedSignersFile", str(baseN_ / "signers"))
+    (root / "shoalmark.toml").write_text(seatsN_("principal@seat signed"), encoding="utf-8"); git(root, "commit", "-qam", "the principal signs", "--author=p <principal@seat>"); t0N_ = shaN_()
+    git(root, "switch", "-q", "-c", "pr/unsigned", t0N_); uns_ = nestedN_(closeN_(705), "p <principal@seat>")
+    code_u, _, err_u = outerN_("pr/unsigned")
+    git(root, "switch", "-q", "-c", "pr/signed", t0N_); sig_ = nestedN_(closeN_(705), "p <principal@seat>", keyN_)
+    code_s, _, err_s = outerN_("pr/signed")
+    check(f"FM-006 · v0.19.1 · under `signed`, a nested merge's own `close` by the signed seat, unsigned, is refused, naming that merge's commit — the same merge signed by the key the signers file holds for the seat passes (saw {code_u}, {code_s})",
+          code_u == fm.EXIT_LINT and f"AP-705: the commit `{uns_[:10]}` making a `close` change does not verify as the seat `principal`" in err_u
+          and code_s == 0 and "does not verify" not in err_s and sig_[:10] not in err_s)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-005: a move to Shipped has a commit behind it — the Owner's ruling of 2026-09-30 ---------------------------------------------
 # *A gate that refuses a done without a commit behind it.* At 0.18.6 a tracker marked `Shipped` whose body said *nothing is built* —
 # an empty *Done when*, only *Filed.* in its ship log — passed the hook and `--check`. The rule is judged on the change that moves
