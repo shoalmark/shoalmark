@@ -8105,11 +8105,12 @@ def worktree_tops():
 
 
 def worktree_git_dirs():
-    """Every worktree of this repository as (its folder, its git directory), whether or not the folder is there: the main one — the common git directory —
-    and each linked one under the common git directory's `worktrees/`, its folder as its `gitdir` file names it (None where that cannot be read)."""
+    """Every worktree of this repository as (its folder, its git directory, the files of its own configuration), whether or not the folder is there: the main
+    one — the common git directory, its `config` and `config.worktree` — and each linked one under the common git directory's `worktrees/`, its
+    `config.worktree`, its folder as its `gitdir` file names it (None where that cannot be read)."""
     common = os.path.abspath(ROOT / ((git_out("rev-parse", "--git-common-dir") or "").strip() or ".git"))
     main = next((l[len("worktree "):] for l in (git_out("worktree", "list", "--porcelain") or "").splitlines() if l.startswith("worktree ")), None)
-    found = [(os.path.realpath(main or ROOT), common)]
+    found = [(os.path.realpath(main or ROOT), common, [os.path.join(common, "config"), os.path.join(common, "config.worktree")])]
     try:
         names = sorted(os.listdir(os.path.join(common, "worktrees")))
     except OSError:
@@ -8124,8 +8125,23 @@ def worktree_git_dirs():
                 said = pathlib.Path(gitdir, "gitdir").read_text(encoding="utf-8", errors="replace").strip()
             except OSError:
                 pass
-        found.append((os.path.realpath(os.path.join(gitdir, re.sub(r"[\\/]\.git$", "", said))) if said else None, gitdir))
+        found.append((os.path.realpath(os.path.join(gitdir, re.sub(r"[\\/]\.git$", "", said))) if said else None, gitdir, [os.path.join(gitdir, "config.worktree")]))
     return found
+
+
+def config_file_unreadable(path):
+    """Why git cannot read the configuration file `path`, in a few words — or "": it is there, and is not a regular file, or cannot be opened to read. A
+    file that is not there is no problem: git reads none."""
+    if not os.path.lexists(path):
+        return ""
+    if not os.path.isfile(path):
+        return f"{path} is not a regular file"
+    try:
+        with open(path, "rb"):
+            pass
+    except OSError as e:
+        return f"{path} cannot be read ({e.strerror or type(e).__name__})"
+    return ""
 
 
 def hooks_folder_problem(hooks):
@@ -8166,12 +8182,19 @@ def config_file_problem():
     `config.worktree`) pass. The target of every include setting is judged the same way (`include_targets`): conditional ones whether or not the condition
     holds, and whether or not the target exists yet. The settings of EVERY worktree are read, removed ones included, from its git directory
     (`worktree_git_dirs`) as git reads them there — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`), with its include
-    settings — as the hooks folder is judged in every one."""
+    settings — as the hooks folder is judged in every one. Where the settings of a worktree cannot be read — a file of its own configuration is not a
+    regular file git can read (`config_file_unreadable`), or `git config` fails — that is the one line, naming the worktree and why."""
     tops = [os.path.normcase(t) for t in worktree_tops()]
-    for _folder, gitdir in worktree_git_dirs():
-        out = subprocess.run(["git", f"--git-dir={gitdir}", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True,
-                             encoding="utf-8", errors="replace", env=nested_git_env())
-        listing = out.stdout.split("\0") if out.returncode == 0 else []
+    for folder, gitdir, own in worktree_git_dirs():
+        why = next((w for w in map(config_file_unreadable, own) if w), "")
+        out = None if why else subprocess.run(["git", f"--git-dir={gitdir}", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True,
+                                                text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        if out is not None and out.returncode:
+            why = "; ".join(dict.fromkeys(l.strip() for l in out.stderr.splitlines() if l.strip())) or f"`git config` exits {out.returncode}"
+        if why:
+            return (f"--install-hook: the configuration of the worktree {folder or gitdir} cannot be read — {why} — no hook and no copy is written; fix it, "
+                    f"or remove the worktree (`git worktree remove`, or `git worktree prune` where its folder is gone)")
+        listing = out.stdout.split("\0")
         for origin in listing[0::2]:
             if not origin.startswith("file:"):
                 continue

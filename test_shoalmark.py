@@ -2961,6 +2961,45 @@ for kind_, refused_, what_ in (("gone-target", True, "an include whose target li
           g_["prunable"] and (_wc_refused(g_) if refused_ else g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"]))
 fm.configure(HERE)
 
+# --- a worktree whose configuration cannot be read (the Owner's ruling of 2026-10-03, v0.19.1): `--install-hook` refuses in one line naming the worktree and
+# why, and writes no hook and no copy
+def _ur(kind):
+    """`--install-hook` from the main worktree, `extensions.worktreeConfig` on, beside a linked worktree `wt` whose own configuration (`config.worktree`, in its
+    git directory) is: `malformed` — an inert malformed file; `malformed-gone` — the same, the worktree's folder removed; `folder` — a folder; `dangling` — a
+    symlink to a file inside the main working tree that is not there."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); git(root, "config", "extensions.worktreeConfig", "true")
+        own_ = root / ".git/worktrees/wt/config.worktree"
+        if kind.startswith("malformed"):
+            own_.write_text("[user\n\tnote = inert\n", encoding="utf-8")
+        elif kind == "folder":
+            own_.mkdir()
+        else:
+            os.symlink(root / "inert.gitconfig", own_)
+        if kind == "malformed-gone":
+            shutil.rmtree(base / "wt")
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), wt=str(base / "wt"), hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+                  copy=(root / ".git" / fm.COPY_DIR).exists())
+        rm_git(root)
+    return g_
+def _ur_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1
+            and os.path.normcase(g["err"]).startswith(os.path.normcase(f"--install-hook: the configuration of the worktree {g['wt']} cannot be read — "))
+            and "config.worktree" in g["err"] and "no hook and no copy is written" in g["err"] and "`git worktree remove`" in g["err"] and "`git worktree prune`" in g["err"]
+            and g["hooks"] == [] and not g["copy"])
+for kind_, what_ in (("malformed", "a worktree's own configuration an inert malformed file"), ("malformed-gone", "the same, the worktree's folder removed"),
+                     ("folder", "a worktree's own configuration a folder"), ("dangling", "a worktree's own configuration a symlink to a file not there")):
+    if kind_ == "dangling" and not _SYMLINKS:
+        _skipped(f"FM-006 · a worktree's configuration that cannot be read · {what_}", 1, "this system makes no symlink here")
+        continue
+    g_ = _ur(kind_)
+    check(f"FM-006 · a worktree's configuration that cannot be read · {what_}: `--install-hook` refuses in one line naming the worktree and why, and writes no hook "
+          f"and no copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _ur_refused(g_))
+fm.configure(HERE)
+
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
 # opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it.
 # Windows hands the hook a program's arguments as one command line: its words are read as `list2cmdline` writes them. Before a check leans on the hook for a
