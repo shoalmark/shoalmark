@@ -3000,6 +3000,47 @@ for kind_, what_ in (("malformed", "a worktree's own configuration an inert malf
           f"and no copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _ur_refused(g_))
 fm.configure(HERE)
 
+# --- paths compared as the file system compares them (the Owner's ruling of 2026-10-03, v0.19.1): where the file system ignores case, a path spelled in another
+# case of a working tree's lies inside it, and one spelled in another case of the git directory's lies in that — in the configuration check and in the hooks folder's alike
+def _fs(kind):
+    """`--install-hook` from a scratch repository in the folder `repo`, its git configuration naming that folder `REPO`: `include` — `.git/config` includes an inert
+    file inside the working tree; `include-later` — …a file inside it that is not there yet; `hooks` — `core.hooksPath` is a folder inside it; `hooks-git` —
+    `core.hooksPath` is the git directory's `hooks`. First, in the same temporary folder, whether the file system ignores case there: a folder made in it is
+    found under its name in another case, the same folder."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); (base / "probe").mkdir()
+        if not ((base / "PROBE").exists() and os.path.samefile(base / "probe", base / "PROBE")):
+            return dict(blind=False)
+        root = base / "repo"; root.mkdir(); other_ = base / "REPO"
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "include":
+            (root / "inert.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8"); named_ = other_ / "inert.gitconfig"; git(root, "config", "include.path", str(named_))
+        elif kind == "include-later":
+            named_ = other_ / "later.gitconfig"; git(root, "config", "include.path", str(named_))
+        else:
+            named_ = other_ / ("githooks" if kind == "hooks" else ".git/hooks"); git(root, "config", "core.hooksPath", str(named_))
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        folder_ = root / "githooks" if kind == "hooks" else root / ".git/hooks"
+        g_ = dict(blind=True, code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)), copy=(root / ".git" / fm.COPY_DIR / "shoalmark.py").is_file(),
+                  hooks=sorted(p_.name for p_ in folder_.iterdir() if not p_.name.endswith(".sample")) if folder_.is_dir() else [])
+        rm_git(root)
+    return g_
+for kind_, what_ in (("include", "an include whose target, there, is spelled in another case of the working tree's path"),
+                     ("include-later", "an include whose target, not there yet, is spelled in another case of the working tree's path"),
+                     ("hooks", "a `core.hooksPath` spelled in another case of the working tree's path"),
+                     ("hooks-git", "a `core.hooksPath` that is the git directory's `hooks`, spelled in another case of the working tree's path")):
+    g_ = _fs(kind_)
+    if not g_["blind"]:
+        _skipped(f"FM-006 · paths compared as the file system compares them · {what_}", 1, "this file system tells case apart here: a folder is not found under its name in another case")
+        continue
+    if kind_ == "hooks-git":
+        check(f"FM-006 · paths compared as the file system compares them · {what_}: `--install-hook` succeeds, exit 0, the hooks written in the git directory and the "
+              f"copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_written(g_))
+        continue
+    check(f"FM-006 · paths compared as the file system compares them · {what_}: `--install-hook` refuses in one line naming it, and writes no hook and no copy "
+          f"(saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_refused(g_) if kind_ == "hooks" else _wc_refused(g_))
+fm.configure(HERE)
+
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
 # opens a file, or starts a program with an argument, that resolves to one of the paths named — on every system, before anything the tool does could hide it.
 # Windows hands the hook a program's arguments as one command line: its words are read as `list2cmdline` writes them. Before a check leans on the hook for a

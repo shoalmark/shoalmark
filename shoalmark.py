@@ -8162,16 +8162,62 @@ def hooks_folder_problem(hooks):
 
 
 def tree_holding(real, tops):
-    """The working tree of `tops` that the path `real` is, or lies in, outside the repository's git directories (`in_git_dir`) — or None: the judgement
-    the hooks folder and the configuration check share. Both are compared `os.path.normcase`d, and the tree is returned so."""
-    if in_git_dir(real):
+    """The working tree of `tops` that the path `real`, resolved, is or lies in, outside the repository's git directories (`git_dir_holding`) — or None:
+    the judgement the hooks folder and the configuration check share, made as the file system compares paths. A tree is found by the file system's own
+    identity (`fs_chain`) — the path, or one of its ancestors that exists, is the tree's folder, so a spelling in another case, where the file system
+    ignores case, is the same tree — and by its spelling, `os.path.normcase`d. The tree is returned `os.path.normcase`d."""
+    if git_dir_holding(real):
         return None
-    real = os.path.normcase(real)
+    mine, real = fs_chain(real), os.path.normcase(real)
     for top in tops:
         top = os.path.normcase(top)
         if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
             return top
+        folder = fs_chain(top)[:1]
+        if folder and any(ident == folder[0][0] and below[:len(folder[0][1])] == folder[0][1] for ident, below in mine):
+            return top
     return None
+
+
+def git_dir_holding(real):
+    """Whether the path `real`, resolved, lies in one of the repository's git directories as the file system compares paths: as `in_git_dir` finds it, or —
+    where `os.path.normcase` keeps case — spelled so in another case, its ancestor there being that git directory by the file system's own identity."""
+    if in_git_dir(real):
+        return True
+    if os.path.normcase("A") != "A":
+        return False
+    parts = real.rstrip(os.sep).split(os.sep)
+    for gd in git_dirs():
+        named = gd.rstrip(os.sep).split(os.sep)
+        if len(parts) >= len(named) and [p.casefold() for p in parts[:len(named)]] == [p.casefold() for p in named]:
+            same = fs_identity(os.sep.join(parts[:len(named)]))
+            if same is not None and same == fs_identity(gd):
+                return True
+    return False
+
+
+def fs_identity(path):
+    """The file system's own identity of `path` — its device and inode, symlinks followed — or None where it is not there or has no inode."""
+    try:
+        st = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return (st.st_dev, st.st_ino) if st.st_ino else None
+
+
+def fs_chain(path):
+    """The path `path`, resolved, as the file system knows it: for it and each of its ancestors that has an identity (`fs_identity`), nearest first,
+    (that identity, and the names of the path below it, case-folded)."""
+    chain, below = [], []
+    while True:
+        ident = fs_identity(path)
+        if ident is not None:
+            chain.append((ident, tuple(below)))
+        parent = os.path.dirname(path)
+        if parent == path:
+            return chain
+        below.insert(0, os.path.basename(path).casefold())
+        path = parent
 
 
 def config_file_problem():
