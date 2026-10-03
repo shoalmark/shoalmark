@@ -8153,27 +8153,28 @@ def hooks_folder_problem(hooks):
     tops = worktree_tops()
     said = (git_out("config", "--path", "--get", "core.hooksPath") or "").strip()
     seen = [hooks] if not said or os.path.isabs(said) else [os.path.join(top, said) for top in tops]
+    trees = {top: fs_chain(top)[:1] for top in tops}
     for where in seen:
-        top = tree_holding(os.path.normcase(os.path.realpath(where)), tops)
+        top = tree_holding(os.path.normcase(os.path.realpath(where)), trees)
         if top:
             return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
                     f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
     return ""
 
 
-def tree_holding(real, tops):
-    """The working tree of `tops` that the path `real`, resolved, is or lies in, outside the repository's git directories (`git_dir_holding`) — or None:
+def tree_holding(real, trees):
+    """The working tree of `trees` that the path `real`, resolved, is or lies in, outside the repository's git directories (`git_dir_holding`) — or None:
     the judgement the hooks folder and the configuration check share, made as the file system compares paths. A tree is found by the file system's own
     identity (`fs_chain`) — the path, or one of its ancestors that exists, is the tree's folder, so a spelling in another case, where the file system
-    ignores case, is the same tree — and by its spelling, `os.path.normcase`d. The tree is returned `os.path.normcase`d."""
+    ignores case, is the same tree — and by its spelling, `os.path.normcase`d. The tree is returned `os.path.normcase`d. `trees` maps each tree's folder to
+    its `fs_chain(…)[:1]`, read once by the caller for every path it judges."""
     if git_dir_holding(real):
         return None
     mine, real = fs_chain(real), os.path.normcase(real)
-    for top in tops:
+    for top, folder in trees.items():
         top = os.path.normcase(top)
         if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
             return top
-        folder = fs_chain(top)[:1]
         if folder and any(ident == folder[0][0] and below[:len(folder[0][1])] == folder[0][1] for ident, below in mine):
             return top
     return None
@@ -8230,7 +8231,7 @@ def config_file_problem():
     (`worktree_git_dirs`) as git reads them there — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`), with its include
     settings — as the hooks folder is judged in every one. Where the settings of a worktree cannot be read — a file of its own configuration is not a
     regular file git can read (`config_file_unreadable`), or `git config` fails — that is the one line, naming the worktree and why."""
-    tops = [os.path.normcase(t) for t in worktree_tops()]
+    trees = {top: fs_chain(top)[:1] for top in (os.path.normcase(t) for t in worktree_tops())}
     for folder, gitdir, own in worktree_git_dirs():
         why = next((w for w in map(config_file_unreadable, own) if w), "")
         out = None if why else subprocess.run(["git", f"--git-dir={gitdir}", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True,
@@ -8241,18 +8242,18 @@ def config_file_problem():
             return (f"--install-hook: the configuration of the worktree {folder or gitdir} cannot be read — {why} — no hook and no copy is written; fix it, "
                     f"or remove the worktree (`git worktree remove`, or `git worktree prune` where its folder is gone)")
         listing = out.stdout.split("\0")
-        for origin in listing[0::2]:
+        for origin in dict.fromkeys(listing[0::2]):
             if not origin.startswith("file:"):
                 continue
             where = origin[len("file:"):]
             real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(ROOT, where)))
-            top = tree_holding(real, tops)
+            top = tree_holding(real, trees)
             if top:
                 return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
                         f"copy is written; keep that setting in .git/config or outside every working tree")
         for holder, target in include_targets(listing):
             real = os.path.normcase(os.path.realpath(target))
-            top = tree_holding(real, tops)
+            top = tree_holding(real, trees)
             if top:
                 return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
                         f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
@@ -8262,12 +8263,12 @@ def config_file_problem():
 INCLUDE_KEY = re.compile(r"include(?:if\..*)?\.path", re.I | re.S)     # `include.path`, and `includeIf.<condition>.path` whatever the condition
 
 
-def include_targets(listing, here=None):
+def include_targets(listing):
     """Every include setting of git's configuration, as (the file that holds it, or None for the command line; its target). The target is taken as
     written, whether or not it exists: `~` from the home folder, `%(prefix)/` from git's own, any other relative target from the folder of the file that
     holds it. A target that is a file is read for its own include settings in turn, whatever its condition. `listing` is `git config --list --show-origin
-    -z` split at its NULs, run in the working tree `here` (the repository's root where none is named): a relative origin is read from there."""
-    at = lambda origin: os.path.join(here or ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
+    -z` split at its NULs, run at the repository's root: a relative origin is read from there."""
+    at = lambda origin: os.path.join(ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
     todo = [(at(o), *e.partition("\n")[::2]) for o, e in zip(listing[0::2], listing[1::2])]
     found, read = [], set()
     while todo:
