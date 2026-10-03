@@ -5109,8 +5109,9 @@ def seat_problems(t):
     `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
     also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
     about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
-    the line, so the Owner's QUEUE can drop an ask that reached them another way. It catches an agent that does not
-    know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
+    the line, so the Owner's QUEUE can drop an ask that reached them another way. A made merge's own `next: owner` is
+    read on its change as well, under that merge's author (`rights_problems`): the line's reader never names a merge.
+    It catches an agent that does not know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
     try:
@@ -5251,9 +5252,13 @@ def read_changes():
 def rights_problems(trackers):
     """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
     transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
-    no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
-    pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
-    the author of each line is the one the server authenticated, so the transitions are read from the lines."""
+    no line left to judge and is read here, from the change, under `ask`: FM-014; and a made merge's own `next: owner`,
+    which no parent carries: the line's reader never names a merge, so it is read here, from that merge's own change,
+    under its author — the Owner's ruling of 2026-10-03, v0.19.1. The merge being committed now is the line's: its
+    `next: owner` is not committed yet, and `seat_problems` reads it under the author git is about to write.) Under
+    Subversion there is no pending commit to read and no client hook to read it in — the server's own `pre-commit` hook
+    runs the gate, and the author of each line is the one the server authenticated, so the transitions are read from
+    the lines."""
     if not SEATS or vcs() not in ("git", "svn"):
         return []
     out = []
@@ -5280,6 +5285,7 @@ def rights_problems(trackers):
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
     for bases, files, name, email, commit, result, label in changes_under_review():
         seat, where = seat_of(name, email), (label + " — " if label else "")
+        on_line = set() if commit and len(bases) > 1 else {"ask"}        # a made merge's own `next: owner` is no line's: `line_author` never names a merge
         for rel in sorted(files & set(rels)):
             t = rels[rel]
             now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if result is None else show(result, rel).stdout
@@ -5288,7 +5294,7 @@ def rights_problems(trackers):
                 was = show(base, rel)
                 made = transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0)
                 moves = made if moves is None else moves & made
-            for move in sorted(moves - {"ask"}):
+            for move in sorted(moves - on_line):
                 right = "ask" if move == "clear" else move
                 if not holds(seat, right):
                     out.append(f'{t["id"]}: {where}' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
