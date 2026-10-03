@@ -2888,7 +2888,7 @@ fm.configure(HERE)
 
 # --- every worktree's configuration (RV-2315, the Owner's ruling filed in FM-006, *The fix round after the critical review*): `--install-hook`'s configuration
 # check judges the settings each worktree reads, its own configuration included — an include in a linked worktree's own configuration that points into a working
-# tree is refused when it runs from the main worktree, and nothing is written; a worktree marked `prunable` is skipped, never refused
+# tree is refused when it runs from the main worktree, and nothing is written; beside a worktree whose folder is gone, with no settings of its own, it succeeds
 def _wc(kind, rev=None):
     """`--install-hook` from the main worktree, beside a linked worktree: `own` — the linked worktree's own configuration (`config.worktree`) holds an include
     whose target is a file inside the main working tree; `prunable` — the linked worktree's folder is gone."""
@@ -2925,6 +2925,40 @@ g_ = _wc("prunable")
 check(f"FM-006 · a private security report · every worktree's configuration · beside a worktree marked `prunable` — its folder gone — `--install-hook` succeeds: "
       f"exit 0, the hooks and the copy written (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:100]!r})",
       g_["prunable"] and g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
+fm.configure(HERE)
+
+# --- every worktree's configuration, removed ones included (the Owner's ruling of 2026-10-03, v0.19.1): `--install-hook` judges every path against every
+# worktree's folder, removed ones included, and reads the settings of every worktree from its git directory, a removed one's own configuration with them
+def _rw(kind):
+    """`--install-hook` from the main worktree, beside a linked worktree `gone` whose folder is then removed: `gone-target` — `.git/config` includes a file
+    inside the removed worktree's folder; `gone-own` — the removed worktree's own configuration (`config.worktree`) includes an inert file inside the main
+    working tree; `outside` — `.git/config` includes an inert file beside the repository, outside every worktree."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        git(root, "worktree", "add", "-q", str(base / "gone"), "-b", "gone")
+        if kind == "gone-target":
+            named_ = base / "gone" / "inert.gitconfig"; git(root, "config", "include.path", str(named_))
+        elif kind == "gone-own":
+            named_ = root / "inert.gitconfig"; named_.write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "extensions.worktreeConfig", "true"); git(base / "gone", "config", "--worktree", "include.path", str(named_))
+        else:
+            named_ = base / "inert.gitconfig"; named_.write_text("[user]\n\tnote = inert\n", encoding="utf-8"); git(root, "config", "include.path", str(named_))
+        shutil.rmtree(base / "gone")
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(),
+                  prunable="prunable" in subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout)
+        rm_git(root)
+    return g_
+for kind_, refused_, what_ in (("gone-target", True, "an include whose target lies inside a removed worktree's folder"),
+                               ("gone-own", True, "an include in a removed worktree's own configuration, its target inside a working tree"),
+                               ("outside", False, "an include whose target lies outside every worktree, a removed one beside it")):
+    g_ = _rw(kind_)
+    check(f"FM-006 · every worktree's configuration, removed ones included · {what_}: `--install-hook` "
+          + ("refuses in one line naming it, and writes no hook and no copy" if refused_ else "succeeds, exit 0, the hooks and the copy written")
+          + f" (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:150]!r})",
+          g_["prunable"] and (_wc_refused(g_) if refused_ else g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"]))
 fm.configure(HERE)
 
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
