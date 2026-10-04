@@ -632,6 +632,8 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    global _SVN_NEW
+    _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -4671,12 +4673,31 @@ BLAME_ANSWERS = ("E195002", "E200009")      # the history's own answer *not comm
                                             # revision (scheduled for addition), E200009 the target is not in version control (a file not yet `svn add`ed). A failure to READ is none of them
 
 
+def svn_new(rel):
+    """Whether Subversion holds no committed revision of this path, read from its own record of it — `svn info`'s schedule:
+    `add` or `replace`, a copy included, or a path not in version control at all (the Owner's ruling of 2026-10-04, v0.19.1).
+    Read once per path and kept; where the record cannot be read, SvnUnreadable — kept too, as `svn_blame` keeps it."""
+    if rel in _SVN_NEW:
+        if isinstance(_SVN_NEW[rel], Exception):
+            raise _SVN_NEW[rel]
+        return _SVN_NEW[rel]
+    try:
+        info = svn_run("info", rel, xml=True, answers=("E200009",))      # E200009: not in version control
+    except SvnUnreadable as e:
+        _SVN_NEW[rel] = e
+        raise
+    _SVN_NEW[rel] = info is None or (info.findtext("entry/wc-info/schedule") or "").strip() in ("add", "replace")
+    return _SVN_NEW[rel]
+
+
 def svn_blame(rel):
     """{line number: (author, revision)} for one file, from the server's own record — read once per file and kept:
     the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository. {} for a
     file that is not committed. Where the blame CANNOT be read (no server, no network, svn not there) SvnUnreadable, with
     svn's own error — kept as well, so the one failure is raised again, not asked again: a rights check that cannot read
-    who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling)."""
+    who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling).
+    A blame follows a copy to its source: a line older than the path's own first revision — the oldest of `svn log
+    --stop-on-copy` — was put at this path by that revision, and is read as its author's (v0.19.1)."""
     if rel in _SVN_BLAME:
         if isinstance(_SVN_BLAME[rel], Exception):
             raise _SVN_BLAME[rel]
@@ -4693,6 +4714,16 @@ def svn_blame(rel):
             out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
     except (ValueError, TypeError):
         out = {}
+    if out:
+        try:
+            log = svn_run("log", "-q", "--stop-on-copy", rel, xml=True)
+        except SvnUnreadable as e:
+            _SVN_BLAME[rel] = e
+            raise
+        first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
+        if first is not None and (first.get("revision") or "").isdigit():
+            at, by = int(first.get("revision")), first.findtext("author")
+            out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
     _SVN_BLAME[rel] = out
     return out
 
@@ -5250,7 +5281,7 @@ def rights_problems(trackers):
     no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
     pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
     the author of each line is the one the server authenticated, so the transitions are read from the lines. A tracker
-    Subversion holds no committed revision of — added, replaced, or not yet `svn add`ed: its blame answers so — has no
+    Subversion holds no committed revision of — added, replaced or copied, or not yet `svn add`ed (`svn_new`) — has no
     author to read until the commit is made, so it may carry no line a right guards: where it does, it is refused before
     the commit, in one line naming the rights (the Owner's ruling of 2026-10-03, v0.19.1)."""
     if not SEATS or vcs() not in ("git", "svn"):
@@ -5263,7 +5294,7 @@ def rights_problems(trackers):
                                        ("close", t["status"] not in OPEN_STATUSES), ("triage", any((fm_.get(k) or "").strip() for k in TRIAGE_KEYS))) if on]
             if guarded:
                 try:
-                    fresh = not svn_blame((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())      # no committed revision: no line has an author
+                    fresh = svn_new((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())      # no committed revision: no line has an author
                 except SvnUnreadable as e:
                     out += blame_refusal(t, e)
                     continue
@@ -7277,7 +7308,7 @@ def lint(trackers, committing=False):
                     pass                                 # refused above: who wrote the answer cannot be read
                 elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
-                elif how == "uncommitted" and SEATS and vcs() == "svn" and not svn_blame((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()):
+                elif how == "uncommitted" and SEATS and vcs() == "svn" and svn_new((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()):
                     pass                                 # a tracker Subversion holds no revision of: the rights refuse it, in one line (`rights_problems`)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')

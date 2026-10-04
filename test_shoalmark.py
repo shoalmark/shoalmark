@@ -5814,6 +5814,48 @@ else:
         run(root); code_a, _, err_a = run(root, "--check")
         check(f"FM-006 · v0.19.1 · a committed tracker whose answer line the line reader cannot find, written by a seat without `answer`, is refused, exit 4, before and after its commit (saw {code_b}, {code_a})",
               code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and "C6-014: the answer is not committed yet" in err_b and "C6-014: the answer is not committed yet" in err_a)
+        # Subversion's own record of a path: a copy — `A +`, or `R +` over a tracker — is not committed yet, and once committed its lines are the copier's
+        def commit6_(who_, msg_):
+            """The working copy committed as `who_`, and updated to."""
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", msg_, "--username", who_, cwd=root); svn("update", cwd=root)
+        def drop6_(*ids_):
+            """The trackers deleted and the deletion committed — the working copy as it was before the case."""
+            svn("rm", "--force", *[str(next(wt6_.glob(f"{i_}-*.md"))) for i_ in ids_], cwd=root); commit6_("planner", "dropped")
+        def copy6_(src_, dst_, *subs_, over_=None):
+            """`svn copy` of `src_` to a new tracker `dst_` — or, with `over_` the text to write after it, `svn rm` + `svn copy` over `dst_` — its id and `subs_` replaced."""
+            to_ = wt6_ / f"{dst_}-x.md"
+            if over_ is not None:
+                svn("rm", "--force", str(to_), cwd=root)
+            svn("copy", str(wt6_ / f"{src_}-x.md"), str(to_), cwd=root)
+            text_ = to_.read_text(encoding="utf-8") if over_ is None else over_
+            for a_, b_ in ((src_, dst_), *subs_):
+                text_ = text_.replace(a_, b_)
+            to_.write_text(text_, encoding="utf-8")
+        drop6_("C6-014")
+        answered6_ = 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n'
+        new6_("C6-030", status_="Closed"); new6_("C6-032", 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'); new6_("C6-034"); new6_("C6-035", status_="Closed")
+        commit6_("planner", "filed")
+        p32_ = wt6_ / "C6-032-x.md"; p32_.write_text(p32_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', 'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n'), encoding="utf-8")
+        commit6_("holgo", "answered")
+        open34_ = (wt6_ / "C6-034-x.md").read_text(encoding="utf-8")
+        cases6_ = (("a copy of a `Closed` tracker", lambda: copy6_("C6-030", "C6-050"), "C6-050", "close"),
+                   ("a copy of the Owner's answered tracker, its ask reworded", lambda: copy6_("C6-032", "C6-052", ("ship first?", "ship second?")), "C6-052", "answer"),
+                   ("`svn rm` and `svn copy` of a `Closed` tracker over an open one", lambda: copy6_("C6-035", "C6-034", over_=open34_.replace("status: In Progress", "status: Closed")), "C6-034", "close"))
+        for what_, make_, id_, right_ in cases6_:
+            make_(); run(root); code_b, _, err_b = run(root, "--check"); lines_b = said6_(err_b, id_)
+            commit6_("builder", id_); code_a, _, err_a = run(root, "--check"); lines_a = said6_(err_a, id_)
+            drop6_(id_)
+            if id_ == "C6-034":
+                (wt6_ / "C6-034-x.md").write_text(open34_, encoding="utf-8"); commit6_("planner", "C6-034 again")
+            check(f"FM-006 · v0.19.1 · {what_}, by a seat without `{right_}`: refused before the commit as not yet committed, in one line, and after it as the copier's change, exit 4 (saw {code_b}, {code_a}, {len(lines_b)})",
+                  code_b == fm.EXIT_LINT and len(lines_b) == 1 and lines_b[0].startswith(f"{id_}: is not committed yet") and f"`{right_}`" in lines_b[0]
+                  and code_a == fm.EXIT_LINT and any("`builder` is the seat `builder`, which does not hold" in l_ and f"`{right_}`" in l_ for l_ in lines_a))
+        # …and the same three by the seat that holds the right — the planner's copy, the Owner's — pass once committed
+        copy6_("C6-030", "C6-060"); commit6_("planner", "C6-060"); copy6_("C6-032", "C6-062", ("ship first?", "ship second?")); commit6_("holgo", "C6-062")
+        copy6_("C6-035", "C6-034", over_=open34_.replace("status: In Progress", "status: Closed")); commit6_("planner", "C6-034 closed")
+        run(root); code_h, _, err_h = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · a copy by the seat that holds the right — a `Closed` tracker by the planner, the Owner's answered one by the Owner, `svn rm` and `svn copy` closing one by the planner — passes once committed (saw {code_h}, {err_h.strip()[-300:]!r})",
+              code_h == 0 and not said6_(err_h, "C6-060") and not said6_(err_h, "C6-062") and not said6_(err_h, "C6-034"))
     fm.configure(HERE)
 
 
