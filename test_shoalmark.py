@@ -2882,7 +2882,7 @@ fm.configure(HERE)
 
 # --- the write rule before a folder is made (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR` and
 # `--init` ask the rule for every file they would write before the first folder is made — through a folder of the tree that is a symlink, each is refused in one line
-# naming the file, exit 4, and nothing is written
+# naming the file, or for `--init` its tracker folder, exit 4, and nothing is written
 def _wf(rev=None):
     """`--brand DIR` and `--init`, each where a parent of the folder it would make is a symlink to an empty folder beside the repository."""
     with tempfile.TemporaryDirectory() as d:
@@ -2891,16 +2891,19 @@ def _wf(rev=None):
         for key_, link_, argv_ in (("brand", "brandy", ("--brand", "brandy/starter")), ("init", "docs", ("--init", "--key", "msr"))):
             away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_, target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
-            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists())
+            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists(), away=os.path.realpath(away_))
         rm_git(root)
     return g_
-_WF_LINE = {"brand": f"shoalmark: brandy/starter/theme.css {_WR_SAYS}", "init": f"shoalmark: docs/work-tracker/TRIAGE.md {_WR_SAYS}"}
+def _wf_line(g, k):
+    """The one line each is refused in: `--brand DIR` names the file, `--init` its tracker folder (the Owner's ruling of 2026-10-04, v0.19.1)."""
+    return (f"shoalmark: brandy/starter/theme.css {_WR_SAYS}" if k == "brand"
+            else f"the tracker folder docs/work-tracker resolves outside the repository, to {os.path.join(g['init']['away'], 'work-tracker')} — nothing is written")
 def _wf_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _WF_LINE[k_] and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _wf_line(g, k_) and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
 if _SYMLINKS:
     g_ = _wf()
     check(f"FM-006 · a private security report · the write rule · `--brand DIR` and `--init` through a folder of the tree that is a symlink: each is refused in one line "
-          f"naming the file, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
+          f"naming the file, or for `--init` its tracker folder, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
     if _HAVE_RR:
         c_ = _wf(_RR_REV)
         check(f"FM-006 · a private security report · the write rule · before a folder is made · …the control: beside {_RR_REV}'s tool this check FAILS", not _wf_ok(c_))

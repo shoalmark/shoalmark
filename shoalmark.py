@@ -8227,6 +8227,10 @@ def install_hook():
 
 
 def init(key=None):
+    refused = tracker_folder_problem("nothing is written")  # the tracker folder, judged first, as every run judges it (`load_trackers`)
+    if refused:
+        print(refused, file=sys.stderr)
+        return EXIT_LINT
     wrote = []
     key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
     if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
@@ -8237,10 +8241,6 @@ def init(key=None):
                                             (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
     for path, _text in made:                                # the write rule for both, before a folder is made
         write_rule(path)
-    refused = tracker_folder_problem("nothing is written")  # the tracker folder, judged as every run judges it (`load_trackers`), before a folder is made
-    if refused:
-        print(refused, file=sys.stderr)
-        return EXIT_LINT
     for path, text in made:
         path.parent.mkdir(parents=True, exist_ok=True)
         put(path, text)
