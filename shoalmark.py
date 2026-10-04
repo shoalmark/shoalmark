@@ -5444,9 +5444,12 @@ def rights_problems(trackers):
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
     for bases, files, name, email, commit, result, label in changes_under_review():
         seat, where = seat_of(name, email), (label + " — " if label else "")
-        for rel in sorted(files & set(rels)):
+        touched = sorted(files & set(rels))
+        staged = cat_blobs([f":./{rel}" for rel in touched], index_env()) if result is None and COMMITTING else {}     # the commit being made is what its index holds
+        for rel in touched:
             t = rels[rel]
-            now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if result is None else show(result, rel).stdout
+            now = (show(result, rel).stdout if result is not None else (staged.get(f":./{rel}") or "") if COMMITTING
+                   else (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
             moves = None                                # a merge's own move is one it makes against EVERY parent (FM-019)
             for base in bases:
                 was = show(base, rel)

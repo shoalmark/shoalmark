@@ -5229,6 +5229,44 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: the commit being made is judged as its index holds it ------------------------------------------------------------------
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in (970, 972, 973):
+        tracker(root, f"AP-{n_}", title="open")
+    for n_ in (971, 974):
+        tracker(root, f"AP-{n_}", extra="kind-of-problem: complicated\ntier: P2\n", title="triaged")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    trunkS_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "remote", "add", "origin", str(base / "origin.git")); git(root, "push", "-q", "origin", trunkS_); git(root, "remote", "set-head", "origin", trunkS_)
+    shaS_ = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    pS_ = lambda n_: next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md"))
+    # part a: a close and a tier change staged, the working tree put back — committed through the installed hooks
+    run(root, "--install-hook"); git(root, "switch", "-q", "-c", "fm/970-work")
+    def stagedS_(who_, close_, tier_):
+        """`close_` closed and `tier_`'s tier moved to P0 in the index, the working tree put back; then the pre-commit run and `git commit`, as `who_`."""
+        for n_, a_, b_ in ((close_, "status: In Progress", "status: Closed"), (tier_, "tier: P2", "tier: P0")):
+            kept_ = pS_(n_).read_text(); pS_(n_).write_text(kept_.replace(a_, b_), encoding="utf-8"); git(root, "add", str(pS_(n_))); pS_(n_).write_text(kept_, encoding="utf-8")
+        git(root, "config", "user.email", who_); before_ = shaS_()
+        pre_ = run(root, "--print-written")
+        made_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", f"AP-{close_}: the work"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               env=dict(_ENV, GIT_AUTHOR_NAME=who_, GIT_AUTHOR_EMAIL=who_, GIT_COMMITTER_NAME=who_, GIT_COMMITTER_EMAIL=who_))
+        return pre_, made_, shaS_() != before_
+    pre_i_, made_i_, did_i_ = stagedS_("implementer@seat", 970, 971)
+    check(f"FM-006 · v0.19.1 · a close and a tier change staged, the working tree put back, by a seat without `close` and `triage`: the pre-commit run reads the index and refuses both, exit 4, and through the installed hooks no commit is made (saw {pre_i_[0]}, {made_i_.returncode}, {did_i_})",
+          pre_i_[0] == fm.EXIT_LINT and "AP-970: this change is a `close`" in pre_i_[2] and "AP-971: this change is a `triage`" in pre_i_[2] and made_i_.returncode != 0 and not did_i_)
+    git(root, "reset", "-q", "--hard")
+    pre_p_, made_p_, did_p_ = stagedS_("principal@seat", 970, 971)
+    check(f"FM-006 · v0.19.1 · the same, staged by the seat that holds `close` and `triage`, passes the pre-commit run and is committed (saw {pre_p_[0]}, {made_p_.returncode}, {did_p_})",
+          pre_p_[0] == 0 and made_p_.returncode == 0 and did_p_)
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-005: a move to Shipped has a commit behind it — the Owner's ruling of 2026-09-30 ---------------------------------------------
 # *A gate that refuses a done without a commit behind it.* At 0.18.6 a tracker marked `Shipped` whose body said *nothing is built* —
 # an empty *Done when*, only *Filed.* in its ship log — passed the hook and `--check`. The rule is judged on the change that moves
