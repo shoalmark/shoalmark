@@ -5233,7 +5233,7 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# --- FM-006 · v0.19.1: the commit being made is judged as its index holds it ------------------------------------------------------------------
+# --- FM-006 · v0.19.1: the commit being made is judged as staged, and every commit of a branch since the default branch is judged where `--check` runs ---
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
@@ -5268,7 +5268,42 @@ with tempfile.TemporaryDirectory() as tmp:
     pre_p_, made_p_, did_p_ = stagedS_("principal@seat", 970, 971)
     check(f"FM-006 · v0.19.1 · the same, staged by the seat that holds `close` and `triage`, passes the pre-commit run and is committed (saw {pre_p_[0]}, {made_p_.returncode}, {did_p_})",
           pre_p_[0] == 0 and made_p_.returncode == 0 and did_p_)
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}"); (root / ".git/hooks/pre-commit").unlink(); (root / ".git/hooks/commit-msg").unlink()
+    # part b: a close made past the hooks, under a later commit — `--check` from a clean checkout reads every commit of the branch since the default branch
+    git(root, "switch", "-q", "-c", "fm/972-work", f"origin/{trunkS_}")
+    pS_(972).write_text(pS_(972).read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); run(root); git(root, "add", "-A")
+    git(root, "commit", "-qm", "AP-972: closed", "--author=i <implementer@seat>"); hidden_ = shaS_()
+    (root / "later.txt").write_text("a later commit\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+    b_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · a close by a seat without `close`, under a later commit: `--check` from a clean checkout refuses it, exit 4, naming that commit (saw {b_[0]})",
+          b_[0] == fm.EXIT_LINT and f"AP-972: in `{hidden_[:10]}` (implementer@seat), on this branch since origin/{trunkS_} — this change is a `close`" in b_[2])
+    git(root, "switch", "-q", "-c", "fm/973-work", f"origin/{trunkS_}")
+    pS_(973).write_text(pS_(973).read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); run(root); git(root, "add", "-A")
+    git(root, "commit", "-qm", "AP-973: closed", "--author=p <principal@seat>"); (root / "later.txt").write_text("later\n", encoding="utf-8"); git(root, "add", "-A")
+    git(root, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+    ok_b_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · the same close by the seat that holds `close`, under a later commit, passes `--check` from a clean checkout (saw {ok_b_[0]}, {ok_b_[2].strip()[-200:]!r})",
+          ok_b_[0] == 0 and "AP-973" not in ok_b_[2])
     rm_git(root)
+    # where no default branch is found — no `origin` at all, or one with no `HEAD`, `main` or `master` — the newest commit alone is judged, and `--check` says so in one line
+    nodef_ = "the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged"
+    for case_ in ("no origin", "an origin with no default branch"):
+        r_ = base / case_.replace(" ", "-"); r_.mkdir(); subprocess.run(["git", "init", "-q", str(r_)], check=True, env=_ENV)
+        for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+            git(r_, "config", k_, v_)
+        (r_ / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8") if (root / "shoalmark.toml").exists() else
+                                           'name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+        tracker(r_, "AP-975", title="open"); run(r_); git(r_, "add", "-A"); git(r_, "commit", "-qm", "filed", "--author=p <principal@seat>")
+        if case_ == "an origin with no default branch":
+            subprocess.run(["git", "init", "-q", "--bare", str(base / "other.git")], check=True, env=_ENV); git(r_, "remote", "add", "origin", str(base / "other.git"))
+            git(r_, "push", "-q", "origin", "HEAD:dev"); git(r_, "fetch", "-q", "origin")
+        p_ = next((r_ / "docs/work-tracker").glob("AP-975-*.md")); p_.write_text(p_.read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8")
+        run(r_); git(r_, "add", "-A"); git(r_, "commit", "-qm", "AP-975: closed", "--author=i <implementer@seat>")
+        (r_ / "later.txt").write_text("later\n", encoding="utf-8"); git(r_, "add", "-A"); git(r_, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+        nd_ = run(r_, "--check")
+        check(f"FM-006 · v0.19.1 · with {case_}, `--check` judges the newest commit alone — the close under it passes as before — and says so in one line (saw {nd_[0]})",
+              nd_[0] == 0 and "AP-975" not in nd_[2] and [l_ for l_ in nd_[1].splitlines() if l_.startswith("the branch's commits:")] == [nodef_])
+        rm_git(r_)
 fm.configure(HERE)
 
 # --- FM-005: a move to Shipped has a commit behind it — the Owner's ruling of 2026-09-30 ---------------------------------------------

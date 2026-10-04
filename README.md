@@ -481,8 +481,8 @@ refused: this commit by planner@seat is the seat planner, and its Session: a9f3c
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
 tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's
-`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, and every commit a merge brings,
-each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
+`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, every commit since `origin`'s
+default branch, and every commit a merge brings, each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
 judged, so a repository that never set `seat.session` is not refused when it vendors.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`

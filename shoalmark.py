@@ -636,8 +636,9 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
-    global _SVN_NEW
+    global _SVN_NEW, _WALK
     _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
+    _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -5361,11 +5362,16 @@ def read_changes():
     Read against its first parent alone, a merge was everything its branch carried and all of it the merger's: `--check`
     on a trunk went red on the first pull request carrying an answer or a close, the forge's merge identity being no
     seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
-    merge brings are read only when there is a merge: one `git log` for all of them."""
+    merge brings are read only when there is a merge: one `git log` for all of them.
+
+    On a clean tree, every commit of the branch since `origin`'s default branch is read the same way (1) — one more `git log`
+    — so a change made under a later commit is judged where `--check` runs, as the merge's walk judges it on the trunk
+    (the Owner's ruling of 2026-10-04, v0.19.1). Where no default branch is found (`default_trunk`), the newest commit
+    alone is judged, as before, and `--check` says so in one line — never the whole history."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
-    def brought(tips, first):
+    def brought(tips, first, why="which the merge brings"):
         """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
         if not tips:
             return []
@@ -5374,7 +5380,7 @@ def read_changes():
         for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
             head, _, files = record.partition("\x00")
             c, an, ae = (head.split("\x02") + ["", ""])[:3]
-            out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+            out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), {why}"))
         return out
 
     heads = merge_heads()
@@ -5391,7 +5397,13 @@ def read_changes():
         got = names(git("diff", "-z", "--name-only", "--relative", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
-    return (brought(parents[1:], parents[0]) if len(parents) > 1 else []) + [(parents, files, name, email, commit, "HEAD", "")]
+    merged = brought(parents[1:], parents[0]) if len(parents) > 1 else []
+    trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
+    global _WALK
+    _WALK = trunk or ""                                 # none: the newest commit alone is judged, and `--check` says so — never the whole history
+    seen = {c[4] for c in merged} | {commit}
+    own = [c for c in brought(["HEAD"], trunk, f"on this branch since {trunk}") if c[4] not in seen] if trunk else []
+    return own + merged + [(parents, files, name, email, commit, "HEAD", "")]
 
 
 def rights_problems(trackers):
@@ -8836,6 +8848,8 @@ def main(argv=None):
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
+        if _WALK == "":                                     # v0.19.1: no default branch to read the branch's commits since
+            print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
             print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
