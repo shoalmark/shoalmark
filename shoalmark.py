@@ -571,6 +571,10 @@ BUILTIN_RIGHTS = {"owner": set(RIGHTS), "planner": {"ask", "close", "triage"}, "
                   "principal": {"ask", "close", "triage"}, "implementer": set()}     # FM-024: `planner` and `builder` are the seats' names from 0.19.0;
                                                                                      # `principal` and `implementer`, their old spellings, hold the same
 TRIAGE_KEYS = ("kind-of-problem", "tier", "rank", "triaged")     # `considered:` too — except on a filing, which is the rule, not a verdict
+# THE KEYS A RIGHT IS JUDGED ON (the Owner's ruling of 2026-10-04, v0.19.1): `status` (`close`), `next` (`ask`), the three answer lines
+# (`answer`, and `ask`'s clearing move), `considered` and the triage keys (`triage`). Each is read from ONE line, written in lower case
+# (`guarded_key_problems`): a second line, or one in capitals, would be a line the reader keeps and another one judged
+GUARDED_KEYS = ("status", "next", "answer", "answered", "answered-by", "considered", *TRIAGE_KEYS)
 
 
 def configure(root=None):
@@ -1068,6 +1072,7 @@ def extract(path, text=None):
         # `next: run`: the next move, written by a triage pass on what it ranks. The three ready
         # marks are derived from the file, never typed (see `ready_needs`).
         "fm": fm,
+        "key_problems": guarded_key_problems(tracker_id, text),    # a key a right is judged on, repeated or in capitals (`lint` refuses it)
         "next": (fm.get("next") or "").strip().lower(),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
         **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
@@ -4800,6 +4805,24 @@ def frontmatter_keys(raw, cr_breaks=False):
     return out
 
 
+def guarded_key_problems(tid, text):
+    """LAYER 2 (the Owner's ruling of 2026-10-04, v0.19.1): a front matter that repeats a key a right is judged on (`GUARDED_KEYS`), or
+    spells one other than in lower case, is refused — one line for each such key, naming its lines and the way through. Every other key
+    may repeat and carry capitals, as prose in a front matter does."""
+    seen = {}
+    for key, line, written in frontmatter_keys(text):
+        if key in GUARDED_KEYS:
+            seen.setdefault(key, []).append((line, written))
+    out = []
+    for key, at in seen.items():
+        odd = list(dict.fromkeys(w for _l, w in at if w != key))
+        if len(at) > 1 or odd:
+            out.append(f'{tid}: the front matter carries `{key}:` on line{"s" if len(at) > 1 else ""} {" and ".join(str(l) for l, _w in at)}'
+                       + (f', spelled {", ".join(f"`{w}:`" for w in odd)}' if odd else "")
+                       + f' — a key a right is judged on is read from one line: write one `{key}:` line, in lower case')
+    return out
+
+
 def guarded_line(raw, key, cr_breaks=False):
     """The line `parse_frontmatter` keeps for `key` — the last one, its key's case folded — as version control numbers it (`frontmatter_keys`), or None."""
     return next((line for k, line, _w in reversed(frontmatter_keys(raw, cr_breaks)) if k == key), None)
@@ -7380,6 +7403,7 @@ def lint(trackers, committing=False):
     problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
     by_ask = asks_by_key(trackers)
     for t in trackers:
+        problems += t.get("key_problems") or []         # each key a right is judged on is read from one line, in lower case (v0.19.1)
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
         problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask)]
         problems += record_problems(t) if committing else []

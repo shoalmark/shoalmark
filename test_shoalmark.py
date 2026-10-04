@@ -5213,6 +5213,19 @@ with tempfile.TemporaryDirectory() as tmp:
         subprocess.run = real_run_
     check(f"FM-006 · v0.19.1 · a guarded line a commit carries and git names no commit for is refused, never judged as whoever runs `--check` (saw {l3_none_[0]})",
           l3_none_[0] == fm.EXIT_LINT and "AP-950: `next: owner` — version control names no commit for this line" in l3_none_[2])
+    # LAYER 2: a key a right is judged on is read from one line, in lower case — any other key may repeat or carry capitals
+    editK_(950, "next: owner", "next: review"); git(root, "config", "user.email", "principal@seat")
+    tracker(root, "AP-960", extra="status: In Progress\n", title="a status twice"); tracker(root, "AP-961", extra="Next: review\n", title="a key in capitals")
+    tracker(root, "AP-962", extra='Hook: "an earlier hook"\nask-kind: ruling\nAsk-Kind: action\n', title="other keys, twice and in capitals")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    l2_ = asK_("principal@seat", "--check")
+    l2_lines_ = lambda id_: [l_.strip().removeprefix("lint: ") for l_ in l2_[2].splitlines() if f"{id_}:" in l_]
+    check(f"FM-006 · v0.19.1 · a front matter that repeats a key a right is judged on, and one that spells it in capitals, are each refused by `--check` in one line naming the key, its lines and the way through (saw {l2_[0]}, {l2_lines_('AP-960')}, {l2_lines_('AP-961')})",
+          l2_[0] == fm.EXIT_LINT
+          and l2_lines_("AP-960") == ["AP-960: the front matter carries `status:` on lines 3 and 5 — a key a right is judged on is read from one line: write one `status:` line, in lower case"]
+          and l2_lines_("AP-961") == ["AP-961: the front matter carries `next:` on line 5, spelled `Next:` — a key a right is judged on is read from one line: write one `next:` line, in lower case"])
+    check(f"FM-006 · v0.19.1 · a front matter whose repeated or capitalised keys are none a right is judged on passes (saw {l2_lines_('AP-962')})",
+          l2_lines_("AP-962") == [])
     rm_git(root)
 fm.configure(HERE)
 
