@@ -8043,6 +8043,40 @@ with tempfile.TemporaryDirectory() as tmp:
           code_v4_ == fm.EXIT_LINT and g_v4_[0] == [variant_line37_(c_v4_, nfd37_, ue37_ + "/TRIAGE.md")])
     git(root, "switch", "-q", "main"); git(root, "mv", ue37_, "docs/work-tracker"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    # v0.19.1 · where a commit moves the tracker's home, every path its tree holds that is that home in another case or normalization is refused
+    seat_text37_ = filled_.replace("lose a loan", "lose a ledger")
+    def staged37_(path_, text_):                        # one file staged with git's plumbing, as on a file system that keeps case apart — nothing checked out
+        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=text_, capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "-c", "core.precomposeunicode=false", "update-index", "--add", "--cacheinfo", f"100644,{blob_},{path_}")
+    tracked37_ = [p_ for p_ in subprocess.run(["git", "-C", str(root), "ls-files", "docs/work-tracker"], capture_output=True, text=True, env=_ENV).stdout.split("\n") if p_]
+    git(root, "switch", "-q", "-c", "ap/037-case-move", "main")
+    staged37_("shoalmark.toml", cfg37_.replace("[kinds]", 'tracker_dir = "DOCS/WORK-TRACKER"\n[kinds]', 1))
+    for p_ in tracked37_:                               # the whole tracker, its words the Owner's byte for byte, under the folder spelled in capitals
+        staged37_("DOCS/WORK-TRACKER/" + p_[len("docs/work-tracker/"):], subprocess.run(["git", "-C", str(root), "show", f"main:{p_}"], capture_output=True, text=True, env=_ENV).stdout)
+    staged37_("docs/work-tracker/TRIAGE.md", seat_text37_)
+    (base / "msg37").write_text("AP-037: a note\n", encoding="utf-8"); code_cm_, _o, err_cm_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_); c_cm_, g_cm_ = sha37_(), guard37_(); code_cc_ = run(root, "--check")[0]
+    git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    case_said37_ = "changes `docs/work-tracker/TRIAGE.md` which a file system that ignores case or Unicode normalization reads as `DOCS/WORK-TRACKER/TRIAGE.md`"
+    check(f"FM-006 · v0.19.1 · a seat's commit that respells `tracker_dir` in capitals beside a copy of the tracker, the Owner's words there, and rewrites the TRIAGE.md in the old spelling, is refused — "
+          f"by `--commit-msg` as it is made, and by `--check`, exit 4, each in one line (saw {code_cm_}, {code_cc_}, {g_cm_[0]!r})",
+          code_cm_ == fm.EXIT_LINT and any(l_.strip().startswith('refused: this commit "AP-037: a note" ') and case_said37_ in l_ for l_ in err_cm_.splitlines())
+          and code_cc_ == fm.EXIT_LINT and len(g_cm_[0]) == 1 and g_cm_[0][0].startswith(f'refused: commit {c_cm_[:7]} "AP-037: a note" ') and case_said37_ in g_cm_[0][0])
+    c_m1_, _g = made37_("ap/037-elsewhere-back", "AP-037: the tracker elsewhere", lambda: (shutil.copytree(str(root / "docs/work-tracker"), str(root / "elsewhere")),
+                                                                                         (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "elsewhere"\n[kinds]', 1))), SEAT_)
+    staged37_("docs/work-tracker/triage.md", seat_text37_); git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_); c_m2_ = sha37_()
+    (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "shoalmark.toml"); git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: the tracker back", SEAT_)
+    c_m3_, g_m_ = sha37_(), guard37_(); code_m_ = run(root, "--check")[0]
+    git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    check(f"FM-006 · v0.19.1 · a seat's branch that moves the tracker away, writes `triage.md` in the old folder, then points `tracker_dir` back is refused by `--check`, exit 4, in one line naming the commit that points it back (saw {code_m_}, {g_m_!r})",
+          code_m_ == fm.EXIT_LINT and g_m_[0] == [f'refused: commit {c_m3_[:7]} "AP-037: the tracker back" holds `docs/work-tracker/triage.md` which a file system that ignores case or Unicode normalization reads as `docs/work-tracker/TRIAGE.md` — '
+                                                  f"its author `implementer@seat` is not the Owner (`h@x`): not the Owner's signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}"]
+          and g_m_[1].endswith("— 3 commit(s) on `ap/037-elsewhere-back` since origin/main, 1 change them or their signers file, 1 refused"))
+    c_om_, g_om_ = made37_("ap/037-owner-move", "AP-037: the tracker moves", lambda: (git(root, "mv", "docs/work-tracker", "kept"),
+                                                                                    (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "kept"\n[kinds]', 1))), "-S", OWNER_)
+    check(f"FM-006 · v0.19.1 · the Owner's signed commit that moves the tracker folder, no path colliding with its new home, passes the guard (saw {g_om_!r})",
+          g_om_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-move` since origin/main, none changes them or their signers file"))
+    git(root, "switch", "-q", "main")
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")

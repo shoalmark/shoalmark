@@ -643,6 +643,7 @@ def configure(root=None):
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
+    _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -6302,6 +6303,18 @@ def guarded_sections(text, heads):
 
 
 _MODES = {}
+_TREES = {}
+
+
+def tree_paths(rev, env=None):
+    """Every path `rev` holds, from the repository's root — "" the index (`env` the hook's) — or None where git cannot list
+    them: one `git ls-tree -r` (for the index `git ls-files`) a revision, read once per run."""
+    key = (str(ROOT), rev)
+    if key not in _TREES:
+        args = ["ls-files", "-z", "--full-name", "--", ":/"] if rev == "" else ["ls-tree", "-r", "-z", "--name-only", "--full-tree", rev]
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        _TREES[key] = [x for x in r.stdout.split("\x00") if x] if r.returncode == 0 else None
+    return _TREES[key]
 
 
 def path_mode(rev, path, env=None):
@@ -6471,20 +6484,36 @@ def guard_touched(files, prefix, keys=(), unread=False, homes=()):
 
 
 def variant_changes(files, watched):
-    """[("variant", "changes", the file, the path it is read as)] — each of `files` that is not a path the guard watches, but is
-    one as a file system that ignores case and Unicode normalization reads it (`fs_fold`): on such a file system — macOS's
-    default one, Windows's — it can be the very file the tool reads. Folded on every system."""
-    folded = {fs_fold(w): w for w in watched}
-    return [("variant", "changes", f"`{f}`", f"which a file system that ignores case or Unicode normalization reads as `{folded[fs_fold(f)]}`")
-            for f in sorted(files) if f not in watched and fs_fold(f) in folded]
+    """[("variant", "changes", the file, the path it is read as)] — each of `files` that a path the guard watches, other than
+    itself, is as a file system that ignores case and Unicode normalization reads it (`fs_fold`): on such a file system —
+    macOS's default one, Windows's — the two are one file, and it can be the very file the tool reads. Folded on every
+    system."""
+    out = []
+    for f in sorted(files):
+        other = next((w for w in watched if w != f and fs_fold(w) == fs_fold(f)), None)
+        if other is not None:
+            out.append(("variant", "changes", f"`{f}`", f"which a file system that ignores case or Unicode normalization reads as `{other}`"))
+    return out
 
 
-def guard_changes(now, before, kept, files, prefix, keys=(), unread=False):
+def tree_variants(home, paths, files):
+    """[("variant", "holds", the path, its home)] — where a commit's TRIAGE.md home is not its parent's (the tracker moved, or
+    `tracker_dir` respelled), each path its tree holds (`paths`, `tree_paths`), other than the home, that is the home as a
+    file system that ignores case and Unicode normalization reads it — one the commit changes itself (`files`) is
+    `variant_changes`'. None as `paths`: git could not list them, and the move is refused."""
+    if paths is None:
+        return [("variant", "moves the tracker to", f"`{home}`", "where git cannot list the files beside it")]
+    return [("variant", "holds", f"`{p}`", f"which a file system that ignores case or Unicode normalization reads as `{home}`")
+            for p in sorted(paths) if p != home and p not in files and fs_fold(p) == fs_fold(home)]
+
+
+def guard_changes(now, before, kept, files, prefix, keys=(), unread=False, tree=None):
     """What one commit does that FM-037 judges: `section_changes` and `kept_changes` (`kept`), read under the views `now` and
-    `before`, and each of the files it changes (`files`) that is a watched path in another case or Unicode normalization
-    (`variant_changes`) — where a view on either side cannot be read, the files `guard_touched` names, refused as changes,
-    never read under the defaults. `unread`: the default branch's configuration cannot be read — every file `guard_touched`
-    names is a change, whatever the views read."""
+    `before`, each of the files it changes (`files`) that is a watched path in another case or Unicode normalization
+    (`variant_changes`), and — where its TRIAGE.md home is not a parent's — each path its tree holds that is that home so
+    (`tree_variants`; `tree` lists them, once) — where a view on either side cannot be read, the files `guard_touched`
+    names, refused as changes, never read under the defaults. `unread`: the default branch's configuration cannot be read —
+    every file `guard_touched` names is a change, whatever the views read."""
     views = (now, *before)
     homes = [v[1] for v in views if v[1]]
     touched = guard_touched(files, prefix, keys, unread, homes)
@@ -6492,6 +6521,8 @@ def guard_changes(now, before, kept, files, prefix, keys=(), unread=False):
         own = ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else section_changes(now, before, touched)) if touched else []
     else:
         own = section_changes(now, before) + variant_changes(files, [*dict.fromkeys([*homes, prefix + CONFIG_NAME, *keys])])
+        if tree is not None and (not before or any(b[1] != now[1] for b in before)):
+            own += tree_variants(now[1], tree(), files)
     own += kept
     return own or ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else [])
 
@@ -6515,7 +6546,7 @@ def guard_walk(*revs, keys=(), unread=False):
     kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys]) if commits else {}
     changed = [(c, subject, next((views[r][1] for r in (c, *ps) if views[r][1]), "TRIAGE.md"),
                 guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
-                              files, prefix, keys, unread))
+                              files, prefix, keys, unread, lambda c=c: tree_paths(c)))
                for c, ps, subject, files in commits]
     return len(commits), [row for row in changed if row[3]]
 
@@ -6671,7 +6702,7 @@ def triage_pending(subject):
     kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
     what = guard_changes(views[""], [views[p] for p in parents],
                          [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
-                         staged_files(parents, env), prefix, keys, not owners)
+                         staged_files(parents, env), prefix, keys, not owners, lambda: tree_paths("", env))
     brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []
     refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
