@@ -3068,7 +3068,11 @@ blocked=t=>OPEN.has(t[2])&&t[16].some(b=>b.startsWith("Owner")||byId.has(b)&&OPE
 // word INDEX.md prints); `triaged` repeats the
 // newest pass under `triage`. A judgement on work in progress holds __DAYS__ days, then it is back in `triage`; parked work does not go stale.
 LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
-fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
+// a bare date — `YYYY-MM-DD`, a day with no hour — is a LOCAL calendar day, as `--owner`, `--standup` and the triage worksheet count it: its age is the
+// difference of two local dates, never elapsed time ÷ 24 h (`Date.parse` reads it as UTC's midnight, and a daylight-saving day has 23 or 25 hours).
+// Both dates go onto one scale — their calendar fields as UTC midnights — so the difference is whole days; NaN where the text is no bare date.
+ago=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(s),n=new Date();return m?Math.round((Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())-Date.UTC(+m[1],m[2]-1,+m[3]))/864e5):NaN},
+fresh=t=>!!t[17]&&ago(t[17])<=__DAYS__,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
 // the page's SECOND clock rule (FM-030), beside the first: an act owed to the Owner is due until its time, overdue after
@@ -3114,7 +3118,7 @@ function draw(){
     // ask as one; what was sent back is listed after the queue, with its reason, for the seat that wrote it.
     const w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);
     // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
-    const days=t=>t[29][2]?Math.floor((Date.now()-Date.parse(t[29][2]))/864e5):null,old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
+    const days=t=>(d=>d==d?d:null)(ago(t[29][2])),old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
     // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —
     // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
@@ -3246,7 +3250,7 @@ function view(id){
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(r=>r.length?` · <i>${l("relation."+r[0],r[1])}${r[2]?": "+esc(r[2]):""}</i>`:"")(t[29][11])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
-<b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
+<b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&ago(t[24][0])>__DAYS__?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
 <b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const i of v.querySelectorAll(".md img"))if(!safeUrl(i.getAttribute("src")||"")||/^mailto:/i.test((i.getAttribute("src")||"").trim()))i.replaceWith(document.createTextNode(i.alt||""));      // the DOM's last word on what an image loads

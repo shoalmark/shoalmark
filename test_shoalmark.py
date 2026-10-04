@@ -193,7 +193,7 @@ with tempfile.TemporaryDirectory() as d:
     check("the board is one static page: no unfilled placeholder, the configured kinds in its id patterns, five sections in order",
           not re.search(r"__[A-Z_]+__", page) and "(?:MSR)-" in page
           and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", page) is not None
-          and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "(7+1)*864e5" in page)
+          and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "fresh=t=>!!t[17]&&ago(t[17])<=7" in page)
     check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/MSR-001.js").exists())
     second = root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md"
     second.write_text(second.read_text().replace("considered:\n", "considered: MSR-001\n"))
@@ -453,6 +453,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "german": "C4 · the German board, rendered",
     "wordmark": "0.18.2 · the wordmark, rendered in a browser",
     "queue": "the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions",
+    "days": "FM-006 · v0.19.1 · the board's days, rendered in pinned zones — an ask's age, the fresh badge, a verdict's stale mark",
     "dialog": "the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command",
     "second": "FM-013 · the second screen, rendered",
     "acts": "FM-030 · B · his acts on the board, rendered — no date yet, due, overdue, missed",
@@ -4613,6 +4614,103 @@ with tempfile.TemporaryDirectory() as tmp:
                   '<a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
         except _ChromeFailed as e_:
             _hung("queue", e_)
+fm.configure(HERE)
+
+# --- FM-006, v0.19.1: the board's page counts a bare date as a LOCAL calendar day ---------------------------------------
+# An ask's age, the fresh badge and a verdict's stale mark are each the difference of two dates in the viewer's zone — as `--owner` and the triage
+# worksheet count them — never elapsed time ÷ 24 h: not from UTC's midnight, and not from the local midnight either (a daylight-saving day has 23 or
+# 25 hours). The zone and the instant are pinned for both sides: the browser by `TZ` and a `Date` that a script ahead of the page's own fixes at the
+# instant, the tool by `TZ`, `time.tzset` and `time.time`, which `date.today()` reads — so the page and the command count at one instant. Five pins,
+# each where the local date is not UTC's or where a clock change lies between the dates: a zone ahead of UTC, one behind, the day after the clock
+# went back, that day's evening (the local date is UTC's again, so only the 25-hour day is wrong), and the day after the clock went forward.
+_DAY_PINS = (("Europe/Berlin", (2026, 10, 3, 22, 30), 7200, "00:30 on the 4th, UTC still the 3rd"),
+             ("America/Los_Angeles", (2026, 10, 4, 3, 0), -25200, "20:00 on the 3rd, UTC already the 4th"),
+             ("Europe/Berlin", (2026, 10, 25, 23, 30), 3600, "00:30 on the 26th, the day after the clock went back"),
+             ("Europe/Berlin", (2026, 10, 26, 22, 30), 3600, "23:30 on the 26th, UTC's date again, the 25-hour day behind"),
+             ("Europe/Berlin", (2027, 3, 28, 22, 30), 7200, "00:30 on the 29th, the day after the clock went forward"))
+
+
+def _board_days(zone, at, offset):
+    """The board's days at the UTC instant `at` in `zone`, beside the tool's own count at that instant: {what the page shows, what the command says}, or the
+    reason this machine cannot pin the zone. Four asks three to none local days old, five judged In Progress trackers 0, 6, 7, 8 and 12 local days past
+    their pass; the page's side is read in Chrome — the box's text, the sections the trackers sit in, the viewer's stale mark on each."""
+    import html as _html, json as _json
+    was_tz, was_time = os.environ.get("TZ"), time.time
+    os.environ["TZ"] = zone
+    time.tzset()
+    time.time = lambda: at.timestamp()
+    try:
+        today = datetime.date.today()
+        if time.localtime(at.timestamp()).tm_gmtoff != offset or today != datetime.datetime.fromtimestamp(at.timestamp()).date():
+            return f"{zone} is not installed here, or this Python's clock cannot be pinned (offset {time.localtime(at.timestamp()).tm_gmtoff}, today {today})"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve(); wt = root / "docs/work-tracker"
+            (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+            ago = lambda n: (today - datetime.timedelta(days=n)).isoformat()
+            for n, age in enumerate((3, 2, 1, 0), 1):
+                tracker(root, f"AP-40{n}", extra=f'next: owner\nask: "Question {n}?"\nask-kind: ruling\nask-since: {ago(age)}\nask-proposal: "yes"\n', title=f"ask {n}")
+            judged = {f"AP-41{n}": ago(age) for n, age in enumerate((0, 6, 7, 8, 12), 1)}
+            (wt / "evidence/triage").mkdir(parents=True)
+            for tid, day in judged.items():
+                tracker(root, tid, extra=f"triaged: {day}\ntier: P2\n", title=f"judged {tid}")
+                sheet = wt / f"evidence/triage/triage-{day}.md"
+                sheet.write_text((sheet.read_text(encoding="utf-8") if sheet.exists() else "| Tracker | Verdict | Reason |\n|---|---|---|\n") + f"| [{tid}](../{tid}-x.md) | keep P2 | still right |\n", encoding="utf-8")
+            run(root); fm.configure(root)
+            owner = run(root, "--owner")[1]
+            worksheet = fm.triage_worksheet(fm.load_trackers(), today.isoformat(), lambda path: "2026-01-01")[0]
+            clock = f"<script>{{const F=Date,at={int(at.timestamp() * 1000)};class D extends F{{constructor(...a){{a.length?super(...a):super(at)}}static now(){{return at}}}}window.Date=D}}</script>"
+            probe = ('<script>{const o={zone:Intl.DateTimeFormat().resolvedOptions().timeZone,off:new Date().getTimezoneOffset(),box:$("p").textContent.replace(/\\s+/g," "),sec:{},stale:{}};let g="";'
+                     'for(const r of document.querySelectorAll("#b tr")){if(r.classList.contains("g"))g=r.dataset.k;else{const a=r.querySelector("a");if(a)(o.sec[a.textContent]=o.sec[a.textContent]||[]).push(g)}}'
+                     'for(const t of T){MD.set(t[0],"");view(t[0]);o.stale[t[0]]=$("v").textContent.includes("it counts as untriaged again")}'
+                     'document.body.dataset.probe=JSON.stringify(o)}</script>')
+            (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace('<meta charset="utf-8">', '<meta charset="utf-8">' + clock, 1)
+                                           .replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+            dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
+            seen = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom) or [None, "{}"])[1]) or "{}")
+        if seen.get("off") != -offset // 60:
+            return f"this Chrome does not take TZ={zone} (it reads {seen.get('zone')!r}, offset {seen.get('off')})"
+        box = seen["box"]
+        first = lambda rx, text: (lambda m: int(m.group(1)) if m else None)(re.search(rx, text))
+        return {"owner": {tid: int(n) for tid, n in re.findall(r"^(AP-\d+) · ruling · asked (\d+) day\(s\) ago", owner, re.M)}, "owner_oldest": first(r"oldest (\d+) day\(s\)", owner),
+                "box": {tid: int(n) for tid, n in re.findall(r"\b(AP-\d+) Question \d\? · a ruling · (\d+) days", box)}, "box_oldest": first(r"oldest (\d+) days", box),
+                "judged": set(judged), "worksheet": set(re.findall(r"^\| \[(AP-\d+)\]", worksheet, re.M)) & set(judged),
+                "triage": {tid for tid, secs in seen["sec"].items() if "boardtriage" in secs} & set(judged), "stale": {tid for tid, v in seen["stale"].items() if v} & set(judged)}
+    finally:
+        time.time = was_time
+        if was_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = was_tz
+        time.tzset()
+        fm.configure(HERE)
+
+
+if _browser("days"):
+    if not hasattr(time, "tzset"):
+        skip("days", "this platform cannot pin a process's zone (no time.tzset)")
+    else:
+        try:
+            days_, why_ = [], ""
+            for zone_, (y_, mo_, d_, h_, mi_), offset_, what_ in _DAY_PINS:
+                read_ = _board_days(zone_, datetime.datetime(y_, mo_, d_, h_, mi_, tzinfo=datetime.timezone.utc), offset_)
+                if isinstance(read_, str):
+                    why_ = read_
+                    break
+                days_.append((f"{zone_}, {what_}", read_))
+            if why_:
+                skip("days", why_)
+            else:
+                check("FM-006 · v0.19.1 · the board's page counts an ask's age in local calendar days, as `--owner` does — the box's oldest and each ask's own, in a zone ahead of UTC, one behind, "
+                      f"and either side of a clock change (saw {[(w_, r_['owner'], r_['box'], r_['owner_oldest'], r_['box_oldest']) for w_, r_ in days_ if r_['owner'] != r_['box'] or r_['owner_oldest'] != r_['box_oldest']]})",
+                      len(days_) == len(_DAY_PINS) and all(len(r_["owner"]) == 4 and r_["owner"] == r_["box"] and r_["owner_oldest"] == r_["box_oldest"] == max(r_["owner"].values()) for _w, r_ in days_))
+                check("FM-006 · v0.19.1 · the board's page calls a judgement fresh through its seventh local calendar day, as the triage worksheet does — a judged tracker sits under *triage* "
+                      f"exactly when the worksheet lists it, in each zone and across a clock change (saw {[(w_, r_['worksheet'], r_['triage']) for w_, r_ in days_ if r_['worksheet'] != r_['triage']]})",
+                      len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["triage"] and r_["worksheet"] and r_["worksheet"] != r_["judged"] for _w, r_ in days_))
+                check("FM-006 · v0.19.1 · the viewer marks a verdict stale from its eighth local calendar day on — exactly when the triage worksheet lists the tracker again, in each zone "
+                      f"and across a clock change (saw {[(w_, r_['worksheet'], r_['stale']) for w_, r_ in days_ if r_['worksheet'] != r_['stale']]})",
+                      len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["stale"] and r_["worksheet"] for _w, r_ in days_))
+        except _ChromeFailed as e_:
+            _hung("days", e_)
 fm.configure(HERE)
 
 # --- FM-007: an ask offers CHOICES — one radio each, the recommended one first, Other last -------------------------

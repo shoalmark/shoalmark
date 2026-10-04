@@ -368,7 +368,7 @@ check("FM-005 · no label calls a `Closed` tracker done: not the board's fifth s
 check("the board is the first view: progress · triage · triaged · backlog · ended, one section per tracker plus the newest pass",
       'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", _tri) is not None
       and 'untriaged(t)?"triage":t[19]]' in _tri and "OPEN.has(t[2])&&!fresh(t)" not in _tri
-      and "recent=t=>!!t[17]&&t[17]==LAST" in _tri and "(7+1)*864e5" in _tri and "__DAYS__" not in _tri and gti.TRIAGE_DAYS == 7
+      and "recent=t=>!!t[17]&&t[17]==LAST" in _tri and "fresh=t=>!!t[17]&&ago(t[17])<=7" in _tri and "__DAYS__" not in _tri and gti.TRIAGE_DAYS == 7
       and '<button id="g" aria-pressed="true"></button><button id="o"' in _tri)
 check("the board shows the triage home: the Owner's current path on top, the newest pass under `triaged` — plain text, ids clickable",
       "HOME={" in _tri and "__HOME__" not in _tri and "FEAT-002 to its end" in _tri and "](FEAT-002" not in _tri.split("const BLOB")[1].split(",T=[")[0]
@@ -387,7 +387,7 @@ check("one board definition — ended · triage · progress · backlog — print
            _b(status="Proposed", triaged="", num=90001, kind="FEAT")] == ["backlog", "backlog", "backlog", "triage"]
       and "| progress | 2026-09-20 |" in gti.render([dict(_live[0], status="In Progress", triaged="2026-09-20", tier="P1")], "Features")
       and '"2026-09-20", 0, "progress", [' in gti.render_html([dict(_live[0], status="In Progress", triaged="2026-09-20")])
-      and '"triage":t[19]]' in _tri and "order.indexOf(k)>1" in _tri and 't[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])' in _tri and "?\"progress\":\"backlog\"" not in _tri)
+      and '"triage":t[19]]' in _tri and "order.indexOf(k)>1" in _tri and 't[2]=="In Progress"&&ago(t[24][0])>7' in _tri and "?\"progress\":\"backlog\"" not in _tri)
 # FM-041 — a status is what a seat set, a rank is what a pass judged: ranked open work sits in `progress` by rank, whatever its status.
 # On origin/main 2eb803b this fails at `return "progress" if t["status"] == "In Progress" else "backlog"`: the ranked Proposed one is `backlog`.
 _r = lambda **kw: gti.board({**dict(_live[0], triaged="2026-09-20"), **kw})
