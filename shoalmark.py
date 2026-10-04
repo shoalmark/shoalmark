@@ -632,6 +632,7 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -2019,14 +2020,24 @@ def triage_reading(head, base):
     """FM-037 in `--queue`: (`wait: TRIAGE.md changed unsigned`, the commit) where a commit of the head's own — not on `base`
     — changes the Owner's two sections and is not their signed commit, the walk and the judgement `--check` makes on the
     branch; (`wait: TRIAGE.md change not verified here — <why>`, the commit) where it is signed and this clone cannot check
-    it; None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default
-    branch's, as `--check` reads them — never a stacked pull request's base, which a seat's branch can be."""
+    it; (`wait: TRIAGE.md change not judged — <the configuration> cannot be read here`, the commit) where the refusal is
+    one `--check` makes because a configuration cannot be read — the default branch's, or one on the branch; None where no
+    commit changes them unsigned, and where the default branch names no Owner. The Owner is the default branch's, as
+    `--check` reads them — never a stacked pull request's base, which a seat's branch can be. No git call of its own beyond
+    the walk's: `--queue` asks this for every pull request."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    owners = owners_at(default_trunk(git) or base)
-    if not owners:
+    trunk, why = default_trunk(git) or base, []
+    owners = owners_at(trunk, why)
+    if not owners and not why:
         return None
-    verdicts = guard_verdicts(guard_walk(head, "^" + base, keys=signers_paths(default_trunk(git) or base))[1], owners)
+    changed = guard_walk(head, "^" + base, keys=signers_paths(trunk), unread=not owners)[1]
+    if not owners:
+        return (f"wait: TRIAGE.md change not judged — {trunk}'s configuration cannot be read here", changed[0][0][:7]) if changed else None
+    verdicts = guard_verdicts(changed, owners)
     refused = [v for v in verdicts if v[4] == "refused"]
+    unread = next((w[3][len("where "):].split(" — ", 1)[0] for w in (refused[0][3] if refused else []) if w[0] == "unread"), "")
+    if unread:
+        return f"wait: TRIAGE.md change not judged — {unread}", refused[0][0][:7]
     if refused:
         return "wait: TRIAGE.md changed unsigned", refused[0][0][:7]
     gaps = [v for v in verdicts if v[4] == "checkout"]
@@ -6039,9 +6050,10 @@ def commit_list(*revs):
     return got
 
 
-def cat_blobs(specs, env=None):
+def cat_blobs(specs, env=None, types=None):
     """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there. `env`:
-    the hook's own, where `:<path>` must read the index git hands it (FM-037)."""
+    the hook's own, where `:<path>` must read the index git hands it (FM-037). `types`, where given, gets each object's type —
+    `blob` for a file, `tree` for a folder, `commit` for a submodule whose commit this clone holds."""
     if not specs:
         return {}
     r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
@@ -6056,6 +6068,8 @@ def cat_blobs(specs, env=None):
             got[spec] = None
             continue
         size = int(head.rsplit(" ", 1)[1])
+        if types is not None:
+            types[spec] = head.rsplit(" ", 2)[-2]
         got[spec], i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
     return got
 
@@ -6277,36 +6291,90 @@ def guarded_sections(text, heads):
     return out
 
 
-def triage_views(revs, env=None):
+_MODES = {}
+
+
+def path_mode(rev, path, env=None):
+    """The mode git records for `path`, from the repository's root, at `rev` — "" where nothing is there, "?" where git
+    cannot say; "" as `rev` is the index (`env` carries the hook's). Asked only where `git cat-file` found nothing, which
+    is also what it says of a submodule whose commit this clone does not hold: one `git ls-tree` a revision and path, read
+    once per run."""
+    key = (str(ROOT), rev, path)
+    if key not in _MODES:
+        args = ["ls-files", "-s", "-z", "--full-name", "--", f":/{path}"] if rev == "" else ["ls-tree", "-z", "--full-tree", rev, "--", path]
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        rows = [row.partition("\t") for row in r.stdout.split("\x00") if row]
+        _MODES[key] = ("?" if r.returncode != 0 else next((m.split(" ", 1)[0] for m, _t, name in rows if name == path), "040000" if rows else ""))
+    return _MODES[key]
+
+
+def config_not_file(kind):
+    """Why a revision's configuration cannot be read where git records no file at its path: `kind` the mode or the type."""
+    what = {"160000": "a submodule", "commit": "a submodule", "040000": "a folder", "tree": "a folder"}.get(kind, f"no file it can list (`{kind}`)")
+    return f"{CONFIG_NAME}: not a file — git records {what} at that path, and only a file is read as the configuration"
+
+
+def guard_config(text):
+    """(`tracker_dir`, `[headings]`) as `configure` reads them from one revision's configuration — `text` None: there is none,
+    the defaults. Where this tool cannot read it as `configure` would — `read_config` refuses it, `tracker_dir` is no folder
+    of the repository, `[headings]` is not the table `configure` takes — SystemExit with the reason: never the defaults."""
+    cfg = read_config(text) if text is not None else {}
+    tdir, heads = cfg.get("tracker_dir", DEFAULTS["tracker_dir"]), cfg.get("headings", {})
+    if not isinstance(tdir, str) or tdir.replace("\\", "/").startswith("/") or ".." in tdir.replace("\\", "/").split("/"):
+        raise SystemExit(f"{CONFIG_NAME}: `tracker_dir` is a folder inside the repository, its path in quotes — got {tdir!r}")
+    if not isinstance(heads, dict) or set(heads) - set(DEFAULTS["headings"]) or not all(isinstance(v, str) and v.strip() for v in heads.values()):
+        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
+    return tdir, {**DEFAULTS["headings"], **heads}
+
+
+def view_label(rev):
+    """A revision as a guard's line names it: a commit by its 7 characters, the index as what the commit being made stages."""
+    return "what this commit stages" if rev == "" else rev[:7] if re.fullmatch(r"[0-9a-f]{40}", rev) else rev
+
+
+def triage_views(revs, env=None, prefix=None):
     """{rev: (its `tracker_dir`, its TRIAGE.md from the repository's root, whether that file is there, its two sections, its
-    `[headings]`)} — each revision read under its OWN `shoalmark.toml`; "" is the index, what a commit being made stages
-    (`env` carries the hook's `GIT_INDEX_FILE`). A configuration that cannot be read counts as none: the defaults. Two
-    `git cat-file --batch` calls for all of them."""
-    prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+    `[headings]`, "" — or why its configuration cannot be read)} — each revision read under its OWN `shoalmark.toml`; "" is
+    the index, what a commit being made stages (`env` carries the hook's `GIT_INDEX_FILE`). A configuration this tool cannot
+    read (`guard_config`), or no file at its path — a submodule, a folder (`path_mode`) — is never read as the defaults: its
+    view says so, and reads no sections — every reader of a view refuses where one it needs cannot be read. Only a path
+    with nothing at it is no configuration: the defaults, as `configure` reads them. `prefix`: the repository's, where the
+    caller has it. Two `git cat-file --batch` calls for all of them."""
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if prefix is None else prefix
     at = lambda rev, path: f"{rev}:{path}"
-    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env)
+    types = {}
+    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env, types)
     where = {}
     for r in revs:
+        spec = at(r, prefix + CONFIG_NAME)
         try:
-            cfg = read_config(configs.get(at(r, prefix + CONFIG_NAME)) or "")
-        except SystemExit:
-            cfg = {}
-        tdir = str(cfg.get("tracker_dir") or DEFAULTS["tracker_dir"])
-        heads = {**DEFAULTS["headings"], **(cfg["headings"] if isinstance(cfg.get("headings"), dict) else {})}
+            kind = types.get(spec, "blob") if configs.get(spec) is not None else path_mode(r, prefix + CONFIG_NAME, env) or "blob"
+            if kind != "blob":
+                raise SystemExit(config_not_file(kind))
+            tdir, heads = guard_config(configs.get(spec))
+        except SystemExit as e:
+            where[r] = (None, "", None, f"{prefix + CONFIG_NAME} at {view_label(r)} cannot be read here — {e}")
+            continue
         home = "/".join(x for x in (prefix + tdir + "/TRIAGE.md").replace("\\", "/").split("/") if x not in ("", "."))
-        where[r] = (tdir, home, heads)
-    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h) in where.items()}), env)
-    return {r: (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads)
-            for r, (tdir, home, heads) in where.items()}
+        where[r] = (tdir, home, heads, "")
+    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why) in where.items() if not why}), env)
+    return {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why) if why else
+               (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads, "")
+            for r, (tdir, home, heads, why) in where.items()}
 
 
-def section_changes(now, before):
+def section_changes(now, before, touched=()):
     """[(key, what it did, the heading, the rest of the phrase)] — what one commit does to each of the two sections, `now` and
     `before` read by `triage_views`:
     nothing where its text is its parent's — for a merge, ANY parent's: the text a merge carries was judged on the commit
     that made it, and only a text no parent had is the merge's own (FM-019). A root commit has no parent: it had none. A
-    scaffold, where no parent had the section, is not a change (clause 3): `unwritten`."""
-    tdir, home, there, secs, heads = now
+    scaffold, where no parent had the section, is not a change (clause 3): `unwritten`. Where a view on either side cannot
+    be read, nothing is read as the sections: the commit changes the files `touched` names — every TRIAGE.md and the
+    configuration file it changes (`guard_touched`) — where that configuration cannot be read (`unread`)."""
+    why = next((v[5] for v in (now, *before) if v[5]), "")
+    if why:
+        return [("unread", "changes", f"`{p}`", f"where {why}") for p in (touched or ["TRIAGE.md"])]
+    tdir, home, there, secs, heads, _why = now
     out = []
     for k in GUARDED:
         had = [b[3][k] for b in before] or [None]
@@ -6314,7 +6382,7 @@ def section_changes(now, before):
             continue
         if all(h is None for h in had) and unwritten(k, secs[k]):
             continue
-        b_dir, b_home, b_there, b_secs, _h = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads)
+        b_dir, b_home, b_there, b_secs, _h, _w = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads, "")
         name = f"`{(b_secs[k] or secs[k] or '## ' + heads[k]).split(chr(10), 1)[0].rstrip()}`"
         if len(before) > 1:
             out.append((k, "brings a text under", name, f"in {home} that no parent had"))
@@ -6359,10 +6427,13 @@ def kept_changes(path, now, before):
 def signers_paths(trunk):
     """The signers files the guard keeps (AU-19), from the repository's root: the one `gpg.ssh.allowedSignersFile` names,
     where it sits in a checkout of this repository, and the default branch's `<tracker dir>/allowed_signers` — where the
-    signing page puts it — whether this clone names it or not."""
+    signing page puts it — whether this clone names it or not. Where the default branch's configuration cannot be read, its
+    tracker directory is not known and the second is not named: there, `owners_at` refuses that configuration, and the
+    guard refuses every change to a file named `allowed_signers` (`guard_touched`)."""
     out = [trusted_signers()["rel"]]
-    if trunk:
-        home = triage_views([trunk])[trunk][1]
+    view = triage_views([trunk])[trunk] if trunk else None
+    if view and not view[5]:
+        home = view[1]
         out.append((home.rsplit("/", 1)[0] + "/" if "/" in home else "") + "allowed_signers")
     return list(dict.fromkeys(x for x in out if x))
 
@@ -6376,22 +6447,50 @@ def did_words(what):
     return "; ".join(f"{verb} {' and '.join(names)} {tail}".rstrip() for (verb, tail), names in said.items())
 
 
-def guard_walk(*revs, keys=()):
+def guard_touched(files, prefix, keys=(), unread=False):
+    """The files of `files` (paths from the repository's root) a reading of the two sections depends on: every `TRIAGE.md`,
+    in any folder, the root's included, and the configuration file — and, where the default branch's configuration cannot be
+    read (`unread`), every file named `allowed_signers` and each `keys` names: its tracker directory, and so its signers
+    file, is not known there."""
+    base = lambda f: f.rsplit("/", 1)[-1]
+    return sorted({f for f in files if base(f) == "TRIAGE.md" or f == prefix + CONFIG_NAME
+                   or (unread and (base(f) == "allowed_signers" or f in keys))})
+
+
+def guard_changes(now, before, kept, touched, unread=False):
+    """What one commit does that FM-037 judges: `section_changes` and `kept_changes` (`kept`), read under the views `now` and
+    `before` — where a view on either side cannot be read, the files `touched` names (`guard_touched`), refused as changes,
+    never read under the defaults. `unread`: the default branch's configuration cannot be read — every file `touched` names
+    is a change, whatever the views read."""
+    if any(v[5] for v in (now, *before)):
+        own = ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else section_changes(now, before, touched)) if touched else []
+    else:
+        own = section_changes(now, before)
+    own += kept
+    return own or ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else [])
+
+
+def guard_walk(*revs, keys=(), unread=False):
     """FM-037's walk of `git log <revs>` — merges INCLUDED, each read against every parent: (how many commits it read,
-    [(commit, subject, TRIAGE.md's path at it, what `section_changes` and `kept_changes` say of it)] for each that changes
-    one of the two sections, or one of the files `keys` names (`signers_paths`))."""
-    out = git_out("log", "--format=%x00%H %P%x01%s", *revs) or ""
-    commits = []
-    for rec in out.split("\x00")[1:]:
-        shas, _, subject = rec.partition("\x01")
-        c, *ps = shas.split()
-        commits.append((c, ps, subject.strip()))
-    revs_ = sorted({c for c, _p, _s in commits} | {p for _c, ps, _s in commits for p in ps})
-    views = triage_views(revs_) if commits else {}
+    [(commit, subject, TRIAGE.md's path at it, what `guard_changes` says of it)] for each that changes one of the two
+    sections, or one of the files `keys` names (`signers_paths`) — or, where a view cannot be read, or the default branch's
+    configuration cannot be (`unread`), a file the reading depends on (`guard_touched`). The same one `git log` names the
+    files each commit changes — a merge's, those that differ from every parent — split on a mark no commit can carry."""
+    mark = f"\x1f{os.urandom(8).hex()}\x1f"
+    out = git_out("-c", "diff.relative=false", "-c", "log.showSignature=false", "-c", "log.showRoot=true", "log", "-z", "-c",
+                  "--name-only", "--no-renames", f"--format={mark}%H %P{mark}%s{mark}", *revs) or ""
+    parts, commits = out.split(mark)[1:], []
+    for i in range(0, len(parts) - 2, 3):
+        c, *ps = parts[i].split()
+        commits.append((c, ps, parts[i + 1].strip(), [f.lstrip("\n") for f in parts[i + 2].split("\x00") if f.lstrip("\n")]))
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if commits else ""
+    revs_ = sorted({c for c, _p, _s, _f in commits} | {p for _c, ps, _s, _f in commits for p in ps})
+    views = triage_views(revs_, prefix=prefix) if commits else {}
     kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys]) if commits else {}
-    changed = [(c, subject, views[c][1], section_changes(views[c], [views[p] for p in ps])
-                + [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])])
-               for c, ps, subject in commits]
+    changed = [(c, subject, next((views[r][1] for r in (c, *ps) if views[r][1]), "TRIAGE.md"),
+                guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
+                              guard_touched(files, prefix, keys, unread), unread))
+               for c, ps, subject, files in commits]
     return len(commits), [row for row in changed if row[3]]
 
 
@@ -6417,16 +6516,23 @@ def owners_of(cfg):
 
 def owners_at(rev, refused=None):
     """The Owner as `rev`'s `shoalmark.toml` names them — the default branch's, so a branch never names its own Owner — or
-    this checkout's where `rev` is None or carries no configuration. Where this tool refuses that configuration, nobody —
+    this checkout's where `rev` is None or carries no configuration — nothing at its path (`path_mode`); a submodule or a
+    folder there is a configuration this tool cannot read. Where this tool refuses that configuration, nobody —
     and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2), and
-    refuses every change to the two sections (v0.19.1)."""
+    refuses every change to the two sections (v0.19.1) — a configuration whose tracker directory or `[headings]` the guard
+    cannot read (`guard_config`) is refused the same way."""
     if not rev:
         return may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
-    text = cat_blobs([f"{rev}:{prefix}{CONFIG_NAME}"]).get(f"{rev}:{prefix}{CONFIG_NAME}")
-    if text is None:
+    spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
+    text = cat_blobs([spec], types=types).get(spec)
+    kind = types.get(spec, "blob") if text is not None else path_mode(rev, prefix + CONFIG_NAME)
+    if not kind:                                        # nothing at that path: no configuration — the adoption, as documented
         return may_answer()
     try:
+        if kind != "blob":
+            raise SystemExit(config_not_file(kind))
+        guard_config(text)                              # where it puts the two sections, as the guard reads them
         return owners_of(read_config(text))
     except SystemExit as e:
         if refused is not None:
@@ -6478,7 +6584,7 @@ def guard_proof(owners):
 def guard_why(what):
     """Whose the thing changed is: their two sections, the keys their signature is verified against, or both."""
     keys = {k for k, *_r in what}
-    return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & set(GUARDED))), (GUARD_WHY_KEYS, "signers" in keys)) if on)
+    return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & {*GUARDED, "unread"})), (GUARD_WHY_KEYS, "signers" in keys)) if on)
 
 
 def unread_why(trunk):
@@ -6520,7 +6626,9 @@ def triage_pending(subject):
     hook CAN prove is the author: git signs the commit after the hook has run, so the Owner's own commit passes here on their
     name and a seat's is refused before it is made. `--check` on the branch judges the signature: it is the gate, the hook
     best-effort (the 0.18.3 ruling on FM-033's hook). Where this tool refuses the default branch's configuration, who the Owner
-    is is not known, and every such change is refused, whoever makes it (v0.19.1). `subject` names the commit in what it says."""
+    is is not known, and every such change is refused, whoever makes it (v0.19.1) — as is every change to a file the reading
+    depends on (`guard_touched`), and so where a view of the index or a parent cannot be read. `subject` names the commit in
+    what it says."""
     if vcs() != "git":
         return [], []
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -6531,12 +6639,14 @@ def triage_pending(subject):
     heads = merge_heads()
     parents = (["HEAD"] if git("rev-parse", "--verify", "-q", "HEAD").returncode == 0 else []) + heads
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    views = triage_views(["", *parents], env)                  # "" — the index: what this commit carries
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+    views = triage_views(["", *parents], env, prefix)          # "" — the index: what this commit carries
     keys = signers_paths(trunk)
     kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
-    what = section_changes(views[""], [views[p] for p in parents]) + [
-        w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])]
-    brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys)[1] if heads else []
+    touched = guard_touched(staged_files(parents, env), prefix, keys, not owners) if not owners or any(views[r][5] for r in ["", *parents]) else []
+    what = guard_changes(views[""], [views[p] for p in parents],
+                         [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])], touched, not owners)
+    brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []
     refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
     if what:
@@ -6552,6 +6662,19 @@ def triage_pending(subject):
             notes.append(f"note: {this} {did_words(what)}, under the Owner's name — "
                          + ("its signature is judged on the commit, by `--check` on the branch" if mode == "signed" else GUARD_AUTHOR_ONLY))
     return refused, notes
+
+
+def staged_files(parents, env):
+    """The files the commit being made changes, from the repository's root: what its index (`env`) holds that differs from
+    every parent — a merge being made, from each of its parents; a first commit, all it holds. One `git diff` a parent."""
+    run = lambda *a: subprocess.run(["git", "-c", "diff.relative=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    every_file = lambda: run("ls-files", "-z", "--full-name", "--", ":/")
+    sets = [run("diff", "--cached", "--name-only", "-z", "--no-renames", p) for p in parents] or [every_file()]
+    names = [set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else None for r in sets]
+    if any(n is None for n in names):                          # git could not say: every file it holds counts — and where it cannot list them, a TRIAGE.md
+        r = every_file()
+        return set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else {"TRIAGE.md"}
+    return set.intersection(*names)
 
 
 def commit_msg_hook(message_file):
@@ -6581,8 +6704,9 @@ def guard_footer(problems):
 def triage_guard():
     """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
     merges walked and judged by the text they bring — where this tool refuses the default branch's configuration, each commit
-    that changes them refused, signed or not (the Owner's ruling of 2026-10-03, v0.19.1). Read once per run; the pre-commit run
-    judges nothing here (the commit-msg hook judges the commit being made)."""
+    that changes them, their signers file, a TRIAGE.md or the configuration file refused, signed or not (the Owner's ruling of
+    2026-10-03, v0.19.1). Read once per run; the pre-commit run judges nothing here (the commit-msg hook judges the commit
+    being made)."""
     global _GUARD
     if COMMITTING:
         return [], ""
@@ -6598,8 +6722,8 @@ def triage_guard():
         return _GUARD
     why = []
     owners = owners_at(trunk, why)
-    if not owners and why:                                   # refused here: every change to the two sections or their signers file is refused
-        n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
+    if not owners and why:                                   # refused here: every change to the two sections, their signers file, a TRIAGE.md or the configuration
+        n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk), unread=True)
         refused = unread_lines(changed, trunk)
         _GUARD = (refused, f"the Owner's two sections: guarded — {trunk}'s configuration cannot be read here, so every change to them or their signers file is refused: {why[0]} — "
                            f"{n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
