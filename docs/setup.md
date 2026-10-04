@@ -57,7 +57,7 @@ tool refuses it in any table but `[seats]`, where `owner` still reads as the old
 Owner is your server account, without `signed`: the server authenticates you already. Each seat
 commits under its own identity, set once in its own worktree (`git config --worktree user.email builder@seat`),
 and holds only its own rights: the Owner answers; the planner asks, closes and triages; the reviewer triages; the
-builder builds. The seats are `planner` and `builder`; `principal` and `implementer`, their former names, still read and hold the same. The older `answerers = ["yourname signed"]` still works where there is no `owner` and no `[seats]`.
+builder builds. The seats are `planner` and `builder`; `principal` and `implementer`, their former names, still read and hold the same. The older `answerers = ["yourname"]` still reads where there is no `owner` and no `[seats]`. A `signed` identity is an email address, verified by SSH (see "Your answer is your commit"); any other is refused when the configuration is read.
 
 **Sessions.** Beside its seat, every agent's worktree carries `seat.session`, the run it belongs to, and the hook that
 `--install-hook` wrote adds it to every commit as `Session: <id>`, with the worktree beside it. The gate refuses a
@@ -72,8 +72,8 @@ what comes first. Agents read both before every judgement. Leave everything else
 
 ## 6. Open the board
 
-`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit. Its first line is what
-needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
+`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit, and on every checkout and merge with git;
+on Subversion, on a commit through TortoiseSVN or when the tool runs. Its first line is what needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
 [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.

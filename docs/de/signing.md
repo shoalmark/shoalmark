@@ -192,19 +192,7 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
    aus der Signierer-Datei nehmen und ihn auf der Forge unter *Signing keys* löschen. Unter *Authentication keys*
    bleibt er stehen und pusht weiter.
 
-## Weg B — mit einem GPG-Schlüssel signieren (git)
-
-```
-gpg --list-secret-keys --keyid-format long      # die Schlüssel-Id finden
-git config user.signingkey <KEYID>
-```
-
-`gpg.format` nicht setzen. Die Benutzer-Id des Schlüssels muss die E-Mail tragen, mit der Sie committen. Den
-öffentlichen Schlüssel exportieren (`gpg --armor --export <KEYID>`) und auf der Forge unter *GPG keys* eintragen.
-
-Die Stufen gelten auch hier. Ein Schlüssel, dessen Passphrase `gpg-agent` oder der Schlüsselbund behält, signiert für
-alles unter Ihrem Konto — Stufe 0. Ein Schlüssel auf einem Token, der bei jeder Signatur Ihre Berührung braucht, ist
-der starke Weg.
+**Eine signierte Zeile wird nur über SSH geprüft.** Eine GPG-Signatur darauf lehnt das Werkzeug ab: `sign with SSH; GPG returns with a fingerprint binding`.
 
 ## Dem Werkzeug sagen, wer antwortet
 
@@ -214,10 +202,12 @@ In `shoalmark.toml`:
 owner = "sie@example.org signed"
 ```
 
-Oben in der Datei, vor jeder Tabelle. `sie@example.org` ist die E-Mail, unter der Sie committen (oder Ihr git-Autorname, oder das Subversion-Konto). `signed`
-verlangt eine verifizierte Signatur — nur unter Subversion weglassen. Solange Sie niemanden benennen, darf niemand
-antworten: Das ist die Voreinstellung, absichtlich. `[seats] owner` ist die alte Schreibweise und gilt weiter; das ältere `answerers = ["ihrname signed"]` gilt weiter, wo es weder `owner` noch
-`[seats]` gibt.
+Oben in der Datei, vor jeder Tabelle. `sie@example.org` ist die E-Mail, die die Signierer-Datei für Ihren Schlüssel nennt: Eine Identität mit `signed`
+ist eine E-Mail-Adresse, jede andere lehnt das Werkzeug schon beim Lesen der Konfiguration ab (Exit 1). `signed` verlangt
+eine SSH-Signatur, deren Prinzipal genau diese E-Mail ist — nur unter Subversion weglassen, wo Ihr Server-Konto die
+Identität ist. Solange Sie niemanden benennen, darf niemand antworten: Das ist die Voreinstellung, absichtlich.
+`[seats] owner` ist die alte Schreibweise und gilt weiter; das ältere `answerers = ["ihrname"]` gilt weiter, wo es weder
+`owner` noch `[seats]` gibt — für eine signierte Antwort schreiben Sie die `owner`-Zeile.
 
 ## Prüfen
 
@@ -228,8 +218,8 @@ git reset --soft HEAD~1
 ```
 
 Die erste Zeile fragt auf Stufe 2 nach Ihrer Passphrase, auf Stufe 3 nach PIN und Berührung oder nach Touch ID — und
-auf Stufe 0 nach nichts. Die zweite gibt `G` aus, dann die E-Mail, für die der Schlüssel spricht, dann Ihre
-Autor-E-Mail; die letzten beiden müssen übereinstimmen. Die dritte nimmt den Test-Commit wieder weg.
+auf Stufe 0 nach nichts. Die zweite gibt `G` aus, dann die E-Mail, für die der Schlüssel spricht — sie muss genau
+Ihre `owner`-E-Mail sein —, dann Ihre Autor-E-Mail. Die dritte nimmt den Test-Commit wieder weg.
 
 **Dann eine Frage beantworten.** Auf der Tafel öffnet *annehmen* oder *ablehnen* einen Dialog mit der Frage, ihren
 Möglichkeiten und dem, was sie aufhält; OK gibt Ihnen einen Befehl. Führen Sie ihn in einem Terminal im Repository aus:
@@ -270,7 +260,9 @@ außerhalb des Umfangs: seine Arbeitskopie trägt keine Signatur.
 | *an answer, but no seat in `[seats]` holds the `answer` right* (oder *`answerers` … names nobody*) | die `owner`-Zeile oben schreiben |
 | *the answer is not committed yet* | committen — der Commit ist der Beleg |
 | *`answered-by: x` but the git author of the answer is `y`* | jemand anderes hat Ihre Antwort committet; sie zählt nicht |
-| *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei auf dem Standard-Branch nicht an Ihre E-Mail bindet — ein neuer Schlüssel zählt, sobald er dort gemergt ist |
+| *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei auf dem Standard-Branch nicht an genau Ihre E-Mail bindet — ein neuer Schlüssel zählt, sobald er dort gemergt ist |
+| *sign with SSH; GPG returns with a fingerprint binding* | die Antwort ist mit einem GPG-Schlüssel signiert: signieren Sie sie mit Ihrem SSH-Schlüssel (Weg A) |
+| *`owner` names `x` as signed, and a signed identity is an email address* | die E-Mail eintragen, die die Signierer-Datei für Ihren Schlüssel nennt |
 | ein *note*, dass der Autor unverifiziert ist | Sie haben unter git `["name"]` ohne `signed` geschrieben — es funktioniert, und beweist nichts |
 | *refused: commit … changes the text under `## The intent`* (oder `## The current path`) | ein Commit auf diesem Branch, der nicht Ihrer ist, signiert, hat Ihre beiden Abschnitte geändert — er wird nicht gemergt |
 | *… the Owner's email, unsigned* | ein Commit trägt Ihre E-Mail und keine Signatur: Sie haben `-S` vergessen, oder jemand hat Ihre E-Mail getippt |

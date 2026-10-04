@@ -44,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -52,7 +53,10 @@ HERE = pathlib.Path(__file__).resolve().parent
 # a second time here is what let 0.17.1 and 0.17.2 ship with a stale constant, silencing the changelog (FM-009).
 __version__ = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else "unknown"
 MARKED = HERE / "vendor" / "marked-18.0.13.umd.js"      # the one vendored, pinned third-party file (marked, MIT)
-# how an Owner sets up the key his answers are signed with — named where signing fails: `--answer`, and the board's
+# THE HOOKS' COPY (a private security report): every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which `--install-hook` alone writes,
+# with its `COPY` file beside it. A run of that copy is a hook's run: it runs nothing the tree brought, and writes only inside the repository, through no symlink.
+HOOK_RUN = __name__ == "__main__" and (HERE / "COPY").is_file()
+# how an Owner sets up the key their answers are signed with — named where signing fails: `--answer`, and the board's
 # second screen (a repository with its own page overrides the label `answer.sign.url`)
 SIGNING_PAGE = "https://shoalmark.github.io/shoalmark/signing.html"
 TOOL_PAGE = "https://github.com/shoalmark/shoalmark"          # the running line's links: the tool, and its release at VERSION
@@ -92,12 +96,12 @@ DEFAULTS = {
     # names have theirs (BUILTIN_RIGHTS). ABSENT, nothing is enforced — this is for a repository that lets in agents
     # which never read its contract. It catches an agent that does not know the rule, not one that lies (README,
     # *Seats*). Under Subversion an identity is the server account and `signed` is refused: the server authenticated it.
-    # THE OWNER IS NOT A SEAT (FM-024, D2): a top-level `owner = "<identity> signed"`, before any table, names them — the
+    # THE OWNER IS NOT A SEAT (FM-024, D2): a top-level `owner = "<email> signed"`, before any table, names them — the
     # same value as a `[seats]` one — and `[seats] owner` is still read, as its old spelling (`seats_of`).
     "seats": {},
     "rights": {},
     # humans have office hours, agents have budgets: ONE fixed sitting a day in which the Owner goes through what
-    # needs him. Agents write their asks before it; a deadline is counted in standups, not in hours.
+    # needs them. Agents write their asks before it; a deadline is counted in standups, not in hours.
     "standup": "",                               # "09:00" — local time; empty = no standup
     "standup_minutes": 15,
     "tags": {
@@ -167,11 +171,385 @@ def vcs():
     return ""
 
 
+# THE WRITE RULE (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): every run writes a file of the tree only as
+# a regular file inside the repository, outside its git directory, never through a symlink. `write_rule` is the one place every write of the tree passes:
+# the board's refresh leaves such a file unwritten with its line (`board_write`); a hook's run of the copy refuses (`guard_write`, the commit refused);
+# every other run refuses in one line naming the file, exit 4, before anything is written (`refuse_tree_write`).
+def tree_write(path):
+    """Whether a write lands in the tree this run tracks — inside the repository as written, outside its git directory. A destination a person names
+    elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not — a named one is resolved once, where it is named, and
+    judged again under the folder it resolves to; a tracker folder outside the repository is refused before any run reads it (`load_trackers`)."""
+    return in_tree(path) and not in_git_dir(path)
+
+
+def write_rule(path):
+    """The write rule for one file of the tree: in a hook's run of the copy, `guard_write`; in every other run but the board's refresh, one line naming
+    the file, exit 4, where `write_problem` finds a reason."""
+    if SAFE_WRITES:
+        guard_write(path)
+    elif tree_write(path):
+        why = write_problem(path)
+        if why:
+            refuse_tree_write(path, why)
+
+
+def refuse_tree_write(path, why):
+    """A run other than the board's refresh, and no hook's, would write a file of the tree it may not: one line naming it, exit 4, the lint code, and
+    nothing written."""
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/") if in_tree(path) else str(path)
+    print(f"shoalmark: {rel} is {why} — the tool writes a file of the tree only as a regular file inside the repository, never through a symlink: "
+          "nothing is written; put the file itself there", file=sys.stderr)
+    raise SystemExit(EXIT_LINT)
+
+
+def guard_write(path):
+    """In a hook's run of the copy, or the board's run: refuse to write `path` where `write_problem` finds a reason — `ReadOnlyRun`, which the run says in one line."""
+    why = write_problem(path) if SAFE_WRITES else ""
+    if why:
+        raise ReadOnlyRun(f"it would write {os.path.relpath(path, ROOT).replace(os.sep, '/') if in_tree(path) else path}, {why}")
+
+
 def put(path, text):
     """Every file the tool writes is UTF-8 with `\\n` line ends on every system — what is committed must not depend on
-    who ran the tool."""
+    who ran the tool. A file of the tree is written under the write rule (`write_rule`): only a regular file inside the repository, never through a symlink."""
+    if SAFE_WRITES or tree_write(path):
+        write_rule(path)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        return
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
+
+
+# THE BOARD'S RUN — `--html-only`, what a checkout and a merge hook starts (a private security report). A branch brings the files this run
+# reads, so it reads only what a regular file inside the repository holds, through no symlink; it starts nothing but read-only git; it
+# writes only the board's files. Each is checked where the file is read or written, and `board_tripwire` refuses at the interpreter
+# whatever else a path of the tool might reach.
+SAFE_READS = False        # on for the board's run: a file in the tree is read only if it is a regular file inside the repository, reached through no symlink
+SAFE_WRITES = False       # on for the board's run and every hook's run of the copy: a file is written only inside the repository, outside its git directory, through no symlink
+_TRIPWIRE = False         # on for the board's run: nothing is started, written or imported but what the run is for
+_TEMP = ""                # the system's temporary directory, read before the tripwire is armed: the hook must not ask `tempfile` for it (see `arm_tripwire`)
+_IN_TRIPWIRE = [False]    # the hook is not judged by itself
+BOARD_LEFT = []           # what the run left alone, as (file, why) — said once, at its end
+TRIPPED = []              # …and what the tripwire refused
+
+
+class ReadOnlyRun(BaseException):
+    """What the board's run refused to do. A `BaseException` on purpose: no handler of the tool's own can take it for the failure of
+    a command it may go on from."""
+
+
+def _norm(path):
+    return os.path.normcase(os.path.abspath(os.fspath(path)))
+
+
+def in_tree(path):
+    """Whether `path`, as written, lies inside the repository ROOT."""
+    p, root = _norm(path), _norm(ROOT)
+    return p == root or p.startswith(root.rstrip(os.sep) + os.sep)
+
+
+def real_inside(path):
+    """Whether `path` lies inside the repository and is reached through no symlink or junction: the path as written is the path it resolves to."""
+    return in_tree(path) and os.path.normcase(os.path.realpath(_norm(path))) == _norm(path)
+
+
+_GIT_DIRS = None
+
+
+def git_dirs():
+    """The repository's git directories — its own and the common one, which holds the hooks' copy — read once per run with one read-only call,
+    and `.git` at the root whatever git says."""
+    global _GIT_DIRS
+    if _GIT_DIRS is None:
+        out = subprocess.run(["git", "rev-parse", "--absolute-git-dir", "--git-common-dir"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", env=nested_git_env())
+        _GIT_DIRS = sorted({_norm(ROOT / ".git"), *(_norm(ROOT / l) for l in (out.stdout.splitlines() if out.returncode == 0 else []) if l.strip())})
+    return _GIT_DIRS
+
+
+def in_git_dir(path):
+    """Whether `path`, as written or as it resolves, lies inside one of the repository's git directories."""
+    ps = {_norm(path), os.path.normcase(os.path.realpath(_norm(path)))}
+    return any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for p in ps for d in git_dirs())
+
+
+def write_problem(path):
+    """Why a hook's run of the copy, or the board's run, does not write `path`, or "": it lies outside the repository or inside its git directory —
+    where the hooks and their copy are — is reached through a symlink, or is no regular file."""
+    if not in_tree(path):
+        return "outside the repository"
+    if in_git_dir(path):
+        return "inside the git directory"
+    if not real_inside(path):
+        return "a symlink, or reached through one"
+    if os.path.lexists(path) and not os.path.isfile(path):
+        return "not a regular file"
+    return ""
+
+
+def left_alone(path, why):
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/") if in_tree(path) else str(path)
+    if all(rel != r for r, _w in BOARD_LEFT):
+        BOARD_LEFT.append((rel, why))
+
+
+# THE READING RULE (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): in EVERY run, a file of
+# the tree — a tracker, the configuration, TRIAGE.md, a theme, the labels, a worksheet, a file the configuration names — is read only where it is a regular
+# file inside the repository, reached through no symlink. `board_isfile` and `board_text` are the rule, and every reader of the tree asks them. The
+# board's refresh leaves such a file unread and names it once at its end; every other run refuses in one line naming it (`refuse_tree_file`).
+def board_isfile(path):
+    """`path.is_file()` under the reading rule: a file of the tree only where it is a regular file inside the repository, through no symlink. One that is
+    there and is not: in the board's run left unread, and named once at the end; in every other run, the run is refused (`refuse_tree_file`)."""
+    path = pathlib.Path(path)
+    if not in_tree(path):
+        return path.is_file()
+    if real_inside(path) and path.is_file():
+        return True
+    if os.path.lexists(path):
+        why = "a symlink, or reached through one" if not real_inside(path) else "not a regular file"
+        if SAFE_READS:
+            left_alone(path, "a symlink, or not a regular file" if not real_inside(path) else why)
+        else:
+            refuse_tree_file(path, why)
+    return False
+
+
+def board_text(path):
+    """A file's text, or None where it is not there — under the reading rule (`board_isfile`)."""
+    path = pathlib.Path(path)
+    if in_tree(path) and not board_isfile(path):
+        return None
+    return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def refuse_tree_file(path, why):
+    """A run other than the board's refresh meets a file of the tree it may not read: one line naming it, and the run ends — exit 4, the lint code, as
+    every refusal of the gate's: a commit's hook that exits 4 refuses the commit, and `--check` in CI fails on it. Never a traceback, nothing written."""
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/") if in_tree(path) else str(path)
+    print(f"shoalmark: {rel} is {why} — the tool reads a file of the tree only as a regular file inside the repository, following no symlink: "
+          "nothing is read from it and nothing is written; put the file itself there", file=sys.stderr)
+    raise SystemExit(EXIT_LINT)
+
+
+def tracker_folder_problem(what="the board is not refreshed"):
+    """Why the board's run, or a hook's run of the copy, does not touch the tracker folder, in one line ending in `what` — or "": it must resolve inside the
+    repository and outside its git directory, and the way to it is no symlink."""
+    d = TRACKER_DIR
+    if not in_tree(d):
+        return f"the tracker folder {os.path.abspath(d)} is not inside the repository {ROOT} — {what}"
+    real = pathlib.Path(os.path.realpath(_norm(d)))
+    if not in_tree(real):
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — {what}"
+    if in_git_dir(d):
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the git directory, where the hooks and their copy are — {what}"
+    if not real_inside(d):
+        return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — {what}"
+    return ""
+
+
+_TRACKED = None
+
+
+def tracked_board_rels():
+    """What git tracks of the board's files — the page and its views — as git names them, relative to the repository, with one read-only call. Where there is
+    no git, none."""
+    if vcs() != "git":
+        return []
+    rels = [HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()]
+    out = subprocess.run(["git", "ls-files", "-z", "--", *(":(literal)" + r for r in rels)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                         errors="replace", env=nested_git_env()).stdout
+    return [r for r in out.split("\x00") if r]
+
+
+def tracked_board_files():
+    """What git tracks of the board's files (`tracked_board_rels`), as paths, read once per run. Where there is no git, none."""
+    global _TRACKED
+    if _TRACKED is None:
+        _TRACKED = {_norm(ROOT / r) for r in tracked_board_rels()}
+    return _TRACKED
+
+
+def tracked_board_line(rels):
+    """The cold review's F1 (the Owner's ruling filed in FM-006): where git tracks a view of the board, the board's run writes no page that could load it. This
+    is the one line it says in place of the link, naming the file, and the page it leaves says the same. A page git tracks is left as committed, with its own
+    line (`unwritable`)."""
+    names = ", ".join(rels[:3]) + (f" and {len(rels) - 3} more" if len(rels) > 3 else "")
+    return (f"board: not written — git tracks {names}, a file of the board: the page loads nothing; untrack it (`git rm --cached`), and the next run "
+            "writes the board")
+
+
+def tracked_board_page(line):
+    """The page the board's run leaves where git tracks a file of the board: `line`, and nothing it loads — no script, no style, no image, and a policy that
+    allows none."""
+    return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'">'
+            f"<title>board not written</title></head><body><p>{html_escape(line)}</p></body></html>\n")
+
+
+def unwritable(path):
+    """Why the board's run, or a hook's run of the copy, does not write one of the board's files, or "": `write_problem`'s reason — and, in the board's run, that git
+    tracks it (a commit's hook rewrites a board a repository tracks, as it always has)."""
+    why = write_problem(path)
+    if why:
+        return why
+    if SAFE_READS and _norm(path) in tracked_board_files():
+        return "git tracks it"
+    return ""
+
+
+def board_write(path, text, changed_only=False):
+    """Write one of the board's files: with `put`, as ever; in the board's run and a hook's run of the copy only where `unwritable` finds no reason, and
+    never through a symlink. `changed_only`: leave a file that already says this. Returns whether it wrote."""
+    path = pathlib.Path(path)
+    if SAFE_READS:                                          # the board's refresh: what it may not write it leaves, with its line
+        why = unwritable(path)
+        if why:
+            left_alone(path, why)
+            return False
+    else:                                                   # every other run: the write rule
+        write_rule(path)
+    if changed_only and path.exists() and path.read_text(encoding="utf-8") == text:
+        return False
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+    return True
+
+
+_PATH_SEP = re.compile(r"[\\/]")
+READ_ONLY_GIT = frozenset({"rev-parse", "log", "show", "cat-file", "diff", "var", "for-each-ref", "symbolic-ref", "ls-files", "rev-list", "merge-base",
+                           "show-ref", "worktree", "config", "branch"})
+READ_ONLY_GIT_C = ("core.quotePath=", "gpg.ssh.allowedSignersFile=")        # the only `-c` the tool hands git: how it prints a path, and the signers it verifies against
+
+
+def read_only_git(argv):
+    """Whether `argv` is a call of git that changes nothing: one of the subcommands above, none of their forms that write (`config` only to read,
+    `branch` only `--show-current`, `worktree` only `list`, no `--output`), and no `-c` but the two the tool uses."""
+    if not isinstance(argv, (list, tuple)) or len(argv) < 2 or _PATH_SEP.split(str(argv[0]))[-1].lower() not in ("git", "git.exe"):
+        return False
+    rest, i = [str(a) for a in argv[1:]], 0
+    while i < len(rest) and rest[i] in ("-c", "-C"):
+        if rest[i] == "-c" and not (i + 1 < len(rest) and rest[i + 1].startswith(READ_ONLY_GIT_C)):
+            return False
+        i += 2
+    if i >= len(rest) or rest[i] not in READ_ONLY_GIT:
+        return False
+    sub, tail = rest[i], rest[i + 1:]
+    if any(a.startswith("--output") for a in tail):
+        return False
+    if sub == "branch":
+        return tail == ["--show-current"]
+    if sub == "worktree":
+        return tail[:1] == ["list"]
+    if sub == "config":
+        return "--get" in tail or tail == ["user.name"]
+    if sub == "symbolic-ref":
+        return len([a for a in tail if not a.startswith("-")]) == 1
+    return True
+
+
+def split_cmdline(line):
+    """A Windows command line as the argument list it came from (the rules `subprocess.list2cmdline` writes by): Windows hands the audit hook
+    the line, POSIX the list."""
+    out, cur, quoted, started, i = [], [], False, False, 0
+    while i < len(line):
+        c = line[i]
+        if c == "\\":
+            j = i
+            while j < len(line) and line[j] == "\\":
+                j += 1
+            n = j - i
+            started = True
+            if j < len(line) and line[j] == '"':
+                cur.append("\\" * (n // 2))
+                if n % 2:
+                    cur.append('"')
+                    j += 1
+            else:
+                cur.append("\\" * n)
+            i = j
+        elif c == '"':
+            quoted, started, i = not quoted, True, i + 1
+        elif c in " \t" and not quoted:
+            if started:
+                out.append("".join(cur))
+                cur, started = [], False
+            i += 1
+        else:
+            cur.append(c)
+            started, i = True, i + 1
+    if started:
+        out.append("".join(cur))
+    return out
+
+
+def board_tripwire(event, args):
+    """The board's run, enforced where Python itself does the thing (`sys.addaudithook`): no program but read-only git, no network, nothing written
+    but the board's files (and the one temporary file the signers are verified against), no file of the tree opened but a regular file inside the
+    repository reached through no symlink. Whatever a path of the tool reaches that the checks above did not think of is refused here and said."""
+    if not _TRIPWIRE or _IN_TRIPWIRE[0]:
+        return
+    _IN_TRIPWIRE[0] = True
+    try:
+        board_judge(event, args)
+    finally:
+        _IN_TRIPWIRE[0] = False
+
+
+def board_judge(event, args):
+    """What `board_tripwire` decides for one event: nothing, or `ReadOnlyRun`. It calls nothing that takes a lock — an event can fire while the code that raised it holds one."""
+    why = ""
+    if event == "subprocess.Popen":
+        argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
+        if not read_only_git(argv):
+            why = f"it would start {' '.join(str(a) for a in argv[:4])}"
+    elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):
+        why = f"{event} is not for the board's run"
+    elif event in ("os.rename", "os.rmdir", "os.symlink", "os.link", "os.truncate", "os.chmod", "os.chown", "os.utime") or event.startswith("shutil."):
+        why = f"{event} is not for the board's run"
+    elif event == "os.mkdir":
+        if _norm(args[0]) != _norm(VIEW_DIR):
+            why = f"it would make {args[0]}"
+    elif event == "os.remove":
+        if not board_target(args[0]):
+            why = f"it would remove {args[0]}"
+    elif event == "open":
+        target, mode, flags = args
+        if isinstance(target, int) or target is None:
+            return
+        flags = flags if isinstance(flags, int) else 0
+        writing = any(c in str(mode or "") for c in "wax+") or bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_TRUNC))
+        if writing:
+            if not board_target(target):
+                why = f"it would write {os.fsdecode(target)}"
+        elif in_tree(os.fsdecode(target)) and not (real_inside(os.fsdecode(target)) and os.path.isfile(os.fsdecode(target))):
+            why = f"it would read {os.fsdecode(target)}, which is no regular file inside the repository"
+    elif event in ("os.listdir", "os.scandir"):
+        if args[0] is not None and not isinstance(args[0], int) and in_tree(os.fsdecode(args[0])) and not real_inside(os.fsdecode(args[0])):
+            why = f"it would list {os.fsdecode(args[0])}, a symlink or reached through one"
+    if why:
+        TRIPPED.append(why)
+        raise ReadOnlyRun(why)
+
+
+def board_target(path):
+    """Whether `path` is one of the board's files: the page, a view, or the one temporary file the signers are verified against."""
+    p = _norm(os.fsdecode(path))
+    if p == _norm(HTML_OUT) or (os.path.dirname(p) == _norm(VIEW_DIR) and p.endswith(os.path.normcase(".js"))):
+        return True
+    return os.path.dirname(p) == _TEMP and os.path.basename(p).startswith("shoalmark-signers-")
+
+
+def arm_tripwire():
+    """Turn the tripwire on. Everything it needs is read first — the system's temporary directory above all: `tempfile` finds it under a lock of its own, on the first `os.open` it
+    makes, and a hook that asked for it then would wait for ever for a lock its own thread holds."""
+    global _TEMP, _TRIPWIRE
+    _TEMP = _norm(tempfile.gettempdir())
+    if not _AUDIT_HOOKED[0]:
+        sys.addaudithook(board_tripwire)
+        _AUDIT_HOOKED[0] = True
+    _TRIPWIRE = True
 
 
 def digest(path):
@@ -185,7 +563,7 @@ PY = "python" if os.name == "nt" else "python3"         # the name a message, a 
 # tracker carries is open to every seat and needs no right: rights are for the four changes that move authority, not
 # for the work. There is no hierarchy, no deny rule and no wildcard — a name either holds a right or it does not.
 RIGHTS = ("answer",      # writing `answer:` `answered:` `answered-by:` — the Owner's ruling
-          "ask",         # setting `next: owner` — putting a question in front of him
+          "ask",         # setting `next: owner` — putting a question in front of them
           "close",       # setting a terminal status — saying work is over
           "triage")      # writing `considered:`, `kind-of-problem:`, `tier:`, `rank:`, `triaged:` — the judgement
 # the four names that need no `[rights]` line, because the seats mean the same thing in every repository that runs this
@@ -203,7 +581,8 @@ def configure(root=None):
     global HEAD, STATE_HEAD_RE, DONE_RE
     ROOT = find_root(root)
     path = ROOT / CONFIG_NAME
-    CONFIG = {**DEFAULTS, **(read_config(path.read_text(encoding="utf-8")) if path.exists() else {})}
+    text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
+    CONFIG = {**DEFAULTS, **(read_config(text) if text is not None else {})}
     TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
@@ -225,10 +604,13 @@ def configure(root=None):
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
+        refuse_signed_name("`answerers`", name, mode)
     SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> [(identity, "signed" | ""), …], and seat name -> rights
     seen = {}                                           # identity -> the seat that claimed it first
     for name, value in seats_of(CONFIG).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
+        for who, mode in SEATS[name]:                   # a signed identity is an email (the release bar's signed identity)
+            refuse_signed_name("`owner`" if at_top(name) else f"`[seats] {name}`", who, mode)
         for who, _mode in SEATS[name]:
             if who and who in seen and at_top(seen[who]):   # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
                 raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
@@ -250,6 +632,8 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    global _GIT_DIRS
+    _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -273,11 +657,14 @@ def configure(root=None):
     H1_ID_RE = re.compile(rf"^#\s+[*_~`]*((?:{alt})-\d+)\b")
     ROW_ID_RE = re.compile(rf"^\| \[((?:{alt})-\d+)\]")
     TRACKER_LINK_RE = re.compile(rf"\]\(((?:{alt})-\d+-[a-z0-9-]+\.md)\)")
+    global CMD_OWN
     try:
-        CMD = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
+        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
     except ValueError:
-        CMD = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
-    CMD = os.environ.get("SHOALMARK_CMD") or CMD        # a repository that wraps the tool is named by its own command in every message
+        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
+    if HOOK_RUN:                                        # the hooks' copy names the command a person runs — the one `--install-hook` was run with — never its own place
+        CMD_OWN = copy_record().get("cmd") or CMD_OWN
+    CMD = os.environ.get("SHOALMARK_CMD") or CMD_OWN    # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
 
@@ -330,10 +717,10 @@ NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an a
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
 # these are the same sentences, held by the gate instead (FM-008). They are deliberately generous: an ask that trips
 # one of them is not borderline, it is a paragraph, a second question, or a question already asked.
-ASK_MAX = 300              # characters — past this it is not a sentence he can answer in a sitting; the detail is the body's
-ASK_OPTIONS_MAX = 5        # choices — a radio list he reads once, not a menu
+ASK_MAX = 300              # characters — past this it is not a sentence they can answer in a sitting; the detail is the body's
+ASK_OPTIONS_MAX = 5        # choices — a radio list they read once, not a menu
 ASK_OPTION_MAX = 120       # characters per choice — a choice is a phrase, not its rationale
-BOTTLENECK = 5             # more asks than this in his queue and the queue itself is the finding, said in the first line
+BOTTLENECK = 5             # more asks than this in their queue and the queue itself is the finding, said in the first line
 # the three lines an ask carries besides the question itself, each with what it is FOR — a refusal that only names a
 # key sends the agent to the schema; one that says what the key is for is answerable where it is read.
 ASK_NEEDS = {"ask-kind": "which of the four kinds it is", "ask-since": "the day it was first made — its age is what they see",
@@ -857,7 +1244,7 @@ def asks_by_key(trackers):
 def owner_queue(trackers):
     """What waits for the Owner, oldest ask first: (tracker, age in days or None, what it holds up) — and ONLY what
     passes the ask rules. A malformed one is `malformed_asks` below: the Owner never sees a broken question as a
-    question, and a draft (`next: review`) never reaches him at all."""
+    question, and a draft (`next: review`) never reaches them at all."""
     today = datetime.date.today()
     by_ask = asks_by_key(trackers)
     age = lambda t: (today - datetime.date.fromisoformat(t["ask_since"])).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.get("ask_since") or "") else None
@@ -867,7 +1254,7 @@ def owner_queue(trackers):
 
 
 def malformed_asks(trackers):
-    """The third layer: what was sent to the Owner and is not a question he can answer — (tracker, reasons), by id.
+    """The third layer: what was sent to the Owner and is not a question they can answer — (tracker, reasons), by id.
     The gate already refuses each of these; this is what the board, `--owner` and `--standup` show when one got in
     anyway — on a merge, under `--no-verify`, or from an agent that never ran the gate."""
     by_ask, out = asks_by_key(trackers), []
@@ -879,7 +1266,7 @@ def malformed_asks(trackers):
 
 
 def bottleneck(q):
-    """The one line the Owner is owed when his queue is the finding — not a tracker's problem, his."""
+    """The one line the Owner is owed when their queue is the finding — not a tracker's problem, theirs."""
     held = {h for _, _, hs in q for h in hs}
     return f"you are the bottleneck — {len(q)} asks, {len(held)} trackers held up" if len(q) > BOTTLENECK else ""
 
@@ -1095,7 +1482,7 @@ def record_relation(t):
 
 def answered(trackers):
     """`--answered`: what the Owner answered and nobody has acted on yet — the seat's side of the exchange; and,
-    since his last sitting, what WAS acted on, named by the commit that cleared the ask."""
+    since their last sitting, what WAS acted on, named by the commit that cleared the ask."""
     rows = sorted((t for t in trackers if t.get("answer") and t["status"] in OPEN_STATUSES), key=lambda t: t.get("answered", ""))
     print(f"{len(rows)} ANSWERED, NOT YET ACTED ON" if rows else "NOTHING ANSWERED IS WAITING FOR A SEAT.")
     for t in rows:
@@ -1116,8 +1503,8 @@ ACTS_TITLE = "ACTS — yours, with their time"
 def acts_lines(trackers, now=None):
     """FM-030 E — the acts owed to the Owner, as `--standup` and `--owner` list them after the asks: missed and overdue
     first, then what falls due, soonest first, then what has no date yet — each with its `due:` and what it is, in the
-    board's words, and the day he promised it. A promise's line is what he promised, and the question it answered follows
-    on the next line, as context (the Owner's word of 2026-09-27 13:38:30). [] where he owes none."""
+    board's words, and the day they promised it. A promise's line is what they promised, and the question it answered follows
+    on the next line, as context (the Owner's word of 2026-09-27 13:38:30). [] where they owe none."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
     order = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}
     acts = sorted(((t, a) for t, a in ((t, act_of(t)) for t in trackers) if a),
@@ -1126,10 +1513,10 @@ def acts_lines(trackers, now=None):
             + (f"\n       {LABELS['acts.asked'].format(a[5])}" if a[5] else "") for t, a in acts]
 
 
-# FM-030 — THE BOARD READS GIT: an act or an answer he just gave, before his merge. The Owner's signed answer of 2026-09-27
-# 14:56:15 (920970b7), option 1 of the ask of 14:14:18, on his words of 13:57:50 — *they pushed the button, did the answer
-# and expect the page to display that state right away* (spelling normalised). His act or answer is a signed commit on
-# `answer/<id>`, pushed; the default branch knows nothing of it until his merge, and the board, `--owner` and `--standup`
+# FM-030 — THE BOARD READS GIT: an act or an answer they just gave, before their merge. The Owner's signed answer of 2026-09-27
+# 14:56:15 (920970b7), option 1 of the ask of 14:14:18, on their words of 13:57:50 — *they pushed the button, did the answer
+# and expect the page to display that state right away* (spelling normalised). Their act or answer is a signed commit on
+# `answer/<id>`, pushed; the default branch knows nothing of it until their merge, and the board, `--owner` and `--standup`
 # were built from the checkout alone. One truth stays, git: after the push the remote-tracking ref holds the sha the tool
 # committed, and another machine has it after a fetch. Nothing is written to remember it, and nothing is fetched to read it.
 
@@ -1141,24 +1528,24 @@ def on_their_way(trackers):
     that change. A merged branch is not read, nor one whose tip carries no such change, nor one for a tracker this checkout
     does not hold. A reading:
     - `kind` — `done` · `answer` · `revoked` (an answer that revokes) · `undone` (a `done:` revoked) · `due` (rescheduled);
-      `done` first where the tip carries both. `--due` is his act as `--done` and `--answer` are (the Principal's ruling of
+      `done` first where the tip carries both. `--due` is their act as `--done` and `--answer` are (the Principal's ruling of
       2026-09-28 on RV-730): a `due:` the default branch lacks reads *rescheduled, on its way* — and so does a `--due` that
       opened a new act after a done one and dropped its `done:`. *Done revoked* reads only where the branch's own commit
       that dropped `done:` is a revocation — `--revoke`'s subject, `REVOKE_DONE_SUBJECT` —, never on a `done:` line gone;
-    - `answered` — the tip carries an answer the default branch lacks: the ask leaves his waiting list, whatever the kind;
-    - `owed` — the act stays on his list of acts: the tip still owes him one (`act_of`) and no new time is on its way for
-      it. Where the tip owes none — done, or a promise revoked — or carries a new time, the act leaves his acts until the
+    - `answered` — the tip carries an answer the default branch lacks: the ask leaves their waiting list, whatever the kind;
+    - `owed` — the act stays on their list of acts: the tip still owes them one (`act_of`) and no new time is on its way for
+      it. Where the tip owes none — done, or a promise revoked — or carries a new time, the act leaves their acts until the
       merge, and is listed here instead;
-    - `due` — the `due:` at the tip where the default branch lacks it (a reschedule, or a time his promise seeded), else "";
+    - `due` — the `due:` at the tip where the default branch lacks it (a reschedule, or a time their promise seeded), else "";
     - `note` — what follows the label: for `done`, where its result is; for `revoked`, the reason; else "";
     - `branch`, `tip` — its head;
     - `commit` — the newest of the branch's OWN commits that changed that line, read from its commits, never from its head
-      alone: a Reviewer's verdict on top of his act is no act (RV-679); `time` its committer time, `sig` its `%G?` against the
+      alone: a Reviewer's verdict on top of their act is no act (RV-679); `time` its committer time, `sig` its `%G?` against the
       signers the gate trusts, `said` what `--queue` reads of it — `answer_reading`, the one reader of an answer commit;
     - `held` — `--queue`'s own line for the branch where it waits on something that commit's reading does not say —
-      `answer_branch_reading` against the default branch: a seat's commit below his act (RV-710), a head past it, a base
+      `answer_branch_reading` against the default branch: a seat's commit below their act (RV-710), a head past it, a base
       not here — else "": the board says the wait in place of *your merge is next* (RV-714);
-    - `what` — his promise, else the answer as signed; for an act, its line; for an answer revoked, the question it answered
+    - `what` — their promise, else the answer as signed; for an act, its line; for an answer revoked, the question it answered
       (the reason follows the label, RV-734); `asked` the question, as context; `value` the `done:`, `answer:` or `due:` as
       written — for `undone`, the `done:` it revokes.
     {} without git, without a default branch, or with nothing on its way. Local: no fetch, no forge — a pull request is not
@@ -1205,7 +1592,7 @@ def on_their_way(trackers):
         if kind in ("done", "undone", "due"):               # the act's line, and its question, as they read while it was owed
             act = act_of({**at, "done": ""})
             what, asked = (act[0], act[5]) if act else (at.get("title") or tid, "")
-        elif kind == "revoked":                             # the question he takes his answer back from; the reason follows the label (RV-734)
+        elif kind == "revoked":                             # the question they take their answer back from; the reason follows the label (RV-734)
             what, asked = at.get("ask") or at.get("title") or tid, ""
         else:
             what, asked = promise_of(at) or at["answer"], at.get("ask", "")
@@ -1223,8 +1610,8 @@ REVOKE_DONE_SUBJECT = "{0}: done revoked — "
 
 
 def way_lines(way):
-    """FM-030 — what `--owner` and `--standup` print of `on_their_way`, in the board's words (`way.*`), by id: his promise
-    or his answer first, what it is — *done, on its way* or *answered, on its way* —, the branch, the commit and its time,
+    """FM-030 — what `--owner` and `--standup` print of `on_their_way`, in the board's words (`way.*`), by id: their promise
+    or their answer first, what it is — *done, on its way* or *answered, on its way* —, the branch, the commit and its time,
     whether it verifies, *your merge is next* — or, where `--queue` waits on the branch for more than the act's own
     signature, *your merge waits: <its wait>* (RV-714); the question below it, as context. After the label: where the
     result is, the reason of a revocation, or the new time — *rescheduled, on its way — due <time>*. [] where nothing is
@@ -1238,8 +1625,8 @@ def way_lines(way):
 
 
 def owed_now(trackers, way):
-    """The asks and the acts still his, with `on_their_way` read: an ask whose answer is on its way leaves his queue, an act
-    the tip no longer owes — done, or a promise revoked — or whose new time is on its way leaves his acts; both are in
+    """The asks and the acts still theirs, with `on_their_way` read: an ask whose answer is on its way leaves their queue, an act
+    the tip no longer owes — done, or a promise revoked — or whose new time is on its way leaves their acts; both are in
     `way_lines` instead. (queue, acts lines)."""
     return ([r for r in owner_queue(trackers) if not way.get(r[0]["id"], {}).get("answered")],
             acts_lines([t for t in trackers if way.get(t["id"], {}).get("owed", True)]))
@@ -1247,7 +1634,7 @@ def owed_now(trackers, way):
 
 def owner_digest(trackers):
     """`--owner`: the digest — what a session's last message leads with. It arrives; a board has to be opened. After the
-    asks, the acts he owes, with their time, and what he did that is on its way to his merge (FM-030)."""
+    asks, the acts they owe, with their time, and what they did that is on its way to their merge (FM-030)."""
     way = on_their_way(trackers)
     (q, acts), ways = owed_now(trackers, way), way_lines(way)
     if not q:
@@ -1293,13 +1680,16 @@ def standup(trackers, invite=None):
         start = datetime.datetime.combine(day, datetime.time(int(at[:2]), int(at[3:])))
         end = start + datetime.timedelta(minutes=int(CONFIG.get("standup_minutes") or 15))
         name = CONFIG["name"] or ROOT.name
-        f = lambda d: d.strftime("%Y%m%dT%H%M%S")                # floating time: the Owner's own clock, wherever he is
+        f = lambda d: d.strftime("%Y%m%dT%H%M%S")                # floating time: the Owner's own clock, wherever they are
         lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//standup//EN", "BEGIN:VEVENT",
                  f"UID:standup-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", f"DTSTAMP:{f(datetime.datetime(2000, 1, 1))}Z",
                  f"DTSTART:{f(start)}", f"DTEND:{f(end)}", "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
                  f"SUMMARY:{name} — standup: what needs you", f"DESCRIPTION:Run `{CMD} --standup` — or open the board: its first lines are the agenda.",
                  "END:VEVENT", "END:VCALENDAR"]
-        pathlib.Path(invite).write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))      # a calendar file ends its lines with CRLF, on every system
+        named = pathlib.Path(invite).absolute()
+        out = pathlib.Path(os.path.realpath(named.parent)) / named.name      # a destination a person names: its folder resolved once, where it is named
+        write_rule(named)                                   # the write rule, as the path is named; `put` asks it again where it resolves
+        put(out, "\r\n".join(lines) + "\r\n")              # a calendar file ends its lines with CRLF, on every system — `put` writes them as they are
         print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
         return EXIT_OK
     way = on_their_way(trackers)
@@ -1313,9 +1703,9 @@ def standup(trackers, invite=None):
             print(f"\n{title}")
         for n, (t, a, hs) in enumerate(rows, 1):
             print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
-    if acts:                                                # FM-030: after the asks, what he owes, with its time
+    if acts:                                                # FM-030: after the asks, what they owe, with its time
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
-    if ways:                                                # …and what he did that is on its way to his merge
+    if ways:                                                # …and what they did that is on its way to their merge
         print(f"\n{WAY_TITLE}\n" + "\n".join(ways))
     sent_back(trackers)
     return EXIT_OK
@@ -1326,9 +1716,9 @@ SUPERSEDED_RE = re.compile(r'\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Answer of [^|]*?sup
 
 
 # FM-031 S2 — THE QUEUE IN ONE VIEW. The streams run in parallel, and only the Owner saw the whole queue of pull requests:
-# he was the integrator by default. He asked one seat which to merge five times in two hours, and each answer was the
+# they were the integrator by default. They asked one seat which to merge five times in two hours, and each answer was the
 # forge and `git merge-tree`, read by hand. `--queue` reads the same two and gives every open pull request ONE action, in
-# the order he takes them. A view: it refuses nothing, and where the forge cannot be read it says so in one line.
+# the order they take them. A view: it refuses nothing, and where the forge cannot be read it says so in one line.
 QUEUE_FIELDS = "number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt,isCrossRepository"
 QUEUE_BRANCH_MAX = 32      # characters of a branch in a queue line: its id and the start of its slug
 QUEUE_ACTION_MAX = 36      # the action column's width at most; a longer action (many paths in conflict) runs on in its own line
@@ -1380,7 +1770,7 @@ def forge_prs():
 
 def pushed_branches(prs):
     """The branches on `origin` that no pull request carries — what the forge's banner offers the Owner, and nothing else
-    showed him: every head `git ls-remote` names, less the default branch, `answer/*`, an open pull request's branch, a
+    showed them: every head `git ls-remote` names, less the default branch, `answer/*`, an open pull request's branch, a
     head any pull request ever had (the forge's `refs/pull/N/head`, open or closed), and a head already inside the
     default branch, an open pull request's head, or another such branch's head (of twins with one head, the first by
     name stays). A head this clone never fetched — a single-branch clone fetches one — is fetched here, by its ref;
@@ -1426,16 +1816,16 @@ def have_not(shas):
 
 def answerer_of(commit):
     """(whether the author of `commit` may answer — the gate's own match, email or name —, that author as the queue names
-    one — the email, else the name —, the email)"""
+    one — the email, else the name —, the configured identity they answer as, which a signature must name: `answerer_identity`)"""
     name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", commit) or "").strip().partition("\x01")
-    return (holds(seat_of(name, email), "answer") if SEATS else name in may_answer()), email or name or "no author", email
+    return (holds(seat_of(name, email), "answer") if SEATS else name in may_answer()), email or name or "no author", answerer_identity(name, email)
 
 
 def answers_as_him(commit):
-    """`commit` is his: its author may answer and it verifies as him — the gate's one test, `verified_as`, as
+    """`commit` is theirs: its author may answer and it verifies as them — the gate's one test, `verified_as`, as
     `answer_reading` applies it to the commit an `answer/*` pull request is read by (FM-031, RV-710)"""
-    may, _who, email = answerer_of(commit)
-    return may and verified_as(commit, email or None)
+    may, _who, identity = answerer_of(commit)
+    return may and verified_as(commit, identity)
 
 
 def review_addendum():
@@ -1477,7 +1867,7 @@ def refusal_record(commit):
     re-check of `af5a9e2`, P1: a refusal-shaped line typed into *What is true now* passed the diff alone): the front
     matter is byte-identical, the body before `## Acts` is byte-identical (trailing blank lines aside), and the section
     under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
-    `--queue` admits it below his act as it admits a review file's commit (RV-712) — a forged one in his name carries in
+    `--queue` admits it below their act as it admits a review file's commit (RV-712) — a forged one in their name carries in
     one line under `## Acts` that rules nothing, and nothing outside it."""
     r = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -1554,11 +1944,11 @@ def refusal_record_in_place(parent, commit, path):
 
 def stray_below(commit, base, skip=True):
     """FM-031, RV-710 — what an `answer/*` branch's merge would carry in that its reading does not see: the first commit of
-    its own — `git log <commit> ^<base>`, newest first, `commit` itself left out unless `skip` is False — that is not his
-    (`answers_as_him`: may answer, verifies as him), not a review addendum (`review_addendum`, no merge), and not the
+    its own — `git log <commit> ^<base>`, newest first, `commit` itself left out unless `skip` is False — that is not theirs
+    (`answers_as_him`: may answer, verifies as them), not a review addendum (`review_addendum`, no merge), and not the
     tool's own refusal record (`refusal_record`), as the wait that names it: `wait: a seat's commit on your answer branch
     (<sha>, <author>)`, or where its author may answer, `wait: an unverified commit in your name on your answer branch
-    (<sha>)` — never *a seat's* of a commit in his name (RV-712). "" where there is none; None where the walk cannot run —
+    (<sha>)` — never *a seat's* of a commit in their name (RV-712). "" where there is none; None where the walk cannot run —
     `base` is not here (RV-711): nothing below is proven, and a reader waits."""
     ok = review_addendum()
     full = (git_out("rev-parse", "--verify", "--quiet", commit + "^{commit}") or "").strip()
@@ -1583,17 +1973,17 @@ STRAY_WAITS = ("wait: a seat's commit on your answer branch", "wait: an unverifi
 
 def answer_branch_reading(head, base):
     """THE reading of an `answer/*` branch at `head` against `base` — `--queue`'s action for its pull request, and the
-    board's for his act on its way (`on_their_way`, RV-714): (kind, action, detail). It is read by ONE commit
+    board's for their act on its way (`on_their_way`, RV-714): (kind, action, detail). It is read by ONE commit
     (`answer_reading`): the newest of its own that changed an `answer:`, `done:` or `due:` line in a tracker —
     `owner_change` cuts the branch for `--answer`, `--done` and `--due` alike — where every commit past it is a review
     file's only (`addenda_between`, any commit's own `review*.md`) — the parent project's PRs 836, 849 and 853, a
     Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)* by the head, and its `answer/bug-327`, a
-    Reviewer's verdict on his `--done`, the same (RV-679, 0.18.6); anything else past it, and the head is read, as
-    before. A merge carries every commit below that one too, and `owner_change` cuts `answer/<id>` from the branch he
-    stands on — a seat's, unmerged, carries its commits: *merge: your answer* only where `stray_below` finds none —
-    else its wait, the first such below his, never the head's reading (RV-710, the Owner's cold review of 0.18.6's
-    widening; RV-735, the same below his `answer:` since 0.18.4) — and where `base` is not here, a wait that says so: a
-    reader that cannot see below his act never says merge (RV-711)."""
+    Reviewer's verdict on their `--done`, the same (RV-679, 0.18.6); anything else past it, and the head is read, as
+    before. A merge carries every commit below that one too, and `owner_change` cuts `answer/<id>` from the branch they
+    stand on — a seat's, unmerged, carries its commits: *merge: your answer* only where `stray_below` finds none —
+    else its wait, the first such below theirs, never the head's reading (RV-710, the Owner's cold review of 0.18.6's
+    widening; RV-735, the same below their `answer:` since 0.18.4) — and where `base` is not here, a wait that says so: a
+    reader that cannot see below their act never says merge (RV-711)."""
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
     at = (git_out("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel) or "").strip()
     at = at if at and (at == head or addenda_between(at, head)) else head
@@ -1608,27 +1998,29 @@ def answer_branch_reading(head, base):
 
 def answer_reading(head):
     """An `answer/*` pull request is the Owner's own signed answer, `done:` or `due:`, and needs no Reviewer: `merge: your
-    answer` when the author of `head` — his answer, `done:` or `due:` commit, as `queue_actions` finds it — may answer and
-    the commit verifies as him — the gate's one test, `verified_as` — else it waits: on an author who may not answer,
+    answer` when the author of `head` — their answer, `done:` or `due:` commit, as `queue_actions` finds it — may answer and
+    the commit verifies as them — the gate's one test, `verified_as` — else it waits: on an author who may not answer,
     named, whatever the commit's signature (R8 — a signed commit by someone else read *unsigned*, and the impostor is the
-    case the Owner most needs named); else on the signature. `answer_branch_reading` reads a merge here as his only where
-    every commit of the branch's own below `head` is his too, a review file's only, or the tool's own refusal record
+    case the Owner most needs named); else on the signature. `answer_branch_reading` reads a merge here as theirs only where
+    every commit of the branch's own below `head` is theirs too, a review file's only, or the tool's own refusal record
     (RV-710)."""
-    may, who, email = answerer_of(head)
+    may, who, identity = answerer_of(head)
     if not may:
         return "wait", f"wait: not an answerer ({who})", ""
-    if verified_as(head, email or None):
+    if verified_as(head, identity):
         return "merge", "merge: your answer", f"signed {head[:7]}"
+    if signature_kind(head) not in ("", "ssh"):             # GPG, X.509: a signed line verifies by SSH only
+        return "wait", f"wait: {SIGN_WITH_SSH}", ""
     gap = signature_gap(head)
     return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
 
 
 def triage_reading(head, base):
     """FM-037 in `--queue`: (`wait: TRIAGE.md changed unsigned`, the commit) where a commit of the head's own — not on `base`
-    — changes the Owner's two sections and is not his signed commit, the walk and the judgement `--check` makes on the
+    — changes the Owner's two sections and is not their signed commit, the walk and the judgement `--check` makes on the
     branch; (`wait: TRIAGE.md change not verified here — <why>`, the commit) where it is signed and this clone cannot check
     it; None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default
-    branch's, as `--check` reads him — never a stacked pull request's base, which a seat's branch can be."""
+    branch's, as `--check` reads them — never a stacked pull request's base, which a seat's branch can be."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     owners = owners_at(default_trunk(git) or base)
     if not owners:
@@ -1642,14 +2034,14 @@ def triage_reading(head, base):
 
 
 def queue_actions(prs, branches=()):
-    """Each open pull request's ONE action, in the order the Owner takes them: what he can act on first, then what waits;
+    """Each open pull request's ONE action, in the order the Owner takes them: what they can act on first, then what waits;
     inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
     verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
-    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on his
+    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on their
     answer, `done:` or `due:` commit, the newest of its own that changed an `answer:`, `done:` or `due:` line, where only
     review files follow it (FM-031, 0.18.4: a Reviewer's docs pass on the answer read *not an answerer* by the head;
-    0.18.6, RV-679: on his `--done` or `--due`, too); else on its head — and it reads *merge: your answer* only where
-    every commit of its own below that one is his too, a review file's only, or the tool's own refusal record; else a wait
+    0.18.6, RV-679: on their `--done` or `--due`, too); else on its head — and it reads *merge: your answer* only where
+    every commit of its own below that one is theirs too, a review file's only, or the tool's own refusal record; else a wait
     naming the first that is not (RV-710, RV-712), and a wait where its base is not here (RV-711) —
     `answer_branch_reading`, the board's reader too (RV-714). For a pull request the first rule that holds is the action:
     - `wait: from a fork, read it yourself` — fork commits supply no verdict or carry-over instruction;
@@ -1657,7 +2049,7 @@ def queue_actions(prs, branches=()):
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
     - `wait: conflict in <paths>` — `git merge-tree --write-tree origin/<base> <head>` does not merge clean;
-    - `wait: TRIAGE.md changed unsigned` — a commit of its own changes the Owner's intent or current path and is not his
+    - `wait: TRIAGE.md changed unsigned` — a commit of its own changes the Owner's intent or current path and is not their
       signed commit (FM-037, `triage_reading`: the walk `--check` makes on the branch);
     - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
     - `wait: no verdict on <head>` — no verdict names its head;
@@ -1822,10 +2214,10 @@ def answer_step(tid, n, text, verb="answering"):
 
 
 def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", verb="answering"):
-    """`--answer <id> accept|reject [text]` — the Owner's one command. It does what he did by hand the first time: cuts
-    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under his name, pushes,
+    """`--answer <id> accept|reject [text]` — the Owner's one command. It does what they did by hand the first time: cuts
+    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under their name, pushes,
     and goes back to the branch it started on. It refuses before touching anything when it cannot end in a verified answer.
-    An answer he takes back or changes (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
+    An answer they take back or change (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
     the answer it replaces moves into the ship log, with the commit that wrote it. `onto` (FM-030, `--revoke`): the ref of an
     `answer/<id>` not merged, whose tip `t` was read from — the answer is taken back there, on top of it."""
     if len(words) < 2 or words[1] not in ("accept", "reject", "revoke"):
@@ -1866,8 +2258,8 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
     answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
     move = ANSWER_MOVE.get(t.get("ask_kind"))
     replaced = []                                            # the answer this one replaces, and its commit — read on the branch it is cut from
-    # FM-030, E0 row 20: an accepted action answer that names its hour seeds `due:` — read from what he promised, the text
-    # he gave or, bare, the proposal he took (`promise_of`); a `due:` already set is left for `--due` to move
+    # FM-030, E0 row 20: an accepted action answer that names its hour seeds `due:` — read from what they promised, the text
+    # they gave or, bare, the proposal they took (`promise_of`); a `due:` already set is left for `--due` to move
     seed = dict(zip(("when", "words", "why"), answer_due(promise_of({**t, "answer": answer}), datetime.date.today()))) if move == "owner" and verdict == "accept" else {}
 
     def check_ask():
@@ -1893,7 +2285,7 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
         while at + 1 < len(lines) and lines[at + 1].startswith("ask-"):
             at += 1
         lines[at + 1:at + 1] = [f'answer: "{answer.replace(chr(34), chr(39))}"', f"answered: {datetime.date.today().isoformat()}", f"answered-by: {me}"]
-        if move:                                             # FM-030: the move after his — the seat's, or his own hands' for an action
+        if move:                                             # FM-030: the move after theirs — the seat's, or their own hands' for an action
             lines = set_front("\n".join(lines), "next", move).split("\n")
         if seed.get("when"):
             seed["had"] = (parse_frontmatter("\n".join(lines))[0].get("due") or "").strip()
@@ -1930,11 +2322,11 @@ def seed_said(tid, seed):
 
 def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     """What an unmerged `answer/<id>` asks of the Owner, read from what is on it. Its own commits — those not in `trunk`,
-    or with no trunk, on no other branch — that are HIS (his name or his email) are never deleted for him: where the
+    or with no trunk, on no other branch — that are THEIRS (their name or their email) are never deleted for them: where the
     tracker's act is open there, `--done`/`--due` are run on it; otherwise it is merged first. `git branch -D` is named
-    only where nothing of his is on it (FM-030 C, as ruled). Where `--queue` waits on it for a commit not his —
+    only where nothing of theirs is on it (FM-030 C, as ruled). Where `--queue` waits on it for a commit not theirs —
     `answer_branch_reading`, its own line — the advice says how that clears: the commit lands on the trunk first, by its
-    own pull request; his are kept (RV-713)."""
+    own pull request; theirs are kept (RV-713)."""
     span = [branch, "--not", trunk] if trunk else [branch, "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
     own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
     his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
@@ -1981,7 +2373,7 @@ ACT_RECORD_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2}\*\* · ", re.M)     # one re
 
 
 def invite_cmd(tid, trackers):
-    """`--invite <id>` (FM-030 D; his word: *invites + notifications*) — one calendar file for the act a tracker owes the
+    """`--invite <id>` (FM-030 D; their word: *invites + notifications*) — one calendar file for the act a tracker owes the
     Owner, beside its evidence: `<tracker dir>/evidence/<id>/<id>-act.ics`. RFC 5545, as the standup's invite is, but at
     the act's own instant, in UTC: DTSTART its `due:`, a DURATION of its `window:`, an alarm NOTIFY_AHEAD minutes before.
     The UID is the act's and SEQUENCE counts its records under `## Acts`, so the file written after a `--due` replaces
@@ -2014,8 +2406,9 @@ def invite_cmd(tid, trackers):
              "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + ics_text(f"{tid}: {what}"), f"TRIGGER:-PT{NOTIFY_AHEAD}M", "END:VALARM",
              "END:VEVENT", "END:VCALENDAR"]
     out = TRACKER_DIR / "evidence" / tid / f"{tid}-act.ics"
+    write_rule(out)                                         # the write rule, before its folder is made
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(("\r\n".join(ics_fold(l) for l in lines) + "\r\n").encode("utf-8"))      # CRLF, on every system
+    put(out, "\r\n".join(ics_fold(l) for l in lines) + "\r\n")      # CRLF, on every system — `put` writes them as they are
     print(f"wrote {out.relative_to(ROOT).as_posix()} — {tid} due {due} ({utc(when)} UTC), {window} minutes, a reminder "
           f"{NOTIFY_AHEAD} minutes before; import it into your calendar")
     return EXIT_OK
@@ -2067,7 +2460,7 @@ def post_notice(title, body):
 
 
 def notify_cmd(trackers):
-    """`--notify` (FM-030 D; his word: *invites + notifications*) — one system notification for every act with a `due:`
+    """`--notify` (FM-030 D; their word: *invites + notifications*) — one system notification for every act with a `due:`
     that falls due within NOTIFY_AHEAD minutes, is overdue, or was missed: ONE per act per state. What was posted is
     remembered in `state_dir()/notified.json`, per repository, keyed on the act, its `due:` and the state — a `--due` that
     moves it posts again, and nothing else does; a notice that could not be posted is not remembered. Meant to be
@@ -2109,6 +2502,7 @@ def notify_cmd(trackers):
         if keep:
             seen[str(ROOT)] = sorted(keep)
         try:
+            write_rule(path)                                # the write rule, before its folder is made
             path.parent.mkdir(parents=True, exist_ok=True)
             put(path, json.dumps(seen, indent=1, ensure_ascii=False) + "\n")
             where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
@@ -2125,11 +2519,11 @@ def owner_change(tid, t, how):
     """THE OWNER'S OWN CHANGE ON A TRACKER, the one flow `--answer`, `--done` and `--due` share: who may make it — the
     seats that hold `answer`, or `answerers` — is asked first; then `answer/<id>` is cut from the branch that carries the
     tracker (a spent one deleted and cut fresh, an unmerged one refused), `how["write"]` writes the lines, and the commit
-    is made SIGNED where his seat is `signed`, verified, pushed, and he is put back on the branch he started on. A failure
-    after anything was written undoes all of it and prints what he gave with the command that gives it again (FM-017).
+    is made SIGNED where their seat is `signed`, verified, pushed, and they are put back on the branch they started on. A failure
+    after anything was written undoes all of it and prints what they gave with the command that gives it again (FM-017).
     `how`: flag · verb (the steps' word) · noun · right (why it is an `answer` change) · check() → why not, before anything
     is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(branch,
-    ", pushed" or why not) → what it prints · onto (FM-030, `--revoke`): `answer/<id>` is not merged — his act on its way — and
+    ", pushed" or why not) → what it prints · onto (FM-030, `--revoke`): `answer/<id>` is not merged — their act on its way — and
     the change commits on top of it there, one branch per exchange, where every other flow refuses it."""
     flag, noun = how["flag"], how["noun"]
     step = lambda n, text: answer_step(tid, n, text, how["verb"])
@@ -2179,8 +2573,8 @@ def owner_change(tid, t, how):
         change (refused above otherwise), so every tracked path that differs now is its own — the tracker it wrote, the
         INDEX.md a hook regenerated — and is restored. Then it goes back to the branch it started on, and an
         `answer/<id>` it cut and never committed to is deleted. Left behind, those made the Owner's next `--answer`, on
-        another ask, refuse as a dirty tree without saying why. What he gave is printed with the command that gives it
-        again: a refusal never costs him the words."""
+        another ask, refuse as a dirty tree without saying why. What they gave is printed with the command that gives it
+        again: a refusal never costs them the words."""
         restored = changed_paths(git)
         if restored:
             git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in restored])
@@ -2199,10 +2593,10 @@ def owner_change(tid, t, how):
         return EXIT_LINT
 
     def record_refusal(what, said):
-        """FM-030, the E0 counter's row 20: one `--due` of his was refused after its cut and left nothing — the undo took
-        it all back, and only his clone's reflog knew. A refusal on `answer/<id>`, the tree restored, leaves ONE line under
+        """FM-030, the E0 counter's row 20: one `--due` of theirs was refused after its cut and left nothing — the undo took
+        it all back, and only their clone's reflog knew. A refusal on `answer/<id>`, the tree restored, leaves ONE line under
         `## Acts` there — `**<date> <time>** · <the command> refused — <why>` — committed and pushed, so the record and the
-        forge show the attempt; his next run on this tracker names the branch and its commit, and commits on top of it.
+        forge show the attempt; their next run on this tracker names the branch and its commit, and commits on top of it.
         UNSIGNED, whoever runs the command, and honest so: the line changes no front-matter key and rules or records no act —
         the tool's report of one that did not happen — so the gate reads no right in it, a signature would prove nothing it
         needs, and the refusal may be the signing key's own.
@@ -2232,7 +2626,7 @@ def owner_change(tid, t, how):
                 + f"; your next `{flag}` on {tid} names this branch — run it there, and it commits on top")
 
     if here != branch and how.get("onto"):
-        # FM-030, `--revoke`: his act or answer is on its way on `answer/<id>`, not merged — the revocation commits on top of it,
+        # FM-030, `--revoke`: their act or answer is on its way on `answer/<id>`, not merged — the revocation commits on top of it,
         # on that branch; where this clone has only `origin`'s, a local one is made from it, tracking it
         step(2, f"switching to `{branch}` — your act is on its way there, and this commits on top of it")
         had = git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0
@@ -2243,7 +2637,7 @@ def owner_change(tid, t, how):
     elif here != branch:
         if git("rev-parse", "--verify", "-q", branch).returncode == 0:
             # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
-            # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for him
+            # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for them
             trunk = default_trunk(git)
             if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
                 print(f"{flag}: `{branch}` exists and is not merged into `{trunk or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
@@ -2276,7 +2670,7 @@ def owner_change(tid, t, how):
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
         return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
-    if signed and not verified_as("HEAD"):
+    if signed and not verified_as("HEAD", signed_identity(seat, pend_name or me, pend_email) if SEATS else me):
         # the gate's own test, `verified_as`, asked here so the change is never pushed under one the gate will refuse: a good
         # signature under a key the DEFAULT branch's signers file trusts, for the author's email (FM-037's cold re-review, R1:
         # this read the clone's own file, so mid key rotation it said *pushed*, and the gate refused the answer after)
@@ -2289,7 +2683,7 @@ def owner_change(tid, t, how):
     if r.returncode != 0:
         return EXIT_LINT
     stamp = board_stamp()                                   # the board as the push left it: whatever writes it from here on, it is read below
-    if switched:                                             # pushed: back where he started, so his next command does not begin on this one's branch
+    if switched:                                             # pushed: back where they started, so their next command does not begin on this one's branch
         s_ = git("switch", here) if here else git("switch", "--detach", start)
         print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
     said = board_after_act(stamp)
@@ -2308,14 +2702,14 @@ def board_stamp():
 
 
 def board_after_act(stamp):
-    """FM-030, his signed answer 920970b7 — *right after the act* the board shows it: he pressed the button, ran the command,
-    and the page he returns to must say *done, on its way* (his words of 13:57:50). Put back where he started, a checkout hook
-    that rebuilds the board — a post-checkout hook of one's own that runs `--html-only` — has written it already, and it reads the
-    branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or its size —
-    between the push and now. Where it did not — no such hook is installed, the checkout ran none (he ran the command on
+    """FM-030, their signed answer 920970b7 — *right after the act* the board shows it: they pressed the button, ran the command,
+    and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started, the checkout hook
+    `--install-hook` writes — it runs the copy of the tool kept in the git directory as `--html-only` — has written it already,
+    and it reads the branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or
+    its size — between the push and now. Where it did not — no such hook is installed, the checkout ran none (they ran the command on
     `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
     process; but never where the board is tracked by git — `--init` ignores it, and written, a committed board would leave
-    the tree changed and refuse his next command. What it says of it, one line; "" where there is no tracker directory."""
+    the tree changed and refuse their next command. What it says of it, one line; "" where there is no tracker directory."""
     if not TRACKER_DIR.is_dir():
         return ""
     if board_stamp() != stamp:
@@ -2417,7 +2811,7 @@ def dirty_refusal(git, dirty):
     left = []
     for p_ in dirty:
         name = p_.rsplit("/", 1)[-1]
-        if not KIND_RE.match(name) or not (top / p_).is_file():
+        if not KIND_RE.match(name) or not board_isfile(top / p_):      # the reading rule
             continue
         now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
         was_ = (parse_frontmatter(git("show", f"HEAD:{p_}").stdout)[0].get("answer") or "").strip()
@@ -2652,6 +3046,9 @@ __ROWS__
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
 esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])),
 dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}},          // `#100%` must not blank the page
+// a link or an image a tracker's text makes is one of three kinds: http(s), mailto, or relative. The scheme is read as the DOM reads it — tabs, line breaks and
+// control characters dropped — so `javascript:` and `data:` are refused however they are spelled (a private security report)
+safeUrl=u=>{const s=String(u).replace(/[\u0000-\u0020\u007f-\u009f\u00ad\u200b-\u200f\u2028\u2029\ufeff]/g,"");return !/^[a-z][a-z0-9+.-]*:/i.test(s)||/^(https?|mailto):/i.test(s)},
 // every word of the chrome comes from L (labels.yaml, merged over the built-in English). What the page's LOGIC compares —
 // a status, a section, a move — stays the word an agent types; only what is SHOWN goes through here.
 l=(k,...a)=>esc((L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??"")),sl=s=>L["status."+s]||s,vn=g=>L["view."+g]||g,
@@ -2707,7 +3104,7 @@ function draw(){
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
-    return head+(folded?"":g.map((t,i)=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}${i%2?" zebra":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${BLOB+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    return head+(folded?"":g.map((t,i)=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}${i%2?" zebra":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
@@ -2832,7 +3229,9 @@ onkeydown=e=>{if(e.key=="/"&&document.activeElement!=$("q")){e.preventDefault();
 // the viewer: `#=MSR-012` shows that tracker rendered. Markdown comes from view/<ID>.js (a script tag works from
 // disk, a fetch does not); embedded HTML is shown, never run; bare ids and tracker links stay inside the page.
 const MD=new Map(),TID=/(?:__KINDS__)-\d+\b/;
-marked.use({renderer:{html:k=>esc(k.raw||k.text||"")},extensions:[{name:"tid",level:"inline",start:s=>s.match(new RegExp("\\b"+TID.source))?.index,
+marked.use({renderer:{html:k=>esc(k.raw||k.text||""),
+  link(k){return safeUrl(k.href)&&!/&(#|colon|tab|newline)/i.test(k.href)?false:this.parser.parseInline(k.tokens)},      // false: the renderer's own link; refused, the text stays
+  image(k){return safeUrl(k.href)&&!/^mailto:/i.test(String(k.href).trim())&&!/&(#|colon|tab|newline)/i.test(k.href)?false:esc(k.text||"")}},extensions:[{name:"tid",level:"inline",start:s=>s.match(new RegExp("\\b"+TID.source))?.index,
   tokenizer(s){if(this.lexer.state.inLink)return;const m=new RegExp("^"+TID.source).exec(s);if(m&&byId.has(m[0])&&"#="+m[0]!=dec(location.hash))return{type:"tid",raw:m[0]}},
   renderer:k=>`<a href="#=${k.raw}">${k.raw}</a>`}]});
 V=(id,md)=>{MD.set(id,md);if(dec(location.hash)=="#="+id)view(id)};
@@ -2842,14 +3241,16 @@ function view(id){
     s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · ${l("viewer.no_copy",id,"__CMD__ --html-only")}</p>`;
     v.innerHTML=`<p class="m">${id} …</p>`;return document.head.append(s)}
   const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
-  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${BLOB+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
+  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${esc(BLOB)+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(r=>r.length?` · <i>${l("relation."+r[0],r[1])}${r[2]?": "+esc(r[2]):""}</i>`:"")(t[29][11])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
 <b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+  for(const i of v.querySelectorAll(".md img"))if(!safeUrl(i.getAttribute("src")||"")||/^mailto:/i.test((i.getAttribute("src")||"").trim()))i.replaceWith(document.createTextNode(i.alt||""));      // the DOM's last word on what an image loads
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
+    if(!safeUrl(h)){a.removeAttribute("href");continue}
     if(m&&byId.has(m[1]))a.href="#="+m[1];else if(h[0]=="#"&&h[1]!="="){a.removeAttribute("href");a.dataset.s=dec(h.slice(1))}else if(!/^[a-z]+:/i.test(h)&&h[0]!="#")a.href=BLOB+h}
   // headings get GitHub's slug, so a tracker's own `#section` links work; a long tracker gets its sections listed.
   // The hash belongs to the router, so these scroll by click, not by address.
@@ -2857,6 +3258,7 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
   for(const h of hs)h.id="h-"+h.textContent.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu,"").trim().replace(/\s/g,"-");
   const h2=hs.filter(h=>h.tagName=="H2");
   if(h2.length>5)v.querySelector(".md").insertAdjacentHTML("beforebegin",`<p class="m toc">${h2.map(h=>`<a data-s="${esc(h.id.slice(2))}">${esc(h.textContent)}</a>`).join(" · ")}</p>`);
+  if(want!=null){scrollTo(0,want);want=null}      // back from a reload: where the person was
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
@@ -2871,8 +3273,20 @@ paint=m=>{for(const s of document.styleSheets)rules(s,r=>{if(!ORIG.has(r)){if(!r
 setScheme=m=>{scheme=m;paint(m);$("s").textContent="◐ "+L["scheme."+m];$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
 $("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
+// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull
+// changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
+// holds input — the search box aside: its filter, typed or linked, is kept across the reload, as the scroll position is.
+let want=null,wantQ=null,hiddenAt=0;
+try{const k=JSON.parse(sessionStorage.getItem("shoalmark.keep")||"null");sessionStorage.removeItem("shoalmark.keep");if(k&&k.h==location.hash&&Date.now()-k.t<1e4){want=k.y;wantQ=typeof k.q=="string"?k.q:null}}catch(e){}
+const busy=()=>$("dlg").open||[...document.querySelectorAll("input:not(#q):not([type=radio]):not([type=checkbox]):not([type=hidden]),textarea,select")].some(e=>e.value!=="");
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState=="hidden"){hiddenAt=1;return}
+  if(!hiddenAt||busy())return;hiddenAt=0;
+  try{sessionStorage.setItem("shoalmark.keep",JSON.stringify({h:location.hash,y:scrollY,q:$("q").value,t:Date.now()}))}catch(e){}
+  location.reload()});
+// reload: end
 (onhashchange=()=>{const h=dec(location.hash.slice(1));if(h[0]=="="&&byId.has(h.slice(1)))return view(h.slice(1));
-  $("v").hidden=true;$("B").hidden=false;$("q").value=h;draw();scrollTo(0,0)})();
+  $("v").hidden=true;$("B").hidden=false;$("q").value=wantQ??h;wantQ=null;draw();scrollTo(0,want??0);want=null})();
 </script></html>
 """
 
@@ -2903,15 +3317,15 @@ LABELS = {
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you",
-    # an act that is a promise (FM-030, the Owner's word of 2026-09-27 13:38:30): its line is what he promised, `acts.promised`
-    # the day he did — {1}, his answer as signed, is there for a table that quotes it — and `acts.asked` the question below
+    # an act that is a promise (FM-030, the Owner's word of 2026-09-27 13:38:30): its line is what they promised, `acts.promised`
+    # the day they did — {1}, their answer as signed, is there for a table that quotes it — and `acts.asked` the question below
     "acts.title": "your acts, with their time", "acts.promised": "promised {0}", "acts.asked": "asked: {0}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
     "acts.missed": "missed — due {0}, and {1} minutes passed with no result", "acts.nodate": "no date yet",
     "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "Done — where is the result?", "act.done.hint": "the path to the result, or where it is",
     "act.done.hint.promise": "the path to the result of this promise, or where it is",
     "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
     "act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge",
-    # FM-030, his signed answer 920970b7: what he did and pushed, before his merge — the board, `--owner` and `--standup`
+    # FM-030, their signed answer 920970b7: what they did and pushed, before their merge — the board, `--owner` and `--standup`
     "way.title": "on their way", "way.merge": "your merge is next", "way.held": "your merge waits: {0}", "way.done": "done, on its way", "way.answer": "answered, on its way",
     "way.revoked": "revoked, on its way", "way.undone": "done revoked, on its way", "way.due": "rescheduled, on its way", "way.signed": "signed", "way.unverified": "not verified here: {0}",
     "way.revoke": "revoke", "way.revoke.title": "Revoke — why?", "way.revoke.hint": "why you take it back — the record keeps it beside what it revokes",
@@ -3290,7 +3704,7 @@ def brand():
     themes, logo, wordmark, labels, src, warn = [], None, None, dict(LABELS), {"theme.css": [], "logo": [], "wordmark": [], "labels.yaml": []}, []
     for who, d in brand_places():
         f = d / "theme.css"
-        if f.is_file():
+        if board_isfile(f):
             css = f.read_text(encoding="utf-8")
             # A path in a theme is written relative to THE FILE IT IS IN — what an editor resolves, what a person expects.
             # The page inlines the css, so each is re-based onto the page's directory; that also makes an import or a
@@ -3312,7 +3726,7 @@ def brand():
                     warn.append(f"{who}'s theme.css: text {i} on ground {b} has a contrast of {contrast(b, i):.1f}:1 — below 4.5:1, hard to read")
         for name, mime in (("logo.svg", "image/svg+xml"), ("logo.png", "image/png")):
             f = d / name
-            if f.is_file():
+            if board_isfile(f):
                 data, size = brand_bytes(f)
                 if size > LOGO_MAX:
                     warn.append(f"{who}'s {name} is {size:,} bytes — over {LOGO_MAX:,}, not shown")
@@ -3320,7 +3734,7 @@ def brand():
                     logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(data).decode("ascii"))); src["logo"].append(who)
                 break
         f = d / "wordmark.svg"
-        if f.is_file():
+        if board_isfile(f):
             data, size = brand_bytes(f)
             svg, why = ("", f"it is {size:,} bytes — over {LOGO_MAX:,}") if size > LOGO_MAX else inline_svg(data)
             if svg:
@@ -3328,7 +3742,7 @@ def brand():
             else:
                 warn.append(f"{who}'s wordmark.svg is not shown: {why} — the header keeps {'the wordmark before it' if wordmark else 'the logo and the name'}")
         f = d / "labels.yaml"
-        if f.is_file():
+        if board_isfile(f):
             given = read_flat(f.read_text(encoding="utf-8"))
             unknown = sorted(k for k in given if k not in LABELS)
             if unknown:
@@ -3364,21 +3778,31 @@ def brand_report(dest=None, theme=None):
         if theme not in names:
             print(f"--from {theme}: the tool ships no such theme — {' or '.join(names) if names else 'this copy ships none'}; nothing was written", file=sys.stderr)
             return 2
-        dest, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
+        named, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
+        dest = pathlib.Path(os.path.realpath(named))        # a destination a person names: resolved once, where it is named
+        rels = [r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")]
+        for rel in rels:                                    # the write rule for every file it may write — as the path is named, and under the folder it resolves
+            write_rule(named / rel)                         # to — before the first folder or copy is made
+            write_rule(dest / rel)
         print(f"the {theme} theme — a starter from {src}")
-        for rel in (r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")):
+        for rel in rels:
             if (dest / rel).exists():
-                print(f"kept {dest / rel} — it is there already; delete it to start from {theme}")
+                print(f"kept {named / rel} — it is there already; delete it to start from {theme}")
                 continue
-            (dest / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src / rel, dest / rel); print(f"wrote {dest / rel}")
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src / rel, dest / rel); print(f"wrote {named / rel}")
         print(f"yours to change; a board wears it from a brand place — <tracker dir>/brand/, or ~/.config/shoalmark/ for you alone (`--brand` lists them)")
         return EXIT_OK
     if dest:
-        dest = pathlib.Path(dest); dest.mkdir(parents=True, exist_ok=True)
+        named = pathlib.Path(dest)
+        dest = pathlib.Path(os.path.realpath(named))        # a destination a person names: resolved once, where it is named
+        for name in ("theme.css", "labels.yaml"):          # the write rule for both — as the path is named, and under the folder it resolves to — before
+            write_rule(named / name)                        # the folder is made
+            write_rule(dest / name)
+        dest.mkdir(parents=True, exist_ok=True)
         for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
                                                            + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
             if not (dest / name).exists():
-                put(dest / name, text); print(f"wrote {dest / name}")
+                put(dest / name, text); print(f"wrote {named / name}")
         print("a logo is logo.svg or logo.png beside them, a wordmark wordmark.svg; the name is `name` in " + CONFIG_NAME)
         return EXIT_OK
     themes, logo, labels, src, warn, _wordmark = brand()
@@ -3430,7 +3854,7 @@ THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is 
 def triage_home():
     """TRIAGE.md as the command and the dashboard read it: the Owner's current path, and the newest pass."""
     home = TRACKER_DIR / "TRIAGE.md"
-    text = home.read_text(encoding="utf-8") if home.exists() else ""
+    text = board_text(home) or ""
     # a section is found by the repository's own name for it, or by the English one
     part = lambda k: (re.search(rf"^## (?:{re.escape(HEAD[k])}|{re.escape(DEFAULTS['headings'][k])})[ \t]*\n(.*?)(?=^## |\Z)", text, re.S | re.M) or ["", ""])[1].strip()
     # a pass is a paragraph that carries its date — the template's own notes do not, in any language
@@ -3444,7 +3868,7 @@ def triage_home():
 def owners_intent(text):
     """The intent as the Owner WROTE it: everything under the heading, less the scaffold's own words — its note, its
     lead-in, its examples and its bare lines, recognised by their exact text (whitespace aside), never by italics, bold
-    or length. An example with one word changed is his; so is a line in italics, a line in bold, a line of two letters
+    or length. An example with one word changed is theirs; so is a line in italics, a line in bold, a line of two letters
     (FM-022, R11). A paragraph is compared whole, so the wrapped lead-in is one piece; a line is compared alone."""
     scaffold = {" ".join(s.split()) for s in INTENT_SCAFFOLD}
     kept = []
@@ -3457,12 +3881,26 @@ def owners_intent(text):
     return "\n\n".join(kept).strip()
 
 
+def view_dir_refused():
+    """The write rule for the views' folder, where it is a symlink or no folder: a hook's run refuses the commit, any other run refuses in one line."""
+    why = "a symlink, or not a directory"
+    if SAFE_WRITES:
+        raise ReadOnlyRun(f"it would write into {os.path.relpath(VIEW_DIR, ROOT).replace(os.sep, '/') if in_tree(VIEW_DIR) else VIEW_DIR}, {why}")
+    refuse_tree_write(VIEW_DIR, why)
+
+
 def write_views(trackers):
     """One `view/<ID>.js` per tracker — `V(id, markdown)`. Rewritten only when changed; strays removed. The markdown is
     the file's body, and one line more under each record under `## Asks` that has no `**relation** —` line, every one of
     them, not the newest alone: the relation `recover_relations` read from that answer's commit, under `**answered** —`
     where a record from 0.18.1 on carries its own, naming that commit — or *relation not computable* (FM-029: every
     reading prints the relation)."""
+    if os.path.lexists(VIEW_DIR) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+        if SAFE_READS:
+            left_alone(VIEW_DIR, "a symlink, or not a directory")    # the board's run writes no view through a symlink or over a file
+            return
+        if SAFE_WRITES or in_tree(VIEW_DIR):                # the write rule: a folder of the tree
+            view_dir_refused()
     VIEW_DIR.mkdir(exist_ok=True)
     keep = set()
     recover_relations(trackers)
@@ -3476,12 +3914,11 @@ def write_views(trackers):
                     said, source = (t.get("asks_recovered_all") or {}).get(key, (RELATION_TEXT["unknown"], ""))
                     cut = start + line.end()
                     body = body[:cut] + f"\n**relation** — {said}" + (f" · read from the answer's commit `{source}`" if source else "") + body[cut:]
-        out, text = VIEW_DIR / f'{t["id"]}.js', f'V({json.dumps(t["id"])},{json.dumps(body, ensure_ascii=False)})\n'
+        out, text = VIEW_DIR / f'{t["id"]}.js', f'V({script_json(t["id"])},{script_json(body)})\n'
         keep.add(out.name)
-        if not out.exists() or out.read_text(encoding="utf-8") != text:
-            put(out, text)
+        board_write(out, text, changed_only=True)
     for stray in VIEW_DIR.glob("*.js"):
-        if stray.name not in keep:
+        if stray.name not in keep and not (SAFE_WRITES and unwritable(stray)):      # a stray the board's run may not write is left where it is
             stray.unlink()
 
 
@@ -3490,6 +3927,8 @@ def latest_verdicts():
     its reason live in the pass's worksheet, never in the tracker; the page shows them where the tracker is read."""
     out = {}
     for sheet in sorted((TRACKER_DIR / "evidence" / "triage").glob("triage-*.md")):
+        if not board_isfile(sheet):                          # the reading rule
+            continue
         for tid, verdict, line, error in sheet_rows(sheet.read_text(encoding="utf-8")):
             if tid and verdict and not error:
                 reason = re.split(r"(?<!\\)\|", line)[-2].strip().replace("\\|", "|")
@@ -3507,8 +3946,24 @@ def built_on():
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
+def board_blob():
+    """The forge URL prefix the board's links to a tracker's file are built on: `blob` from the configuration where it is an http(s) URL — a
+    link of any other kind (`javascript:`, `data:`) is a link the board does not make, and says so once — else none."""
+    if REPO_BLOB and not re.match(r"https?://[^\s\"'<>]+$", REPO_BLOB, re.I):
+        print(f"  blob: `blob = {REPO_BLOB[:60]!r}` in {CONFIG_NAME} is not an http(s) URL — the board makes no link to the forge", file=sys.stderr)
+        return ""
+    return REPO_BLOB
+
+
 def html_escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def script_json(value):
+    """JSON written for a `<script>`: `<`, `>` and `&` and the two line separators as `\\u` escapes, so no text a tracker holds can open a tag or
+    a comment, or end the block — `</script>` is only one of the ways — and the browser reads back the same value."""
+    return (json.dumps(value, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
 def render_html(trackers):
@@ -3518,12 +3973,12 @@ def render_html(trackers):
 
     epics = {t.get("epic", "—") for t in trackers}
     by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
-    # FM-030: his act or answer on its way — a 32nd cell, on the rows `on_their_way` names and on no other, so a board with
+    # FM-030: their act or answer on its way — a 32nd cell, on the rows `on_their_way` names and on no other, so a board with
     # nothing on its way has the rows and the rendered board it had
     way = {k: [w["kind"], w["branch"], w["tip"], w["commit"], w["time"], w["sig"], w["said"], w["what"], w["asked"], w["value"], int(w["answered"]), int(w["owed"]), w["due"], w["note"], w["held"]]
            for k, w in on_their_way(trackers).items()}
     rows = [
-        json.dumps(
+        script_json(
             [t["id"], t["tier"], t["status"], "—", "—",
              t["file"], t["title"], t["hook_full"], t["num"], "—", "—",
              "—", sorted({"-".join(f.split("-")[:2]) for f in t["links"]} - {t["id"]}),
@@ -3531,19 +3986,18 @@ def render_html(trackers):
              ["#" + x for x in t.get("tags", [])], t.get("blocked_by", []), t.get("triaged", ""), t.get("rank", 0), board(t),
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
-             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask),
+             [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask, provenance=not (SAFE_READS and vcs() == "svn")),
               t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
              list(act_of(t) or [])] + ([way[t["id"]]] if t["id"] in way else []),
-            ensure_ascii=False,
-        ).replace("</", "<\\/")  # a hook containing "</script>" must not end the block
+        )
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
     ]
     unwrap = lambda md: re.sub(r" {2,}", " ", re.sub(r"(?<!\n)\n(?!\s*\n|\s*\d+\. |\s*- )", " ", md))   # source line breaks are not the reader's
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
-            .replace("__COLHEADS__", "".join(f'<th class="x">{c.lower()}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", json.dumps(BOARD_COLUMNS, ensure_ascii=False)).replace("__COLS__", json.dumps(DERIVED_COLUMNS, ensure_ascii=False)).replace("__HOME_PATH__", str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())).replace("__CMD__", CMD)
-            .replace("__ACTS_HEAD__", json.dumps(HEAD["acts"], ensure_ascii=False)[1:-1]))
+            .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
+            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]))
     themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
@@ -3561,8 +4015,8 @@ def render_html(trackers):
                         '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
                         f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
                         f'aria-label="release v{v}">v{v}</a></p>')
-    page = page.replace("__LABELS__", json.dumps(labels, ensure_ascii=False).replace("</", "<\\/"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", json.dumps(home, ensure_ascii=False).replace("</", "<\\/")).replace("__REG__", json.dumps(board_sessions(), ensure_ascii=False).replace("</", "<\\/")).replace("__BLOB__", json.dumps(REPO_BLOB)).replace("__BRANCH__", json.dumps(built_on()).replace("</", "<\\/")).replace(
+    page = page.replace("__LABELS__", script_json(labels))
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(built_on())).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
@@ -3767,9 +4221,13 @@ def svn_last_worked_on(path):
 def repos_naming():
     """{tracker id: the submodules whose branch names or commit subjects name it} — where the work happened,
     from git alone. For the worksheet only: eight `git log`s are too slow for a commit hook. A submodule that
-    is not checked out is skipped — `git -C` on its empty directory would answer from the parent."""
+    is not checked out is skipped — `git -C` on its empty directory would answer from the parent — and so is one whose path resolves outside the
+    repository, symlinks resolved: no git runs there."""
     modules, found = ROOT / ".gitmodules", {}
-    for sub in re.findall(r"^\s*path\s*=\s*(\S+)", modules.read_text(encoding="utf-8"), re.M) if modules.exists() else []:
+    top = os.path.normcase(os.path.realpath(ROOT))
+    for sub in re.findall(r"^\s*path\s*=\s*(\S+)", board_text(modules) or "", re.M):      # the reading rule
+        if not os.path.normcase(os.path.realpath(_norm(ROOT / sub))).startswith(top.rstrip(os.sep) + os.sep):
+            continue
         if not (ROOT / sub / ".git").exists():
             continue
         said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -3977,6 +4435,8 @@ def schema_problems(t):
     for key, value in t["fm"].items():
         if key.startswith("#"):
             continue
+        if key not in FRONT_MATTER and DERIVER_LEFT:          # a hook ran no deriver, so the keys it declares are unknown here: `--check`, which runs it, judges them
+            continue
         if key not in FRONT_MATTER:
             near = difflib.get_close_matches(key.replace("_", "-"), FRONT_MATTER, 1, 0.75) or difflib.get_close_matches(key, FRONT_MATTER, 1, 0.75)
             out.append(f'{t["id"]}: `{key}:` is not a front-matter key' + (f' — did you mean `{near[0]}:`?' if near else '.')
@@ -4011,7 +4471,7 @@ def parse_due(text):
     return when if when.tzinfo is not None else None
 
 
-# FM-030, the E0 counter's row 20 — AN ANSWER'S HOUR SEEDS `due:`. His promise *accepted - Sat 09-26 09:00 CEST* showed
+# FM-030, the E0 counter's row 20 — AN ANSWER'S HOUR SEEDS `due:`. Their promise *accepted - Sat 09-26 09:00 CEST* showed
 # *no date yet* for five hours past the hour it named: the hour lived only in `answer:`. What is read, and nothing else —
 # the smallest rule that is honest about a date: a date with its hour, `2026-09-26 09:00` or `2026-09-26T09:00+02:00`,
 # or the weekday with its month and day, `Sat 09-26 09:00`, whose year is the answer's, or the next where that day has
@@ -4087,8 +4547,8 @@ def answer_due(text, day):
 
 
 def promise_of(t):
-    """What an accepted answer promised, in his words — the Owner's word of 2026-09-27 13:38:30 (FM-030): the text his
-    `answer:` carries after its word — the option he chose, or his change — else, for a bare `accepted`, the proposal it
+    """What an accepted answer promised, in their words — the Owner's word of 2026-09-27 13:38:30 (FM-030): the text their
+    `answer:` carries after its word — the option they chose, or their change — else, for a bare `accepted`, the proposal it
     took; "" where neither says it, and for an answer that did not accept. The signed line is not touched."""
     word = ANSWER_WORD_RE.fullmatch(answer_norm(t.get("answer")))
     if not word or word.group(1).lower() != "accepted":
@@ -4097,12 +4557,12 @@ def promise_of(t):
 
 
 def act_of(t):
-    """FM-030 — the act a tracker owes the Owner, while it is owed: (what, his answer, its date, due, window, asked) or None.
-    An accepted action ask is one — its answer is a promise of his hands, the act still his — and so is any `due:`, which
+    """FM-030 — the act a tracker owes the Owner, while it is owed: (what, their answer, its date, due, window, asked) or None.
+    An accepted action ask is one — its answer is a promise of their hands, the act still theirs — and so is any `due:`, which
     the seat that schedules an act writes. `done:` closes it; closed work owes nothing. `window:` is minutes, 60 where absent.
-    `what` is the act's line: for a promise, what he promised (`promise_of`), and `asked` the question it answered, the
+    `what` is the act's line: for a promise, what they promised (`promise_of`), and `asked` the question it answered, the
     context below it — the Owner's word of 2026-09-27 13:38:30: the question alone read as the act, where the act is the
-    option he took. A `due:` beside a question he has not answered keeps its own line, and the question stays on his
+    option they took. A `due:` beside a question they have not answered keeps its own line, and the question stays on their
     queue (the pass's R1 on 52cfcc7): `asked` is "" there. Where no promise can be read, the question is the line."""
     if t.get("status") not in OPEN_STATUSES or t.get("done"):
         return None
@@ -4139,7 +4599,7 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
-    "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email or name> signed\"`; at the top of the file, before any table",
+    "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email> signed\"` — a signed identity is an email; at the top of the file, before any table",
               "who the Owner is (FM-024): the one who answers, and holds all four rights — the Owner is not a seat. `signed` is read per identity, as for a seat. "
               "`[seats] owner` is still read, as its old spelling: both present and the same are read once; both present and different are refused at configuration (exit 1), "
               "and so is an `owner` key inside any other table, naming this place (in `[rights]`, a list of rights is the Owner's own) — a key after a `[table]` header belongs to that table"),
@@ -4147,7 +4607,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "where the Reviewer's files sit (FM-031): `--queue` reads a verdict as covering a head that only commits touching this "
                         "folder and `sessions.md` follow — a consumer that files reviews beside each tracker's evidence names `evidence/*/`. The "
                         "verdict commit's own `review*.md` counts wherever it sits under `evidence/`"),
-    "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email or name> signed\"`",
+    "[seats] <seat>": ("one identity, or a list of them; each `\"<email or name>\"` or `\"<email> signed\"` — a signed identity is an email, verified by SSH",
                        "who sits in that seat (FM-024): every identity listed maps to the seat — `planner = [\"principal@seat\", "
                        "\"12345+shoalmark-planner[bot]@users.noreply.github.com\"]` keeps the old address resolving beside the new — and `signed` "
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
@@ -4318,18 +4778,35 @@ def pending_author():
     return (name.strip(), rest.partition(">")[0].strip()) if out.returncode == 0 else ("", "")
 
 
-def verified_as(commit, email=None):
-    """The gate's ONE signature test, shared by every rule that asks for a signed line: `%G?` is G for a good
-    signature under a trusted key, GPG or SSH alike — and the principal the key is trusted FOR (`%GS`) must be the
-    identity claimed. A good signature under a trusted key still says nothing about whose name is on the commit. The key is
-    trusted by the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19): an answer branch that appends its own
-    key under the Owner's email vouches for nothing."""
-    if signature_gap(commit):
+# A SIGNED IDENTITY (FM-024; the Owner's ruling filed in FM-006, *The release bar*, on a private security report): a `signed` identity is an email address —
+# one `@`, something on both sides, no whitespace — and it verifies by SSH only. Configuration refuses any other `signed` identity; a commit signed any other
+# way than SSH is refused on a signed line with `SIGN_WITH_SSH`.
+EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+")
+SIGN_WITH_SSH = "sign with SSH; GPG returns with a fingerprint binding"
+
+
+def signature_kind(commit):
+    """The kind of `commit`'s signature, read from the commit object's own header — never from configuration: "ssh", "pgp", "x509" or "other",
+    and "" where it carries none."""
+    head = (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    m = re.search(r"^gpgsig(?:-sha256)? (.*)$", head, re.M)
+    if not m:
+        return ""
+    first = m.group(1)
+    return ("ssh" if "BEGIN SSH SIGNATURE" in first else "pgp" if "BEGIN PGP SIGNATURE" in first
+            else "x509" if "BEGIN SIGNED MESSAGE" in first or "BEGIN CMS" in first else "other")
+
+
+def verified_as(commit, identity):
+    """The gate's ONE signature test, shared by every rule that asks for a signed line — the identity a signature must name is the configured one
+    (`signed_identity`), never the commit's author standing in for it. All three must hold: the signature, read from the commit object's own header,
+    is SSH; `%G?` is G under the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19: an answer branch that appends its own key under the
+    Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it."""
+    if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or signature_gap(commit):
         return False
-    v = subprocess.run(["git", *signers_args(), "log", "-1", "--format=%G?%n%GS%n%ae", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    good, signer, author_email = (v.stdout.split("\n") + ["", "", ""])[:3]
-    claimed = (email or author_email).strip()
-    return good.strip() == "G" and bool(claimed) and claimed in signer
+    v = subprocess.run(["git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    good, signer = (v.stdout.split("\n") + ["", ""])[:2]
+    return good.strip() == "G" and signer.strip() == identity
 
 
 _SIGNERS = None
@@ -4394,30 +4871,26 @@ def signers_gap(commit):
 
 
 def signature_gap(commit):
-    """Why a SIGNED commit cannot be verified in this clone — the clone's configuration, not the commit — or "": the commit
-    carries no signature, or the check could run. A refusal that said *sign it* to a signed commit blamed the Owner's
-    key for a missing file in the reader's setup: SSH needs `gpg.ssh.allowedSignersFile`, GPG the key in the keyring."""
-    head = (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
-    if not re.search(r"^gpgsig(-sha256)? ", head, re.M):
-        return ""
-    if "BEGIN SSH SIGNATURE" in head:
-        return signers_gap(commit)                          # FM-037's AU-19: the default branch's signers file, never the branch's
-    elif "BEGIN PGP SIGNATURE" in head and (git_out("log", "-1", "--format=%G?", commit) or "").strip() == "E":
-        return "the signing key is not in this clone's GPG keyring"
-    return ""
+    """Why an SSH-signed commit cannot be verified in this clone — the clone's configuration, not the commit — or "": the commit
+    carries no SSH signature, or the check could run. A refusal that said *sign it* to a signed commit blamed the Owner's
+    key for a missing file in the reader's setup: SSH needs `gpg.ssh.allowedSignersFile`. Any other kind is no gap: a signed line refuses it
+    (`SIGN_WITH_SSH`)."""
+    return signers_gap(commit) if signature_kind(commit) == "ssh" else ""      # FM-037's AU-19: the default branch's signers file, never the branch's
 
 
 def unverified(commit, tail):
     """The end of a refusal for a commit that does not verify: *cannot verify* and why, where the clone cannot check a
     signed commit; where it is SSH-signed and the check ran, that its key is not the one the signers file the gate reads
     holds for it, with the way through — a key lands in that file first (FM-037's cold re-review, R1: mid key rotation the
-    answer gate told the Owner to sign a commit he had signed) — `%G?` U, a key the file does not hold, or G, one it holds for
+    answer gate told the Owner to sign a commit they had signed) — `%G?` U, a key the file does not hold, or G, one it holds for
     someone else; else the seat's own words (`tail`), which ask for a signature — a bad signature (`%G?` B) among them."""
+    if signature_kind(commit) not in ("", "ssh"):          # GPG, X.509 or another kind: a signed line verifies by SSH only
+        return SIGN_WITH_SSH
     gap = signature_gap(commit)
     if gap:
         return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}"
     s = trusted_signers()
-    ssh = "BEGIN SSH SIGNATURE" in (git_out("cat-file", "commit", commit) or "").split("\n\n", 1)[0]
+    ssh = signature_kind(commit) == "ssh"
     if ssh and s["file"] and (git_out(*signers_args(), "log", "-1", "--format=%G?", commit) or "").strip() in ("G", "U"):
         held = f"`{s['rel']}` on {s['trunk']}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
         return (f"it is signed, but not with a key {held} holds for that identity — a new key verifies once it is there"
@@ -4480,6 +4953,14 @@ def in_this_commit(t):
         return True
 
 
+def refuse_signed_name(where, who, mode):
+    """A `signed` identity that is not an email is refused when the configuration is read — exit 1, one line on how to migrate: a signature
+    verifies against the email the signers file names for the key, and nothing else. An identity without `signed` stays as it is."""
+    if mode == "signed" and not EMAIL_RE.fullmatch(who or ""):
+        raise SystemExit(f'{CONFIG_NAME}: {where} names `{who}` as signed, and a signed identity is an email address — write the email the signers file names for the key: '
+                         + ('`owner = "<email> signed"`, before any table (`answerers` is its old spelling, read by the git author\'s name)' if where == "`answerers`" else '`"<email> signed"`'))
+
+
 def seat_identities(value):
     """A `[seats]` value as its identities, `[(identity, "signed" | ""), …]` (FM-024): a string is one, as ever —
     `"principal@seat"`, `"you@example.org signed"` — a list is several, each item optionally `… signed`, so the address a
@@ -4506,13 +4987,13 @@ def seats_of(cfg):
              and not (t == "rights" and not isinstance(body["owner"], str))]
     if where:
         raise SystemExit(f'{CONFIG_NAME}: `owner` is inside {" and ".join(f"`[{t}]`" for t in where)}, where it does not name the Owner — '
-                         f'put it at the top of the file, before any table: `owner = "<identity> signed"`'
+                         f'put it at the top of the file, before any table: `owner = "<email> signed"`'
                          + ("; if it is a tag, give it another name: `owner` names the Owner" if "tags" in where else ""))
     top = cfg.get("owner")
     if top is None:
         return seats
     if not isinstance(top, (str, list)):
-        raise SystemExit(f'{CONFIG_NAME}: `owner` is a key at the top of the file, before any table — `owner = "<email or name> signed"`, or a list of them. '
+        raise SystemExit(f'{CONFIG_NAME}: `owner` is a key at the top of the file, before any table — `owner = "<email> signed"`, or a list of them. '
                          f'Got {"a table, `[owner]`" if isinstance(top, dict) else repr(top)}')
     old = seats.get("owner")
     if old is not None and seat_identities(old) != seat_identities(top):
@@ -4532,6 +5013,25 @@ def seat_mode(seat, name, email):
     that matches none of its identities (a name where the seat lists an email) reads the seat's first."""
     ids = SEATS[seat]
     return next((m for who, m in ids if who and who in (email, name)), ids[0][1] if ids else "")
+
+
+def signed_identity(seat, name, email):
+    """The identity a signature must name for this author in that seat: the configured `signed` identity it wears — matched as `seat_mode` matches,
+    on its email or its name — which configuration holds to an email; None where the identity it wears asks for no signature. Never the commit's
+    author standing in for it."""
+    ids = SEATS.get(seat) or []
+    hit = next(((who, m) for who, m in ids if who and who in (email, name)), ids[0] if ids else None)
+    return hit[0] if hit and hit[1] == "signed" else None
+
+
+def answerer_identity(name, email):
+    """The configured identity this author answers as — with `[seats]`, the one their seat lists that they match (or the seat's first, as `seat_mode`
+    reads it); without, the `answerers` entry their name, else their email, is — or None. What `--queue` verifies an answer against."""
+    if SEATS:
+        ids = SEATS.get(seat_of(name, email)) or []
+        hit = next((who for who, _m in ids if who and who in (email, name)), ids[0][0] if ids else None)
+        return hit
+    return name if name in may_answer() else None          # `answerers` always meant the git author's name
 
 
 def at_top(seat):
@@ -4609,7 +5109,7 @@ def seat_problems(t):
     `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
     also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
     about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
-    the line, so the Owner's QUEUE can drop an ask that reached him another way. It catches an agent that does not
+    the line, so the Owner's QUEUE can drop an ask that reached them another way. It catches an agent that does not
     know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
@@ -4627,7 +5127,7 @@ def seat_problems(t):
     if seat_mode(seat, name, email) == "signed" and how != "svn":
         if not commit:
             print(f'  {t["id"]}: the `next: owner` line is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
-        elif not verified_as(commit, email or None):
+        elif not verified_as(commit, signed_identity(seat, name, email)):
             return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `{seat}` — '
                     + unverified(commit, f'{"`owner`" if at_top(seat) else "`[seats]`"} asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach them')]
     return []
@@ -4792,7 +5292,7 @@ def rights_problems(trackers):
                 elif seat_mode(seat, name, email) == "signed":
                     if not commit:
                         print(f'  {t["id"]}: a `{right}` change is being committed now — the seat\'s signature is verified on the commit, by the next run', file=sys.stderr)
-                    elif not verified_as(commit, email or None):
+                    elif not verified_as(commit, signed_identity(seat, name, email)):
                         out.append(f'{t["id"]}: the commit `{commit[:10]}` making a `{right}` change does not verify as the seat `{seat}` — '
                                    + unverified(commit, f'{"`owner`" if at_top(seat) else "`[seats]`"} asks this seat to sign: sign it (`git commit -S`), or the change does not count'))
     return out
@@ -5729,33 +6229,33 @@ def commit_msg_check(message_file):
     return EXIT_LINT if problems else EXIT_OK
 
 
-# FM-037 — ONLY THE OWNER CHANGES HIS INTENT AND HIS CURRENT PATH (his word of 2026-09-25, through the Auditor seat's AU-12:
-# a seat's unsigned commit rewrote a line of his path, and every gate passed it). The two sections of TRIAGE.md a pass reads
-# as his — `## The intent` and `## The current path`, by the repository's names or the English ones — are judged by what
+# FM-037 — ONLY THE OWNER CHANGES THEIR INTENT AND THEIR CURRENT PATH (their word of 2026-09-25, through the Auditor seat's AU-12:
+# a seat's unsigned commit rewrote a line of their path, and every gate passed it). The two sections of TRIAGE.md a pass reads
+# as theirs — `## The intent` and `## The current path`, by the repository's names or the English ones — are judged by what
 # the tool READS: each commit is read under its OWN `shoalmark.toml` (its `tracker_dir` names the file, its `[headings]` the
 # two names), a section is its heading line and everything under it up to the next `## `, byte for byte, and that text is
 # compared with what the commit's parent reads — a merge's with what each of its parents reads. Renaming or removing a
 # heading, deleting TRIAGE.md, moving it away from its name or out from under the tracker directory, pointing `tracker_dir`
 # elsewhere: after each the tool reads other words or none, and each is a change. A move of the whole tracker together with
 # its key, the two sections byte-identical before and after — `ae1f05e`, FM-002's move out of `docs/work-tracker/` — is not:
-# every word of his reads as it did (the pass's R7; the reading is stated in the README). Whitespace counts: the text is
+# every word of theirs reads as it did (the pass's R7; the reading is stated in the README). Whitespace counts: the text is
 # printed as written, and a comparison with no normaliser has nothing a seat could learn to slip past. `## Passes` and all
 # outside the two stay open to seats; a scaffold, where no section was, is accepted (`unwritten`). A change is refused
 # unless it is the Owner's signed commit: `%G?` G, the signer principal (`%GS`) the author's email, the author the Owner.
 # The Owner is read from the default branch's `shoalmark.toml`, never the branch's own: a branch that named a seat the Owner,
-# or took `signed` off his seat, and then changed his words, would otherwise judge itself. Nor may it vouch for its own key
+# or took `signed` off their seat, and then changed their words, would otherwise judge itself. Nor may it vouch for its own key
 # (the Auditor seat's AU-19): a signature is verified against the default branch's signers file (`trusted_signers`), and
 # a change to that file is kept like the two sections (`signers_paths`, `kept_changes`).
 GUARDED = ("intent", "path")
 GUARD_WHY = "only the Owner changes their intent and their current path (FM-037)"
-# …and the file his signature is verified against (the Auditor seat's AU-19): a branch that appends its own key under his
+# …and the file their signature is verified against (the Auditor seat's AU-19): a branch that appends its own key under their
 # email to the repository's signers file would otherwise have vouched for itself
 GUARD_WHY_KEYS = "only the Owner changes the keys their signature is verified against (FM-037, AU-19)"
-# the way through, as the tool already asks a seat to put a question in front of him (`--new`, the contract's `ask:` rule)
+# the way through, as the tool already asks a seat to put a question in front of them (`--new`, the contract's `ask:` rule)
 GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence they can "
              "answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`")
 GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on their account holds that key (FM-007)"
-# what it can prove where his seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
+# what it can prove where their seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
 GUARD_AUTHOR_ONLY = "the author only — mark `owner` signed to prove the key"
 GUARD_SVN = ("the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so "
              "nothing here can tell their commit from a seat's")
@@ -5898,18 +6398,21 @@ def owners_of(cfg):
     seats, rights, out = seats_of(cfg), cfg.get("rights") if isinstance(cfg.get("rights"), dict) else {}, {}
     if seats:
         for name, value in seats.items():
+            for who, mode in seat_identities(value):    # the same refusal as this checkout's configuration: `owners_at` says it
+                refuse_signed_name("`owner`" if name == "owner" and cfg.get("owner") is not None else f"`[seats] {name}`", who, mode)
             words = rights.get(name, BUILTIN_RIGHTS.get(name, ()))
             if "answer" in ([words] if isinstance(words, str) else words):
                 out.update(seat_identities(value))
         return {w: m for w, m in out.items() if w}
     for a in (cfg.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
+        refuse_signed_name("`answerers`", name, mode)
         out[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
     return {w: m for w, m in out.items() if w}
 
 
 def owners_at(rev, refused=None):
-    """The Owner as `rev`'s `shoalmark.toml` names him — the default branch's, so a branch never names its own Owner — or
+    """The Owner as `rev`'s `shoalmark.toml` names them — the default branch's, so a branch never names its own Owner — or
     this checkout's where `rev` is None or carries no configuration. Where this tool refuses that configuration, nobody —
     and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2)."""
     if not rev:
@@ -5926,16 +6429,9 @@ def owners_at(rev, refused=None):
         return {}
 
 
-def signer_is(signer, email):
-    """The signer principal IS the email: an SSH principal equal to it, or a GPG user id carrying it as `<email>` — never a
-    principal that merely contains it."""
-    s, e = (signer or "").strip().lower(), (email or "").strip().lower()
-    return bool(e) and (s == e or f"<{e}>" in s)
-
-
 def guard_verdicts(changed, owners):
     """[(commit, subject, home, what, verdict, why)] for each commit of `guard_walk` that changes a section — `verdict`:
-    `signed` (the Owner's signed commit), `author` (the Owner's, where his seat asks for no signature: the author is all
+    `signed` (the Owner's signed commit), `author` (the Owner's, where their seat asks for no signature: the author is all
     it proves), `checkout` (signed, and this clone cannot check it — `why` the cause) or `refused` (`why` the reason).
     One `git log --no-walk` reads every author and signature."""
     shas = [c for c, _s, _h, _w in changed]
@@ -5947,17 +6443,20 @@ def guard_verdicts(changed, owners):
     verdicts = []
     for c, subject, home, what in changed:
         name, email, good, signer = sigs.get(c, ("", "", "", ""))
-        mode = next((m for who, m in owners.items() if who in (email, name)), None)
+        identity, mode = next(((who, m) for who, m in owners.items() if who in (email, name)), (None, None))
+        kind = signature_kind(c)
         if mode is None:
             verdict, why = "refused", f"its author `{email or name or 'nobody git can name'}` is not the Owner ({' · '.join(f'`{w}`' for w in owners)})"
         elif mode != "signed":
             verdict, why = "author", ""
+        elif kind not in ("", "ssh"):                       # GPG, X.509: the Owner's signed line verifies by SSH only
+            verdict, why = "refused", SIGN_WITH_SSH
         elif signature_gap(c):                              # before `%G?`: read against a signers file the branch wrote, it says G
             verdict, why = "checkout", signature_gap(c)
-        elif good == "G" and signer_is(signer, email):
+        elif good == "G" and signer.strip() == identity:    # the principal IS the Owner's configured email — never a principal that contains it, never the author
             verdict, why = "signed", ""
         elif good == "G":
-            verdict, why = "refused", f"signed as `{signer}`, not as its author `{email}`"
+            verdict, why = "refused", f"signed as `{signer}`, not as the Owner's `{identity}`"
         else:
             verdict, why = "refused", ("the Owner's email, unsigned — a git author is a string anyone can type" if good == "N"
                                        else f"the Owner's email, and its signature does not verify (`%G?` {good})")
@@ -5966,13 +6465,13 @@ def guard_verdicts(changed, owners):
 
 
 def guard_proof(owners):
-    """What a refusal can say it proved: the Owner's signed commit — or, where a seat that is his asks for no signature, the
+    """What a refusal can say it proved: the Owner's signed commit — or, where a seat that is theirs asks for no signature, the
     author only, and how to prove the key (clause 5)."""
     return "not the Owner's signed commit" if all(m == "signed" for m in owners.values()) else GUARD_AUTHOR_ONLY
 
 
 def guard_why(what):
-    """Whose the thing changed is: his two sections, the keys his signature is verified against, or both."""
+    """Whose the thing changed is: their two sections, the keys their signature is verified against, or both."""
     keys = {k for k, *_r in what}
     return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & set(GUARDED))), (GUARD_WHY_KEYS, "signers" in keys)) if on)
 
@@ -5995,7 +6494,7 @@ def triage_pending(subject):
     """(refusals, notes) — FM-037 at commit time, in the commit-msg hook: what the commit being made does to the two
     sections, read from what it stages (the index git hands the hook, `GIT_INDEX_FILE`) against HEAD — a merge being made
     against each of its parents — and every commit a merge being made brings, walked as `--check` walks them. What the
-    hook CAN prove is the author: git signs the commit after the hook has run, so the Owner's own commit passes here on his
+    hook CAN prove is the author: git signs the commit after the hook has run, so the Owner's own commit passes here on their
     name and a seat's is refused before it is made. `--check` on the branch judges the signature: it is the gate, the hook
     best-effort (the 0.18.3 ruling on FM-033's hook). `subject` names the commit in what it says."""
     if vcs() != "git":
@@ -6544,12 +7043,12 @@ def result_facts(where):
 
 def done_cmd(words, trackers):
     """`--done <id> "<where the result is>"` — the Owner's act is done: `done:` gets the time and where its result is, the
-    act leaves his list, and its record goes under `## Acts`. His own change, made as `--answer` makes his answer: on
-    `answer/<id>`, signed where his seat is `signed`, pushed (`owner_change`). The seats that hold `answer` may run it."""
+    act leaves their list, and its record goes under `## Acts`. Their own change, made as `--answer` makes their answer: on
+    `answer/<id>`, signed where their seat is `signed`, pushed (`owner_change`). The seats that hold `answer` may run it."""
     tid, where = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
     t = next((x for x in trackers if x["id"] == tid), None)
     act = act_of(t) if t else None
-    if not act and t and vcs() == "git":                    # R3: his answer — the act — may be on `answer/<id>`, not merged yet
+    if not act and t and vcs() == "git":                    # R3: their answer — the act — may be on `answer/<id>`, not merged yet
         git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
         if git("rev-parse", "--verify", "-q", branch).returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0):
@@ -6570,9 +7069,9 @@ def done_cmd(words, trackers):
         return EXIT_LINT
     now, today = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), datetime.date.today().isoformat()
     what, _answer, _answered, due, _window, _asked = act
-    # an action's yes left `next: owner` — the promise was his hands (ANSWER_MOVE); the act done, the seat's move follows.
-    # ONLY there: a `due:` beside a question he has not answered keeps `next: owner` — the question is still his, and
-    # moving it would take it off his list unanswered (the pass's R1 on 52cfcc7)
+    # an action's yes left `next: owner` — the promise was their hands (ANSWER_MOVE); the act done, the seat's move follows.
+    # ONLY there: a `due:` beside a question they have not answered keeps `next: owner` — the question is still theirs, and
+    # moving it would take it off their list unanswered (the pass's R1 on 52cfcc7)
     fields = {"done": f'"{now} · {where}"', **({"next": "build"} if t.get("next") == "owner" and act[1] else {})}
     facts = result_facts(where)                             # the person gives the path; the record gathers the facts
     return owner_change(tid, t, dict(
@@ -6588,8 +7087,8 @@ def done_cmd(words, trackers):
 
 def due_cmd(words, trackers):
     """`--due <id> <time>` — the Owner's act moves: `due:` gets the new time, the old one goes into the record under
-    `## Acts`. On a tracker whose act was done, it is a new act: `done:` leaves the front matter, its record stays. His
-    own change, made as `--answer` makes his answer (`owner_change`); the seats that hold `answer` may run it."""
+    `## Acts`. On a tracker whose act was done, it is a new act: `done:` leaves the front matter, its record stays. Their
+    own change, made as `--answer` makes their answer (`owner_change`); the seats that hold `answer` may run it."""
     tid, when = words[0].upper(), words[1].strip() if len(words) > 1 else ""
     t = next((x for x in trackers if x["id"] == tid), None)
     if not t:
@@ -6620,14 +7119,14 @@ def due_cmd(words, trackers):
 
 
 def revoke_cmd(words, trackers):
-    """`--revoke <id> "<why>"` (FM-030, his signed answer 920970b7: *revoke* in the place of the buttons) — the Owner takes
-    back what he last did on a tracker, as a new signed commit, never an overwrite. An act done: `done:` leaves the front
-    matter, the revocation is recorded under `## Acts` beside what it revokes, and where his accepted action answer had
-    `--done` hand the move to the seat, `next: owner` is his again — the act is owed. Else his answer, taken back as
+    """`--revoke <id> "<why>"` (FM-030, their signed answer 920970b7: *revoke* in the place of the buttons) — the Owner takes
+    back what they last did on a tracker, as a new signed commit, never an overwrite. An act done: `done:` leaves the front
+    matter, the revocation is recorded under `## Acts` beside what it revokes, and where their accepted action answer had
+    `--done` hand the move to the seat, `next: owner` is theirs again — the act is owed. Else their answer, taken back as
     `--answer <id> revoke` takes it: `revoked - <why>`, the answer it replaces into the ship log with its commit. Where
     `answer/<id>` is not merged — here or on `origin` — the act is on its way there: the tracker is read at its tip and
     the revocation commits on top of it, on that branch (one branch per exchange); else `answer/<id>` is cut as for any
-    act of his. Made as `--answer` makes his answer (`owner_change`); the seats that hold `answer` may run it."""
+    act of theirs. Made as `--answer` makes their answer (`owner_change`); the seats that hold `answer` may run it."""
     tid, why = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
     t = next((x for x in trackers if x["id"] == tid), None)
     if not t:
@@ -6654,7 +7153,7 @@ def revoke_cmd(words, trackers):
     today, (was, _, where) = datetime.date.today().isoformat(), t["done"].partition(" · ")
     act = act_of({**t, "done": ""})
     what = act[0] if act else t.get("title") or tid
-    # `--done` handed the move to the seat where his accepted action answer had left it his (`next: owner`): taken back, it is his again
+    # `--done` handed the move to the seat where their accepted action answer had left it theirs (`next: owner`): taken back, it is theirs again
     fields = {"done": None, **({"next": "owner"} if act and act[1] and t.get("next") == "build" else {})}
     return owner_change(tid, t, dict(
         flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "", onto=bool(onto),
@@ -6666,7 +7165,7 @@ def revoke_cmd(words, trackers):
 
 def acted_on(trackers):
     """What a seat has acted on since the Owner's last sitting: a tracker whose exchange has moved into the body and
-    whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what his answer became.
+    whose `ask:` line is gone — named by the commit that removed it, so the Owner can read what their answer became.
 
     `-G '^ask:'`, anchored like `line_author`: trackers discuss `ask:` in their prose all the time, and a substring
     pickaxe named whichever commit last wrote a sentence about the key instead of the one that cleared the line.
@@ -6733,7 +7232,7 @@ def lint(trackers, committing=False):
     problems += ship_problems(trackers)              # FM-005: no move to Shipped without a commit behind it, every author
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
-    problems += triage_guard()[0]                    # FM-037: only the Owner changes his intent and his current path
+    problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
     by_ask = asks_by_key(trackers)
     for t in trackers:
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
@@ -6769,15 +7268,16 @@ def lint(trackers, committing=False):
                 elif how == "git" and (seat_mode(seat, who, email) if SEATS else allowed[who]) == "signed":
                     # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
-                    if not verified_as(commit, email if SEATS else None):
-                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{email if SEATS else who}` — '
+                    claimed = signed_identity(seat, who, email) if SEATS else who
+                    if not verified_as(commit, claimed):
+                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{claimed}` — '
                                         + unverified(commit, f'{(("`owner`" if at_top(seat) else "`[seats]`") + " asks this seat") if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
                                                              f'sign it (`git commit -S`), or it does not count'))
                 elif how == "git":
                     print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
                           f'{("`owner`" if at_top(seat) else "that seat in `[seats]`") if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)
         # `ask-proposal:` is the RECOMMENDED option, and the board offers it first: with options named, it must be one
-        # of them, or the Owner is shown a recommendation he cannot pick
+        # of them, or the Owner is shown a recommendation they cannot pick
         if t.get("ask_proposal") and t.get("ask_options") and t["ask_proposal"] not in t["ask_options"]:
             problems.append(f'{t["id"]}: `ask-proposal:` recommends {t["ask_proposal"]!r}, which is not one of `ask-options:` '
                             f'({" | ".join(t["ask_options"])}) — the recommendation is one of the choices, written the same way')
@@ -6889,8 +7389,11 @@ def parse_args(argv):
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
     add("--schema", action="store_true", help="print the front-matter schema — every key, its shape, who writes it. Read-only")
-    add("--html-only", action="store_true", help="write only the git-ignored board (index.html) and exit 0 — it never runs the deriver, so that board carries no derived columns")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks (pre-commit, prepare-commit-msg, commit-msg) — nothing runs after a checkout or a merge, and the post-checkout and post-merge hooks an older copy wrote, marked `# shoalmark`, are removed — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+    add("--html-only", action="store_true",
+        help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
+             "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
+             "tracks; its board carries no derived columns. It stands alone, with --root. The checkout and merge hooks run it from the copy of the tool kept in the git directory")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout, post-merge and post-rewrite, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
@@ -6991,6 +7494,11 @@ def deriver_env():
 
 
 DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit; one that hangs must not hang the gate
+# NO DERIVER IN HOOKS (the Owner's ruling filed in FM-006, *No deriver in hooks*): a hook's run of the copy starts no deriver — a deriver is the tree's own
+# program. Where the repository has one, the commit's hook leaves INDEX.md and the derived files as they are staged, never rewritten without the derived
+# columns, and says so in this line; explicit runs run the deriver, and CI's `--check` holds what it derives.
+DERIVER_HOOK_LINE = "shoalmark: the deriver runs only in explicit runs — INDEX.md and the files it derives are left as staged: run `{cmd}` before committing; CI's `--check` holds them"
+DERIVER_LEFT = False          # a hook's run of the copy found a deriver it does not start (`run_deriver`)
 
 
 def no_derived(trackers):
@@ -7002,17 +7510,25 @@ def no_derived(trackers):
 
 
 def run_deriver(trackers, mode="write", flags=()):
-    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on EVERY run but `--html-only`'s: nothing
-    derived is stored, so nothing derived can be stale. stdin: every tracker's id, status, file and front matter.
+    """B′ — the one seam. If `<tracker dir>/derive` exists and is executable it runs first, on every explicit run but `--html-only`'s: nothing
+    derived is stored, so nothing derived can be stale. A hook's run of the copy starts none (`DERIVER_LEFT`). stdin: every tracker's id, status, file and front matter.
     stdout: `{"<ID>": {"Column": "value"}, "_keys": {key: {shape, required, who, says}}, "_problems": ["…"]}`. Each
     value key becomes a column in INDEX.md and on the board, and a view on the board. `_files: {path: text}` are other
     generated files: the deriver stays free of side effects — the core writes them, reports them under --print-written
     and counts them as drift under --check. A non-zero exit REFUSES the run before anything is written.
     Returns (exit code or None, problems)."""
-    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS
+    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, FRONT_MATTER, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
     no_derived(trackers)
     exe = TRACKER_DIR / "derive"
+    if not HOOK_RUN and os.path.lexists(exe) and not real_inside(exe):     # a deriver that is a symlink starts nothing; a folder of that name is no deriver
+        rel = os.path.relpath(exe, ROOT).replace(os.sep, "/") if in_tree(exe) else str(exe)
+        print(f"shoalmark: {rel} is a symlink, or reached through one — the tool runs a deriver only as a regular file inside the repository, following no "
+              "symlink: nothing is run and nothing is written; put the deriver itself there", file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
     if not (exe.is_file() and (os.name == "nt" or os.access(exe, os.X_OK))):
+        return None, []
+    if HOOK_RUN:                                            # a hook starts no deriver: the run leaves what it derives as staged (`main`)
+        DERIVER_LEFT = True
         return None, []
     # `mode` — write · check · read.
     # `flags` — what was typed as --derive-flag on THIS invocation. Both travel on stdin, never in the environment:
@@ -7051,7 +7567,7 @@ def run_deriver(trackers, mode="write", flags=()):
     INDEX_COLUMNS = [c for c in (said.get("_index") or DERIVED_COLUMNS) if c in DERIVED_COLUMNS]
     BOARD_COLUMNS = [c for c in (said.get("_board") or DERIVED_COLUMNS) if c in DERIVED_COLUMNS]
     for rel, text in (said.get("_files") or {}).items():
-        path = (ROOT / rel).resolve()
+        path = pathlib.Path(os.path.abspath(ROOT / rel)) if SAFE_WRITES else (ROOT / rel).resolve()      # a hook's run of the copy judges the path as written: `write_problem`
         if ROOT not in path.parents:
             return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()}: `_files` names {rel} — outside the repository"]
         DERIVED_FILES[path] = str(text)
@@ -7059,7 +7575,12 @@ def run_deriver(trackers, mode="write", flags=()):
 
 
 def load_trackers():
-    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)]))
+    if not SAFE_READS:                                      # the tracker folder, read and written, judged in every run as the board's refresh judges it
+        refused = tracker_folder_problem("nothing is written, and the commit is refused" if HOOK_RUN else "nothing is read or written")
+        if refused:
+            print(refused, file=sys.stderr)
+            raise SystemExit(EXIT_LINT)
+    return mark_raised(mark_blocked([extract(p) for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name) and board_isfile(p)]))      # the reading rule
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
@@ -7067,21 +7588,29 @@ TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE
 
 def pin_problems():
     """A vendored copy carries a PIN — `sha256  path` per file. A copy that was edited in place is refused by the
-    gate: fix it upstream and vendor again, so two repositories never run two tools under one name."""
-    pin = HERE / "PIN"
-    here = str(HERE.relative_to(ROOT).as_posix()) if ROOT in HERE.parents else str(HERE)
-    if not pin.exists():
+    gate: fix it upstream and vendor again, so two repositories never run two tools under one name. The hooks' copy judges the
+    repository's own tool (`tool_here`), not itself."""
+    tool = tool_here()
+    if tool is None:
+        return []
+    pin = tool / "PIN"
+    here = str(tool.relative_to(ROOT).as_posix()) if ROOT in tool.parents else str(tool)
+    pin_text = board_text(pin)                              # the reading rule: the tool in the tree is a file of the tree too
+    if pin_text is None:
         # the tool sitting INSIDE the repository it tracks, and not at its root, is a vendored copy — and a vendored
         # copy without its PIN has had its integrity check switched off, silently
-        return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in HERE.parents else []
+        return [f"{here}/PIN is missing — a vendored shoalmark carries its PIN; vendor again with --vendor"] if ROOT in tool.parents else []
     out = []
-    for line in pin.read_text(encoding="utf-8").splitlines():
+    for line in pin_text.splitlines():
         if line.startswith("#"):                            # the manifest: where the copy came from (FM-011)
             continue
         want, _, rel = line.partition("  ")
-        if rel and not (HERE / rel).exists():               # the working tree lacks it — the checkout's finding (FM-034)
+        if rel and not _norm(tool / rel).startswith(_norm(tool).rstrip(os.sep) + os.sep):     # RV-2316: a name outside the copy is refused, and never read
+            out.append(f"{here}/PIN names {rel}, outside the copy — a PIN names only the copy's own files; vendor again with --vendor")
+            continue
+        if rel and not board_isfile(tool / rel):            # the working tree lacks it — the checkout's finding (FM-034)
             out.append(f"{here}/{rel}: the PIN names it, and {CHECKOUT_MARKS[1]} — restore it from git, or run --vendor again")
-        elif rel and digest(HERE / rel) != want:
+        elif rel and digest(tool / rel) != want:
             out.append(f"{here}/{rel}: differs from its PIN — a vendored shoalmark is not edited in place; change it upstream and run --vendor again")
     return out
 
@@ -7148,10 +7677,10 @@ def pin_report():
     """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning when it
     was no release or is partial, and one naming what is wrong when the manifest is not what `--vendor` wrote."""
     pin = HERE / "PIN"
-    if not pin.exists() or ROOT not in HERE.parents:
+    if ROOT not in HERE.parents or not board_isfile(pin):  # the reading rule: the running copy's PIN and VERSION are files of the tree, as in `pin_problems`
         return []
-    pinned = (HERE / "VERSION").read_text(encoding="utf-8").strip() if (HERE / "VERSION").exists() else ""
-    m, wrong = pin_manifest(pin.read_text(encoding="utf-8"), pinned)
+    pinned = (board_text(HERE / "VERSION") or "").strip()
+    m, wrong = pin_manifest(board_text(pin) or "", pinned)
     if wrong:
         return [f"warning: the PIN's manifest {wrong} — this copy is unverified; vendor again from a release"]
     if not m:
@@ -7170,10 +7699,16 @@ def vendor(dest, partial=False, allow_untagged=False):
     not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
     (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
     in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
-    dest = pathlib.Path(dest).resolve()
-    had = (dest / "VERSION").read_text(encoding="utf-8").strip() if (dest / "VERSION").exists() else ""
-    edited = [l.partition("  ")[2] for l in ((dest / "PIN").read_text(encoding="utf-8").splitlines() if (dest / "PIN").exists() else [])
-              if not l.startswith("#") and l.partition("  ")[2] and (dest / l.partition("  ")[2]).exists()
+    copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]   # the themes it ships travel, pinned (FM-002)
+    named = pathlib.Path(dest).absolute()
+    dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
+    for rel in copied + ["PIN"]:                            # the write rule for every file it writes — as the path is named, and under the folder it resolves to —
+        write_rule(named / rel)                             # before anything is read or written
+        write_rule(dest / rel)
+    had = (board_text(dest / "VERSION") or "").strip()     # the reading rule
+    # the file a PIN line names is read only where the copy would overwrite it — one of `copied` — and under the reading rule
+    edited = [l.partition("  ")[2] for l in (board_text(dest / "PIN") or "").splitlines()
+              if not l.startswith("#") and l.partition("  ")[2] in copied and board_isfile(dest / l.partition("  ")[2])
               and digest(dest / l.partition("  ")[2]) != l.partition("  ")[0]]
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
@@ -7189,10 +7724,8 @@ def vendor(dest, partial=False, allow_untagged=False):
               f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
         return EXIT_LINT
     lines = []
-    for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files():   # the themes it ships travel, pinned (FM-002)
+    for rel in copied:
         src = HERE / rel
-        if not src.is_file():
-            continue
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dest / rel)
         lines.append(f"{digest(src)}  {rel}")
@@ -7339,22 +7872,42 @@ hook: "{title}"
 
 HOOK_MARK = "# shoalmark"
 LEGACY_HOOK_MARK = "# fathom-mark"          # the name until 0.6.0 — a hook it wrote is still ours to rewrite
+# THE HOOKS RUN THE COPY (a private security report): every hook `--install-hook` writes runs the copy of the tool kept in the common git directory — shared by
+# every worktree, outside every working tree, written only by `--install-hook` — against the worktree it runs in, and never the tool a branch brings. The commit's
+# hooks fail closed: no copy, a refusal or the copy's bound, and the commit is refused with one line. The checkout and merge hooks never block: they run the copy's
+# read-only `--html-only` and always exit 0, with one line where the refresh failed. A person, an agent and CI run the repository's own tool, as ever.
+COPY_DIR = "shoalmark-trusted"
+COPY_AT = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --root "$(git rev-parse --show-toplevel)"'      # the copy, against this worktree — after the interpreter and `-I`
+COPY_RUN = COPY_AT + " --html-only"
+_COPY_FIND = 'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
+_COPY_SAYS = ("# It runs the copy of the tool kept in the git directory, which only `--install-hook` writes — never the tool a branch brings; the commit is refused\n"
+              "# with one line where the copy is not there, refuses it, or does not finish within its bound.\n")
+_COPY_GONE = ('if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the commit is refused — the hooks\' copy of the tool is not in the git directory: run --install-hook" >&2\n'
+              '  exit 1\nfi\n')
 HOOKS = {
-    "pre-commit": """#!/bin/sh
-{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit
-{cmd} --session-check || exit $?
-if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^"?({dir}/.*\\.md|{config}|{tool}/)'; then
-  written=$({cmd} --print-written) || exit $?
-  printf '%s\\n' "$written" | git add --pathspec-from-file=-
-fi
-""",
-    "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024)\n{cmd} --session-trailer \"$1\" \"$2\"\n",
-    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033)\n{cmd} --commit-msg \"$1\"\n",
+    "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
+                  + '{py} -I "$copy" --root "$root" --session-check || exit $?\n'
+                  "if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
+                  '  written=$({py} -I "$copy" --root "$root" --print-written) || exit $?\n'
+                  "  [ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
+    "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
+                          + 'exec {py} -I "$copy" --root "$root" --session-trailer "$1" "$2"\n',
+    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
+                  + 'exec {py} -I "$copy" --root "$root" --commit-msg "$1"\n',
 }
 
 
-OLD_HOOKS = ("post-checkout", "post-merge")             # the two an older copy wrote and `--install-hook` now removes where they carry `HOOK_MARK`
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1"', "commit-msg": '--commit-msg "$1"'}     # the one line a hook that is not ours needs
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
+              "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
+COPY_HOOKS = {
+    name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
+          "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
+          + _COPY_FIND +
+          'if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the board is not refreshed — the hooks\' copy of the tool is not in the git directory: run --install-hook"\n  exit 0\nfi\n'
+          'out=$({py} -I "$copy" --root "$root" --html-only 2>&1)\ncode=$?\n'
+          'if [ "$code" -eq 0 ]; then\n  printf \'%s\\n\' "$out"\nelse\n  echo "shoalmark: the board is not refreshed (exit $code): $(printf \'%s\' "$out" | tail -n 1)"\nfi\nexit 0\n'
+    for name, when in (("post-checkout", "checkout"), ("post-merge", "merge"), ("post-rewrite", "rebase or an amend"))
+}       # `post-rewrite`: a rebase — `git pull --rebase` with local commits among them — runs `post-checkout` before it replays them, and no other refresh after
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
@@ -7364,6 +7917,10 @@ def svn_ignore_board():
     contents already leaves the board out."""
     svn = lambda *a: subprocess.run(["svn", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    refused = tracker_folder_problem("no folder is made there, and the board is not ignored")      # the tracker folder, judged before it is made
+    if refused:
+        print(refused, file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
     if svn("info", rel).returncode:                         # not versioned yet
         if svn("add", "--parents", "--depth=empty", rel).returncode:
@@ -7406,6 +7963,235 @@ def install_hook_svn():
     return code
 
 
+def copy_files():
+    """What the hooks' copy of the tool holds, relative to the tool: the tool, the vendored `marked`, the VERSION, and the themes it ships — all it needs to render the board."""
+    return ("shoalmark.py", MARKED.relative_to(HERE).as_posix(), "VERSION") + theme_files()
+
+
+def default_branch():
+    """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only — or None where it cannot be told."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    return trunk.split("/", 1)[1] if trunk else None
+
+
+def install_copy():
+    """Write — or replace — the hooks' copy of the tool in the common git directory, `shoalmark-trusted/`: (an exit code, the lines to say). Only `--install-hook` writes it,
+    and only from this copy of the tool where it is a pinned one whose files pass their checksum (`pin_problems`, and each file's own hash, read once and written as read);
+    where there is no pin — the tool runs from the repository's root, or from outside it — from the working tree's tool, and the first line says so. It also says which
+    commit and branch it was taken from, and warns, without refusing, where that is not the default branch: the PIN it was checked against comes from the same tree, so a
+    copy installed from another branch carries that branch's tool. Beside it, `COPY` records the command it was run with, for the copy's messages."""
+    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-common-dir"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if out.returncode:
+        return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
+    target = (ROOT / out.stdout.strip()).resolve() / COPY_DIR
+    pin, lines = HERE / "PIN", []
+    problems = pin_problems()
+    if problems:
+        return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {problems[0]}", "  vendor the tool again (--vendor), then run --install-hook; no hook is written"]
+    pins = {rel: want for want, _, rel in (l.partition("  ") for l in pin.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#"))} if pin.exists() else {}
+    files = {}
+    for rel in copy_files():
+        try:
+            data = (HERE / rel).read_bytes()
+        except OSError as e:
+            return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {rel} cannot be read ({e.strerror or type(e).__name__})"]
+        if pin.exists() and hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest() != pins.get(rel):
+            return EXIT_LINT, [f"--install-hook: the hooks' copy of the tool is not written — {rel} is " + ("not named by the PIN" if rel not in pins else "not what the PIN names")
+                               + "; vendor the tool again (--vendor), then run --install-hook"]
+        files[rel] = data
+    if not pin.exists():
+        lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
+    here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
+    sha = (git_out("rev-parse", "--short", "HEAD") or "").strip() or "no commit yet"
+    branch = (git_out("branch", "--show-current") or "").strip()
+    default = default_branch()
+    stage = target.with_name(COPY_DIR + ".new")
+    shutil.rmtree(stage, ignore_errors=True)
+    for rel, data in files.items():
+        (stage / rel).parent.mkdir(parents=True, exist_ok=True)
+        (stage / rel).write_bytes(data)
+    put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by every hook it writes, and by nothing else\n"
+        f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n"
+        f"cmd: {CMD_OWN}\n")
+    if target.is_symlink():
+        target.unlink()
+    shutil.rmtree(target, ignore_errors=True)
+    os.replace(stage, target)
+    lines.append(f"wrote {target} — the hooks' copy of the tool, {__version__}, from {HERE / 'shoalmark.py'} at {sha} on {branch or '(detached HEAD)'}")
+    same_tree = "the PIN this copy was checked against comes from the same tree, so " if pin.exists() else ""     # a PIN is named only where one is pinned
+    if default is None:
+        lines.append(f"warning: the default branch cannot be told here (no origin/HEAD, origin/main or origin/master) — {same_tree}"
+                     f"a copy installed from a branch that is not the default one carries that branch's tool: run --install-hook on your default branch")
+    elif branch != default:
+        lines.append(f"warning: {branch or '(detached HEAD)'} is not {default}, the default branch — {same_tree}"
+                     f"a copy installed from another branch carries that branch's tool: run --install-hook on {default}")
+    return EXIT_OK, lines
+
+
+_COPY_RECORD = None
+
+
+def copy_record():
+    """What `--install-hook` wrote beside the hooks' copy — its `COPY` file, read once, as data: {} where this run is not the copy. A value that is not one
+    printable line is no value."""
+    global _COPY_RECORD
+    if _COPY_RECORD is None:
+        marker = HERE / "COPY"
+        try:
+            made = read_flat(marker.read_text(encoding="utf-8")) if marker.is_file() else {}
+        except (OSError, UnicodeDecodeError):
+            made = {}
+        _COPY_RECORD = {k: v for k, v in made.items() if isinstance(v, str) and len(v) < 400 and v.isprintable()}
+    return _COPY_RECORD
+
+
+def tree_tool_dir():
+    """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says — or None where that was outside
+    the repository, or is not said."""
+    tool = copy_record().get("tool", "-")
+    if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
+        return None
+    return ROOT / tool if tool else ROOT
+
+
+def tool_here():
+    """Where the repository's own tool is, for its PIN: this file's folder — in the hooks' copy, the tree's tool's (`tree_tool_dir`)."""
+    return tree_tool_dir() if HOOK_RUN else HERE
+
+
+def tree_bytes(path):
+    """A file of the tree as bytes, `\\r\\n` read as `\\n` — or None where it is not there, or, in the board's run, not a regular file inside the repository."""
+    path = pathlib.Path(path)
+    if not board_isfile(path):
+        return None
+    try:
+        return path.read_bytes().replace(b"\r\n", b"\n")
+    except OSError:
+        return None
+
+
+def hooks_copy_drift():
+    """Where this run IS the hooks' copy (its `COPY` file is beside it): the one line that says the repository's own tool is not the copy — another version, read as
+    data from the PIN's manifest or the VERSION of the tool the copy was taken from; or the same version with other files — else "". Where the tree holds no
+    `shoalmark.py` there, there is nothing to compare."""
+    if not (HERE / "COPY").is_file():
+        return ""
+    tool = tree_tool_dir()
+    if tool is None:
+        return ""
+    pin, version = board_text(tool / "PIN"), board_text(tool / "VERSION")
+    first = (pin or "").splitlines()[0] if pin else ""
+    manifest = MANIFEST_RE.fullmatch(first)
+    pinned = manifest.group(1) if manifest else (version or "").strip()
+    if re.fullmatch(r"\d+\.\d+\.\d+", pinned) and pinned != __version__:
+        return f"the hooks' copy is {__version__}, the repository pins {pinned}: run --install-hook"
+    if tree_bytes(tool / "shoalmark.py") is None:
+        return ""
+    if any(tree_bytes(tool / rel) != (HERE / rel).read_bytes().replace(b"\r\n", b"\n") for rel in copy_files()):
+        return f"the hooks' copy is {__version__}, and the repository's tool differs from it: run --install-hook"
+    return ""
+
+
+def worktree_tops(live=False):
+    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved. `live`: only
+    those it does not mark `prunable` — a worktree whose folder is gone has no tree, and no hook runs there."""
+    tops = {os.path.realpath(ROOT)}
+    for record in (git_out("worktree", "list", "--porcelain") or "").split("\n\n"):
+        lines = record.splitlines()
+        top = next((l[len("worktree "):] for l in lines if l.startswith("worktree ")), None)
+        if top and not (live and any(l == "prunable" or l.startswith("prunable ") for l in lines)):
+            tops.add(os.path.realpath(top))
+    return sorted(tops)
+
+
+def hooks_folder_problem(hooks):
+    """Why `--install-hook` writes nothing into the hooks folder git reads, in one line — or "": it resolves, symlinks resolved, inside a working tree of this
+    repository and outside its git directory, so a branch can change the hooks themselves. It is judged against EVERY working tree `git worktree list` names,
+    the main one and each linked one: a relative `core.hooksPath` is read where each of them resolves it — a hook runs in the working tree of whichever
+    worktree it runs in — and an absolute one as it is; with none set, the folder is the common git directory's `hooks`, which passes. `hooks` is that
+    folder as this worktree resolves it."""
+    tops = worktree_tops()
+    said = (git_out("config", "--path", "--get", "core.hooksPath") or "").strip()
+    seen = [hooks] if not said or os.path.isabs(said) else [os.path.join(top, said) for top in tops]
+    for where in seen:
+        real = os.path.normcase(os.path.realpath(where))
+        if in_git_dir(real):
+            continue
+        for top in tops:
+            top = os.path.normcase(top)
+            if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
+                return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
+                        f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
+    return ""
+
+
+def config_file_problem():
+    """Why `--install-hook` writes nothing because of where git reads its configuration from, in one line — or "": a value comes from a file that resolves,
+    symlinks resolved, inside a working tree of this repository and outside its git directory (an `include.path` into the tree, say), so a branch can
+    change what git runs — a hooks folder, a filter, a program. Read from `git config --list --show-origin` and judged as the hooks folder is: against
+    every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass. The target of every include
+    setting is judged the same way (`include_targets`): conditional ones whether or not the condition holds, and whether or not the target exists yet. The
+    settings are read from EVERY working tree, as each reads them — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`) —
+    as the hooks folder is judged in every one; a worktree marked `prunable` is skipped (`worktree_tops`)."""
+    tops = [os.path.normcase(t) for t in worktree_tops(live=True)]
+    inside = lambda real: next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
+    for here in tops:
+        out = subprocess.run(["git", "-C", here, "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", env=nested_git_env())
+        listing = out.stdout.split("\0") if out.returncode == 0 else []
+        for origin in listing[0::2]:
+            if not origin.startswith("file:"):
+                continue
+            where = origin[len("file:"):]
+            real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(here, where)))
+            if in_git_dir(real):
+                continue
+            top = inside(real)
+            if top:
+                return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
+                        f"copy is written; keep that setting in .git/config or outside every working tree")
+        for holder, target in include_targets(listing, here):
+            real = os.path.normcase(os.path.realpath(target))
+            if in_git_dir(real):
+                continue
+            top = inside(real)
+            if top:
+                return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
+                        f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
+    return ""
+
+
+INCLUDE_KEY = re.compile(r"include(?:if\..*)?\.path", re.I | re.S)     # `include.path`, and `includeIf.<condition>.path` whatever the condition
+
+
+def include_targets(listing, here=None):
+    """Every include setting of git's configuration, as (the file that holds it, or None for the command line; its target). The target is taken as
+    written, whether or not it exists: `~` from the home folder, `%(prefix)/` from git's own, any other relative target from the folder of the file that
+    holds it. A target that is a file is read for its own include settings in turn, whatever its condition. `listing` is `git config --list --show-origin
+    -z` split at its NULs, run in the working tree `here` (the repository's root where none is named): a relative origin is read from there."""
+    at = lambda origin: os.path.join(here or ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
+    todo = [(at(o), *e.partition("\n")[::2]) for o, e in zip(listing[0::2], listing[1::2])]
+    found, read = [], set()
+    while todo:
+        holder, key, value = todo.pop(0)
+        if not INCLUDE_KEY.fullmatch(key) or not value:
+            continue
+        if value.startswith("%(prefix)/"):
+            target = os.path.join(re.sub(r"[\\/]libexec[\\/]git-core[\\/]*$", "", (git_out("--exec-path") or "").strip()), value[len("%(prefix)/"):])
+        else:
+            target = os.path.expanduser(value)
+            if not os.path.isabs(target):
+                if holder is None:
+                    continue                                # git refuses a relative include that comes from no file
+                target = os.path.join(os.path.dirname(holder), target)
+        found.append((holder, target))
+        if os.path.realpath(target) not in read and os.path.isfile(target):
+            read.add(os.path.realpath(target))
+            todo += [(target, *e.partition("\n")[::2]) for e in (git_out("config", "--file", target, "--no-includes", "--list", "-z") or "").split("\0") if e]
+    return found
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
@@ -7416,25 +8202,28 @@ def install_hook():
         print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT
     hooks = (ROOT / out.stdout.strip()).resolve()
+    refused = hooks_folder_problem(hooks) or config_file_problem()
+    if refused:                                             # a hooks folder, or a configuration file, a branch can change runs what the branch names: no hook, and no copy
+        print(refused, file=sys.stderr)
+        return EXIT_LINT
     hooks.mkdir(parents=True, exist_ok=True)
     fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT).as_posix(), config=CONFIG_NAME,
                 tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
     code = EXIT_OK
-    for name, text in HOOKS.items():
+    copy_code, copy_lines = install_copy()
+    hook_set = {**HOOKS, **COPY_HOOKS} if copy_code == EXIT_OK else {}      # every hook runs the copy: none is written where it is not there
+    for name, text in hook_set.items():
         path = hooks / name
         if path.exists() and not any(m in path.read_text(encoding="utf-8", errors="replace") for m in (HOOK_MARK, LEGACY_HOOK_MARK)):
-            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{CMD} {HOOK_LINES.get(name, '--html-only')}`", file=sys.stderr)
+            print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{PY} -I {COPY_AT} {HOOK_LINES[name]}`", file=sys.stderr)
             code = EXIT_LINT
             continue
-        put(path, text.format(**fill))
+        put(path, text.format(py=PY, **fill))
         path.chmod(0o755)
         print(f"wrote {path}")
-    for name in OLD_HOOKS:                                     # written until 0.19.0, which ran the tool — and through it a deriver a branch brought — after every checkout and merge
-        path = hooks / name
-        if path.is_file() and HOOK_MARK in path.read_text(encoding="utf-8", errors="replace"):
-            path.unlink()
-            print(f"removed {path} — it ran after every {'checkout' if name == 'post-checkout' else 'merge'}; nothing shoalmark installed runs then now")
-    return code
+    for line in copy_lines:
+        print(line, file=sys.stderr if copy_code != EXIT_OK or line.startswith("warning:") else sys.stdout)
+    return code or copy_code
 
 
 def init(key=None):
@@ -7444,17 +8233,19 @@ def init(key=None):
         print(f"--key: {key!r} is not an id prefix — letters and digits, starting with a letter", file=sys.stderr)
         return EXIT_LINT
     fresh_config = not (ROOT / CONFIG_NAME).exists()
-    for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
-                       (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))):
-        if not path.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            put(path, text)
-            wrote.append(path)
+    made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
+                                            (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
+    for path, _text in made:                                # the write rule for both, before a folder is made
+        write_rule(path)
+    for path, text in made:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        put(path, text)
+        wrote.append(path)
     if fresh_config:
         configure(ROOT)
     section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), state=HEAD["state"], cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
     agents = ROOT / "AGENTS.md"
-    have = agents.read_text(encoding="utf-8") if agents.exists() else ""
+    have = board_text(agents) or ""                         # the reading rule
     if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
         a = have.index(LEGACY_CONTRACT[0]); have = have[:a] + have[have.index(LEGACY_CONTRACT[1]) + len(LEGACY_CONTRACT[1]):].lstrip("\n")
     if CONTRACT_BEGIN in have and CONTRACT_END in have:
@@ -7469,7 +8260,7 @@ def init(key=None):
         put(claude, "# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n")
         wrote.append(claude)
     ignore, rel = ROOT / ".gitignore", TRACKER_DIR.relative_to(ROOT).as_posix()
-    have = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
+    have = board_text(ignore) or ""
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
     if vcs() == "svn":                                      # Subversion ignores by property, not by file
         svn_ignore_board()
@@ -7563,7 +8354,7 @@ def new_tracker(words, trackers, tags_arg=None):
     for score, t in near:
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
     house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
-    template = house.read_text(encoding="utf-8") if house.is_file() else TRACKER_TEMPLATE
+    template = board_text(house) or TRACKER_TEMPLATE        # the reading rule
     frozen = filing_freeze(trackers)
     tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
     if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
@@ -7591,11 +8382,85 @@ def new_tracker(words, trackers, tags_arg=None):
     tid = f"{kind}-{num:03d}"
     slug = slug_of(title)
     path = TRACKER_DIR / f"{tid}-{slug}.md"
+    write_rule(path)                                        # the write rule, before its folder is made
     TRACKER_DIR.mkdir(parents=True, exist_ok=True)
     text = template.format(id=tid, title=title.replace('"', "'"), today=datetime.date.today().isoformat(), **HEAD)
     put(path, set_front(text, "tags", ", ".join(tags)) if tags_arg is not None else text)
     print(f"wrote {path.relative_to(ROOT).as_posix()} — fill `considered:` with the ids you held it against, or `none`; the gate refuses it until then")
     return EXIT_OK
+
+
+def board_run(root):
+    """`--html-only`: the board's own run, the one a checkout and a merge hook starts (a private security report). It reads what the repository holds
+    and writes the board — `index.html` and `view/<ID>.js` in the tracker folder — and does nothing else:
+    - it starts no deriver and no program but read-only git — `board_tripwire` refuses anything else where Python does it;
+    - it reads the tree only as regular files inside the repository, through no symlink: the trackers, the configuration, the brand's files;
+    - the tracker folder must resolve inside the repository, and the board is written only there, never through a symlink and never over a file git tracks;
+    - it imports nothing from the repository, and writes no bytecode.
+    What it leaves alone it names, in one line — and where that is the page itself, it prints that line and no link; a tracker folder it refuses, in one line, exit 4."""
+    global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED
+    saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"), SAFE_WRITES)
+    SAFE_READS, SAFE_WRITES, _TRACKED = True, True, None
+    BOARD_LEFT.clear(), TRIPPED.clear()
+    sys.dont_write_bytecode = True
+    os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
+    try:
+        configure(root)
+        sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
+        refused = tracker_folder_problem()
+        if refused:
+            print(refused, file=sys.stderr)
+            return EXIT_LINT
+        arm_tripwire()
+        trackers = load_trackers()
+        no_derived(trackers)                                        # no deriver: no derived column, file, note or key
+        if TRACKER_DIR.is_dir():
+            tracked = tracked_board_rels()
+            if any(r != HTML_OUT.relative_to(ROOT).as_posix() for r in tracked):     # the cold review's F1: no page this run writes loads a view git tracks
+                line = tracked_board_line(tracked)
+                if board_write(HTML_OUT, tracked_board_page(line)):     # a page git tracks itself is left as committed, with its line
+                    print(line, file=sys.stderr)                    # in place of the link
+            else:                                                   # a page git tracks is left as committed, its line said in place of the link
+                written = board_write(HTML_OUT, render_html(trackers))
+                write_views(trackers)
+                if written:
+                    print(board_link())                             # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
+            drift = hooks_copy_drift()
+            if drift:
+                print(drift)                                        # the hook still refreshed: it only says that the copy is not what the repository pins
+        return EXIT_OK
+    except ReadOnlyRun as e:
+        print(f"the board's run was stopped: {e} — it starts nothing but read-only git and writes only the board", file=sys.stderr)
+        return EXIT_LINT
+    finally:
+        _TRIPWIRE = SAFE_READS = False
+        SAFE_WRITES = saved[3]
+        sys.dont_write_bytecode, sys.path[:] = saved[0], saved[1]
+        if saved[2] is None:
+            os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+        else:
+            os.environ["NoDefaultCurrentDirectoryInExePath"] = saved[2]
+        if BOARD_LEFT:
+            shown = ", ".join(f"{rel} ({why})" for rel, why in BOARD_LEFT[:4]) + (f" and {len(BOARD_LEFT) - 4} more" if len(BOARD_LEFT) > 4 else "")
+            print(f"board: left alone — {shown}", file=sys.stderr)
+
+
+_AUDIT_HOOKED = [False]
+BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 35)      # how long the board's run, or any hook's run of the copy, may take: nothing waits longer for it
+
+
+def board_watchdog(board=True):
+    """Bound the board's run when it is a program (a hook's, a hand run's), and every hook's run of the copy: after `BOARD_RUN_SECONDS` a thread of its own says so on stderr
+    and ends the process, exit 4, whatever the main thread waits on — a lock, a child, a pipe. A checkout or a merge hook prints one line and returns, so they never wait on
+    it; a commit's hook (`board` false) fails closed: its one line says the commit is refused, and the hook's exit refuses it."""
+    said = (f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped" if board
+            else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer")
+    def stop():
+        os.write(2, (said + "\n").encode("utf-8"))
+        os._exit(EXIT_LINT)
+    timer = threading.Timer(BOARD_RUN_SECONDS, stop)
+    timer.daemon = True
+    timer.start()
 
 
 def main(argv=None):
@@ -7609,6 +8474,12 @@ def main(argv=None):
         if alone:                                           # a flag that means nothing alone is refused, never silently ignored
             print(f"{flag} goes with {needs} — {like}", file=sys.stderr)
             return 2
+    if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
+        others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
+        if others:
+            print(f"--html-only is the board's read-only run and stands alone, with --root: {', '.join(others)} goes with another run", file=sys.stderr)
+            return 2
+        return board_run(args.root)
     if args.tsvn_hook:
         # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
         # one this copy of the tool lives in. `start` runs before the commit dialog lists its files, so the INDEX.md
@@ -7617,6 +8488,13 @@ def main(argv=None):
         args = parse_args(["--root", str(ROOT)] + ([] if args.tsvn_hook[0] == "start" else ["--check"]))
     if args.root:
         configure(args.root)
+    if HOOK_RUN:                                            # a hook's run of the copy writes only inside the repository, outside its git directory, through no symlink
+        global SAFE_WRITES
+        SAFE_WRITES = True
+        os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts a program from the current directory first, and the checkout's is the branch's
+        drift = "" if args.print_written else hooks_copy_drift()        # once per hook: the pre-commit hook says it with --session-check, before --print-written
+        if drift:
+            print(drift, file=sys.stderr)
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
@@ -7655,15 +8533,11 @@ def main(argv=None):
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
     mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
-    if args.html_only:                                    # the board's run never reaches the deriver: nothing a hook starts executes a file a branch brought (a private security report)
-        refused, derived_problems = None, []
-        no_derived(trackers)
-    else:
-        refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
+    refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
         return EXIT_OK
-    if refused is not None and not args.html_only:            # the deriver said no: nothing is judged, nothing is written
+    if refused is not None:                                 # the deriver said no: nothing is judged, nothing is written
         for p in derived_problems:
             print(f"  {p}", file=sys.stderr)
         print("REFUSED by the deriver — nothing was written.", file=sys.stderr)
@@ -7697,12 +8571,6 @@ def main(argv=None):
         return code
     if args.next:
         return next_up(trackers)
-    if args.html_only:
-        if TRACKER_DIR.is_dir():
-            put(HTML_OUT, render_html(trackers))
-            write_views(trackers)
-            print(board_link())                                 # where the board is written, to open (FM-006); never with --print-written, whose stdout is paths for `git add`
-        return EXIT_OK
     if not TRACKER_DIR.is_dir():
         print(f"no tracker directory at {TRACKER_DIR} — run `{CMD} --init`", file=sys.stderr)
         return EXIT_LINT
@@ -7713,13 +8581,14 @@ def main(argv=None):
             return EXIT_LINT
         today = datetime.date.today().isoformat()
         out = TRACKER_DIR / "evidence" / "triage" / f"triage-{today}.md"
+        write_rule(out)                                     # the write rule, before its folder is made — as for the derived files
         out.parent.mkdir(parents=True, exist_ok=True)
         sheets = sorted(out.parent.glob("triage-*.md"))
         superseded = []
-        applied, errors = apply_worksheet(sheets[-1].read_text(encoding="utf-8"), sheets[-1] == out, trackers, today, superseded) if sheets else ([], [])
+        applied, errors = apply_worksheet(board_text(sheets[-1]) or "", sheets[-1] == out, trackers, today, superseded) if sheets else ([], [])      # the reading rule
         trackers = load_trackers()
         run_deriver(trackers, "write", args.derive_flag)
-        earlier = out.read_text(encoding="utf-8") if out.exists() else ""
+        earlier = board_text(out) or ""
         text, left = triage_worksheet(trackers, today, last_worked_on, earlier, repos_naming())
         put(out, text)
         print(TRIAGE_RULES.format(path=out.relative_to(ROOT).as_posix(), left=left, home=home.relative_to(ROOT).as_posix(), days=TRIAGE_DAYS, sized=SIZED_LINES, current_path=path_now,
@@ -7772,12 +8641,12 @@ def main(argv=None):
 
     drifted = False
     if args.check:
-        on_disk = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
+        on_disk = board_text(OUT) or ""                     # the reading rule
         drifted = drift_normalize(on_disk) != drift_normalize(body)
         if drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
         for path, text in sorted(DERIVED_FILES.items()):
-            if not path.exists() or path.read_text(encoding="utf-8") != text:
+            if board_text(path) != text:
                 drifted = True
                 print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
         if not drifted:
@@ -7792,17 +8661,37 @@ def main(argv=None):
         elif freeze_unpassable():
             print(freeze_unpassable(), file=log)
     else:
-        put(OUT, body)
-        put(HTML_OUT, render_html(trackers))   # git-ignored; never staged
-        write_views(trackers)
-        print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
-        print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
-        if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
-            print(board_link())
-        for path, text in sorted(DERIVED_FILES.items()):
-            path.parent.mkdir(parents=True, exist_ok=True)
-            put(path, text)
-        if args.print_written:                 # the caller stages what we OWN, never a guessed glob
+        refused = tracker_folder_problem("nothing is written, and the commit is refused") if SAFE_WRITES else ""
+        if refused:                                             # a hook's run of the copy writes nothing where the tracker folder may lead it out
+            print(refused, file=sys.stderr)
+            return EXIT_LINT
+        try:
+            for target in ([] if DERIVER_LEFT else [OUT]) + [HTML_OUT, *sorted(DERIVED_FILES)]:     # the write rule for every file this run writes, before it writes one
+                write_rule(target)
+            if os.path.lexists(VIEW_DIR) and (SAFE_WRITES or in_tree(VIEW_DIR)) and not (real_inside(VIEW_DIR) and VIEW_DIR.is_dir()):
+                view_dir_refused()
+            if DERIVER_LEFT:                                        # a hook ran no deriver: INDEX.md and what it derives stay as staged, never rewritten without its columns
+                print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
+            else:
+                put(OUT, body)
+            board_write(HTML_OUT, render_html(trackers))   # git-ignored; never staged
+            write_views(trackers)
+            if not DERIVER_LEFT:
+                print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
+                print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
+            if not args.print_written:                              # the pre-commit run pipes its stdout into `git add` and its output stays as it was
+                print(board_link())
+            for path, text in sorted(DERIVED_FILES.items()):        # none where a hook ran no deriver
+                guard_write(path)                                   # before its folder is made
+                path.parent.mkdir(parents=True, exist_ok=True)
+                put(path, text)
+        except ReadOnlyRun as e:                                    # what a hook's run of the copy will not write refuses the commit, in one line
+            print(f"shoalmark: the hooks' copy stopped: {e} — the commit is refused", file=sys.stderr)
+            return EXIT_LINT
+        if SAFE_WRITES and BOARD_LEFT:
+            shown = ", ".join(f"{rel} ({why})" for rel, why in BOARD_LEFT[:4]) + (f" and {len(BOARD_LEFT) - 4} more" if len(BOARD_LEFT) > 4 else "")
+            print(f"board: left alone — {shown}", file=sys.stderr)
+        if args.print_written and not DERIVER_LEFT:     # the caller stages what we OWN, never a guessed glob — nothing where a hook ran no deriver
             for path in [OUT, *sorted(DERIVED_FILES)]:
                 print(path.relative_to(ROOT).as_posix())
 
@@ -7823,7 +8712,15 @@ def main(argv=None):
     return EXIT_DRIFT if drifted else EXIT_OK
 
 
+if __name__ == "__main__":                                  # what is said while the configuration is read, here, is in UTF-8 too — as `main` says
+    for _stream in (sys.stdout, sys.stderr):                # everything after: a Windows console in cp1252 would say `—` in its own code page
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
+if SAFE_READS or HOOK_RUN:
+    board_watchdog(board=SAFE_READS)                                        # the board's run, and every hook's run of the copy, is bounded
 configure()
+SAFE_READS = False
 
 if __name__ == "__main__":
     sys.exit(main())
