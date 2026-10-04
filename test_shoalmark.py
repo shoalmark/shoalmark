@@ -8116,6 +8116,23 @@ with tempfile.TemporaryDirectory() as tmp:
     c_ko_, g_ko_ = made37_("ap/037-owner-path", "AP-037: his line, his key", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), "-S", OWNER_)
     check(f"FM-037 · AU-19 · the Owner's real key still verifies against the default branch's file: his signed change to the signers file is accepted, and his signed change to the path (saw {g_k_!r})",
           g_k_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-keys` since origin/main, 1 change them or their signers file, each their own commit") and g_ko_[0] == [])
+    # v0.19.1 · the signers file this clone names, made a symlink by a branch, to a file outside the repository: nothing verifies against it
+    if _SYMLINKS:
+        outside37_ = base / "outside_signers"; outside37_.write_text("h@x " + skey_.with_suffix(".pub").read_text())
+        def link37_():                                  # the checkout's signers file, a link to a file no checkout holds, the seat's key under the Owner's email
+            signers37_.unlink(); os.symlink(str(outside37_), str(signers37_))
+        as_owner_with_seat_key37_ = (OWNER_, "-c", "user.signingkey=" + str(skey_), "-c", "commit.gpgsign=true")
+        c_l1_, c_l2_ = by_hand37_("ap/037-signers-link", "main", ("AP-037: the signers file", link37_, *as_owner_with_seat_key37_),
+                                  ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
+        g_l_ = guard37_(); code_l_, _o, err_l_ = run(root, "--check")
+        link_said37_ = "the signers file is, or is reached through, a symlink, and nothing verifies against it"
+        check(f"FM-006 · v0.19.1 · where the signers file this clone names is a symlink a branch wrote, to a file outside the repository holding the seat's key under the Owner's email, the seat's signed change to `## The intent` "
+              f"is not accepted: `--check` exits 4, each signed commit one this clone cannot verify, the line saying the file is a symlink (saw {code_l_}, {g_l_[0]!r})",
+              code_l_ == fm.EXIT_LINT and len(g_l_[0]) == 2 and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}" in l_ and link_said37_ in l_ for l_ in g_l_[0])
+              and any(f"`{c_l2_[:10]}`" in l_ and "changes the text under `## The intent`" in l_ for l_ in g_l_[0]) and link_said37_ in err_l_)
+        git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    else:
+        _skipped("FM-006 · v0.19.1 · a signers file that is a symlink", 1, "this system makes no symlinks")
     # the cold re-review's R1 · `--answer` asks the gate's own test before it pushes — the default branch's signers file. Mid
     # key rotation, his new key only on his branch's copy: the answer it signs is NOT pushed, and neither the command nor the
     # gate tells him to sign a commit he signed — each names the file the key must reach first

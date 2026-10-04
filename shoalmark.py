@@ -4843,7 +4843,9 @@ def trusted_signers():
     for nothing. Where the default branch does not carry it, NOTHING verifies against it until its first version lands
     there (FM-037's cold re-review, R2): the checkout's copy is whatever branch is checked out, and a checkout on a branch
     that writes one vouched for another pull request's commits. A file outside every checkout is used as it is: no branch
-    writes it; so is the clone's file where there is no default branch to read. Read once per run."""
+    writes it; so is the clone's file where there is no default branch to read. A path that is a symlink, or is reached
+    through one, inside a checkout — a link a branch can write — is refused before anything decides which checkout holds
+    it, as a deriver is (`run_deriver`): nothing verifies against it (`symlink_in_checkout`). Read once per run."""
     global _SIGNERS
     if _SIGNERS is not None:
         return _SIGNERS
@@ -4851,14 +4853,20 @@ def trusted_signers():
     if not conf:
         _SIGNERS = {"file": None, "why": "`gpg.ssh.allowedSignersFile` is not set", "rel": None, "trunk": None}
         return _SIGNERS
-    path = (pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf).resolve()
+    written = pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf
+    tops = [line[len("worktree "):] for line in (git_out("worktree", "list", "--porcelain") or "").splitlines() if line.startswith("worktree ")]
+    link = symlink_in_checkout(written, [os.path.realpath(t) for t in tops])
+    if link:
+        _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, and `{link}` on the way to it is a symlink in a checkout: the signers file "
+                                         "is, or is reached through, a symlink, and nothing verifies against it — name the file itself", "rel": None, "trunk": None}
+        return _SIGNERS
+    path = written.resolve()
     rels = []                                               # its path under each checkout that holds it — the nearest one wins,
-    for line in (git_out("worktree", "list", "--porcelain") or "").splitlines():     # for a checkout nested in another
-        if line.startswith("worktree "):
-            try:
-                rels.append(path.relative_to(pathlib.Path(line[len("worktree "):]).resolve()).as_posix())
-            except ValueError:
-                continue
+    for top in tops:                                        # for a checkout nested in another
+        try:
+            rels.append(path.relative_to(pathlib.Path(top).resolve()).as_posix())
+        except ValueError:
+            continue
     rel = min(rels, key=lambda r: r.count("/")) if rels else None
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git) if rel else None
@@ -4877,6 +4885,21 @@ def trusted_signers():
     else:
         _SIGNERS = {"file": str(path), "why": "", "rel": rel, "trunk": trunk}
     return _SIGNERS
+
+
+def symlink_in_checkout(path, tops):
+    """The first symlink on the way to `path` — itself, or a folder above it — that sits inside one of the checkouts `tops`
+    (real paths): a link a branch can write. "" where there is none: a link outside every checkout — the system's own, say —
+    is no branch's to write."""
+    at, chain = os.path.abspath(os.fspath(path)), []
+    while True:
+        chain.append(at)
+        up = os.path.dirname(at)
+        if up == at:
+            break
+        at = up
+    inside = lambda real: any(os.path.normcase(real) == os.path.normcase(t) or os.path.normcase(real).startswith(os.path.normcase(t).rstrip(os.sep) + os.sep) for t in tops)
+    return next((q for q in reversed(chain) if os.path.islink(q) and inside(os.path.realpath(os.path.dirname(q)))), "")
 
 
 def signers_args():
