@@ -4690,6 +4690,14 @@ def svn_new(rel):
     return _SVN_NEW[rel]
 
 
+def svn_tracker_new(t):
+    """`svn_new` of a tracker's file — where Subversion's record cannot be read, True: the rights refuse it, in their one line (`blame_refusal`)."""
+    try:
+        return svn_new((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())
+    except SvnUnreadable:
+        return True
+
+
 def svn_blame(rel):
     """{line number: (author, revision)} for one file, from the server's own record — read once per file and kept:
     the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository. {} for a
@@ -4712,8 +4720,9 @@ def svn_blame(rel):
         for e in (blame.iter("entry") if blame is not None else []):
             who, c = e.find("commit/author"), e.find("commit")
             out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
-    except (ValueError, TypeError):
-        out = {}
+    except (ValueError, TypeError):                     # a blame that cannot be read is no answer of the history's: refused, never read as nothing committed
+        _SVN_BLAME[rel] = SvnUnreadable("svn blame printed lines that could not be read")
+        raise _SVN_BLAME[rel]
     if out:
         try:
             log = svn_run("log", "-q", "--stop-on-copy", rel, xml=True)
@@ -4804,7 +4813,9 @@ def exact_line_regex(line):
 
 def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
-    file: (name, email, system, commit), or (None, None, "uncommitted", ""). Git's author is a string anyone can type,
+    file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
+    is not committed yet (the working copy or the index carries it, no commit does), and (None, None, "unattributed", "")
+    where it names no commit for a line a commit carries. Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
     has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one.
 
@@ -4826,7 +4837,9 @@ def line_author(path, needle):
         n = guarded_line(raw, key, cr_breaks=True)
         if n is not None and n in by_line:
             who, rev = by_line[n]
-            out = (who, None, "svn", rev)
+            out = (who, None, "svn", rev) if rev else out       # a line changed in the working copy has no revision yet
+        elif by_line:
+            out = (None, None, "unattributed", "")
     else:
         # `--full-history` or the answer is the wrong seat's. Git's default history simplification follows ONE parent of
         # a merge when the merge is TREESAME to it — and a branch that moves a line away and back (owner -> review ->
@@ -4848,7 +4861,9 @@ def line_author(path, needle):
         if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys
             _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for rev in tips for l in subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True,
                                                                                                      env=nested_git_env()).stdout.decode("utf-8", errors="replace").split("\n")]
-        if line is not None and line in _LINE_AUTHOR[("tips", rel)]:
+        if line is None:
+            out = (None, None, "unattributed", "")
+        elif line in _LINE_AUTHOR[("tips", rel)]:
             try:
                 log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
                                      text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -4857,8 +4872,22 @@ def line_author(path, needle):
             if log is not None and log.returncode == 0 and log.stdout.strip():
                 commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
                 out = (name, email, "git", commit)
+            else:
+                out = (None, None, "unattributed", "")
     _LINE_AUTHOR[(rel, key)] = out
     return out
+
+
+def unattributed(t, needle, how):
+    """LAYER 3 (the Owner's ruling of 2026-10-04, v0.19.1): a guarded line no commit can be named for is refused, in one line — never judged
+    as whoever runs the gate. Not committed yet, it is judged only in the run that makes its commit (git's pre-commit hook), as that
+    commit's author; Subversion knows who makes a commit only once it is made."""
+    if how == "uncommitted":
+        return (f'{t["id"]}: `{needle}` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes '
+                f'that commit judges it before: commit it' + (" (on Subversion who makes a commit is known only once it is made)" if vcs() == "svn" else "")
+                + ", then run again")
+    return (f'{t["id"]}: `{needle}` — version control names no commit for this line, so who set it is not known; it is refused, never judged '
+            f'as whoever runs the gate. Write it again, in a commit of its own')
 
 
 def pending_author():
@@ -5200,18 +5229,22 @@ def seat_problems(t):
     `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
     also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
     about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
-    the line, so the Owner's QUEUE can drop an ask that reached them another way. It catches an agent that does not
-    know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
+    the line, so the Owner's QUEUE can drop an ask that reached them another way. Anywhere else, a line no commit can be
+    named for is refused (`unattributed`). It catches an agent that does not know the rule, not one that lies: that is
+    FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
     try:
         name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
     except SvnUnreadable as e:
         return blame_refusal(t, e)
-    if how == "uncommitted":
-        if vcs() == "svn":
-            return []                                    # Subversion has no client hook; the server's gate reads it next
-        name, email, commit = (*pending_author(), "")    # not committed yet: the author git is about to write is who is asking
+    if how not in ("git", "svn"):
+        if how == "uncommitted" and vcs() == "git" and COMMITTING:
+            name, email, commit = (*pending_author(), "")    # the pre-commit run: the author git is about to write is who is asking
+        elif how == "uncommitted" and vcs() == "svn" and svn_tracker_new(t):
+            return []                                    # a tracker Subversion holds no revision of: the rights refuse it, in one line
+        else:
+            return [unattributed(t, "next: owner", how)]
     seat = seat_of(name, email)
     if seat is None or not holds(seat, "ask"):
         return [no_seat(name, email, "ask", "`next: owner` puts a question in front of the Owner")]
@@ -5378,7 +5411,10 @@ def rights_problems(trackers):
                 except SvnUnreadable as e:
                     out += blame_refusal(t, e)
                     break                                # the tracker's blame is unreadable: one line, not one for each right
-                if how == "svn" and not holds(seat_of(name, None), right):
+                if how in ("uncommitted", "unattributed"):
+                    if right != "answer":                # the answer gate says it of the answer line
+                        out.append(unattributed(t, needle, how))
+                elif how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
     show = lambda rev, rel: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -7368,10 +7404,12 @@ def lint(trackers, committing=False):
                     pass                                 # refused above: who wrote the answer cannot be read
                 elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
-                elif how == "uncommitted" and SEATS and vcs() == "svn" and svn_new((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()):
+                elif how == "uncommitted" and SEATS and vcs() == "svn" and svn_tracker_new(t):
                     pass                                 # a tracker Subversion holds no revision of: the rights refuse it, in one line (`rights_problems`)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
+                elif how == "unattributed":
+                    problems.append(unattributed(t, "answer:", how))
                 elif SEATS and not holds(seat, "answer"):
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):

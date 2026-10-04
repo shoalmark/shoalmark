@@ -4512,7 +4512,7 @@ with tempfile.TemporaryDirectory() as tmp:
     tracker(root, "AP-071", extra="next: build\n", title="asks nothing")
     for id_, q_ in (("AP-072", "Move the merge?"), ("AP-073", "Move the release?")):
         tracker(root, id_, extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "wait a week"\n', title="another ask")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=seat <s@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/070")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=seat <s@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/070")
     code, _, err = run(root, "--answer", "AP-071", "accept")
     check("--answer refuses a tracker that asks the Owner nothing", code == fm.EXIT_LINT and "asks the Owner nothing" in err)
     code, _, err = run(root, "--answer", "AP-070", "reject")
@@ -4858,7 +4858,7 @@ with tempfile.TemporaryDirectory() as tmp:
         p_.unlink()
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     tracker(root, "AP-401", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
     code, out, err = run(root, "--answer", "AP-401", "accept")
     sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %ae"], capture_output=True, text=True, env=_ENV).stdout.strip()
     check("`--answer` reads the same list: the owner seat answers on a repository that has no `answerers` at all — signed, and the gate it just wrote for accepts it",
@@ -5131,7 +5131,7 @@ with tempfile.TemporaryDirectory() as tmp:
     tracker(root, "AP-900", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
     tracker(root, "AP-901", title="to close")
     (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")      # as the hook writes it
     trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     sha_ = lambda rev="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev], capture_output=True, text=True, env=_ENV).stdout.strip()
     move_ = lambda text: ((root / "notes.txt").write_text(text, encoding="utf-8"), git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>"))
@@ -5191,10 +5191,28 @@ with tempfile.TemporaryDirectory() as tmp:
                                            for l_ in by_p_[2].splitlines() if "AP-950" in l_ or "puts a question" in l_))
     # …and the seats that hold the rights, each line written once and in lower case: the Owner's answer and the principal's ask pass
     git(root, "reset", "-q", "--hard", "HEAD~2"); git(root, "config", "user.email", "principal@seat"); editK_(950, "next: review", "next: owner")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-950: asked again", "--author=p <principal@seat>")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-950: asked again", "--author=p <principal@seat>")     # as the hook runs it
     ok_ = asK_("implementer@seat", "--check")
     check(f"FM-006 · v0.19.1 · the lines written once and in lower case by the seats that hold the rights — the Owner's answer, the principal's `next: owner` — pass, whoever runs `--check` (saw {ok_[0]}, {ok_[2].strip()[-200:]!r})",
           ok_[0] == 0 and not any(("AP-950" in l_ or "AP-951" in l_) and "note:" not in l_ for l_ in ok_[2].splitlines()))
+    # a line no commit can be named for is refused — never judged as whoever runs the gate; only the hook that makes the commit judges it before
+    editK_(950, "next: owner", "next: review"); git(root, "config", "user.email", "principal@seat"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-950 sent back", "--author=p <principal@seat>")
+    editK_(950, "next: review", "next: owner"); git(root, "add", "-A")                 # the implementer's ask, staged and not committed
+    l3_check_ = asK_("principal@seat", "--check")
+    l3_hook_p_, l3_hook_i_ = asK_("principal@seat", "--print-written"), asK_("implementer@seat", "--print-written")
+    check(f"FM-006 · v0.19.1 · a `next: owner` not committed yet is refused by `--check`, even run by a seat that holds `ask` — never judged as whoever runs it (saw {l3_check_[0]})",
+          l3_check_[0] == fm.EXIT_LINT and "AP-950: `next: owner` is not committed yet" in l3_check_[2])
+    check(f"FM-006 · v0.19.1 · the hook judges the commit being made by its author: the pre-commit run passes the principal's staged ask and refuses the implementer's (saw {l3_hook_p_[0]}, {l3_hook_i_[0]})",
+          l3_hook_p_[0] == 0 and l3_hook_i_[0] == fm.EXIT_LINT and "`implementer@seat` is the seat `implementer`, which does not hold `ask`" in l3_hook_i_[2])
+    git(root, "commit", "-qm", "AP-950 asked", "--author=i <implementer@seat>")
+    real_run_ = subprocess.run                       # git names no commit for a line a commit carries: a `-G` search that answers nothing
+    subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "", "") if a and list(a[0])[:2] == ["git", "log"] and "-G" in list(a[0]) else real_run_(*a, **k)
+    try:
+        l3_none_ = asK_("principal@seat", "--check")
+    finally:
+        subprocess.run = real_run_
+    check(f"FM-006 · v0.19.1 · a guarded line a commit carries and git names no commit for is refused, never judged as whoever runs `--check` (saw {l3_none_[0]})",
+          l3_none_[0] == fm.EXIT_LINT and "AP-950: `next: owner` — version control names no commit for this line" in l3_none_[2])
     rm_git(root)
 fm.configure(HERE)
 
@@ -5894,15 +5912,15 @@ else:
         # the line each right is judged on is the one the parser keeps: its key's case folded, the last of its kind
         asked6_ = 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
         new6_("C6-070", asked6_); new6_("C6-071"); commit6_("planner", "filed")
-        lines6_ = (("`Next: owner`, capitalised, in a committed tracker", "C6-070", "hook: ", "Next: owner\nhook: ", "ask", "`next: owner` puts a question in front of the Owner"),
-                   ("a second `status: Closed` under a committed `status: In Progress`", "C6-071", "status: In Progress\n", "status: In Progress\nstatus: Closed\n", "close", "`close`"))
-        for what_, id_, a_, b_, right_, says_ in lines6_:
+        lines6_ = (("`Next: owner`, capitalised, in a committed tracker", "C6-070", "hook: ", "Next: owner\nhook: ", "ask", "`next: owner`", "`next: owner` puts a question in front of the Owner"),
+                   ("a second `status: Closed` under a committed `status: In Progress`", "C6-071", "status: In Progress\n", "status: In Progress\nstatus: Closed\n", "close", "`status:`", "`close`"))
+        for what_, id_, a_, b_, right_, line_, says_ in lines6_:
             p_ = wt6_ / f"{id_}-x.md"; kept_ = p_.read_text(encoding="utf-8"); p_.write_text(kept_.replace(a_, b_, 1), encoding="utf-8")
             run(root); code_b, _, err_b = run(root, "--check"); lines_b = said6_(err_b, id_)
             commit6_("builder", id_); code_a, _, err_a = run(root, "--check"); lines_a = said6_(err_a, id_)
             p_.write_text(kept_, encoding="utf-8"); commit6_("planner", f"{id_} as it was")
             check(f"FM-006 · v0.19.1 · {what_}, by a seat without `{right_}`: the line the parser keeps is judged — refused before the commit and after it, exit 4 (saw {code_b}, {code_a})",
-                  code_b == fm.EXIT_LINT and any(says_ in l_ for l_ in lines_b)
+                  code_b == fm.EXIT_LINT and any(line_ in l_ or says_ in l_ for l_ in lines_b)
                   and code_a == fm.EXIT_LINT and any(says_ in l_ and f"`builder` is the seat `builder`, which does not hold `{right_}`" in l_ for l_ in lines_a))
         # …and the seat that holds the right, writing its line once and in lower case, passes once committed
         for id_, a_, b_ in (("C6-070", "hook: ", "next: owner\nhook: "), ("C6-071", "status: In Progress", "status: Closed")):
@@ -5910,6 +5928,16 @@ else:
         commit6_("planner", "the planner asks and closes"); run(root); code_p, _, err_p = run(root, "--check")
         check(f"FM-006 · v0.19.1 · the seat that holds `ask` and `close`, writing `next: owner` and `status: Closed` once in lower case, passes once committed (saw {code_p})",
               code_p == 0 and not said6_(err_p, "C6-070") and not said6_(err_p, "C6-071"))
+        # a blame that cannot be read is refused — never read as a line nobody has committed
+        real_run6_ = subprocess.run
+        bad6_ = '<?xml version="1.0"?><blame><target path="x"><entry line-number="one"><commit revision="2"><author>planner</author><date>2026-10-04T00:00:00.000000Z</date></commit></entry></target></blame>'
+        subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a[0], 0, bad6_, "") if a and list(a[0])[:2] == ["svn", "blame"] else real_run6_(*a, **k)
+        try:
+            code_u, _, err_u = run(root, "--check")
+        finally:
+            subprocess.run = real_run6_
+        check(f"FM-006 · v0.19.1 · a Subversion blame that cannot be read is refused in one line, never read as a line nobody committed (saw {code_u})",
+              code_u == fm.EXIT_LINT and len(said6_(err_u, "C6-071")) == 1 and "Subversion's history could not be read" in said6_(err_u, "C6-071")[0])
     fm.configure(HERE)
 
 
