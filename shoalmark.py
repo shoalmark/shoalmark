@@ -4738,6 +4738,7 @@ def svn_blame(rel):
         if first is not None and (first.get("revision") or "").isdigit():
             at, by = int(first.get("revision")), first.findtext("author")
             out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
+            _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path here: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
     return out
 
@@ -5422,20 +5423,22 @@ def rights_problems(trackers):
                                'on Subversion who makes a commit is known only once it is made, so a tracker not yet committed may carry no protected state. '
                                'File it open, with no such line, and make that change in a commit of its own')
                     continue
-            for right, needle in (("answer", "answer:"), ("close", "status:"), ("triage", "considered:")):
+            fm_ = t.get("fm", {})
+            judged = ([("answer", "answer:"), ("close", "status:")] + [("triage", k + ":") for k in TRIAGE_KEYS if (fm_.get(k) or "").strip()]   # each triage key
+                      + ([("triage", "considered:")] if (fm_.get("considered") or "").strip() else []))                                    # that carries a value (v0.19.1)
+            for right, needle in judged:
                 if right == "close" and t["status"] in OPEN_STATUSES:
                     continue
                 if right == "answer" and not t.get("answer"):
                     continue
-                if right == "triage" and not any((t.get("fm", {}).get(k) or "").strip() for k in TRIAGE_KEYS):
-                    continue
-                if right == "triage":
-                    needle = next(k + ":" for k in TRIAGE_KEYS if (t.get("fm", {}).get(k) or "").strip())
                 try:
-                    name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                    name, _e, how, rev = line_author(TRACKER_DIR / t["file"], needle)
                 except SvnUnreadable as e:
                     out += blame_refusal(t, e)
                     break                                # the tracker's blame is unreadable: one line, not one for each right
+                if needle == "considered:" and ((how == "svn" and rev == _SVN_BLAME.get(("first", (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())))
+                                                or (how == "uncommitted" and svn_tracker_new(t))):
+                    continue                             # written when the tracker is filed: the filing rule, not a verdict
                 if how in ("uncommitted", "unattributed"):
                     if right != "answer":                # the answer gate says it of the answer line
                         out.append(unattributed(t, needle, how))

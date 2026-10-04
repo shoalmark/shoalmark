@@ -6001,6 +6001,25 @@ else:
               code_n == fm.EXIT_LINT and [l_.strip() for l_ in err_n.splitlines() if "C6-072" in l_] == [
                   "lint: C6-072: `next: owner` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes that commit judges it "
                   "before: commit it (on Subversion who makes a commit is known only once it is made), then run again"])
+        # every triage key that carries a value is judged on its own line, and `considered:` once it is changed after the filing
+        new6_("C6-080", "kind-of-problem: complicated\ntier: P2\n"); new6_("C6-081"); commit6_("planner", "filed, triaged")
+        tri6_ = (("C6-080", "tier: P2", "tier: P0", "`tier:`"), ("C6-081", "considered: none", "considered: C6-080", "`considered:`"))
+        for id_, a_, b_, _n in tri6_:
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(a_, b_, 1), encoding="utf-8")
+        run(root); code_b, _, err_b = run(root, "--check"); commit6_("builder", "the builder's triage"); code_a, _, err_a = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a seat without `triage` that changes a triage key after the first one with a value, or `considered:` after the filing, is refused before the commit and after it (saw {code_b}, {code_a})",
+              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT
+              and all(any(n_ in l_ for l_ in said6_(err_b, id_)) and any(n_ in l_ and "`builder` is the seat `builder`, which does not hold `triage`" in l_ for l_ in said6_(err_a, id_))
+                      for id_, _a, _b, n_ in tri6_))
+        for id_, a_, b_, _n in tri6_:
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(b_, a_, 1), encoding="utf-8")
+        commit6_("planner", "as it was")
+        for id_, a_, b_, _n in tri6_:
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(a_, b_, 1), encoding="utf-8")
+        commit6_("planner", "the planner's triage"); new6_("C6-082"); commit6_("builder", "C6-082 filed")
+        run(root); code_t, _, err_t = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the seat that holds `triage` changing the same keys passes once committed, and a seat's own filing with its `considered:` passes (saw {code_t}, {err_t.strip()[-200:]!r})",
+              code_t == 0 and not said6_(err_t, "C6-080") and not said6_(err_t, "C6-081") and not said6_(err_t, "C6-082"))
     fm.configure(HERE)
 
 
