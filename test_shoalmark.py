@@ -4948,10 +4948,10 @@ with tempfile.TemporaryDirectory() as tmp:
     # and a backslash before an ordinary character is undefined in ERE — one platform reads a literal, another need not
     fm.configure(root)
     sent_ = [c for c in argv_of(lambda: fm.line_author(t_, "next: owner")) if "-G" in c]
-    check("the pattern handed to git is the plain anchored key — `^next: owner`, the space unescaped — and the keys that carry a hyphen are plain too: an ERE escape of an ordinary character is undefined, and the gate must answer the same on every platform's regex engine",
-          len(sent_) == 1 and sent_[0][sent_[0].index("-G") + 1] == "^next: owner" and "--full-history" in sent_[0]
+    check("the pattern handed to git is the plain anchored line the parser keeps — `^next: owner`, the space unescaped, to the line's end — and the keys that carry a hyphen are plain too: an ERE escape of an ordinary character is undefined, and the gate must answer the same on every platform's regex engine",
+          len(sent_) == 1 and sent_[0][sent_[0].index("-G") + 1] == "^next: owner\r?$" and "--full-history" in sent_[0]
           and fm.line_regex("answer:") == "^answer:" and fm.line_regex("kind-of-problem:") == "^kind-of-problem:"
-          and fm.line_regex("a.b[c]:") == "^a\\.b\\[c\\]:")
+          and fm.line_regex("a.b[c]:") == "^a\\.b\\[c\\]:" and fm.exact_line_regex("kind-of-problem: a.b[c]") == "^kind-of-problem: a\\.b\\[c\\]\r?$")
     rm_git(root)
 fm.configure(HERE)
 
@@ -5161,6 +5161,40 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root, "--check")
     check("FM-019 · (e) a merge brings an UNSIGNED answer under the signed owner's identity — refused, and the refusal names that commit, not the merge",
           code == fm.EXIT_LINT and f"the commit `{e_[:10]}` making a `answer` change does not verify as the seat `owner`" in err and sha_()[:10] not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: each line a right is judged on is the one the parser keeps — its key's case folded, the last of its kind — on git ------
+# The Owner's ruling of 2026-10-04: each guarded line is found exactly as the parser keeps it — last occurrence, any case.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "k"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    askK_ = f'ask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n'
+    tracker(root, "AP-950", extra=askK_ + "next: review\n", title="sent back"); tracker(root, "AP-951", extra=askK_ + "next: owner\n", title="asked")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    editK_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_, 1), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
+    editK_(951, "next: owner\n", 'answer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n')
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-951: accepted", "--author=holgo <h@x>")
+    asK_ = lambda who_, *a: (git(root, "config", "user.email", who_), run(root, *a))[1]            # a run of the tool by `who_`
+    # the implementer, which holds neither `answer` nor `ask`: a second `Answer:` under the Owner's `answer:`, and `Next: owner` capitalised
+    editK_(951, "answered-by: holgo\n", 'answered-by: holgo\nAnswer: "rejected - no"\n'); editK_(950, "next: review", "Next: owner")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the implementer's change", "--author=i <implementer@seat>")
+    git(root, "commit", "-q", "--allow-empty", "-m", "a later commit", "--author=p <principal@seat>")
+    by_p_, by_i_ = asK_("principal@seat", "--check"), asK_("implementer@seat", "--check")
+    check(f"FM-006 · v0.19.1 · a second `Answer:` under the Owner's committed `answer:`, by a seat without `answer`, under a later commit: refused, whoever runs `--check` (saw {by_p_[0]}, {by_i_[0]})",
+          all(c_ == fm.EXIT_LINT and "AP-951: " in e_ and "`implementer@seat` is the seat `implementer`, which does not hold `answer`" in e_ for c_, _o, e_ in (by_p_, by_i_)))
+    check(f"FM-006 · v0.19.1 · `Next: owner`, capitalised, by a seat without `ask`, with `--check` run by a seat that holds `ask`: refused (saw {by_p_[0]})",
+          by_p_[0] == fm.EXIT_LINT and any("`next: owner` puts a question in front of the Owner" in l_ and "`implementer@seat` is the seat `implementer`, which does not hold `ask`" in l_
+                                           for l_ in by_p_[2].splitlines() if "AP-950" in l_ or "puts a question" in l_))
+    # …and the seats that hold the rights, each line written once and in lower case: the Owner's answer and the principal's ask pass
+    git(root, "reset", "-q", "--hard", "HEAD~2"); git(root, "config", "user.email", "principal@seat"); editK_(950, "next: review", "next: owner")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-950: asked again", "--author=p <principal@seat>")
+    ok_ = asK_("implementer@seat", "--check")
+    check(f"FM-006 · v0.19.1 · the lines written once and in lower case by the seats that hold the rights — the Owner's answer, the principal's `next: owner` — pass, whoever runs `--check` (saw {ok_[0]}, {ok_[2].strip()[-200:]!r})",
+          ok_[0] == 0 and not any(("AP-950" in l_ or "AP-951" in l_) and "note:" not in l_ for l_ in ok_[2].splitlines()))
     rm_git(root)
 fm.configure(HERE)
 
@@ -5813,7 +5847,7 @@ else:
         svn("commit", "-m", "C6-014: answered", "--username", "builder", cwd=root); svn("update", cwd=root)
         run(root); code_a, _, err_a = run(root, "--check")
         check(f"FM-006 · v0.19.1 · a committed tracker whose answer line the line reader cannot find, written by a seat without `answer`, is refused, exit 4, before and after its commit (saw {code_b}, {code_a})",
-              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and "C6-014: the answer is not committed yet" in err_b and "C6-014: the answer is not committed yet" in err_a)
+              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and any("answer" in l_ for l_ in said6_(err_b, "C6-014")) and any("answer" in l_ for l_ in said6_(err_a, "C6-014")))
         # Subversion's own record of a path: a copy — `A +`, or `R +` over a tracker — is not committed yet, and once committed its lines are the copier's
         def commit6_(who_, msg_):
             """The working copy committed as `who_`, and updated to."""
@@ -5856,6 +5890,26 @@ else:
         run(root); code_h, _, err_h = run(root, "--check")
         check(f"FM-006 · v0.19.1 · a copy by the seat that holds the right — a `Closed` tracker by the planner, the Owner's answered one by the Owner, `svn rm` and `svn copy` closing one by the planner — passes once committed (saw {code_h}, {err_h.strip()[-300:]!r})",
               code_h == 0 and not said6_(err_h, "C6-060") and not said6_(err_h, "C6-062") and not said6_(err_h, "C6-034"))
+        drop6_("C6-060", "C6-062", "C6-030", "C6-032", "C6-034", "C6-035")
+        # the line each right is judged on is the one the parser keeps: its key's case folded, the last of its kind
+        asked6_ = 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
+        new6_("C6-070", asked6_); new6_("C6-071"); commit6_("planner", "filed")
+        lines6_ = (("`Next: owner`, capitalised, in a committed tracker", "C6-070", "hook: ", "Next: owner\nhook: ", "ask", "`next: owner` puts a question in front of the Owner"),
+                   ("a second `status: Closed` under a committed `status: In Progress`", "C6-071", "status: In Progress\n", "status: In Progress\nstatus: Closed\n", "close", "`close`"))
+        for what_, id_, a_, b_, right_, says_ in lines6_:
+            p_ = wt6_ / f"{id_}-x.md"; kept_ = p_.read_text(encoding="utf-8"); p_.write_text(kept_.replace(a_, b_, 1), encoding="utf-8")
+            run(root); code_b, _, err_b = run(root, "--check"); lines_b = said6_(err_b, id_)
+            commit6_("builder", id_); code_a, _, err_a = run(root, "--check"); lines_a = said6_(err_a, id_)
+            p_.write_text(kept_, encoding="utf-8"); commit6_("planner", f"{id_} as it was")
+            check(f"FM-006 · v0.19.1 · {what_}, by a seat without `{right_}`: the line the parser keeps is judged — refused before the commit and after it, exit 4 (saw {code_b}, {code_a})",
+                  code_b == fm.EXIT_LINT and any(says_ in l_ for l_ in lines_b)
+                  and code_a == fm.EXIT_LINT and any(says_ in l_ and f"`builder` is the seat `builder`, which does not hold `{right_}`" in l_ for l_ in lines_a))
+        # …and the seat that holds the right, writing its line once and in lower case, passes once committed
+        for id_, a_, b_ in (("C6-070", "hook: ", "next: owner\nhook: "), ("C6-071", "status: In Progress", "status: Closed")):
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(a_, b_, 1), encoding="utf-8")
+        commit6_("planner", "the planner asks and closes"); run(root); code_p, _, err_p = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · the seat that holds `ask` and `close`, writing `next: owner` and `status: Closed` once in lower case, passes once committed (saw {code_p})",
+              code_p == 0 and not said6_(err_p, "C6-070") and not said6_(err_p, "C6-071"))
     fm.configure(HERE)
 
 

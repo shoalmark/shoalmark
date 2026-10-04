@@ -4754,6 +4754,54 @@ def line_regex(needle):
     return "^" + "".join("\\" + c if c in ERE_META else c for c in needle)
 
 
+FM_BREAKS = re.compile("[\n\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")       # where `str.splitlines` breaks a line, once newlines are translated
+
+
+def frontmatter_keys(raw, cr_breaks=False):
+    """[(key, line, the key as written)] — every front-matter line `parse_frontmatter` reads a key from, in order: the text as `extract`
+    reads it (its newlines translated), split as `str.splitlines` splits it, each key stripped and lower-cased — the LAST entry for a key
+    is the one the parser keeps. `line` is the 1-based line it stands on as version control counts lines in `raw`, the file as written:
+    git breaks a line at `\\n` alone, Subversion at a lone `\\r` as well (`cr_breaks`)."""
+    text, line_of, n, i = [], [], 1, 0
+    while i < len(raw):
+        c = raw[i]
+        if c == "\r":
+            text.append("\n"); line_of.append(n)
+            if raw[i + 1:i + 2] == "\n":
+                i += 1; n += 1
+            elif cr_breaks:
+                n += 1
+        else:
+            text.append(c); line_of.append(n)
+            n += c == "\n"
+        i += 1
+    text = "".join(text)
+    if not text.startswith("---\n"):
+        return []
+    end = text.find("\n---", 4)
+    if end == -1:
+        return []
+    out, at = [], 4
+    for m in [*FM_BREAKS.finditer(text, 4, end), None]:
+        part = text[at:m.start() if m else end]
+        if ":" in part:
+            k = part.partition(":")[0]
+            out.append((k.strip().lower(), line_of[at], k.strip()))
+        at = m.end() if m else end
+    return out
+
+
+def guarded_line(raw, key, cr_breaks=False):
+    """The line `parse_frontmatter` keeps for `key` — the last one, its key's case folded — as version control numbers it (`frontmatter_keys`), or None."""
+    return next((line for k, line, _w in reversed(frontmatter_keys(raw, cr_breaks)) if k == key), None)
+
+
+def exact_line_regex(line):
+    """The pattern git's `-G` is handed for one exact line: anchored at both ends, the characters an extended regular expression reserves
+    escaped as `line_regex` escapes them, and an optional carriage return before the end — the line as committed with CRLF."""
+    return "^" + "".join("\\" + c if c in ERE_META else c for c in line) + "\r?$"
+
+
 def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit), or (None, None, "uncommitted", ""). Git's author is a string anyone can type,
@@ -4763,18 +4811,21 @@ def line_author(path, needle):
     The needle names a LINE, not a substring. A tracker's body discusses its own keys — "an `answer:` counts only from
     the account it is filed from" is a sentence FM-007 carries — and a substring test cannot tell that prose from the
     front-matter line, so it answered with the commit that wrote the prose, and read a line nobody had committed as
-    committed. Both tests are anchored to the line start now: git's `-G` (below) and `startswith` here."""
+    committed. The line read is the one the parser keeps (`guarded_line`): the needle's key, its case folded, the LAST such
+    line of the front matter — git's `-G` searches for that line exactly as written, and Subversion's blame is read at its
+    number (the Owner's ruling of 2026-10-04, v0.19.1)."""
     rel = pathlib.Path(path).resolve().relative_to(ROOT).as_posix()
-    hit = _LINE_AUTHOR.get((rel, needle))
+    key = needle.partition(":")[0].strip().lower()      # the line is found as the parser keeps it: its key's case folded, the last one (v0.19.1)
+    hit = _LINE_AUTHOR.get((rel, key))
     if hit is not None:
         return hit
     out = (None, None, "uncommitted", "")
+    raw = pathlib.Path(path).read_bytes().decode("utf-8", errors="replace")
     if vcs() == "svn":
         by_line = svn_blame(rel)                          # ONE blame per file, however many of its lines are asked about
-        lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
-        n = next((i for i, l in enumerate(lines) if l.startswith(needle)), None)
-        if n is not None and (n + 1) in by_line:
-            who, rev = by_line[n + 1]
+        n = guarded_line(raw, key, cr_breaks=True)
+        if n is not None and n in by_line:
+            who, rev = by_line[n]
             out = (who, None, "svn", rev)
     else:
         # `--full-history` or the answer is the wrong seat's. Git's default history simplification follows ONE parent of
@@ -4789,15 +4840,24 @@ def line_author(path, needle):
         # which is right: the setter is whoever wrote the line the file carries now.
         # during a merge the line may be committed on the side coming in: its history is read too, and "is it committed"
         # asks every parent, not HEAD alone — or an answer a merge brings reads as never committed (FM-019)
+        # the line searched for is the one the parser keeps (`guarded_line`), exactly as written; it is committed where a tip carries it,
+        # and `-G` names the last commit that wrote or removed that exact line — `--full-history`, as above
         tips = ["HEAD", *merge_heads()]
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), *tips, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-        if log.returncode == 0 and log.stdout.strip():
-            commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
-            dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
-            at = lambda rev: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
-            if not (dirty and not any(l.startswith(needle) for rev in tips for l in at(rev).splitlines())):
+        n = guarded_line(raw, key)
+        line = raw.split("\n")[n - 1].rstrip("\r") if n is not None else None
+        if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys
+            _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for rev in tips for l in subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True,
+                                                                                                     env=nested_git_env()).stdout.decode("utf-8", errors="replace").split("\n")]
+        if line is not None and line in _LINE_AUTHOR[("tips", rel)]:
+            try:
+                log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
+                                     text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+            except ValueError:                          # a NUL in the line: no argument can carry it
+                log = None
+            if log is not None and log.returncode == 0 and log.stdout.strip():
+                commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
                 out = (name, email, "git", commit)
-    _LINE_AUTHOR[(rel, needle)] = out
+    _LINE_AUTHOR[(rel, key)] = out
     return out
 
 
