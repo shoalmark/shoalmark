@@ -4901,15 +4901,17 @@ def line_author(path, needle):
     return out
 
 
-def unattributed(t, needle, how):
+def unattributed(t, needle, how, named=True):
     """LAYER 3 (the Owner's ruling of 2026-10-04, v0.19.1): a guarded line no commit can be named for is refused, in one line — never judged
     as whoever runs the gate. Not committed yet, it is judged only in the run that makes its commit (git's pre-commit hook), as that
-    commit's author; Subversion knows who makes a commit only once it is made."""
+    commit's author; Subversion knows who makes a commit only once it is made. `named`: the line opens with the tracker's id — not
+    where the caller's own lines are prefixed with it (`seat_problems`, read through `ask_problems`)."""
+    who = f'{t["id"]}: ' if named else ""
     if how == "uncommitted":
-        return (f'{t["id"]}: `{needle}` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes '
+        return (f'{who}`{needle}` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes '
                 f'that commit judges it before: commit it' + (" (on Subversion who makes a commit is known only once it is made)" if vcs() == "svn" else "")
                 + ", then run again")
-    return (f'{t["id"]}: `{needle}` — version control names no commit for this line, so who set it is not known; it is refused, never judged '
+    return (f'{who}`{needle}` — version control names no commit for this line, so who set it is not known; it is refused, never judged '
             f'as whoever runs the gate. Write it again, in a commit of its own')
 
 
@@ -5267,7 +5269,7 @@ def seat_problems(t):
         elif how == "uncommitted" and vcs() == "svn" and svn_tracker_new(t):
             return []                                    # a tracker Subversion holds no revision of: the rights refuse it, in one line
         else:
-            return [unattributed(t, "next: owner", how)]
+            return [unattributed(t, "next: owner", how, named=False)]        # `lint` names the tracker on `ask_problems`' lines
     seat = seat_of(name, email)
     if seat is None or not holds(seat, "ask"):
         return [no_seat(name, email, "ask", "`next: owner` puts a question in front of the Owner")]

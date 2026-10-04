@@ -5202,6 +5202,10 @@ with tempfile.TemporaryDirectory() as tmp:
     l3_hook_p_, l3_hook_i_ = asK_("principal@seat", "--print-written"), asK_("implementer@seat", "--print-written")
     check(f"FM-006 · v0.19.1 · a `next: owner` not committed yet is refused by `--check`, even run by a seat that holds `ask` — never judged as whoever runs it (saw {l3_check_[0]})",
           l3_check_[0] == fm.EXIT_LINT and "AP-950: `next: owner` is not committed yet" in l3_check_[2])
+    l3_said_ = [l_.strip() for l_ in l3_check_[2].splitlines() if "AP-950" in l_]
+    check(f"FM-006 · v0.19.1 · on git the line for a `next: owner` not committed yet names the tracker once, word for word (saw {l3_said_!r})",
+          l3_said_ == ["lint: AP-950: `next: owner` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes that commit "
+                       "judges it before: commit it, then run again"])
     check(f"FM-006 · v0.19.1 · the hook judges the commit being made by its author: the pre-commit run passes the principal's staged ask and refuses the implementer's (saw {l3_hook_p_[0]}, {l3_hook_i_[0]})",
           l3_hook_p_[0] == 0 and l3_hook_i_[0] == fm.EXIT_LINT and "`implementer@seat` is the seat `implementer`, which does not hold `ask`" in l3_hook_i_[2])
     git(root, "commit", "-qm", "AP-950 asked", "--author=i <implementer@seat>")
@@ -5989,6 +5993,14 @@ else:
             subprocess.run = real_run6_
         check(f"FM-006 · v0.19.1 · a Subversion blame that cannot be read is refused in one line, never read as a line nobody committed (saw {code_u})",
               code_u == fm.EXIT_LINT and len(said6_(err_u, "C6-071")) == 1 and "Subversion's history could not be read" in said6_(err_u, "C6-071")[0])
+        # a `next: owner` not committed yet, in a committed tracker: its one line names the tracker once
+        p72_ = new6_("C6-072", asked6_.replace("ship first?", "ship third?")); commit6_("planner", "C6-072 filed")
+        p72_.write_text(p72_.read_text(encoding="utf-8").replace("hook: ", "next: owner\nhook: ", 1), encoding="utf-8"); run(root); code_n, _, err_n = run(root, "--check")
+        p72_.write_text(p72_.read_text(encoding="utf-8").replace("next: owner\n", "", 1), encoding="utf-8"); run(root)
+        check(f"FM-006 · v0.19.1 · on Subversion the line for a `next: owner` not committed yet names the tracker once, word for word (saw {said6_(err_n, 'C6-072')!r})",
+              code_n == fm.EXIT_LINT and [l_.strip() for l_ in err_n.splitlines() if "C6-072" in l_] == [
+                  "lint: C6-072: `next: owner` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes that commit judges it "
+                  "before: commit it (on Subversion who makes a commit is known only once it is made), then run again"])
     fm.configure(HERE)
 
 
