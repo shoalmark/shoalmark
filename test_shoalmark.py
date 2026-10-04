@@ -5805,6 +5805,15 @@ else:
         check(f"FM-006 · v0.19.1 · a new tracker with no protected line passes — beside one filed `Closed`, refused alone — before its commit, and committed by the Owner's account (saw {code}, {len(lines_)}, {code_o}, {code_c})",
               code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-013: is not committed yet") and not said6_(err, "C6-012") and code_o == 0 and code_c == 0
               and not said6_(err_o + err_c, "C6-012"))
+        # a committed tracker, and an answer line the parser reads and the line reader cannot find — `Answer:` — written by a seat without `answer`
+        new6_("C6-014", ask6_); run(root); svn("commit", "-m", "C6-014: the ask", "--username", "planner", cwd=root); svn("update", cwd=root)
+        p14_ = wt6_ / "C6-014-x.md"
+        p14_.write_text(p14_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', 'ask-proposal: "yes"\nAnswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\n'), encoding="utf-8")
+        run(root); code_b, _, err_b = run(root, "--check")
+        svn("commit", "-m", "C6-014: answered", "--username", "builder", cwd=root); svn("update", cwd=root)
+        run(root); code_a, _, err_a = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · a committed tracker whose answer line the line reader cannot find, written by a seat without `answer`, is refused, exit 4, before and after its commit (saw {code_b}, {code_a})",
+              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and "C6-014: the answer is not committed yet" in err_b and "C6-014: the answer is not committed yet" in err_a)
     fm.configure(HERE)
 
 

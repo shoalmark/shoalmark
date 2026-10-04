@@ -7277,7 +7277,7 @@ def lint(trackers, committing=False):
                     pass                                 # refused above: who wrote the answer cannot be read
                 elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
-                elif how == "uncommitted" and SEATS and vcs() == "svn":
+                elif how == "uncommitted" and SEATS and vcs() == "svn" and not svn_blame((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()):
                     pass                                 # a tracker Subversion holds no revision of: the rights refuse it, in one line (`rights_problems`)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
