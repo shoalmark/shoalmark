@@ -573,6 +573,12 @@ BUILTIN_RIGHTS = {"owner": set(RIGHTS), "planner": {"ask", "close", "triage"}, "
 TRIAGE_KEYS = ("kind-of-problem", "tier", "rank", "triaged")     # `considered:` too — except on a filing, which is the rule, not a verdict
 
 
+def tracker_folder(cfg, prefix=""):
+    """The tracker folder a configuration names — its `tracker_dir` — as a path below `prefix`: "" for one from the
+    repository's own root, as `configure` binds `TRACKER_DIR`. One reading of `tracker_dir`, for every caller."""
+    return pathlib.PurePosixPath(prefix) / cfg.get("tracker_dir", DEFAULTS["tracker_dir"])
+
+
 def configure(root=None):
     """Bind every path, id pattern and schema shape to one repository. Called once at import for the working
     directory, and again by `--root` and by the tests."""
@@ -583,7 +589,7 @@ def configure(root=None):
     path = ROOT / CONFIG_NAME
     text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
     CONFIG = {**DEFAULTS, **(read_config(text) if text is not None else {})}
-    TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
+    TRACKER_DIR = ROOT / tracker_folder(CONFIG)
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
     global FREEZE_AT
