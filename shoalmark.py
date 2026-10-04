@@ -45,6 +45,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import unicodedata
 import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -179,7 +180,7 @@ def tree_write(path):
     """Whether a write lands in the tree this run tracks — inside the repository as written, outside its git directory. A destination a person names
     elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not — a named one is resolved once, where it is named, and
     judged again under the folder it resolves to; a tracker folder outside the repository is refused before any run reads it (`load_trackers`)."""
-    return in_tree(path) and not in_git_dir(path)
+    return in_tree(path) and not in_git_dir_on_disk(path)
 
 
 def write_rule(path):
@@ -275,12 +276,52 @@ def in_git_dir(path):
     return any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for p in ps for d in git_dirs())
 
 
+def in_git_dir_on_disk(path):
+    """Whether `path`, as written or as it resolves, lies inside one of the repository's git directories as the file system compares paths (`git_dir_holding`):
+    where it ignores case and Unicode normalization, a git directory spelled in another case or normalization is that git directory."""
+    p = _norm(path)
+    return git_dir_holding(p) or git_dir_holding(os.path.normcase(os.path.realpath(p)))
+
+
+def git_dir_holding(real):
+    """Whether the path `real`, resolved, lies in one of the repository's git directories as the file system compares paths: as `in_git_dir` finds it, or —
+    where `os.path.normcase` keeps case — spelled so in another case or Unicode normalization (`fs_fold`), its ancestor there being that git directory by
+    the file system's own identity."""
+    if in_git_dir(real):
+        return True
+    if os.path.normcase("A") != "A":
+        return False
+    parts = real.rstrip(os.sep).split(os.sep)
+    for gd in git_dirs():
+        named = gd.rstrip(os.sep).split(os.sep)
+        if len(parts) >= len(named) and [fs_fold(p) for p in parts[:len(named)]] == [fs_fold(p) for p in named]:
+            same = fs_identity(os.sep.join(parts[:len(named)]))
+            if same is not None and same == fs_identity(gd):
+                return True
+    return False
+
+
+def fs_identity(path):
+    """The file system's own identity of `path` — its device and inode, symlinks followed — or None where it is not there or has no inode."""
+    try:
+        st = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return (st.st_dev, st.st_ino) if st.st_ino else None
+
+
+def fs_fold(name):
+    """A file's name as a file system that ignores case and Unicode normalization compares it — macOS's default one does both: case-folded, and in one
+    normalization (NFD) before and after."""
+    return unicodedata.normalize("NFD", unicodedata.normalize("NFD", name).casefold())
+
+
 def write_problem(path):
     """Why a hook's run of the copy, or the board's run, does not write `path`, or "": it lies outside the repository or inside its git directory —
     where the hooks and their copy are — is reached through a symlink, or is no regular file."""
     if not in_tree(path):
         return "outside the repository"
-    if in_git_dir(path):
+    if in_git_dir_on_disk(path):
         return "inside the git directory"
     if not real_inside(path):
         return "a symlink, or reached through one"
@@ -342,7 +383,7 @@ def tracker_folder_problem(what="the board is not refreshed"):
     real = pathlib.Path(os.path.realpath(_norm(d)))
     if not in_tree(real):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — {what}"
-    if in_git_dir(d):
+    if in_git_dir_on_disk(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the git directory, where the hooks and their copy are — {what}"
     if not real_inside(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — {what}"

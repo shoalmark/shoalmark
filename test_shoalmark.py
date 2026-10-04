@@ -2820,6 +2820,53 @@ check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · still a
       and g_["second"] == (0, ["nothing to write — already initialised"], "") and g_["same"])
 fm.configure(HERE)
 
+# --- the git directory as the file system finds it (the Owner's ruling of 2026-10-04, v0.19.1): where the file system ignores case, a tracker folder named in
+# the git directory under another case is in the git directory — `--init` and the default run refuse it in the tracker folder's one line, exit 4, and nothing
+# is written; where a probe shows the file system keeps case, the checks skip by name, and where the probe cannot run, they fail
+def _keeps_case():
+    """Whether the file system the scratch repositories are made on keeps case: a file is made, then `os.stat` asked for it under its other-case name —
+    True where nothing is found there, False where it is the same file, None where the probe could not run or found another file."""
+    try:
+        with tempfile.TemporaryDirectory() as d_:
+            made_ = Path(d_) / "inert-Case"; made_.write_text("inert\n", encoding="utf-8")
+            try:
+                other_ = os.stat(Path(d_) / "INERT-cASE")
+            except FileNotFoundError:
+                return True
+            return False if os.path.samestat(other_, os.stat(made_)) else None
+    except OSError:
+        return None
+_KEEPS_CASE = _keeps_case()
+def _gc(kind):
+    """`--init` in a git repository whose configuration's `tracker_dir` is `.GIT/inert` (`init`), or the default run where it is `.GIT/hooks` (`hooks`): the
+    git directory named in another case. The tree, and the git directory (`init`) or its hooks folder (`hooks`), are listed before and after."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / "repo"; root.mkdir(); git(root, "init", "-q")
+        (root / "shoalmark.toml").write_text(f'tracker_dir = ".GIT/{"inert" if kind == "init" else "hooks"}"\n\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        held_ = root / ".git" if kind == "init" else root / ".git" / "hooks"
+        seen_ = lambda: (_tree(root), _itf_listing(held_))
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, *(["--init"] if kind == "init" else []))
+        after_ = seen_()
+        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_[1]) - set(before_[1])))
+        rm_git(root)
+    return g_
+_GC_LINE = {"init": "the tracker folder .GIT/inert is inside the git directory, where the hooks and their copy are — nothing is written",
+            "hooks": "the tracker folder .GIT/hooks is inside the git directory, where the hooks and their copy are — nothing is read or written"}
+def _gc_ok(g, kind):
+    return _KEEPS_CASE is False and g["code"] == fm.EXIT_LINT and g["err"] == _GC_LINE[kind] and g["out"] == "" and g["same"]
+if _KEEPS_CASE is True:
+    _skipped("FM-006 · v0.19.1 · the git directory named in another case", 2, "this file system keeps case: a file made here is not found under its other-case name")
+else:
+    for key_, what_ in (("init", "`--init` with a `tracker_dir` of `.GIT/inert`: refused in the tracker folder's one line, exit 4, nothing on stdout, and the tree and the git "
+                                 "directory are as they were"),
+                        ("hooks", "the default run with a `tracker_dir` of `.GIT/hooks`: refused in the tracker folder's one line, exit 4, nothing on stdout, and the tree and the "
+                                  "hooks folder are as they were")):
+        g_ = _gc(key_)
+        check(f"FM-006 · v0.19.1 · the git directory named in another case · {what_} (saw probe {_KEEPS_CASE}, exit {g_['code']}, made {g_['made'][:3]}, {g_['err'][-90:]!r})",
+              _gc_ok(g_, key_))
+fm.configure(HERE)
+
 # --- a folder named `derive` (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): it is no deriver — a run by hand
 # goes on without one and says nothing of it; the deriver's line is for a symlink alone
 _DF_REV = "ee6c28a"
