@@ -45,6 +45,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import unicodedata
 import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -144,6 +145,9 @@ def read_config(text):
         value = (re.sub(r'\\(.)', r"\1", text_value) if text_value is not None else int(number) if number is not None
                  else re.findall(r'"((?:[^"\\]|\\.)*)"', items) if items is not None else flag == "true")
         (out if table is None else table)[key] = value
+    if isinstance(out.get("tracker_dir"), str) and "\\" in out["tracker_dir"]:     # one system reads it as a separator, another as a letter of the folder's name
+        raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` holds a backslash, which Windows reads as a folder's separator "
+                         "and every other system as a letter of the folder's name — write the folder with /")
     return out
 
 
@@ -6320,17 +6324,19 @@ def config_not_file(kind):
     return f"{CONFIG_NAME}: not a file — git records {what} at that path, and only a file is read as the configuration"
 
 
-def guard_config(text):
-    """(`tracker_dir`, `[headings]`) as `configure` reads them from one revision's configuration — `text` None: there is none,
-    the defaults. Where this tool cannot read it as `configure` would — `read_config` refuses it, `tracker_dir` is no folder
-    of the repository, `[headings]` is not the table `configure` takes — SystemExit with the reason: never the defaults."""
+def guard_config(text, prefix=""):
+    """(`tracker_dir`, `[headings]`, the tracker folder below `prefix`) as `configure` reads them from one revision's
+    configuration — `text` None: there is none, the defaults. The folder is `tracker_folder`'s, the one `configure` binds:
+    the guard computes no path of its own. Where this tool cannot read it as `configure` would — `read_config` refuses it,
+    `tracker_dir` is no folder of the repository, `[headings]` is not the table `configure` takes — SystemExit with the
+    reason: never the defaults."""
     cfg = read_config(text) if text is not None else {}
     tdir, heads = cfg.get("tracker_dir", DEFAULTS["tracker_dir"]), cfg.get("headings", {})
-    if not isinstance(tdir, str) or tdir.replace("\\", "/").startswith("/") or ".." in tdir.replace("\\", "/").split("/"):
+    if not isinstance(tdir, str) or tracker_folder(cfg).is_absolute() or ".." in tracker_folder(cfg).parts:
         raise SystemExit(f"{CONFIG_NAME}: `tracker_dir` is a folder inside the repository, its path in quotes — got {tdir!r}")
     if not isinstance(heads, dict) or set(heads) - set(DEFAULTS["headings"]) or not all(isinstance(v, str) and v.strip() for v in heads.values()):
         raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
-    return tdir, {**DEFAULTS["headings"], **heads}
+    return tdir, {**DEFAULTS["headings"], **heads}, tracker_folder(cfg, prefix).as_posix()
 
 
 def view_label(rev):
@@ -6340,7 +6346,8 @@ def view_label(rev):
 
 def triage_views(revs, env=None, prefix=None):
     """{rev: (its `tracker_dir`, its TRIAGE.md from the repository's root, whether that file is there, its two sections, its
-    `[headings]`, "" — or why its configuration cannot be read)} — each revision read under its OWN `shoalmark.toml`; "" is
+    `[headings]`, "" — or why its configuration cannot be read, its tracker folder from the root)} — the folder and the
+    home `tracker_folder`'s, as the tool reads them — each revision read under its OWN `shoalmark.toml`; "" is
     the index, what a commit being made stages (`env` carries the hook's `GIT_INDEX_FILE`). A configuration this tool cannot
     read (`guard_config`), or no file at its path — a submodule, a folder (`path_mode`) — is never read as the defaults: its
     view says so, and reads no sections — every reader of a view refuses where one it needs cannot be read. Only a path
@@ -6357,16 +6364,15 @@ def triage_views(revs, env=None, prefix=None):
             kind = types.get(spec, "blob") if configs.get(spec) is not None else path_mode(r, prefix + CONFIG_NAME, env) or "blob"
             if kind != "blob":
                 raise SystemExit(config_not_file(kind))
-            tdir, heads = guard_config(configs.get(spec))
+            tdir, heads, folder = guard_config(configs.get(spec), prefix)
         except SystemExit as e:
-            where[r] = (None, "", None, f"{prefix + CONFIG_NAME} at {view_label(r)} cannot be read here — {e}")
+            where[r] = (None, "", None, f"{prefix + CONFIG_NAME} at {view_label(r)} cannot be read here — {e}", "")
             continue
-        home = "/".join(x for x in (prefix + tdir + "/TRIAGE.md").replace("\\", "/").split("/") if x not in ("", "."))
-        where[r] = (tdir, home, heads, "")
-    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why) in where.items() if not why}), env)
-    return {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why) if why else
-               (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads, "")
-            for r, (tdir, home, heads, why) in where.items()}
+        where[r] = (tdir, (pathlib.PurePosixPath(folder) / "TRIAGE.md").as_posix(), heads, "", folder)
+    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why, _f) in where.items() if not why}), env)
+    return {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why, folder) if why else
+               (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads, "", folder)
+            for r, (tdir, home, heads, why, folder) in where.items()}
 
 
 def section_changes(now, before, touched=()):
@@ -6380,7 +6386,7 @@ def section_changes(now, before, touched=()):
     why = next((v[5] for v in (now, *before) if v[5]), "")
     if why:
         return [("unread", "changes", f"`{p}`", f"where {why}") for p in (touched or ["TRIAGE.md"])]
-    tdir, home, there, secs, heads, _why = now
+    tdir, home, there, secs, heads, _why, _f = now
     out = []
     for k in GUARDED:
         had = [b[3][k] for b in before] or [None]
@@ -6388,7 +6394,7 @@ def section_changes(now, before, touched=()):
             continue
         if all(h is None for h in had) and unwritten(k, secs[k]):
             continue
-        b_dir, b_home, b_there, b_secs, _h, _w = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads, "")
+        b_dir, b_home, b_there, b_secs, _h, _w, _f = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads, "", "")
         name = f"`{(b_secs[k] or secs[k] or '## ' + heads[k]).split(chr(10), 1)[0].rstrip()}`"
         if len(before) > 1:
             out.append((k, "brings a text under", name, f"in {home} that no parent had"))
@@ -6439,8 +6445,7 @@ def signers_paths(trunk):
     out = [trusted_signers()["rel"]]
     view = triage_views([trunk])[trunk] if trunk else None
     if view and not view[5]:
-        home = view[1]
-        out.append((home.rsplit("/", 1)[0] + "/" if "/" in home else "") + "allowed_signers")
+        out.append((pathlib.PurePosixPath(view[6]) / "allowed_signers").as_posix())
     return list(dict.fromkeys(x for x in out if x))
 
 
@@ -6453,25 +6458,40 @@ def did_words(what):
     return "; ".join(f"{verb} {' and '.join(names)} {tail}".rstrip() for (verb, tail), names in said.items())
 
 
-def guard_touched(files, prefix, keys=(), unread=False):
+def guard_touched(files, prefix, keys=(), unread=False, homes=()):
     """The files of `files` (paths from the repository's root) a reading of the two sections depends on: every `TRIAGE.md`,
-    in any folder, the root's included, and the configuration file — and, where the default branch's configuration cannot be
-    read (`unread`), every file named `allowed_signers` and each `keys` names: its tracker directory, and so its signers
-    file, is not known there."""
-    base = lambda f: f.rsplit("/", 1)[-1]
-    return sorted({f for f in files if base(f) == "TRIAGE.md" or f == prefix + CONFIG_NAME
-                   or (unread and (base(f) == "allowed_signers" or f in keys))})
+    in any folder, the root's included, each TRIAGE.md `homes` names (`tracker_folder`'s), and the configuration file — and,
+    where the default branch's configuration cannot be read (`unread`), every file named `allowed_signers` and each `keys`
+    names: its tracker directory, and so its signers file, is not known there. Each compared as a file system that ignores
+    case and Unicode normalization compares it (`fs_fold`), on every system."""
+    base = lambda f: fs_fold(f.rsplit("/", 1)[-1])
+    names = {fs_fold("TRIAGE.md"), *([fs_fold("allowed_signers")] if unread else [])}
+    watched = {fs_fold(w) for w in (*homes, prefix + CONFIG_NAME, *(keys if unread else ()))}
+    return sorted({f for f in files if base(f) in names or fs_fold(f) in watched})
 
 
-def guard_changes(now, before, kept, touched, unread=False):
+def variant_changes(files, watched):
+    """[("variant", "changes", the file, the path it is read as)] — each of `files` that is not a path the guard watches, but is
+    one as a file system that ignores case and Unicode normalization reads it (`fs_fold`): on such a file system — macOS's
+    default one, Windows's — it can be the very file the tool reads. Folded on every system."""
+    folded = {fs_fold(w): w for w in watched}
+    return [("variant", "changes", f"`{f}`", f"which a file system that ignores case or Unicode normalization reads as `{folded[fs_fold(f)]}`")
+            for f in sorted(files) if f not in watched and fs_fold(f) in folded]
+
+
+def guard_changes(now, before, kept, files, prefix, keys=(), unread=False):
     """What one commit does that FM-037 judges: `section_changes` and `kept_changes` (`kept`), read under the views `now` and
-    `before` — where a view on either side cannot be read, the files `touched` names (`guard_touched`), refused as changes,
-    never read under the defaults. `unread`: the default branch's configuration cannot be read — every file `touched` names
-    is a change, whatever the views read."""
-    if any(v[5] for v in (now, *before)):
+    `before`, and each of the files it changes (`files`) that is a watched path in another case or Unicode normalization
+    (`variant_changes`) — where a view on either side cannot be read, the files `guard_touched` names, refused as changes,
+    never read under the defaults. `unread`: the default branch's configuration cannot be read — every file `guard_touched`
+    names is a change, whatever the views read."""
+    views = (now, *before)
+    homes = [v[1] for v in views if v[1]]
+    touched = guard_touched(files, prefix, keys, unread, homes)
+    if any(v[5] for v in views):
         own = ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else section_changes(now, before, touched)) if touched else []
     else:
-        own = section_changes(now, before)
+        own = section_changes(now, before) + variant_changes(files, [*dict.fromkeys([*homes, prefix + CONFIG_NAME, *keys])])
     own += kept
     return own or ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else [])
 
@@ -6495,7 +6515,7 @@ def guard_walk(*revs, keys=(), unread=False):
     kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys]) if commits else {}
     changed = [(c, subject, next((views[r][1] for r in (c, *ps) if views[r][1]), "TRIAGE.md"),
                 guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
-                              guard_touched(files, prefix, keys, unread), unread))
+                              files, prefix, keys, unread))
                for c, ps, subject, files in commits]
     return len(commits), [row for row in changed if row[3]]
 
@@ -6590,7 +6610,7 @@ def guard_proof(owners):
 def guard_why(what):
     """Whose the thing changed is: their two sections, the keys their signature is verified against, or both."""
     keys = {k for k, *_r in what}
-    return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & {*GUARDED, "unread"})), (GUARD_WHY_KEYS, "signers" in keys)) if on)
+    return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & {*GUARDED, "unread", "variant"})), (GUARD_WHY_KEYS, "signers" in keys)) if on)
 
 
 def unread_why(trunk):
@@ -6649,9 +6669,9 @@ def triage_pending(subject):
     views = triage_views(["", *parents], env, prefix)          # "" — the index: what this commit carries
     keys = signers_paths(trunk)
     kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
-    touched = guard_touched(staged_files(parents, env), prefix, keys, not owners) if not owners or any(views[r][5] for r in ["", *parents]) else []
     what = guard_changes(views[""], [views[p] for p in parents],
-                         [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])], touched, not owners)
+                         [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
+                         staged_files(parents, env), prefix, keys, not owners)
     brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []
     refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
@@ -8288,6 +8308,12 @@ def hooks_folder_problem(hooks):
                 return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
                         f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
     return ""
+
+
+def fs_fold(name):
+    """A file's name as a file system that ignores case and Unicode normalization compares it — macOS's default one does both: case-folded, and in one
+    normalization (NFD) before and after."""
+    return unicodedata.normalize("NFD", unicodedata.normalize("NFD", name).casefold())
 
 
 def config_file_problem():

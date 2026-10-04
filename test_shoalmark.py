@@ -18,6 +18,7 @@ import sys
 import shutil
 import tempfile
 import time
+import unicodedata
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -7985,6 +7986,63 @@ with tempfile.TemporaryDirectory() as tmp:
         (root / "shoalmark.toml").rmdir()
     git(root, "rm", "-q", "--cached", "shoalmark.toml"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the configuration, a file again"); git(root, "push", "-q", "origin", "main")
+    # v0.19.1 · the tracker folder the guard watches is the tool's own (`tracker_folder`): written with /, nested or at the root, it reads as before
+    c_xf_, g_xf_ = made37_("ap/037-explicit-folder", "AP-037: a pass recorded", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "docs/work-tracker"\n[kinds]', 1)),
+                                                                                        text37_("*None yet.*", "**2026-10-04 — a pass.**")()), SEAT_)
+    git(root, "switch", "-q", "main"); (root / "TRIAGE.md").write_text(filled_); (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = ""\n[kinds]', 1)); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker at the root"); git(root, "push", "-q", "origin", "main")
+    c_rp_, g_rp_ = made37_("ap/037-root-pass", "AP-037: a pass recorded", text37_("*None yet.*", "**2026-10-04 — a pass.**", root / "TRIAGE.md"), SEAT_)
+    check(f"FM-006 · v0.19.1 · `tracker_dir` written with /, nested and the default, and empty, the root: a seat's `## Passes` entry passes the guard in each (saw {g_xf_!r}, {g_rp_!r})",
+          g_xf_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-explicit-folder` since origin/main, none changes them or their signers file")
+          and g_rp_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-root-pass` since origin/main, none changes them or their signers file"))
+    git(root, "switch", "-q", "main"); git(root, "rm", "-q", "TRIAGE.md"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    # v0.19.1 · `tracker_dir` written with a backslash is refused as the configuration is read, on every system; a commit that carries one is one whose configuration the guard cannot read
+    bs37_ = cfg37_.replace("[kinds]", 'tracker_dir = "docs\\\\work-tracker"\n[kinds]', 1)
+    def backslash37_():                                 # the configuration names a folder with a backslash; on POSIX a folder of that very name holds a TRIAGE.md of the seat's own
+        (root / "shoalmark.toml").write_text(bs37_)
+        if os.name != "nt":
+            (root / "docs\\work-tracker").mkdir(); (root / "docs\\work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
+    (c_bs1_,) = by_hand37_("ap/037-backslash", "main", ("AP-037: tidy the folder", backslash37_, SEAT_))
+    try:
+        code_bs_, said_bs_ = run(root, "--check")[0], ""
+    except SystemExit as e_:
+        code_bs_, said_bs_ = None, str(e_)
+    git(root, "switch", "-q", "ap/037-backslash"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written with /", SEAT_)
+    c_bs2_, g_bs_ = sha37_(), guard37_(); code_bs2_, _o, err_bs2_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · a seat's commit pointing `tracker_dir` at a folder written with a backslash, a TRIAGE.md of its own there, is refused: as the configuration is read, in one line ending \"write the folder with /\" — "
+          f"and, the configuration written with / after it, by `--check`, exit 4, the guard reading that commit's configuration as one it cannot read (saw {said_bs_!r}, {code_bs2_}, {g_bs_[0]!r})",
+          said_bs_.startswith("shoalmark.toml: `tracker_dir = ") and said_bs_.endswith("— write the folder with /") and "\n" not in said_bs_ and code_bs2_ == fm.EXIT_LINT and len(g_bs_[0]) == 2
+          and any(l_.startswith(f'refused: commit {c_bs1_[:7]} "AP-037: tidy the folder" changes ') and f"where shoalmark.toml at {c_bs1_[:7]} cannot be read here — {said_bs_}" in l_ for l_ in g_bs_[0])
+          and any(l_.startswith(f'refused: commit {c_bs2_[:7]} "AP-037: the folder written with /" changes `shoalmark.toml` where shoalmark.toml at {c_bs1_[:7]} cannot be read here') for l_ in g_bs_[0]))
+    git(root, "switch", "-q", "main")
+    # v0.19.1 · a path the guard watches, in another case or Unicode normalization: on a file system that ignores both — macOS's default, Windows's — it can be the file the tool reads
+    def variant37_(branch, path):                       # a seat's commit, made with git's plumbing as on a file system that keeps case and normalization apart: `path` holds an intent of its own
+        git(root, "switch", "-q", "-c", branch, "main")
+        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=filled_.replace("lose a loan", "lose a ledger"), capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "-c", "core.precomposeunicode=false", "update-index", "--add", "--cacheinfo", f"100644,{blob_},{path}")
+        git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_)
+        c_, g_ = sha37_(), guard37_(); code_ = run(root, "--check")[0]
+        git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")    # where the file system folds the two, leaving the variant took the Owner's file with it
+        return c_, g_, code_
+    variant_line37_ = lambda c_, path_, home_path_: (f'refused: commit {c_[:7]} "AP-037: a note" changes `{path_}` which a file system that ignores case or Unicode normalization reads as `{home_path_}` — '
+                                                    f"its author `implementer@seat` is not the Owner (`h@x`): not the Owner's signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}")
+    c_v1_, g_v1_, code_v1_ = variant37_("ap/037-lower-name", "docs/work-tracker/triage.md")
+    check(f"FM-006 · v0.19.1 · a seat's commit that writes `triage.md` beside the Owner's `TRIAGE.md` is refused by `--check`, exit 4, in one line naming it and the file it is read as (saw {code_v1_}, {g_v1_[0]!r})",
+          code_v1_ == fm.EXIT_LINT and g_v1_[0] == [variant_line37_(c_v1_, "docs/work-tracker/triage.md", "docs/work-tracker/TRIAGE.md")])
+    c_v2_, g_v2_, code_v2_ = variant37_("ap/037-folder-case", "Docs/Work-Tracker/TRIAGE.md")
+    check(f"FM-006 · v0.19.1 · a seat's commit that writes a TRIAGE.md in the tracker folder spelled in another case is refused by `--check`, exit 4, in one line naming it and the file it is read as (saw {code_v2_}, {g_v2_[0]!r})",
+          code_v2_ == fm.EXIT_LINT and g_v2_[0] == [variant_line37_(c_v2_, "Docs/Work-Tracker/TRIAGE.md", "docs/work-tracker/TRIAGE.md")])
+    ue37_ = unicodedata.normalize("NFC", "docs/Übersicht"); git(root, "switch", "-q", "main"); git(root, "mv", "docs/work-tracker", ue37_)
+    (root / ".gitignore").write_text((root / ".gitignore").read_text() + f"{ue37_}/index.html\n{ue37_}/view/\n")
+    (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", f'tracker_dir = "{ue37_}"\n[kinds]', 1)); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker in a folder whose name is not ASCII"); git(root, "push", "-q", "origin", "main")
+    nfd37_ = unicodedata.normalize("NFD", ue37_) + "/TRIAGE.md"
+    c_v4_, g_v4_, code_v4_ = variant37_("ap/037-folder-nfd", nfd37_)
+    check(f"FM-006 · v0.19.1 · a seat's commit that writes a TRIAGE.md in the tracker folder spelled in another Unicode normalization is refused by `--check`, exit 4, in one line naming it and the file it is read as (saw {code_v4_}, {g_v4_[0]!r})",
+          code_v4_ == fm.EXIT_LINT and g_v4_[0] == [variant_line37_(c_v4_, nfd37_, ue37_ + "/TRIAGE.md")])
+    git(root, "switch", "-q", "main"); git(root, "mv", ue37_, "docs/work-tracker"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
@@ -8060,6 +8118,21 @@ with tempfile.TemporaryDirectory() as tmp:
           "commit its first version there, signed — a branch cannot prove a key the default branch does not hold" and on_vouch_[1] == c_r2_[:7])
     rm_git(root)
 fm.configure(HERE)
+
+
+def _backslash_said(text):
+    """What `read_config` says of a configuration: its one refusal line, or "" where it reads it."""
+    try:
+        fm.read_config(text)
+        return ""
+    except SystemExit as e_:
+        return str(e_)
+
+
+_bs_said = _backslash_said('tracker_dir = "docs\\\\work-tracker"\n')
+check(f"FM-006 · v0.19.1 · `read_config` refuses a `tracker_dir` written with a backslash, on every system, in one line ending \"write the folder with /\" — the same folder written with / reads (saw {_bs_said!r})",
+      _bs_said.startswith('shoalmark.toml: `tracker_dir = "docs\\\\work-tracker"` holds a backslash') and _bs_said.endswith("— write the folder with /") and "\n" not in _bs_said
+      and _backslash_said('tracker_dir = "docs/work-tracker"\n') == "" and fm.read_config('tracker_dir = "docs/work-tracker"\n') == {"tracker_dir": "docs/work-tracker"})
 
 # FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
 # walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged
