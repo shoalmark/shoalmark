@@ -2870,6 +2870,35 @@ else:
     _skipped("FM-006 · `--init` writes nothing before a refusal", 3, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- `--init` and the folder's name (the Owner's ruling of 2026-10-03, v0.19.1): the configuration carries the folder's name as a string it reads back — a `"` or a
+# `\\` in it included; a name it cannot carry is refused in one line before anything is written
+def _in(name):
+    """`--init` in a fresh git repository whose folder is named `name`: what it says, what it wrote, and the configuration's `name` as it reads back."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / name; root.mkdir(); git(root, "init", "-q")
+        seen_ = lambda: (_tree(root), subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, env=_ENV).stdout)
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr")
+        conf_ = root / "shoalmark.toml"
+        try:
+            read_ = fm.read_config(conf_.read_text(encoding="utf-8")).get("name") if conf_.is_file() else None
+        except SystemExit:
+            read_ = None
+        g_ = dict(code=c_, err=e_.strip(), same=seen_() == before_, name=read_, triage=(root / "docs/work-tracker/TRIAGE.md").is_file())
+        rm_git(root)
+    return g_
+if os.name == "nt":
+    _skipped("FM-006 · `--init` and the folder's name", 3, "Windows names no folder with a `\"`, a `\\` or a line break in it")
+else:
+    for name_, what_ in (('q"repo', 'a folder named `q"repo`'), ("repo\\", "a folder named `repo\\`")):
+        g_ = _in(name_)
+        check(f"FM-006 · `--init` and the folder's name · {what_}: `--init` succeeds, and the configuration's `name` reads back as the folder's name "
+              f"(saw exit {g_['code']}, name {g_['name']!r}, {g_['err'][-120:]!r})", g_["code"] == 0 and g_["name"] == name_ and g_["triage"])
+    g_ = _in("re\npo")
+    check(f"FM-006 · `--init` and the folder's name · a folder whose name holds a line break, which the configuration cannot carry: refused in one line, and the tree and "
+          f"`git status` are as they were (saw exit {g_['code']}, {g_['err'][-140:]!r})", g_["code"] != 0 and len(g_["err"].splitlines()) == 1 and g_["same"])
+fm.configure(HERE)
+
 # --- `--vendor` reads only what it copies (RV-2314, the Owner's ruling filed in FM-006, *The fix round after the critical review*): a file the PIN names that is
 # not among the files it copies is never opened, and the run goes on — the file left where it is, the new PIN without its name
 _VR_REV = "f88546f"
