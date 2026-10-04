@@ -28,6 +28,8 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**2026-10-02 — the Builder's model, by tier.** The Owner's ruling is filed below, in *The Builder's model, by tier — after v0.19.0*; `builder.md` says it on `fm/024-the-builder-s-model-by-tier`. **What is left:** the Owner's merge.
+
 **2026-10-01 — the `[seats]` switch is built on `fm/024-the-seats-switch`; the full local run on its tip comes next, then the Owner's cold session and the Reviewer, in parallel.** The Owner's ruling is filed
 below, in *The `[seats]` switch — v0.19.0*. D2 was built at `321fddc` (a top-level `owner` names the Owner; `[seats] owner` still reads as its old spelling) and
 fixed on the Reviewer's pass at `87e2e1b`, the round below. Phase 2 is built: this repository's `[seats]` keys are `planner` and `builder`, the seven bot
