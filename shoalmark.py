@@ -8340,8 +8340,13 @@ def init(key=None):
         return EXIT_LINT
     fresh_config = not (ROOT / CONFIG_NAME).exists()
     config_text = CONFIG_TEMPLATE.format(name=ROOT.name.replace("\\", "\\\\").replace('"', '\\"'), key=key)       # the folder's name as a TOML string
-    if fresh_config:
-        read_config(config_text)                            # read back before anything is written: a name it cannot carry is refused in one line
+    if fresh_config:                                        # read back before anything is written: a name it cannot carry is refused in one line
+        try:
+            read_config(config_text)
+        except SystemExit:
+            print(f"--init: the folder's name {ROOT.name!r} cannot be written into {CONFIG_NAME} as one line — nothing is written; give the folder a name "
+                  "without a line break", file=sys.stderr)
+            return EXIT_LINT
     made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, config_text),
                                             (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
     agents, claude, ignore, svn = ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / ".gitignore", vcs() == "svn"

@@ -2895,8 +2895,11 @@ else:
         check(f"FM-006 · `--init` and the folder's name · {what_}: `--init` succeeds, and the configuration's `name` reads back as the folder's name "
               f"(saw exit {g_['code']}, name {g_['name']!r}, {g_['err'][-120:]!r})", g_["code"] == 0 and g_["name"] == name_ and g_["triage"])
     g_ = _in("re\npo")
-    check(f"FM-006 · `--init` and the folder's name · a folder whose name holds a line break, which the configuration cannot carry: refused in one line, and the tree and "
-          f"`git status` are as they were (saw exit {g_['code']}, {g_['err'][-140:]!r})", g_["code"] != 0 and len(g_["err"].splitlines()) == 1 and g_["same"])
+    _IN_LINE = ("--init: the folder's name 're\\npo' cannot be written into shoalmark.toml as one line — nothing is written; give the folder a name "
+                "without a line break")
+    check(f"FM-006 · `--init` and the folder's name · a folder whose name holds a line break, which the configuration cannot carry: refused in one line naming the "
+          f"folder's name, exit 4, and the tree and `git status` are as they were (saw exit {g_['code']}, {g_['err'][-140:]!r})",
+          g_["code"] == fm.EXIT_LINT and g_["err"] == _IN_LINE and g_["same"])
 fm.configure(HERE)
 
 # --- `--vendor` reads only what it copies (RV-2314, the Owner's ruling filed in FM-006, *The fix round after the critical review*): a file the PIN names that is
