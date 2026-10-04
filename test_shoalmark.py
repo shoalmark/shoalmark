@@ -7860,9 +7860,52 @@ with tempfile.TemporaryDirectory() as tmp:
           and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text('owner = "other@x signed"\n' + cfg37_); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner named twice, differently"); git(root, "push", "-q", "origin", "main")
-    c_two_, g_two_ = made37_("ap/037-two-owners", "AP-037: a better intent", lambda: ((root / "shoalmark.toml").write_text(cfg37_), text37_("lose a loan", "lose a book")()), SEAT_)
-    check(f"FM-037 · RV-2203 · where this tool refuses the default branch's configuration, the guard says so and why — never that it names no Owner (saw {g_two_!r})",
-          g_two_[0] == [] and g_two_[1].startswith("the Owner's two sections: not guarded — origin/main's configuration is refused here, so it names nobody — shoalmark.toml: the Owner is named twice, and differently"))
+    fixed37_ = lambda edit_: lambda: ((root / "shoalmark.toml").write_text(cfg37_), edit_())         # the branch carries the configuration change; the default branch's is refused here
+    c_two_, g_two_ = made37_("ap/037-two-owners", "AP-037: a better intent", fixed37_(text37_("lose a loan", "lose a book")), SEAT_)
+    check(f"FM-037 · RV-2203 · v0.19.1 · where this tool refuses the default branch's configuration, the guard's line says guarded and why, in one line — never not guarded, never that it names no Owner (saw {g_two_!r})",
+          g_two_[1].startswith("the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: "
+                               "shoalmark.toml: the Owner is named twice, and differently")
+          and g_two_[1].endswith("— 1 commit(s) on `ap/037-two-owners` since origin/main, 1 change them or their signers file, 1 refused") and "\n" not in g_two_[1]
+          and len(g_two_[0]) == 1 and g_two_[0][0].startswith(f'refused: commit {c_two_[:7]} "AP-037: a better intent" changes the text under `## The intent`'))
+    # v0.19.1 · the default branch's configuration carries an inert key this tool refuses — an `owner` line inside `[tags]`, where it names nobody
+    git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_ + '[tags]\nowner = "h@x signed"\n'); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "an owner line inside [tags]"); git(root, "push", "-q", "origin", "main")
+    unread37_ = ("origin/main's configuration cannot be read here, so who the Owner is is not known, and a change to their two sections or their signers file is not passed unread. "
+                 "The way through: land the configuration change on the default branch first, or upgrade there")
+    guarded37_ = "the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: shoalmark.toml: `owner` is inside `[tags]`, where it does not name the Owner"
+    c_ui_, g_ui_ = made37_("ap/037-unread-intent", "AP-037: a better intent", fixed37_(text37_("lose a loan", "lose a book")), SEAT_)
+    code_ui_, out_ui_, err_ui_ = run(root, "--check")
+    named_ui_ = [l_ for l_ in err_ui_.splitlines() if c_ui_[:7] in l_]
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, `--check` refuses a branch commit that changes `## The intent`, exit 4, in one line naming the commit, why and the way through — "
+          f"and its guard line says guarded (saw {code_ui_}, {named_ui_!r}, {err_ui_.strip()[-200:]!r})",
+          code_ui_ == fm.EXIT_LINT and g_ui_[0] == [f'refused: commit {c_ui_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}']
+          and named_ui_ == [f"  lint: {g_ui_[0][0]}"] and "the limit:" not in err_ui_ and "the hook proves" not in err_ui_
+          and guarded37_ in out_ui_ and g_ui_[1].startswith(guarded37_) and "\n" not in g_ui_[1]
+          and g_ui_[1].endswith("— 1 commit(s) on `ap/037-unread-intent` since origin/main, 1 change them or their signers file, 1 refused"))
+    c_up_, g_up_ = made37_("ap/037-unread-path", "AP-037: the path, signed", fixed37_(text37_("2. Nothing merges unreviewed.", "2. A seat merges.")), "-S", OWNER_)
+    c_uk_, g_uk_ = made37_("ap/037-unread-keys", "AP-037: a key", fixed37_(lambda: (root / "docs/work-tracker/allowed_signers").write_text("implementer@seat " + skey_.with_suffix(".pub").read_text(), encoding="utf-8")), SEAT_)
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, a branch commit that changes `## The current path` is refused, the Owner's signed one too, and one that writes the signers file is refused — each in one line (saw {g_up_[0]!r}, {g_uk_[0]!r})",
+          g_up_[0] == [f'refused: commit {c_up_[:7]} "AP-037: the path, signed" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — {unread37_}']
+          and g_uk_[0] == [f'refused: commit {c_uk_[:7]} "AP-037: a key" writes the signers file `docs/work-tracker/allowed_signers` — {unread37_}']
+          and g_up_[1].startswith(guarded37_) and g_uk_[1].startswith(guarded37_))
+    c_un_, g_un_ = made37_("ap/037-unread-neither", "AP-037: a pass recorded", fixed37_(text37_("*None yet.*", "**2026-10-03 — a pass.**")), SEAT_)
+    code_un_, out_un_, err_un_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, a branch commit that changes neither section nor the signers file passes `--check`, and its guard line says guarded (saw {code_un_}, {g_un_!r}, {err_un_.strip()[-200:]!r})",
+          code_un_ == 0 and g_un_[0] == [] and g_un_[1].startswith(guarded37_) and guarded37_ in out_un_
+          and g_un_[1].endswith("— 1 commit(s) on `ap/037-unread-neither` since origin/main, none changes them or their signers file"))
+    git(root, "switch", "-q", "-c", "ap/037-unread-hook", "main"); fixed37_(text37_("lose a loan", "lose a shelf"))(); run(root); git(root, "add", "-A")
+    (base / "msg37").write_text("AP-037: the intent, staged\n", encoding="utf-8")
+    code_uh_, _o, err_uh_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
+    check(f"FM-006 · v0.19.1 · the commit being made: where this tool refuses the default branch's configuration, `--commit-msg` refuses a staged change to `## The intent`, exit 4, in one line naming the change, why and the way through (saw {code_uh_}, {err_uh_.strip()[-300:]!r})",
+          code_uh_ == fm.EXIT_LINT and [l_.strip() for l_ in err_uh_.splitlines() if l_.strip()] == [
+              f'refused: this commit "AP-037: the intent, staged" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}'])
+    git(root, "switch", "-q", "-c", "ap/037-unread-merge", "main"); git(root, "merge", "-q", "--no-ff", "--no-commit", "ap/037-unread-intent")
+    (base / "msg37").write_text("merge the intent in\n", encoding="utf-8")
+    code_um_, _o, err_um_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "merge", "--abort"); git(root, "switch", "-q", "main")
+    check(f"FM-006 · v0.19.1 · the commit being made: where this tool refuses the default branch's configuration, a merge being made that brings a commit changing `## The intent` is refused by `--commit-msg`, exit 4, in one line naming the commit it brings (saw {code_um_}, {err_um_.strip()[-300:]!r})",
+          code_um_ == fm.EXIT_LINT and [l_.strip() for l_ in err_um_.splitlines() if l_.strip()] == [g_ui_[0][0]])
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")

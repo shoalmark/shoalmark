@@ -6257,6 +6257,10 @@ GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask 
 GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on their account holds that key (FM-007)"
 # what it can prove where their seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
 GUARD_AUTHOR_ONLY = "the author only — mark `owner` signed to prove the key"
+# where this tool refuses the default branch's configuration, who the Owner is is not known: a change to what only they change is
+# refused, not left unguarded (the Owner's ruling of 2026-10-03, v0.19.1) — and the way through, the words such a refusal ends on
+GUARD_UNREAD = "configuration cannot be read here, so who the Owner is is not known, and a change to their two sections or their signers file is not passed unread"
+GUARD_UNREAD_WAY = "land the configuration change on the default branch first, or upgrade there"
 GUARD_SVN = ("the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so "
              "nothing here can tell their commit from a seat's")
 _GUARD = None
@@ -6414,7 +6418,8 @@ def owners_of(cfg):
 def owners_at(rev, refused=None):
     """The Owner as `rev`'s `shoalmark.toml` names them — the default branch's, so a branch never names its own Owner — or
     this checkout's where `rev` is None or carries no configuration. Where this tool refuses that configuration, nobody —
-    and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2)."""
+    and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2), and
+    refuses every change to the two sections (v0.19.1)."""
     if not rev:
         return may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
@@ -6476,6 +6481,24 @@ def guard_why(what):
     return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & set(GUARDED))), (GUARD_WHY_KEYS, "signers" in keys)) if on)
 
 
+def unread_why(trunk):
+    """Why a change to the Owner's two sections or their signers file is refused where this tool refuses `trunk`'s configuration,
+    and the way through — last, so a refusal of this kind is told by its end (`unread_refusal`)."""
+    return f"{trunk}'s {GUARD_UNREAD}. The way through: {GUARD_UNREAD_WAY}"
+
+
+def unread_lines(changed, trunk):
+    """FM-037 where this tool refuses `trunk`'s configuration: each commit of `guard_walk` that changes the two sections or their
+    signers file, refused in one line — whoever made it, signed or not."""
+    return [f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did_words(what)} — {unread_why(trunk)}' for c, subject, _home, what in changed]
+
+
+def unread_refusal(line):
+    """Whether a line of the guard is the refusal `unread_why` ends: no author and no signature judged, so the lines on what a
+    signature proves are not said under it. Told by its end — every other line of the guard ends on fixed words of its own."""
+    return line.endswith(GUARD_UNREAD_WAY)
+
+
 def guard_lines(verdicts, owners):
     """The refusals of `guard_verdicts` as `--check` prints them — a checkout's own finding (signed, this clone cannot check
     it) worded as FM-034 groups it, never written into INDEX.md."""
@@ -6496,13 +6519,14 @@ def triage_pending(subject):
     against each of its parents — and every commit a merge being made brings, walked as `--check` walks them. What the
     hook CAN prove is the author: git signs the commit after the hook has run, so the Owner's own commit passes here on their
     name and a seat's is refused before it is made. `--check` on the branch judges the signature: it is the gate, the hook
-    best-effort (the 0.18.3 ruling on FM-033's hook). `subject` names the commit in what it says."""
+    best-effort (the 0.18.3 ruling on FM-033's hook). Where this tool refuses the default branch's configuration, who the Owner
+    is is not known, and every such change is refused, whoever makes it (v0.19.1). `subject` names the commit in what it says."""
     if vcs() != "git":
         return [], []
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git)
-    owners = owners_at(trunk)
-    if not owners:
+    trunk, why = default_trunk(git), []
+    owners = owners_at(trunk, why)
+    if not owners and not why:
         return [], []
     heads = merge_heads()
     parents = (["HEAD"] if git("rev-parse", "--verify", "-q", "HEAD").returncode == 0 else []) + heads
@@ -6512,13 +6536,16 @@ def triage_pending(subject):
     kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
     what = section_changes(views[""], [views[p] for p in parents]) + [
         w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])]
-    refused = guard_lines(guard_verdicts(guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys)[1], owners), owners) if heads else []
+    brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys)[1] if heads else []
+    refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
     if what:
         name, email = pending_author()
         mode = next((m for who, m in owners.items() if who in (email, name)), None)
         this = f'this commit "{first_words(subject, 60)}"' if subject else "this commit"
-        if mode is None:
+        if not owners:
+            refused.append(f'refused: {this} {did_words(what)} — {unread_why(trunk)}')
+        elif mode is None:
             refused.append(f'refused: {this} {did_words(what)} — its author `{email or name or "nobody git can name"}` is not the Owner '
                            f'({" · ".join(f"`{w}`" for w in owners)}): {guard_proof(owners)} — {guard_why(what)}. The way through: {GUARD_WAY}')
         else:
@@ -6538,7 +6565,7 @@ def commit_msg_hook(message_file):
     refused, notes = triage_pending(message_subject(text) or literal_subject(text))
     for line in refused + notes:
         print(f"  {line}", file=sys.stderr)
-    if refused or notes:
+    if notes or not all(unread_refusal(line) for line in refused):          # what the hook proves, where it judged an author
         print("  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, "
               "and it judges the signature", file=sys.stderr)
         print(f"  the limit: {GUARD_LIMIT}", file=sys.stderr)
@@ -6548,13 +6575,14 @@ def commit_msg_hook(message_file):
 def guard_footer(problems):
     """The refusal's last line, under every line the run printed (clause 6): what a signature proves — the key, not the hand.
     Said once, where the guard said anything."""
-    return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems for p_ in (_GUARD or ([], ""))[0]) else []
+    return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems and not unread_refusal(p_) for p_ in (_GUARD or ([], ""))[0]) else []
 
 
 def triage_guard():
     """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
-    merges walked and judged by the text they bring. Read once per run; the pre-commit run judges nothing here (the
-    commit-msg hook judges the commit being made)."""
+    merges walked and judged by the text they bring — where this tool refuses the default branch's configuration, each commit
+    that changes them refused, signed or not (the Owner's ruling of 2026-10-03, v0.19.1). Read once per run; the pre-commit run
+    judges nothing here (the commit-msg hook judges the commit being made)."""
     global _GUARD
     if COMMITTING:
         return [], ""
@@ -6570,9 +6598,15 @@ def triage_guard():
         return _GUARD
     why = []
     owners = owners_at(trunk, why)
+    if not owners and why:                                   # refused here: every change to the two sections or their signers file is refused
+        n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
+        refused = unread_lines(changed, trunk)
+        _GUARD = (refused, f"the Owner's two sections: guarded — {trunk}'s configuration cannot be read here, so every change to them or their signers file is refused: {why[0]} — "
+                           f"{n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+                           + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if changed else "none changes them or their signers file"))
+        return _GUARD
     if not owners:
-        _GUARD = ([], f"the Owner's two sections: not guarded — " + (f"{trunk}'s configuration is refused here, so it names nobody — {why[0]}" if why
-                       else f"{trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
+        _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)")
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
