@@ -4630,6 +4630,10 @@ _DAY_PINS = (("Europe/Berlin", (2026, 10, 3, 22, 30), 7200, "00:30 on the 4th, U
              ("Europe/Berlin", (2027, 3, 28, 22, 30), 7200, "00:30 on the 29th, the day after the clock went forward"))
 
 
+class _ProbeDidNotRun(Exception):
+    """The page's probe set no `data-probe` in Chrome's DOM, or not JSON: nothing was read, so a check fails — it never skips."""
+
+
 def _board_days(zone, at, offset):
     """The board's days at the UTC instant `at` in `zone`, beside the tool's own count at that instant: {what the page shows, what the command says}, or the
     reason this machine cannot pin the zone. Four asks three to none local days old, five judged In Progress trackers 0, 6, 7, 8 and 12 local days past
@@ -4666,7 +4670,13 @@ def _board_days(zone, at, offset):
             (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace('<meta charset="utf-8">', '<meta charset="utf-8">' + clock, 1)
                                            .replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
             dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-            seen = _json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom) or [None, "{}"])[1]) or "{}")
+            got = re.search(r'data-probe="([^"]*)"', dom)
+            try:
+                seen = _json.loads(_html.unescape(got.group(1))) if got else None
+            except ValueError:
+                seen = None
+            if not isinstance(seen, dict) or not seen:
+                raise _ProbeDidNotRun(f"{zone} at {at:%Y-%m-%d %H:%M}Z")
         if seen.get("off") != -offset // 60:
             return f"this Chrome does not take TZ={zone} (it reads {seen.get('zone')!r}, offset {seen.get('off')})"
         box = seen["box"]
@@ -4690,9 +4700,13 @@ if _browser("days"):
         skip("days", "this platform cannot pin a process's zone (no time.tzset)")
     else:
         try:
-            days_, why_ = [], ""
+            days_, why_, broke_ = [], "", ""
             for zone_, (y_, mo_, d_, h_, mi_), offset_, what_ in _DAY_PINS:
-                read_ = _board_days(zone_, datetime.datetime(y_, mo_, d_, h_, mi_, tzinfo=datetime.timezone.utc), offset_)
+                try:
+                    read_ = _board_days(zone_, datetime.datetime(y_, mo_, d_, h_, mi_, tzinfo=datetime.timezone.utc), offset_)
+                except _ProbeDidNotRun:
+                    broke_ = f"the page's probe did not run in {zone_}, {what_}"
+                    break
                 if isinstance(read_, str):
                     why_ = read_
                     break
@@ -4701,14 +4715,14 @@ if _browser("days"):
                 skip("days", why_)
             else:
                 check("FM-006 · v0.19.1 · the board's page counts an ask's age in local calendar days, as `--owner` does — the box's oldest and each ask's own, in a zone ahead of UTC, one behind, "
-                      f"and either side of a clock change (saw {[(w_, r_['owner'], r_['box'], r_['owner_oldest'], r_['box_oldest']) for w_, r_ in days_ if r_['owner'] != r_['box'] or r_['owner_oldest'] != r_['box_oldest']]})",
-                      len(days_) == len(_DAY_PINS) and all(len(r_["owner"]) == 4 and r_["owner"] == r_["box"] and r_["owner_oldest"] == r_["box_oldest"] == max(r_["owner"].values()) for _w, r_ in days_))
+                      f"and either side of a clock change (saw {broke_ or [(w_, r_['owner'], r_['box'], r_['owner_oldest'], r_['box_oldest']) for w_, r_ in days_ if r_['owner'] != r_['box'] or r_['owner_oldest'] != r_['box_oldest']]})",
+                      not broke_ and len(days_) == len(_DAY_PINS) and all(len(r_["owner"]) == 4 and r_["owner"] == r_["box"] and r_["owner_oldest"] == r_["box_oldest"] == max(r_["owner"].values()) for _w, r_ in days_))
                 check("FM-006 · v0.19.1 · the board's page calls a judgement fresh through its seventh local calendar day, as the triage worksheet does — a judged tracker sits under *triage* "
-                      f"exactly when the worksheet lists it, in each zone and across a clock change (saw {[(w_, r_['worksheet'], r_['triage']) for w_, r_ in days_ if r_['worksheet'] != r_['triage']]})",
-                      len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["triage"] and r_["worksheet"] and r_["worksheet"] != r_["judged"] for _w, r_ in days_))
+                      f"exactly when the worksheet lists it, in each zone and across a clock change (saw {broke_ or [(w_, r_['worksheet'], r_['triage']) for w_, r_ in days_ if r_['worksheet'] != r_['triage']]})",
+                      not broke_ and len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["triage"] and r_["worksheet"] and r_["worksheet"] != r_["judged"] for _w, r_ in days_))
                 check("FM-006 · v0.19.1 · the viewer marks a verdict stale from its eighth local calendar day on — exactly when the triage worksheet lists the tracker again, in each zone "
-                      f"and across a clock change (saw {[(w_, r_['worksheet'], r_['stale']) for w_, r_ in days_ if r_['worksheet'] != r_['stale']]})",
-                      len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["stale"] and r_["worksheet"] for _w, r_ in days_))
+                      f"and across a clock change (saw {broke_ or [(w_, r_['worksheet'], r_['stale']) for w_, r_ in days_ if r_['worksheet'] != r_['stale']]})",
+                      not broke_ and len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["stale"] and r_["worksheet"] for _w, r_ in days_))
         except _ChromeFailed as e_:
             _hung("days", e_)
 fm.configure(HERE)
