@@ -36,8 +36,8 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 
 - **git:** plain hooks — the index is regenerated and checked on every commit; a work item that contradicts itself is refused.
 - **Subversion:** the TortoiseSVN hook properties and `svn:ignore` for the board. Subversion's command line runs no
-  client-side hook, so the contract tells agents to run the tool before `svn commit`. `--check` after the commit is the
-  gate.
+  client-side hook, so the contract tells agents to run the tool before `svn commit`. `--check` after the commit is what
+  judges it.
 
 ## 4. Say who answers — and who the agents are
 

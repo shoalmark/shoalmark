@@ -38,7 +38,7 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 - **git:** einfache Hooks — der Index wird bei jedem Commit erzeugt und geprüft; ein Arbeitspaket, das sich widerspricht, wird abgelehnt.
 - **Subversion:** die TortoiseSVN-Hook-Eigenschaften und `svn:ignore` für die Tafel. Die Subversion-Kommandozeile
   kennt keinen Client-Hook — der Vertrag sagt den Agenten, das Werkzeug vor jedem `svn commit` laufen zu lassen.
-  `--check` nach dem Commit ist das Gate.
+  `--check` nach dem Commit beurteilt ihn.
 
 ## 4. Sagen, wer antwortet — und wer die Agenten sind
 

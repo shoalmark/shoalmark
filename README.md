@@ -360,8 +360,8 @@ FM-007's class, and nothing moves work except the Owner's signed answer. **On Su
 account and `signed` is refused — the server authenticated the commit, and the gate reads the author it recorded
 (`svn blame --xml`, as the answer gate does). One seat = one SVN account whose credentials exist only in that seat's
 environment (a container, or its own Windows user), never the Owner's cached ones (`~/.subversion/auth`, the Windows
-credential store); the svn command line runs no hook, so a protected edit is committed there and `--check` after the
-commit is the gate, with the board's *sent back* group as the backstop. A seat's **charter** — how it thinks, a bold
+credential store); the svn command line runs no hook, so a protected edit is committed there, and `--check` after the
+commit is what judges it, with the board's *sent back* group as the backstop. A seat's **charter** — how it thinks, a bold
 Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
 
 ### Seat icons on the forge
