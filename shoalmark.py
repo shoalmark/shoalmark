@@ -640,6 +640,8 @@ def configure(root=None):
     _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
     _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
     _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
+    global _WALK_COMMITS, _HAS_SESSIONS
+    _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -5390,7 +5392,8 @@ def read_changes():
         if not tips:
             return []
         out = []
-        log = git("log", "-z", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%an%x02%ae", *tips, "--not", first)
+        log = git("log", "-z", "--no-merges", "--reverse", "--topo-order", "--relative", "--name-only", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
+                  *tips, "--not", first)                # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
         if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
             global _WALK_FAILED
             said = next((l.strip() for l in log.stderr.splitlines() if l.strip()), f"git log exited {log.returncode}")
@@ -5398,7 +5401,8 @@ def read_changes():
                                             f"not judged, and not passed unread. Fetch `origin`, or set its default branch again (`git remote set-head origin --auto`), then run again")
         for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
             head, _, files = record.partition("\x00")
-            c, an, ae = (head.split("\x02") + ["", ""])[:3]
+            c, an, ae, ps, tr = (head.split("\x02") + ["", "", "", ""])[:5]
+            _WALK_COMMITS[c] = (ps.split(), tr.strip("\n"))
             out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), {why}"))
         return out
 
@@ -5482,20 +5486,23 @@ def rights_problems(trackers):
                 elif how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
-    show = lambda rev, rel: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
-    for bases, files, name, email, commit, result, label in changes_under_review():
+    changes = changes_under_review()
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
+                                         for rev in ([result] if result else []) + list(bases))))     # one call for every change (v0.19.1)
+    show = lambda rev, rel: (lambda t_: None if t_ is None else t_.replace("\r\n", "\n").replace("\r", "\n"))(blobs.get(f"{rev}:{rel}"))
+    for bases, files, name, email, commit, result, label in changes:
         seat, where = seat_of(name, email), (label + " — " if label else "")
         touched = sorted(files & set(rels))
         staged = cat_blobs([f":./{rel}" for rel in touched], index_env()) if result is None and COMMITTING else {}     # the commit being made is what its index holds
         for rel in touched:
             t = rels[rel]
-            now = (show(result, rel).stdout if result is not None else (staged.get(f":./{rel}") or "") if COMMITTING
+            now = ((show(result, rel) or "") if result is not None else (staged.get(f":./{rel}") or "") if COMMITTING
                    else (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
             moves = None                                # a merge's own move is one it makes against EVERY parent (FM-019)
             for base in bases:
                 was = show(base, rel)
-                made = transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0)
+                made = transitions(was if was is not None else "", now, new_file=was is None)
                 moves = made if moves is None else moves & made
             for move in sorted(moves - {"ask"}):
                 right = "ask" if move == "clear" else move
@@ -5680,21 +5687,23 @@ def shipped_moves(rels):
     if vcs() == "svn":
         yield from svn_shipped_moves(rels)
         return
-    for bases, files, _name, _email, _commit, result, label in changes_under_review():
-        touched = sorted(files & set(rels))
-        if not touched:
-            continue
-        spec = lambda rev, rel: f"{rev}:./{rel}"                            # `./`: from the working directory, which is ROOT — as `--relative` made the paths
+    spec = lambda rev, rel: f"{rev}:./{rel}"                                # `./`: from the working directory, which is ROOT — as `--relative` made the paths
+    changes = [(c, sorted(c[1] & set(rels))) for c in changes_under_review()]
+    changes = [(c, touched) for c, touched in changes if touched]
+    made = cat_blobs([spec(c[5], rel) for c, touched in changes if c[5] is not None for rel in touched])     # every change's trackers, one call (v0.19.1)
+    moved = []
+    for (bases, files, _name, _email, _commit, result, label), touched in changes:
         if result is None and COMMITTING:
             texts = cat_blobs([f":./{rel}" for rel in touched], index_env())         # the commit being made is what its index holds, not the working tree
             now = {rel: texts.get(f":./{rel}") for rel in touched}
         elif result is None:
             now = {rel: (TRACKER_DIR / rels[rel]["file"]).read_text(encoding="utf-8") for rel in touched}
         else:
-            texts = cat_blobs([spec(result, rel) for rel in touched])      # one call for every tracker the change touches
-            now = {rel: texts.get(spec(result, rel)) for rel in touched}
-        shipped = [rel for rel in touched if is_shipped(now.get(rel))]
-        before = cat_blobs([spec(base, rel) for rel in shipped for base in bases])
+            now = {rel: made.get(spec(result, rel)) for rel in touched}
+        moved.append((bases, label, now, [rel for rel in touched if is_shipped(now.get(rel))]))
+    earlier = cat_blobs([spec(base, rel) for bases, _l, _n, shipped in moved for rel in shipped for base in bases])      # …and what each move was against, one call
+    for bases, label, now, shipped in moved:
+        before = {spec(base, rel): earlier.get(spec(base, rel)) for rel in shipped for base in bases}
         for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
             d = pathlib.PurePath(rel).parent.as_posix()
             was = next((n for n in (git_out("ls-tree", "-z", "--name-only", f"{base}:./{d}") or "").split("\x00") if n.startswith(rels[rel]["id"] + "-") and n.endswith(".md")), None)
@@ -6193,7 +6202,8 @@ def session_problems():
         seat = seat_of(name, email)
         if seat in (None, "owner"):
             continue
-        sid = (trailers_of(commit, "Session") or [""])[0] if commit else (git_out("config", "--get", "seat.session") or "").strip()
+        sid = ((trailer_values(_WALK_COMMITS[commit][1], "Session") if commit in _WALK_COMMITS else trailers_of(commit, "Session")) or [""])[0] if commit \
+            else (git_out("config", "--get", "seat.session") or "").strip()
         who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
         shape = SESSION_ID_RE.fullmatch(sid)
         if not sid:
@@ -6204,9 +6214,39 @@ def session_problems():
             why = f"{who} is the seat {seat}, and its Session: {sid} names the seat {shape[1]}"
         else:
             continue
-        if history_has_sessions(bases):
+        if sessions_before(_WALK_COMMITS[commit][0][:1] if commit in _WALK_COMMITS else bases):
             out.append(f"{label + ' — ' if label else ''}refused: {why}")
     return out
+
+
+def sessions_before(revs):
+    """`history_has_sessions`, answered from the walk's own log where `revs` are commits it listed — a commit carries a `Session:`, or one
+    of its parents' histories does — and with one git call for each other revision, kept: a fixed number of calls however long the
+    branch (v0.19.1)."""
+    for rev in [r for r in revs if r in _WALK_COMMITS]:
+        todo = [rev]
+        while todo:                                     # oldest first, without recursion: a long branch is a deep chain
+            c = todo[-1]
+            if c in _HAS_SESSIONS:
+                todo.pop()
+                continue
+            parents, block = _WALK_COMMITS[c]
+            pending = [q for q in parents if q in _WALK_COMMITS and q not in _HAS_SESSIONS]
+            if pending:
+                todo += pending
+                continue
+            _HAS_SESSIONS[c] = bool(trailer_values(block, "Session")) or any(
+                _HAS_SESSIONS[q] if q in _WALK_COMMITS else outside_sessions(q) for q in parents)
+            todo.pop()
+    return any(_HAS_SESSIONS[r] if r in _WALK_COMMITS else outside_sessions(r) for r in revs)
+
+
+def outside_sessions(rev):
+    """`history_has_sessions` of one revision outside the walk, asked once per run."""
+    key = ("outside", rev)
+    if key not in _HAS_SESSIONS:
+        _HAS_SESSIONS[key] = history_has_sessions([rev])
+    return _HAS_SESSIONS[key]
 
 
 def session_check():

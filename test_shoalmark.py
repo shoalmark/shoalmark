@@ -5312,6 +5312,38 @@ with tempfile.TemporaryDirectory() as tmp:
         check(f"FM-006 · v0.19.1 · with {case_}, `--check` judges the newest commit alone — the close under it passes as before — and says so in one line (saw {nd_[0]})",
               nd_[0] == 0 and "AP-975" not in nd_[2] and [l_ for l_ in nd_[1].splitlines() if l_.startswith("the branch's commits:")] == [nodef_])
         rm_git(r_)
+    # the walk's cost is fixed: `--check` at a branch's tip starts as many git processes for 100 commits of its own as for 20
+    c_ = base / "cost"; c_.mkdir(); subprocess.run(["git", "init", "-q", "--bare", str(base / "cost.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(c_)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(c_, "config", k_, v_)
+    (c_ / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in range(980, 1000):
+        tracker(c_, f"AP-{n_}", title="worked on")
+    run(c_); git(c_, "add", "-A"); git(c_, "commit", "-qm", "filed")
+    trunkC_ = subprocess.run(["git", "-C", str(c_), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(c_, "remote", "add", "origin", str(base / "cost.git")); git(c_, "push", "-q", "origin", trunkC_); git(c_, "remote", "set-head", "origin", trunkC_); git(c_, "switch", "-q", "-c", "work")
+    def workedC_(k_):
+        """`k_` more commits of the branch's own, each working on a tracker's body."""
+        for i_ in range(k_):
+            p_ = next((c_ / "docs/work-tracker").glob(f"AP-{980 + i_ % 20}-*.md")); p_.write_text(p_.read_text() + f"\nWorked on, {i_}.\n", encoding="utf-8")
+            git(c_, "commit", "-qam", f"AP-{980 + i_ % 20}: worked on")
+        run(c_); git(c_, "add", "-A"); git(c_, "commit", "-q", "--allow-empty", "-m", "the index")
+    def gitcallsC_():
+        """`--check` at the tip, and the git processes it starts."""
+        seen_, real_ = [0], subprocess.Popen
+        class counted_(real_):
+            def __init__(self, *a, **k):
+                seen_[0] += list(a[0] if a else k.get("args", []))[:1] == ["git"]
+                super().__init__(*a, **k)
+        subprocess.Popen = counted_
+        try:
+            code_ = run(c_, "--check")[0]
+        finally:
+            subprocess.Popen = real_
+        return code_, seen_[0]
+    workedC_(20); at20_ = gitcallsC_(); workedC_(80); at100_ = gitcallsC_()
+    check(f"FM-006 · v0.19.1 · `--check` at a branch's tip starts as many git processes with 100 commits of its own since the default branch as with 20 (saw {at20_}, {at100_})",
+          at20_[0] == at100_[0] == 0 and at20_[1] == at100_[1])
 fm.configure(HERE)
 
 # --- FM-005: a move to Shipped has a commit behind it — the Owner's ruling of 2026-09-30 ---------------------------------------------
