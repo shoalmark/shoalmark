@@ -4712,6 +4712,16 @@ def svn_new(rel):
     return _SVN_NEW[rel]
 
 
+def svn_merge_revision(rev):
+    """Whether revision `rev` merged other revisions into the working copy's tree — `svn log -g` lists them under it. Asked once per
+    revision; where Subversion cannot answer, SvnUnreadable."""
+    key = ("merge", rev)
+    if key not in _SVN_BLAME:
+        log = svn_run("log", "-q", "-g", "-r", str(rev), ".", xml=True)
+        _SVN_BLAME[key] = log is not None and any(len(e.findall("logentry")) for e in log.findall("logentry"))
+    return _SVN_BLAME[key]
+
+
 def svn_tracker_new(t):
     """`svn_new` of a tracker's file — where Subversion's record cannot be read, True: the rights refuse it, in their one line (`blame_refusal`)."""
     try:
@@ -4734,13 +4744,14 @@ def svn_blame(rel):
         return _SVN_BLAME[rel]
     out = {}
     try:
-        blame = svn_run("blame", rel, xml=True, answers=BLAME_ANSWERS)
+        blame = svn_run("blame", "-g", rel, xml=True, answers=BLAME_ANSWERS)     # `-g`: a line a merge brought is its author's, never the merger's (v0.19.1)
     except SvnUnreadable as e:
         _SVN_BLAME[rel] = e
         raise
     try:
         for e in (blame.iter("entry") if blame is not None else []):
-            who, c = e.find("commit/author"), e.find("commit")
+            c = e.find("merged/commit") if e.find("merged/commit") is not None else e.find("commit")
+            who = c.find("author") if c is not None else None
             out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
     except (ValueError, TypeError):                     # a blame that cannot be read is no answer of the history's: refused, never read as nothing committed
         _SVN_BLAME[rel] = SvnUnreadable("svn blame printed lines that could not be read")
@@ -4754,7 +4765,8 @@ def svn_blame(rel):
         first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
         if first is not None and (first.get("revision") or "").isdigit():
             at, by = int(first.get("revision")), first.findtext("author")
-            out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
+            if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()) and not svn_merge_revision(at):     # a merge that brought the path: its lines stay their authors'
+                out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
             _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path here: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
     return out

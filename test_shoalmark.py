@@ -6095,6 +6095,33 @@ else:
         run(root); code_t, _, err_t = run(root, "--check")
         check(f"FM-006 · v0.19.1 · on Subversion the seat that holds `triage` changing the same keys passes once committed, and a seat's own filing with its `considered:` passes (saw {code_t}, {err_t.strip()[-200:]!r})",
               code_t == 0 and not said6_(err_t, "C6-080") and not said6_(err_t, "C6-081") and not said6_(err_t, "C6-082"))
+        # a branch merged into trunk: a line the merge brought is its author's on trunk, never the merger's
+        svn("mkdir", "-q", "-m", "branches", url + "/branches", "--username", "planner")
+        new6_("C6-090"); new6_("C6-091"); commit6_("planner", "filed for the branches")
+        def branch6_(name_, who_, edit_):
+            """A branch of trunk, `edit_` made in its working copy and committed by `who_`, then merged into trunk and committed by the planner."""
+            svn("copy", "-q", "-m", f"the branch {name_}", url + "/trunk", url + f"/branches/{name_}", "--username", who_)
+            bwc_ = base / f"wc-{name_}"; svn("checkout", "-q", url + f"/branches/{name_}", str(bwc_)); edit_(bwc_ / "docs/work-tracker")
+            run(bwc_); svn("add", "-q", "--force", ".", cwd=bwc_); svn("commit", "-q", "-m", f"{name_}: the work", "--username", who_, cwd=bwc_)
+            svn("update", "-q", cwd=root); svn("merge", "-q", f"^/branches/{name_}", ".", cwd=root); run(root)
+            svn("commit", "-q", "-m", f"merge {name_}", "--username", "planner", cwd=root); svn("update", "-q", cwd=root); fm._SVN_LOG = None
+        close6_ = lambda id_: lambda d_: (lambda p_: p_.write_text(p_.read_text(encoding="utf-8").replace("status: In Progress", "status: Closed"), encoding="utf-8"))(d_ / f"{id_}-x.md")
+        file6_ = lambda id_: lambda d_: (d_ / f"{id_}-x.md").write_text((wt6_ / "C6-091-x.md").read_text(encoding="utf-8").replace("C6-091", id_).replace("status: In Progress", "status: Closed"), encoding="utf-8")
+        branch6_("b1", "builder", lambda d_: (close6_("C6-090")(d_), file6_("C6-092")(d_)))
+        run(root); code_m, _, err_m = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a close a seat without `close` made on a branch, and a `Closed` tracker it filed there, merged into trunk by the planner, are refused on trunk (saw {code_m})",
+              code_m == fm.EXIT_LINT and all(any("`builder` is the seat `builder`, which does not hold `close`" in l_ for l_ in said6_(err_m, id_)) for id_ in ("C6-090", "C6-092")))
+        for id_ in ("C6-090", "C6-092"):
+            p_ = wt6_ / f"{id_}-x.md"
+            if id_ == "C6-092":
+                svn("rm", "-q", "--force", str(p_), cwd=root)
+            else:
+                p_.write_text(p_.read_text(encoding="utf-8").replace("status: Closed", "status: In Progress"), encoding="utf-8")
+        commit6_("planner", "as it was")
+        branch6_("b2", "planner", close6_("C6-091")); close6_("C6-090")(wt6_); commit6_("planner", "C6-090 closed on trunk")
+        run(root); code_h, _, err_h = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the seat that holds `close`, closing on a branch merged into trunk and on trunk itself, passes (saw {code_h}, {err_h.strip()[-200:]!r})",
+              code_h == 0 and not said6_(err_h, "C6-090") and not said6_(err_h, "C6-091"))
     fm.configure(HERE)
 
 
