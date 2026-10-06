@@ -4845,7 +4845,9 @@ def trusted_signers():
     that writes one vouched for another pull request's commits. A file outside every checkout is used as it is: no branch
     writes it; so is the clone's file where there is no default branch to read. A path that is a symlink, or is reached
     through one, inside a checkout — a link a branch can write — is refused before anything decides which checkout holds
-    it, as a deriver is (`run_deriver`): nothing verifies against it (`symlink_in_checkout`). Read once per run."""
+    it, as a deriver is (`run_deriver`): nothing verifies against it (`symlink_in_checkout`). Which working tree holds it
+    is decided by the file system's identity, never by spelling (`signers_home`), its path spelled as git spells it
+    (`signers_rel`); one in another clone's working tree is refused: a branch writes it. Read once per run."""
     global _SIGNERS
     if _SIGNERS is not None:
         return _SIGNERS
@@ -4854,22 +4856,21 @@ def trusted_signers():
         _SIGNERS = {"file": None, "why": "`gpg.ssh.allowedSignersFile` is not set", "rel": None, "trunk": None}
         return _SIGNERS
     written = pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf
-    tops = [line[len("worktree "):] for line in (git_out("worktree", "list", "--porcelain") or "").splitlines() if line.startswith("worktree ")]
-    link = symlink_in_checkout(written, [os.path.realpath(t) for t in tops])
+    trees = {top: fs_chain(top)[:1] for top in (os.path.normcase(t) for t in worktree_tops())}
+    link = symlink_in_checkout(written, trees)
     if link:
         _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, and `{link}` on the way to it is a symlink in a checkout: the signers file "
                                          "is, or is reached through, a symlink, and nothing verifies against it — name the file itself", "rel": None, "trunk": None}
         return _SIGNERS
     path = written.resolve()
-    rels = []                                               # its path under each checkout that holds it — the nearest one wins,
-    for top in tops:                                        # for a checkout nested in another
-        try:
-            rels.append(path.relative_to(pathlib.Path(top).resolve()).as_posix())
-        except ValueError:
-            continue
-    rel = min(rels, key=lambda r: r.count("/")) if rels else None
+    top, below, other = signers_home(str(path), trees)       # the working tree that holds it, by the file system's identity — or another clone's
+    if other:
+        _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, inside another checkout ({other}): the signers file is inside another checkout, "
+                                         "where a branch writes it — name this repository's own file, or one outside every checkout", "rel": None, "trunk": None}
+        return _SIGNERS
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git) if rel else None
+    trunk = default_trunk(git) if top is not None else None
+    rel = signers_rel(top, below, str(path), trunk) if top is not None else None
     blob = cat_blobs([f"{trunk}:{rel}"]).get(f"{trunk}:{rel}") if trunk else None
     if blob is not None:
         fd, tmp = tempfile.mkstemp(prefix="shoalmark-signers-")
@@ -4887,19 +4888,55 @@ def trusted_signers():
     return _SIGNERS
 
 
-def symlink_in_checkout(path, tops):
-    """The first symlink on the way to `path` — itself, or a folder above it — that sits inside one of the checkouts `tops`
-    (real paths): a link a branch can write. "" where there is none: a link outside every checkout — the system's own, say —
-    is no branch's to write."""
-    at, chain = os.path.abspath(os.fspath(path)), []
-    while True:
-        chain.append(at)
-        up = os.path.dirname(at)
-        if up == at:
-            break
-        at = up
-    inside = lambda real: any(os.path.normcase(real) == os.path.normcase(t) or os.path.normcase(real).startswith(os.path.normcase(t).rstrip(os.sep) + os.sep) for t in tops)
-    return next((q for q in reversed(chain) if os.path.islink(q) and inside(os.path.realpath(os.path.dirname(q)))), "")
+def symlink_in_checkout(path, trees):
+    """The first symlink on the way to `path` — itself, or a folder above it — whose folder lies in one of the working trees
+    `trees` (`tree_holding`): a link a branch can write. The path is walked as written, a name at a time, each link read
+    before a `..` after it applies — as the system reads the path. "" where there is none: a link outside every working
+    tree — the system's own, say — is no branch's to write."""
+    parts = pathlib.PurePath(os.fspath(path)).parts
+    at = parts[0] if parts else ""
+    for name in parts[1:]:
+        if name in ("", "."):
+            continue
+        if name == "..":
+            at = os.path.dirname(at)
+            continue
+        step = os.path.join(at, name)
+        if os.path.islink(step):
+            if tree_holding(os.path.realpath(at), trees) is not None:
+                return step
+            at = os.path.realpath(step)
+        else:
+            at = step
+    return ""
+
+
+def signers_home(real, trees):
+    """(the working tree of `trees` that holds the resolved path `real`, the names below it as they are written there, "") —
+    or (None, None, the folder of another git working tree that holds it, where a `.git` file or folder is found first) —
+    or (None, None, ""): outside every working tree. One walk up its ancestors, nearest first, each matched by the file
+    system's own identity (`fs_chain`), never by spelling."""
+    held = {folder[0][0]: top for top, folder in trees.items() if folder}
+    parts = pathlib.PurePath(real).parts
+    for ident, below in fs_chain(real):
+        at = os.path.join(*parts[:len(parts) - len(below)])
+        if ident in held:
+            return held[ident], list(parts[len(parts) - len(below):]), ""
+        if os.path.lexists(os.path.join(at, ".git")):
+            return None, None, at
+    return None, None, ""
+
+
+def signers_rel(top, below, real, trunk):
+    """The signers file's path in the repository, as git spells it on the default branch — never as it was typed: the path of
+    the default branch's tree (`tree_paths`) that names the names `below` the working tree `top`, as a file system that
+    ignores case and Unicode normalization reads them (`fs_fold`), and is that very file there (`fs_identity`) where it is
+    there. Where the default branch holds no such path, the names as written: no copy there, and nothing verifies."""
+    typed = "/".join(below)
+    here = fs_identity(real)
+    same = [p for p in (tree_paths(trunk) or [] if trunk else []) if p == typed or (fs_fold(p) == fs_fold(typed)
+            and (here is None or fs_identity(os.path.join(top, *p.split("/"))) == here))]
+    return typed if typed in same or len(same) != 1 else same[0]
 
 
 def signers_args():
@@ -8331,14 +8368,13 @@ def hooks_copy_drift():
     return ""
 
 
-def worktree_tops(live=False):
-    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved. `live`: only
-    those it does not mark `prunable` — a worktree whose folder is gone has no tree, and no hook runs there."""
+def worktree_tops():
+    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved: one it marks
+    `prunable`, whose folder is gone, included, for that folder can come back."""
     tops = {os.path.realpath(ROOT)}
     for record in (git_out("worktree", "list", "--porcelain") or "").split("\n\n"):
-        lines = record.splitlines()
-        top = next((l[len("worktree "):] for l in lines if l.startswith("worktree ")), None)
-        if top and not (live and any(l == "prunable" or l.startswith("prunable ") for l in lines)):
+        top = next((l[len("worktree "):] for l in record.splitlines() if l.startswith("worktree ")), None)
+        if top:
             tops.add(os.path.realpath(top))
     return sorted(tops)
 
@@ -8364,6 +8400,66 @@ def hooks_folder_problem(hooks):
     return ""
 
 
+def tree_holding(real, trees):
+    """The working tree of `trees` that the path `real`, resolved, is or lies in, outside the repository's git directories (`git_dir_holding`) — or None:
+    the judgement the hooks folder and the configuration check share, made as the file system compares paths. A tree is found by the file system's own
+    identity (`fs_chain`) — the path, or one of its ancestors that exists, is the tree's folder, so a spelling in another case, where the file system
+    ignores case, is the same tree — and by its spelling, `os.path.normcase`d. The tree is returned `os.path.normcase`d. `trees` maps each tree's folder to
+    its `fs_chain(…)[:1]`, read once by the caller for every path it judges."""
+    if git_dir_holding(real):
+        return None
+    mine, real = fs_chain(real), os.path.normcase(real)
+    for top, folder in trees.items():
+        top = os.path.normcase(top)
+        if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
+            return top
+        if folder and any(ident == folder[0][0] and below[:len(folder[0][1])] == folder[0][1] for ident, below in mine):
+            return top
+    return None
+
+
+def git_dir_holding(real):
+    """Whether the path `real`, resolved, lies in one of the repository's git directories as the file system compares paths: as `in_git_dir` finds it, or —
+    where `os.path.normcase` keeps case — spelled so in another case or Unicode normalization (`fs_fold`), its ancestor there being that git directory by
+    the file system's own identity."""
+    if in_git_dir(real):
+        return True
+    if os.path.normcase("A") != "A":
+        return False
+    parts = real.rstrip(os.sep).split(os.sep)
+    for gd in git_dirs():
+        named = gd.rstrip(os.sep).split(os.sep)
+        if len(parts) >= len(named) and [fs_fold(p) for p in parts[:len(named)]] == [fs_fold(p) for p in named]:
+            same = fs_identity(os.sep.join(parts[:len(named)]))
+            if same is not None and same == fs_identity(gd):
+                return True
+    return False
+
+
+def fs_identity(path):
+    """The file system's own identity of `path` — its device and inode, symlinks followed — or None where it is not there or has no inode."""
+    try:
+        st = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return (st.st_dev, st.st_ino) if st.st_ino else None
+
+
+def fs_chain(path):
+    """The path `path`, resolved, as the file system knows it: for it and each of its ancestors that has an identity (`fs_identity`), nearest first,
+    (that identity, and the names of the path below it, folded as `fs_fold` folds them)."""
+    chain, below = [], []
+    while True:
+        ident = fs_identity(path)
+        if ident is not None:
+            chain.append((ident, tuple(below)))
+        parent = os.path.dirname(path)
+        if parent == path:
+            return chain
+        below.insert(0, fs_fold(os.path.basename(path)))
+        path = parent
+
+
 def fs_fold(name):
     """A file's name as a file system that ignores case and Unicode normalization compares it — macOS's default one does both: case-folded, and in one
     normalization (NFD) before and after."""
@@ -8377,8 +8473,8 @@ def config_file_problem():
     every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass. The target of every include
     setting is judged the same way (`include_targets`): conditional ones whether or not the condition holds, and whether or not the target exists yet. The
     settings are read from EVERY working tree, as each reads them — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`) —
-    as the hooks folder is judged in every one; a worktree marked `prunable` is skipped (`worktree_tops`)."""
-    tops = [os.path.normcase(t) for t in worktree_tops(live=True)]
+    as the hooks folder is judged in every one; a worktree marked `prunable`, its folder gone, has no configuration git can read there, and nothing is judged."""
+    tops = [os.path.normcase(t) for t in worktree_tops()]
     inside = lambda real: next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
     for here in tops:
         out = subprocess.run(["git", "-C", here, "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",

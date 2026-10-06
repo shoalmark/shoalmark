@@ -8133,6 +8133,109 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
     else:
         _skipped("FM-006 · v0.19.1 · a signers file that is a symlink", 1, "this system makes no symlinks")
+    # v0.19.1 · the signers file this clone names, spelled otherwise: which working tree holds it is decided by the file system's identity, never by spelling
+    try:                                                # does this file system fold case? Asked of the file system itself
+        (base / "case_probe").write_text("x", encoding="utf-8")
+        folds37_ = os.path.exists(base / "CASE_PROBE") and os.stat(base / "CASE_PROBE").st_ino == os.stat(base / "case_probe").st_ino
+    except OSError as e_:
+        folds37_ = None                                 # the probe could not run: the checks that need it fail, never skip
+    as_owner_with_seat_key37_ = (OWNER_, "-c", "user.signingkey=" + str(skey_), "-c", "commit.gpgsign=true")
+    seat_keyed37_ = lambda: signers37_.write_text(signers37_.read_text() + "h@x " + skey_.with_suffix(".pub").read_text())
+    def seat_signed37_(branch, conf_, first_, frm="main"):   # a branch of two commits signed with the seat's key under the Owner's email — `first_`, then a change to the intent — judged with `conf_` named
+        git(root, "config", "gpg.ssh.allowedSignersFile", conf_)
+        made_ = by_hand37_(branch, frm, ("AP-037: the signers file", first_, *as_owner_with_seat_key37_),
+                           ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
+        g_ = guard37_(); code_ = run(root, "--check")[0]
+        return made_, g_, code_
+    def back37_():
+        git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard"); git(root, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+    refused_unverified37_ = lambda g_, code_: code_ == fm.EXIT_LINT and len(g_[0]) == 2 and all("the Owner's email, and its signature does not verify" in l_ for l_ in g_[0])
+    refused_link37_ = lambda g_, code_, conf_: code_ == fm.EXIT_LINT and len(g_[0]) == 2 and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {conf_}" in l_ and link_said37_ in l_ for l_ in g_[0])
+    k_names37_ = {
+        "K1": "FM-006 · v0.19.1 · on a file system that folds case, where the signers file this clone names is spelled in another case, the default branch's copy is read: "
+              "the seat's key appended on the branch verifies nothing, and its signed change to `## The intent` is refused, exit 4",
+        "K2": "FM-006 · v0.19.1 · on a file system that folds case, where the signers file this clone names is spelled in another case and a branch made it a symlink to a file "
+              "outside the repository, nothing verifies against it: the seat's signed change to `## The intent` is refused, exit 4, the line saying the file is a symlink",
+        "K7": "FM-006 · v0.19.1 · where the signers file this clone names is spelled through the system's firmlink and a branch made it a symlink to a file outside the repository, "
+              "nothing verifies against it: the seat's signed change to `## The intent` is refused, exit 4, the line saying the file is a symlink",
+        "K9": "FM-006 · v0.19.1 · on a file system that folds case, where the signers file this clone names is spelled in another case below the working tree, it is read at git's own "
+              "spelling on the default branch: the Owner's signed change passes, the seat's appended key verifies nothing",
+    }
+    if folds37_ is None:
+        for k_ in ("K1", "K2", "K9"):
+            check(f"{k_names37_[k_]} (saw: whether this file system folds case could not be asked)", False)
+    elif not folds37_:
+        for k_ in ("K1", "K2", "K9"):
+            _skipped(k_names37_[k_], 1, "this file system keeps case apart")
+    else:
+        typed37_ = str(signers37_).replace(f"{os.sep}wc{os.sep}", f"{os.sep}WC{os.sep}", 1)
+        (c_k1a_, c_k1b_), g_k1_, code_k1_ = seat_signed37_("ap/037-signers-case", typed37_, seat_keyed37_)
+        check(f"{k_names37_['K1']} (saw {code_k1_}, {g_k1_[0]!r})", refused_unverified37_(g_k1_, code_k1_)
+              and any(l_.startswith(f'refused: commit {c_k1a_[:7]} "AP-037: the signers file" changes the signers file `docs/work-tracker/allowed_signers`') for l_ in g_k1_[0])
+              and any(l_.startswith(f'refused: commit {c_k1b_[:7]} "AP-037: a better intent" changes the text under `## The intent`') for l_ in g_k1_[0]))
+        back37_()
+        if _SYMLINKS:
+            _made, g_k2_, code_k2_ = seat_signed37_("ap/037-signers-case-link", typed37_, link37_)
+            check(f"{k_names37_['K2']} (saw {code_k2_}, {g_k2_[0]!r})", refused_link37_(g_k2_, code_k2_, typed37_))
+            back37_()
+        else:
+            _skipped(k_names37_["K2"], 1, "this system makes no symlinks")
+        below37_ = str(signers37_).replace(f"{os.sep}docs{os.sep}work-tracker{os.sep}allowed_signers", f"{os.sep}Docs{os.sep}Work-Tracker{os.sep}Allowed_Signers")
+        _made, g_k9_, code_k9_ = seat_signed37_("ap/037-signers-case-below", below37_, seat_keyed37_)
+        fm.configure(root); rel_k9_ = _no_git_env(fm.trusted_signers)["rel"]
+        back37_(); git(root, "config", "gpg.ssh.allowedSignersFile", below37_)
+        (c_k9o_,) = by_hand37_("ap/037-signers-case-below-owner", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
+        g_k9o_ = guard37_(); back37_()
+        check(f"{k_names37_['K9']} (saw {rel_k9_!r}, {code_k9_}, {g_k9_[0]!r}, {g_k9o_!r})",
+              rel_k9_ == "docs/work-tracker/allowed_signers" and refused_unverified37_(g_k9_, code_k9_)
+              and g_k9o_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-signers-case-below-owner` since origin/main, 1 change them or their signers file, each their own commit"))
+    firm37_ = "/System/Volumes/Data" + str(signers37_)
+    if not (_SYMLINKS and os.path.isdir("/System/Volumes/Data") and os.path.exists(firm37_) and os.stat(firm37_).st_ino == os.stat(signers37_).st_ino):
+        _skipped(k_names37_["K7"], 1, "no firmlink to the data volume here, or no symlinks")
+    else:
+        _made, g_k7_, code_k7_ = seat_signed37_("ap/037-signers-firmlink", firm37_, link37_)
+        check(f"{k_names37_['K7']} (saw {code_k7_}, {g_k7_[0]!r})", refused_link37_(g_k7_, code_k7_, firm37_))
+        back37_()
+    k8_name37_ = ("FM-006 · v0.19.1 · where the signers file this clone names is reached through a `..` after a folder a branch made a symlink to a folder outside the repository, "
+                  "the link is read before the `..` applies and nothing verifies against the file: the seat's signed change to `## The intent` is refused, exit 4, the line saying it is a symlink")
+    if _SYMLINKS:
+        far37_ = base / "far"; (far37_ / "kit").mkdir(parents=True); (far37_ / "work-tracker").mkdir()
+        (far37_ / "work-tracker" / "allowed_signers").write_text("h@x " + skey_.with_suffix(".pub").read_text())
+        git(root, "switch", "-q", "main"); (root / "docs/kit").mkdir(); (root / "docs/kit/x").write_text("x\n"); git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "a kit folder", OWNER_); git(root, "push", "-q", "origin", "main")
+        dotted37_ = str(root / "docs" / "kit" / ".." / "work-tracker" / "allowed_signers")
+        def kit_link37_():                              # the kit folder, a link to a folder outside whose neighbour holds the seat's key
+            shutil.rmtree(root / "docs/kit"); os.symlink(str(far37_ / "kit"), str(root / "docs/kit"))
+        _made, g_k8_, code_k8_ = seat_signed37_("ap/037-signers-dotdot", dotted37_, kit_link37_)
+        check(f"{k8_name37_} (saw {code_k8_}, {g_k8_[0]!r})", code_k8_ == fm.EXIT_LINT and len(g_k8_[0]) == 1
+              and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {dotted37_}" in l_ and link_said37_ in l_ for l_ in g_k8_[0]))
+        back37_()
+    else:
+        _skipped(k8_name37_, 1, "this system makes no symlinks")
+    # a signers file in ANOTHER clone's working tree: a branch checked out there writes it — nothing verifies against it
+    (c_k10a_, c_k10b_) = by_hand37_("ap/037-signers-other-clone", "main", ("AP-037: the signers file", seat_keyed37_, *as_owner_with_seat_key37_),
+                                    ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
+    git(root, "push", "-q", "origin", "ap/037-signers-other-clone")
+    second37_ = base / "second"; subprocess.run(["git", "clone", "-q", str(base / "origin.git"), str(second37_)], check=True, capture_output=True, env=_ENV)
+    git(second37_, "switch", "-q", "ap/037-signers-other-clone"); git(second37_, "remote", "set-head", "origin", "main")
+    git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))          # the first clone's file — checked out there on the seat's branch
+    code_k10_, _o, err_k10_ = run(second37_, "--check"); g_k10_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
+    fm.configure(root); back37_()
+    check(f"FM-006 · v0.19.1 · where the signers file this clone names is in another clone's working tree, nothing verifies against it: the seat's signed change to `## The intent` is refused, exit 4, "
+          f"the line saying the file is inside another checkout (saw {code_k10_}, {g_k10_[0]!r})",
+          code_k10_ == fm.EXIT_LINT and len(g_k10_[0]) == 2
+          and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, inside another checkout" in l_
+                  and "the signers file is inside another checkout, where a branch writes it — name this repository's own file, or one outside every checkout" in l_ for l_ in g_k10_[0]))
+    # still accepted: the Owner's own signed change, the signers file named relative to the root, and named through a link outside every checkout where one is on the way
+    via37_ = next((str(signers37_).replace(r_, l_, 1) for l_, r_ in (("/tmp/", "/private/tmp/"), ("/var/", "/private/var/")) if str(signers37_).startswith(r_) and os.path.islink(l_.rstrip("/"))), None)
+    owner_ok37_ = {}
+    for conf_ in ["docs/work-tracker/allowed_signers", *([via37_] if via37_ else [])]:
+        git(root, "config", "gpg.ssh.allowedSignersFile", conf_)
+        (c_ok_,) = by_hand37_(f"ap/037-owner-conf-{len(owner_ok37_)}", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
+        owner_ok37_[conf_] = guard37_(); git(root, "switch", "-q", "main")
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+    check(f"FM-006 · v0.19.1 · the Owner's signed change still passes where the signers file is named relative to the root, and through a link outside every checkout where one is on the way (saw {owner_ok37_!r})",
+          all(g_[0] == [] and g_[1].endswith("1 change them or their signers file, each their own commit") for g_ in owner_ok37_.values()))
     # the cold re-review's R1 · `--answer` asks the gate's own test before it pushes — the default branch's signers file. Mid
     # key rotation, his new key only on his branch's copy: the answer it signs is NOT pushed, and neither the command nor the
     # gate tells him to sign a commit he signed — each names the file the key must reach first
