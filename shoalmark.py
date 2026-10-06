@@ -636,9 +636,10 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
-    global _SVN_NEW, _WALK
+    global _SVN_NEW, _WALK, _WALK_FAILED
     _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
     _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
+    _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -5390,6 +5391,11 @@ def read_changes():
             return []
         out = []
         log = git("log", "-z", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%an%x02%ae", *tips, "--not", first)
+        if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
+            global _WALK_FAILED
+            said = next((l.strip() for l in log.stderr.splitlines() if l.strip()), f"git log exited {log.returncode}")
+            _WALK_FAILED = _WALK_FAILED or (f"the branch's commits could not be read — git could not walk them since `{ref_name(first)}` ({said}) — so they are "
+                                            f"not judged, and not passed unread. Fetch `origin`, or set its default branch again (`git remote set-head origin --auto`), then run again")
         for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
             head, _, files = record.partition("\x00")
             c, an, ae = (head.split("\x02") + ["", ""])[:3]
@@ -5417,6 +5423,12 @@ def read_changes():
     seen = {c[4] for c in merged} | {commit}
     own = [c for c in brought(["HEAD"], trunk, f"on this branch since {ref_name(trunk)}") if c[4] not in seen] if trunk else []
     return own + merged + [(parents, files, name, email, commit, "HEAD", "")]
+
+
+def walk_problems():
+    """The one line where git could not walk the commits this run judges — a default branch `origin/HEAD` names and this clone does
+    not hold, or any `git log` of the walk that failed (`read_changes`): they are refused, never judged as nothing (v0.19.1)."""
+    return [_WALK_FAILED] if _WALK_FAILED else []
 
 
 def rights_problems(trackers):
@@ -7432,6 +7444,7 @@ def lint(trackers, committing=False):
     problems += rights_problems(trackers)
     problems += ship_problems(trackers)              # FM-005: no move to Shipped without a commit behind it, every author
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
+    problems += walk_problems()                      # v0.19.1: a walk of those commits git could not make is refused, never read as nothing
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
     by_ask = asks_by_key(trackers)

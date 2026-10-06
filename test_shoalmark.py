@@ -5287,6 +5287,11 @@ with tempfile.TemporaryDirectory() as tmp:
     ok_b_ = run(root, "--check")
     check(f"FM-006 · v0.19.1 · the same close by the seat that holds `close`, under a later commit, passes `--check` from a clean checkout (saw {ok_b_[0]}, {ok_b_[2].strip()[-200:]!r})",
           ok_b_[0] == 0 and "AP-973" not in ok_b_[2])
+    git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/gone")       # `origin/HEAD` names a branch this clone does not hold
+    dangling_ = run(root, "--check"); git(root, "remote", "set-head", "origin", trunkS_)
+    walked_ = [l_.strip() for l_ in dangling_[2].splitlines() if "the branch's commits could not be read" in l_]
+    check(f"FM-006 · v0.19.1 · where `origin/HEAD` names a branch this clone lacks, `--check` refuses in one line: the branch's commits could not be read (saw {dangling_[0]}, {walked_!r})",
+          dangling_[0] == fm.EXIT_LINT and len(walked_) == 1 and walked_[0].startswith("lint: the branch's commits could not be read — git could not walk them since `origin/gone`"))
     rm_git(root)
     # where no default branch is found — no `origin` at all, or one with no `HEAD`, `main` or `master` — the newest commit alone is judged, and `--check` says so in one line
     nodef_ = "the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged"
