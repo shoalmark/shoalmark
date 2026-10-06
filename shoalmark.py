@@ -1807,7 +1807,7 @@ def pushed_branches(prs):
         git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking])
     gone = set(have_not(sorted(lacking)))
     kept = [(name, sha) for name, sha in named if sha in gone
-            or not (inside(sha, f"origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
+            or not (inside(sha, f"refs/remotes/origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
     kept = [(name, sha) for name, sha in kept if sha in gone or not any(
         (other != sha and inside(sha, other)) or (other == sha and o_name < name) for o_name, other in kept if other not in gone)]
     return [{"name": name, "sha": sha, "base": default, "here": sha not in gone} for name, sha in kept]
@@ -2000,7 +2000,7 @@ def answer_branch_reading(head, base):
         return action
     stray = stray_below(at, base)
     if stray is None:
-        return "wait", f"wait: the base {base} is not fetched here — fetch it; the commits below {at[:7]} are unread", ""
+        return "wait", f"wait: the base {ref_name(base)} is not fetched here — fetch it; the commits below {at[:7]} are unread", ""
     return ("wait", stray, "") if stray else action
 
 
@@ -2072,7 +2072,7 @@ def queue_actions(prs, branches=()):
     prs = [p for p in prs if not p.get("isCrossRepository")]
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
-    head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
+    head, base, num = (lambda p: p["headRefOid"]), (lambda p: "refs/remotes/origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
 
@@ -2335,7 +2335,7 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     only where nothing of theirs is on it (FM-030 C, as ruled). Where `--queue` waits on it for a commit not theirs —
     `answer_branch_reading`, its own line — the advice says how that clears: the commit lands on the trunk first, by its
     own pull request; theirs are kept (RV-713)."""
-    span = [branch, "--not", trunk] if trunk else [branch, "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
+    span = [f"refs/heads/{branch}", "--not", trunk] if trunk else [f"refs/heads/{branch}", "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
     own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
     his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
     if not his:
@@ -2345,7 +2345,7 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     tip = (git("rev-parse", "--verify", "--quiet", branch).stdout or "").strip()
     reading = answer_branch_reading(tip, trunk)[1] if trunk and tip else ""            # `--queue`'s own line for it
     stray = reading if reading.startswith(STRAY_WAITS) else ""
-    held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{trunk}` first, by its own pull request, "
+    held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{ref_name(trunk)}` first, by its own pull request, "
             f"never through yours" if stray else "")
     if how["flag"] in ("--done", "--due"):
         there = git("show", f"{branch}:{rel}")
@@ -2638,22 +2638,22 @@ def owner_change(tid, t, how):
         # on that branch; where this clone has only `origin`'s, a local one is made from it, tracking it
         step(2, f"switching to `{branch}` — your act is on its way there, and this commits on top of it")
         had = git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0
-        r = git("switch", branch) if had else git("switch", "-c", branch, "--track", f"origin/{branch}")
+        r = git("switch", branch) if had else git("switch", "-c", branch, "--track", f"refs/remotes/origin/{branch}")
         if r.returncode:
             return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
         created, cut_at, switched = not had, git("rev-parse", "HEAD").stdout.strip(), True
     elif here != branch:
-        if git("rev-parse", "--verify", "-q", branch).returncode == 0:
+        if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0:
             # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
             # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for them
             trunk = default_trunk(git)
-            if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
-                print(f"{flag}: `{branch}` exists and is not merged into `{trunk or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
+            if not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0:
+                print(f"{flag}: `{branch}` exists and is not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
                 return EXIT_LINT
             if git("branch", "-D", branch).returncode != 0:
-                print(f"{flag}: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
-            print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{trunk}` — deleted, and cut fresh", file=sys.stderr)
+            print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{ref_name(trunk)}` — deleted, and cut fresh", file=sys.stderr)
         step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
         r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
         created = r.returncode == 0
@@ -2746,12 +2746,25 @@ def refusal_reason(what, said=""):
 
 
 def default_trunk(git):
-    """`origin`'s default branch as this clone last fetched it — `origin/HEAD`, else `origin/main`, else `origin/master` —
-    or None: what an earlier `answer/<id>` must be merged into before `--answer` deletes it."""
+    """`origin`'s default branch as this clone last fetched it, by its FULL ref — `origin/HEAD`'s target, else
+    `refs/remotes/origin/main`, else `refs/remotes/origin/master` — or None: what an earlier `answer/<id>` must be merged into
+    before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
+    name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target
+    is returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`).
+    What the tool prints for it is `ref_name`'s."""
     head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
     if head.startswith("refs/remotes/"):
-        return head[len("refs/remotes/"):]
-    return next((r for r in ("origin/main", "origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+        return head
+    return next((r for r in ("refs/remotes/origin/main", "refs/remotes/origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+
+
+def ref_name(ref):
+    """What the tool prints for a ref it hands git in full — `refs/remotes/origin/main` as `origin/main`, `refs/heads/main` as
+    `main`; anything else as it is. Git is always handed the full ref (`default_trunk`)."""
+    for prefix in ("refs/remotes/", "refs/heads/"):
+        if ref and ref.startswith(prefix):
+            return ref[len(prefix):]
+    return ref
 
 
 def ship_log_table(lines):
@@ -4995,7 +5008,7 @@ def trusted_signers():
         atexit.register(lambda: os.path.exists(tmp) and os.remove(tmp))
         _SIGNERS = {"file": tmp, "why": "", "rel": rel, "trunk": trunk}
     elif trunk:
-        _SIGNERS = {"file": None, "why": f"`{rel}` is not on {trunk}: commit its first version there, signed — a branch cannot prove a key the default branch does not hold",
+        _SIGNERS = {"file": None, "why": f"`{rel}` is not on {ref_name(trunk)}: commit its first version there, signed — a branch cannot prove a key the default branch does not hold",
                     "rel": rel, "trunk": trunk}
     elif not path.is_file():
         _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, which does not exist", "rel": rel, "trunk": trunk}
@@ -5039,9 +5052,9 @@ def unverified(commit, tail):
     s = trusted_signers()
     ssh = signature_kind(commit) == "ssh"
     if ssh and s["file"] and (git_out(*signers_args(), "log", "-1", "--format=%G?", commit) or "").strip() in ("G", "U"):
-        held = f"`{s['rel']}` on {s['trunk']}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
+        held = f"`{s['rel']}` on {ref_name(s['trunk'])}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
         return (f"it is signed, but not with a key {held} holds for that identity — a new key verifies once it is there"
-                + (f": the Owner's signed commit to that file, merged into {s['trunk']} first" if s["rel"] and s["trunk"] else "")
+                + (f": the Owner's signed commit to that file, merged into {ref_name(s['trunk'])} first" if s["rel"] and s["trunk"] else "")
                 + f" — see {SIGNING_PAGE}")
     return tail
 
@@ -5402,7 +5415,7 @@ def read_changes():
     global _WALK
     _WALK = trunk or ""                                 # none: the newest commit alone is judged, and `--check` says so — never the whole history
     seen = {c[4] for c in merged} | {commit}
-    own = [c for c in brought(["HEAD"], trunk, f"on this branch since {trunk}") if c[4] not in seen] if trunk else []
+    own = [c for c in brought(["HEAD"], trunk, f"on this branch since {ref_name(trunk)}") if c[4] not in seen] if trunk else []
     return own + merged + [(parents, files, name, email, commit, "HEAD", "")]
 
 
@@ -5913,7 +5926,7 @@ def ratio_cmd(since=None, until=None):
         return 2
     log = git_out("log", "--first-parent", "--merges", "--format=%H%x00%cI", trunk)
     if log is None:
-        print(f"--ratio: git could not read {trunk}", file=sys.stderr)
+        print(f"--ratio: git could not read {ref_name(trunk)}", file=sys.stderr)
         return 2
     lo = first - datetime.timedelta(days=RATIO_DAYS - 1)           # the sums of the window's first days reach back before it
     days = {}
@@ -5937,7 +5950,7 @@ def ratio_cmd(since=None, until=None):
     span = lambda a, b: [a + datetime.timedelta(days=i) for i in range((b - a).days + 1)]
     print(f"records-to-product ratio \u2014 records: {', '.join(records)}"
           + (f" (left out: {', '.join(exclude)})" if exclude else "") + "; product: every other path; a submodule pointer is no line, a binary file 0 lines")
-    print(f"trunk {trunk} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
+    print(f"trunk {ref_name(trunk)} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
           + ("" if berlin else " \u2014 NOT: no time zone database here, so each day is the merge's own UTC offset"))
     print("added and deleted lines are apart, never netted; the ratio is records added : product added\n")
     whole = empty()
@@ -6326,7 +6339,7 @@ def build_judgement(subject=None):
         return _BUILD
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
-    if trunk and branch == trunk.split("/", 1)[1]:
+    if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
         return _BUILD
     if COMMITTING:
@@ -6338,7 +6351,7 @@ def build_judgement(subject=None):
     base = git("merge-base", trunk, "HEAD").stdout.strip()
     commits = commit_list(f"{base}..HEAD") if base else []
     refused = judge_commits(commits, branch)
-    _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+    _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
                        + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker"))
     return _BUILD
 
@@ -6400,7 +6413,7 @@ def commit_msg_check(message_file):
         return EXIT_OK
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
-    if trunk and branch == trunk.split("/", 1)[1]:
+    if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         return EXIT_OK                                     # on the default branch nothing is judged
     comment = ((git_out("config", "--get", "core.commentChar") or "#").strip() or "#")[:1]
     comment = "#" if comment == "a" else comment          # `auto`: git picks one the message does not use; `#` is its first choice
@@ -6759,14 +6772,14 @@ def triage_guard():
     why = []
     owners = owners_at(trunk, why)
     if not owners:
-        _GUARD = ([], f"the Owner's two sections: not guarded — " + (f"{trunk}'s configuration is refused here, so it names nobody — {why[0]}" if why
-                       else f"{trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
+        _GUARD = ([], f"the Owner's two sections: not guarded — " + (f"{ref_name(trunk)}'s configuration is refused here, so it names nobody — {why[0]}" if why
+                       else f"{ref_name(trunk)}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
     refused = guard_lines(verdicts, owners)
     proof = "" if all(m == "signed" for m in owners.values()) else f" ({GUARD_AUTHOR_ONLY})"
-    _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+    _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
                        + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if refused
                           else f"{len(changed)} change them or their signers file, each their own commit" if changed else "none changes them or their signers file"))
     return _GUARD
@@ -6905,8 +6918,8 @@ def read_history(*revs):
 
 
 def trunk_ref():
-    """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master`."""
-    return next((ref for ref in ("origin/main", "main", "master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
+    """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master` — each by its full ref (v0.19.1)."""
+    return next((ref for ref in ("refs/remotes/origin/main", "refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
 def verdict_reports(days=None):
@@ -7239,10 +7252,10 @@ def done_cmd(words, trackers):
     if not act and t and vcs() == "git":                    # R3: their answer — the act — may be on `answer/<id>`, not merged yet
         git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
-        if git("rev-parse", "--verify", "-q", branch).returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0):
-            there = git("show", f"{branch}:{rel}")
+        if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0):
+            there = git("show", f"refs/heads/{branch}:{rel}")
             if there.returncode == 0 and act_of(extract(ROOT / rel, there.stdout)):
-                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{trunk or 'origin'}` — " + unmerged_advice(
+                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(
                     git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
                 return EXIT_LINT
     if not act:
@@ -8165,7 +8178,7 @@ def default_branch():
     """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only — or None where it cannot be told."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git)
-    return trunk.split("/", 1)[1] if trunk else None
+    return ref_name(trunk).split("/", 1)[1] if trunk else None
 
 
 def install_copy():
