@@ -5286,8 +5286,9 @@ with tempfile.TemporaryDirectory() as tmp:
     b_ = run(root, "--check")
     check(f"FM-006 · v0.19.1 · a close by a seat without `close`, under a later commit: `--check` from a clean checkout refuses it, exit 4, naming that commit (saw {b_[0]})",
           b_[0] == fm.EXIT_LINT and f"AP-972: in `{hidden_[:10]}` (implementer@seat), on this branch since origin/{trunkS_} — this change is a `close`" in b_[2])
-    git(root, "tag", f"origin/{trunkS_}", "HEAD"); tagged_ = run(root, "--check"); git(root, "tag", "-d", f"origin/{trunkS_}")      # a tag named as the default branch, at the branch's tip
-    check(f"FM-006 · v0.19.1 · with a tag named `origin/{trunkS_}` at the branch's tip, the same close under a later commit is still refused — the default branch is read by its full ref (saw {tagged_[0]})",
+    git(root, "tag", f"origin/{trunkS_}", "HEAD"); git(root, "tag", trunkS_, "HEAD")      # tags named as the default branch and as the trunk, at the branch's tip
+    tagged_ = run(root, "--check"); git(root, "tag", "-d", f"origin/{trunkS_}"); git(root, "tag", "-d", trunkS_)
+    check(f"FM-006 · v0.19.1 · with tags named `origin/{trunkS_}` and `{trunkS_}` at the branch's tip, the same close under a later commit is still refused — the default branch is read by its full ref (saw {tagged_[0]})",
           tagged_[0] == fm.EXIT_LINT and f"AP-972: in `{hidden_[:10]}` (implementer@seat), on this branch since origin/{trunkS_} — this change is a `close`" in tagged_[2])
     git(root, "switch", "-q", "-c", "fm/973-work", f"origin/{trunkS_}")
     pS_(973).write_text(pS_(973).read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); run(root); git(root, "add", "-A")
@@ -8248,8 +8249,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-037 · clause 4 · a pull request stacked on a seat's branch that names the seat the Owner is still read against the default branch's Owner (saw {q_st_[0][2:]!r})",
           q_st_[0][2:] == ("wait: TRIAGE.md changed unsigned", c_st_[:7]))
     # a tag named `origin/main` at a seat's branch: the default branch is read by its full ref — its walk, its Owner
-    git(root, "tag", "origin/main", "ap/037-intent"); g_tag_ = guard37_("ap/037-intent"); git(root, "tag", "-d", "origin/main")
-    check(f"FM-006 · v0.19.1 · with a tag named `origin/main` at a seat's branch, its rewrite of `## The intent` is still refused (saw {g_tag_!r})",
+    git(root, "tag", "origin/main", "ap/037-intent"); git(root, "tag", "main", "ap/037-intent"); g_tag_ = guard37_("ap/037-intent"); git(root, "tag", "-d", "origin/main"); git(root, "tag", "-d", "main")
+    check(f"FM-006 · v0.19.1 · with tags named `origin/main` and `main` at a seat's branch, its rewrite of `## The intent` is still refused (saw {g_tag_!r})",
           len(g_tag_[0]) == 1 and g_tag_[0][0].startswith(f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent`')
           and g_tag_[1].endswith("1 change them or their signers file, 1 refused"))
     git(root, "tag", "origin/main", "ap/037-self"); g_tself_ = guard37_("ap/037-self")
