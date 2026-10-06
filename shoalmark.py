@@ -5082,6 +5082,16 @@ def unverified(commit, tail):
 CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it")
 
 
+PENDING_MARKS = ("` is not committed yet — who set a line is read from the commit that made it", ": is not committed yet, and it carries ",
+                 ": the answer is not committed yet — commit it under your own name")     # the lines that judge the commit being made, not the ledger
+
+
+def pending_finding(problem):
+    """A line that says a line is not committed yet: it judges the commit being made, not the ledger — so INDEX.md leaves it out, and the
+    INDEX.md written before such a commit is the one the next run writes (v0.19.1). It is printed, and refuses, as every line does."""
+    return any(m in problem for m in PENDING_MARKS)
+
+
 def checkout_finding(problem):
     return any(m in problem for m in CHECKOUT_MARKS)
 
@@ -8917,8 +8927,9 @@ def main(argv=None):
         + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
         + f"> Generated {today} · {len(trackers)} trackers ({counts})."
     )
-    if ledger:
-        header += f"\n>\n> ❌ {len(ledger)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in ledger)
+    banner = [p for p in ledger if not pending_finding(p)]          # the commit being made is judged on stderr, not in INDEX.md
+    if banner:
+        header += f"\n>\n> ❌ {len(banner)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in banner)
     if unknown:
         header += (f"\n>\n> ⚠️ {len(unknown)} tracker(s) have no machine-readable status — add a\n"
                    f"> front-matter `status:` to fix: {', '.join(sorted(unknown))}.")

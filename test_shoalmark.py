@@ -6004,7 +6004,8 @@ else:
         svn("commit", "-m", "C6-014: answered", "--username", "builder", cwd=root); svn("update", cwd=root)
         run(root); code_a, _, err_a = run(root, "--check")
         check(f"FM-006 · v0.19.1 · a committed tracker whose answer line the line reader cannot find, written by a seat without `answer`, is refused, exit 4, before and after its commit (saw {code_b}, {code_a})",
-              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and any("answer" in l_ for l_ in said6_(err_b, "C6-014")) and any("answer" in l_ for l_ in said6_(err_a, "C6-014")))
+              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and any("is not committed yet" in l_ for l_ in said6_(err_b, "C6-014"))
+              and any("`builder` is the seat `builder`, which does not hold `answer`" in l_ for l_ in said6_(err_a, "C6-014")))
         # Subversion's own record of a path: a copy — `A +`, or `R +` over a tracker — is not committed yet, and once committed its lines are the copier's
         def commit6_(who_, msg_):
             """The working copy committed as `who_`, and updated to."""
@@ -6131,6 +6132,13 @@ else:
         run(root); code_h, _, err_h = run(root, "--check")
         check(f"FM-006 · v0.19.1 · on Subversion the seat that holds `close`, closing on a branch merged into trunk and on trunk itself, passes (saw {code_h}, {err_h.strip()[-200:]!r})",
               code_h == 0 and not said6_(err_h, "C6-090") and not said6_(err_h, "C6-091"))
+        # the holder's own close, the tool run before `svn commit` and committed from the command line: `--check` passes right after
+        new6_("C6-093"); commit6_("planner", "C6-093 filed"); run(root)
+        p93_ = wt6_ / "C6-093-x.md"; p93_.write_text(p93_.read_text(encoding="utf-8").replace("status: In Progress", "status: Closed"), encoding="utf-8")
+        run(root); svn("commit", "-q", "-m", "C6-093 closed", "--username", "planner", cwd=root); svn("update", "-q", cwd=root)
+        code_93, _, err_93 = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the holder's close, the tool run before the commit and committed from the command line, passes `--check` right after, with no second revision (saw {code_93}, {err_93.strip()[-200:]!r})",
+              code_93 == 0)
     fm.configure(HERE)
 
 
