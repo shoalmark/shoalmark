@@ -5262,13 +5262,22 @@ with tempfile.TemporaryDirectory() as tmp:
                                env=dict(_ENV, GIT_AUTHOR_NAME=who_, GIT_AUTHOR_EMAIL=who_, GIT_COMMITTER_NAME=who_, GIT_COMMITTER_EMAIL=who_))
         return pre_, made_, shaS_() != before_
     pre_i_, made_i_, did_i_ = stagedS_("implementer@seat", 970, 971)
-    check(f"FM-006 · v0.19.1 · a close and a tier change staged, the working tree put back, by a seat without `close` and `triage`: the pre-commit run reads the index and refuses both, exit 4, and through the installed hooks no commit is made (saw {pre_i_[0]}, {made_i_.returncode}, {did_i_})",
+    check(f"FM-006 · v0.19.1 · the pre-commit run judges each tracker as the commit holds it: a close and a tier change by a seat without `close` and `triage` are refused, exit 4, and through the installed hooks no commit is made (saw {pre_i_[0]}, {made_i_.returncode}, {did_i_})",
           pre_i_[0] == fm.EXIT_LINT and "AP-970: this change is a `close`" in pre_i_[2] and "AP-971: this change is a `triage`" in pre_i_[2] and made_i_.returncode != 0 and not did_i_)
-    git(root, "reset", "-q", "--hard")
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}")                 # the branch as it began, whatever the case before made
     pre_p_, made_p_, did_p_ = stagedS_("principal@seat", 970, 971)
     check(f"FM-006 · v0.19.1 · the same, staged by the seat that holds `close` and `triage`, passes the pre-commit run and is committed (saw {pre_p_[0]}, {made_p_.returncode}, {did_p_})",
           pre_p_[0] == 0 and made_p_.returncode == 0 and did_p_)
-    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}"); (root / ".git/hooks/pre-commit").unlink(); (root / ".git/hooks/commit-msg").unlink()
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}")
+    kept_ = pS_(974).read_text(); pS_(974).write_text(kept_.replace("status: In Progress", "status: Closed"), encoding="utf-8"); git(root, "add", str(pS_(974)))
+    gone_ = pS_(974); gone_.unlink(); git(root, "config", "user.email", "implementer@seat"); before_ = shaS_()      # staged, and the working tree's file deleted
+    pre_g_ = run(root, "--print-written")
+    made_g_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", "AP-974: the work"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             env=dict(_ENV, GIT_AUTHOR_NAME="implementer@seat", GIT_AUTHOR_EMAIL="implementer@seat", GIT_COMMITTER_NAME="implementer@seat", GIT_COMMITTER_EMAIL="implementer@seat"))
+    check(f"FM-006 · v0.19.1 · the pre-commit run judges a tracker the commit carries and the working tree lacks as the commit holds it: a close by a seat without `close` is refused, exit 4, and no commit is made (saw {pre_g_[0]}, {made_g_.returncode})",
+          pre_g_[0] == fm.EXIT_LINT and "AP-974: this change is a `close`" in pre_g_[2] and made_g_.returncode != 0 and shaS_() == before_)
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}"); git(root, "config", "user.email", "principal@seat")
+    (root / ".git/hooks/pre-commit").unlink(); (root / ".git/hooks/commit-msg").unlink()
     # part b: a close made past the hooks, under a later commit — `--check` from a clean checkout reads every commit of the branch since the default branch
     git(root, "switch", "-q", "-c", "fm/972-work", f"origin/{trunkS_}")
     pS_(972).write_text(pS_(972).read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); run(root); git(root, "add", "-A")

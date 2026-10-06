@@ -5441,6 +5441,18 @@ def read_changes():
     return own + merged + [(parents, files, name, email, commit, "HEAD", "")]
 
 
+def staged_absent(rels):
+    """{path: tracker} — in the pre-commit run, each tracker the index carries and the working tree lacks (deleted or moved there,
+    unstaged), read from the index as the commit being made holds it; nothing in any other run (v0.19.1)."""
+    if not COMMITTING:
+        return {}
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    names = [rel for rel in sorted(staged_now()) if rel not in rels and pathlib.PurePath(rel).parent.as_posix() == home
+             and rel.endswith(".md") and KIND_RE.match(pathlib.PurePath(rel).name)]
+    texts = cat_blobs([f":./{rel}" for rel in names], index_env())
+    return {rel: extract(ROOT / rel, texts[f":./{rel}"]) for rel in names if texts.get(f":./{rel}") is not None}
+
+
 def walk_problems():
     """The one line where git could not walk the commits this run judges — a default branch `origin/HEAD` names and this clone does
     not hold, or any `git log` of the walk that failed (`read_changes`): they are refused, never judged as nothing (v0.19.1)."""
@@ -5499,6 +5511,7 @@ def rights_problems(trackers):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
+    rels.update(staged_absent(rels))                    # the commit being made: a tracker it carries that the working tree lacks is judged too
     changes = changes_under_review()
     blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
                                          for rev in ([result] if result else []) + list(bases))))     # one call for every change (v0.19.1)
@@ -5736,6 +5749,8 @@ def ship_problems(trackers):
             rels[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
         except (KeyError, ValueError):
             continue                                     # no file, or a link to one outside the repository — as `in_this_commit` reads it
+    if vcs() == "git":
+        rels.update(staged_absent(rels))                 # the commit being made: a tracker it carries that the working tree lacks is judged too
     if not rels:
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
