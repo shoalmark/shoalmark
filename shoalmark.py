@@ -5406,6 +5406,7 @@ def read_changes():
     — so a change made under a later commit is judged where `--check` runs, as the merge's walk judges it on the trunk
     (the Owner's ruling of 2026-10-04, v0.19.1). Where no default branch is found (`default_trunk`), the newest commit
     alone is judged, as before, and `--check` says so in one line — never the whole history."""
+    global _WALK
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
@@ -5431,6 +5432,8 @@ def read_changes():
     heads = merge_heads()
     if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
         files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "HEAD"))
+        if not COMMITTING:
+            _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for h in heads:
             files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
         return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
@@ -5444,7 +5447,6 @@ def read_changes():
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     merged = brought(parents[1:], parents[0]) if len(parents) > 1 else []
     trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
-    global _WALK
     _WALK = trunk or ""                                 # none: the newest commit alone is judged, and `--check` says so — never the whole history
     seen = {c[4] for c in merged} | {commit}
     own = [c for c in brought(["HEAD"], trunk, f"on this branch since {ref_name(trunk)}") if c[4] not in seen] if trunk else []
@@ -8954,6 +8956,8 @@ def main(argv=None):
         print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
         if _WALK == "":                                     # v0.19.1: no default branch to read the branch's commits since
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
+        elif _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
+            print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
             print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)

@@ -361,8 +361,8 @@ account and `signed` is refused — the server authenticated the commit, and the
 (`svn blame --xml`, as the answer gate does). One seat = one SVN account whose credentials exist only in that seat's
 environment (a container, or its own Windows user), never the Owner's cached ones (`~/.subversion/auth`, the Windows
 credential store); the svn command line runs no hook, so a protected edit is committed there, and `--check` after the
-commit is what judges it, with the board's *sent back* group as the backstop. A seat's **charter** — how it thinks, a bold
-Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
+commit is what judges it, with the board's *sent back* group as the backstop. A seat's **charter** — how it thinks, a
+bold Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
 
 ### Seat icons on the forge
 
@@ -481,9 +481,11 @@ refused: this commit by planner@seat is the seat planner, and its Session: a9f3c
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
 tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's
-`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, every commit since `origin`'s
-default branch, and every commit a merge brings, each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
-judged, so a repository that never set `seat.session` is not refused when it vendors.
+`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer and, in `--check` on a clean tree,
+every commit since `origin`'s default branch — the newest alone where none is found, and none where the tree has
+uncommitted edits, as `--check` says — and every commit a merge brings, each by its own. A repository adopts the rule
+with its first `Session:`: a commit whose history carries none is not judged, so a repository that never set
+`seat.session` is not refused when it vendors.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
 reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —

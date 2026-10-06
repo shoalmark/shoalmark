@@ -5352,6 +5352,11 @@ with tempfile.TemporaryDirectory() as tmp:
             subprocess.Popen = real_
         return code_, seen_[0]
     workedC_(20); at20_ = gitcallsC_(); workedC_(80); at100_ = gitcallsC_()
+    p_ = next((c_ / "docs/work-tracker").glob("AP-980-*.md")); p_.write_text(p_.read_text() + "\nAn edit not committed.\n", encoding="utf-8")      # the tree with an edit not committed
+    dirty_ = run(c_, "--check"); git(c_, "checkout", "-q", "--", ".")
+    check(f"FM-006 · v0.19.1 · with uncommitted edits, `--check` says in one line that it judged them against what HEAD holds, not the branch's commits (saw {dirty_[0]})",
+          [l_ for l_ in dirty_[1].splitlines() if l_.startswith("the branch's commits:")] == [
+              "the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits"])
     check(f"FM-006 · v0.19.1 · `--check` at a branch's tip starts as many git processes with 100 commits of its own since the default branch as with 20 (saw {at20_}, {at100_})",
           at20_[0] == at100_[0] == 0 and at20_[1] == at100_[1])
 fm.configure(HERE)
