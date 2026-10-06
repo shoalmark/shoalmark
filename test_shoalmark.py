@@ -8010,8 +8010,7 @@ with tempfile.TemporaryDirectory() as tmp:
         code_bs_, said_bs_ = None, str(e_)
     git(root, "switch", "-q", "ap/037-backslash"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written with /", SEAT_)
     c_bs2_, g_bs_ = sha37_(), guard37_(); code_bs2_, _o, err_bs2_ = run(root, "--check")
-    check(f"FM-006 · v0.19.1 · a seat's commit pointing `tracker_dir` at a folder written with a backslash, a TRIAGE.md of its own there, is refused: as the configuration is read, in one line ending \"write the folder with /\" — "
-          f"and, the configuration written with / after it, by `--check`, exit 4, the guard reading that commit's configuration as one it cannot read (saw {said_bs_!r}, {code_bs2_}, {g_bs_[0]!r})",
+    check(f"FM-006 · v0.19.1 · a `tracker_dir` holding a backslash is refused in one line ending \"write the folder with /\", and a commit carrying one is refused by `--check`, exit 4 (saw {said_bs_!r}, {code_bs2_}, {g_bs_[0]!r})",
           said_bs_.startswith("shoalmark.toml: `tracker_dir = ") and said_bs_.endswith("— write the folder with /") and "\n" not in said_bs_ and code_bs2_ == fm.EXIT_LINT and len(g_bs_[0]) == 2
           and any(l_.startswith(f'refused: commit {c_bs1_[:7]} "AP-037: tidy the folder" changes ') and f"where shoalmark.toml at {c_bs1_[:7]} cannot be read here — {said_bs_}" in l_ for l_ in g_bs_[0])
           and any(l_.startswith(f'refused: commit {c_bs2_[:7]} "AP-037: the folder written with /" changes `shoalmark.toml` where shoalmark.toml at {c_bs1_[:7]} cannot be read here') for l_ in g_bs_[0]))
@@ -8058,8 +8057,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_); c_cm_, g_cm_ = sha37_(), guard37_(); code_cc_ = run(root, "--check")[0]
     git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
     case_said37_ = "changes `docs/work-tracker/TRIAGE.md` which a file system that ignores case or Unicode normalization reads as `DOCS/WORK-TRACKER/TRIAGE.md`"
-    check(f"FM-006 · v0.19.1 · a seat's commit that respells `tracker_dir` in capitals beside a copy of the tracker, the Owner's words there, and rewrites the TRIAGE.md in the old spelling, is refused — "
-          f"by `--commit-msg` as it is made, and by `--check`, exit 4, each in one line (saw {code_cm_}, {code_cc_}, {g_cm_[0]!r})",
+    check(f"FM-006 · v0.19.1 · where a commit moves the tracker's home, a path that is that home in another case is refused, by `--commit-msg` and `--check`, exit 4, in one line (saw {code_cm_}, {code_cc_}, {g_cm_[0]!r})",
           code_cm_ == fm.EXIT_LINT and any(l_.strip().startswith('refused: this commit "AP-037: a note" ') and case_said37_ in l_ for l_ in err_cm_.splitlines())
           and code_cc_ == fm.EXIT_LINT and len(g_cm_[0]) == 1 and g_cm_[0][0].startswith(f'refused: commit {c_cm_[:7]} "AP-037: a note" ') and case_said37_ in g_cm_[0][0])
     c_m1_, _g = made37_("ap/037-elsewhere-back", "AP-037: the tracker elsewhere", lambda: (shutil.copytree(str(root / "docs/work-tracker"), str(root / "elsewhere")),
@@ -8068,7 +8066,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "shoalmark.toml"); git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: the tracker back", SEAT_)
     c_m3_, g_m_ = sha37_(), guard37_(); code_m_ = run(root, "--check")[0]
     git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
-    check(f"FM-006 · v0.19.1 · a seat's branch that moves the tracker away, writes `triage.md` in the old folder, then points `tracker_dir` back is refused by `--check`, exit 4, in one line naming the commit that points it back (saw {code_m_}, {g_m_!r})",
+    check(f"FM-006 · v0.19.1 · a commit that moves the home back where its tree holds that home in another case is refused, naming it (saw {code_m_}, {g_m_!r})",
           code_m_ == fm.EXIT_LINT and g_m_[0] == [f'refused: commit {c_m3_[:7]} "AP-037: the tracker back" holds `docs/work-tracker/triage.md` which a file system that ignores case or Unicode normalization reads as `docs/work-tracker/TRIAGE.md` — '
                                                   f"its author `implementer@seat` is not the Owner (`h@x`): not the Owner's signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}"]
           and g_m_[1].endswith("— 3 commit(s) on `ap/037-elsewhere-back` since origin/main, 1 change them or their signers file, 1 refused"))
@@ -8077,6 +8075,33 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-006 · v0.19.1 · the Owner's signed commit that moves the tracker folder, no path colliding with its new home, passes the guard (saw {g_om_!r})",
           g_om_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-move` since origin/main, none changes them or their signers file"))
     git(root, "switch", "-q", "main")
+    # v0.19.1 · the branch tip as a merge brings it: where its home is not the default branch's, a path that is either home in another case is refused
+    git(root, "switch", "-q", "main"); git(root, "mv", "docs/work-tracker", "away"); (root / ".gitignore").write_text((root / ".gitignore").read_text() + "away/index.html\naway/view/\n")
+    (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "away"\n[kinds]', 1)); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "the tracker away"); git(root, "push", "-q", "origin", "main")
+    (c_tv_,) = by_hand37_("ap/037-tip-variant", "main", ("AP-037: a note", lambda: ((root / "docs/work-tracker").mkdir(parents=True), (root / "docs/work-tracker/triage.md").write_text(seat_text37_)), SEAT_))
+    git(root, "switch", "-q", "main")
+    if (root / "docs/work-tracker").is_dir():
+        (root / "docs/work-tracker").rmdir()
+    (root / "docs").mkdir(exist_ok=True); git(root, "mv", "away", "docs/work-tracker"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    git(root, "switch", "-q", "ap/037-tip-variant"); g_tv_ = guard37_(); code_tv_ = run(root, "--check")[0]
+    git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    check(f"FM-006 · v0.19.1 · a branch tip holding a path that is the default branch's home in another case is refused, exit 4, in one line (saw {code_tv_}, {g_tv_[0]!r})",
+          code_tv_ == fm.EXIT_LINT and g_tv_[0] == [f"refused: the branch tip `{c_tv_[:7]}` holds `docs/work-tracker/triage.md` which a file system that ignores case or Unicode normalization reads as "
+                                                    "`docs/work-tracker/TRIAGE.md` — origin/main's TRIAGE.md is `docs/work-tracker/TRIAGE.md`, the tip's `away/TRIAGE.md`, and a merge brings it: carry the work onto a branch without it"])
+    # v0.19.1 · a symlink at the default branch's configuration path is a configuration that cannot be read — never one naming no Owner
+    git(root, "switch", "-q", "main"); blob37_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input='name = "g"', capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "update-index", "--cacheinfo", f"120000,{blob37_},shoalmark.toml"); git(root, "commit", "-q", "-m", "the configuration, a symlink"); git(root, "push", "-q", "origin", "main")
+    (c_cl_,) = by_hand37_("ap/037-config-link", "main", ("AP-037: a better intent", lambda: ((root / "shoalmark.toml").write_text(cfg37_), text37_("lose a loan", "lose a book")()), SEAT_))
+    g_cl_ = guard37_(); code_cl_ = run(root, "--check")[0]
+    check(f"FM-006 · v0.19.1 · a symlink at the default branch's configuration path is a configuration that cannot be read: a change to `## The intent` is refused, exit 4 (saw {code_cl_}, {g_cl_!r})",
+          code_cl_ == fm.EXIT_LINT and g_cl_[0] == [f'refused: commit {c_cl_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}']
+          and g_cl_[1].startswith("the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: "
+                                  "shoalmark.toml: not a file — git records a symlink at that path"))
+    git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    if os.path.lexists(root / "shoalmark.toml"):
+        (root / "shoalmark.toml").unlink()
+    (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "the configuration, a file again"); git(root, "push", "-q", "origin", "main")
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
@@ -8126,8 +8151,7 @@ with tempfile.TemporaryDirectory() as tmp:
                                   ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
         g_l_ = guard37_(); code_l_, _o, err_l_ = run(root, "--check")
         link_said37_ = "the signers file is, or is reached through, a symlink, and nothing verifies against it"
-        check(f"FM-006 · v0.19.1 · where the signers file this clone names is a symlink a branch wrote, to a file outside the repository holding the seat's key under the Owner's email, the seat's signed change to `## The intent` "
-              f"is not accepted: `--check` exits 4, each signed commit one this clone cannot verify, the line saying the file is a symlink (saw {code_l_}, {g_l_[0]!r})",
+        check(f"FM-006 · v0.19.1 · a signers file reached through a symlink in a checkout verifies nothing, exit 4, the line saying so (saw {code_l_}, {g_l_[0]!r})",
               code_l_ == fm.EXIT_LINT and len(g_l_[0]) == 2 and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}" in l_ and link_said37_ in l_ for l_ in g_l_[0])
               and any(f"`{c_l2_[:10]}`" in l_ and "changes the text under `## The intent`" in l_ for l_ in g_l_[0]) and link_said37_ in err_l_)
         git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
@@ -8152,14 +8176,10 @@ with tempfile.TemporaryDirectory() as tmp:
     refused_unverified37_ = lambda g_, code_: code_ == fm.EXIT_LINT and len(g_[0]) == 2 and all("the Owner's email, and its signature does not verify" in l_ for l_ in g_[0])
     refused_link37_ = lambda g_, code_, conf_: code_ == fm.EXIT_LINT and len(g_[0]) == 2 and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {conf_}" in l_ and link_said37_ in l_ for l_ in g_[0])
     k_names37_ = {
-        "K1": "FM-006 · v0.19.1 · on a file system that folds case, where the signers file this clone names is spelled in another case, the default branch's copy is read: "
-              "the seat's key appended on the branch verifies nothing, and its signed change to `## The intent` is refused, exit 4",
-        "K2": "FM-006 · v0.19.1 · on a file system that folds case, where the signers file this clone names is spelled in another case and a branch made it a symlink to a file "
-              "outside the repository, nothing verifies against it: the seat's signed change to `## The intent` is refused, exit 4, the line saying the file is a symlink",
-        "K7": "FM-006 · v0.19.1 · where the signers file this clone names is spelled through the system's firmlink and a branch made it a symlink to a file outside the repository, "
-              "nothing verifies against it: the seat's signed change to `## The intent` is refused, exit 4, the line saying the file is a symlink",
-        "K9": "FM-006 · v0.19.1 · on a file system that folds case, where the signers file this clone names is spelled in another case below the working tree, it is read at git's own "
-              "spelling on the default branch: the Owner's signed change passes, the seat's appended key verifies nothing",
+        "K1": "FM-006 · v0.19.1 · a signers file named in another case is read at the default branch's copy: a key a branch appends verifies nothing, the change refused, exit 4",
+        "K2": "FM-006 · v0.19.1 · a symlinked signers file named in another case verifies nothing, exit 4, the line saying so",
+        "K7": "FM-006 · v0.19.1 · a symlinked signers file named through the firmlink verifies nothing, exit 4, the line saying so",
+        "K9": "FM-006 · v0.19.1 · a signers file named in another case below the working tree is read at git's spelling on the default branch: the Owner's signed change passes, an appended key verifies nothing",
     }
     if folds37_ is None:
         for k_ in ("K1", "K2", "K9"):
@@ -8196,8 +8216,7 @@ with tempfile.TemporaryDirectory() as tmp:
         _made, g_k7_, code_k7_ = seat_signed37_("ap/037-signers-firmlink", firm37_, link37_)
         check(f"{k_names37_['K7']} (saw {code_k7_}, {g_k7_[0]!r})", refused_link37_(g_k7_, code_k7_, firm37_))
         back37_()
-    k8_name37_ = ("FM-006 · v0.19.1 · where the signers file this clone names is reached through a `..` after a folder a branch made a symlink to a folder outside the repository, "
-                  "the link is read before the `..` applies and nothing verifies against the file: the seat's signed change to `## The intent` is refused, exit 4, the line saying it is a symlink")
+    k8_name37_ = "FM-006 · v0.19.1 · a symlink before a `..` on the way to the signers file is read before the `..` applies: nothing verifies, exit 4, the line saying so"
     if _SYMLINKS:
         far37_ = base / "far"; (far37_ / "kit").mkdir(parents=True); (far37_ / "work-tracker").mkdir()
         (far37_ / "work-tracker" / "allowed_signers").write_text("h@x " + skey_.with_suffix(".pub").read_text())
@@ -8221,8 +8240,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))          # the first clone's file — checked out there on the seat's branch
     code_k10_, _o, err_k10_ = run(second37_, "--check"); g_k10_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
     fm.configure(root); back37_()
-    check(f"FM-006 · v0.19.1 · where the signers file this clone names is in another clone's working tree, nothing verifies against it: the seat's signed change to `## The intent` is refused, exit 4, "
-          f"the line saying the file is inside another checkout (saw {code_k10_}, {g_k10_[0]!r})",
+    check(f"FM-006 · v0.19.1 · a signers file in another clone's working tree verifies nothing, exit 4, the line saying so (saw {code_k10_}, {g_k10_[0]!r})",
           code_k10_ == fm.EXIT_LINT and len(g_k10_[0]) == 2
           and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, inside another checkout" in l_
                   and "the signers file is inside another checkout, where a branch writes it — name this repository's own file, or one outside every checkout" in l_ for l_ in g_k10_[0]))
@@ -8234,7 +8252,7 @@ with tempfile.TemporaryDirectory() as tmp:
         (c_ok_,) = by_hand37_(f"ap/037-owner-conf-{len(owner_ok37_)}", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
         owner_ok37_[conf_] = guard37_(); git(root, "switch", "-q", "main")
     git(root, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
-    check(f"FM-006 · v0.19.1 · the Owner's signed change still passes where the signers file is named relative to the root, and through a link outside every checkout where one is on the way (saw {owner_ok37_!r})",
+    check(f"FM-006 · v0.19.1 · the Owner's signed change passes with the signers file named relative to the root, and through a link outside every checkout (saw {owner_ok37_!r})",
           all(g_[0] == [] and g_[1].endswith("1 change them or their signers file, each their own commit") for g_ in owner_ok37_.values()))
     # the cold re-review's R1 · `--answer` asks the gate's own test before it pushes — the default branch's signers file. Mid
     # key rotation, his new key only on his branch's copy: the answer it signs is NOT pushed, and neither the command nor the

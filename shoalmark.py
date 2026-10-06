@@ -644,6 +644,7 @@ def configure(root=None):
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
     _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
+    _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -6364,6 +6365,7 @@ def guarded_sections(text, heads):
 
 _MODES = {}
 _TREES = {}
+_VIEWS = {}
 
 
 def tree_paths(rev, env=None):
@@ -6393,7 +6395,7 @@ def path_mode(rev, path, env=None):
 
 def config_not_file(kind):
     """Why a revision's configuration cannot be read where git records no file at its path: `kind` the mode or the type."""
-    what = {"160000": "a submodule", "commit": "a submodule", "040000": "a folder", "tree": "a folder"}.get(kind, f"no file it can list (`{kind}`)")
+    what = {"160000": "a submodule", "commit": "a submodule", "040000": "a folder", "tree": "a folder", "120000": "a symlink"}.get(kind, f"no file it can list (`{kind}`)")
     return f"{CONFIG_NAME}: not a file — git records {what} at that path, and only a file is read as the configuration"
 
 
@@ -6417,16 +6419,25 @@ def view_label(rev):
     return "what this commit stages" if rev == "" else rev[:7] if re.fullmatch(r"[0-9a-f]{40}", rev) else rev
 
 
-def triage_views(revs, env=None, prefix=None):
+def triage_views(revs, env=None, prefix=None, modes=()):
     """{rev: (its `tracker_dir`, its TRIAGE.md from the repository's root, whether that file is there, its two sections, its
     `[headings]`, "" — or why its configuration cannot be read, its tracker folder from the root)} — the folder and the
     home `tracker_folder`'s, as the tool reads them — each revision read under its OWN `shoalmark.toml`; "" is
     the index, what a commit being made stages (`env` carries the hook's `GIT_INDEX_FILE`). A configuration this tool cannot
     read (`guard_config`), or no file at its path — a submodule, a folder (`path_mode`) — is never read as the defaults: its
     view says so, and reads no sections — every reader of a view refuses where one it needs cannot be read. Only a path
-    with nothing at it is no configuration: the defaults, as `configure` reads them. `prefix`: the repository's, where the
-    caller has it. Two `git cat-file --batch` calls for all of them."""
-    prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if prefix is None else prefix
+    with nothing at it is no configuration: the defaults, as `configure` reads them. A symlink there is no file either: its
+    mode is read (`path_mode`) for each revision of `modes` — the default branch, and a revision that changes the
+    configuration's path; at any other, the path holds what its parent's did. `prefix`: the repository's, where the caller
+    has it. Two `git cat-file --batch` calls for all of them that this run has not read yet — a revision is read once per
+    run (`_VIEWS`), the index never kept."""
+    if prefix is None:
+        prefix = _VIEWS.get((str(ROOT), "prefix"))
+        if prefix is None:
+            prefix = _VIEWS[(str(ROOT), "prefix")] = (git_out("rev-parse", "--show-prefix") or "").strip()
+    key = lambda r: (str(ROOT), prefix, r, r in modes)
+    kept = {r: _VIEWS[key(r)] for r in revs if r != "" and key(r) in _VIEWS}
+    revs = [r for r in revs if r not in kept]
     at = lambda rev, path: f"{rev}:{path}"
     types = {}
     configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env, types)
@@ -6435,6 +6446,8 @@ def triage_views(revs, env=None, prefix=None):
         spec = at(r, prefix + CONFIG_NAME)
         try:
             kind = types.get(spec, "blob") if configs.get(spec) is not None else path_mode(r, prefix + CONFIG_NAME, env) or "blob"
+            if kind == "blob" and r in modes and path_mode(r, prefix + CONFIG_NAME, env) == "120000":
+                kind = "120000"
             if kind != "blob":
                 raise SystemExit(config_not_file(kind))
             tdir, heads, folder = guard_config(configs.get(spec), prefix)
@@ -6443,9 +6456,11 @@ def triage_views(revs, env=None, prefix=None):
             continue
         where[r] = (tdir, (pathlib.PurePosixPath(folder) / "TRIAGE.md").as_posix(), heads, "", folder)
     texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why, _f) in where.items() if not why}), env)
-    return {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why, folder) if why else
+    read = {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why, folder) if why else
                (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads, "", folder)
             for r, (tdir, home, heads, why, folder) in where.items()}
+    _VIEWS.update({key(r): v for r, v in read.items() if r != ""})
+    return {**kept, **read}
 
 
 def section_changes(now, before, touched=()):
@@ -6516,7 +6531,7 @@ def signers_paths(trunk):
     tracker directory is not known and the second is not named: there, `owners_at` refuses that configuration, and the
     guard refuses every change to a file named `allowed_signers` (`guard_touched`)."""
     out = [trusted_signers()["rel"]]
-    view = triage_views([trunk])[trunk] if trunk else None
+    view = triage_views([trunk], modes={trunk})[trunk] if trunk else None
     if view and not view[5]:
         out.append((pathlib.PurePosixPath(view[6]) / "allowed_signers").as_posix())
     return list(dict.fromkeys(x for x in out if x))
@@ -6602,7 +6617,7 @@ def guard_walk(*revs, keys=(), unread=False):
         commits.append((c, ps, parts[i + 1].strip(), [f.lstrip("\n") for f in parts[i + 2].split("\x00") if f.lstrip("\n")]))
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if commits else ""
     revs_ = sorted({c for c, _p, _s, _f in commits} | {p for _c, ps, _s, _f in commits for p in ps})
-    views = triage_views(revs_, prefix=prefix) if commits else {}
+    views = triage_views(revs_, prefix=prefix, modes={c for c, _p, _s, files in commits if prefix + CONFIG_NAME in files}) if commits else {}
     kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys]) if commits else {}
     changed = [(c, subject, next((views[r][1] for r in (c, *ps) if views[r][1]), "TRIAGE.md"),
                 guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
@@ -6644,6 +6659,8 @@ def owners_at(rev, refused=None):
     spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
     text = cat_blobs([spec], types=types).get(spec)
     kind = types.get(spec, "blob") if text is not None else path_mode(rev, prefix + CONFIG_NAME)
+    if kind == "blob" and path_mode(rev, prefix + CONFIG_NAME) == "120000":       # a symlink: its text is no configuration
+        kind = "120000"
     if not kind:                                        # nothing at that path: no configuration — the adoption, as documented
         return may_answer()
     try:
@@ -6757,12 +6774,13 @@ def triage_pending(subject):
     parents = (["HEAD"] if git("rev-parse", "--verify", "-q", "HEAD").returncode == 0 else []) + heads
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
-    views = triage_views(["", *parents], env, prefix)          # "" — the index: what this commit carries
+    staged = staged_files(parents, env)
+    views = triage_views(["", *parents], env, prefix, {""} if prefix + CONFIG_NAME in staged else ())     # "" — the index: what this commit carries
     keys = signers_paths(trunk)
     kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
     what = guard_changes(views[""], [views[p] for p in parents],
                          [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
-                         staged_files(parents, env), prefix, keys, not owners, lambda: tree_paths("", env))
+                         staged, prefix, keys, not owners, lambda: tree_paths("", env))
     brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []
     refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
@@ -6818,6 +6836,26 @@ def guard_footer(problems):
     return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems and not unread_refusal(p_) for p_ in (_GUARD or ([], ""))[0]) else []
 
 
+def tip_variants(trunk):
+    """FM-037 on the branch tip as a merge would bring it: where its TRIAGE.md home is not the default branch's — the tracker
+    moved on either side — each path the tip's tree holds (`tree_paths`, one listing), other than a home, that is either
+    home as a file system that ignores case and Unicode normalization reads it (`fs_fold`). Refused whoever made it, in
+    one line each; nothing listed where the two homes are one, or one cannot be read (the walk judges that)."""
+    tip = (git_out("rev-parse", "--verify", "-q", "HEAD") or "").strip()
+    if not tip or not trunk:
+        return []
+    views = triage_views([trunk, tip], modes={trunk})
+    homes = list(dict.fromkeys(v[1] for v in (views[trunk], views[tip])))
+    if len(homes) < 2 or not all(homes):
+        return []
+    held = tree_paths(tip)
+    if held is None:
+        return [f"refused: the branch tip `{tip[:7]}` moves the tracker from {trunk}'s `{homes[0]}` to `{homes[1]}`, and git cannot list the files beside it"]
+    return [f"refused: the branch tip `{tip[:7]}` holds `{p}` which a file system that ignores case or Unicode normalization reads as `{h}` — "
+            f"{trunk}'s TRIAGE.md is `{homes[0]}`, the tip's `{homes[1]}`, and a merge brings it: carry the work onto a branch without it"
+            for p in sorted(held) for h in homes if p not in homes and fs_fold(p) == fs_fold(h)]
+
+
 def triage_guard():
     """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
     merges walked and judged by the text they bring — where this tool refuses the default branch's configuration, each commit
@@ -6841,17 +6879,17 @@ def triage_guard():
     owners = owners_at(trunk, why)
     if not owners and why:                                   # refused here: every change to the two sections, their signers file, a TRIAGE.md or the configuration
         n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk), unread=True)
-        refused = unread_lines(changed, trunk)
+        refused = unread_lines(changed, trunk) + tip_variants(trunk)
         _GUARD = (refused, f"the Owner's two sections: guarded — {trunk}'s configuration cannot be read here, so every change to them or their signers file is refused: {why[0]} — "
                            f"{n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
-                           + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if changed else "none changes them or their signers file"))
+                           + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if changed or refused else "none changes them or their signers file"))
         return _GUARD
     if not owners:
         _GUARD = ([], f"the Owner's two sections: not guarded — {trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)")
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
-    refused = guard_lines(verdicts, owners)
+    refused = guard_lines(verdicts, owners) + tip_variants(trunk)
     proof = "" if all(m == "signed" for m in owners.values()) else f" ({GUARD_AUTHOR_ONLY})"
     _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
                        + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if refused
