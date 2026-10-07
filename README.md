@@ -340,10 +340,11 @@ Who is at the keyboard, and what that seat may change. **Four rights**, each a f
 a diff: `answer` (the three answer lines) · `ask` (`next: owner`, and clearing an answered ask with its record) · `close` (a terminal status) · `triage`
 (`considered:`, `kind-of-problem:`, tier, rank); anything else is open to every seat. The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same — any other name says so in `[rights]`, in the same diff as anything it would allow.
 **The Owner is not a seat.** A top-level `owner = "you@example.org signed"`, before any table, names them — one identity or a list of them, `signed` per identity as for a seat — and they hold all four rights. **A `signed` identity is an email address, and it verifies by SSH only:** the commit's signature is SSH, good under the default branch's signers file, and its principal equals that email exactly — never a principal that merely contains it, never the commit's author standing in for it. A `signed` identity that is not an email is refused when the configuration is read, exit 1, with the way to migrate: write the email the signers file names for the key. A GPG or X.509 signature on a signed line is refused: `sign with SSH; GPG returns with a fingerprint binding`. `[seats] owner` is still read, as its old spelling: both present and the same are read once, both present and different are refused at configuration, in one line naming both, and so is an `owner` key inside any other table (in `[rights]`, a list of rights is the Owner's own), which is where a line meant for the top lands when it is written below a `[table]` header. Absent `[seats]` and `owner`, nothing of this is enforced. The seats are called Planner and Builder in prose and in `[seats]`: this repository's keys are `planner` and `builder`, each with its GitHub App's bot address beside the old one (§*Seat icons on the forge*). A **merge**
-is judged by what it changes itself — the files where it differs from every parent — under the merger, and every commit
-it brings under that commit's own author and signature: an ordinary commit against its own parent, a merge, nested at
-any depth, by what it changes itself. A merge that equals a parent in every tracker adds nothing, and never launders a
-commit that was made without the hook.
+is judged by what it changes itself — the files where it differs from every parent — under the merger, and an `answer` or
+a `next: owner` it sets in its own change is refused: set it in a commit of its own. Every commit it brings is judged under
+that commit's own author and signature: an ordinary commit against its own parent, a merge, nested at any depth, by what
+it changes itself. A merge that equals a parent in every tracker adds nothing, and never launders a commit that was made
+without the hook.
 
 ```toml
 owner = "you@example.org signed"        # the Owner, not a seat: at the top, before any table; `signed` as for a seat

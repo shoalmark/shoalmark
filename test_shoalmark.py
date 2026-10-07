@@ -5987,6 +5987,41 @@ with tempfile.TemporaryDirectory() as tmp:
           at20_[0] == at100_[0] == 0 and at20_[1] == at100_[1])
 fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: an answer or a `next: owner` a merge sets in its own change is refused — set it in a commit of its own ---
+# The Owner's ruling of 2026-10-07: a merge's own change is judged under the merger, and an answer or a `next: owner` it sets in its own change is refused.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "o"\nowner = "h@x"\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    tracker(root, "AP-961", title="open")
+    tracker(root, "AP-962", extra='ask: "Shall the importer ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nnext: owner\n', title="asked")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    trunkO_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def ownO_(id_, old_, new_, author_):
+        """A merge of a side branch whose own change replaces `old_` with `new_` in `id_`, committed by `author_`; then `--check` there; the trunk put back."""
+        base_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "switch", "-q", "-c", f"side-{id_}"); (root / f"{id_}.txt").write_text("on the side\n", encoding="utf-8"); git(root, "add", "-A")
+        git(root, "commit", "-qm", "on the side", "--author=p <principal@seat>"); git(root, "switch", "-q", trunkO_)
+        (root / "notes.txt").write_text(f"trunk, before {id_}\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+        git(root, "merge", "-q", "--no-ff", "--no-commit", f"side-{id_}")
+        p_ = next((root / "docs/work-tracker").glob(f"{id_}-*.md")); p_.write_text(p_.read_text().replace(old_, new_, 1), encoding="utf-8")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-qm", f"merge side-{id_}", f"--author={author_}")
+        got_ = run(root, "--check"); git(root, "reset", "-q", "--hard", base_)
+        return got_
+    askO_ = ownO_("AP-961", 'hook: "h of AP-961"', 'next: owner\nask: "Will you sign the release?"\nask-kind: action\nask-since: 2026-10-07\nask-proposal: "sign it"\nhook: "h of AP-961"',
+                  "p <principal@seat>")
+    check(f"FM-006 · v0.19.1 · a merge's own `next: owner`, set by a seat that holds `ask`, is refused — no commit names that line — and the refusal names the way "
+          f"through: set it in a commit of its own (saw {askO_[0]}, {askO_[2].strip()[-140:]!r})",
+          askO_[0] == fm.EXIT_LINT and "AP-961: `next: owner` — version control names no commit for this line" in askO_[2] and "in a commit of its own" in askO_[2])
+    ansO_ = ownO_("AP-962", 'ask-proposal: "yes"', 'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-07\nanswered-by: holgo', "holgo <h@x>")
+    check(f"FM-006 · v0.19.1 · a merge's own answer, set by the Owner, is refused — no commit names that line — and the refusal names the way through: set it in a "
+          f"commit of its own (saw {ansO_[0]}, {ansO_[2].strip()[-140:]!r})",
+          ansO_[0] == fm.EXIT_LINT and "AP-962: `answer:` — version control names no commit for this line" in ansO_[2] and "in a commit of its own" in ansO_[2])
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-006 · v0.19.1: a merge inside a branch whose own change closes a tracker, under a later commit, is judged at the branch's tip and at its merge into the trunk ---
 # The Owner's rulings of 2026-10-03 and 2026-10-04: a merge is judged by its own change against every parent, and every commit of the branch since the default
 # branch is judged where `--check` runs — a merge among them by its own change.
