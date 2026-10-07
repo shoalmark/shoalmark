@@ -5987,6 +5987,39 @@ with tempfile.TemporaryDirectory() as tmp:
           at20_[0] == at100_[0] == 0 and at20_[1] == at100_[1])
 fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: a merge inside a branch whose own change closes a tracker, under a later commit, is judged at the branch's tip and at its merge into the trunk ---
+# The Owner's rulings of 2026-10-03 and 2026-10-04: a merge is judged by its own change against every parent, and every commit of the branch since the default
+# branch is judged where `--check` runs — a merge among them by its own change.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "m"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    tracker(root, "AP-951", title="open"); (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    trunkM_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "remote", "add", "origin", str(base / "origin.git")); git(root, "push", "-q", "origin", trunkM_); git(root, "remote", "set-head", "origin", trunkM_)
+    shaM_ = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", "-c", "side"); (root / "side.txt").write_text("on the side\n", encoding="utf-8"); git(root, "add", "-A")
+    git(root, "commit", "-qm", "on the side", "--author=p <principal@seat>")
+    git(root, "switch", "-q", "-c", "pr/merge-close", f"origin/{trunkM_}"); (root / "work.txt").write_text("the work\n", encoding="utf-8"); git(root, "add", "-A")
+    git(root, "commit", "-qm", "the work", "--author=p <principal@seat>")
+    git(root, "merge", "-q", "--no-ff", "--no-commit", "side")
+    pM_ = next((root / "docs/work-tracker").glob("AP-951-*.md")); pM_.write_text(pM_.read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "merge side", "--author=i <implementer@seat>"); mergedM_ = shaM_()
+    (root / "later.txt").write_text("a later commit\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a later commit", "--author=p <principal@seat>")
+    tipM_ = run(root, "--check")
+    git(root, "switch", "-q", trunkM_); (root / "notes.txt").write_text("trunk, meanwhile\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+    subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "pr/merge-close", "-m", "Merge pull request from pr/merge-close"],
+                   check=True, capture_output=True, env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+    trunkCheckM_ = run(root, "--check")
+    saidM_ = lambda r_: r_[0] == fm.EXIT_LINT and f"AP-951: in `{mergedM_[:10]}` (implementer@seat)" in r_[2] and "this change is a `close`" in r_[2]
+    check(f"FM-006 · v0.19.1 · a merge inside the branch whose own change closes a tracker, by a seat without `close`, under one later commit — `--check` refuses it at the "
+          f"branch's tip and at the branch's merge into the trunk, exit 4, naming that merge's commit (saw {tipM_[0]}, {trunkCheckM_[0]})", saidM_(tipM_) and saidM_(trunkCheckM_))
+    rm_git(root)
+fm.configure(HERE)
+
 # --- FM-005: a move to Shipped has a commit behind it — the Owner's ruling of 2026-09-30 ---------------------------------------------
 # *A gate that refuses a done without a commit behind it.* At 0.18.6 a tracker marked `Shipped` whose body said *nothing is built* —
 # an empty *Done when*, only *Filed.* in its ship log — passed the hook and `--check`. The rule is judged on the change that moves
