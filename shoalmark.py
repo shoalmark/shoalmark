@@ -4998,7 +4998,8 @@ def line_author(path, needle):
             who, rev = by_line[n]
             own = _SVN_BLAME.get(("through", rel), {}).get(n) if key != "considered" else None       # `considered:` is the filing's
             right = {"answer": "answer", "next": "ask", "status": "close"}.get(key, "triage")
-            if own and own[0] != who and holds(seat_of(who, None), right) and not holds(seat_of(own[0], None), right):
+            may = (lambda w: holds(seat_of(w, None), right)) if SEATS else (lambda w: right == "answer" and w in may_answer())
+            if own and own[0] != who and may(who) and not may(own[0]):
                 who, rev = own                          # a copied line passes only where its copier and its own author both hold its right (v0.19.1)
             out = (None, None, "merged", rev) if who is MERGED_IN else (who, None, "svn", rev) if rev else out   # no revision yet: changed in the working copy
         elif by_line:

@@ -7000,6 +7000,47 @@ else:
               hcC_[0] == 0 and not namedC_(hcC_[2], "C9-204"))
     fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: on Subversion with `answerers` and no `[seats]`, an answer a copy brings passes only where its copier and its own author both may answer ---
+# The Owner's ruling of 2026-10-07: the copy rule asks both, in a repository that names its answerers as in one that names its seats.
+if not _SVN:
+    _skipped("FM-006 · v0.19.1 · on Subversion with `answerers`, an answer a copy brings", 1, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('answerers = ["holgo"]\n' + (root / "shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wtA_ = root / "docs/work-tracker"
+        def fileA_(where_, id_):
+            """A tracker carrying the answer of an answerer, `holgo`, written by whoever commits it."""
+            (where_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nnext: owner\nask: go?\nask-options: yes | no\nanswer: yes\nanswered-by: holgo\n'
+                                               f'answered: 2026-10-07\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+        def commitA_(wc_, who_, msg_):
+            run(wc_); svn("add", "-q", "--force", ".", cwd=wc_); svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
+            return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
+        svn("copy", "-q", "-m", "the builder's branch", url + "/trunk", url + "/branches/b", "--username", "builder"); wbA_ = base / "wc-b"; svn("checkout", "-q", url + "/branches/b", str(wbA_))
+        rbA_ = svn("info", "--show-item", "last-changed-revision", url + "/branches/b").stdout.strip()
+        fileA_(wbA_ / "docs/work-tracker", "C9-210"); rcA_ = commitA_(wbA_, "builder", "C9-210 with an answer, on the branch")
+        refusedA_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any(f"{id_}: `answered-by: holgo` but the svn author of the answer is `builder`" in l_ for l_ in r_[2].splitlines())
+        seenA_ = {}
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--ignore-ancestry", "-r", f"{rbA_}:{rcA_}", "^/branches/b", ".", cwd=root)
+        commitA_(root, "holgo", "brought to trunk with --ignore-ancestry"); seenA_["ia"] = run(root, "--check")
+        svn("rm", "-q", "--force", str(wtA_ / "C9-210-x.md"), cwd=root); commitA_(root, "planner", "C9-210 taken out")
+        svn("copy", "-q", url + "/branches/b/docs/work-tracker/C9-210-x.md", str(wtA_ / "C9-210-x.md"), cwd=root)
+        commitA_(root, "holgo", "copied to trunk from the branch"); seenA_["copy"] = run(root, "--check")
+        svn("rm", "-q", "--force", str(wtA_ / "C9-210-x.md"), cwd=root); commitA_(root, "planner", "C9-210 taken out again")
+        fileA_(wtA_, "C9-211"); commitA_(root, "builder", "C9-211 with an answer, by the builder")
+        svn("rm", "-q", str(wtA_ / "C9-211-x.md"), cwd=root); rxA_ = commitA_(root, "builder", "C9-211 taken out")
+        svn("merge", "-q", "-c", f"-{rxA_}", ".", cwd=root); commitA_(root, "holgo", "the taking out undone"); seenA_["undo"] = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion with `answerers` and no `[seats]`, a non-answerer's tracker carrying an answer, brought to trunk by the answerer — a merge "
+              f"with `--ignore-ancestry`, a copy from the branch, a reverse merge that restores it — is refused under its own author "
+              f"(saw {seenA_['ia'][0]}, {seenA_['copy'][0]}, {seenA_['undo'][0]})",
+              refusedA_(seenA_["ia"], "C9-210") and refusedA_(seenA_["copy"], "C9-210") and refusedA_(seenA_["undo"], "C9-211"))
+    fm.configure(HERE)
+
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
