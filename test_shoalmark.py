@@ -6162,6 +6162,81 @@ else:
     fm.configure(HERE)
 
 
+# --- FM-006 · v0.19.1: on Subversion a copy is its copier's, merge or not — a merge that brought the path is followed to the revision that filed it ---
+if not _SVN:
+    print("  skip  FM-006 · v0.19.1 · a copy and a merge, on Subversion · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wt9_ = root / "docs/work-tracker"
+        said9_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_]          # every line that names the tracker
+        def new9_(id_, status_="In Progress"):
+            """A tracker filed in the working copy and `svn add`ed."""
+            p_ = wt9_ / f"{id_}-x.md"
+            p_.write_text(f'---\nid: {id_}\nstatus: {status_}\nconsidered: none\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+            svn("add", str(p_), cwd=root)
+            return p_
+        def commit9_(who_, msg_):
+            """The working copy committed as `who_`, and updated to."""
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", msg_, "--username", who_, cwd=root); svn("update", cwd=root)
+        new9_("C9-100", status_="Closed"); commit9_("planner", "C9-100 filed")
+        svn("copy", "-q", "-m", "the branch b3", url + "/trunk", url + "/branches/b3", "--username", "planner")
+        wb3_ = base / "wc-b3"; svn("checkout", "-q", url + "/branches/b3", str(wb3_)); tb3_ = wb3_ / "docs/work-tracker"
+        def onb3_(who_, msg_, edit_, wc_=None):
+            """`edit_` made in a branch's working copy (b3's, else `wc_`) and committed by `who_`; the revision it made."""
+            wc_ = wc_ or wb3_; svn("update", "-q", cwd=wc_); edit_(); run(wc_); svn("add", "-q", "--force", ".", cwd=wc_)
+            svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
+            return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
+        def copied9_(src_, dst_):
+            """`svn copy` of tracker `src_` to `dst_`, its id replaced."""
+            svn("copy", "-q", str(src_), str(dst_)); dst_.write_text(dst_.read_text(encoding="utf-8").replace(src_.name[:6], dst_.name[:6]), encoding="utf-8")
+        def copies9_(id_, how_, who_):
+            """`how_` made on trunk and committed by `who_`; then `--check`, and the trunk put back by the planner."""
+            svn("update", "-q", cwd=root); how_(); commit9_(who_, f"{id_}: {who_}"); code_, _, err_ = run(root, "--check")
+            svn("rm", "-q", "--force", str(wt9_ / f"{id_}-x.md"), cwd=root); commit9_("planner", f"{id_} taken out")
+            return code_, said9_(err_, id_)
+        refused9_ = lambda c_: c_[0] == fm.EXIT_LINT and any("`builder` is the seat `builder`, which does not hold `close`" in l_ for l_ in c_[1])
+        r1_ = onb3_("builder", "a note", lambda: (wb3_ / "note1.txt").write_text("one\n", encoding="utf-8"))
+        rec_ = copies9_("C9-101", lambda: (copied9_(wt9_ / "C9-100-x.md", wt9_ / "C9-101-x.md"), svn("merge", "-q", "--record-only", "-c", r1_, "^/branches/b3", ".", cwd=root)), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker by a seat without `close`, filed on trunk in a revision that also records a merge, is refused (saw {rec_[0]})", refused9_(rec_))
+        onb3_("builder", "another note", lambda: (wb3_ / "note2.txt").write_text("two\n", encoding="utf-8"))
+        real_ = copies9_("C9-102", lambda: (copied9_(wt9_ / "C9-100-x.md", wt9_ / "C9-102-x.md"), svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root)), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker by a seat without `close`, filed on trunk in a revision that also merges a branch, is refused (saw {real_[0]})", refused9_(real_))
+        onb3_("builder", "C9-103 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-103-x.md"))
+        by_p_ = copies9_("C9-103", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "planner")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made on a branch by a seat without `close`, merged into trunk by the planner, is refused on trunk (saw {by_p_[0]})", refused9_(by_p_))
+        onb3_("builder", "C9-104 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-104-x.md"))
+        by_b_ = copies9_("C9-104", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made on a branch by a seat without `close`, merged into trunk by that seat, is refused on trunk (saw {by_b_[0]})", refused9_(by_b_))
+        def filed_b3_():
+            """C9-105 filed `Closed` on the branch, by the planner."""
+            (tb3_ / "C9-105-x.md").write_text((wt9_ / "C9-100-x.md").read_text(encoding="utf-8").replace("C9-100", "C9-105"), encoding="utf-8")
+        r5_ = onb3_("planner", "C9-105 filed on the branch", filed_b3_)
+        other_ = copies9_("C9-106", lambda: (svn("copy", "-q", url + "/branches/b3/docs/work-tracker/C9-105-x.md", str(wt9_ / "C9-106-x.md"), cwd=root),
+                                             (wt9_ / "C9-106-x.md").write_text((wt9_ / "C9-106-x.md").read_text(encoding="utf-8").replace("C9-105", "C9-106"), encoding="utf-8"),
+                                             svn("merge", "-q", "--record-only", "-c", r5_, "^/branches/b3", ".", cwd=root)), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy under another name of a `Closed` tracker filed on a branch, that filing recorded as merged in the same revision, is refused when a seat without `close` makes it (saw {other_[0]})",
+              refused9_(other_))
+        svn("copy", "-q", "-m", "the branch b4, of b3", url + "/branches/b3", url + "/branches/b4", "--username", "planner")
+        wb4_ = base / "wc-b4"; svn("checkout", "-q", url + "/branches/b4", str(wb4_))
+        onb3_("builder", "C9-107 copied on b4", lambda: copied9_(wb4_ / "docs/work-tracker/C9-100-x.md", wb4_ / "docs/work-tracker/C9-107-x.md"), wc_=wb4_)
+        onb3_("planner", "b4 merged into b3", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b4", ".", cwd=wb3_))
+        nested_ = copies9_("C9-107", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "planner")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made by a seat without `close` on a branch of a branch, merged into the branch and then into trunk by the planner, is refused on trunk (saw {nested_[0]})",
+              refused9_(nested_))
+        onb3_("planner", "C9-108 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-108-x.md"))
+        held_ = copies9_("C9-108", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy the planner made on a branch, merged into trunk by a seat without `close`, passes — the copy is the planner's (saw {held_[0]}, {held_[1]!r})",
+              held_[0] == 0 and not held_[1])
+    fm.configure(HERE)
+
+
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()

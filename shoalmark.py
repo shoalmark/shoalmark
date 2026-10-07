@@ -4712,14 +4712,36 @@ def svn_new(rel):
     return _SVN_NEW[rel]
 
 
-def svn_merge_revision(rev):
-    """Whether revision `rev` merged other revisions into the working copy's tree — `svn log -g` lists them under it. Asked once per
-    revision; where Subversion cannot answer, SvnUnreadable."""
-    key = ("merge", rev)
-    if key not in _SVN_BLAME:
-        log = svn_run("log", "-q", "-g", "-r", str(rev), ".", xml=True)
-        _SVN_BLAME[key] = log is not None and any(len(e.findall("logentry")) for e in log.findall("logentry"))
-    return _SVN_BLAME[key]
+def svn_filing(rel, at, by):
+    """(revision, author) a line of `rel` older than the path's first revision `at` (by `by`) is read as — the copy rule, followed copy by
+    copy (v0.19.1). `at` put the path here as a copy of a source (`svn log -v -g -r <at>` names it, or the folder it was copied with):
+    where a revision that `at` merged added that source, at the path's own place under the merge's source — a merge that brought the
+    path — the rule is applied again at the source, from its own first revision (`--stop-on-copy` of `<root><source>@<rev>`) and its
+    author; otherwise `at` put the line there, and it is `at`'s author's, merge or not. Where Subversion cannot answer, SvnUnreadable."""
+    info = svn_run("info", rel, xml=True)
+    root, path = (info.findtext("entry/repository/root") or "", (info.findtext("entry/relative-url") or "").removeprefix("^")) if info is not None else ("", "")
+    if not root or not path.startswith("/"):
+        raise SvnUnreadable(f"svn info did not name {rel}'s place in the repository")
+    for _hop in range(64):
+        log = svn_run("log", "-q", "-v", "-g", "-r", str(at), f"{root}@{at}", xml=True)
+        top = log.find("logentry") if log is not None else None
+        if top is None:
+            raise SvnUnreadable(f"svn log did not answer for revision {at}")
+        copied = [e for e in top.findall("paths/path") if e.get("copyfrom-path") and (path == e.text or path.startswith((e.text or "") + "/"))]
+        if not copied or not (max(copied, key=lambda e: len(e.text or "")).get("copyfrom-rev") or "").isdigit():
+            return at, by                                # added here, not copied: nothing older than `at` came from elsewhere
+        e = max(copied, key=lambda e: len(e.text or ""))        # the path itself, else the nearest folder copied with it
+        source, rev = e.get("copyfrom-path") + path[len(e.text):], e.get("copyfrom-rev")
+        brought = any(m.get("action") in ("A", "R") and (source == m.text or source.startswith((m.text or "") + "/"))
+                      for merged in top.iter("logentry") if merged is not top for m in merged.findall("paths/path"))
+        if not (brought and source.endswith("/" + rel)):
+            return at, by                                # a copy `at` made — its author put every older line here
+        first = svn_run("log", "-q", "--stop-on-copy", f"{root}{source}@{rev}", xml=True)
+        entries = first.findall("logentry") if first is not None else []
+        if not entries or not (entries[-1].get("revision") or "").isdigit():
+            raise SvnUnreadable(f"svn log did not answer for {source}@{rev}")
+        at, by, path = int(entries[-1].get("revision")), entries[-1].findtext("author"), source
+    raise SvnUnreadable(f"the copies of {rel} could not be followed to their first revision")
 
 
 def svn_tracker_new(t):
@@ -4737,7 +4759,8 @@ def svn_blame(rel):
     svn's own error — kept as well, so the one failure is raised again, not asked again: a rights check that cannot read
     who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling).
     A blame follows a copy to its source: a line older than the path's own first revision — the oldest of `svn log
-    --stop-on-copy` — was put at this path by that revision, and is read as its author's (v0.19.1)."""
+    --stop-on-copy` — was put at this path by that revision, and is read as its author's, unless a merge brought the path,
+    which is followed to the revision that filed it (`svn_filing`, v0.19.1)."""
     if rel in _SVN_BLAME:
         if isinstance(_SVN_BLAME[rel], Exception):
             raise _SVN_BLAME[rel]
@@ -4765,9 +4788,14 @@ def svn_blame(rel):
         first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
         if first is not None and (first.get("revision") or "").isdigit():
             at, by = int(first.get("revision")), first.findtext("author")
-            if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()) and not svn_merge_revision(at):     # a merge that brought the path: its lines stay their authors'
+            if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()):
+                try:
+                    at, by = svn_filing(rel, at, by)    # the copy rule, followed copy by copy: a merge that brought the path leaves its lines their authors'
+                except SvnUnreadable as e:
+                    _SVN_BLAME[rel] = e
+                    raise
                 out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
-            _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path here: a line it wrote was written at the filing
+            _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
     return out
 
