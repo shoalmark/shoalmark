@@ -642,6 +642,9 @@ def configure(root=None):
     _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
     global _WALK_COMMITS, _HAS_SESSIONS
     _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
+    global _ORIGIN_DEFAULT, _TRUNK_UNTOLD
+    _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
+    _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -1564,7 +1567,7 @@ def on_their_way(trackers):
     if vcs() != "git" or not trackers:
         return {}
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git)
+    trunk = default_trunk(git, ask=False)               # the board asks no server
     if not trunk:
         return {}
     refs = git("for-each-ref", f"--no-merged={trunk}", "--format=%(refname:lstrip=3)%00%(objectname)", "refs/remotes/origin/answer/")
@@ -2748,17 +2751,57 @@ def refusal_reason(what, said=""):
     return first_words(" ".join((head + (f": {pick}" if pick else "")).split()), 240)
 
 
-def default_trunk(git):
-    """`origin`'s default branch as this clone last fetched it, by its FULL ref — `origin/HEAD`'s target, else
-    `refs/remotes/origin/main`, else `refs/remotes/origin/master` — or None: what an earlier `answer/<id>` must be merged into
-    before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
-    name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target
-    is returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`).
-    What the tool prints for it is `ref_name`'s."""
+def default_trunk(git, ask=True):
+    """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what an earlier `answer/<id>` must be merged
+    into before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
+    name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target is
+    returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). Where
+    this clone has no `origin/HEAD` and holds no `origin/main` or `origin/master` either — a pull request's shallow checkout —
+    None, asking nothing. Where it holds one, a name a seat can push, origin is asked which branch is its default
+    (`origin_default`, once per run) and that branch's ref is returned; where origin cannot be read, or names a branch this
+    clone has not fetched, None, and `walk_problems` refuses in one line (v0.19.1). An origin that names none — its `HEAD`
+    unborn — leaves the ref this clone holds, and so does a clone with no `origin` configured, which nobody can push to. `ask=False` is a reader's that asks no server and refuses nothing — the board, the
+    reports: it takes origin's answer where this run has it, else the ref this clone holds. What the tool prints is `ref_name`'s."""
+    global _TRUNK_UNTOLD
     head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
     if head.startswith("refs/remotes/"):
-        return head
-    return next((r for r in ("refs/remotes/origin/main", "refs/remotes/origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+        return head                                     # set: nothing is asked of origin
+    here = next((r for r in ("refs/remotes/origin/main", "refs/remotes/origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+    if not here:
+        return None                                     # no default branch here at all: the newest commit alone is judged, and `--check` says so
+    if (not ask and _ORIGIN_DEFAULT is None) or git("config", "--get", "remote.origin.url").returncode != 0:
+        return here                                     # no origin to push to, or a reader that asks no server: the ref this clone holds
+    named = origin_default()
+    if named == "":
+        return here                                     # origin names no default branch: the one this clone holds
+    if named and git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{named}^{{commit}}").returncode == 0:
+        return f"refs/remotes/origin/{named}"
+    if not ask:
+        return here
+    _TRUNK_UNTOLD = ("the default branch cannot be told — this clone has no `origin/HEAD`, and origin "
+                     + (f"names `{named}`, which this clone has not fetched: fetch it, or run" if named else "could not be read: run")
+                     + " `git remote set-head origin <the default branch>`, then run again")
+    return None
+
+
+def origin_default():
+    """The name origin gives its default branch — `git ls-remote --symref origin HEAD`, asked once per run at most and kept —
+    "" where origin names none (its `HEAD` is unborn), None where origin could not be read or did not say the name. No
+    prompt: a server that wants a password it is not given is one that could not be read."""
+    global _ORIGIN_DEFAULT
+    if _ORIGIN_DEFAULT is None:
+        try:
+            r = subprocess.run(["git", "ls-remote", "--symref", "origin", "HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT="0"))
+        except (OSError, subprocess.TimeoutExpired):
+            r = None
+        lines = [l_.split("\t") for l_ in r.stdout.splitlines()] if r is not None and r.returncode == 0 else None
+        named = next((sha[len("ref: refs/heads/"):] for sha, *ref in lines if sha.startswith("ref: refs/heads/") and ref == ["HEAD"]), None) if lines is not None else None
+        _ORIGIN_DEFAULT = named if named else "" if lines is not None and not any(ref == ["HEAD"] for _sha, *ref in lines) else False
+    return _ORIGIN_DEFAULT if _ORIGIN_DEFAULT is not False else None
+
+
+_ORIGIN_DEFAULT, _TRUNK_UNTOLD = None, None             # per run: `configure` sets them again
 
 
 def ref_name(ref):
@@ -5106,8 +5149,9 @@ def unverified(commit, tail):
 # keyring), a pinned file this checkout has not got. Each is said on stderr, grouped, and never written into the generated
 # INDEX: written there, the INDEX a fresh clone generated differed from the committed one by that line, and `--check` said
 # STALE where no tracker had changed. The drift test is not widened; the finding still fails the run. Recognised by these
-# words, which the two places that write such a finding use and nothing else does.
-CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it")
+# words, which the places that write such a finding use and nothing else does — a default branch this clone cannot tell
+# is one too (`default_trunk`, v0.19.1).
+CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it", "the default branch cannot be told — this clone has no `origin/HEAD`")
 
 
 PENDING_MARKS = ("` is not committed yet — who set a line is read from the commit that made it", ": is not committed yet, and it carries ",
@@ -5475,7 +5519,7 @@ def read_changes():
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     merged = brought(parents[1:], parents[0]) if len(parents) > 1 else []
     trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
-    _WALK = trunk or ""                                 # none: the newest commit alone is judged, and `--check` says so — never the whole history
+    _WALK = trunk or ("untold" if _TRUNK_UNTOLD else "")      # none: the newest commit alone is judged, and `--check` says so — never the whole history
     seen = {c[4] for c in merged} | {commit}
     own = [c for c in brought(["HEAD"], trunk, f"on this branch since {ref_name(trunk)}") if c[4] not in seen] if trunk else []
     return own + merged + [(parents, files, name, email, commit, "HEAD", "")]
@@ -5495,8 +5539,13 @@ def staged_absent(rels):
 
 def walk_problems():
     """The one line where git could not walk the commits this run judges — a default branch `origin/HEAD` names and this clone does
-    not hold, or any `git log` of the walk that failed (`read_changes`): they are refused, never judged as nothing (v0.19.1)."""
-    return [_WALK_FAILED] if _WALK_FAILED else []
+    not hold, or any `git log` of the walk that failed (`read_changes`) — or where the default branch cannot be told (`default_trunk`):
+    they are refused, never judged as nothing (v0.19.1)."""
+    if _WALK_FAILED:
+        return [_WALK_FAILED]
+    if vcs() == "git":
+        default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
+    return [_TRUNK_UNTOLD] if _TRUNK_UNTOLD else []
 
 
 def rights_problems(trackers):
@@ -6886,7 +6935,8 @@ def triage_guard():
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if not trunk:
-        _GUARD = ([], "the Owner's two sections: no `origin` default branch to measure from — nothing is judged")
+        _GUARD = ([], "the Owner's two sections: " + ("the default branch cannot be told — nothing is judged until it can" if _TRUNK_UNTOLD
+                                                      else "no `origin` default branch to measure from — nothing is judged"))
         return _GUARD
     why = []
     owners = owners_at(trunk, why)
@@ -7037,8 +7087,11 @@ def read_history(*revs):
 
 
 def trunk_ref():
-    """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master` — each by its full ref (v0.19.1)."""
-    return next((ref for ref in ("refs/remotes/origin/main", "refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
+    """The trunk a verdict's branch is measured against — a report's, never a refusal's: the default branch as `--check` reads it
+    (`default_trunk`, asking no server: origin's answer where this run has it), else the local `main`, else `master` — each by its
+    full ref (v0.19.1)."""
+    held = default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
+    return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
 def verdict_reports(days=None):
@@ -8295,9 +8348,10 @@ def copy_files():
 
 
 def default_branch():
-    """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only — or None where it cannot be told."""
+    """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only and
+    asking no server — or None where it cannot be told."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git)
+    trunk = default_trunk(git, ask=False)
     return ref_name(trunk).split("/", 1)[1] if trunk else None
 
 

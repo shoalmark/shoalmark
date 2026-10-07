@@ -450,7 +450,10 @@ hooks are plain files in the hooks folder git reads, and they run only the copy.
 
 **The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's head
 before merge. A bypass of the hook alone, which `--check` catches, is P3.** Git's `--no-verify` skips any hook by
-design; what protects the default branch is `--check` on the branch.
+design; what protects the default branch is `--check` on the branch. Without `origin/HEAD` — a CI checkout often has
+none — `--check` asks `origin` for its default branch where `origin/main` or `origin/master` is all it holds, and
+refuses in one line where origin cannot be read: `git remote set-head origin <default>` first, where the checkout
+cannot read origin.
 
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
 per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
@@ -489,11 +492,12 @@ with its first `Session:`: a commit whose history carries none is not judged, so
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
 reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —
-`git rev-list <tip> ^<trunk> --no-merges` (`origin/main`, else `main`, else `master`), less other verdicts; for a tip
-the trunk has since merged, the trunk as it stood before that merge — so what the branch merged in from the trunk is
-not its, and the report does not change when it lands. The verdict is **independent** when its session's root (`a9` of
-`a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of them — a Reviewer run as a
-sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
+`git rev-list <tip> ^<trunk> --no-merges` (the default branch as `--check` reads it, else `main`, else `master`),
+less other verdicts; for a tip the trunk has since merged, the trunk as it stood before that merge — so what the branch
+merged in from the trunk is not its, and the report does not change when it lands. The verdict is **independent**
+when its session's root (`a9` of `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is
+one of them — a Reviewer run as a sub-agent of the author's session is not independent — **untraced** when either side
+names no session, and **on
 trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts. `--queue` reads a
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
