@@ -5668,15 +5668,15 @@ def walk_problems():
 
 
 def rights_problems(trackers):
-    """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
-    transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
-    no line left to judge and is read here, from the change, under `ask`: FM-014; and a made merge's own `next: owner`,
-    which no parent carries, read from that merge's own change under its author — the Owner's ruling of 2026-10-03,
-    v0.19.1.) Under Subversion there is no pending commit to read and no client hook to read it in — the server's own
-    `pre-commit` hook runs the gate, and the author of each line is the one the server authenticated, so the transitions
-    are read from the lines. A tracker Subversion holds no committed revision of — added, replaced or copied, or not yet
-    `svn add`ed (`svn_new`) — has no author to read until the commit is made, so it may carry no line a right guards: where
-    it does, it is refused before the commit, in one line naming the rights (the Owner's ruling of 2026-10-03, v0.19.1)."""
+    """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every transition
+    the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has no line
+    left to judge and is read here, from the change, under `ask`: FM-014; and a made merge's own `next: owner`, which no
+    parent carries, read from that merge's own change under its author — the Owner's ruling of 2026-10-03, v0.19.1.)
+    Under Subversion there is no pending commit to read and no client hook to read it in, and the author of each line is
+    the one the server authenticated, so the transitions are read from the lines. A tracker Subversion holds no
+    committed revision of — added, replaced or copied, or not yet `svn add`ed (`svn_new`) — has no author to read until
+    the commit is made, so it may carry no line a right guards: where it does, it is refused before the commit, in one
+    line naming the rights (the Owner's ruling of 2026-10-03, v0.19.1)."""
     if not SEATS or vcs() not in ("git", "svn"):
         return []
     out = []
@@ -8690,7 +8690,7 @@ def install_hook_svn():
     code = svn_ignore_board() or code
     print(f"Commit the property changes (`svn update` first if Subversion calls the directory out of date). `svn commit` on the command line runs no hook — Subversion has none on the client: "
           f"run `{CMD}` before it and commit the INDEX.md it writes (the contract in AGENTS.md says so). "
-          f"For a gate nobody can skip, call `{CMD} --check` from the server's pre-commit hook.")
+          f"`{CMD} --check` after the commit is what judges it.")
     return code
 
 
