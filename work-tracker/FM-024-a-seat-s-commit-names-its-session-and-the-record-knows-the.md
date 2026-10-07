@@ -28,6 +28,8 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**2026-10-02 — the Builder's model, by tier.** The Owner's ruling is filed below, in *The Builder's model, by tier — after v0.19.0*; `builder.md` says it on `fm/024-the-builder-s-model-by-tier`. **What is left:** the Owner's merge.
+
 **2026-10-01 — the `[seats]` switch is built on `fm/024-the-seats-switch`; the full local run on its tip comes next, then the Owner's cold session and the Reviewer, in parallel.** The Owner's ruling is filed
 below, in *The `[seats]` switch — v0.19.0*. D2 was built at `321fddc` (a top-level `owner` names the Owner; `[seats] owner` still reads as its old spelling) and
 fixed on the Reviewer's pass at `87e2e1b`, the round below. Phase 2 is built: this repository's `[seats]` keys are `planner` and `builder`, the seven bot
@@ -364,6 +366,17 @@ exist, before the v0.19.0 cut.
 - **Route** (FM-032's CI trial): *early* — the gate, identities and the configuration: a draft pull request right after D2's
   first build, so CodeQL reads it; one full local run before it is marked ready; one Builder, the Reviewer at code tier, then the
   Owner's cold session (critical tier: seats and rights).
+
+## The Builder's model, by tier — after v0.19.0
+
+The Owner's ruling, 2026-10-02: a *critical* change requires a Builder on Opus 5.5 at effort xhigh; every lower one can run
+on Sonnet 5.5 at effort xhigh. Critical means the change touches security, signing or identity, seats and rights, or the
+gate — a hook, a refusal, what a commit is judged by. A brief names its tier in its first lines; in doubt, critical.
+`.claude/agents/builder.md` keeps `model: sonnet` and `effort: xhigh` as the default, and a critical brief is spawned with
+the model set to Opus; the definition's description and one sentence of its body say so — a Builder on a critical brief
+that is not running on Opus, or whose work reaches a critical path its brief did not name, reports it in one line and stops
+before committing that work. The rule applies at the spawn from the ruling on; this change is on its own branch off `main`
+and merges after the v0.19.0 tag.
 
 ## Done when
 
