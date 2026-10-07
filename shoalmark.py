@@ -5114,8 +5114,9 @@ def seat_problems(t):
     `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
     also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
     about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
-    the line, so the Owner's QUEUE can drop an ask that reached them another way. It catches an agent that does not
-    know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
+    the line, so the Owner's QUEUE can drop an ask that reached them another way. A made merge's own `next: owner` is
+    judged on its change as well, under that merge's author (`rights_problems`).
+    It catches an agent that does not know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
     try:
@@ -5208,28 +5209,32 @@ def read_changes():
     read against HEAD; on a clean tree, the commit at HEAD read against its parent.
 
     A MERGE (FM-019) is two kinds of change, and neither is the merger's alone:
-    1. EACH COMMIT IT BRINGS — every non-merge commit reachable from it and not from its first parent — against its own
-       parent, under its own author and its own signature. A commit made without the hook (`--no-verify`, a clone with no
-       hook installed, the forge's editor) was never judged; a merge must not launder it.
+    1. EACH COMMIT IT BRINGS — every commit reachable from it and not from its first parent — under its own author and its
+       own signature: an ordinary commit against its own parent; a merge among them, nested at any depth, by ITS OWN
+       CHANGE (2), against each of its parents (the Owner's ruling of 2026-10-03, v0.19.1). A commit made without the hook
+       (`--no-verify`, a clone with no hook installed, the forge's editor) was never judged; a merge must not launder it.
     2. ITS OWN CHANGE — the tracker files where the result differs from EVERY parent (a conflict resolved, an edit made in
        the merge), judged under the merger. A clean merge adds nothing of its own.
     Read against its first parent alone, a merge was everything its branch carried and all of it the merger's: `--check`
     on a trunk went red on the first pull request carrying an answer or a close, the forge's merge identity being no
     seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
-    merge brings are read only when there is a merge: one `git log` for all of them."""
+    merge brings are read only when there is a merge: one `git log` for all of them, the merges among them included."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
     def brought(tips, first):
-        """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
+        """(1): every commit reachable from `tips` and not from `first`, oldest first, each with its files — an ordinary commit's
+        against its parent; a merge's, its own change (2): `-c` lists only the files where its result differs from every parent,
+        from its diff against each of them, and the merge is read against all its parents, as the merge at HEAD is."""
         if not tips:
             return []
         out = []
-        log = git("log", "-z", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%an%x02%ae", *tips, "--not", first)
-        for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
+        log = git("log", "-z", "-c", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%P%x02%an%x02%ae", *tips, "--not", first)
+        for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · parents · name · email, then the NUL-separated files --name-only lists under it
             head, _, files = record.partition("\x00")
-            c, an, ae = (head.split("\x02") + ["", ""])[:3]
-            out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+            c, ps, an, ae = (head.split("\x02") + ["", "", ""])[:4]
+            bases = ps.split() if len(ps.split()) > 1 else [f"{c}^1"]
+            out.append((bases, set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
         return out
 
     heads = merge_heads()
@@ -5252,9 +5257,11 @@ def read_changes():
 def rights_problems(trackers):
     """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
     transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
-    no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
-    pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
-    the author of each line is the one the server authenticated, so the transitions are read from the lines."""
+    no line left to judge and is read here, from the change, under `ask`: FM-014; and a made merge's own `next: owner`,
+    which no parent carries, read from that merge's own change under its author — the Owner's ruling of 2026-10-03,
+    v0.19.1.) Under Subversion there is no pending commit to read and no client hook to read it in — the server's own
+    `pre-commit` hook runs the gate, and the author of each line is the one the server authenticated, so the transitions
+    are read from the lines."""
     if not SEATS or vcs() not in ("git", "svn"):
         return []
     out = []
@@ -5281,6 +5288,7 @@ def rights_problems(trackers):
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
     for bases, files, name, email, commit, result, label in changes_under_review():
         seat, where = seat_of(name, email), (label + " — " if label else "")
+        on_line = set() if commit and len(bases) > 1 else {"ask"}        # a made merge's own `next: owner` is judged on its change, under its author
         for rel in sorted(files & set(rels)):
             t = rels[rel]
             now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if result is None else show(result, rel).stdout
@@ -5289,7 +5297,7 @@ def rights_problems(trackers):
                 was = show(base, rel)
                 made = transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0)
                 moves = made if moves is None else moves & made
-            for move in sorted(moves - {"ask"}):
+            for move in sorted(moves - on_line):
                 right = "ask" if move == "clear" else move
                 if not holds(seat, right):
                     out.append(f'{t["id"]}: {where}' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
