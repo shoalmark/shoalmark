@@ -2033,8 +2033,9 @@ def triage_reading(head, base):
     — changes the Owner's two sections and is not their signed commit, the walk and the judgement `--check` makes on the
     branch; (`wait: TRIAGE.md change not verified here — <why>`, the commit) where it is signed and this clone cannot check
     it; (`wait: TRIAGE.md change not judged — <the configuration> cannot be read here`, the commit) where the refusal is
-    one `--check` makes because a configuration cannot be read — the default branch's, or one on the branch; None where no
-    commit changes them unsigned, and where the default branch names no Owner. The Owner is the default branch's, as
+    one `--check` makes because a configuration cannot be read — the default branch's, or one on the branch; (`wait:
+    TRIAGE.md home in another case at the branch tip`, the head) where `--check` refuses the tip as a merge would bring it
+    (`tip_variants`); None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default branch's, as
     `--check` reads them — never a stacked pull request's base, which a seat's branch can be. No git call of its own beyond
     the walk's: `--queue` asks this for every pull request."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -2052,6 +2053,8 @@ def triage_reading(head, base):
         return f"wait: TRIAGE.md change not judged — {unread}", refused[0][0][:7]
     if refused:
         return "wait: TRIAGE.md changed unsigned", refused[0][0][:7]
+    if tip_variants(trunk, head):
+        return "wait: TRIAGE.md home in another case at the branch tip", head[:7]
     gaps = [v for v in verdicts if v[4] == "checkout"]
     return (f"wait: TRIAGE.md change not verified here — {gaps[0][5]}", gaps[0][0][:7]) if gaps else None
 
@@ -4891,9 +4894,9 @@ def trusted_signers():
 
 def symlink_in_checkout(path, trees):
     """The first symlink on the way to `path` — itself, or a folder above it — whose folder lies in one of the working trees
-    `trees` (`tree_holding`): a link a branch can write. The path is walked as written, a name at a time, each link read
-    before a `..` after it applies — as the system reads the path. "" where there is none: a link outside every working
-    tree — the system's own, say — is no branch's to write."""
+    `trees` (`tree_holding`), or in another git working tree (`signers_home`): a link a branch can write. The path is
+    walked as written, a name at a time, each link read before a `..` after it applies — as the system reads the path. ""
+    where there is none: a link outside every working tree — the system's own, say — is no branch's to write."""
     parts = pathlib.PurePath(os.fspath(path)).parts
     at = parts[0] if parts else ""
     for name in parts[1:]:
@@ -4904,7 +4907,7 @@ def symlink_in_checkout(path, trees):
             continue
         step = os.path.join(at, name)
         if os.path.islink(step):
-            if tree_holding(os.path.realpath(at), trees) is not None:
+            if tree_holding(os.path.realpath(at), trees) is not None or signers_home(os.path.realpath(at), trees)[2]:
                 return step
             at = os.path.realpath(step)
         else:
@@ -4916,8 +4919,8 @@ def signers_home(real, trees):
     """(the working tree of `trees` that holds the resolved path `real`, the names below it as they are written there, "") —
     or (None, None, the folder of another git working tree that holds it, where a `.git` file or folder is found first) —
     or (None, None, ""): outside every working tree. One walk up its ancestors, nearest first, each matched by the file
-    system's own identity (`fs_chain`), never by spelling."""
-    held = {folder[0][0]: top for top, folder in trees.items() if folder}
+    system's own identity (`fs_chain`), never by spelling — a working tree whose folder is gone holds nothing."""
+    held = {folder[0][0]: top for top, folder in trees.items() if folder and not folder[0][1]}
     parts = pathlib.PurePath(real).parts
     for ident, below in fs_chain(real):
         at = os.path.join(*parts[:len(parts) - len(below)])
@@ -6836,12 +6839,13 @@ def guard_footer(problems):
     return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems and not unread_refusal(p_) for p_ in (_GUARD or ([], ""))[0]) else []
 
 
-def tip_variants(trunk):
+def tip_variants(trunk, tip=None):
     """FM-037 on the branch tip as a merge would bring it: where its TRIAGE.md home is not the default branch's — the tracker
     moved on either side — each path the tip's tree holds (`tree_paths`, one listing), other than a home, that is either
     home as a file system that ignores case and Unicode normalization reads it (`fs_fold`). Refused whoever made it, in
-    one line each; nothing listed where the two homes are one, or one cannot be read (the walk judges that)."""
-    tip = (git_out("rev-parse", "--verify", "-q", "HEAD") or "").strip()
+    one line each; nothing listed where the two homes are one, or one cannot be read (the walk judges that). `tip`: the
+    commit to judge — `--queue`'s pull request head — else HEAD."""
+    tip = tip or (git_out("rev-parse", "--verify", "-q", "HEAD") or "").strip()
     if not tip or not trunk:
         return []
     views = triage_views([trunk, tip], modes={trunk})

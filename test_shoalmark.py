@@ -8089,6 +8089,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-006 · v0.19.1 · a branch tip holding a path that is the default branch's home in another case is refused, exit 4, in one line (saw {code_tv_}, {g_tv_[0]!r})",
           code_tv_ == fm.EXIT_LINT and g_tv_[0] == [f"refused: the branch tip `{c_tv_[:7]}` holds `docs/work-tracker/triage.md` which a file system that ignores case or Unicode normalization reads as "
                                                     "`docs/work-tracker/TRIAGE.md` — origin/main's TRIAGE.md is `docs/work-tracker/TRIAGE.md`, the tip's `away/TRIAGE.md`, and a merge brings it: carry the work onto a branch without it"])
+    fm.configure(root); q_tv_ = _no_git_env(lambda: fm.queue_actions([], [{"name": "ap/037-tip-variant", "sha": c_tv_, "base": "main", "here": True}]))
+    check(f"FM-006 · v0.19.1 · `--queue` waits on a branch whose tip `--check` refuses as a merge would bring it (saw {[r_[2] for r_ in q_tv_]!r})",
+          [r_[2] for r_ in q_tv_] == [f"wait: no pull request — TRIAGE.md home in another case at the branch tip ({c_tv_[:7]})"])
     # v0.19.1 · a symlink at the default branch's configuration path is a configuration that cannot be read — never one naming no Owner
     git(root, "switch", "-q", "main"); blob37_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input='name = "g"', capture_output=True, text=True, env=_ENV).stdout.strip()
     git(root, "update-index", "--cacheinfo", f"120000,{blob37_},shoalmark.toml"); git(root, "commit", "-q", "-m", "the configuration, a symlink"); git(root, "push", "-q", "origin", "main")
@@ -8244,6 +8247,36 @@ with tempfile.TemporaryDirectory() as tmp:
           code_k10_ == fm.EXIT_LINT and len(g_k10_[0]) == 2
           and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, inside another checkout" in l_
                   and "the signers file is inside another checkout, where a branch writes it — name this repository's own file, or one outside every checkout" in l_ for l_ in g_k10_[0]))
+    # a signers file that is, or is reached through, a symlink in another clone's working tree: nothing verifies against it
+    x10a_name37_ = "FM-006 · v0.19.1 · a signers file that is a symlink in another clone's working tree verifies nothing, exit 4, the line saying so"
+    x10b_name37_ = "FM-006 · v0.19.1 · a signers file reached through a symlinked folder in another clone's working tree verifies nothing, exit 4, the line saying so"
+    if _SYMLINKS:
+        git(root, "push", "-q", "origin", "ap/037-signers-link"); git(root, "switch", "-q", "-f", "ap/037-signers-link")     # the first clone holds the link its branch wrote
+        git(second37_, "fetch", "-q", "origin"); git(second37_, "switch", "-q", "-f", "ap/037-signers-link")
+        git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+        code_x10a_ = run(second37_, "--check")[0]; g_x10a_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
+        fm.configure(root); back37_()
+        check(f"{x10a_name37_} (saw {code_x10a_}, {g_x10a_[0]!r})", code_x10a_ == fm.EXIT_LINT and len(g_x10a_[0]) == 2
+              and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, and `{signers37_}` on the way to it is a symlink" in l_ and link_said37_ in l_ for l_ in g_x10a_[0]))
+        ext37_ = base / "ext"; shutil.copytree(str(root / "docs/work-tracker"), str(ext37_ / "work-tracker"))
+        (ext37_ / "work-tracker" / "allowed_signers").write_text("h@x " + skey_.with_suffix(".pub").read_text())
+        git(root, "switch", "-q", "-c", "ap/037-docs-elsewhere", "main"); git(root, "rm", "-rq", "--cached", "docs"); shutil.rmtree(root / "docs")
+        os.symlink(str(ext37_), str(root / "docs")); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: docs elsewhere", SEAT_)     # the first clone: `docs`, a link to a folder outside
+        git(second37_, "switch", "-q", "-f", "ap/037-signers-other-clone"); git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+        code_x10b_ = run(second37_, "--check")[0]; g_x10b_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
+        fm.configure(root); back37_()
+        check(f"{x10b_name37_} (saw {code_x10b_}, {g_x10b_[0]!r})", code_x10b_ == fm.EXIT_LINT and len(g_x10b_[0]) == 2
+              and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, and `{root / 'docs'}` on the way to it is a symlink" in l_ and link_said37_ in l_ for l_ in g_x10b_[0]))
+    else:
+        _skipped(x10a_name37_, 1, "this system makes no symlinks"); _skipped(x10b_name37_, 1, "this system makes no symlinks")
+    # a working tree whose folder is gone holds nothing: a regular signers file outside every checkout, beside its folder, is used as it is
+    git(root, "worktree", "add", "-q", "--detach", str(base / "wtgone"), "main"); shutil.rmtree(base / "wtgone")
+    keys37_ = base / "keys"; keys37_.mkdir(); (keys37_ / "allowed_signers").write_text("h@x " + okey_.with_suffix(".pub").read_text())
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(keys37_ / "allowed_signers"))
+    (c_x8_,) = by_hand37_("ap/037-gone-worktree", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
+    g_x8_ = guard37_(); back37_(); git(root, "worktree", "prune")
+    check(f"FM-006 · v0.19.1 · a working tree whose folder is gone holds no signers file: a regular one outside every checkout beside it is used as it is, the Owner's signed change passing (saw {g_x8_!r})",
+          g_x8_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-gone-worktree` since origin/main, 1 change them or their signers file, each their own commit"))
     # still accepted: the Owner's own signed change, the signers file named relative to the root, and named through a link outside every checkout where one is on the way
     via37_ = next((str(signers37_).replace(r_, l_, 1) for l_, r_ in (("/tmp/", "/private/tmp/"), ("/var/", "/private/var/")) if str(signers37_).startswith(r_) and os.path.islink(l_.rstrip("/"))), None)
     owner_ok37_ = {}
