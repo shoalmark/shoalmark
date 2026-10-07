@@ -9815,6 +9815,65 @@ check(f"FM-006 · v0.19.1 · `tracker_dir` is a folder written relative to the r
       all(_anchored[v_] == _anchored_line(v_) for v_ in _anchored) and len(_anchored_win) == 8 and all(_anchored_win[(r_, v_)] == _anchored_line(v_) for r_, v_ in _anchored_win)
       and all(_backslash_said(f'tracker_dir = "{v_}"\n') == "" for v_ in ("docs/work-tracker", "./docs/work-tracker/", "a/b/c", "tr", "", "../outside")) and _records == ["docs/work-tracker/"])
 
+# --- v0.19.1 · a name holding a line break: `cat_blobs` never asks git for it — git would read it as two names and answer each — and the gate
+# refuses a tracker whose file name holds one, in one line
+def _cat_line_break():
+    """`cat_blobs` in a repository of three files, asked for each with two names holding a line break between them: {spec: text}."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve(); git(root, "init", "-q")
+        for n_ in ("a", "b", "c"):
+            (root / f"{n_}.md").write_text(f"the text of {n_}\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "three files")
+        specs_ = ["HEAD:a.md", "HEAD:docs/work-tracker/AP-1-a\nb.md", "HEAD:b.md", "HEAD:docs/work-tracker/AP-2-c\rd.md", "HEAD:c.md"]
+        try:
+            fm.configure(root); got_ = _no_git_env(lambda: fm.cat_blobs(specs_))
+        finally:
+            fm.configure(HERE)
+        rm_git(root)
+    return specs_, got_
+_lb_specs, _lb_got = _cat_line_break()
+check(f"FM-006 · v0.19.1 · `cat_blobs` never asks git for a name holding a line break: such a name has no text, and every other name, before and after it, "
+      f"gets its own (saw {_lb_got!r})",
+      _lb_got == {_lb_specs[0]: "the text of a\n", _lb_specs[1]: None, _lb_specs[2]: "the text of b\n", _lb_specs[3]: None, _lb_specs[4]: "the text of c\n"})
+
+
+def _line_break_gate(which):
+    """`--check` on a seat's branch since origin/main, in a repository whose tracker `AP-1` is filed under a name holding a line break and `AP-2`
+    under an ordinary one: `other` — the seat closes AP-2, and edits AP-1 in the same commit; `self` — the seat closes AP-1. (exit, stderr)"""
+    def text_(tid, status, more=""):
+        return f'---\nid: {tid}\nstatus: {status}\nconsidered: none\nhook: "h of {tid}"\n---\n\n# {tid} — t\n\n## What is true now\n\n**One thing is left.**{more}\n\n## Done when\n\nit is.\n'
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "wc"
+        subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+        git(root, "remote", "add", "origin", str(base / "origin.git"))
+        (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgo99"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+        w_ = root / "docs" / "work-tracker"; w_.mkdir(parents=True)
+        odd_, plain_ = w_ / "AP-1-a\nb.md", w_ / "AP-2-x.md"
+        odd_.write_text(text_("AP-1", "In Progress"), encoding="utf-8"); plain_.write_text(text_("AP-2", "In Progress"), encoding="utf-8")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=holgo <holgo99>")
+        git(root, "branch", "-q", "-M", "main"); git(root, "push", "-q", "-u", "origin", "main"); git(root, "remote", "set-head", "origin", "main")
+        git(root, "switch", "-q", "-c", "ap/002-done")
+        if which == "other":
+            plain_.write_text(text_("AP-2", "Closed"), encoding="utf-8"); odd_.write_text(text_("AP-1", "In Progress", " More."), encoding="utf-8")
+        else:
+            odd_.write_text(text_("AP-1", "Closed"), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "AP-2: done", "--author=impl <implementer@seat>")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-2: the index", "--allow-empty", "--author=impl <implementer@seat>")
+        code_, _o, err_ = run(root, "--check")
+        rm_git(root)
+    fm.configure(HERE)
+    return code_, err_
+_lb_line = ('"docs/work-tracker/AP-1-a\\nb.md": a tracker\'s file name holds a line break — git reads it as two names, so no change to the tracker can be judged; '
+            "give the file a name without one")
+if os.name == "nt":
+    _skipped("FM-006 · v0.19.1 · the gate refuses a tracker whose file name holds a line break", 1, "this system makes no file name with a line break")
+else:
+    _lb_other, _lb_self = _line_break_gate("other"), _line_break_gate("self")
+    check(f"FM-006 · v0.19.1 · the gate refuses a tracker whose file name holds a line break, in one line, exit 4 — a seat's close of another tracker in the same "
+          f"commit is refused as it is alone, and a seat's close of that tracker is refused (saw {_lb_other!r:.400}, {_lb_self!r:.300})",
+          _lb_other[0] == fm.EXIT_LINT and _lb_self[0] == fm.EXIT_LINT and _lb_line in _lb_other[1] and _lb_line in _lb_self[1]
+          and "AP-2: in `" in _lb_other[1] and "this change is a `close` — `implementer@seat` is the seat `implementer`, which does not hold `close`" in _lb_other[1])
+
 # FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
 # walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged
 # against the Owner main's `[seats]` names, verified with the repository's own signers file whatever this clone's setting

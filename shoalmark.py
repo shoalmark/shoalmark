@@ -5670,6 +5670,18 @@ def walk_problems():
     return [_TRUNK_UNTOLD] if _TRUNK_UNTOLD else []
 
 
+def line_break_problems(trackers):
+    """A tracker whose file name holds a line break, refused in one line: asked for that file's text, git reads its name as two, so
+    no change to it can be judged. The trackers this run loads, and — under git — each tracker file a change it judges touches."""
+    rels = {(TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix() for t in trackers if "\n" in t.get("file", "") or "\r" in t.get("file", "")}
+    if vcs() == "git":
+        home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+        rels |= {rel for c in changes_under_review() for rel in c[1] if ("\n" in rel or "\r" in rel) and rel.endswith(".md")
+                 and pathlib.PurePosixPath(rel).parent.as_posix() == home and KIND_RE.match(pathlib.PurePosixPath(rel).name)}
+    return [f"{json.dumps(rel)}: a tracker's file name holds a line break — git reads it as two names, so no change to the tracker can be "
+            "judged; give the file a name without one" for rel in sorted(rels)]
+
+
 def rights_problems(trackers):
     """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every transition
     the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has no line
@@ -6538,13 +6550,16 @@ def cat_blobs(specs, env=None, types=None):
     the hook's own, where `:<path>` must read the index git hands it (FM-037). `types`, where given, gets each object's type —
     `blob` for a file, `tree` for a folder, `commit` for a submodule: one whose commit this clone holds, and one git answers
     `<oid> submodule` for — a header with no size and nothing after it — whose text is None. A header read no other way is
-    no text, and nothing after it is read: where its object ends cannot be told, so neither can the next one's header."""
-    if not specs:
-        return {}
-    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
+    no text, and nothing after it is read: where its object ends cannot be told, so neither can the next one's header. A
+    spec holding a line break is never asked — git would read it as two names, and answer each — and its text is None."""
+    got = {s_: None for s_ in specs if "\n" in s_ or "\r" in s_}
+    asked = [s_ for s_ in specs if s_ not in got]
+    if not asked:
+        return got
+    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in asked).encode("utf-8"), cwd=ROOT,
                        capture_output=True, env=env or nested_git_env())
-    got, data, i = {}, r.stdout, 0
-    for spec in specs:
+    data, i = r.stdout, 0
+    for spec in asked:
         nl = data.find(b"\n", i)
         if nl < 0:
             break
@@ -7968,6 +7983,7 @@ def lint(trackers, committing=False):
               f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
+    problems += line_break_problems(trackers)        # a tracker whose file name git would read as two names (v0.19.1)
     problems += rights_problems(trackers)
     problems += ship_problems(trackers)              # FM-005: no move to Shipped without a commit behind it, every author
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
