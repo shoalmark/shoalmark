@@ -6209,7 +6209,8 @@ else:
         branch6_("b1", "builder", lambda d_: (close6_("C6-090")(d_), file6_("C6-092")(d_)))
         run(root); code_m, _, err_m = run(root, "--check")
         check(f"FM-006 · v0.19.1 · on Subversion a close a seat without `close` made on a branch, and a `Closed` tracker it filed there, merged into trunk by the planner, are refused on trunk (saw {code_m})",
-              code_m == fm.EXIT_LINT and all(any("`builder` is the seat `builder`, which does not hold `close`" in l_ for l_ in said6_(err_m, id_)) for id_ in ("C6-090", "C6-092")))
+              code_m == fm.EXIT_LINT and any("`builder` is the seat `builder`, which does not hold `close`" in l_ for l_ in said6_(err_m, "C6-090"))
+              and any("`status:` is older than the merge that put this tracker here" in l_ for l_ in said6_(err_m, "C6-092")))
         for id_ in ("C6-090", "C6-092"):
             p_ = wt6_ / f"{id_}-x.md"
             if id_ == "C6-092":
@@ -6270,7 +6271,8 @@ else:
             svn("update", "-q", cwd=root); how_(); commit9_(who_, f"{id_}: {who_}"); code_, _, err_ = run(root, "--check")
             svn("rm", "-q", "--force", str(wt9_ / f"{id_}-x.md"), cwd=root); commit9_("planner", f"{id_} taken out")
             return code_, said9_(err_, id_)
-        refused9_ = lambda c_: c_[0] == fm.EXIT_LINT and any("`builder` is the seat `builder`, which does not hold `close`" in l_ for l_ in c_[1])
+        merged9_ = "`status:` is older than the merge that put this tracker here, so who set it is not known; it is refused, never credited to the merge's author. Write the line again, in a commit of its own after the merge"
+        refused9_ = lambda c_: c_[0] == fm.EXIT_LINT and any(merged9_ in l_ for l_ in c_[1])      # a merge put the copy here: its older lines are no one's
         r1_ = onb3_("builder", "a note", lambda: (wb3_ / "note1.txt").write_text("one\n", encoding="utf-8"))
         rec_ = copies9_("C9-101", lambda: (copied9_(wt9_ / "C9-100-x.md", wt9_ / "C9-101-x.md"), svn("merge", "-q", "--record-only", "-c", r1_, "^/branches/b3", ".", cwd=root)), "builder")
         check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker by a seat without `close`, filed on trunk in a revision that also records a merge, is refused (saw {rec_[0]})", refused9_(rec_))
@@ -6300,9 +6302,76 @@ else:
         check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made by a seat without `close` on a branch of a branch, merged into the branch and then into trunk by the planner, is refused on trunk (saw {nested_[0]})",
               refused9_(nested_))
         onb3_("planner", "C9-108 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-108-x.md"))
-        held_ = copies9_("C9-108", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "builder")
-        check(f"FM-006 · v0.19.1 · on Subversion a copy the planner made on a branch, merged into trunk by a seat without `close`, passes — the copy is the planner's (saw {held_[0]}, {held_[1]!r})",
-              held_[0] == 0 and not held_[1])
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root); commit9_("builder", "C9-108: builder")
+        held_ = run(root, "--check"); p108_ = wt9_ / "C9-108-x.md"
+        for st_ in ("In Progress", "Closed"):                                       # the planner sets the line again on trunk, in commits of its own
+            p108_.write_text(re.sub(r"(?m)^status: .*$", f"status: {st_}", p108_.read_text(encoding="utf-8")), encoding="utf-8"); commit9_("planner", f"C9-108 {st_}")
+        reclosed_ = run(root, "--check"); svn("rm", "-q", "--force", str(p108_), cwd=root); commit9_("planner", "C9-108 taken out")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy the planner made on a branch, merged into trunk by a seat without `close`, is refused — older than the merge — and passes once the planner closes it again on trunk (saw {held_[0]}, {reclosed_[0]})",
+              refused9_((held_[0], said9_(held_[2], "C9-108"))) and reclosed_[0] == 0 and not said9_(reclosed_[2], "C9-108"))
+        # a right holder's own new tracker, filed on a branch and merged by them: refused, the line naming the way through; set again after the merge, it passes
+        def own_b3_():
+            """C9-109 filed `Closed` on the branch, by the planner."""
+            (tb3_ / "C9-109-x.md").write_text((wt9_ / "C9-100-x.md").read_text(encoding="utf-8").replace("C9-100", "C9-109"), encoding="utf-8")
+        onb3_("planner", "C9-109 filed on the branch", own_b3_)
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root); commit9_("planner", "the branch merged")
+        own_ = run(root, "--check"); p109_ = wt9_ / "C9-109-x.md"
+        for st_ in ("In Progress", "Closed"):
+            p109_.write_text(re.sub(r"(?m)^status: .*$", f"status: {st_}", p109_.read_text(encoding="utf-8")), encoding="utf-8"); commit9_("planner", f"C9-109 {st_}")
+        again_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the planner's own new `Closed` tracker, filed on a branch and merged by the planner, is refused in one line naming the way through — the line again in a commit of its own after the merge (saw {own_[0]}, {said9_(own_[2], 'C9-109')!r})",
+              own_[0] == fm.EXIT_LINT and said9_(own_[2], "C9-109") == ["C9-109: " + merged9_])
+        check(f"FM-006 · v0.19.1 · on Subversion that tracker, its `status:` set again on trunk after the merge in commits of its own, passes (saw {again_[0]})",
+              again_[0] == 0 and not said9_(again_[2], "C9-109"))
+        # a seat's tracker on trunk, taken out, and its copy on a branch put back on trunk with that branch's making recorded as merged
+        for kind_, id_ in (("added", "C9-120"), ("copied", "C9-121")):
+            svn("update", "-q", cwd=root)
+            if kind_ == "added":
+                new9_(id_, status_="Closed")
+            else:
+                copied9_(wt9_ / "C9-100-x.md", wt9_ / f"{id_}-x.md")
+            commit9_("builder", f"{id_} by the builder")
+            svn("copy", "-q", "-m", f"the branch of {id_}", url + "/trunk", url + f"/branches/k{id_}", "--username", "planner")
+            rk_ = svn("info", "--show-item", "last-changed-revision", url + f"/branches/k{id_}").stdout.strip()
+            svn("update", "-q", cwd=root); svn("rm", "-q", "--force", str(wt9_ / f"{id_}-x.md"), cwd=root); commit9_("builder", f"{id_} taken out")
+            back_ = copies9_(id_, lambda: (svn("copy", "-q", url + f"/branches/k{id_}/docs/work-tracker/{id_}-x.md@{rk_}", str(wt9_ / f"{id_}-x.md"), cwd=root),
+                                           svn("merge", "-q", "--record-only", "-c", rk_, f"^/branches/k{id_}", ".", cwd=root)), "builder")
+            check(f"FM-006 · v0.19.1 · on Subversion a `Closed` tracker a seat without `close` {kind_} on trunk, taken out, and put back from a branch's copy of trunk with the branch's making recorded as merged, is refused (saw {back_[0]})",
+                  refused9_(back_))
+    fm.configure(HERE)
+
+
+# --- FM-006 · v0.19.1: on Subversion each tracker costs one `svn blame` and one `svn log`, however many there are ---
+if not _SVN:
+    print("  skip  FM-006 · v0.19.1 · the Subversion reads per tracker · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        def svncalls_(n_):
+            """A branch's working copy of `n_` trackers, each filed on trunk and copied with it; `--check` there, and the svn processes it starts."""
+            r_ = base / f"r{n_}"; r_.mkdir(); subprocess.run(["svnadmin", "create", str(r_ / "repo")], check=True); u_ = (r_ / "repo").as_uri()
+            svn("mkdir", "-m", "layout", u_ + "/trunk", u_ + "/branches", "--username", "planner"); svn("checkout", u_ + "/trunk", str(r_ / "wc")); w_ = r_ / "wc"
+            run(w_, "--init", "--key", "c9")
+            (w_ / "shoalmark.toml").write_text('owner = "holgo"\n' + (w_ / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+            for i_ in range(n_):
+                (w_ / f"docs/work-tracker/C9-{i_:03d}-x.md").write_text(f'---\nid: C9-{i_:03d}\nstatus: In Progress\nconsidered: none\nhook: "h"\n---\n\n# C9-{i_:03d} — filed\n\n'
+                                                                       '## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+            run(w_); svn("add", "--force", ".", cwd=w_); svn("commit", "-m", "filed", "--username", "planner", cwd=w_)
+            svn("copy", "-m", "the branch", u_ + "/trunk", u_ + "/branches/b", "--username", "planner"); svn("checkout", u_ + "/branches/b", str(r_ / "bwc"))
+            seen_, real_ = [], subprocess.Popen
+            class counted_(real_):
+                def __init__(self, *a, **k):
+                    seen_.append(list(a[0] if a else k.get("args", []))[:1] == ["svn"])
+                    super().__init__(*a, **k)
+            subprocess.Popen = counted_
+            try:
+                code_ = run(r_ / "bwc", "--check")[0]
+            finally:
+                subprocess.Popen = real_
+            return code_, sum(seen_)
+        one_, forty_ = svncalls_(1), svncalls_(40)
+        check(f"FM-006 · v0.19.1 · on Subversion `--check` in a branch's working copy starts one `svn blame` and one `svn log` for each tracker beyond a fixed part — 40 trackers cost 78 calls more than 1 (saw {one_}, {forty_})",
+              one_[0] == forty_[0] == 0 and forty_[1] - one_[1] == 2 * 39)
     fm.configure(HERE)
 
 

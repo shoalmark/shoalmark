@@ -4759,36 +4759,24 @@ def svn_new(rel):
     return _SVN_NEW[rel]
 
 
-def svn_filing(rel, at, by):
-    """(revision, author) a line of `rel` older than the path's first revision `at` (by `by`) is read as — the copy rule, followed copy by
-    copy (v0.19.1). `at` put the path here as a copy of a source (`svn log -v -g -r <at>` names it, or the folder it was copied with):
-    where a revision that `at` merged added that source, at the path's own place under the merge's source — a merge that brought the
-    path — the rule is applied again at the source, from its own first revision (`--stop-on-copy` of `<root><source>@<rev>`) and its
-    author; otherwise `at` put the line there, and it is `at`'s author's, merge or not. Where Subversion cannot answer, SvnUnreadable."""
-    info = svn_run("info", rel, xml=True)
-    root, path = (info.findtext("entry/repository/root") or "", (info.findtext("entry/relative-url") or "").removeprefix("^")) if info is not None else ("", "")
-    if not root or not path.startswith("/"):
-        raise SvnUnreadable(f"svn info did not name {rel}'s place in the repository")
-    for _hop in range(64):
-        log = svn_run("log", "-q", "-v", "-g", "-r", str(at), f"{root}@{at}", xml=True)
+MERGED_IN = object()         # the author of a line older than a merge that put its path here: no one's, refused (`svn_blame`, `line_author`)
+
+
+def svn_merged(rev):
+    """Whether revision `rev` merged anything — `svn log -g` lists the revisions it merged under it — read at the repository's root,
+    which this run reads once, and kept by revision: each revision's log is asked once per run. Where Subversion cannot
+    answer, SvnUnreadable (v0.19.1)."""
+    if ("root",) not in _SVN_BLAME:
+        _SVN_BLAME[("root",)] = (svn_run("info", "--show-item", "repos-root-url", ".") or "").strip()
+    if not _SVN_BLAME[("root",)]:
+        raise SvnUnreadable("svn info did not name the repository's root")
+    if ("merged", rev) not in _SVN_BLAME:
+        log = svn_run("log", "-q", "-g", "-r", str(rev), f'{_SVN_BLAME[("root",)]}@{rev}', xml=True)
         top = log.find("logentry") if log is not None else None
         if top is None:
-            raise SvnUnreadable(f"svn log did not answer for revision {at}")
-        copied = [e for e in top.findall("paths/path") if e.get("copyfrom-path") and (path == e.text or path.startswith((e.text or "") + "/"))]
-        if not copied or not (max(copied, key=lambda e: len(e.text or "")).get("copyfrom-rev") or "").isdigit():
-            return at, by                                # added here, not copied: nothing older than `at` came from elsewhere
-        e = max(copied, key=lambda e: len(e.text or ""))        # the path itself, else the nearest folder copied with it
-        source, rev = e.get("copyfrom-path") + path[len(e.text):], e.get("copyfrom-rev")
-        brought = any(m.get("action") in ("A", "R") and (source == m.text or source.startswith((m.text or "") + "/"))
-                      for merged in top.iter("logentry") if merged is not top for m in merged.findall("paths/path"))
-        if not (brought and source.endswith("/" + rel)):
-            return at, by                                # a copy `at` made — its author put every older line here
-        first = svn_run("log", "-q", "--stop-on-copy", f"{root}{source}@{rev}", xml=True)
-        entries = first.findall("logentry") if first is not None else []
-        if not entries or not (entries[-1].get("revision") or "").isdigit():
-            raise SvnUnreadable(f"svn log did not answer for {source}@{rev}")
-        at, by, path = int(entries[-1].get("revision")), entries[-1].findtext("author"), source
-    raise SvnUnreadable(f"the copies of {rel} could not be followed to their first revision")
+            raise SvnUnreadable(f"svn log did not answer for revision {rev}")
+        _SVN_BLAME[("merged", rev)] = top.find("logentry") is not None
+    return _SVN_BLAME[("merged", rev)]
 
 
 def svn_tracker_new(t):
@@ -4806,8 +4794,10 @@ def svn_blame(rel):
     svn's own error — kept as well, so the one failure is raised again, not asked again: a rights check that cannot read
     who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling).
     A blame follows a copy to its source: a line older than the path's own first revision — the oldest of `svn log
-    --stop-on-copy` — was put at this path by that revision, and is read as its author's, unless a merge brought the path,
-    which is followed to the revision that filed it (`svn_filing`, v0.19.1)."""
+    --stop-on-copy` — was put at this path by that revision. Where that revision merged nothing, the line is its author's: a
+    copy is its copier's. Where it merged anything (`svn_merged`), the line is no one's here — `MERGED_IN`, refused, neither
+    credited to that revision's author nor followed to an earlier one (v0.19.1). A line a merge brought into a path that was
+    already here is its own author's (`-g`)."""
     if rel in _SVN_BLAME:
         if isinstance(_SVN_BLAME[rel], Exception):
             raise _SVN_BLAME[rel]
@@ -4837,7 +4827,7 @@ def svn_blame(rel):
             at, by = int(first.get("revision")), first.findtext("author")
             if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()):
                 try:
-                    at, by = svn_filing(rel, at, by)    # the copy rule, followed copy by copy: a merge that brought the path leaves its lines their authors'
+                    by = MERGED_IN if svn_merged(at) else by      # a merge that put the path here: its older lines are no one's here
                 except SvnUnreadable as e:
                     _SVN_BLAME[rel] = e
                     raise
@@ -4942,8 +4932,9 @@ def exact_line_regex(line):
 def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
-    is not committed yet (the working copy or the index carries it, no commit does), and (None, None, "unattributed", "")
-    where it names no commit for a line a commit carries. Git's author is a string anyone can type,
+    is not committed yet (the working copy or the index carries it, no commit does), (None, None, "unattributed", "")
+    where it names no commit for a line a commit carries, and on Subversion (None, None, "merged", <revision>) for a line older
+    than a merge that put the tracker's path here (`svn_blame`). Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
     has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one.
 
@@ -4965,7 +4956,7 @@ def line_author(path, needle):
         n = guarded_line(raw, key, cr_breaks=True)
         if n is not None and n in by_line:
             who, rev = by_line[n]
-            out = (who, None, "svn", rev) if rev else out       # a line changed in the working copy has no revision yet
+            out = (None, None, "merged", rev) if who is MERGED_IN else (who, None, "svn", rev) if rev else out   # no revision yet: changed in the working copy
         elif by_line:
             out = (None, None, "unattributed", "")
     else:
@@ -5012,6 +5003,9 @@ def unattributed(t, needle, how, named=True):
     commit's author; Subversion knows who makes a commit only once it is made. `named`: the line opens with the tracker's id — not
     where the caller's own lines are prefixed with it (`seat_problems`, read through `ask_problems`)."""
     who = f'{t["id"]}: ' if named else ""
+    if how == "merged":
+        return (f'{who}`{needle}` is older than the merge that put this tracker here, so who set it is not known; it is refused, never credited '
+                f'to the merge\'s author. Write the line again, in a commit of its own after the merge')
     if how == "uncommitted":
         return (f'{who}`{needle}` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes '
                 f'that commit judges it before: commit it' + (" (on Subversion who makes a commit is known only once it is made)" if vcs() == "svn" else "")
@@ -5601,10 +5595,10 @@ def rights_problems(trackers):
                 except SvnUnreadable as e:
                     out += blame_refusal(t, e)
                     break                                # the tracker's blame is unreadable: one line, not one for each right
-                if needle == "considered:" and ((how == "svn" and rev == _SVN_BLAME.get(("first", (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())))
+                if needle == "considered:" and ((how in ("svn", "merged") and rev == _SVN_BLAME.get(("first", (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())))
                                                 or (how == "uncommitted" and svn_tracker_new(t))):
-                    continue                             # written when the tracker is filed: the filing rule, not a verdict
-                if how in ("uncommitted", "unattributed"):
+                    continue                             # written when the tracker is filed — here, a merge's filing too: the filing rule, not a verdict
+                if how in ("uncommitted", "unattributed", "merged"):
                     if right != "answer":                # the answer gate says it of the answer line
                         out.append(unattributed(t, needle, how))
                 elif how == "svn" and not holds(seat_of(name, None), right):
@@ -7649,7 +7643,7 @@ def lint(trackers, committing=False):
                     pass                                 # a tracker Subversion holds no revision of: the rights refuse it, in one line (`rights_problems`)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
-                elif how == "unattributed":
+                elif how in ("unattributed", "merged"):
                     problems.append(unattributed(t, "answer:", how))
                 elif SEATS and not holds(seat, "answer"):
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
