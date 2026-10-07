@@ -2,6 +2,56 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.19.1 — 2026-10-07
+
+**0.19.1 is a security release: upgrade, then run `--check` once.** The gate judges every commit of a branch as the tracker reads it, guards the Owner's two sections where a configuration cannot be read, and judges the tracker folder before any write.
+
+### Security (GHSA-mrq5-vp9f-92r8)
+- **Merges (A1).** A merge is judged by every commit it brings, and every merge it brings, nested at any depth, is judged by what that merge changes itself. Each is read against each of its parents, under that merge's own author and signature, for the rights, the Shipped rule and the sessions. A merge's own change is judged under the merger, and an answer or a `next: owner` it sets in its own change is refused: set it in a commit of its own. *On upgrade:* a seat's merge nested in another carries its `Session:` trailer, like any other commit of the seat's.
+- **The rights gate reads the line the tracker keeps (A2).**
+  - Each line a right is judged on is the one the tracker reads, on git and on Subversion.
+  - A front matter that repeats a key a right is judged on, or spells one other than in lower case, is refused in one line, naming the way through: one lower-case `key:` line. The keys are `status`, `next`, `answer`, `answered`, `answered-by`, `considered`, `kind-of-problem`, `tier`, `rank` and `triaged`. Every other key may repeat or carry capitals.
+  - A guarded line that version control names no commit for is refused.
+  - On git, a line not yet committed is judged only in the run that makes its commit, as the author git is about to write.
+  - On Subversion, a line not yet committed is refused before the commit in every run. Once it is committed, it is judged under the author Subversion's blame names.
+  - *On upgrade:* the first `--check` flags any tracker carrying such a front matter. A person who holds the right corrects it.
+  - On a clean tree, `--check` judges every commit on the branch since the default branch, not only the newest, for the rights, the Shipped rule and the sessions, at a fixed number of git calls however long the branch. On a tree with uncommitted edits it says in one line that it judged them against HEAD, not the branch's commits. The commit hooks never walk the branch. *On upgrade:* a branch carrying an older commit the rules refuse is refused until it is fixed. Fetch before the first `--check`: where no default branch is known, only the newest commit is judged, and `--check` says so in one line.
+- **The default branch (A2).**
+  - git is handed the default branch by its full ref (`refs/remotes/origin/<name>`), never a short name a tag or a branch could shadow, in every run that reads it: the branch's commits, the guard, the Owner, the signers file, `--answer`, `--queue`, FM-033 and the verdicts.
+  - Where `origin/HEAD` is not set and `origin/main` or `origin/master` is, the default branch's name is read from origin. A walk of the branch's commits that git cannot make is refused in one line.
+  - *On upgrade:* a clone without `origin/HEAD` that holds `origin/main` or `origin/master` and cannot reach origin when `--check` runs is refused in one line naming the command: `git remote set-head origin <the default branch>`. In CI this concerns private repositories whose checkout keeps no credentials (`persist-credentials: false`), on a push to the default branch or with `fetch-depth: 0`. A clone made with `git clone` has `origin/HEAD` and is not affected.
+- **Subversion (A2).**
+  - A tracker not yet committed, read from Subversion's own record (added, replaced, copied, or not yet in version control), carries no protected state: an answer, `next: owner`, a status that is not open, or a triage key. It is refused in one line before the commit, in `--check`, the default run and the TortoiseSVN pre-commit run.
+  - Once committed, a copied guarded line passes only where both its copier and its own author, read through the copy, hold its right. Where the revision that put a tracker on this line merged anything, each guarded line older than that revision is refused, in one line, until a person who holds the right changes it in a commit of their own after the merge.
+  - Each line's author is read through the merges that brought it (`svn blame -g`); where that cannot be read, the line is refused.
+  - *On upgrade (Subversion):* a tracker that a merge brought onto a line with a guarded line already set is refused until a person who holds the right changes that line in a commit of their own.
+  - A blame that cannot be read is refused.
+  - *On upgrade (Subversion):* a person who holds a right commits a protected edit with `svn commit` on the command line, which runs no hook; `--check` then judges it under the author Subversion's blame names. `--check` after the commit is what judges it.
+- **The Owner's two sections during an upgrade (A3).**
+  - Where the default branch's configuration cannot be read, or holds something other than a file at that path, every change to a `TRIAGE.md`, the configuration or a signers file is refused in one line. `--queue` shows such a branch as waiting. A configuration that cannot be read is never read as the defaults.
+  - *On upgrade:* a branch that mends its own unreadable `shoalmark.toml` is refused; the Owner's signed commit is the way through.
+- **The Owner's two sections: the folder the tool reads, and the signers file (A3).**
+  - The guard watches the tracker folder the tool reads, through one function, and compares its watched paths case- and Unicode-folded on every system.
+  - A `tracker_dir` containing a backslash is refused on every system: write the folder with `/`.
+  - The working tree that holds the configured signers file is found by the file system's own identity, in any case or spelling, and the default branch's copy is read. A signers file in another git working tree verifies nothing.
+  - A configured signers path that passes, as it is written, through a symlink inside a git working tree verifies nothing.
+  - *On upgrade:* a `tracker_dir` with a backslash is refused until it uses `/`. A branch whose tree holds a path that folds onto the tracker's `TRIAGE.md`, configuration or signers file is refused. A signers file must be a regular file, in this repository's checkout or outside every git working tree, named by a path that passes through no symlink inside a git working tree: one kept inside another git working tree, such as a home folder kept as a git repository, or named through a link in one, verifies nothing.
+- **The tracker folder (A6).**
+  - Every command judges the tracker folder before it writes. `--init` refuses, in one line and before any write, a tracker folder that lies outside the repository, resolves outside it, is reached through a symlink, or lies inside the git directory.
+  - The write rule and the tracker folder find the git directory as the file system finds it, in any case or Unicode normalization.
+
+### Hardening
+- **`--install-hook` (A4).**
+  - It judges git's configuration in every worktree, removed ones included, and refuses in one line where a worktree's configuration cannot be read.
+  - It compares paths as the file system does: case and Unicode normalization, where the file system ignores them.
+  - *On upgrade:* a worktree whose configuration cannot be read, or whose folder is gone with settings pointing into a working tree, is refused until it is fixed or pruned (`git worktree prune`).
+
+### Fixes
+- **`--init` (B1).**
+  - It judges every file it may write before it writes the first: the configuration, TRIAGE.md, AGENTS.md, CLAUDE.md and .gitignore. A refusal leaves the tree as it was.
+  - It writes the folder's name as a string the configuration reads back. A name the configuration cannot carry is refused in one line naming it, exit 4.
+- **The board's days (the date fix).** The board's page counts days by local calendar date, as `--owner` and `--standup` do. An ask's age, the fresh badge and a verdict's stale mark agree with them at every hour, across daylight-saving changes.
+
 ## 0.19.0 — 2026-10-02
 
 **shoalmark 0.19.0 is the first public beta: the gate refuses a *done* without a commit behind it, the first screen speaks to

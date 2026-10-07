@@ -5,7 +5,7 @@
 ## 1. Das Werkzeug ins Repository legen
 
 ```
-git clone --branch v0.19.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
+git clone --branch v0.19.1 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
 cd <Ihr Repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
