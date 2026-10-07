@@ -361,9 +361,9 @@ FM-007's class, and nothing moves work except the Owner's signed answer. **On Su
 account and `signed` is refused — the server authenticated the commit, and the gate reads the author it recorded
 (`svn blame --xml`, as the answer gate does). One seat = one SVN account whose credentials exist only in that seat's
 environment (a container, or its own Windows user), never the Owner's cached ones (`~/.subversion/auth`, the Windows
-credential store); the svn command line runs no hook, so the server's own `pre-commit` hook running `<cmd> --check` is
-the layer that refuses and the board's *sent back* group is the backstop. A seat's **charter** — how it thinks, a bold
-Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
+credential store); the svn command line runs no hook, so a protected edit is committed there, and `--check` after the
+commit is what judges it, with the board's *sent back* group as the backstop. A seat's **charter** — how it thinks, a
+bold Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
 
 ### Seat icons on the forge
 
@@ -451,7 +451,11 @@ hooks are plain files in the hooks folder git reads, and they run only the copy.
 
 **The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's head
 before merge. A bypass of the hook alone, which `--check` catches, is P3.** Git's `--no-verify` skips any hook by
-design; what protects the default branch is `--check` on the branch.
+design; what protects the default branch is `--check` on the branch. Without `origin/HEAD` — a CI checkout often has
+none — `--check` asks `origin` for its default branch where `origin/main` or `origin/master` is all it holds, and
+refuses in one line where origin cannot be read — a private repository's checkout that keeps no credentials
+(`persist-credentials: false`), on a push to the default branch or with `fetch-depth: 0`, or a clone offline: run
+`git remote set-head origin <default>` first there.
 
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
 per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
@@ -482,17 +486,20 @@ refused: this commit by planner@seat is the seat planner, and its Session: a9f3c
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
 tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's
-`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, and every commit a merge brings,
-each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
-judged, so a repository that never set `seat.session` is not refused when it vendors.
+`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer and, in `--check` on a clean tree,
+every commit since `origin`'s default branch — the newest alone where none is found, and none where the tree has
+uncommitted edits, as `--check` says — and every commit a merge brings, each by its own. A repository adopts the rule
+with its first `Session:`: a commit whose history carries none is not judged, so a repository that never set
+`seat.session` is not refused when it vendors.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
 reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —
-`git rev-list <tip> ^<trunk> --no-merges` (`origin/main`, else `main`, else `master`), less other verdicts; for a tip
-the trunk has since merged, the trunk as it stood before that merge — so what the branch merged in from the trunk is
-not its, and the report does not change when it lands. The verdict is **independent** when its session's root (`a9` of
-`a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of them — a Reviewer run as a
-sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
+`git rev-list <tip> ^<trunk> --no-merges` (the default branch as `--check` reads it, else `main`, else `master`),
+less other verdicts; for a tip the trunk has since merged, the trunk as it stood before that merge — so what the branch
+merged in from the trunk is not its, and the report does not change when it lands. The verdict is **independent**
+when its session's root (`a9` of `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is
+one of them — a Reviewer run as a sub-agent of the author's session is not independent — **untraced** when either side
+names no session, and **on
 trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts. `--queue` reads a
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
