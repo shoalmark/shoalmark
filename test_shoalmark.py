@@ -7076,6 +7076,40 @@ else:
               refusedA_(seenA_["ia"], "C9-210") and refusedA_(seenA_["copy"], "C9-210") and refusedA_(seenA_["undo"], "C9-211"))
     fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: on Subversion a `considered:` changed after its tracker's filing is its changer's triage, wherever a copy carries it ---
+# The Owner's ruling of 2026-10-07: the copy rule reads a copied line's own author; a `considered:` set at the filing stays the filing's.
+if not _SVN:
+    _skipped("FM-006 · v0.19.1 · on Subversion a `considered:` changed after the filing, carried by a copy", 1, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wtK_ = root / "docs/work-tracker"
+        def caseK_(id_, copier_):
+            """The builder files `id_` on its branch and changes its `considered:` there; `copier_` copies it to trunk; `--check` on trunk."""
+            svn("copy", "-q", "-m", f"the builder's branch for {id_}", url + "/trunk", url + f"/branches/{id_}", "--username", "builder")
+            wb_ = base / f"wc-{id_}"; svn("checkout", "-q", url + f"/branches/{id_}", str(wb_)); p_ = wb_ / "docs/work-tracker" / f"{id_}-x.md"
+            p_.write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n',
+                          encoding="utf-8")
+            svn("add", "-q", str(p_), cwd=wb_); svn("commit", "-q", "-m", f"{id_} filed", "--username", "builder", cwd=wb_)
+            p_.write_text(p_.read_text(encoding="utf-8").replace("considered: none", "considered: C9-001"), encoding="utf-8")
+            svn("commit", "-q", "-m", f"{id_}: considered changed", "--username", "builder", cwd=wb_)
+            svn("update", "-q", cwd=root); svn("copy", "-q", url + f"/branches/{id_}/docs/work-tracker/{id_}-x.md", str(wtK_ / f"{id_}-x.md"), cwd=root)
+            run(root); svn("add", "-q", "--force", ".", cwd=root); svn("commit", "-q", "-m", f"{id_} copied by the {copier_}", "--username", copier_, cwd=root); svn("update", "-q", cwd=root)
+            got_ = run(root, "--check")
+            svn("rm", "-q", "--force", str(wtK_ / f"{id_}-x.md"), cwd=root); run(root); svn("commit", "-q", "-m", f"{id_} taken out", "--username", "planner", cwd=root); svn("update", "-q", cwd=root)
+            return got_
+        refusedK_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any(f"{id_}: `considered:` is a `triage` change" in l_ and "`builder` is the seat `builder`" in l_ for l_ in r_[2].splitlines())
+        byP_, byB_ = caseK_("C9-220", "planner"), caseK_("C9-221", "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a `considered:` a seat without `triage` changed after the filing, on its branch, is refused on trunk under that seat once the "
+              f"file is copied there — by the planner, or by the seat itself (saw {byP_[0]}, {byB_[0]})", refusedK_(byP_, "C9-220") and refusedK_(byB_, "C9-221"))
+    fm.configure(HERE)
+
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:

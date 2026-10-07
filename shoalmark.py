@@ -4996,10 +4996,14 @@ def line_author(path, needle):
         n = guarded_line(raw, key, cr_breaks=True)
         if n is not None and n in by_line:
             who, rev = by_line[n]
-            own = _SVN_BLAME.get(("through", rel), {}).get(n) if key != "considered" else None       # `considered:` is the filing's
+            through = _SVN_BLAME.get(("through", rel), {})
+            own = through.get(n)
             right = {"answer": "answer", "next": "ask", "status": "close"}.get(key, "triage")
             may = (lambda w: holds(seat_of(w, None), right)) if SEATS else (lambda w: right == "answer" and w in may_answer())
-            if own and own[0] != who and may(who) and not may(own[0]):
+            if key == "considered":
+                if own and own[1] != through.get(1, (None, None))[1]:
+                    who, rev = own                      # a `considered:` changed after its source's filing is its own author's triage, not the copy's filing
+            elif own and own[0] != who and may(who) and not may(own[0]):
                 who, rev = own                          # a copied line passes only where its copier and its own author both hold its right (v0.19.1)
             out = (None, None, "merged", rev) if who is MERGED_IN else (who, None, "svn", rev) if rev else out   # no revision yet: changed in the working copy
         elif by_line:
