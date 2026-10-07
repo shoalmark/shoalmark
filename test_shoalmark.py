@@ -20,7 +20,7 @@ import tempfile
 import time
 import unicodedata
 from contextlib import redirect_stderr, redirect_stdout
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 # The SUITE reads and writes UTF-8 whatever the machine's locale is (a Windows runner's is cp1252). The TOOL never
 # relies on this: it names its encoding on every read and write — a check below holds it to that.
@@ -2753,7 +2753,7 @@ fm.configure(HERE)
 
 # --- `--init` judges the tracker folder first (the Owner's ruling of 2026-10-04, v0.19.1): where the configuration's tracker folder lies outside the repository,
 # resolves outside it, is reached through a symlink or lies inside the git directory, `--init` refuses in the tracker folder's one line, exit 4, and nothing is
-# written anywhere; a fresh repository, and one initialised already, are accepted as before
+# written anywhere — an absolute one is refused as the configuration is read, in its one line; a fresh repository, and one initialised already, are accepted as before
 def _itf_listing(base):
     """Every path under `base`, the git directories included: what it is, and its content or its link — a listing to compare before and after."""
     out_ = {}
@@ -2764,12 +2764,14 @@ def _itf_listing(base):
     return out_
 def _itf(kind):
     """`--init` in a git repository whose configuration names the tracker folder `kind` builds: `outside` — `../outside`, not there; `outside-link` — `../outside`,
-    a symlink to an empty folder beside the repository; `absolute` — the absolute path of a folder beside it, not there; `link` — `link`, a symlink in the
-    repository to a folder beside it that holds an inert TRIAGE.md; `inner-link` — the same, the folder inside the repository; `gitdir` — `.git/inert`. The folder
-    that holds the repository is listed before and after, its git directory included."""
+    a symlink to an empty folder beside the repository; `absolute` — the absolute path of a folder beside it, not there; `absolute-inside` — the absolute
+    path of a folder inside it, not there; `link` — `link`, a symlink in the repository to a folder beside it that holds an inert TRIAGE.md; `inner-link` —
+    the same, the folder inside the repository; `gitdir` — `.git/inert`. The folder that holds the repository is listed before and after, its git directory
+    included. The configuration is refused as it is read, before the tool sets its streams to UTF-8: the run is asked for UTF-8."""
     with tempfile.TemporaryDirectory() as d:
         base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q")
-        named_ = {"outside": "../outside", "outside-link": "../outside", "absolute": (base / "outside").as_posix(), "link": "link", "inner-link": "link", "gitdir": ".git/inert"}[kind]
+        named_ = {"outside": "../outside", "outside-link": "../outside", "absolute": (base / "outside").as_posix(), "absolute-inside": (root / "docs/work-tracker").as_posix(),
+                  "link": "link", "inner-link": "link", "gitdir": ".git/inert"}[kind]
         if kind == "outside-link":
             (base / "away").mkdir(); os.symlink(base / "away", base / "outside", target_is_directory=True)
         if kind in ("link", "inner-link"):
@@ -2777,14 +2779,17 @@ def _itf(kind):
             os.symlink(held_, root / "link", target_is_directory=True)
         (root / "shoalmark.toml").write_text(f'tracker_dir = "{named_}"\n\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
         before_ = _itf_listing(base)
-        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init")
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init", env=dict(_ENV, PYTHONIOENCODING="utf-8"))
         after_ = _itf_listing(base)
-        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_) - set(before_)), base=base, root=root)
+        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_) - set(before_)), base=base, root=root, named=named_)
         rm_git(root)
     return g_
 def _itf_line(g, kind):
-    """The tracker folder's one line `--init` refuses in, for the folder `kind` names."""
-    if kind in ("outside", "outside-link", "absolute"):
+    """The one line `--init` refuses in, for the folder `kind` names: the configuration's, for an absolute one; the tracker folder's, for every other."""
+    if kind in ("absolute", "absolute-inside"):
+        return (f"shoalmark.toml: `tracker_dir = {json.dumps(g['named'])}` is read as absolute or drive-qualified on some system — "
+                "`tracker_dir` is a folder written relative to the repository, with /")
+    if kind in ("outside", "outside-link"):
         return f"the tracker folder {os.path.abspath(g['base'] / 'outside')} is not inside the repository {g['root']} — nothing is written"
     if kind == "link":
         return f"the tracker folder link resolves outside the repository, to {os.path.realpath(g['base'] / 'away')} — nothing is written"
@@ -2792,10 +2797,11 @@ def _itf_line(g, kind):
         return "the tracker folder link is, or is reached through, a symlink — nothing is written"
     return "the tracker folder .git/inert is inside the git directory, where the hooks and their copy are — nothing is written"
 def _itf_ok(g, kind):
-    return g["code"] == fm.EXIT_LINT and g["err"] == _itf_line(g, kind) and g["out"] == "" and g["same"]
+    return g["code"] == (1 if kind.startswith("absolute") else fm.EXIT_LINT) and g["err"] == _itf_line(g, kind) and g["out"] == "" and g["same"]
 _ITF_CASES = (("outside", "a `tracker_dir` of `../outside`", False),
               ("outside-link", "a `tracker_dir` of `../outside`, a symlink to a folder beside the repository", True),
               ("absolute", "an absolute `tracker_dir`, a folder beside the repository", False),
+              ("absolute-inside", "an absolute `tracker_dir`, a folder inside the repository", False),
               ("link", "a `tracker_dir` that is a symlink in the repository to a folder beside it", True),
               ("inner-link", "a `tracker_dir` that is a symlink in the repository to a folder inside it", True),
               ("gitdir", "a `tracker_dir` inside the git directory", False))
@@ -2804,7 +2810,8 @@ for key_, what_, link_ in _ITF_CASES:
         _skipped(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}", 1, "this system makes no symlink here")
         continue
     g_ = _itf(key_)
-    check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}: {what_} — refused in the tracker folder's one line, exit 4, nothing on stdout, "
+    how_ = "as the configuration is read, in its one line, exit 1" if key_.startswith("absolute") else "in the tracker folder's one line, exit 4"
+    check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}: {what_} — refused {how_}, nothing on stdout, "
           f"and the folder that holds the repository, its git directory included, is as it was (saw exit {g_['code']}, made {g_['made'][:3]}, {g_['err'][-110:]!r})", _itf_ok(g_, key_))
 def _itf_fresh():
     """`--init` in a fresh git repository, then again in it, initialised."""
@@ -9355,6 +9362,43 @@ with tempfile.TemporaryDirectory() as tmp:
           code_gl_ == fm.EXIT_LINT and g_gl_[0] == [f'refused: commit {c_gl_[:7]} "AP-037: the seat, the Owner" changes `docs/work-tracker/TRIAGE.md` and `shoalmark.toml` — {unread37_}']
           and g_gl_[1].startswith("the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: "
                                   "shoalmark.toml: not a file — git records a submodule at that path, and only a file is read as the configuration"))
+    # v0.19.1 · `git cat-file --batch` may answer a submodule `<oid> submodule` — no size, nothing after it; every git is made to answer so here
+    def subm_stream_(real_):
+        """`subprocess.run` as the tool sees it from a git whose `git cat-file --batch` answers each submodule `<oid> submodule`, where another answers
+        `<spec> missing` — the stream git wrote, re-written header by header; every other call as it is. The headers it hands on are kept."""
+        def run_(args, *a, **k):
+            r_ = real_(args, *a, **k)
+            if list(args) != ["git", "cat-file", "--batch"]:
+                return r_
+            data_, i_, out_ = r_.stdout, 0, b""
+            for spec_ in k["input"].decode("utf-8").split("\n")[:-1]:
+                nl_ = data_.index(b"\n", i_); head_ = data_[i_:nl_]
+                if head_.endswith(b" missing"):
+                    oid_ = real_(["git", "rev-parse", "--verify", "-q", spec_], cwd=k.get("cwd"), env=k.get("env"), capture_output=True, text=True).stdout.strip()
+                    head_ = (oid_ + " submodule").encode() if oid_ else head_
+                end_ = nl_ + 1 if head_.endswith((b" missing", b" ambiguous", b" submodule")) else nl_ + 1 + int(head_.rsplit(b" ", 1)[1]) + 1
+                out_ += head_ + data_[nl_:end_]; run_.heads.append(head_.decode()); i_ = end_
+            return subprocess.CompletedProcess(r_.args, r_.returncode, out_, r_.stderr)
+        run_.heads = []
+        return run_
+    def at_subm_(fn_):
+        real_ = subprocess.run; subprocess.run = subm_stream_(real_)
+        try:
+            return fn_(), subprocess.run.heads
+        except ValueError as e:                         # a header read as `<oid> <type> <size>` where it has none
+            return f"ValueError: {e}", subprocess.run.heads
+        finally:
+            subprocess.run = real_
+    show_ = lambda spec: subprocess.run(["git", "-C", str(root), "show", spec], capture_output=True, env=_ENV).stdout.decode("utf-8", "replace")
+    types_sm_, specs_sm_ = {}, ["origin/main:README.md", "origin/main:shoalmark.toml", "origin/main:docs/work-tracker/TRIAGE.md"]
+    blobs_sm_, heads_sm_ = at_subm_(lambda: fm.cat_blobs(specs_sm_, types=types_sm_))
+    g_sm_, gheads_sm_ = at_subm_(guard37_)
+    check(f"FM-006 · v0.19.1 · `git cat-file --batch` answering a submodule `<oid> submodule`, no size and nothing after it: a submodule between two files is no text "
+          f"and a submodule's type, the file after it read whole, and the configuration that is a submodule is one that cannot be read — the guard refuses as for any answer (saw {heads_sm_[1:2]}, {blobs_sm_!r:.160}, "
+          f"{types_sm_}, {g_sm_!r:.200})",
+          heads_sm_[1:2] == ["1" * 40 + " submodule"] and any(h.endswith(" submodule") for h in gheads_sm_)
+          and blobs_sm_ == {specs_sm_[0]: show_(specs_sm_[0]), specs_sm_[1]: None, specs_sm_[2]: show_(specs_sm_[2])} and len(blobs_sm_[specs_sm_[2]]) > 100
+          and types_sm_ == {specs_sm_[0]: "blob", specs_sm_[1]: "commit", specs_sm_[2]: "blob"} and g_sm_ == g_gl_)
     git(root, "switch", "-q", "main")
     if (root / "shoalmark.toml").is_dir():
         (root / "shoalmark.toml").rmdir()
@@ -9388,6 +9432,26 @@ with tempfile.TemporaryDirectory() as tmp:
           said_bs_.startswith("shoalmark.toml: `tracker_dir = ") and said_bs_.endswith("— write the folder with /") and "\n" not in said_bs_ and code_bs2_ == fm.EXIT_LINT and len(g_bs_[0]) == 2
           and any(l_.startswith(f'refused: commit {c_bs1_[:7]} "AP-037: tidy the folder" changes ') and f"where shoalmark.toml at {c_bs1_[:7]} cannot be read here — {said_bs_}" in l_ for l_ in g_bs_[0])
           and any(l_.startswith(f'refused: commit {c_bs2_[:7]} "AP-037: the folder written with /" changes `shoalmark.toml` where shoalmark.toml at {c_bs1_[:7]} cannot be read here') for l_ in g_bs_[0]))
+    git(root, "switch", "-q", "main")
+    # v0.19.1 · a `tracker_dir` some system reads as drive-qualified is refused as the configuration is read; a commit that carries one is one whose configuration the guard cannot read
+    dq37_ = cfg37_.replace("[kinds]", 'tracker_dir = "C:/work-tracker"\n[kinds]', 1)
+    def drive37_():                                     # the configuration names `C:/work-tracker`; where a folder may be named so, it holds a TRIAGE.md of the seat's own
+        (root / "shoalmark.toml").write_text(dq37_)
+        if os.name != "nt":
+            (root / "C:" / "work-tracker").mkdir(parents=True); (root / "C:" / "work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
+    (c_dq1_,) = by_hand37_("ap/037-drive", "main", ("AP-037: tidy the folder", drive37_, SEAT_))
+    try:
+        code_dq_, said_dq_ = run(root, "--check")[0], ""
+    except SystemExit as e_:
+        code_dq_, said_dq_ = None, str(e_)
+    git(root, "switch", "-q", "ap/037-drive"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written relative", SEAT_)
+    c_dq2_, g_dq_ = sha37_(), guard37_(); code_dq2_ = run(root, "--check")[0]
+    check(f"FM-006 · v0.19.1 · a `tracker_dir` some system reads as drive-qualified is refused as the configuration is read, in one line, and a commit carrying one is refused by `--check`, "
+          f"exit 4, as one whose configuration cannot be read (saw {said_dq_!r}, {code_dq2_}, {g_dq_[0]!r})",
+          said_dq_ == 'shoalmark.toml: `tracker_dir = "C:/work-tracker"` is read as absolute or drive-qualified on some system — `tracker_dir` is a folder written relative to the repository, with /'
+          and code_dq2_ == fm.EXIT_LINT and len(g_dq_[0]) == 2
+          and any(l_.startswith(f'refused: commit {c_dq1_[:7]} "AP-037: tidy the folder" changes ') and f"where shoalmark.toml at {c_dq1_[:7]} cannot be read here — {said_dq_}" in l_ for l_ in g_dq_[0])
+          and any(l_.startswith(f'refused: commit {c_dq2_[:7]} "AP-037: the folder written relative" changes `shoalmark.toml` where shoalmark.toml at {c_dq1_[:7]} cannot be read here') for l_ in g_dq_[0]))
     git(root, "switch", "-q", "main")
     # v0.19.1 · a path the guard watches, in another case or Unicode normalization: on a file system that ignores both — macOS's default, Windows's — it can be the file the tool reads
     def variant37_(branch, path):                       # a seat's commit, made with git's plumbing as on a file system that keeps case and normalization apart: `path` holds an intent of its own
@@ -9712,6 +9776,43 @@ _bs_said = _backslash_said('tracker_dir = "docs\\\\work-tracker"\n')
 check(f"FM-006 · v0.19.1 · `read_config` refuses a `tracker_dir` written with a backslash, on every system, in one line ending \"write the folder with /\" — the same folder written with / reads (saw {_bs_said!r})",
       _bs_said.startswith('shoalmark.toml: `tracker_dir = "docs\\\\work-tracker"` holds a backslash') and _bs_said.endswith("— write the folder with /") and "\n" not in _bs_said
       and _backslash_said('tracker_dir = "docs/work-tracker"\n') == "" and fm.read_config('tracker_dir = "docs/work-tracker"\n') == {"tracker_dir": "docs/work-tracker"})
+
+
+def _configured_on(root_, named_):
+    """`configure` on `root_` — a pure path, of any system's kind — whose configuration names `named_` as `tracker_dir`: its one refusal line, or the
+    tracker folder it binds."""
+    real_ = (fm.find_root, fm.board_text)
+    fm.find_root, fm.board_text = (lambda start=None: root_), (lambda path: f'tracker_dir = "{named_}"\n[kinds]\nMSR = "Work"\n')
+    try:
+        fm.configure()
+        return fm.TRACKER_DIR
+    except SystemExit as e_:
+        return str(e_)
+    finally:
+        fm.find_root, fm.board_text = real_
+        fm.configure(HERE)
+
+
+_anchored_line = lambda v_: (f'shoalmark.toml: `tracker_dir = "{v_}"` is read as absolute or drive-qualified on some system — '
+                             "`tracker_dir` is a folder written relative to the repository, with /")
+_anchored = {v_: _backslash_said(f'tracker_dir = "{v_}"\n') for v_ in ("/srv/tracker", "//srv/share/tracker", "C:/t/base/outside", "c:tracker", "C:")}
+_anchored_win = _configured_on(PureWindowsPath("C:/t/base/repo"), "C:/t/base/outside")
+def _ratio_records(named_):
+    """`[ratio]`'s default records where the configuration names `named_` as `tracker_dir`."""
+    kept_ = fm.CONFIG
+    try:
+        fm.CONFIG = {**kept_, "tracker_dir": named_}
+        return fm.ratio_defaults()["records"]
+    finally:
+        fm.CONFIG = kept_
+
+
+_records = _ratio_records("./docs//work-tracker/")
+check(f"FM-006 · v0.19.1 · `tracker_dir` is a folder written relative to the repository: one any system reads as absolute or drive-qualified — a leading / or //, "
+      f"or a drive — is refused as the configuration is read, in one line, and never joined under the repository's root; a relative one reads, and `[ratio]`'s "
+      f"default records are the folder the tool binds (saw {_anchored!r:.300}, {_anchored_win!r}, {_records})",
+      all(_anchored[v_] == _anchored_line(v_) for v_ in _anchored) and _anchored_win == _anchored_line("C:/t/base/outside")
+      and all(_backslash_said(f'tracker_dir = "{v_}"\n') == "" for v_ in ("docs/work-tracker", "tr", "", "../outside")) and _records == ["docs/work-tracker/"])
 
 # FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
 # walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged

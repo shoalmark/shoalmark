@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## 0.19.1 — 2026-10-07
+## 0.19.1 — 2026-10-08
 
 **0.19.1 is a security release: upgrade, then run `--check` once.** The gate judges every commit of a branch as the tracker reads it, guards the Owner's two sections where a configuration cannot be read, and judges the tracker folder before any write.
 
@@ -38,6 +38,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 - **The tracker folder (A6).**
   - Every command judges the tracker folder before it writes. `--init` refuses, in one line and before any write, a tracker folder that lies outside the repository, resolves outside it, is reached through a symlink, or lies inside the git directory.
   - The write rule and the tracker folder find the git directory as the file system finds it, in any case or Unicode normalization.
+  - `tracker_dir` is a folder written relative to the repository; one that any system reads as absolute or drive-qualified is refused.
 
 ### Hardening
 - **`--install-hook` (A4).**

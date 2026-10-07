@@ -148,6 +148,9 @@ def read_config(text):
     if isinstance(out.get("tracker_dir"), str) and "\\" in out["tracker_dir"]:     # one system reads it as a separator, another as a letter of the folder's name
         raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` holds a backslash, which Windows reads as a folder's separator "
                          "and every other system as a letter of the folder's name — write the folder with /")
+    if isinstance(out.get("tracker_dir"), str) and (out["tracker_dir"].startswith("/") or out["tracker_dir"][1:2] == ":"):     # a root, or a drive: never a folder of the repository
+        raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` is read as absolute or drive-qualified on some system — "
+                         "`tracker_dir` is a folder written relative to the repository, with /")
     return out
 
 
@@ -6091,7 +6094,8 @@ RATIO_DAYS = 7          # the window when `--since` is not given, and the rollin
 def ratio_defaults():
     """`[ratio]`'s defaults as `DEFAULTS` keeps every other: `records` is the tracker directory this tool is configured with
     (`tracker_dir`, wherever a repository keeps it), `exclude` is empty."""
-    return {"records": [str(CONFIG["tracker_dir"]).strip("/") + "/"], "exclude": []}
+    folder = tracker_folder(CONFIG).as_posix()           # the folder `configure` binds, as `tracker_folder` reads it
+    return {"records": [("" if folder == "." else folder) + "/"], "exclude": []}
 
 
 def ratio_paths(section):
@@ -6532,7 +6536,9 @@ def commit_list(*revs):
 def cat_blobs(specs, env=None, types=None):
     """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there. `env`:
     the hook's own, where `:<path>` must read the index git hands it (FM-037). `types`, where given, gets each object's type —
-    `blob` for a file, `tree` for a folder, `commit` for a submodule whose commit this clone holds."""
+    `blob` for a file, `tree` for a folder, `commit` for a submodule: one whose commit this clone holds, and one git answers
+    `<oid> submodule` for — a header with no size and nothing after it — whose text is None. A header read no other way is
+    no text, and nothing after it is read: where its object ends cannot be told, so neither can the next one's header."""
     if not specs:
         return {}
     r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
@@ -6546,9 +6552,18 @@ def cat_blobs(specs, env=None, types=None):
         if head.endswith((" missing", " ambiguous")):
             got[spec] = None
             continue
-        size = int(head.rsplit(" ", 1)[1])
+        if re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64}) submodule", head):
+            got[spec] = None                            # a submodule: no text, and the next header follows at once
+            if types is not None:
+                types[spec] = "commit"
+            continue
+        m = re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64}) ([a-z]+) ([0-9]+)", head)
+        if not m or data[i + int(m[2]):i + int(m[2]) + 1] != b"\n":
+            got[spec] = None                            # a header it cannot read, or an object cut short: no text, and nothing after it is read
+            break
+        size = int(m[2])
         if types is not None:
-            types[spec] = head.rsplit(" ", 2)[-2]
+            types[spec] = m[1]
         got[spec], i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
     return got
 

@@ -33,7 +33,7 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 - `--init` judging every file before it writes;
 - the board's day counts in local calendar days.
 
-Each was READY on its own head, with its full local run. The cut (VERSION 0.19.1, the CHANGELOG dated 2026-10-07) follows this filing on the branch. The combined head is judged by a fresh critical Reviewer and its own full run. Next, in the Owner's sitting:
+Each was READY on its own head, with its full local run. The cut (VERSION 0.19.1, the CHANGELOG dated 2026-10-08) follows this filing on the branch. The combined head is judged by a fresh critical Reviewer and its own full run. Next, in the Owner's sitting:
 1. the push and CI;
 2. the merge;
 3. the tag;
