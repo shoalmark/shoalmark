@@ -642,8 +642,9 @@ def configure(root=None):
     _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
     global _WALK_COMMITS, _HAS_SESSIONS
     _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
-    global _ORIGIN_DEFAULT, _TRUNK_UNTOLD
+    global _ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN
     _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
+    _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
     _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
@@ -2751,18 +2752,21 @@ def refusal_reason(what, said=""):
     return first_words(" ".join((head + (f": {pick}" if pick else "")).split()), 240)
 
 
-def default_trunk(git, ask=True):
+def default_trunk(git, ask=None):
     """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what an earlier `answer/<id>` must be merged
     into before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
     name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target is
     returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). Where
     this clone has no `origin/HEAD` and holds no `origin/main` or `origin/master` either — a pull request's shallow checkout —
-    None, asking nothing. Where it holds one, a name a seat can push, origin is asked which branch is its default
-    (`origin_default`, once per run) and that branch's ref is returned; where origin cannot be read, or names a branch this
-    clone has not fetched, None, and `walk_problems` refuses in one line (v0.19.1). An origin that names none — its `HEAD`
-    unborn — leaves the ref this clone holds, and so does a clone with no `origin` configured, which nobody can push to. `ask=False` is a reader's that asks no server and refuses nothing — the board, the
-    reports: it takes origin's answer where this run has it, else the ref this clone holds. What the tool prints is `ref_name`'s."""
+    None, asking nothing. Where it holds one, a name a seat can push, a run that walks the branch's commits — `--check`, or the
+    default run, on a clean tree (`_ASK_ORIGIN`) — asks origin which branch is its default (`origin_default`, once per run) and
+    returns that branch's ref; where origin cannot be read, or names a branch this clone has not fetched, None, and
+    `walk_problems` refuses in one line (v0.19.1). An origin that names none — its `HEAD` unborn — leaves the ref this clone
+    holds, and so does a clone with no `origin` configured, which nobody can push to. Every other run — the hooks', the
+    board's, the reports', the Owner's commands — asks no server and refuses nothing (`ask=False`): it takes origin's answer
+    where this run has it, else the ref this clone holds, as before. What the tool prints is `ref_name`'s."""
     global _TRUNK_UNTOLD
+    ask = _ASK_ORIGIN if ask is None else ask
     head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
     if head.startswith("refs/remotes/"):
         return head                                     # set: nothing is asked of origin
@@ -2801,7 +2805,7 @@ def origin_default():
     return _ORIGIN_DEFAULT if _ORIGIN_DEFAULT is not False else None
 
 
-_ORIGIN_DEFAULT, _TRUNK_UNTOLD = None, None             # per run: `configure` sets them again
+_ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN = None, None, False      # per run: `configure` sets them again, and `main` the last
 
 
 def ref_name(ref):
@@ -8995,6 +8999,9 @@ def main(argv=None):
         return EXIT_LINT
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
+    global _ASK_ORIGIN
+    _ASK_ORIGIN = (mode in ("check", "write") and not args.print_written and vcs() == "git"       # `--check`, or the default run, on a clean tree: the
+                   and git_out("diff", "--name-only", "--relative", "HEAD") == "")               # runs that walk the branch's commits — no hook's (v0.19.1)
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     today = datetime.date.today().isoformat()

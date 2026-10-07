@@ -5389,6 +5389,18 @@ with tempfile.TemporaryDirectory() as tmp:
     held_m_ = cloneM_("m-held"); git(held_m_, "remote", "set-head", "origin", "master"); kept_, ls_h_ = askedM_(held_m_)
     check(f"FM-006 · v0.19.1 · a clone with `origin/HEAD` set asks origin nothing — no `git ls-remote` — and refuses the same close (saw {kept_[0]}, {ls_h_})",
           kept_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}`" in kept_[2] and ls_h_ == 0)
+    # a commit through the hooks asks origin nothing: a hook reads the ref this clone holds, as before — offline too
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(mc_, "config", k_, v_)
+    run(mc_, "--install-hook"); (mc_ / "hooked.txt").write_text("a commit through the hooks\n", encoding="utf-8"); git(mc_, "add", "-A")
+    trace_ = base / "m-trace.json"; before_m_ = subprocess.run(["git", "-C", str(mc_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    hooked_ = subprocess.run(["git", "-C", str(mc_), "commit", "-q", "-m", "a commit through the hooks"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_), GIT_AUTHOR_NAME="p", GIT_AUTHOR_EMAIL="principal@seat", GIT_COMMITTER_NAME="p", GIT_COMMITTER_EMAIL="principal@seat"))
+    after_m_ = subprocess.run(["git", "-C", str(mc_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    traced_ = trace_.read_text(encoding="utf-8").splitlines() if trace_.exists() else []
+    ls_c_ = sum('"event":"start"' in l_ and '"ls-remote"' in l_ for l_ in traced_)
+    check(f"FM-006 · v0.19.1 · a commit through the hooks, in a clone with no `origin/HEAD` that holds `origin/main` and cannot read origin, is made and asks origin nothing (saw {hooked_.returncode}, {ls_c_}, {len(traced_)})",
+          hooked_.returncode == 0 and after_m_ != before_m_ and ls_c_ == 0 and any('"event":"start"' in l_ and '"commit"' in l_ for l_ in traced_))
     # the walk's cost is fixed: `--check` at a branch's tip starts as many git processes for 100 commits of its own as for 20
     c_ = base / "cost"; c_.mkdir(); subprocess.run(["git", "init", "-q", "--bare", str(base / "cost.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(c_)], check=True, env=_ENV)
     for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
