@@ -23,6 +23,24 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-07 — v0.19.1 is combined on `release/v0.19.1`, and the push waits for the Owner's sitting.** The branch holds:
+- each Queue A security fix, on its own branch, merged in with `--no-ff`:
+  - a merge judged by what it changes itself, at any depth;
+  - the rights gate reading the line a tracker keeps, on every commit of a branch, on git and on Subversion, with the default branch named by its full ref;
+  - the Owner's two sections guarded where a configuration cannot be read, in the tracker folder the tool reads, and with the signers file found by the file system's identity;
+  - the tracker folder judged before any command writes;
+- `--install-hook`'s configuration check (hardening);
+- `--init` judging every file before it writes;
+- the board's day counts in local calendar days.
+
+Each was READY on its own head, with its full local run. The cut (VERSION 0.19.1, the CHANGELOG dated 2026-10-07) follows this filing on the branch. The combined head is judged by a fresh critical Reviewer and its own full run. Next, in the Owner's sitting:
+1. the push and CI;
+2. the merge;
+3. the tag;
+4. the advisory.
+
+B2–B6, Queue C, D(b) and the parked P3s are in 0.19.2.
+
 **2026-10-01 — what a stranger meets first in v0.19.0: resumed after FM-005's check merged.** The Owner's ruling is filed
 below, in *What a stranger meets first — v0.19.0*, its A amended on 2026-10-01 (the ledes in both languages, one
 description, link previews on every page, the preview image, the German start page's title and description), with *The
@@ -878,6 +896,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-07 | **v0.19.1 combined** by the Planner, on the Owner's rulings of 2026-10-03, 2026-10-04 and 2026-10-07: the four security branches merged into `release/v0.19.1` beside `--install-hook`'s configuration check, `--init` and the board's days, each READY on its own head. The push, the tag and the advisory wait for the Owner's sitting. |
 | 2026-09-30 | **What a stranger meets first in v0.19.0 — filed** by the Planner on the Owner's ruling of that day, as one slice of this tracker (*What a stranger meets first — v0.19.0*): the human lead on the landing and the German start page, the tagline where agents read, an English note beside the German one, the fleet as a section of its own, the Owner not a seat — D2 with the `[seats]` change of 2026-10-01 — and the last gendered pronouns on current pages. The two screens it follows are merged into the branch (`a410aef`, `87985b6`). |
 | 2026-09-30 | **Wording pass built — rewording, not product growth** (the Owner's rulings 3 and 4 and the renames that followed, 16:51 CEST): they/them/their for the Owner and any person; seats stay *it*, one sentence in AGENTS.md; seat names English only; Planner and Builder in prose, the `[seats]` keys and addresses unchanged. Lines of the Implementer's change `origin/main..77f7722`, records left out: product 140 added, 136 deleted (the tool and its test 62 of each, string assertions only; AGENTS.md's one sentence and three setup/README sentences on the keys the only new prose); records +8 (the CHANGELOG bullet 7, this row 1). |
 | 2026-09-30 | **A signal filed** under *Signals*: the first pitch's one idea, requirements in the repository tested as a contract; the layer is FM-042, Stage 0 its convention. Nothing on the ask changes. |
