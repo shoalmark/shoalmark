@@ -5506,7 +5506,7 @@ def read_changes():
         return out
 
     heads = merge_heads()
-    if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
+    if COMMITTING or worktree_edited(git):
         files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "HEAD"))
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
@@ -5539,6 +5539,13 @@ def staged_absent(rels):
              and rel.endswith(".md") and KIND_RE.match(pathlib.PurePath(rel).name)]
     texts = cat_blobs([f":./{rel}" for rel in names], index_env())
     return {rel: extract(ROOT / rel, texts[f":./{rel}"]) for rel in names if texts.get(f":./{rel}") is not None}
+
+
+def worktree_edited(git):
+    """Whether the working tree holds an edit against HEAD (`git diff --name-only HEAD`) — the one reading `read_changes` and `main`
+    share: a diff git cannot make reads as no edit in both, so a run that walks the branch's commits asks origin as it walks
+    (v0.19.1)."""
+    return bool(git("diff", "--name-only", "--relative", "HEAD").stdout.strip())
 
 
 def walk_problems():
@@ -9001,7 +9008,8 @@ def main(argv=None):
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
     global _ASK_ORIGIN
     _ASK_ORIGIN = (mode in ("check", "write") and not args.print_written and vcs() == "git"       # `--check`, or the default run, on a clean tree: the
-                   and git_out("diff", "--name-only", "--relative", "HEAD") == "")               # runs that walk the branch's commits — no hook's (v0.19.1)
+                   and not worktree_edited(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                                                                     errors="replace", env=nested_git_env())))      # runs that walk the branch's commits — no hook's (v0.19.1)
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     today = datetime.date.today().isoformat()

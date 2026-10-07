@@ -5389,6 +5389,10 @@ with tempfile.TemporaryDirectory() as tmp:
     held_m_ = cloneM_("m-held"); git(held_m_, "remote", "set-head", "origin", "master"); kept_, ls_h_ = askedM_(held_m_)
     check(f"FM-006 · v0.19.1 · a clone with `origin/HEAD` set asks origin nothing — no `git ls-remote` — and refuses the same close (saw {kept_[0]}, {ls_h_})",
           kept_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}`" in kept_[2] and ls_h_ == 0)
+    idx_ = cloneM_("m-idx"); (idx_ / ".git/index").write_bytes(b"not an index")      # a working tree whose diff git cannot make
+    broken_, ls_i_ = askedM_(idx_)
+    check(f"FM-006 · v0.19.1 · with a working tree whose diff git cannot make, `--check` reads it one way — as no edit — asks origin, and refuses the close under a later commit (saw {broken_[0]}, {ls_i_})",
+          broken_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in broken_[2] and ls_i_ == 1)
     # a commit through the hooks asks origin nothing: a hook reads the ref this clone holds, as before — offline too
     for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
         git(mc_, "config", k_, v_)

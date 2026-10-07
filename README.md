@@ -452,8 +452,9 @@ hooks are plain files in the hooks folder git reads, and they run only the copy.
 before merge. A bypass of the hook alone, which `--check` catches, is P3.** Git's `--no-verify` skips any hook by
 design; what protects the default branch is `--check` on the branch. Without `origin/HEAD` — a CI checkout often has
 none — `--check` asks `origin` for its default branch where `origin/main` or `origin/master` is all it holds, and
-refuses in one line where origin cannot be read: `git remote set-head origin <default>` first, where the checkout
-cannot read origin.
+refuses in one line where origin cannot be read — a private repository's checkout that keeps no credentials
+(`persist-credentials: false`), on a push to the default branch or with `fetch-depth: 0`, or a clone offline: run
+`git remote set-head origin <default>` first there.
 
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
 per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
