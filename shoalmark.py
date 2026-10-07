@@ -4832,9 +4832,10 @@ def svn_blame(rel):
     who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling).
     A blame follows a copy to its source: a line older than the path's own first revision — the oldest of `svn log
     --stop-on-copy` — was put at this path by that revision. Where that revision merged nothing, the line is its author's: a
-    copy is its copier's. Where it merged anything (`svn_merged`), the line is no one's here — `MERGED_IN`, refused, neither
-    credited to that revision's author nor followed to an earlier one (v0.19.1). A line a merge brought into a path that was
-    already here is its own author's (`-g`)."""
+    copy is its copier's — and its own author's, as the blame reads it through the copy, is kept beside it, so a guarded line
+    passes only where both hold its right (`line_author`). Where it merged anything (`svn_merged`), the line is no one's here —
+    `MERGED_IN`, refused, neither credited to that revision's author nor followed to an earlier one (v0.19.1). A line a merge
+    brought into a path that was already here is its own author's (`-g`)."""
     if rel in _SVN_BLAME:
         if isinstance(_SVN_BLAME[rel], Exception):
             raise _SVN_BLAME[rel]
@@ -4868,6 +4869,8 @@ def svn_blame(rel):
                 except SvnUnreadable as e:
                     _SVN_BLAME[rel] = e
                     raise
+                if by is not MERGED_IN:                         # a copy: each older line's own author, read through it by the same blame (v0.19.1)
+                    _SVN_BLAME[("through", rel)] = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
                 out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
             _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
@@ -4993,6 +4996,10 @@ def line_author(path, needle):
         n = guarded_line(raw, key, cr_breaks=True)
         if n is not None and n in by_line:
             who, rev = by_line[n]
+            own = _SVN_BLAME.get(("through", rel), {}).get(n) if key != "considered" else None       # `considered:` is the filing's
+            right = {"answer": "answer", "next": "ask", "status": "close"}.get(key, "triage")
+            if own and own[0] != who and holds(seat_of(who, None), right) and not holds(seat_of(own[0], None), right):
+                who, rev = own                          # a copied line passes only where its copier and its own author both hold its right (v0.19.1)
             out = (None, None, "merged", rev) if who is MERGED_IN else (who, None, "svn", rev) if rev else out   # no revision yet: changed in the working copy
         elif by_line:
             out = (None, None, "unattributed", "")

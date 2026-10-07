@@ -6950,6 +6950,56 @@ else:
               one_[0] == forty_[0] == 0 and forty_[1] - one_[1] == 2 * 39)
     fm.configure(HERE)
 
+# --- FM-006 · v0.19.1: on Subversion a copied line passes only where its copier and its own author both hold its right ---
+# The Owner's ruling of 2026-10-07: where a path's first revision merged nothing, a guarded line older than it passes only where both its copier and its own
+# author, read through the copy, hold the right — an ignore-ancestry merge and a reverse merge leave the record a copy leaves.
+if not _SVN:
+    _skipped("FM-006 · v0.19.1 · on Subversion a copied line's copier and its own author", 3, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wtC_ = root / "docs/work-tracker"
+        def fileC_(where_, id_, status_):
+            (where_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: {status_}\nconsidered: none\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n',
+                                               encoding="utf-8")
+        def commitC_(wc_, who_, msg_):
+            """The working copy committed as `who_`, and updated to; the revision it made."""
+            run(wc_); svn("add", "-q", "--force", ".", cwd=wc_); svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
+            return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
+        namedC_ = lambda err_, id_: [l_.strip() for l_ in err_.splitlines() if f"{id_}:" in l_]
+        builderC_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any("`status:` is a `close` change" in l_ and "`builder` is the seat `builder`" in l_ for l_ in namedC_(r_[2], id_))
+        fileC_(wtC_, "C9-200", "In Progress"); commitC_(root, "planner", "C9-200 filed")
+        # the builder files a Closed tracker on its branch; the planner merges the branch into trunk with --ignore-ancestry
+        svn("copy", "-q", "-m", "the builder's branch", url + "/trunk", url + "/branches/b", "--username", "builder"); wbC_ = base / "wc-b"; svn("checkout", "-q", url + "/branches/b", str(wbC_))
+        rbC_ = svn("info", "--show-item", "last-changed-revision", url + "/branches/b").stdout.strip()
+        fileC_(wbC_ / "docs/work-tracker", "C9-201", "Closed"); rcC_ = commitC_(wbC_, "builder", "C9-201 filed Closed on the branch")
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--ignore-ancestry", "-r", f"{rbC_}:{rcC_}", "^/branches/b", ".", cwd=root)
+        commitC_(root, "planner", "the branch merged, ancestry ignored"); iaC_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a seat's `Closed` tracker, brought to trunk by the planner's merge with `--ignore-ancestry`, is refused under its own author "
+              f"(saw {iaC_[0]}, {namedC_(iaC_[2], 'C9-201')[:1]!r})", builderC_(iaC_, "C9-201"))
+        svn("rm", "-q", "--force", str(wtC_ / "C9-201-x.md"), cwd=root); commitC_(root, "planner", "C9-201 taken out")
+        # the builder files a Closed tracker on trunk and takes it out; the planner undoes the taking out with a reverse merge
+        fileC_(wtC_, "C9-202", "Closed"); commitC_(root, "builder", "C9-202 by the builder")
+        svn("rm", "-q", str(wtC_ / "C9-202-x.md"), cwd=root); rxC_ = commitC_(root, "builder", "C9-202 taken out")
+        svn("merge", "-q", "-c", f"-{rxC_}", ".", cwd=root); commitC_(root, "planner", "the taking out undone"); undoC_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a seat's `Closed` tracker, restored on trunk by the planner's reverse merge, is refused under its own author "
+              f"(saw {undoC_[0]}, {namedC_(undoC_[2], 'C9-202')[:1]!r})", builderC_(undoC_, "C9-202"))
+        svn("rm", "-q", "--force", str(wtC_ / "C9-202-x.md"), cwd=root); commitC_(root, "planner", "C9-202 taken out")
+        # the planner's copy of the planner's own Closed tracker
+        fileC_(wtC_, "C9-203", "Closed"); commitC_(root, "planner", "C9-203 filed Closed by the planner")
+        svn("copy", "-q", str(wtC_ / "C9-203-x.md"), str(wtC_ / "C9-204-x.md"), cwd=root)
+        (wtC_ / "C9-204-x.md").write_text((wtC_ / "C9-204-x.md").read_text(encoding="utf-8").replace("C9-203", "C9-204"), encoding="utf-8")
+        commitC_(root, "planner", "C9-204, a copy by the planner"); hcC_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the planner's copy of the planner's own `Closed` tracker passes (saw {hcC_[0]}, {namedC_(hcC_[2], 'C9-204')[:1]!r})",
+              hcC_[0] == 0 and not namedC_(hcC_[2], "C9-204"))
+    fm.configure(HERE)
+
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
