@@ -180,7 +180,7 @@ def tree_write(path):
     """Whether a write lands in the tree this run tracks — inside the repository as written, outside its git directory. A destination a person names
     elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not — a named one is resolved once, where it is named, and
     judged again under the folder it resolves to; a tracker folder outside the repository is refused before any run reads it (`load_trackers`)."""
-    return in_tree(path) and not in_git_dir(path)
+    return in_tree(path) and not in_git_dir_on_disk(path)
 
 
 def write_rule(path):
@@ -276,12 +276,19 @@ def in_git_dir(path):
     return any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for p in ps for d in git_dirs())
 
 
+def in_git_dir_on_disk(path):
+    """Whether `path`, as written or as it resolves, lies inside one of the repository's git directories as the file system compares paths (`git_dir_holding`):
+    where it ignores case and Unicode normalization, a git directory spelled in another case or normalization is that git directory."""
+    p = _norm(path)
+    return git_dir_holding(p) or git_dir_holding(os.path.normcase(os.path.realpath(p)))
+
+
 def write_problem(path):
     """Why a hook's run of the copy, or the board's run, does not write `path`, or "": it lies outside the repository or inside its git directory —
     where the hooks and their copy are — is reached through a symlink, or is no regular file."""
     if not in_tree(path):
         return "outside the repository"
-    if in_git_dir(path):
+    if in_git_dir_on_disk(path):
         return "inside the git directory"
     if not real_inside(path):
         return "a symlink, or reached through one"
@@ -343,7 +350,7 @@ def tracker_folder_problem(what="the board is not refreshed"):
     real = pathlib.Path(os.path.realpath(_norm(d)))
     if not in_tree(real):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — {what}"
-    if in_git_dir(d):
+    if in_git_dir_on_disk(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the git directory, where the hooks and their copy are — {what}"
     if not real_inside(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — {what}"
@@ -8345,6 +8352,10 @@ def install_hook():
 
 
 def init(key=None):
+    refused = tracker_folder_problem("nothing is written")  # the tracker folder, judged first, as every run judges it (`load_trackers`)
+    if refused:
+        print(refused, file=sys.stderr)
+        return EXIT_LINT
     wrote = []
     key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
     if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
@@ -8363,11 +8374,6 @@ def init(key=None):
                                             (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
     agents, claude, ignore, svn = ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / ".gitignore", vcs() == "svn"
     had_agents, had_ignore = board_text(agents) or "", board_text(ignore) or ""        # the reading rule, before anything is written
-    if svn:                                                 # the tracker folder `svn:ignore` is set on, judged as `svn_ignore_board` judges it
-        refused = tracker_folder_problem("no folder is made there, and the board is not ignored")
-        if refused:
-            print(refused, file=sys.stderr)
-            raise SystemExit(EXIT_LINT)
     for path in [path for path, _text in made] + [agents] + ([] if claude.exists() else [claude]) + ([ignore] if not svn and (vcs() == "git" or ignore.exists()) else []):
         write_rule(path)                                    # the write rule for every file --init may write, before the first is written or a folder made
     for path, text in made:

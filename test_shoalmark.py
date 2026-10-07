@@ -2750,6 +2750,124 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the triage worksheet", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- `--init` judges the tracker folder first (the Owner's ruling of 2026-10-04, v0.19.1): where the configuration's tracker folder lies outside the repository,
+# resolves outside it, is reached through a symlink or lies inside the git directory, `--init` refuses in the tracker folder's one line, exit 4, and nothing is
+# written anywhere; a fresh repository, and one initialised already, are accepted as before
+def _itf_listing(base):
+    """Every path under `base`, the git directories included: what it is, and its content or its link — a listing to compare before and after."""
+    out_ = {}
+    for dp_, dn_, fn_ in os.walk(base):
+        for n_ in dn_ + fn_:
+            p_ = Path(dp_) / n_
+            out_[p_.relative_to(base).as_posix()] = ("link", os.readlink(p_)) if p_.is_symlink() else ("dir",) if p_.is_dir() else ("file", hashlib.sha1(p_.read_bytes()).hexdigest())
+    return out_
+def _itf(kind):
+    """`--init` in a git repository whose configuration names the tracker folder `kind` builds: `outside` — `../outside`, not there; `outside-link` — `../outside`,
+    a symlink to an empty folder beside the repository; `absolute` — the absolute path of a folder beside it, not there; `link` — `link`, a symlink in the
+    repository to a folder beside it that holds an inert TRIAGE.md; `inner-link` — the same, the folder inside the repository; `gitdir` — `.git/inert`. The folder
+    that holds the repository is listed before and after, its git directory included."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q")
+        named_ = {"outside": "../outside", "outside-link": "../outside", "absolute": (base / "outside").as_posix(), "link": "link", "inner-link": "link", "gitdir": ".git/inert"}[kind]
+        if kind == "outside-link":
+            (base / "away").mkdir(); os.symlink(base / "away", base / "outside", target_is_directory=True)
+        if kind in ("link", "inner-link"):
+            held_ = base / "away" if kind == "link" else root / "held"; held_.mkdir(); (held_ / "TRIAGE.md").write_text("inert\n", encoding="utf-8")
+            os.symlink(held_, root / "link", target_is_directory=True)
+        (root / "shoalmark.toml").write_text(f'tracker_dir = "{named_}"\n\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        before_ = _itf_listing(base)
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init")
+        after_ = _itf_listing(base)
+        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_) - set(before_)), base=base, root=root)
+        rm_git(root)
+    return g_
+def _itf_line(g, kind):
+    """The tracker folder's one line `--init` refuses in, for the folder `kind` names."""
+    if kind in ("outside", "outside-link", "absolute"):
+        return f"the tracker folder {os.path.abspath(g['base'] / 'outside')} is not inside the repository {g['root']} — nothing is written"
+    if kind == "link":
+        return f"the tracker folder link resolves outside the repository, to {os.path.realpath(g['base'] / 'away')} — nothing is written"
+    if kind == "inner-link":
+        return "the tracker folder link is, or is reached through, a symlink — nothing is written"
+    return "the tracker folder .git/inert is inside the git directory, where the hooks and their copy are — nothing is written"
+def _itf_ok(g, kind):
+    return g["code"] == fm.EXIT_LINT and g["err"] == _itf_line(g, kind) and g["out"] == "" and g["same"]
+_ITF_CASES = (("outside", "a `tracker_dir` of `../outside`", False),
+              ("outside-link", "a `tracker_dir` of `../outside`, a symlink to a folder beside the repository", True),
+              ("absolute", "an absolute `tracker_dir`, a folder beside the repository", False),
+              ("link", "a `tracker_dir` that is a symlink in the repository to a folder beside it", True),
+              ("inner-link", "a `tracker_dir` that is a symlink in the repository to a folder inside it", True),
+              ("gitdir", "a `tracker_dir` inside the git directory", False))
+for key_, what_, link_ in _ITF_CASES:
+    if link_ and not _SYMLINKS:
+        _skipped(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}", 1, "this system makes no symlink here")
+        continue
+    g_ = _itf(key_)
+    check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}: {what_} — refused in the tracker folder's one line, exit 4, nothing on stdout, "
+          f"and the folder that holds the repository, its git directory included, is as it was (saw exit {g_['code']}, made {g_['made'][:3]}, {g_['err'][-110:]!r})", _itf_ok(g_, key_))
+def _itf_fresh():
+    """`--init` in a fresh git repository, then again in it, initialised."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / "repo"; root.mkdir(); git(root, "init", "-q")
+        c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr"); made_ = _tree(root)
+        c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr")
+        g_ = dict(first=(c1_, e1_.strip()), made=sorted(made_), second=(c2_, o2_.splitlines()[:1], e2_.strip()), same=_tree(root) == made_)
+        rm_git(root)
+    return g_
+g_ = _itf_fresh()
+check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · still accepted: in a fresh git repository it writes the configuration, TRIAGE.md, AGENTS.md, "
+      f"CLAUDE.md and .gitignore, exit 0; run again, it writes nothing, exit 0 (saw {g_['first']}, {g_['made']}, {g_['second']})",
+      g_["first"] == (0, "") and g_["made"] == sorted({"shoalmark.toml", "docs", "docs/work-tracker", "docs/work-tracker/TRIAGE.md", "AGENTS.md", "CLAUDE.md", ".gitignore"})
+      and g_["second"] == (0, ["nothing to write — already initialised"], "") and g_["same"])
+fm.configure(HERE)
+
+# --- the git directory as the file system finds it (the Owner's ruling of 2026-10-04, v0.19.1): where the file system ignores case, a tracker folder named in
+# the git directory under another case is in the git directory — `--init` and the default run refuse it in the tracker folder's one line, exit 4, and nothing
+# is written; where a probe shows the file system keeps case, the checks skip by name, and where the probe cannot run, they fail
+def _keeps_case():
+    """Whether the file system the scratch repositories are made on keeps case: a file is made, then `os.stat` asked for it under its other-case name —
+    True where nothing is found there, False where it is the same file, None where the probe could not run or found another file."""
+    try:
+        with tempfile.TemporaryDirectory() as d_:
+            made_ = Path(d_) / "inert-Case"; made_.write_text("inert\n", encoding="utf-8")
+            try:
+                other_ = os.stat(Path(d_) / "INERT-cASE")
+            except FileNotFoundError:
+                return True
+            return False if os.path.samestat(other_, os.stat(made_)) else None
+    except OSError:
+        return None
+_KEEPS_CASE = _keeps_case()
+def _gc(kind):
+    """`--init` in a git repository whose configuration's `tracker_dir` is `.GIT/inert` (`init`), or the default run where it is `.GIT/hooks` (`hooks`): the
+    git directory named in another case. The tree, and the git directory (`init`) or its hooks folder (`hooks`), are listed before and after."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / "repo"; root.mkdir(); git(root, "init", "-q")
+        (root / "shoalmark.toml").write_text(f'tracker_dir = ".GIT/{"inert" if kind == "init" else "hooks"}"\n\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        held_ = root / ".git" if kind == "init" else root / ".git" / "hooks"
+        seen_ = lambda: (_tree(root), _itf_listing(held_))
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, *(["--init"] if kind == "init" else []))
+        after_ = seen_()
+        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_[1]) - set(before_[1])))
+        rm_git(root)
+    return g_
+_GC_LINE = {"init": "the tracker folder .GIT/inert is inside the git directory, where the hooks and their copy are — nothing is written",
+            "hooks": "the tracker folder .GIT/hooks is inside the git directory, where the hooks and their copy are — nothing is read or written"}
+def _gc_ok(g, kind):
+    return _KEEPS_CASE is False and g["code"] == fm.EXIT_LINT and g["err"] == _GC_LINE[kind] and g["out"] == "" and g["same"]
+if _KEEPS_CASE is True:
+    _skipped("FM-006 · v0.19.1 · the git directory named in another case", 2, "this file system keeps case: a file made here is not found under its other-case name")
+else:
+    for key_, what_ in (("init", "`--init` with a `tracker_dir` of `.GIT/inert`: refused in the tracker folder's one line, exit 4, nothing on stdout, and the tree and the git "
+                                 "directory are as they were"),
+                        ("hooks", "the default run with a `tracker_dir` of `.GIT/hooks`: refused in the tracker folder's one line, exit 4, nothing on stdout, and the tree and the "
+                                  "hooks folder are as they were")):
+        g_ = _gc(key_)
+        check(f"FM-006 · v0.19.1 · the git directory named in another case · {what_} (saw probe {_KEEPS_CASE}, exit {g_['code']}, made {g_['made'][:3]}, {g_['err'][-90:]!r})",
+              _gc_ok(g_, key_))
+fm.configure(HERE)
+
 # --- a folder named `derive` (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): it is no deriver — a run by hand
 # goes on without one and says nothing of it; the deriver's line is for a symlink alone
 _DF_REV = "ee6c28a"
@@ -2812,7 +2930,7 @@ fm.configure(HERE)
 
 # --- the write rule before a folder is made (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR` and
 # `--init` ask the rule for every file they would write before the first folder is made — through a folder of the tree that is a symlink, each is refused in one line
-# naming the file, exit 4, and nothing is written
+# naming the file, or for `--init` its tracker folder, exit 4, and nothing is written
 def _wf(rev=None):
     """`--brand DIR` and `--init`, each where a parent of the folder it would make is a symlink to an empty folder beside the repository."""
     with tempfile.TemporaryDirectory() as d:
@@ -2821,16 +2939,19 @@ def _wf(rev=None):
         for key_, link_, argv_ in (("brand", "brandy", ("--brand", "brandy/starter")), ("init", "docs", ("--init", "--key", "msr"))):
             away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_, target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
-            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists())
+            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists(), away=os.path.realpath(away_))
         rm_git(root)
     return g_
-_WF_LINE = {"brand": f"shoalmark: brandy/starter/theme.css {_WR_SAYS}", "init": f"shoalmark: docs/work-tracker/TRIAGE.md {_WR_SAYS}"}
+def _wf_line(g, k):
+    """The one line each is refused in: `--brand DIR` names the file, `--init` its tracker folder (the Owner's ruling of 2026-10-04, v0.19.1)."""
+    return (f"shoalmark: brandy/starter/theme.css {_WR_SAYS}" if k == "brand"
+            else f"the tracker folder docs/work-tracker resolves outside the repository, to {os.path.join(g['init']['away'], 'work-tracker')} — nothing is written")
 def _wf_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _WF_LINE[k_] and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _wf_line(g, k_) and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
 if _SYMLINKS:
     g_ = _wf()
     check(f"FM-006 · a private security report · the write rule · `--brand DIR` and `--init` through a folder of the tree that is a symlink: each is refused in one line "
-          f"naming the file, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
+          f"naming the file, or for `--init` its tracker folder, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
     if _HAVE_RR:
         c_ = _wf(_RR_REV)
         check(f"FM-006 · a private security report · the write rule · before a folder is made · …the control: beside {_RR_REV}'s tool this check FAILS", not _wf_ok(c_))
