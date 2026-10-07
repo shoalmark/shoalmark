@@ -9795,8 +9795,9 @@ def _configured_on(root_, named_):
 
 _anchored_line = lambda v_: (f'shoalmark.toml: `tracker_dir = "{v_}"` is read as absolute or drive-qualified on some system — '
                              "`tracker_dir` is a folder written relative to the repository, with /")
-_anchored = {v_: _backslash_said(f'tracker_dir = "{v_}"\n') for v_ in ("/srv/tracker", "//srv/share/tracker", "C:/t/base/outside", "c:tracker", "C:")}
-_anchored_win = _configured_on(PureWindowsPath("C:/t/base/repo"), "C:/t/base/outside")
+_anchored = {v_: _backslash_said(f'tracker_dir = "{v_}"\n') for v_ in ("/srv/tracker", "//srv/share/tracker", "C:/t/base/outside", "c:tracker", "C:",
+                                                                     "./C:/x", "docs/C:/work-tracker", "a/c:x")}
+_anchored_win = {(r_, v_): _configured_on(PureWindowsPath(r_), v_) for v_ in ("C:/t/base/outside", "./C:/x", "docs/C:/work-tracker", "a/c:x") for r_ in ("C:/t/base/repo", "D:/t/base/repo")}
 def _ratio_records(named_):
     """`[ratio]`'s default records where the configuration names `named_` as `tracker_dir`."""
     kept_ = fm.CONFIG
@@ -9809,10 +9810,10 @@ def _ratio_records(named_):
 
 _records = _ratio_records("./docs//work-tracker/")
 check(f"FM-006 · v0.19.1 · `tracker_dir` is a folder written relative to the repository: one any system reads as absolute or drive-qualified — a leading / or //, "
-      f"or a drive — is refused as the configuration is read, in one line, and never joined under the repository's root; a relative one reads, and `[ratio]`'s "
+      f"or a drive in any part — is refused as the configuration is read, in one line, and never joined under the repository's root; a relative one reads, and `[ratio]`'s "
       f"default records are the folder the tool binds (saw {_anchored!r:.300}, {_anchored_win!r}, {_records})",
-      all(_anchored[v_] == _anchored_line(v_) for v_ in _anchored) and _anchored_win == _anchored_line("C:/t/base/outside")
-      and all(_backslash_said(f'tracker_dir = "{v_}"\n') == "" for v_ in ("docs/work-tracker", "tr", "", "../outside")) and _records == ["docs/work-tracker/"])
+      all(_anchored[v_] == _anchored_line(v_) for v_ in _anchored) and len(_anchored_win) == 8 and all(_anchored_win[(r_, v_)] == _anchored_line(v_) for r_, v_ in _anchored_win)
+      and all(_backslash_said(f'tracker_dir = "{v_}"\n') == "" for v_ in ("docs/work-tracker", "./docs/work-tracker/", "a/b/c", "tr", "", "../outside")) and _records == ["docs/work-tracker/"])
 
 # FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
 # walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged

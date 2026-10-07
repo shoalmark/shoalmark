@@ -148,7 +148,7 @@ def read_config(text):
     if isinstance(out.get("tracker_dir"), str) and "\\" in out["tracker_dir"]:     # one system reads it as a separator, another as a letter of the folder's name
         raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` holds a backslash, which Windows reads as a folder's separator "
                          "and every other system as a letter of the folder's name — write the folder with /")
-    if isinstance(out.get("tracker_dir"), str) and (out["tracker_dir"].startswith("/") or out["tracker_dir"][1:2] == ":"):     # a root, or a drive: never a folder of the repository
+    if isinstance(out.get("tracker_dir"), str) and (out["tracker_dir"].startswith("/") or any(p[1:2] == ":" for p in out["tracker_dir"].split("/"))):     # a root, or a drive in any part: never a folder of the repository
         raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` is read as absolute or drive-qualified on some system — "
                          "`tracker_dir` is a folder written relative to the repository, with /")
     return out
