@@ -65,3 +65,6 @@ case alone. It ships as 0.19.2, a patch release that holds this fix only.
 | Date | Event |
 |---|---|
 | 2026-10-08 | Filed. |
+| 2026-10-08 | Built by `b3bdb000/implementer-115`: `5a81370` — `ls-tree` joins the board's run's read-only git; a check holds the tree listings the tool sends to the same rule. |
+| 2026-10-08 | Built by `b3bdb000/implementer-115`: `e44f73e` — every git command the tool can start is classified: `NEVER_IN_BOARD_RUN` beside READ_ONLY_GIT, fourteen commands with their reasons; a check that reads the tool's source with `ast`, its control, and the runtime half that watches the suite's board runs. |
+| 2026-10-08 | Built by `b3bdb000/implementer-115`: `b2b8bdb` — a check builds FM-045's shape and runs `--html-only` in process and as a program, origin/HEAD set and unset: exit 0, the board written, the answer on its way; beside v0.19.1 it fails. |
