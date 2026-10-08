@@ -7402,7 +7402,8 @@ else:
             check(f"FM-045 · the board matrix · Subversion, which has no checkout or merge hook — the board's run after it, as the README says · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
 
 fm.configure(HERE)
-print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes")
+if _BM_SECONDS:                                             # the matrix's total where its shapes ran — not where one check of it is run alone
+    print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes")
 
 # …its control: the board's own hook taken out while each event fires — the matrix's judgement must fail, so its "the board changed" is no check that always passes
 with tempfile.TemporaryDirectory() as d:
