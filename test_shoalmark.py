@@ -1871,7 +1871,9 @@ def _git_starts(src):
         bs = bindings(name_node)
         key = (name_node.id, tuple(id(x) for b in bs for x in b if isinstance(x, ast.AST)))
         if key not in kept_:
-            kept_[key] = all((isinstance(p, ast.Call) and p.args[:1] == [n] and any(p is c for c, _a in process)) or isinstance(p, (ast.Starred, ast.Return, ast.BoolOp))
+            kept_[key] = all((isinstance(p, ast.Call) and p.args[:1] == [n] and any(p is c for c, _a in process)) or isinstance(p, ast.Starred)
+                             or (isinstance(p, ast.Return) and scope_of(p) is not tree and all(scope_of(b[1]) is scope_of(p) for b in bs if isinstance(b[1], ast.AST)))
+                             or (isinstance(p, ast.BoolOp) and isinstance(parent.get(p), (ast.If, ast.IfExp, ast.While)) and parent.get(p).test is p)
                              or (isinstance(p, ast.UnaryOp) and isinstance(p.op, ast.Not)) or (isinstance(p, (ast.If, ast.IfExp, ast.While)) and p.test is n)
                              for n, p in ((n, parent.get(n)) for n in loads[name_node.id] if bindings(n) == bs))
         return kept_[key]
@@ -2175,6 +2177,8 @@ with tempfile.TemporaryDirectory() as d:
                                                            '    return subprocess.run(_injected_argv())\n', None),
         "not read: a module's argv changed in place": ('_INJECTED = ["git", "log"]\n_INJECTED.insert(1, "gc")\n\n\ndef _injected():\n    return subprocess.run(_INJECTED)\n', None),
         "not read: an argv changed through an alias": ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        "not read: an argv aliased through `or`": ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd or []\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        "not read: a module's argv a getter hands out": ('_INJECTED_G = ["git", "log"]\n\n\ndef _injected_get():\n    return _INJECTED_G\n\n\ndef _injected():\n    _injected_get().insert(1, "gc")\n    return subprocess.run(_INJECTED_G)\n', None),
     }
     read_ = {}
     for what_, (code_, want_) in program_.items():
