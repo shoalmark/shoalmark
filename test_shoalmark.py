@@ -18,8 +18,9 @@ import sys
 import shutil
 import tempfile
 import time
+import unicodedata
 from contextlib import redirect_stderr, redirect_stdout
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 # The SUITE reads and writes UTF-8 whatever the machine's locale is (a Windows runner's is cp1252). The TOOL never
 # relies on this: it names its encoding on every read and write — a check below holds it to that.
@@ -193,7 +194,7 @@ with tempfile.TemporaryDirectory() as d:
     check("the board is one static page: no unfilled placeholder, the configured kinds in its id patterns, five sections in order",
           not re.search(r"__[A-Z_]+__", page) and "(?:MSR)-" in page
           and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", page) is not None
-          and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "(7+1)*864e5" in page)
+          and 'untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t)' in page and "fresh=t=>!!t[17]&&ago(t[17])<=7" in page)
     check("one rendered view per tracker sits beside the page", (root / "docs/work-tracker/view/MSR-001.js").exists())
     second = root / "docs/work-tracker/MSR-002-warehouse-stock-is-booked-twice.md"
     second.write_text(second.read_text().replace("considered:\n", "considered: MSR-001\n"))
@@ -453,6 +454,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "german": "C4 · the German board, rendered",
     "wordmark": "0.18.2 · the wordmark, rendered in a browser",
     "queue": "the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions",
+    "days": "FM-006 · v0.19.1 · the board's days, rendered in pinned zones — an ask's age, the fresh badge, a verdict's stale mark",
     "dialog": "the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command",
     "second": "FM-013 · the second screen, rendered",
     "acts": "FM-030 · B · his acts on the board, rendered — no date yet, due, overdue, missed",
@@ -2749,6 +2751,131 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the triage worksheet", 2, "this system makes no symlink here")
 fm.configure(HERE)
 
+# --- `--init` judges the tracker folder first (the Owner's ruling of 2026-10-04, v0.19.1): where the configuration's tracker folder lies outside the repository,
+# resolves outside it, is reached through a symlink or lies inside the git directory, `--init` refuses in the tracker folder's one line, exit 4, and nothing is
+# written anywhere — an absolute one is refused as the configuration is read, in its one line; a fresh repository, and one initialised already, are accepted as before
+def _itf_listing(base):
+    """Every path under `base`, the git directories included: what it is, and its content or its link — a listing to compare before and after."""
+    out_ = {}
+    for dp_, dn_, fn_ in os.walk(base):
+        for n_ in dn_ + fn_:
+            p_ = Path(dp_) / n_
+            out_[p_.relative_to(base).as_posix()] = ("link", os.readlink(p_)) if p_.is_symlink() else ("dir",) if p_.is_dir() else ("file", hashlib.sha1(p_.read_bytes()).hexdigest())
+    return out_
+def _itf(kind):
+    """`--init` in a git repository whose configuration names the tracker folder `kind` builds: `outside` — `../outside`, not there; `outside-link` — `../outside`,
+    a symlink to an empty folder beside the repository; `absolute` — the absolute path of a folder beside it, not there; `absolute-inside` — the absolute
+    path of a folder inside it, not there; `link` — `link`, a symlink in the repository to a folder beside it that holds an inert TRIAGE.md; `inner-link` —
+    the same, the folder inside the repository; `gitdir` — `.git/inert`. The folder that holds the repository is listed before and after, its git directory
+    included. The configuration is refused as it is read, before the tool sets its streams to UTF-8: the run is asked for UTF-8."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q")
+        named_ = {"outside": "../outside", "outside-link": "../outside", "absolute": (base / "outside").as_posix(), "absolute-inside": (root / "docs/work-tracker").as_posix(),
+                  "link": "link", "inner-link": "link", "gitdir": ".git/inert"}[kind]
+        if kind == "outside-link":
+            (base / "away").mkdir(); os.symlink(base / "away", base / "outside", target_is_directory=True)
+        if kind in ("link", "inner-link"):
+            held_ = base / "away" if kind == "link" else root / "held"; held_.mkdir(); (held_ / "TRIAGE.md").write_text("inert\n", encoding="utf-8")
+            os.symlink(held_, root / "link", target_is_directory=True)
+        (root / "shoalmark.toml").write_text(f'tracker_dir = "{named_}"\n\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        before_ = _itf_listing(base)
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init", env=dict(_ENV, PYTHONIOENCODING="utf-8"))
+        after_ = _itf_listing(base)
+        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_) - set(before_)), base=base, root=root, named=named_)
+        rm_git(root)
+    return g_
+def _itf_line(g, kind):
+    """The one line `--init` refuses in, for the folder `kind` names: the configuration's, for an absolute one; the tracker folder's, for every other."""
+    if kind in ("absolute", "absolute-inside"):
+        return (f"shoalmark.toml: `tracker_dir = {json.dumps(g['named'])}` is read as absolute or drive-qualified on some system — "
+                "`tracker_dir` is a folder written relative to the repository, with /")
+    if kind in ("outside", "outside-link"):
+        return f"the tracker folder {os.path.abspath(g['base'] / 'outside')} is not inside the repository {g['root']} — nothing is written"
+    if kind == "link":
+        return f"the tracker folder link resolves outside the repository, to {os.path.realpath(g['base'] / 'away')} — nothing is written"
+    if kind == "inner-link":
+        return "the tracker folder link is, or is reached through, a symlink — nothing is written"
+    return "the tracker folder .git/inert is inside the git directory, where the hooks and their copy are — nothing is written"
+def _itf_ok(g, kind):
+    return g["code"] == (1 if kind.startswith("absolute") else fm.EXIT_LINT) and g["err"] == _itf_line(g, kind) and g["out"] == "" and g["same"]
+_ITF_CASES = (("outside", "a `tracker_dir` of `../outside`", False),
+              ("outside-link", "a `tracker_dir` of `../outside`, a symlink to a folder beside the repository", True),
+              ("absolute", "an absolute `tracker_dir`, a folder beside the repository", False),
+              ("absolute-inside", "an absolute `tracker_dir`, a folder inside the repository", False),
+              ("link", "a `tracker_dir` that is a symlink in the repository to a folder beside it", True),
+              ("inner-link", "a `tracker_dir` that is a symlink in the repository to a folder inside it", True),
+              ("gitdir", "a `tracker_dir` inside the git directory", False))
+for key_, what_, link_ in _ITF_CASES:
+    if link_ and not _SYMLINKS:
+        _skipped(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}", 1, "this system makes no symlink here")
+        continue
+    g_ = _itf(key_)
+    how_ = "as the configuration is read, in its one line, exit 1" if key_.startswith("absolute") else "in the tracker folder's one line, exit 4"
+    check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · case {key_}: {what_} — refused {how_}, nothing on stdout, "
+          f"and the folder that holds the repository, its git directory included, is as it was (saw exit {g_['code']}, made {g_['made'][:3]}, {g_['err'][-110:]!r})", _itf_ok(g_, key_))
+def _itf_fresh():
+    """`--init` in a fresh git repository, then again in it, initialised."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / "repo"; root.mkdir(); git(root, "init", "-q")
+        c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr"); made_ = _tree(root)
+        c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr")
+        g_ = dict(first=(c1_, e1_.strip()), made=sorted(made_), second=(c2_, o2_.splitlines()[:1], e2_.strip()), same=_tree(root) == made_)
+        rm_git(root)
+    return g_
+g_ = _itf_fresh()
+check(f"FM-006 · v0.19.1 · `--init` judges the tracker folder first · still accepted: in a fresh git repository it writes the configuration, TRIAGE.md, AGENTS.md, "
+      f"CLAUDE.md and .gitignore, exit 0; run again, it writes nothing, exit 0 (saw {g_['first']}, {g_['made']}, {g_['second']})",
+      g_["first"] == (0, "") and g_["made"] == sorted({"shoalmark.toml", "docs", "docs/work-tracker", "docs/work-tracker/TRIAGE.md", "AGENTS.md", "CLAUDE.md", ".gitignore"})
+      and g_["second"] == (0, ["nothing to write — already initialised"], "") and g_["same"])
+fm.configure(HERE)
+
+# --- the git directory as the file system finds it (the Owner's ruling of 2026-10-04, v0.19.1): where the file system ignores case, a tracker folder named in
+# the git directory under another case is in the git directory — `--init` and the default run refuse it in the tracker folder's one line, exit 4, and nothing
+# is written; where a probe shows the file system keeps case, the checks skip by name, and where the probe cannot run, they fail
+def _keeps_case():
+    """Whether the file system the scratch repositories are made on keeps case: a file is made, then `os.stat` asked for it under its other-case name —
+    True where nothing is found there, False where it is the same file, None where the probe could not run or found another file."""
+    try:
+        with tempfile.TemporaryDirectory() as d_:
+            made_ = Path(d_) / "inert-Case"; made_.write_text("inert\n", encoding="utf-8")
+            try:
+                other_ = os.stat(Path(d_) / "INERT-cASE")
+            except FileNotFoundError:
+                return True
+            return False if os.path.samestat(other_, os.stat(made_)) else None
+    except OSError:
+        return None
+_KEEPS_CASE = _keeps_case()
+def _gc(kind):
+    """`--init` in a git repository whose configuration's `tracker_dir` is `.GIT/inert` (`init`), or the default run where it is `.GIT/hooks` (`hooks`): the
+    git directory named in another case. The tree, and the git directory (`init`) or its hooks folder (`hooks`), are listed before and after."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / "repo"; root.mkdir(); git(root, "init", "-q")
+        (root / "shoalmark.toml").write_text(f'tracker_dir = ".GIT/{"inert" if kind == "init" else "hooks"}"\n\n[kinds]\nMSR = "Work"\n', encoding="utf-8")
+        held_ = root / ".git" if kind == "init" else root / ".git" / "hooks"
+        seen_ = lambda: (_tree(root), _itf_listing(held_))
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, *(["--init"] if kind == "init" else []))
+        after_ = seen_()
+        g_ = dict(code=c_, out=o_.strip(), err=e_.strip(), same=before_ == after_, made=sorted(set(after_[1]) - set(before_[1])))
+        rm_git(root)
+    return g_
+_GC_LINE = {"init": "the tracker folder .GIT/inert is inside the git directory, where the hooks and their copy are — nothing is written",
+            "hooks": "the tracker folder .GIT/hooks is inside the git directory, where the hooks and their copy are — nothing is read or written"}
+def _gc_ok(g, kind):
+    return _KEEPS_CASE is False and g["code"] == fm.EXIT_LINT and g["err"] == _GC_LINE[kind] and g["out"] == "" and g["same"]
+if _KEEPS_CASE is True:
+    _skipped("FM-006 · v0.19.1 · the git directory named in another case", 2, "this file system keeps case: a file made here is not found under its other-case name")
+else:
+    for key_, what_ in (("init", "`--init` with a `tracker_dir` of `.GIT/inert`: refused in the tracker folder's one line, exit 4, nothing on stdout, and the tree and the git "
+                                 "directory are as they were"),
+                        ("hooks", "the default run with a `tracker_dir` of `.GIT/hooks`: refused in the tracker folder's one line, exit 4, nothing on stdout, and the tree and the "
+                                  "hooks folder are as they were")):
+        g_ = _gc(key_)
+        check(f"FM-006 · v0.19.1 · the git directory named in another case · {what_} (saw probe {_KEEPS_CASE}, exit {g_['code']}, made {g_['made'][:3]}, {g_['err'][-90:]!r})",
+              _gc_ok(g_, key_))
+fm.configure(HERE)
+
 # --- a folder named `derive` (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): it is no deriver — a run by hand
 # goes on without one and says nothing of it; the deriver's line is for a symlink alone
 _DF_REV = "ee6c28a"
@@ -2811,7 +2938,7 @@ fm.configure(HERE)
 
 # --- the write rule before a folder is made (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR` and
 # `--init` ask the rule for every file they would write before the first folder is made — through a folder of the tree that is a symlink, each is refused in one line
-# naming the file, exit 4, and nothing is written
+# naming the file, or for `--init` its tracker folder, exit 4, and nothing is written
 def _wf(rev=None):
     """`--brand DIR` and `--init`, each where a parent of the folder it would make is a symlink to an empty folder beside the repository."""
     with tempfile.TemporaryDirectory() as d:
@@ -2820,16 +2947,19 @@ def _wf(rev=None):
         for key_, link_, argv_ in (("brand", "brandy", ("--brand", "brandy/starter")), ("init", "docs", ("--init", "--key", "msr"))):
             away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / link_, target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
-            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists())
+            g_[key_] = dict(code=c_, err=e_.strip(), empty=sorted(os.listdir(away_)) == [], config=(root / "shoalmark.toml").exists(), away=os.path.realpath(away_))
         rm_git(root)
     return g_
-_WF_LINE = {"brand": f"shoalmark: brandy/starter/theme.css {_WR_SAYS}", "init": f"shoalmark: docs/work-tracker/TRIAGE.md {_WR_SAYS}"}
+def _wf_line(g, k):
+    """The one line each is refused in: `--brand DIR` names the file, `--init` its tracker folder (the Owner's ruling of 2026-10-04, v0.19.1)."""
+    return (f"shoalmark: brandy/starter/theme.css {_WR_SAYS}" if k == "brand"
+            else f"the tracker folder docs/work-tracker resolves outside the repository, to {os.path.join(g['init']['away'], 'work-tracker')} — nothing is written")
 def _wf_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _WF_LINE[k_] and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _wf_line(g, k_) and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
 if _SYMLINKS:
     g_ = _wf()
     check(f"FM-006 · a private security report · the write rule · `--brand DIR` and `--init` through a folder of the tree that is a symlink: each is refused in one line "
-          f"naming the file, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
+          f"naming the file, or for `--init` its tracker folder, exit 4, and nothing is written (saw {g_['brand']['err'][:60]!r}, {g_['init']['err'][:70]!r})", _wf_ok(g_))
     if _HAVE_RR:
         c_ = _wf(_RR_REV)
         check(f"FM-006 · a private security report · the write rule · before a folder is made · …the control: beside {_RR_REV}'s tool this check FAILS", not _wf_ok(c_))
@@ -2837,6 +2967,69 @@ if _SYMLINKS:
         _skipped("FM-006 · a private security report · the write rule · before a folder is made · the control", 1, f"this clone does not hold {_RR_REV}")
 else:
     _skipped("FM-006 · a private security report · the write rule · before a folder is made", 2, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- `--init` writes nothing before a refusal (the Owner's ruling of 2026-10-03, v0.19.1): every file `--init` may write is judged before the first is
+# written — a refusal on one it writes after the configuration and TRIAGE.md leaves the tree as it was
+def _iw(kind):
+    """`--init` in a fresh git repository where a file it writes after the configuration and TRIAGE.md is a symlink to an inert file beside the repository:
+    `agents` — AGENTS.md; `claude` — CLAUDE.md, its target not there; `ignore` — .gitignore. The tree, `git status` and the folder beside it, before and after."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir(); git(root, "init", "-q")
+        rel_ = {"agents": "AGENTS.md", "claude": "CLAUDE.md", "ignore": ".gitignore"}[kind]; target_ = marks / "inert.md"
+        if kind != "claude":
+            target_.write_text("inert\n", encoding="utf-8")
+        os.symlink(target_, root / rel_)
+        seen_ = lambda: (_tree(root), subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, env=_ENV).stdout,
+                         _tree(marks))
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr")
+        after_ = seen_()
+        g_ = dict(code=c_, err=e_.strip(), out=o_.strip(), rel=rel_, same=before_ == after_, made=sorted(set(after_[0]) - set(before_[0])))
+        rm_git(root)
+    return g_
+def _iw_ok(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and g["err"].startswith(f"shoalmark: {g['rel']} is a symlink, or reached through one — the tool ")
+            and g["out"] == "" and g["same"])
+if _SYMLINKS:
+    for kind_, what_ in (("agents", "AGENTS.md a symlink"), ("claude", "CLAUDE.md a symlink to a file not there"), ("ignore", ".gitignore a symlink")):
+        g_ = _iw(kind_)
+        check(f"FM-006 · `--init` writes nothing before a refusal · {what_}: refused in one line naming it, exit 4, and the tree, `git status` and the folder "
+              f"beside it are as they were (saw exit {g_['code']}, made {g_['made']}, {g_['err'][:110]!r})", _iw_ok(g_))
+else:
+    _skipped("FM-006 · `--init` writes nothing before a refusal", 3, "this system makes no symlink here")
+fm.configure(HERE)
+
+# --- `--init` and the folder's name (the Owner's ruling of 2026-10-03, v0.19.1): the configuration carries the folder's name as a string it reads back — a `"` or a
+# `\\` in it included; a name it cannot carry is refused in one line before anything is written
+def _in(name):
+    """`--init` in a fresh git repository whose folder is named `name`: what it says, what it wrote, and the configuration's `name` as it reads back."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve() / name; root.mkdir(); git(root, "init", "-q")
+        seen_ = lambda: (_tree(root), subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, env=_ENV).stdout)
+        before_ = seen_()
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--init", "--key", "msr")
+        conf_ = root / "shoalmark.toml"
+        try:
+            read_ = fm.read_config(conf_.read_text(encoding="utf-8")).get("name") if conf_.is_file() else None
+        except SystemExit:
+            read_ = None
+        g_ = dict(code=c_, err=e_.strip(), same=seen_() == before_, name=read_, triage=(root / "docs/work-tracker/TRIAGE.md").is_file())
+        rm_git(root)
+    return g_
+if os.name == "nt":
+    _skipped("FM-006 · `--init` and the folder's name", 3, "Windows names no folder with a `\"`, a `\\` or a line break in it")
+else:
+    for name_, what_ in (('q"repo', 'a folder named `q"repo`'), ("repo\\", "a folder named `repo\\`")):
+        g_ = _in(name_)
+        check(f"FM-006 · `--init` and the folder's name · {what_}: `--init` succeeds, and the configuration's `name` reads back as the folder's name "
+              f"(saw exit {g_['code']}, name {g_['name']!r}, {g_['err'][-120:]!r})", g_["code"] == 0 and g_["name"] == name_ and g_["triage"])
+    g_ = _in("re\npo")
+    _IN_LINE = ("--init: the folder's name 're\\npo' cannot be written into shoalmark.toml as one line — nothing is written; give the folder a name "
+                "without a line break")
+    check(f"FM-006 · `--init` and the folder's name · a folder whose name holds a line break, which the configuration cannot carry: refused in one line naming the "
+          f"folder's name, exit 4, and the tree and `git status` are as they were (saw exit {g_['code']}, {g_['err'][-140:]!r})",
+          g_["code"] == fm.EXIT_LINT and g_["err"] == _IN_LINE and g_["same"])
 fm.configure(HERE)
 
 # --- `--vendor` reads only what it copies (RV-2314, the Owner's ruling filed in FM-006, *The fix round after the critical review*): a file the PIN names that is
@@ -2888,7 +3081,7 @@ fm.configure(HERE)
 
 # --- every worktree's configuration (RV-2315, the Owner's ruling filed in FM-006, *The fix round after the critical review*): `--install-hook`'s configuration
 # check judges the settings each worktree reads, its own configuration included — an include in a linked worktree's own configuration that points into a working
-# tree is refused when it runs from the main worktree, and nothing is written; a worktree marked `prunable` is skipped, never refused
+# tree is refused when it runs from the main worktree, and nothing is written; beside a worktree whose folder is gone, with no settings of its own, it succeeds
 def _wc(kind, rev=None):
     """`--install-hook` from the main worktree, beside a linked worktree: `own` — the linked worktree's own configuration (`config.worktree`) holds an include
     whose target is a file inside the main working tree; `prunable` — the linked worktree's folder is gone."""
@@ -2925,6 +3118,162 @@ g_ = _wc("prunable")
 check(f"FM-006 · a private security report · every worktree's configuration · beside a worktree marked `prunable` — its folder gone — `--install-hook` succeeds: "
       f"exit 0, the hooks and the copy written (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:100]!r})",
       g_["prunable"] and g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"])
+fm.configure(HERE)
+
+# --- every worktree's configuration, removed ones included (the Owner's ruling of 2026-10-03, v0.19.1): `--install-hook` judges every path against every
+# worktree's folder, removed ones included, and reads the settings of every worktree from its git directory, a removed one's own configuration with them
+def _rw(kind):
+    """`--install-hook` from the main worktree, beside a linked worktree `gone` whose folder is then removed: `gone-target` — `.git/config` includes a file
+    inside the removed worktree's folder; `gone-own` — the removed worktree's own configuration (`config.worktree`) includes an inert file inside the main
+    working tree; `outside` — `.git/config` includes an inert file beside the repository, outside every worktree."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        git(root, "worktree", "add", "-q", str(base / "gone"), "-b", "gone")
+        if kind == "gone-target":
+            named_ = base / "gone" / "inert.gitconfig"; git(root, "config", "include.path", str(named_))
+        elif kind == "gone-own":
+            named_ = root / "inert.gitconfig"; named_.write_text("[user]\n\tnote = inert\n", encoding="utf-8")
+            git(root, "config", "extensions.worktreeConfig", "true"); git(base / "gone", "config", "--worktree", "include.path", str(named_))
+        else:
+            named_ = base / "inert.gitconfig"; named_.write_text("[user]\n\tnote = inert\n", encoding="utf-8"); git(root, "config", "include.path", str(named_))
+        shutil.rmtree(base / "gone")
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")), copy=(root / ".git" / fm.COPY_DIR).exists(),
+                  prunable="prunable" in subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout)
+        rm_git(root)
+    return g_
+for kind_, refused_, what_ in (("gone-target", True, "an include whose target lies inside a removed worktree's folder"),
+                               ("gone-own", True, "an include in a removed worktree's own configuration, its target inside a working tree"),
+                               ("outside", False, "an include whose target lies outside every worktree, a removed one beside it")):
+    g_ = _rw(kind_)
+    check(f"FM-006 · every worktree's configuration, removed ones included · {what_}: `--install-hook` "
+          + ("refuses in one line naming it, and writes no hook and no copy" if refused_ else "succeeds, exit 0, the hooks and the copy written")
+          + f" (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:150]!r})",
+          g_["prunable"] and (_wc_refused(g_) if refused_ else g_["code"] == 0 and "pre-commit" in g_["hooks"] and g_["copy"]))
+fm.configure(HERE)
+
+# --- a worktree whose configuration cannot be read (the Owner's ruling of 2026-10-03, v0.19.1): `--install-hook` refuses in one line naming the worktree and
+# why, and writes no hook and no copy
+def _ur(kind):
+    """`--install-hook` from the main worktree, `extensions.worktreeConfig` on, beside a linked worktree `wt` whose own configuration (`config.worktree`, in its
+    git directory) is: `malformed` — an inert malformed file; `malformed-gone` — the same, the worktree's folder removed; `folder` — a folder; `dangling` — a
+    symlink to a file inside the main working tree that is not there."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        git(root, "worktree", "add", "-q", str(base / "wt"), "-b", "wt"); git(root, "config", "extensions.worktreeConfig", "true")
+        own_ = root / ".git/worktrees/wt/config.worktree"
+        if kind.startswith("malformed"):
+            own_.write_text("[user\n\tnote = inert\n", encoding="utf-8")
+        elif kind == "folder":
+            own_.mkdir()
+        else:
+            os.symlink(root / "inert.gitconfig", own_)
+        if kind == "malformed-gone":
+            shutil.rmtree(base / "wt")
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        g_ = dict(code=c_, err=e_.strip(), wt=str(base / "wt"), hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+                  copy=(root / ".git" / fm.COPY_DIR).exists())
+        rm_git(root)
+    return g_
+def _ur_refused(g):
+    return (g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1
+            and os.path.normcase(g["err"]).startswith(os.path.normcase(f"--install-hook: the configuration of the worktree {g['wt']} cannot be read — "))
+            and "config.worktree" in g["err"] and "no hook and no copy is written" in g["err"] and "`git worktree remove`" in g["err"] and "`git worktree prune`" in g["err"]
+            and g["hooks"] == [] and not g["copy"])
+for kind_, what_ in (("malformed", "a worktree's own configuration an inert malformed file"), ("malformed-gone", "the same, the worktree's folder removed"),
+                     ("folder", "a worktree's own configuration a folder"), ("dangling", "a worktree's own configuration a symlink to a file not there")):
+    if kind_ == "dangling" and not _SYMLINKS:
+        _skipped(f"FM-006 · a worktree's configuration that cannot be read · {what_}", 1, "this system makes no symlink here")
+        continue
+    g_ = _ur(kind_)
+    check(f"FM-006 · a worktree's configuration that cannot be read · {what_}: `--install-hook` refuses in one line naming the worktree and why, and writes no hook "
+          f"and no copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _ur_refused(g_))
+fm.configure(HERE)
+
+# --- paths compared as the file system compares them (the Owner's ruling of 2026-10-03, v0.19.1): where the file system ignores case, a path spelled in another
+# case of a working tree's lies inside it, and one spelled in another case of the git directory's lies in that — in the configuration check and in the hooks folder's alike
+def _fs(kind):
+    """`--install-hook` from a scratch repository in the folder `repo`, its git configuration naming that folder `REPO`: `include` — `.git/config` includes an inert
+    file inside the working tree; `include-later` — …a file inside it that is not there yet; `hooks` — `core.hooksPath` is a folder inside it; `hooks-git` —
+    `core.hooksPath` is the git directory's `hooks`. First, in the same temporary folder, whether the file system ignores case there: a folder made in it is
+    found under its name in another case, the same folder."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); (base / "probe").mkdir()
+        if not ((base / "PROBE").exists() and os.path.samefile(base / "probe", base / "PROBE")):
+            return dict(blind=False)
+        root = base / "repo"; root.mkdir(); other_ = base / "REPO"
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "include":
+            (root / "inert.gitconfig").write_text("[user]\n\tnote = inert\n", encoding="utf-8"); named_ = other_ / "inert.gitconfig"; git(root, "config", "include.path", str(named_))
+        elif kind == "include-later":
+            named_ = other_ / "later.gitconfig"; git(root, "config", "include.path", str(named_))
+        else:
+            named_ = other_ / ("githooks" if kind == "hooks" else ".git/hooks"); git(root, "config", "core.hooksPath", str(named_))
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        folder_ = root / "githooks" if kind == "hooks" else root / ".git/hooks"
+        g_ = dict(blind=True, code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)), copy=(root / ".git" / fm.COPY_DIR / "shoalmark.py").is_file(),
+                  hooks=sorted(p_.name for p_ in folder_.iterdir() if not p_.name.endswith(".sample")) if folder_.is_dir() else [])
+        rm_git(root)
+    return g_
+for kind_, what_ in (("include", "an include whose target, there, is spelled in another case of the working tree's path"),
+                     ("include-later", "an include whose target, not there yet, is spelled in another case of the working tree's path"),
+                     ("hooks", "a `core.hooksPath` spelled in another case of the working tree's path"),
+                     ("hooks-git", "a `core.hooksPath` that is the git directory's `hooks`, spelled in another case of the working tree's path")):
+    g_ = _fs(kind_)
+    if not g_["blind"]:
+        _skipped(f"FM-006 · paths compared as the file system compares them · {what_}", 1, "this file system tells case apart here: a folder is not found under its name in another case")
+        continue
+    if kind_ == "hooks-git":
+        check(f"FM-006 · paths compared as the file system compares them · {what_}: `--install-hook` succeeds, exit 0, the hooks written in the git directory and the "
+              f"copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_written(g_))
+        continue
+    check(f"FM-006 · paths compared as the file system compares them · {what_}: `--install-hook` refuses in one line naming it, and writes no hook and no copy "
+          f"(saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_refused(g_) if kind_ == "hooks" else _wc_refused(g_))
+fm.configure(HERE)
+
+# --- paths compared as the file system compares them, Unicode normalization alike (the Owner's ruling of 2026-10-03, v0.19.1): where the file system ignores
+# Unicode normalization, a name spelled in the other normalization is the same name — inside a removed worktree's folder, and in the git directory's path
+_NFC, _NFD = "caf\u00e9", "cafe\u0301"
+def _un(kind):
+    """`--install-hook` where a folder is named in one Unicode normalization (NFC) and the git configuration spells its name in the other (NFD), the setting
+    appended to `.git/config` as text: `gone` — an include whose target lies inside a linked worktree's folder `café-wt`, the worktree since removed;
+    `git-dir` — the repository's folder is `café-repo`, and `core.hooksPath` is its git directory's `hooks`. First, in the same temporary folder, whether the
+    file system ignores Unicode normalization there: a folder made under its NFC name is found under its NFD name, the same folder."""
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); (base / _NFC).mkdir()
+        if not ((base / _NFD).exists() and os.path.samefile(base / _NFC, base / _NFD)):
+            return dict(blind=False)
+        root = base / (_NFC + "-repo" if kind == "git-dir" else "repo"); root.mkdir()
+        git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+        if kind == "gone":
+            git(root, "worktree", "add", "-q", str(base / (_NFC + "-wt")), "-b", "gone"); shutil.rmtree(base / (_NFC + "-wt"))
+            named_ = base / (_NFD + "-wt") / "inert.gitconfig"; line_ = f"[include]\n\tpath = {named_}\n"
+        else:
+            named_ = base / (_NFD + "-repo") / ".git" / "hooks"; line_ = f"[core]\n\thooksPath = {named_}\n"
+        with open(root / ".git" / "config", "a", encoding="utf-8") as f_:
+            f_.write(line_)
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+        g_ = dict(blind=True, code=c_, err=e_.strip(), named=os.path.normcase(os.path.realpath(named_)), copy=(root / ".git" / fm.COPY_DIR / "shoalmark.py").is_file(),
+                  hooks=sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")),
+                  prunable="prunable" in subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout)
+        rm_git(root)
+    return g_
+for kind_, what_ in (("gone", "an include whose target lies inside a removed worktree's folder, its name spelled in the other Unicode normalization"),
+                     ("git-dir", "a `core.hooksPath` that is the git directory's `hooks`, the repository's folder named in the other Unicode normalization")):
+    g_ = _un(kind_)
+    if not g_["blind"]:
+        _skipped(f"FM-006 · paths compared as the file system compares them, Unicode normalization alike · {what_}", 1,
+                 "this file system tells Unicode normalizations apart here: a folder is not found under its name in the other normalization")
+        continue
+    if kind_ == "git-dir":
+        check(f"FM-006 · paths compared as the file system compares them, Unicode normalization alike · {what_}: `--install-hook` succeeds, exit 0, the hooks written "
+              f"in the git directory and the copy (saw exit {g_['code']}, {g_['err'][:200]!r})", _hooks_written(g_))
+        continue
+    check(f"FM-006 · paths compared as the file system compares them, Unicode normalization alike · {what_}: `--install-hook` refuses in one line naming it, and "
+          f"writes no hook and no copy (saw prunable={g_['prunable']}, exit {g_['code']}, {g_['err'][:200]!r})", g_["prunable"] and _wc_refused(g_))
 fm.configure(HERE)
 
 # --- what a run opens and starts, seen from inside it: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process
@@ -4396,6 +4745,117 @@ with tempfile.TemporaryDirectory() as tmp:
             _hung("queue", e_)
 fm.configure(HERE)
 
+# --- FM-006, v0.19.1: the board's page counts a bare date as a LOCAL calendar day ---------------------------------------
+# An ask's age, the fresh badge and a verdict's stale mark are each the difference of two dates in the viewer's zone — as `--owner` and the triage
+# worksheet count them — never elapsed time ÷ 24 h: not from UTC's midnight, and not from the local midnight either (a daylight-saving day has 23 or
+# 25 hours). The zone and the instant are pinned for both sides: the browser by `TZ` and a `Date` that a script ahead of the page's own fixes at the
+# instant, the tool by `TZ`, `time.tzset` and `time.time`, which `date.today()` reads — so the page and the command count at one instant. Five pins,
+# each where the local date is not UTC's or where a clock change lies between the dates: a zone ahead of UTC, one behind, the day after the clock
+# went back, that day's evening (the local date is UTC's again, so only the 25-hour day is wrong), and the day after the clock went forward.
+_DAY_PINS = (("Europe/Berlin", (2026, 10, 3, 22, 30), 7200, "00:30 on the 4th, UTC still the 3rd"),
+             ("America/Los_Angeles", (2026, 10, 4, 3, 0), -25200, "20:00 on the 3rd, UTC already the 4th"),
+             ("Europe/Berlin", (2026, 10, 25, 23, 30), 3600, "00:30 on the 26th, the day after the clock went back"),
+             ("Europe/Berlin", (2026, 10, 26, 22, 30), 3600, "23:30 on the 26th, UTC's date again, the 25-hour day behind"),
+             ("Europe/Berlin", (2027, 3, 28, 22, 30), 7200, "00:30 on the 29th, the day after the clock went forward"))
+
+
+class _ProbeDidNotRun(Exception):
+    """The page's probe set no `data-probe` in Chrome's DOM, or not JSON: nothing was read, so a check fails — it never skips."""
+
+
+def _board_days(zone, at, offset):
+    """The board's days at the UTC instant `at` in `zone`, beside the tool's own count at that instant: {what the page shows, what the command says}, or the
+    reason this machine cannot pin the zone. Four asks three to none local days old, five judged In Progress trackers 0, 6, 7, 8 and 12 local days past
+    their pass; the page's side is read in Chrome — the box's text, the sections the trackers sit in, the viewer's stale mark on each."""
+    import html as _html, json as _json
+    was_tz, was_time = os.environ.get("TZ"), time.time
+    os.environ["TZ"] = zone
+    time.tzset()
+    time.time = lambda: at.timestamp()
+    try:
+        today = datetime.date.today()
+        if time.localtime(at.timestamp()).tm_gmtoff != offset or today != datetime.datetime.fromtimestamp(at.timestamp()).date():
+            return f"{zone} is not installed here, or this Python's clock cannot be pinned (offset {time.localtime(at.timestamp()).tm_gmtoff}, today {today})"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve(); wt = root / "docs/work-tracker"
+            (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+            ago = lambda n: (today - datetime.timedelta(days=n)).isoformat()
+            for n, age in enumerate((3, 2, 1, 0), 1):
+                tracker(root, f"AP-40{n}", extra=f'next: owner\nask: "Question {n}?"\nask-kind: ruling\nask-since: {ago(age)}\nask-proposal: "yes"\n', title=f"ask {n}")
+            judged = {f"AP-41{n}": ago(age) for n, age in enumerate((0, 6, 7, 8, 12), 1)}
+            (wt / "evidence/triage").mkdir(parents=True)
+            for tid, day in judged.items():
+                tracker(root, tid, extra=f"triaged: {day}\ntier: P2\n", title=f"judged {tid}")
+                sheet = wt / f"evidence/triage/triage-{day}.md"
+                sheet.write_text((sheet.read_text(encoding="utf-8") if sheet.exists() else "| Tracker | Verdict | Reason |\n|---|---|---|\n") + f"| [{tid}](../{tid}-x.md) | keep P2 | still right |\n", encoding="utf-8")
+            run(root); fm.configure(root)
+            owner = run(root, "--owner")[1]
+            worksheet = fm.triage_worksheet(fm.load_trackers(), today.isoformat(), lambda path: "2026-01-01")[0]
+            clock = f"<script>{{const F=Date,at={int(at.timestamp() * 1000)};class D extends F{{constructor(...a){{a.length?super(...a):super(at)}}static now(){{return at}}}}window.Date=D}}</script>"
+            probe = ('<script>{const o={zone:Intl.DateTimeFormat().resolvedOptions().timeZone,off:new Date().getTimezoneOffset(),box:$("p").textContent.replace(/\\s+/g," "),sec:{},stale:{}};let g="";'
+                     'for(const r of document.querySelectorAll("#b tr")){if(r.classList.contains("g"))g=r.dataset.k;else{const a=r.querySelector("a");if(a)(o.sec[a.textContent]=o.sec[a.textContent]||[]).push(g)}}'
+                     'for(const t of T){MD.set(t[0],"");view(t[0]);o.stale[t[0]]=$("v").textContent.includes("it counts as untriaged again")}'
+                     'document.body.dataset.probe=JSON.stringify(o)}</script>')
+            (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace('<meta charset="utf-8">', '<meta charset="utf-8">' + clock, 1)
+                                           .replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+            dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
+            got = re.search(r'data-probe="([^"]*)"', dom)
+            try:
+                seen = _json.loads(_html.unescape(got.group(1))) if got else None
+            except ValueError:
+                seen = None
+            if not isinstance(seen, dict) or not seen:
+                raise _ProbeDidNotRun(f"{zone} at {at:%Y-%m-%d %H:%M}Z")
+        if seen.get("off") != -offset // 60:
+            return f"this Chrome does not take TZ={zone} (it reads {seen.get('zone')!r}, offset {seen.get('off')})"
+        box = seen["box"]
+        first = lambda rx, text: (lambda m: int(m.group(1)) if m else None)(re.search(rx, text))
+        return {"owner": {tid: int(n) for tid, n in re.findall(r"^(AP-\d+) · ruling · asked (\d+) day\(s\) ago", owner, re.M)}, "owner_oldest": first(r"oldest (\d+) day\(s\)", owner),
+                "box": {tid: int(n) for tid, n in re.findall(r"\b(AP-\d+) Question \d\? · a ruling · (\d+) days", box)}, "box_oldest": first(r"oldest (\d+) days", box),
+                "judged": set(judged), "worksheet": set(re.findall(r"^\| \[(AP-\d+)\]", worksheet, re.M)) & set(judged),
+                "triage": {tid for tid, secs in seen["sec"].items() if "boardtriage" in secs} & set(judged), "stale": {tid for tid, v in seen["stale"].items() if v} & set(judged)}
+    finally:
+        time.time = was_time
+        if was_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = was_tz
+        time.tzset()
+        fm.configure(HERE)
+
+
+if _browser("days"):
+    if not hasattr(time, "tzset"):
+        skip("days", "this platform cannot pin a process's zone (no time.tzset)")
+    else:
+        try:
+            days_, why_, broke_ = [], "", ""
+            for zone_, (y_, mo_, d_, h_, mi_), offset_, what_ in _DAY_PINS:
+                try:
+                    read_ = _board_days(zone_, datetime.datetime(y_, mo_, d_, h_, mi_, tzinfo=datetime.timezone.utc), offset_)
+                except _ProbeDidNotRun:
+                    broke_ = f"the page's probe did not run in {zone_}, {what_}"
+                    break
+                if isinstance(read_, str):
+                    why_ = read_
+                    break
+                days_.append((f"{zone_}, {what_}", read_))
+            if why_:
+                skip("days", why_)
+            else:
+                check("FM-006 · v0.19.1 · the board's page counts an ask's age in local calendar days, as `--owner` does — the box's oldest and each ask's own, in a zone ahead of UTC, one behind, "
+                      f"and either side of a clock change (saw {broke_ or [(w_, r_['owner'], r_['box'], r_['owner_oldest'], r_['box_oldest']) for w_, r_ in days_ if r_['owner'] != r_['box'] or r_['owner_oldest'] != r_['box_oldest']]})",
+                      not broke_ and len(days_) == len(_DAY_PINS) and all(len(r_["owner"]) == 4 and r_["owner"] == r_["box"] and r_["owner_oldest"] == r_["box_oldest"] == max(r_["owner"].values()) for _w, r_ in days_))
+                check("FM-006 · v0.19.1 · the board's page calls a judgement fresh through its seventh local calendar day, as the triage worksheet does — a judged tracker sits under *triage* "
+                      f"exactly when the worksheet lists it, in each zone and across a clock change (saw {broke_ or [(w_, r_['worksheet'], r_['triage']) for w_, r_ in days_ if r_['worksheet'] != r_['triage']]})",
+                      not broke_ and len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["triage"] and r_["worksheet"] and r_["worksheet"] != r_["judged"] for _w, r_ in days_))
+                check("FM-006 · v0.19.1 · the viewer marks a verdict stale from its eighth local calendar day on — exactly when the triage worksheet lists the tracker again, in each zone "
+                      f"and across a clock change (saw {broke_ or [(w_, r_['worksheet'], r_['stale']) for w_, r_ in days_ if r_['worksheet'] != r_['stale']]})",
+                      not broke_ and len(days_) == len(_DAY_PINS) and all(r_["worksheet"] == r_["stale"] and r_["worksheet"] for _w, r_ in days_))
+        except _ChromeFailed as e_:
+            _hung("days", e_)
+fm.configure(HERE)
+
 # --- FM-007: an ask offers CHOICES — one radio each, the recommended one first, Other last -------------------------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()
@@ -4512,7 +4972,7 @@ with tempfile.TemporaryDirectory() as tmp:
     tracker(root, "AP-071", extra="next: build\n", title="asks nothing")
     for id_, q_ in (("AP-072", "Move the merge?"), ("AP-073", "Move the release?")):
         tracker(root, id_, extra=f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {old}\nask-proposal: "wait a week"\n', title="another ask")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=seat <s@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/070")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "--author=seat <s@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/070")
     code, _, err = run(root, "--answer", "AP-071", "accept")
     check("--answer refuses a tracker that asks the Owner nothing", code == fm.EXIT_LINT and "asks the Owner nothing" in err)
     code, _, err = run(root, "--answer", "AP-070", "reject")
@@ -4858,7 +5318,7 @@ with tempfile.TemporaryDirectory() as tmp:
         p_.unlink()
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     tracker(root, "AP-401", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
     code, out, err = run(root, "--answer", "AP-401", "accept")
     sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %ae"], capture_output=True, text=True, env=_ENV).stdout.strip()
     check("`--answer` reads the same list: the owner seat answers on a repository that has no `answerers` at all — signed, and the gate it just wrote for accepts it",
@@ -4948,10 +5408,10 @@ with tempfile.TemporaryDirectory() as tmp:
     # and a backslash before an ordinary character is undefined in ERE — one platform reads a literal, another need not
     fm.configure(root)
     sent_ = [c for c in argv_of(lambda: fm.line_author(t_, "next: owner")) if "-G" in c]
-    check("the pattern handed to git is the plain anchored key — `^next: owner`, the space unescaped — and the keys that carry a hyphen are plain too: an ERE escape of an ordinary character is undefined, and the gate must answer the same on every platform's regex engine",
-          len(sent_) == 1 and sent_[0][sent_[0].index("-G") + 1] == "^next: owner" and "--full-history" in sent_[0]
+    check("the pattern handed to git is the plain anchored line the parser keeps — `^next: owner`, the space unescaped, to the line's end — and the keys that carry a hyphen are plain too: an ERE escape of an ordinary character is undefined, and the gate must answer the same on every platform's regex engine",
+          len(sent_) == 1 and sent_[0][sent_[0].index("-G") + 1] == "^next: owner\r?$" and "--full-history" in sent_[0]
           and fm.line_regex("answer:") == "^answer:" and fm.line_regex("kind-of-problem:") == "^kind-of-problem:"
-          and fm.line_regex("a.b[c]:") == "^a\\.b\\[c\\]:")
+          and fm.line_regex("a.b[c]:") == "^a\\.b\\[c\\]:" and fm.exact_line_regex("kind-of-problem: a.b[c]") == "^kind-of-problem: a\\.b\\[c\\]\r?$")
     rm_git(root)
 fm.configure(HERE)
 
@@ -5131,7 +5591,7 @@ with tempfile.TemporaryDirectory() as tmp:
     tracker(root, "AP-900", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n', title="an ask")
     tracker(root, "AP-901", title="to close")
     (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")      # as the hook writes it
     trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     sha_ = lambda rev="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev], capture_output=True, text=True, env=_ENV).stdout.strip()
     move_ = lambda text: ((root / "notes.txt").write_text(text, encoding="utf-8"), git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>"))
@@ -5161,6 +5621,444 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = run(root, "--check")
     check("FM-019 · (e) a merge brings an UNSIGNED answer under the signed owner's identity — refused, and the refusal names that commit, not the merge",
           code == fm.EXIT_LINT and f"the commit `{e_[:10]}` making a `answer` change does not verify as the seat `owner`" in err and sha_()[:10] not in err)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: a merge a merge brings is judged by its own result — nested at any depth, against each of its parents, under its own author ---
+# The Owner's ruling of 2026-10-03: every merge's own result is judged against each parent under that merge's author, nested merges included.
+with tempfile.TemporaryDirectory() as tmp:
+    baseN_ = Path(tmp).resolve(); root = baseN_ / "r"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    seatsN_ = lambda p_: f'name = "n"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "{p_}"\nimplementer = "implementer@seat"\n'
+    (root / "shoalmark.toml").write_text(seatsN_("principal@seat"), encoding="utf-8")
+    for n_ in range(701, 711):
+        tracker(root, f"AP-{n_}", title="worked on")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=p <principal@seat>")
+    trunkN_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    shaN_ = lambda rev="HEAD": subprocess.run(["git", "-C", str(root), "rev-parse", rev], capture_output=True, text=True, env=_ENV).stdout.strip()
+    t0N_, sidesN_ = shaN_(), []
+    editN_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
+    closeN_ = lambda n_: lambda: editN_(n_, "status: In Progress", "status: Closed")
+    tierN_ = lambda n_: lambda: editN_(n_, "considered: none\n", "considered: none\ntier: P1\n")
+    askN_ = lambda n_: lambda: editN_(n_, "considered: none\n", f'considered: none\nnext: owner\nask: "Shall it ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n')
+    forgeN_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
+                                        env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+
+    def nestedN_(own_, by_, key_=None, top_=True):
+        """On the branch checked out: a side branch merged into it whose result `own_` edits — the merge's own change; a clean merge where `own_`
+        is None — committed by `by_` (SSH-signed with `key_`), then, where `top_`, an ordinary commit on top. Returns the merge's commit."""
+        here_, side_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(), f"side-{len(sidesN_)}"
+        sidesN_.append(side_); git(root, "switch", "-q", "-c", side_)
+        (root / f"{side_}.txt").write_text("on the side\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "on the side", "--author=p <principal@seat>")
+        git(root, "switch", "-q", here_); git(root, "merge", "-q", "--no-ff", "--no-commit", side_)
+        if own_:
+            own_(); run(root); git(root, "add", "-A")
+        git(root, *(["-c", f"user.signingkey={key_}"] if key_ else []), "commit", "-q", *(["-S"] if key_ else []), "-m", f"merge {side_}", f"--author={by_}")
+        merge_ = shaN_()
+        if top_:
+            (root / f"{side_}-top.txt").write_text("on top\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "an ordinary commit on top", "--author=p <principal@seat>")
+        return merge_
+
+    def outerN_(br_):
+        """The trunk moves on, and the forge's identity — no seat — merges `br_` into it; `--check` reads that merge. The trunk is put back after."""
+        git(root, "switch", "-q", trunkN_); (root / "notes.txt").write_text(f"trunk, before {br_}\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+        mg_ = forgeN_("merge", "--no-ff", "-q", br_, "-m", f"Merge pull request from {br_}")
+        code_, out_, err_ = run(root, "--check")
+        git(root, "reset", "-q", "--hard", t0N_)
+        return (code_ if mg_.returncode == 0 else -1), out_, err_
+
+    for key_, own_, id_, right_ in (("close", closeN_(701), "AP-701", "close"), ("triage", tierN_(702), "AP-702", "triage"), ("ask", askN_(707), "AP-707", "ask")):
+        git(root, "switch", "-q", "-c", f"pr/{key_}", t0N_); n_ = nestedN_(own_, "i <implementer@seat>")
+        code, _, err = outerN_(f"pr/{key_}")
+        check(f"FM-006 · v0.19.1 · case {key_}: a nested merge's own `{right_}` by a seat without `{right_}`, an ordinary commit on top of it, then an outer merge by the forge — "
+              f"`--check` at the outer merge refuses it, exit 4, naming the nested merge's commit (saw {code})",
+              code == fm.EXIT_LINT and f"{id_}: in `{n_[:10]}` (implementer@seat), which the merge brings — this change is a `{right_}` — "
+                                       f"`implementer@seat` is the seat `implementer`, which does not hold `{right_}`" in err)
+    # the merge at HEAD sets `next: owner` of its own, which no parent carries: the line's reader never names a merge, and the merge's change is read
+    git(root, "switch", "-q", trunkN_); head_ = nestedN_(askN_(708), "i <implementer@seat>", top_=False)
+    code, _, err = run(root, "--check"); git(root, "reset", "-q", "--hard", t0N_)
+    check(f"FM-006 · v0.19.1 · a merge at HEAD whose own result sets `next: owner`, by a seat without `ask` — `--check` refuses it as that merge's `ask`, exit 4 (saw {code})",
+          code == fm.EXIT_LINT and "AP-708: this change is a `ask` — `implementer@seat` is the seat `implementer`, which does not hold `ask`" in err and head_[:10] not in err)
+    # three nested merges, one outer merge: a clean one by the implementer, one whose own close is the principal's, one whose own close is the implementer's
+    git(root, "switch", "-q", "-c", "pr/three", t0N_)
+    clean_, holder_, bad_ = nestedN_(None, "i <implementer@seat>"), nestedN_(closeN_(703), "p <principal@seat>"), nestedN_(closeN_(704), "i <implementer@seat>")
+    code, _, err = outerN_("pr/three")
+    said_ = [l_ for l_ in err.splitlines() if "which the merge brings" in l_]
+    check(f"FM-006 · v0.19.1 · a clean nested merge adds no refusal — of three nested merges one outer merge brings, only the one whose own `close` is a seat's without `close` is refused (saw {code}, {len(said_)})",
+          code == fm.EXIT_LINT and len(said_) == 1 and f"AP-704: in `{bad_[:10]}`" in said_[0] and clean_[:10] not in err)
+    check(f"FM-006 · v0.19.1 · a nested merge whose own `close` is a seat's that holds `close` passes — of three nested merges one outer merge brings, only the one whose own `close` is a seat's without `close` is refused (saw {code}, {len(said_)})",
+          code == fm.EXIT_LINT and len(said_) == 1 and f"AP-704: in `{bad_[:10]}`" in said_[0] and holder_[:10] not in err and "AP-703" not in err)
+    # the merge being committed now: `MERGE_HEAD` brings a nested merge, and the commit-time run reads it
+    git(root, "switch", "-q", "-c", "pr/now", t0N_); now_ = nestedN_(closeN_(706), "i <implementer@seat>")
+    git(root, "switch", "-q", trunkN_); (root / "notes.txt").write_text("trunk, before pr/now\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+    git(root, "merge", "-q", "--no-ff", "--no-commit", "pr/now"); git(root, "add", "-A")
+    code, _, err = run(root, "--print-written")
+    git(root, "reset", "-q", "--hard", t0N_)                                                  # the merge left unmade, and the trunk put back
+    check(f"FM-006 · v0.19.1 · the merge being committed now (`MERGE_HEAD`) brings a nested merge whose own `close` is a seat's without `close` — the commit-time run refuses it, exit 4, naming that merge's commit (saw {code})",
+          code == fm.EXIT_LINT and f"AP-706: in `{now_[:10]}` (implementer@seat), which the merge brings — this change is a `close`" in err)
+    # `signed`: the nested merge's own change is verified against that merge's own signature
+    keyN_ = baseN_ / "k"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(keyN_)], check=True, capture_output=True)
+    (baseN_ / "signers").write_text("principal@seat " + keyN_.with_suffix(".pub").read_text(), encoding="utf-8")
+    git(root, "config", "gpg.format", "ssh"); git(root, "config", "gpg.ssh.allowedSignersFile", str(baseN_ / "signers"))
+    (root / "shoalmark.toml").write_text(seatsN_("principal@seat signed"), encoding="utf-8"); git(root, "commit", "-qam", "the principal signs", "--author=p <principal@seat>"); t0N_ = shaN_()
+    git(root, "switch", "-q", "-c", "pr/unsigned", t0N_); uns_ = nestedN_(closeN_(705), "p <principal@seat>")
+    code_u, _, err_u = outerN_("pr/unsigned")
+    git(root, "switch", "-q", "-c", "pr/signed", t0N_); sig_ = nestedN_(closeN_(705), "p <principal@seat>", keyN_)
+    code_s, _, err_s = outerN_("pr/signed")
+    check(f"FM-006 · v0.19.1 · under `signed`, a nested merge's own `close` by the signed seat, unsigned, is refused, naming that merge's commit — the same merge signed by the key the signers file holds for the seat passes (saw {code_u}, {code_s})",
+          code_u == fm.EXIT_LINT and f"AP-705: the commit `{uns_[:10]}` making a `close` change does not verify as the seat `principal`" in err_u
+          and code_s == 0 and "does not verify" not in err_s and sig_[:10] not in err_s)
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: each line a right is judged on is the one the parser keeps — its key's case folded, the last of its kind — on git ------
+# The Owner's ruling of 2026-10-04: each guarded line is found exactly as the parser keeps it — last occurrence, any case.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "k"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    askK_ = f'ask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n'
+    tracker(root, "AP-950", extra=askK_ + "next: review\n", title="sent back"); tracker(root, "AP-951", extra=askK_ + "next: owner\n", title="asked")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    editK_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_, 1), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
+    editK_(951, "next: owner\n", 'answer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n')
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-951: accepted", "--author=holgo <h@x>")
+    asK_ = lambda who_, *a: (git(root, "config", "user.email", who_), run(root, *a))[1]            # a run of the tool by `who_`
+    # the implementer, which holds neither `answer` nor `ask`: a second `Answer:` under the Owner's `answer:`, and `Next: owner` capitalised
+    editK_(951, "answered-by: holgo\n", 'answered-by: holgo\nAnswer: "rejected - no"\n'); editK_(950, "next: review", "Next: owner")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the implementer's change", "--author=i <implementer@seat>")
+    git(root, "commit", "-q", "--allow-empty", "-m", "a later commit", "--author=p <principal@seat>")
+    by_p_, by_i_ = asK_("principal@seat", "--check"), asK_("implementer@seat", "--check")
+    check(f"FM-006 · v0.19.1 · a second `Answer:` under the Owner's committed `answer:`, by a seat without `answer`, under a later commit: refused, whoever runs `--check` (saw {by_p_[0]}, {by_i_[0]})",
+          all(c_ == fm.EXIT_LINT and "AP-951: " in e_ and "`implementer@seat` is the seat `implementer`, which does not hold `answer`" in e_ for c_, _o, e_ in (by_p_, by_i_)))
+    check(f"FM-006 · v0.19.1 · `Next: owner`, capitalised, by a seat without `ask`, with `--check` run by a seat that holds `ask`: refused (saw {by_p_[0]})",
+          by_p_[0] == fm.EXIT_LINT and any("`next: owner` puts a question in front of the Owner" in l_ and "`implementer@seat` is the seat `implementer`, which does not hold `ask`" in l_
+                                           for l_ in by_p_[2].splitlines() if "AP-950" in l_ or "puts a question" in l_))
+    # …and the seats that hold the rights, each line written once and in lower case: the Owner's answer and the principal's ask pass
+    git(root, "reset", "-q", "--hard", "HEAD~2"); git(root, "config", "user.email", "principal@seat"); editK_(950, "next: review", "next: owner")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-950: asked again", "--author=p <principal@seat>")     # as the hook runs it
+    ok_ = asK_("implementer@seat", "--check")
+    check(f"FM-006 · v0.19.1 · the lines written once and in lower case by the seats that hold the rights — the Owner's answer, the principal's `next: owner` — pass, whoever runs `--check` (saw {ok_[0]}, {ok_[2].strip()[-200:]!r})",
+          ok_[0] == 0 and not any(("AP-950" in l_ or "AP-951" in l_) and "note:" not in l_ for l_ in ok_[2].splitlines()))
+    # a line no commit can be named for is refused — never judged as whoever runs the gate; only the hook that makes the commit judges it before
+    editK_(950, "next: owner", "next: review"); git(root, "config", "user.email", "principal@seat"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-950 sent back", "--author=p <principal@seat>")
+    editK_(950, "next: review", "next: owner"); git(root, "add", "-A")                 # the implementer's ask, staged and not committed
+    l3_check_ = asK_("principal@seat", "--check")
+    l3_hook_p_, l3_hook_i_ = asK_("principal@seat", "--print-written"), asK_("implementer@seat", "--print-written")
+    check(f"FM-006 · v0.19.1 · a `next: owner` not committed yet is refused by `--check`, even run by a seat that holds `ask` — never judged as whoever runs it (saw {l3_check_[0]})",
+          l3_check_[0] == fm.EXIT_LINT and "AP-950: `next: owner` is not committed yet" in l3_check_[2])
+    l3_said_ = [l_.strip() for l_ in l3_check_[2].splitlines() if "AP-950" in l_]
+    check(f"FM-006 · v0.19.1 · on git the line for a `next: owner` not committed yet names the tracker once, word for word (saw {l3_said_!r})",
+          l3_said_ == ["lint: AP-950: `next: owner` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes that commit "
+                       "judges it before: commit it, then run again"])
+    check(f"FM-006 · v0.19.1 · the hook judges the commit being made by its author: the pre-commit run passes the principal's staged ask and refuses the implementer's (saw {l3_hook_p_[0]}, {l3_hook_i_[0]})",
+          l3_hook_p_[0] == 0 and l3_hook_i_[0] == fm.EXIT_LINT and "`implementer@seat` is the seat `implementer`, which does not hold `ask`" in l3_hook_i_[2])
+    git(root, "commit", "-qm", "AP-950 asked", "--author=i <implementer@seat>")
+    real_run_ = subprocess.run                       # git names no commit for a line a commit carries: a `-G` search that answers nothing
+    subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "", "") if a and list(a[0])[:2] == ["git", "log"] and "-G" in list(a[0]) else real_run_(*a, **k)
+    try:
+        l3_none_ = asK_("principal@seat", "--check")
+    finally:
+        subprocess.run = real_run_
+    check(f"FM-006 · v0.19.1 · a guarded line a commit carries and git names no commit for is refused, never judged as whoever runs `--check` (saw {l3_none_[0]})",
+          l3_none_[0] == fm.EXIT_LINT and "AP-950: `next: owner` — version control names no commit for this line" in l3_none_[2])
+    # LAYER 2: a key a right is judged on is read from one line, in lower case — any other key may repeat or carry capitals
+    editK_(950, "next: owner", "next: review"); git(root, "config", "user.email", "principal@seat")
+    tracker(root, "AP-960", extra="status: In Progress\n", title="a status twice"); tracker(root, "AP-961", extra="Next: review\n", title="a key in capitals")
+    tracker(root, "AP-962", extra='Hook: "an earlier hook"\nask-kind: ruling\nAsk-Kind: action\n', title="other keys, twice and in capitals")
+    git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    l2_ = asK_("principal@seat", "--check")
+    l2_lines_ = lambda id_: [l_.strip().removeprefix("lint: ") for l_ in l2_[2].splitlines() if f"{id_}:" in l_]
+    check(f"FM-006 · v0.19.1 · a front matter that repeats a key a right is judged on, and one that spells it in capitals, are each refused by `--check` in one line naming the key, its lines and the way through (saw {l2_[0]}, {l2_lines_('AP-960')}, {l2_lines_('AP-961')})",
+          l2_[0] == fm.EXIT_LINT
+          and l2_lines_("AP-960") == ["AP-960: the front matter carries `status:` on lines 3 and 5 — a key a right is judged on is read from one line: write one `status:` line, in lower case"]
+          and l2_lines_("AP-961") == ["AP-961: the front matter carries `next:` on line 5, spelled `Next:` — a key a right is judged on is read from one line: write one `next:` line, in lower case"])
+    check(f"FM-006 · v0.19.1 · a front matter whose repeated or capitalised keys are none a right is judged on passes (saw {l2_lines_('AP-962')})",
+          l2_lines_("AP-962") == [])
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: the commit being made is judged as staged, and every commit of a branch since the default branch is judged where `--check` runs ---
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in (970, 972, 973):
+        tracker(root, f"AP-{n_}", title="open")
+    for n_ in (971, 974):
+        tracker(root, f"AP-{n_}", extra="kind-of-problem: complicated\ntier: P2\n", title="triaged")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    trunkS_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "remote", "add", "origin", str(base / "origin.git")); git(root, "push", "-q", "origin", trunkS_); git(root, "remote", "set-head", "origin", trunkS_)
+    shaS_ = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    pS_ = lambda n_: next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md"))
+    # part a: a close and a tier change staged, the working tree put back — committed through the installed hooks
+    run(root, "--install-hook"); git(root, "switch", "-q", "-c", "fm/970-work")
+    def stagedS_(who_, close_, tier_):
+        """`close_` closed and `tier_`'s tier moved to P0 in the index, the working tree put back; then the pre-commit run and `git commit`, as `who_`."""
+        for n_, a_, b_ in ((close_, "status: In Progress", "status: Closed"), (tier_, "tier: P2", "tier: P0")):
+            kept_ = pS_(n_).read_text(); pS_(n_).write_text(kept_.replace(a_, b_), encoding="utf-8"); git(root, "add", str(pS_(n_))); pS_(n_).write_text(kept_, encoding="utf-8")
+        git(root, "config", "user.email", who_); before_ = shaS_()
+        pre_ = run(root, "--print-written")
+        made_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", f"AP-{close_}: the work"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               env=dict(_ENV, GIT_AUTHOR_NAME=who_, GIT_AUTHOR_EMAIL=who_, GIT_COMMITTER_NAME=who_, GIT_COMMITTER_EMAIL=who_))
+        return pre_, made_, shaS_() != before_
+    pre_i_, made_i_, did_i_ = stagedS_("implementer@seat", 970, 971)
+    check(f"FM-006 · v0.19.1 · the pre-commit run judges each tracker as the commit holds it: a close and a tier change by a seat without `close` and `triage` are refused, exit 4, and through the installed hooks no commit is made (saw {pre_i_[0]}, {made_i_.returncode}, {did_i_})",
+          pre_i_[0] == fm.EXIT_LINT and "AP-970: this change is a `close`" in pre_i_[2] and "AP-971: this change is a `triage`" in pre_i_[2] and made_i_.returncode != 0 and not did_i_)
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}")                 # the branch as it began, whatever the case before made
+    pre_p_, made_p_, did_p_ = stagedS_("principal@seat", 970, 971)
+    check(f"FM-006 · v0.19.1 · the same, staged by the seat that holds `close` and `triage`, passes the pre-commit run and is committed (saw {pre_p_[0]}, {made_p_.returncode}, {did_p_})",
+          pre_p_[0] == 0 and made_p_.returncode == 0 and did_p_)
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}")
+    kept_ = pS_(974).read_text(); pS_(974).write_text(kept_.replace("status: In Progress", "status: Closed"), encoding="utf-8"); git(root, "add", str(pS_(974)))
+    gone_ = pS_(974); gone_.unlink(); git(root, "config", "user.email", "implementer@seat"); before_ = shaS_()      # staged, and the working tree's file deleted
+    pre_g_ = run(root, "--print-written")
+    made_g_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-q", "-m", "AP-974: the work"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             env=dict(_ENV, GIT_AUTHOR_NAME="implementer@seat", GIT_AUTHOR_EMAIL="implementer@seat", GIT_COMMITTER_NAME="implementer@seat", GIT_COMMITTER_EMAIL="implementer@seat"))
+    check(f"FM-006 · v0.19.1 · the pre-commit run judges a tracker the commit carries and the working tree lacks as the commit holds it: a close by a seat without `close` is refused, exit 4, and no commit is made (saw {pre_g_[0]}, {made_g_.returncode})",
+          pre_g_[0] == fm.EXIT_LINT and "AP-974: this change is a `close`" in pre_g_[2] and made_g_.returncode != 0 and shaS_() == before_)
+    git(root, "reset", "-q", "--hard", f"origin/{trunkS_}"); git(root, "config", "user.email", "principal@seat")
+    (root / ".git/hooks/pre-commit").unlink(); (root / ".git/hooks/commit-msg").unlink()
+    # part b: a close made past the hooks, under a later commit — `--check` from a clean checkout reads every commit of the branch since the default branch
+    git(root, "switch", "-q", "-c", "fm/972-work", f"origin/{trunkS_}")
+    pS_(972).write_text(pS_(972).read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); run(root); git(root, "add", "-A")
+    git(root, "commit", "-qm", "AP-972: closed", "--author=i <implementer@seat>"); hidden_ = shaS_()
+    (root / "later.txt").write_text("a later commit\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+    b_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · a close by a seat without `close`, under a later commit: `--check` from a clean checkout refuses it, exit 4, naming that commit (saw {b_[0]})",
+          b_[0] == fm.EXIT_LINT and f"AP-972: in `{hidden_[:10]}` (implementer@seat), on this branch since origin/{trunkS_} — this change is a `close`" in b_[2])
+    git(root, "tag", f"origin/{trunkS_}", "HEAD"); git(root, "push", "-q", "origin", f"refs/tags/origin/{trunkS_}"); git(root, "tag", "-d", f"origin/{trunkS_}")
+    git(root, "fetch", "-q", "origin", f"refs/tags/origin/{trunkS_}:refs/tags/origin/{trunkS_}"); git(root, "tag", trunkS_, "HEAD")      # a pushed tag named as the default branch, fetched as a clone fetches it, and one named as the trunk, at the branch's tip
+    tagged_ = run(root, "--check")
+
+    def trunksS_():
+        """The commits the trunk (`trunk_ref`) and the default branch (`default_trunk`) resolve to, read in process, and the real default branch's."""
+        saved_ = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+        try:
+            fm.configure(root)
+            at_ = lambda ref: fm.git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}") if ref else None
+            return [at_(fm.trunk_ref()), at_(fm.default_trunk(lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV)))], at_(f"refs/remotes/origin/{trunkS_}")
+        finally:
+            os.environ.update(saved_); fm.configure(HERE)
+    reads_, real_ = trunksS_()
+    git(root, "tag", "-d", f"origin/{trunkS_}"); git(root, "tag", "-d", trunkS_); git(root, "push", "-q", "origin", f":refs/tags/origin/{trunkS_}")
+    check(f"FM-006 · v0.19.1 · with a pushed tag named `origin/{trunkS_}` and a tag named `{trunkS_}` at the branch's tip, the trunk and the default branch are read as the real branch, and the same close under a later commit is still refused (saw {tagged_[0]}, {reads_ == [real_, real_]})",
+          tagged_[0] == fm.EXIT_LINT and f"AP-972: in `{hidden_[:10]}` (implementer@seat), on this branch since origin/{trunkS_} — this change is a `close`" in tagged_[2]
+          and real_ is not None and reads_ == [real_, real_])
+    git(root, "switch", "-q", "-c", "fm/973-work", f"origin/{trunkS_}")
+    pS_(973).write_text(pS_(973).read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8"); run(root); git(root, "add", "-A")
+    git(root, "commit", "-qm", "AP-973: closed", "--author=p <principal@seat>"); (root / "later.txt").write_text("later\n", encoding="utf-8"); git(root, "add", "-A")
+    git(root, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+    ok_b_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · the same close by the seat that holds `close`, under a later commit, passes `--check` from a clean checkout (saw {ok_b_[0]}, {ok_b_[2].strip()[-200:]!r})",
+          ok_b_[0] == 0 and "AP-973" not in ok_b_[2])
+    git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/gone")       # `origin/HEAD` names a branch this clone does not hold
+    dangling_ = run(root, "--check"); git(root, "remote", "set-head", "origin", trunkS_)
+    walked_ = [l_.strip() for l_ in dangling_[2].splitlines() if "the branch's commits could not be read" in l_]
+    check(f"FM-006 · v0.19.1 · where `origin/HEAD` names a branch this clone lacks, `--check` refuses in one line: the branch's commits could not be read (saw {dangling_[0]}, {walked_!r})",
+          dangling_[0] == fm.EXIT_LINT and len(walked_) == 1 and walked_[0].startswith("lint: the branch's commits could not be read — git could not walk them since `origin/gone`"))
+    rm_git(root)
+    # where no default branch is found — no `origin` at all, or one with no `HEAD`, `main` or `master` — the newest commit alone is judged, and `--check` says so in one line
+    nodef_ = "the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged"
+    for case_ in ("no origin", "an origin with no default branch"):
+        r_ = base / case_.replace(" ", "-"); r_.mkdir(); subprocess.run(["git", "init", "-q", str(r_)], check=True, env=_ENV)
+        for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+            git(r_, "config", k_, v_)
+        (r_ / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8") if (root / "shoalmark.toml").exists() else
+                                           'name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+        tracker(r_, "AP-975", title="open"); run(r_); git(r_, "add", "-A"); git(r_, "commit", "-qm", "filed", "--author=p <principal@seat>")
+        if case_ == "an origin with no default branch":
+            subprocess.run(["git", "init", "-q", "--bare", str(base / "other.git")], check=True, env=_ENV); git(r_, "remote", "add", "origin", str(base / "other.git"))
+            git(r_, "push", "-q", "origin", "HEAD:dev"); git(r_, "fetch", "-q", "origin")
+        p_ = next((r_ / "docs/work-tracker").glob("AP-975-*.md")); p_.write_text(p_.read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8")
+        run(r_); git(r_, "add", "-A"); git(r_, "commit", "-qm", "AP-975: closed", "--author=i <implementer@seat>")
+        (r_ / "later.txt").write_text("later\n", encoding="utf-8"); git(r_, "add", "-A"); git(r_, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+        nd_ = run(r_, "--check")
+        check(f"FM-006 · v0.19.1 · with {case_}, `--check` judges the newest commit alone — the close under it passes as before — and says so in one line (saw {nd_[0]})",
+              nd_[0] == 0 and "AP-975" not in nd_[2] and [l_ for l_ in nd_[1].splitlines() if l_.startswith("the branch's commits:")] == [nodef_])
+        rm_git(r_)
+    # where this clone has no `origin/HEAD`, `--check` asks origin which branch is its default — never a name a seat can push
+    m_ = base / "m-work"; m_.mkdir(); subprocess.run(["git", "init", "-q", "--bare", "-b", "master", str(base / "m.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", "-b", "master", str(m_)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(m_, "config", k_, v_)
+    (m_ / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8") if (root / "shoalmark.toml").exists() else
+                                       'name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    tracker(m_, "AP-976", title="open"); run(m_); git(m_, "add", "-A"); git(m_, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    git(m_, "remote", "add", "origin", str(base / "m.git")); git(m_, "push", "-q", "origin", "master"); git(m_, "switch", "-q", "-c", "fm/976-work")
+    p_ = next((m_ / "docs/work-tracker").glob("AP-976-*.md")); p_.write_text(p_.read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8")
+    run(m_); git(m_, "add", "-A"); git(m_, "commit", "-qm", "AP-976: closed", "--author=i <implementer@seat>"); hid_m_ = subprocess.run(["git", "-C", str(m_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    (m_ / "later.txt").write_text("later\n", encoding="utf-8"); git(m_, "add", "-A"); git(m_, "commit", "-qm", "a later commit", "--author=i <implementer@seat>")
+    git(m_, "push", "-q", "origin", "fm/976-work"); git(m_, "push", "-q", "origin", "fm/976-work:refs/heads/main")      # the branch's tip, pushed as `main` too
+    def cloneM_(name_, *how_):
+        """A clone of the origin at the branch's tip, detached, its `origin/HEAD` removed — as a CI checkout has none."""
+        c_ = base / name_; subprocess.run(["git", "clone", "-q", *how_, str(base / "m.git"), str(c_)], check=True, env=_ENV)
+        git(c_, "switch", "-q", "--detach", "origin/fm/976-work"); subprocess.run(["git", "-C", str(c_), "symbolic-ref", "-d", "refs/remotes/origin/HEAD"], capture_output=True, env=_ENV)
+        return c_
+    def askedM_(c_):
+        """`--check` in `c_`, and the `git ls-remote` calls it made."""
+        seen_, real_ = [], subprocess.Popen
+        class counted_(real_):
+            def __init__(self, *a, **k):
+                seen_.append(list(a[0] if a else k.get("args", []))[:2])
+                super().__init__(*a, **k)
+        subprocess.Popen = counted_
+        try:
+            got_ = run(c_, "--check")
+        finally:
+            subprocess.Popen = real_
+        return got_, seen_.count(["git", "ls-remote"])
+    mc_ = cloneM_("m-ci"); asked_, ls_ = askedM_(mc_)
+    check(f"FM-006 · v0.19.1 · in a repository whose default branch is `master`, a clone with no `origin/HEAD` and the branch's tip pushed as `main` asks origin once, and the close under a later commit is refused (saw {asked_[0]}, {ls_})",
+          asked_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in asked_[2] and ls_ == 1)
+    git(mc_, "remote", "set-url", "origin", str(base / "nowhere.git")); untold_, _l = askedM_(mc_)
+    told_ = [l_.strip() for l_ in untold_[2].splitlines() if "the default branch cannot be told" in l_]
+    check(f"FM-006 · v0.19.1 · with no `origin/HEAD`, an `origin/main` here and an origin that cannot be read, `--check` refuses in one line: the default branch cannot be told (saw {untold_[0]}, {told_!r})",
+          untold_[0] == fm.EXIT_LINT and told_ == ["checkout: the default branch cannot be told — this clone has no `origin/HEAD`, and origin could not be read: "
+                                                   "run `git remote set-head origin <the default branch>`, then run again"])
+    one_ = base / "m-one"; subprocess.run(["git", "clone", "-q", "--single-branch", "--branch", "main", str(base / "m.git"), str(one_)], check=True, env=_ENV)
+    subprocess.run(["git", "-C", str(one_), "symbolic-ref", "-d", "refs/remotes/origin/HEAD"], capture_output=True, env=_ENV); single_, _l = askedM_(one_)
+    told_ = [l_.strip() for l_ in single_[2].splitlines() if "the default branch cannot be told" in l_]
+    check(f"FM-006 · v0.19.1 · with no `origin/HEAD`, only `main` fetched and origin's default branch `master` not, `--check` refuses in one line naming it (saw {single_[0]}, {told_!r})",
+          single_[0] == fm.EXIT_LINT and told_ == ["checkout: the default branch cannot be told — this clone has no `origin/HEAD`, and origin names `master`, which this clone has not fetched: "
+                                                   "fetch it, or run `git remote set-head origin <the default branch>`, then run again"])
+    pr_ = base / "m-pr"; subprocess.run(["git", "init", "-q", str(pr_)], check=True, env=_ENV); git(pr_, "remote", "add", "origin", str(base / "m.git"))
+    git(pr_, "fetch", "-q", "--depth=1", "origin", "+refs/heads/fm/976-work:refs/remotes/pull/1/merge"); git(pr_, "checkout", "-q", "--detach", "refs/remotes/pull/1/merge")
+    shallow_, ls_s_ = askedM_(pr_)
+    check(f"FM-006 · v0.19.1 · a pull request's shallow checkout — no `origin/HEAD`, no `origin/main` or `origin/master` — asks origin nothing and passes as before (saw {shallow_[0]}, {ls_s_})",
+          shallow_[0] == 0 and ls_s_ == 0 and "AP-976" not in shallow_[2] and "the default branch cannot be told" not in shallow_[2])
+    held_m_ = cloneM_("m-held"); git(held_m_, "remote", "set-head", "origin", "master"); kept_, ls_h_ = askedM_(held_m_)
+    check(f"FM-006 · v0.19.1 · a clone with `origin/HEAD` set asks origin nothing — no `git ls-remote` — and refuses the same close (saw {kept_[0]}, {ls_h_})",
+          kept_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}`" in kept_[2] and ls_h_ == 0)
+    idx_ = cloneM_("m-idx"); (idx_ / ".git/index").write_bytes(b"not an index")      # a working tree whose diff git cannot make
+    broken_, ls_i_ = askedM_(idx_)
+    check(f"FM-006 · v0.19.1 · with a working tree whose diff git cannot make, `--check` reads it one way — as no edit — asks origin, and refuses the close under a later commit (saw {broken_[0]}, {ls_i_})",
+          broken_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in broken_[2] and ls_i_ == 1)
+    # a commit through the hooks asks origin nothing: a hook reads the ref this clone holds, as before — offline too
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(mc_, "config", k_, v_)
+    run(mc_, "--install-hook"); (mc_ / "hooked.txt").write_text("a commit through the hooks\n", encoding="utf-8"); git(mc_, "add", "-A")
+    trace_ = base / "m-trace.json"; before_m_ = subprocess.run(["git", "-C", str(mc_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    hooked_ = subprocess.run(["git", "-C", str(mc_), "commit", "-q", "-m", "a commit through the hooks"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_), GIT_AUTHOR_NAME="p", GIT_AUTHOR_EMAIL="principal@seat", GIT_COMMITTER_NAME="p", GIT_COMMITTER_EMAIL="principal@seat"))
+    after_m_ = subprocess.run(["git", "-C", str(mc_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    traced_ = trace_.read_text(encoding="utf-8").splitlines() if trace_.exists() else []
+    ls_c_ = sum('"event":"start"' in l_ and '"ls-remote"' in l_ for l_ in traced_)
+    check(f"FM-006 · v0.19.1 · a commit through the hooks, in a clone with no `origin/HEAD` that holds `origin/main` and cannot read origin, is made and asks origin nothing (saw {hooked_.returncode}, {ls_c_}, {len(traced_)})",
+          hooked_.returncode == 0 and after_m_ != before_m_ and ls_c_ == 0 and any('"event":"start"' in l_ and '"commit"' in l_ for l_ in traced_))
+    # the walk's cost is fixed: `--check` at a branch's tip starts as many git processes for 100 commits of its own as for 20
+    c_ = base / "cost"; c_.mkdir(); subprocess.run(["git", "init", "-q", "--bare", str(base / "cost.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(c_)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(c_, "config", k_, v_)
+    (c_ / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    for n_ in range(980, 1000):
+        tracker(c_, f"AP-{n_}", title="worked on")
+    run(c_); git(c_, "add", "-A"); git(c_, "commit", "-qm", "filed")
+    trunkC_ = subprocess.run(["git", "-C", str(c_), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(c_, "remote", "add", "origin", str(base / "cost.git")); git(c_, "push", "-q", "origin", trunkC_); git(c_, "remote", "set-head", "origin", trunkC_); git(c_, "switch", "-q", "-c", "work")
+    def workedC_(k_):
+        """`k_` more commits of the branch's own, each working on a tracker's body."""
+        for i_ in range(k_):
+            p_ = next((c_ / "docs/work-tracker").glob(f"AP-{980 + i_ % 20}-*.md")); p_.write_text(p_.read_text() + f"\nWorked on, {i_}.\n", encoding="utf-8")
+            git(c_, "commit", "-qam", f"AP-{980 + i_ % 20}: worked on")
+        run(c_); git(c_, "add", "-A"); git(c_, "commit", "-q", "--allow-empty", "-m", "the index")
+    def gitcallsC_():
+        """`--check` at the tip, and the git processes it starts."""
+        seen_, real_ = [0], subprocess.Popen
+        class counted_(real_):
+            def __init__(self, *a, **k):
+                seen_[0] += list(a[0] if a else k.get("args", []))[:1] == ["git"]
+                super().__init__(*a, **k)
+        subprocess.Popen = counted_
+        try:
+            code_ = run(c_, "--check")[0]
+        finally:
+            subprocess.Popen = real_
+        return code_, seen_[0]
+    workedC_(20); at20_ = gitcallsC_(); workedC_(80); at100_ = gitcallsC_()
+    p_ = next((c_ / "docs/work-tracker").glob("AP-980-*.md")); p_.write_text(p_.read_text() + "\nAn edit not committed.\n", encoding="utf-8")      # the tree with an edit not committed
+    dirty_ = run(c_, "--check"); git(c_, "checkout", "-q", "--", ".")
+    check(f"FM-006 · v0.19.1 · with uncommitted edits, `--check` says in one line that it judged them against what HEAD holds, not the branch's commits (saw {dirty_[0]})",
+          [l_ for l_ in dirty_[1].splitlines() if l_.startswith("the branch's commits:")] == [
+              "the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits"])
+    check(f"FM-006 · v0.19.1 · `--check` at a branch's tip starts as many git processes with 100 commits of its own since the default branch as with 20 (saw {at20_}, {at100_})",
+          at20_[0] == at100_[0] == 0 and at20_[1] == at100_[1])
+fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: an answer or a `next: owner` a merge sets in its own change is refused — set it in a commit of its own ---
+# The Owner's ruling of 2026-10-07: a merge's own change is judged under the merger, and an answer or a `next: owner` it sets in its own change is refused.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "o"\nowner = "h@x"\n[kinds]\nAP = "Work"\n[seats]\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    tracker(root, "AP-961", title="open")
+    tracker(root, "AP-962", extra='ask: "Shall the importer ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nnext: owner\n', title="asked")
+    (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    trunkO_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    def ownO_(id_, old_, new_, author_):
+        """A merge of a side branch whose own change replaces `old_` with `new_` in `id_`, committed by `author_`; then `--check` there; the trunk put back."""
+        base_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "switch", "-q", "-c", f"side-{id_}"); (root / f"{id_}.txt").write_text("on the side\n", encoding="utf-8"); git(root, "add", "-A")
+        git(root, "commit", "-qm", "on the side", "--author=p <principal@seat>"); git(root, "switch", "-q", trunkO_)
+        (root / "notes.txt").write_text(f"trunk, before {id_}\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+        git(root, "merge", "-q", "--no-ff", "--no-commit", f"side-{id_}")
+        p_ = next((root / "docs/work-tracker").glob(f"{id_}-*.md")); p_.write_text(p_.read_text().replace(old_, new_, 1), encoding="utf-8")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-qm", f"merge side-{id_}", f"--author={author_}")
+        got_ = run(root, "--check"); git(root, "reset", "-q", "--hard", base_)
+        return got_
+    askO_ = ownO_("AP-961", 'hook: "h of AP-961"', 'next: owner\nask: "Will you sign the release?"\nask-kind: action\nask-since: 2026-10-07\nask-proposal: "sign it"\nhook: "h of AP-961"',
+                  "p <principal@seat>")
+    check(f"FM-006 · v0.19.1 · a merge's own `next: owner`, set by a seat that holds `ask`, is refused — no commit names that line — and the refusal names the way "
+          f"through: set it in a commit of its own (saw {askO_[0]}, {askO_[2].strip()[-140:]!r})",
+          askO_[0] == fm.EXIT_LINT and "AP-961: `next: owner` — version control names no commit for this line" in askO_[2] and "in a commit of its own" in askO_[2])
+    ansO_ = ownO_("AP-962", 'ask-proposal: "yes"', 'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-07\nanswered-by: holgo', "holgo <h@x>")
+    check(f"FM-006 · v0.19.1 · a merge's own answer, set by the Owner, is refused — no commit names that line — and the refusal names the way through: set it in a "
+          f"commit of its own (saw {ansO_[0]}, {ansO_[2].strip()[-140:]!r})",
+          ansO_[0] == fm.EXIT_LINT and "AP-962: `answer:` — version control names no commit for this line" in ansO_[2] and "in a commit of its own" in ansO_[2])
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: a merge inside a branch whose own change closes a tracker, under a later commit, is judged at the branch's tip and at its merge into the trunk ---
+# The Owner's rulings of 2026-10-03 and 2026-10-04: a merge is judged by its own change against every parent, and every commit of the branch since the default
+# branch is judged where `--check` runs — a merge among them by its own change.
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    (root / "shoalmark.toml").write_text('name = "m"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+    tracker(root, "AP-951", title="open"); (root / "notes.txt").write_text("trunk\n", encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
+    trunkM_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "remote", "add", "origin", str(base / "origin.git")); git(root, "push", "-q", "origin", trunkM_); git(root, "remote", "set-head", "origin", trunkM_)
+    shaM_ = lambda: subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", "-c", "side"); (root / "side.txt").write_text("on the side\n", encoding="utf-8"); git(root, "add", "-A")
+    git(root, "commit", "-qm", "on the side", "--author=p <principal@seat>")
+    git(root, "switch", "-q", "-c", "pr/merge-close", f"origin/{trunkM_}"); (root / "work.txt").write_text("the work\n", encoding="utf-8"); git(root, "add", "-A")
+    git(root, "commit", "-qm", "the work", "--author=p <principal@seat>")
+    git(root, "merge", "-q", "--no-ff", "--no-commit", "side")
+    pM_ = next((root / "docs/work-tracker").glob("AP-951-*.md")); pM_.write_text(pM_.read_text().replace("status: In Progress", "status: Closed"), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "merge side", "--author=i <implementer@seat>"); mergedM_ = shaM_()
+    (root / "later.txt").write_text("a later commit\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "a later commit", "--author=p <principal@seat>")
+    tipM_ = run(root, "--check")
+    git(root, "switch", "-q", trunkM_); (root / "notes.txt").write_text("trunk, meanwhile\n", encoding="utf-8"); git(root, "commit", "-qam", "meanwhile", "--author=p <principal@seat>")
+    subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "pr/merge-close", "-m", "Merge pull request from pr/merge-close"],
+                   check=True, capture_output=True, env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
+    trunkCheckM_ = run(root, "--check")
+    saidM_ = lambda r_: r_[0] == fm.EXIT_LINT and f"AP-951: in `{mergedM_[:10]}` (implementer@seat)" in r_[2] and "this change is a `close`" in r_[2]
+    check(f"FM-006 · v0.19.1 · a merge inside the branch whose own change closes a tracker, by a seat without `close`, under one later commit — `--check` refuses it at the "
+          f"branch's tip and at the branch's merge into the trunk, exit 4, naming that merge's commit (saw {tipM_[0]}, {trunkCheckM_[0]})", saidM_(tipM_) and saidM_(trunkCheckM_))
     rm_git(root)
 fm.configure(HERE)
 
@@ -5744,6 +6642,479 @@ if _SVN:
             check(f"FM-005 · RV-2267 · with `svnserve` on the loopback and the working copy behind HEAD with nothing `Shipped` in it: connected `--check` refuses HEAD's false move (4), and with the server stopped it exits 4 — "
                   f"not 0 — as the newest revision unread (saw {code_sc}, {code_ss})",
                   code_sc == fm.EXIT_LINT and "C5-302: moved to `Shipped` with no revision behind it" in err_sc and code_ss == fm.EXIT_LINT and said5_ in err_ss and "no revision behind it" not in err_ss)
+    fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: on Subversion, a tracker not yet committed carries no protected state — refused before the commit, in one line ------
+# The Owner's ruling of 2026-10-03: protected state in a tracker not yet committed is refused before the commit (fail closed), with one line saying why.
+if not _SVN:
+    print("  skip  FM-006 · v0.19.1 · a tracker not yet committed, on Subversion · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c6")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wt6_ = root / "docs/work-tracker"
+        said6_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_]          # every line that names the tracker
+        def new6_(id_, extra_="", status_="In Progress", add_=True):
+            """A tracker filed in the working copy and not committed — `svn add`ed where `add_`, else left unversioned."""
+            p_ = wt6_ / f"{id_}-x.md"
+            p_.write_text(f'---\nid: {id_}\nstatus: {status_}\nconsidered: none\n{extra_}hook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+            if add_:
+                svn("add", str(p_), cwd=root)
+            return p_
+        def gone6_(*ps_):
+            """The trackers taken out of the working copy again, as if never filed."""
+            for p_ in ps_:
+                svn("revert", str(p_), cwd=root); p_.unlink()
+            run(root)
+        ask6_ = 'next: owner\nask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
+        for key_, extra_, status_, right_ in (("close", "", "Closed", "close"),
+                                              ("answer", 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\n', "In Progress", "answer"),
+                                              ("triage", "tier: P1\n", "In Progress", "triage"),
+                                              ("ask", ask6_, "In Progress", "ask")):
+            p_ = new6_("C6-010", extra_, status_)
+            code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-010"); code_d, _, err_d = run(root)
+            gone6_(p_)
+            check(f"FM-006 · v0.19.1 · case {key_}: a new tracker carrying a line `{right_}` guards, `svn add`ed and not committed — `--check` and the default run refuse it before the commit, exit 4, in one line naming the tracker and `{right_}` (saw {code}, {code_d}, {len(lines_)})",
+                  code == fm.EXIT_LINT and code_d == fm.EXIT_LINT and said6_(err_d, "C6-010") == lines_ and len(lines_) == 1 and lines_[0].startswith("C6-010: is not committed yet") and f"`{right_}`" in lines_[0]
+                  and "who makes a commit is known only once it is made" in lines_[0] and "File it open, with no such line, and make that change in a commit of its own" in lines_[0])
+        p_ = new6_("C6-011", "tier: P1\n" + ask6_, "Closed", add_=False)
+        code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-011")
+        check(f"FM-006 · v0.19.1 · an unversioned new tracker — never `svn add`ed — carrying `close`, `ask` and `triage` lines is refused too, in one line naming all three (saw {code}, {len(lines_)})",
+              code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-011: is not committed yet, and it carries lines that `ask`, `close` and `triage` guard"))
+        # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line
+        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
+        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        hook6_("start"); pre_ = hook6_("pre")
+        check(f"FM-006 · v0.19.1 · `--tsvn-hook pre`, as TortoiseSVN calls it, refuses the same tracker with the same line, exit 4 (saw {pre_.returncode})",
+              pre_.returncode == fm.EXIT_LINT and said6_(pre_.stdout + pre_.stderr, "C6-011") == lines_)
+        gone6_(p_)
+        # an open tracker with no protected line passes before its commit, beside one that is refused — and, committed by the Owner's account, after it
+        open_, closed_ = new6_("C6-012"), new6_("C6-013", status_="Closed")
+        code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-013")
+        gone6_(closed_); run(root)
+        code_o, _, err_o = run(root, "--check")
+        svn("add", "--force", ".", cwd=root); svn("commit", "-m", "C6-012 filed", "--username", "holgo", cwd=root); svn("update", cwd=root)
+        run(root); code_c, _, err_c = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · a new tracker with no protected line passes — beside one filed `Closed`, refused alone — before its commit, and committed by the Owner's account (saw {code}, {len(lines_)}, {code_o}, {code_c})",
+              code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-013: is not committed yet") and not said6_(err, "C6-012") and code_o == 0 and code_c == 0
+              and not said6_(err_o + err_c, "C6-012"))
+        # a committed tracker, and an answer line the parser reads and the line reader cannot find — `Answer:` — written by a seat without `answer`
+        new6_("C6-014", ask6_); run(root); svn("commit", "-m", "C6-014: the ask", "--username", "planner", cwd=root); svn("update", cwd=root)
+        p14_ = wt6_ / "C6-014-x.md"
+        p14_.write_text(p14_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', 'ask-proposal: "yes"\nAnswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\n'), encoding="utf-8")
+        run(root); code_b, _, err_b = run(root, "--check")
+        svn("commit", "-m", "C6-014: answered", "--username", "builder", cwd=root); svn("update", cwd=root)
+        run(root); code_a, _, err_a = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · a committed tracker whose answer line the line reader cannot find, written by a seat without `answer`, is refused, exit 4, before and after its commit (saw {code_b}, {code_a})",
+              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT and any("is not committed yet" in l_ for l_ in said6_(err_b, "C6-014"))
+              and any("`builder` is the seat `builder`, which does not hold `answer`" in l_ for l_ in said6_(err_a, "C6-014")))
+        # Subversion's own record of a path: a copy — `A +`, or `R +` over a tracker — is not committed yet, and once committed its lines are the copier's
+        def commit6_(who_, msg_):
+            """The working copy committed as `who_`, and updated to."""
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", msg_, "--username", who_, cwd=root); svn("update", cwd=root)
+        def drop6_(*ids_):
+            """The trackers deleted and the deletion committed — the working copy as it was before the case."""
+            svn("rm", "--force", *[str(next(wt6_.glob(f"{i_}-*.md"))) for i_ in ids_], cwd=root); commit6_("planner", "dropped")
+        def copy6_(src_, dst_, *subs_, over_=None):
+            """`svn copy` of `src_` to a new tracker `dst_` — or, with `over_` the text to write after it, `svn rm` + `svn copy` over `dst_` — its id and `subs_` replaced."""
+            to_ = wt6_ / f"{dst_}-x.md"
+            if over_ is not None:
+                svn("rm", "--force", str(to_), cwd=root)
+            svn("copy", str(wt6_ / f"{src_}-x.md"), str(to_), cwd=root)
+            text_ = to_.read_text(encoding="utf-8") if over_ is None else over_
+            for a_, b_ in ((src_, dst_), *subs_):
+                text_ = text_.replace(a_, b_)
+            to_.write_text(text_, encoding="utf-8")
+        drop6_("C6-014")
+        answered6_ = 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n'
+        new6_("C6-030", status_="Closed"); new6_("C6-032", 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'); new6_("C6-034"); new6_("C6-035", status_="Closed")
+        commit6_("planner", "filed")
+        p32_ = wt6_ / "C6-032-x.md"; p32_.write_text(p32_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', 'ask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n'), encoding="utf-8")
+        commit6_("holgo", "answered")
+        open34_ = (wt6_ / "C6-034-x.md").read_text(encoding="utf-8")
+        cases6_ = (("a copy of a `Closed` tracker", lambda: copy6_("C6-030", "C6-050"), "C6-050", "close"),
+                   ("a copy of the Owner's answered tracker, its ask reworded", lambda: copy6_("C6-032", "C6-052", ("ship first?", "ship second?")), "C6-052", "answer"),
+                   ("`svn rm` and `svn copy` of a `Closed` tracker over an open one", lambda: copy6_("C6-035", "C6-034", over_=open34_.replace("status: In Progress", "status: Closed")), "C6-034", "close"))
+        for what_, make_, id_, right_ in cases6_:
+            make_(); run(root); code_b, _, err_b = run(root, "--check"); lines_b = said6_(err_b, id_)
+            commit6_("builder", id_); code_a, _, err_a = run(root, "--check"); lines_a = said6_(err_a, id_)
+            drop6_(id_)
+            if id_ == "C6-034":
+                (wt6_ / "C6-034-x.md").write_text(open34_, encoding="utf-8"); commit6_("planner", "C6-034 again")
+            check(f"FM-006 · v0.19.1 · {what_}, by a seat without `{right_}`: refused before the commit as not yet committed, in one line, and after it as the copier's change, exit 4 (saw {code_b}, {code_a}, {len(lines_b)})",
+                  code_b == fm.EXIT_LINT and len(lines_b) == 1 and lines_b[0].startswith(f"{id_}: is not committed yet") and f"`{right_}`" in lines_b[0]
+                  and code_a == fm.EXIT_LINT and any("`builder` is the seat `builder`, which does not hold" in l_ and f"`{right_}`" in l_ for l_ in lines_a))
+        # …and the same three by the seat that holds the right — the planner's copy, the Owner's — pass once committed
+        copy6_("C6-030", "C6-060"); commit6_("planner", "C6-060"); copy6_("C6-032", "C6-062", ("ship first?", "ship second?")); commit6_("holgo", "C6-062")
+        copy6_("C6-035", "C6-034", over_=open34_.replace("status: In Progress", "status: Closed")); commit6_("planner", "C6-034 closed")
+        run(root); code_h, _, err_h = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · a copy by the seat that holds the right — a `Closed` tracker by the planner, the Owner's answered one by the Owner, `svn rm` and `svn copy` closing one by the planner — passes once committed (saw {code_h}, {err_h.strip()[-300:]!r})",
+              code_h == 0 and not said6_(err_h, "C6-060") and not said6_(err_h, "C6-062") and not said6_(err_h, "C6-034"))
+        drop6_("C6-060", "C6-062", "C6-030", "C6-032", "C6-034", "C6-035")
+        # the line each right is judged on is the one the parser keeps: its key's case folded, the last of its kind
+        asked6_ = 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
+        new6_("C6-070", asked6_); new6_("C6-071"); commit6_("planner", "filed")
+        lines6_ = (("`Next: owner`, capitalised, in a committed tracker", "C6-070", "hook: ", "Next: owner\nhook: ", "ask", "`next: owner`", "`next: owner` puts a question in front of the Owner"),
+                   ("a second `status: Closed` under a committed `status: In Progress`", "C6-071", "status: In Progress\n", "status: In Progress\nstatus: Closed\n", "close", "`status:`", "`close`"))
+        for what_, id_, a_, b_, right_, line_, says_ in lines6_:
+            p_ = wt6_ / f"{id_}-x.md"; kept_ = p_.read_text(encoding="utf-8"); p_.write_text(kept_.replace(a_, b_, 1), encoding="utf-8")
+            run(root); code_b, _, err_b = run(root, "--check"); lines_b = said6_(err_b, id_)
+            commit6_("builder", id_); code_a, _, err_a = run(root, "--check"); lines_a = said6_(err_a, id_)
+            p_.write_text(kept_, encoding="utf-8"); commit6_("planner", f"{id_} as it was")
+            check(f"FM-006 · v0.19.1 · {what_}, by a seat without `{right_}`: the line the parser keeps is judged — refused before the commit and after it, exit 4 (saw {code_b}, {code_a})",
+                  code_b == fm.EXIT_LINT and any(line_ in l_ or says_ in l_ for l_ in lines_b)
+                  and code_a == fm.EXIT_LINT and any(says_ in l_ and f"`builder` is the seat `builder`, which does not hold `{right_}`" in l_ for l_ in lines_a))
+        # …and the seat that holds the right, writing its line once and in lower case, passes once committed
+        for id_, a_, b_ in (("C6-070", "hook: ", "next: owner\nhook: "), ("C6-071", "status: In Progress", "status: Closed")):
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(a_, b_, 1), encoding="utf-8")
+        commit6_("planner", "the planner asks and closes"); run(root); code_p, _, err_p = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · the seat that holds `ask` and `close`, writing `next: owner` and `status: Closed` once in lower case, passes once committed (saw {code_p})",
+              code_p == 0 and not said6_(err_p, "C6-070") and not said6_(err_p, "C6-071"))
+        # a blame that cannot be read is refused — never read as a line nobody has committed
+        real_run6_ = subprocess.run
+        bad6_ = '<?xml version="1.0"?><blame><target path="x"><entry line-number="one"><commit revision="2"><author>planner</author><date>2026-10-04T00:00:00.000000Z</date></commit></entry></target></blame>'
+        subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a[0], 0, bad6_, "") if a and list(a[0])[:2] == ["svn", "blame"] else real_run6_(*a, **k)
+        try:
+            code_u, _, err_u = run(root, "--check")
+        finally:
+            subprocess.run = real_run6_
+        check(f"FM-006 · v0.19.1 · a Subversion blame that cannot be read is refused in one line, never read as a line nobody committed (saw {code_u})",
+              code_u == fm.EXIT_LINT and len(said6_(err_u, "C6-071")) == 1 and "Subversion's history could not be read" in said6_(err_u, "C6-071")[0])
+        # a `next: owner` not committed yet, in a committed tracker: its one line names the tracker once
+        p72_ = new6_("C6-072", asked6_.replace("ship first?", "ship third?")); commit6_("planner", "C6-072 filed")
+        p72_.write_text(p72_.read_text(encoding="utf-8").replace("hook: ", "next: owner\nhook: ", 1), encoding="utf-8"); run(root); code_n, _, err_n = run(root, "--check")
+        p72_.write_text(p72_.read_text(encoding="utf-8").replace("next: owner\n", "", 1), encoding="utf-8"); run(root)
+        check(f"FM-006 · v0.19.1 · on Subversion the line for a `next: owner` not committed yet names the tracker once, word for word (saw {said6_(err_n, 'C6-072')!r})",
+              code_n == fm.EXIT_LINT and [l_.strip() for l_ in err_n.splitlines() if "C6-072" in l_] == [
+                  "lint: C6-072: `next: owner` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes that commit judges it "
+                  "before: commit it (on Subversion who makes a commit is known only once it is made), then run again"])
+        # every triage key that carries a value is judged on its own line, and `considered:` once it is changed after the filing
+        new6_("C6-080", "kind-of-problem: complicated\ntier: P2\n"); new6_("C6-081"); commit6_("planner", "filed, triaged")
+        tri6_ = (("C6-080", "tier: P2", "tier: P0", "`tier:`"), ("C6-081", "considered: none", "considered: C6-080", "`considered:`"))
+        for id_, a_, b_, _n in tri6_:
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(a_, b_, 1), encoding="utf-8")
+        run(root); code_b, _, err_b = run(root, "--check"); commit6_("builder", "the builder's triage"); code_a, _, err_a = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a seat without `triage` that changes a triage key after the first one with a value, or `considered:` after the filing, is refused before the commit and after it (saw {code_b}, {code_a})",
+              code_b == fm.EXIT_LINT and code_a == fm.EXIT_LINT
+              and all(any(n_ in l_ for l_ in said6_(err_b, id_)) and any(n_ in l_ and "`builder` is the seat `builder`, which does not hold `triage`" in l_ for l_ in said6_(err_a, id_))
+                      for id_, _a, _b, n_ in tri6_))
+        for id_, a_, b_, _n in tri6_:
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(b_, a_, 1), encoding="utf-8")
+        commit6_("planner", "as it was")
+        for id_, a_, b_, _n in tri6_:
+            p_ = wt6_ / f"{id_}-x.md"; p_.write_text(p_.read_text(encoding="utf-8").replace(a_, b_, 1), encoding="utf-8")
+        commit6_("planner", "the planner's triage"); new6_("C6-082"); commit6_("builder", "C6-082 filed")
+        run(root); code_t, _, err_t = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the seat that holds `triage` changing the same keys passes once committed, and a seat's own filing with its `considered:` passes (saw {code_t}, {err_t.strip()[-200:]!r})",
+              code_t == 0 and not said6_(err_t, "C6-080") and not said6_(err_t, "C6-081") and not said6_(err_t, "C6-082"))
+        # a branch merged into trunk: a line the merge brought is its author's on trunk, never the merger's
+        svn("mkdir", "-q", "-m", "branches", url + "/branches", "--username", "planner")
+        new6_("C6-090"); new6_("C6-091"); commit6_("planner", "filed for the branches")
+        def branch6_(name_, who_, edit_):
+            """A branch of trunk, `edit_` made in its working copy and committed by `who_`, then merged into trunk and committed by the planner."""
+            svn("copy", "-q", "-m", f"the branch {name_}", url + "/trunk", url + f"/branches/{name_}", "--username", who_)
+            bwc_ = base / f"wc-{name_}"; svn("checkout", "-q", url + f"/branches/{name_}", str(bwc_)); edit_(bwc_ / "docs/work-tracker")
+            run(bwc_); svn("add", "-q", "--force", ".", cwd=bwc_); svn("commit", "-q", "-m", f"{name_}: the work", "--username", who_, cwd=bwc_)
+            svn("update", "-q", cwd=root); svn("merge", "-q", f"^/branches/{name_}", ".", cwd=root); run(root)
+            svn("commit", "-q", "-m", f"merge {name_}", "--username", "planner", cwd=root); svn("update", "-q", cwd=root); fm._SVN_LOG = None
+        close6_ = lambda id_: lambda d_: (lambda p_: p_.write_text(p_.read_text(encoding="utf-8").replace("status: In Progress", "status: Closed"), encoding="utf-8"))(d_ / f"{id_}-x.md")
+        file6_ = lambda id_: lambda d_: (d_ / f"{id_}-x.md").write_text((wt6_ / "C6-091-x.md").read_text(encoding="utf-8").replace("C6-091", id_).replace("status: In Progress", "status: Closed"), encoding="utf-8")
+        branch6_("b1", "builder", lambda d_: (close6_("C6-090")(d_), file6_("C6-092")(d_)))
+        run(root); code_m, _, err_m = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a close a seat without `close` made on a branch, and a `Closed` tracker it filed there, merged into trunk by the planner, are refused on trunk (saw {code_m})",
+              code_m == fm.EXIT_LINT and any("`builder` is the seat `builder`, which does not hold `close`" in l_ for l_ in said6_(err_m, "C6-090"))
+              and any("`status:` is older than the merge that put this tracker here" in l_ for l_ in said6_(err_m, "C6-092")))
+        for id_ in ("C6-090", "C6-092"):
+            p_ = wt6_ / f"{id_}-x.md"
+            if id_ == "C6-092":
+                svn("rm", "-q", "--force", str(p_), cwd=root)
+            else:
+                p_.write_text(p_.read_text(encoding="utf-8").replace("status: Closed", "status: In Progress"), encoding="utf-8")
+        commit6_("planner", "as it was")
+        branch6_("b2", "planner", close6_("C6-091")); close6_("C6-090")(wt6_); commit6_("planner", "C6-090 closed on trunk")
+        run(root); code_h, _, err_h = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the seat that holds `close`, closing on a branch merged into trunk and on trunk itself, passes (saw {code_h}, {err_h.strip()[-200:]!r})",
+              code_h == 0 and not said6_(err_h, "C6-090") and not said6_(err_h, "C6-091"))
+        # the holder's own close, the tool run before `svn commit` and committed from the command line: `--check` passes right after
+        new6_("C6-093"); commit6_("planner", "C6-093 filed"); run(root)
+        p93_ = wt6_ / "C6-093-x.md"; p93_.write_text(p93_.read_text(encoding="utf-8").replace("status: In Progress", "status: Closed"), encoding="utf-8")
+        run(root); svn("commit", "-q", "-m", "C6-093 closed", "--username", "planner", cwd=root); svn("update", "-q", cwd=root)
+        code_93, _, err_93 = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the holder's close, the tool run before the commit and committed from the command line, passes `--check` right after, with no second revision (saw {code_93}, {err_93.strip()[-200:]!r})",
+              code_93 == 0)
+    fm.configure(HERE)
+
+
+# --- FM-006 · v0.19.1: on Subversion a copy is its copier's, merge or not — a merge that brought the path is followed to the revision that filed it ---
+if not _SVN:
+    print("  skip  FM-006 · v0.19.1 · a copy and a merge, on Subversion · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wt9_ = root / "docs/work-tracker"
+        said9_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_]          # every line that names the tracker
+        def new9_(id_, status_="In Progress"):
+            """A tracker filed in the working copy and `svn add`ed."""
+            p_ = wt9_ / f"{id_}-x.md"
+            p_.write_text(f'---\nid: {id_}\nstatus: {status_}\nconsidered: none\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+            svn("add", str(p_), cwd=root)
+            return p_
+        def commit9_(who_, msg_):
+            """The working copy committed as `who_`, and updated to."""
+            run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", msg_, "--username", who_, cwd=root); svn("update", cwd=root)
+        new9_("C9-100", status_="Closed"); commit9_("planner", "C9-100 filed")
+        svn("copy", "-q", "-m", "the branch b3", url + "/trunk", url + "/branches/b3", "--username", "planner")
+        wb3_ = base / "wc-b3"; svn("checkout", "-q", url + "/branches/b3", str(wb3_)); tb3_ = wb3_ / "docs/work-tracker"
+        def onb3_(who_, msg_, edit_, wc_=None):
+            """`edit_` made in a branch's working copy (b3's, else `wc_`) and committed by `who_`; the revision it made."""
+            wc_ = wc_ or wb3_; svn("update", "-q", cwd=wc_); edit_(); run(wc_); svn("add", "-q", "--force", ".", cwd=wc_)
+            svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
+            return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
+        def copied9_(src_, dst_):
+            """`svn copy` of tracker `src_` to `dst_`, its id replaced."""
+            svn("copy", "-q", str(src_), str(dst_)); dst_.write_text(dst_.read_text(encoding="utf-8").replace(src_.name[:6], dst_.name[:6]), encoding="utf-8")
+        def copies9_(id_, how_, who_):
+            """`how_` made on trunk and committed by `who_`; then `--check`, and the trunk put back by the planner."""
+            svn("update", "-q", cwd=root); how_(); commit9_(who_, f"{id_}: {who_}"); code_, _, err_ = run(root, "--check")
+            svn("rm", "-q", "--force", str(wt9_ / f"{id_}-x.md"), cwd=root); commit9_("planner", f"{id_} taken out")
+            return code_, said9_(err_, id_)
+        merged9_ = "`status:` is older than the merge that put this tracker here, so who set it is not known; it is refused, never credited to the merge's author. Write the line again, in a commit of its own after the merge"
+        refused9_ = lambda c_: c_[0] == fm.EXIT_LINT and any(merged9_ in l_ for l_ in c_[1])      # a merge put the copy here: its older lines are no one's
+        r1_ = onb3_("builder", "a note", lambda: (wb3_ / "note1.txt").write_text("one\n", encoding="utf-8"))
+        rec_ = copies9_("C9-101", lambda: (copied9_(wt9_ / "C9-100-x.md", wt9_ / "C9-101-x.md"), svn("merge", "-q", "--record-only", "-c", r1_, "^/branches/b3", ".", cwd=root)), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker by a seat without `close`, filed on trunk in a revision that also records a merge, is refused (saw {rec_[0]})", refused9_(rec_))
+        onb3_("builder", "another note", lambda: (wb3_ / "note2.txt").write_text("two\n", encoding="utf-8"))
+        real_ = copies9_("C9-102", lambda: (copied9_(wt9_ / "C9-100-x.md", wt9_ / "C9-102-x.md"), svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root)), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker by a seat without `close`, filed on trunk in a revision that also merges a branch, is refused (saw {real_[0]})", refused9_(real_))
+        onb3_("builder", "C9-103 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-103-x.md"))
+        by_p_ = copies9_("C9-103", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "planner")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made on a branch by a seat without `close`, merged into trunk by the planner, is refused on trunk (saw {by_p_[0]})", refused9_(by_p_))
+        onb3_("builder", "C9-104 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-104-x.md"))
+        by_b_ = copies9_("C9-104", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made on a branch by a seat without `close`, merged into trunk by that seat, is refused on trunk (saw {by_b_[0]})", refused9_(by_b_))
+        def filed_b3_():
+            """C9-105 filed `Closed` on the branch, by the planner."""
+            (tb3_ / "C9-105-x.md").write_text((wt9_ / "C9-100-x.md").read_text(encoding="utf-8").replace("C9-100", "C9-105"), encoding="utf-8")
+        r5_ = onb3_("planner", "C9-105 filed on the branch", filed_b3_)
+        other_ = copies9_("C9-106", lambda: (svn("copy", "-q", url + "/branches/b3/docs/work-tracker/C9-105-x.md", str(wt9_ / "C9-106-x.md"), cwd=root),
+                                             (wt9_ / "C9-106-x.md").write_text((wt9_ / "C9-106-x.md").read_text(encoding="utf-8").replace("C9-105", "C9-106"), encoding="utf-8"),
+                                             svn("merge", "-q", "--record-only", "-c", r5_, "^/branches/b3", ".", cwd=root)), "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy under another name of a `Closed` tracker filed on a branch, that filing recorded as merged in the same revision, is refused when a seat without `close` makes it (saw {other_[0]})",
+              refused9_(other_))
+        svn("copy", "-q", "-m", "the branch b4, of b3", url + "/branches/b3", url + "/branches/b4", "--username", "planner")
+        wb4_ = base / "wc-b4"; svn("checkout", "-q", url + "/branches/b4", str(wb4_))
+        onb3_("builder", "C9-107 copied on b4", lambda: copied9_(wb4_ / "docs/work-tracker/C9-100-x.md", wb4_ / "docs/work-tracker/C9-107-x.md"), wc_=wb4_)
+        onb3_("planner", "b4 merged into b3", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b4", ".", cwd=wb3_))
+        nested_ = copies9_("C9-107", lambda: svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root), "planner")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy of a `Closed` tracker made by a seat without `close` on a branch of a branch, merged into the branch and then into trunk by the planner, is refused on trunk (saw {nested_[0]})",
+              refused9_(nested_))
+        onb3_("planner", "C9-108 copied on the branch", lambda: copied9_(tb3_ / "C9-100-x.md", tb3_ / "C9-108-x.md"))
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root); commit9_("builder", "C9-108: builder")
+        held_ = run(root, "--check"); p108_ = wt9_ / "C9-108-x.md"
+        for st_ in ("In Progress", "Closed"):                                       # the planner sets the line again on trunk, in commits of its own
+            p108_.write_text(re.sub(r"(?m)^status: .*$", f"status: {st_}", p108_.read_text(encoding="utf-8")), encoding="utf-8"); commit9_("planner", f"C9-108 {st_}")
+        reclosed_ = run(root, "--check"); svn("rm", "-q", "--force", str(p108_), cwd=root); commit9_("planner", "C9-108 taken out")
+        check(f"FM-006 · v0.19.1 · on Subversion a copy the planner made on a branch, merged into trunk by a seat without `close`, is refused — older than the merge — and passes once the planner closes it again on trunk (saw {held_[0]}, {reclosed_[0]})",
+              refused9_((held_[0], said9_(held_[2], "C9-108"))) and reclosed_[0] == 0 and not said9_(reclosed_[2], "C9-108"))
+        # a right holder's own new tracker, filed on a branch and merged by them: refused, the line naming the way through; set again after the merge, it passes
+        def own_b3_():
+            """C9-109 filed `Closed` on the branch, by the planner."""
+            (tb3_ / "C9-109-x.md").write_text((wt9_ / "C9-100-x.md").read_text(encoding="utf-8").replace("C9-100", "C9-109"), encoding="utf-8")
+        onb3_("planner", "C9-109 filed on the branch", own_b3_)
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--accept", "mine-full", "^/branches/b3", ".", cwd=root); commit9_("planner", "the branch merged")
+        own_ = run(root, "--check"); p109_ = wt9_ / "C9-109-x.md"
+        for st_ in ("In Progress", "Closed"):
+            p109_.write_text(re.sub(r"(?m)^status: .*$", f"status: {st_}", p109_.read_text(encoding="utf-8")), encoding="utf-8"); commit9_("planner", f"C9-109 {st_}")
+        again_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the planner's own new `Closed` tracker, filed on a branch and merged by the planner, is refused in one line naming the way through — the line again in a commit of its own after the merge (saw {own_[0]}, {said9_(own_[2], 'C9-109')!r})",
+              own_[0] == fm.EXIT_LINT and said9_(own_[2], "C9-109") == ["C9-109: " + merged9_])
+        check(f"FM-006 · v0.19.1 · on Subversion that tracker, its `status:` set again on trunk after the merge in commits of its own, passes (saw {again_[0]})",
+              again_[0] == 0 and not said9_(again_[2], "C9-109"))
+        # a seat's tracker on trunk, taken out, and its copy on a branch put back on trunk with that branch's making recorded as merged
+        for kind_, id_ in (("added", "C9-120"), ("copied", "C9-121")):
+            svn("update", "-q", cwd=root)
+            if kind_ == "added":
+                new9_(id_, status_="Closed")
+            else:
+                copied9_(wt9_ / "C9-100-x.md", wt9_ / f"{id_}-x.md")
+            commit9_("builder", f"{id_} by the builder")
+            svn("copy", "-q", "-m", f"the branch of {id_}", url + "/trunk", url + f"/branches/k{id_}", "--username", "planner")
+            rk_ = svn("info", "--show-item", "last-changed-revision", url + f"/branches/k{id_}").stdout.strip()
+            svn("update", "-q", cwd=root); svn("rm", "-q", "--force", str(wt9_ / f"{id_}-x.md"), cwd=root); commit9_("builder", f"{id_} taken out")
+            back_ = copies9_(id_, lambda: (svn("copy", "-q", url + f"/branches/k{id_}/docs/work-tracker/{id_}-x.md@{rk_}", str(wt9_ / f"{id_}-x.md"), cwd=root),
+                                           svn("merge", "-q", "--record-only", "-c", rk_, f"^/branches/k{id_}", ".", cwd=root)), "builder")
+            check(f"FM-006 · v0.19.1 · on Subversion a `Closed` tracker a seat without `close` {kind_} on trunk, taken out, and put back from a branch's copy of trunk with the branch's making recorded as merged, is refused (saw {back_[0]})",
+                  refused9_(back_))
+    fm.configure(HERE)
+
+
+# --- FM-006 · v0.19.1: on Subversion each tracker costs one `svn blame` and one `svn log`, however many there are ---
+if not _SVN:
+    print("  skip  FM-006 · v0.19.1 · the Subversion reads per tracker · Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        def svncalls_(n_):
+            """A branch's working copy of `n_` trackers, each filed on trunk and copied with it; `--check` there, and the svn processes it starts."""
+            r_ = base / f"r{n_}"; r_.mkdir(); subprocess.run(["svnadmin", "create", str(r_ / "repo")], check=True); u_ = (r_ / "repo").as_uri()
+            svn("mkdir", "-m", "layout", u_ + "/trunk", u_ + "/branches", "--username", "planner"); svn("checkout", u_ + "/trunk", str(r_ / "wc")); w_ = r_ / "wc"
+            run(w_, "--init", "--key", "c9")
+            (w_ / "shoalmark.toml").write_text('owner = "holgo"\n' + (w_ / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+            for i_ in range(n_):
+                (w_ / f"docs/work-tracker/C9-{i_:03d}-x.md").write_text(f'---\nid: C9-{i_:03d}\nstatus: In Progress\nconsidered: none\nhook: "h"\n---\n\n# C9-{i_:03d} — filed\n\n'
+                                                                       '## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+            run(w_); svn("add", "--force", ".", cwd=w_); svn("commit", "-m", "filed", "--username", "planner", cwd=w_)
+            svn("copy", "-m", "the branch", u_ + "/trunk", u_ + "/branches/b", "--username", "planner"); svn("checkout", u_ + "/branches/b", str(r_ / "bwc"))
+            seen_, real_ = [], subprocess.Popen
+            class counted_(real_):
+                def __init__(self, *a, **k):
+                    seen_.append(list(a[0] if a else k.get("args", []))[:1] == ["svn"])
+                    super().__init__(*a, **k)
+            subprocess.Popen = counted_
+            try:
+                code_ = run(r_ / "bwc", "--check")[0]
+            finally:
+                subprocess.Popen = real_
+            return code_, sum(seen_)
+        one_, forty_ = svncalls_(1), svncalls_(40)
+        check(f"FM-006 · v0.19.1 · on Subversion `--check` in a branch's working copy starts one `svn blame` and one `svn log` for each tracker beyond a fixed part — 40 trackers cost 78 calls more than 1 (saw {one_}, {forty_})",
+              one_[0] == forty_[0] == 0 and forty_[1] - one_[1] == 2 * 39)
+    fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: on Subversion a copied line passes only where its copier and its own author both hold its right ---
+# The Owner's ruling of 2026-10-07: where a path's first revision merged nothing, a guarded line older than it passes only where both its copier and its own
+# author, read through the copy, hold the right — an ignore-ancestry merge and a reverse merge leave the record a copy leaves.
+if not _SVN:
+    _skipped("FM-006 · v0.19.1 · on Subversion a copied line's copier and its own author", 3, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wtC_ = root / "docs/work-tracker"
+        def fileC_(where_, id_, status_):
+            (where_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: {status_}\nconsidered: none\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n',
+                                               encoding="utf-8")
+        def commitC_(wc_, who_, msg_):
+            """The working copy committed as `who_`, and updated to; the revision it made."""
+            run(wc_); svn("add", "-q", "--force", ".", cwd=wc_); svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
+            return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
+        namedC_ = lambda err_, id_: [l_.strip() for l_ in err_.splitlines() if f"{id_}:" in l_]
+        builderC_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any("`status:` is a `close` change" in l_ and "`builder` is the seat `builder`" in l_ for l_ in namedC_(r_[2], id_))
+        fileC_(wtC_, "C9-200", "In Progress"); commitC_(root, "planner", "C9-200 filed")
+        # the builder files a Closed tracker on its branch; the planner merges the branch into trunk with --ignore-ancestry
+        svn("copy", "-q", "-m", "the builder's branch", url + "/trunk", url + "/branches/b", "--username", "builder"); wbC_ = base / "wc-b"; svn("checkout", "-q", url + "/branches/b", str(wbC_))
+        rbC_ = svn("info", "--show-item", "last-changed-revision", url + "/branches/b").stdout.strip()
+        fileC_(wbC_ / "docs/work-tracker", "C9-201", "Closed"); rcC_ = commitC_(wbC_, "builder", "C9-201 filed Closed on the branch")
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--ignore-ancestry", "-r", f"{rbC_}:{rcC_}", "^/branches/b", ".", cwd=root)
+        commitC_(root, "planner", "the branch merged, ancestry ignored"); iaC_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a seat's `Closed` tracker, brought to trunk by the planner's merge with `--ignore-ancestry`, is refused under its own author "
+              f"(saw {iaC_[0]}, {namedC_(iaC_[2], 'C9-201')[:1]!r})", builderC_(iaC_, "C9-201"))
+        svn("rm", "-q", "--force", str(wtC_ / "C9-201-x.md"), cwd=root); commitC_(root, "planner", "C9-201 taken out")
+        # the builder files a Closed tracker on trunk and takes it out; the planner undoes the taking out with a reverse merge
+        fileC_(wtC_, "C9-202", "Closed"); commitC_(root, "builder", "C9-202 by the builder")
+        svn("rm", "-q", str(wtC_ / "C9-202-x.md"), cwd=root); rxC_ = commitC_(root, "builder", "C9-202 taken out")
+        svn("merge", "-q", "-c", f"-{rxC_}", ".", cwd=root); commitC_(root, "planner", "the taking out undone"); undoC_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion a seat's `Closed` tracker, restored on trunk by the planner's reverse merge, is refused under its own author "
+              f"(saw {undoC_[0]}, {namedC_(undoC_[2], 'C9-202')[:1]!r})", builderC_(undoC_, "C9-202"))
+        svn("rm", "-q", "--force", str(wtC_ / "C9-202-x.md"), cwd=root); commitC_(root, "planner", "C9-202 taken out")
+        # the planner's copy of the planner's own Closed tracker
+        fileC_(wtC_, "C9-203", "Closed"); commitC_(root, "planner", "C9-203 filed Closed by the planner")
+        svn("copy", "-q", str(wtC_ / "C9-203-x.md"), str(wtC_ / "C9-204-x.md"), cwd=root)
+        (wtC_ / "C9-204-x.md").write_text((wtC_ / "C9-204-x.md").read_text(encoding="utf-8").replace("C9-203", "C9-204"), encoding="utf-8")
+        commitC_(root, "planner", "C9-204, a copy by the planner"); hcC_ = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion the planner's copy of the planner's own `Closed` tracker passes (saw {hcC_[0]}, {namedC_(hcC_[2], 'C9-204')[:1]!r})",
+              hcC_[0] == 0 and not namedC_(hcC_[2], "C9-204"))
+    fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: on Subversion with `answerers` and no `[seats]`, an answer a copy brings passes only where its copier and its own author both may answer ---
+# The Owner's ruling of 2026-10-07: the copy rule asks both, in a repository that names its answerers as in one that names its seats.
+if not _SVN:
+    _skipped("FM-006 · v0.19.1 · on Subversion with `answerers`, an answer a copy brings", 1, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('answerers = ["holgo"]\n' + (root / "shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wtA_ = root / "docs/work-tracker"
+        def fileA_(where_, id_):
+            """A tracker carrying the answer of an answerer, `holgo`, written by whoever commits it."""
+            (where_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nnext: owner\nask: go?\nask-options: yes | no\nanswer: yes\nanswered-by: holgo\n'
+                                               f'answered: 2026-10-07\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n', encoding="utf-8")
+        def commitA_(wc_, who_, msg_):
+            run(wc_); svn("add", "-q", "--force", ".", cwd=wc_); svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
+            return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
+        svn("copy", "-q", "-m", "the builder's branch", url + "/trunk", url + "/branches/b", "--username", "builder"); wbA_ = base / "wc-b"; svn("checkout", "-q", url + "/branches/b", str(wbA_))
+        rbA_ = svn("info", "--show-item", "last-changed-revision", url + "/branches/b").stdout.strip()
+        fileA_(wbA_ / "docs/work-tracker", "C9-210"); rcA_ = commitA_(wbA_, "builder", "C9-210 with an answer, on the branch")
+        refusedA_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any(f"{id_}: `answered-by: holgo` but the svn author of the answer is `builder`" in l_ for l_ in r_[2].splitlines())
+        seenA_ = {}
+        svn("update", "-q", cwd=root); svn("merge", "-q", "--ignore-ancestry", "-r", f"{rbA_}:{rcA_}", "^/branches/b", ".", cwd=root)
+        commitA_(root, "holgo", "brought to trunk with --ignore-ancestry"); seenA_["ia"] = run(root, "--check")
+        svn("rm", "-q", "--force", str(wtA_ / "C9-210-x.md"), cwd=root); commitA_(root, "planner", "C9-210 taken out")
+        svn("copy", "-q", url + "/branches/b/docs/work-tracker/C9-210-x.md", str(wtA_ / "C9-210-x.md"), cwd=root)
+        commitA_(root, "holgo", "copied to trunk from the branch"); seenA_["copy"] = run(root, "--check")
+        svn("rm", "-q", "--force", str(wtA_ / "C9-210-x.md"), cwd=root); commitA_(root, "planner", "C9-210 taken out again")
+        fileA_(wtA_, "C9-211"); commitA_(root, "builder", "C9-211 with an answer, by the builder")
+        svn("rm", "-q", str(wtA_ / "C9-211-x.md"), cwd=root); rxA_ = commitA_(root, "builder", "C9-211 taken out")
+        svn("merge", "-q", "-c", f"-{rxA_}", ".", cwd=root); commitA_(root, "holgo", "the taking out undone"); seenA_["undo"] = run(root, "--check")
+        check(f"FM-006 · v0.19.1 · on Subversion with `answerers` and no `[seats]`, a non-answerer's tracker carrying an answer, brought to trunk by the answerer — a merge "
+              f"with `--ignore-ancestry`, a copy from the branch, a reverse merge that restores it — is refused under its own author "
+              f"(saw {seenA_['ia'][0]}, {seenA_['copy'][0]}, {seenA_['undo'][0]})",
+              refusedA_(seenA_["ia"], "C9-210") and refusedA_(seenA_["copy"], "C9-210") and refusedA_(seenA_["undo"], "C9-211"))
+    fm.configure(HERE)
+
+# --- FM-006 · v0.19.1: on Subversion a `considered:` changed after its tracker's filing is its changer's triage, wherever a copy carries it ---
+# The Owner's ruling of 2026-10-07: the copy rule reads a copied line's own author; a `considered:` set at the filing stays the filing's.
+if not _SVN:
+    _skipped("FM-006 · v0.19.1 · on Subversion a `considered:` changed after the filing, carried by a copy", 1, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp).resolve(); svn = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base / "repo")], check=True)
+        url = (base / "repo").as_uri()
+        svn("mkdir", "-m", "layout", url + "/trunk", url + "/branches", "--username", "planner"); svn("checkout", url + "/trunk", str(base / "wc")); root = base / "wc"
+        run(root, "--init", "--key", "c9")
+        (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
+        run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
+        wtK_ = root / "docs/work-tracker"
+        def caseK_(id_, copier_):
+            """The builder files `id_` on its branch and changes its `considered:` there; `copier_` copies it to trunk; `--check` on trunk."""
+            svn("copy", "-q", "-m", f"the builder's branch for {id_}", url + "/trunk", url + f"/branches/{id_}", "--username", "builder")
+            wb_ = base / f"wc-{id_}"; svn("checkout", "-q", url + f"/branches/{id_}", str(wb_)); p_ = wb_ / "docs/work-tracker" / f"{id_}-x.md"
+            p_.write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nhook: "h of {id_}"\n---\n\n# {id_} — filed\n\n## What is true now\n\n**Open.**\n\n## Done when\n\nit is.\n',
+                          encoding="utf-8")
+            svn("add", "-q", str(p_), cwd=wb_); svn("commit", "-q", "-m", f"{id_} filed", "--username", "builder", cwd=wb_)
+            p_.write_text(p_.read_text(encoding="utf-8").replace("considered: none", "considered: C9-001"), encoding="utf-8")
+            svn("commit", "-q", "-m", f"{id_}: considered changed", "--username", "builder", cwd=wb_)
+            svn("update", "-q", cwd=root); svn("copy", "-q", url + f"/branches/{id_}/docs/work-tracker/{id_}-x.md", str(wtK_ / f"{id_}-x.md"), cwd=root)
+            run(root); svn("add", "-q", "--force", ".", cwd=root); svn("commit", "-q", "-m", f"{id_} copied by the {copier_}", "--username", copier_, cwd=root); svn("update", "-q", cwd=root)
+            got_ = run(root, "--check")
+            svn("rm", "-q", "--force", str(wtK_ / f"{id_}-x.md"), cwd=root); run(root); svn("commit", "-q", "-m", f"{id_} taken out", "--username", "planner", cwd=root); svn("update", "-q", cwd=root)
+            return got_
+        refusedK_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any(f"{id_}: `considered:` is a `triage` change" in l_ and "`builder` is the seat `builder`" in l_ for l_ in r_[2].splitlines())
+        byP_, byB_ = caseK_("C9-220", "planner"), caseK_("C9-221", "builder")
+        check(f"FM-006 · v0.19.1 · on Subversion a `considered:` a seat without `triage` changed after the filing, on its branch, is refused on trunk under that seat once the "
+              f"file is copied there — by the planner, or by the seat itself (saw {byP_[0]}, {byB_[0]})", refusedK_(byP_, "C9-220") and refusedK_(byB_, "C9-221"))
     fm.configure(HERE)
 
 
@@ -7852,17 +9223,326 @@ with tempfile.TemporaryDirectory() as tmp:
                                                   "mergeable": "UNKNOWN", "mergeStateStatus": "UNKNOWN", "createdAt": "2026-09-25T09:00:00Z"}]))
     check(f"FM-037 · clause 4 · a pull request stacked on a seat's branch that names the seat the Owner is still read against the default branch's Owner (saw {q_st_[0][2:]!r})",
           q_st_[0][2:] == ("wait: TRIAGE.md changed unsigned", c_st_[:7]))
+    # a tag named `origin/main` at a seat's branch: the default branch is read by its full ref — its walk, its Owner
+    git(root, "tag", "origin/main", "ap/037-intent"); git(root, "push", "-q", "origin", "refs/tags/origin/main"); git(root, "tag", "-d", "origin/main")
+    git(root, "fetch", "-q", "origin", "refs/tags/origin/main:refs/tags/origin/main"); git(root, "tag", "main", "ap/037-intent")      # a pushed tag named `origin/main`, fetched as a clone fetches it, and one named `main`
+    g_tag_ = guard37_("ap/037-intent"); git(root, "tag", "-d", "origin/main"); git(root, "tag", "-d", "main"); git(root, "push", "-q", "origin", ":refs/tags/origin/main")
+    check(f"FM-006 · v0.19.1 · with a pushed tag named `origin/main` and a tag named `main` at a seat's branch, its rewrite of `## The intent` is still refused (saw {g_tag_!r})",
+          len(g_tag_[0]) == 1 and g_tag_[0][0].startswith(f'refused: commit {c_int_[:7]} "AP-037: a better intent" changes the text under `## The intent`')
+          and g_tag_[1].endswith("1 change them or their signers file, 1 refused"))
+    git(root, "tag", "origin/main", "ap/037-self"); g_tself_ = guard37_("ap/037-self")
+    owners_tag_ = fm.owners_at(fm.default_trunk(lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV))); git(root, "tag", "-d", "origin/main")
+    check(f"FM-006 · v0.19.1 · with a tag named `origin/main` at a branch that names its own Owner, the Owner is read from the default branch — the seat's change is refused (saw {owners_tag_!r}, {g_tself_[0]!r})",
+          owners_tag_ == {"h@x": "signed"} and len(g_tself_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_tself_[0][0])
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")
-    git(root, "commit", "-q", "-m", "no Owner named"); git(root, "push", "-q", "origin", "main")
+    git(root, "commit", "-q", "-m", "no Owner named"); git(root, "push", "-q", "origin", "main"); readable37_ = sha37_("main")
     c_none_, g_none_ = made37_("ap/037-no-owner", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
     check(f"FM-037 · the Owner is read from the default branch's configuration, never the branch's: a branch that makes a seat the Owner is still refused; where the default branch names no Owner nothing is guarded, and `--check` says so (saw {g_none_!r})",
           len(g_self_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_self_[0][0]
           and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text('owner = "other@x signed"\n' + cfg37_); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner named twice, differently"); git(root, "push", "-q", "origin", "main")
-    c_two_, g_two_ = made37_("ap/037-two-owners", "AP-037: a better intent", lambda: ((root / "shoalmark.toml").write_text(cfg37_), text37_("lose a loan", "lose a book")()), SEAT_)
-    check(f"FM-037 · RV-2203 · where this tool refuses the default branch's configuration, the guard says so and why — never that it names no Owner (saw {g_two_!r})",
-          g_two_[0] == [] and g_two_[1].startswith("the Owner's two sections: not guarded — origin/main's configuration is refused here, so it names nobody — shoalmark.toml: the Owner is named twice, and differently"))
+    fixed37_ = lambda edit_: lambda: ((root / "shoalmark.toml").write_text(cfg37_), edit_())         # the branch carries the configuration change; the default branch's is refused here
+    c_two_, g_two_ = made37_("ap/037-two-owners", "AP-037: a better intent", fixed37_(text37_("lose a loan", "lose a book")), SEAT_)
+    check(f"FM-037 · RV-2203 · v0.19.1 · where this tool refuses the default branch's configuration, the guard's line says guarded and why, in one line — never not guarded, never that it names no Owner (saw {g_two_!r})",
+          g_two_[1].startswith("the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: "
+                               "shoalmark.toml: the Owner is named twice, and differently")
+          and g_two_[1].endswith("— 1 commit(s) on `ap/037-two-owners` since origin/main, 1 change them or their signers file, 1 refused") and "\n" not in g_two_[1]
+          and len(g_two_[0]) == 1 and g_two_[0][0].startswith(f'refused: commit {c_two_[:7]} "AP-037: a better intent" changes the text under `## The intent`'))
+    # v0.19.1 · the default branch's configuration carries an inert key this tool refuses — an `owner` line inside `[tags]`, where it names nobody
+    git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_ + '[tags]\nowner = "h@x signed"\n'); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "an owner line inside [tags]"); git(root, "push", "-q", "origin", "main")
+    unread37_ = ("origin/main's configuration cannot be read here, so who the Owner is is not known, and a change to their two sections or their signers file is not passed unread. "
+                 "The way through: land the configuration change on the default branch first, or upgrade there")
+    guarded37_ = "the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: shoalmark.toml: `owner` is inside `[tags]`, where it does not name the Owner"
+    c_ui_, g_ui_ = made37_("ap/037-unread-intent", "AP-037: a better intent", fixed37_(text37_("lose a loan", "lose a book")), SEAT_)
+    code_ui_, out_ui_, err_ui_ = run(root, "--check")
+    named_ui_ = [l_ for l_ in err_ui_.splitlines() if c_ui_[:7] in l_]
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, `--check` refuses a branch commit that changes `## The intent`, exit 4, in one line naming the commit, why and the way through — "
+          f"and its guard line says guarded (saw {code_ui_}, {named_ui_!r}, {err_ui_.strip()[-200:]!r})",
+          code_ui_ == fm.EXIT_LINT and g_ui_[0] == [f'refused: commit {c_ui_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}']
+          and named_ui_ == [f"  lint: {g_ui_[0][0]}"] and "the limit:" not in err_ui_ and "the hook proves" not in err_ui_
+          and guarded37_ in out_ui_ and g_ui_[1].startswith(guarded37_) and "\n" not in g_ui_[1]
+          and g_ui_[1].endswith("— 1 commit(s) on `ap/037-unread-intent` since origin/main, 1 change them or their signers file, 1 refused"))
+    c_up_, g_up_ = made37_("ap/037-unread-path", "AP-037: the path, signed", fixed37_(text37_("2. Nothing merges unreviewed.", "2. A seat merges.")), "-S", OWNER_)
+    c_uk_, g_uk_ = made37_("ap/037-unread-keys", "AP-037: a key", fixed37_(lambda: (root / "docs/work-tracker/allowed_signers").write_text("implementer@seat " + skey_.with_suffix(".pub").read_text(), encoding="utf-8")), SEAT_)
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, a branch commit that changes `## The current path` is refused, the Owner's signed one too, and one that writes the signers file is refused — each in one line (saw {g_up_[0]!r}, {g_uk_[0]!r})",
+          g_up_[0] == [f'refused: commit {c_up_[:7]} "AP-037: the path, signed" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — {unread37_}']
+          and g_uk_[0] == [f'refused: commit {c_uk_[:7]} "AP-037: a key" writes the signers file `docs/work-tracker/allowed_signers` — {unread37_}']
+          and g_up_[1].startswith(guarded37_) and g_uk_[1].startswith(guarded37_))
+    c_un_, g_un_ = made37_("ap/037-unread-neither", "AP-037: a pass recorded", fixed37_(text37_("*None yet.*", "**2026-10-03 — a pass.**")), SEAT_)
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, a branch commit that changes `## Passes` and the configuration file is refused, in one line naming the two files (saw {g_un_!r})",
+          g_un_[0] == [f'refused: commit {c_un_[:7]} "AP-037: a pass recorded" changes `docs/work-tracker/TRIAGE.md` and `shoalmark.toml` — {unread37_}']
+          and g_un_[1].startswith(guarded37_) and g_un_[1].endswith("— 1 commit(s) on `ap/037-unread-neither` since origin/main, 1 change them or their signers file, 1 refused"))
+    c_ur_, g_ur_ = made37_("ap/037-unread-readme", "AP-037: a line of the readme", lambda: (root / "README.md").write_text("r, and a line\n"), SEAT_, frm=readable37_)
+    code_ur_, out_ur_, err_ur_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, a branch that touches no TRIAGE.md and not the configuration file passes `--check`, and its guard line says guarded (saw {code_ur_}, {g_ur_!r}, {err_ur_.strip()[-200:]!r})",
+          code_ur_ == 0 and g_ur_[0] == [] and g_ur_[1].startswith(guarded37_) and guarded37_ in out_ur_
+          and g_ur_[1].endswith("— 1 commit(s) on `ap/037-unread-readme` since origin/main, none changes them or their signers file"))
+    git(root, "switch", "-q", "-c", "ap/037-unread-hook", "main"); fixed37_(text37_("lose a loan", "lose a shelf"))(); run(root); git(root, "add", "-A")
+    (base / "msg37").write_text("AP-037: the intent, staged\n", encoding="utf-8")
+    code_uh_, _o, err_uh_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "main")
+    check(f"FM-006 · v0.19.1 · the commit being made: where this tool refuses the default branch's configuration, `--commit-msg` refuses a staged change to `## The intent`, exit 4, in one line naming the change, why and the way through (saw {code_uh_}, {err_uh_.strip()[-300:]!r})",
+          code_uh_ == fm.EXIT_LINT and [l_.strip() for l_ in err_uh_.splitlines() if l_.strip()] == [
+              f'refused: this commit "AP-037: the intent, staged" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}'])
+    git(root, "switch", "-q", "-c", "ap/037-unread-merge", "main"); git(root, "merge", "-q", "--no-ff", "--no-commit", "ap/037-unread-intent")
+    (base / "msg37").write_text("merge the intent in\n", encoding="utf-8")
+    code_um_, _o, err_um_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "merge", "--abort"); git(root, "switch", "-q", "main")
+    check(f"FM-006 · v0.19.1 · the commit being made: where this tool refuses the default branch's configuration, a merge being made that brings a commit changing `## The intent` is refused by `--commit-msg`, exit 4, in one line naming the commit it brings (saw {code_um_}, {err_um_.strip()[-300:]!r})",
+          code_um_ == fm.EXIT_LINT and [l_.strip() for l_ in err_um_.splitlines() if l_.strip()] == [g_ui_[0][0]])
+    # v0.19.1 · the tracker in a folder of its own, `tr/`: where a configuration cannot be read, nothing is read under the defaults
+    git(root, "switch", "-q", "main"); git(root, "mv", "docs/work-tracker", "tr"); (root / ".gitignore").write_text((root / ".gitignore").read_text() + "tr/index.html\ntr/view/\n")
+    tr37_ = cfg37_.replace("[kinds]", 'tracker_dir = "tr"\n[kinds]', 1); (root / "shoalmark.toml").write_text(tr37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker in tr/"); git(root, "push", "-q", "origin", "main")
+    home_tr_, unparsed37_ = root / "tr/TRIAGE.md", lambda: (root / "shoalmark.toml").write_text("level = 1.5\n" + tr37_)
+    def by_hand37_(branch, frm, *steps):                # a branch cut from `frm`, a commit for each (subject, edit, how) — no run of the tool between them
+        git(root, "switch", "-q", "-c", branch, frm); made_ = []
+        for subject_, edit_, *how_ in steps:
+            edit_(); git(root, "add", "-A"); git(root, *how_[1:], "commit", "-q", "-m", subject_, how_[0]); made_.append(sha37_())
+        return made_
+    c_o1_, c_o2_ = by_hand37_("ap/037-own-unparsed", "main", ("AP-037: tidy", lambda: (unparsed37_(), home_tr_.write_text(scaffold_)), SEAT_),
+                              ("AP-037: the configuration back", lambda: (root / "shoalmark.toml").write_text(tr37_), SEAT_))
+    g_o_ = guard37_()
+    c_os1_, c_os2_ = by_hand37_("ap/037-own-unparsed-signed", "main", ("AP-037: the Owner's tidy", lambda: (unparsed37_(), home_tr_.write_text(scaffold_)), OWNER_, "-c", "commit.gpgsign=true"),
+                                ("AP-037: the Owner's configuration back", lambda: (root / "shoalmark.toml").write_text(tr37_), OWNER_, "-c", "commit.gpgsign=true"))
+    g_os_ = guard37_()
+    unparsable37_ = "shoalmark.toml:1: not understood — 'level = 1.5'"
+    check(f"FM-006 · v0.19.1 · where a branch commit's own configuration cannot be read, nothing is read under the defaults: it and the commit that mends the configuration after it are each refused, in one line naming the files, the configuration that cannot be read and the way through, the Owner's signed commit — and the Owner's signed commits pass (saw {g_o_[0]!r}, {g_os_!r})",
+          len(g_o_[0]) == 2
+          and any(l_.startswith(f'refused: commit {c_o1_[:7]} "AP-037: tidy" changes `shoalmark.toml` and `tr/TRIAGE.md` where shoalmark.toml at {c_o1_[:7]} cannot be read here — {unparsable37_}') for l_ in g_o_[0])
+          and any(l_.startswith(f'refused: commit {c_o2_[:7]} "AP-037: the configuration back" changes `shoalmark.toml` where shoalmark.toml at {c_o1_[:7]} cannot be read here — {unparsable37_}') for l_ in g_o_[0])
+          and all("its author `implementer@seat` is not the Owner (`h@x`)" in l_ and l_.endswith(f"The way through: {fm.GUARD_WAY}") for l_ in g_o_[0])
+          and g_os_ == ([], "the Owner's two sections: guarded — 2 commit(s) on `ap/037-own-unparsed-signed` since origin/main, 2 change them or their signers file, each their own commit"))
+    q_o_ = _no_git_env(lambda: fm.queue_actions([], [{"name": "ap/037-own-unparsed", "sha": c_o2_, "base": "main", "here": True}]))
+    check(f"FM-006 · v0.19.1 · `--queue` reads a branch whose commit `--check` refuses because a configuration on it cannot be read as a wait that names that configuration (saw {[r_[2] for r_ in q_o_]!r})",
+          [r_[2] for r_ in q_o_] == [f"wait: no pull request — TRIAGE.md change not judged — shoalmark.toml at {c_o1_[:7]} cannot be read here ({c_o2_[:7]})"])
+    git(root, "switch", "-q", "main"); unparsed37_(); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "a line this tool does not understand"); git(root, "push", "-q", "origin", "main")
+    guarded_tr_ = f"the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: {unparsable37_}"
+    c_e1_, g_e1_ = made37_("ap/037-unparsed-erase", "AP-037: tidy", lambda: ((root / "shoalmark.toml").write_text(tr37_), home_tr_.write_text(scaffold_)), SEAT_)
+    code_e1_, out_e1_, err_e1_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · where the default branch's configuration cannot be read and its tracker is in a folder of its own, `--check` refuses a seat's commit that resets both sections to the scaffold, exit 4, in one line naming the files (saw {code_e1_}, {g_e1_!r})",
+          code_e1_ == fm.EXIT_LINT and g_e1_[0] == [f'refused: commit {c_e1_[:7]} "AP-037: tidy" changes `shoalmark.toml` and `tr/TRIAGE.md` — {unread37_}']
+          and [l_ for l_ in err_e1_.splitlines() if c_e1_[:7] in l_] == [f"  lint: {g_e1_[0][0]}"] and g_e1_[1].startswith(guarded_tr_) and guarded_tr_ in out_e1_)
+    c_e2a_, c_e2b_ = by_hand37_("ap/037-unparsed-two", "main", ("AP-037: tidy", lambda: home_tr_.write_text(scaffold_), SEAT_),
+                                ("AP-037: the configuration change", lambda: (root / "shoalmark.toml").write_text(tr37_), SEAT_))
+    g_e2_ = guard37_(); code_e2_, _o, err_e2_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · where the default branch's configuration cannot be read and its tracker is in a folder of its own, `--check` refuses a seat's commit that resets both sections to the scaffold and the commit after it that mends the configuration, each in one line (saw {code_e2_}, {g_e2_!r})",
+          code_e2_ == fm.EXIT_LINT and sorted(g_e2_[0]) == sorted([f'refused: commit {c_e2a_[:7]} "AP-037: tidy" changes `tr/TRIAGE.md` — {unread37_}',
+                                                                  f'refused: commit {c_e2b_[:7]} "AP-037: the configuration change" changes `shoalmark.toml` — {unread37_}'])
+          and g_e2_[1].endswith("— 2 commit(s) on `ap/037-unparsed-two` since origin/main, 2 change them or their signers file, 2 refused"))
+    git(root, "switch", "-q", "-c", "ap/037-unparsed-hook", "main"); (root / "shoalmark.toml").write_text(tr37_); home_tr_.write_text(scaffold_); run(root); git(root, "add", "-A")
+    (base / "msg37").write_text("AP-037: tidy, staged\n", encoding="utf-8")
+    code_eh_, _o, err_eh_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "reset", "-q", "--hard"); git(root, "switch", "-q", "ap/037-unparsed-two")
+    check(f"FM-006 · v0.19.1 · the commit being made: where the default branch's configuration cannot be read and its tracker is in a folder of its own, `--commit-msg` refuses a staged reset of both sections to the scaffold, exit 4, in one line (saw {code_eh_}, {err_eh_.strip()[-300:]!r})",
+          code_eh_ == fm.EXIT_LINT and [l_.strip() for l_ in err_eh_.splitlines() if l_.strip()] == [f'refused: this commit "AP-037: tidy, staged" changes `shoalmark.toml` and `tr/TRIAGE.md` — {unread37_}'])
+    fm.configure(root); q_e_ = _no_git_env(lambda: fm.queue_actions([], [{"name": "ap/037-unparsed-two", "sha": c_e2b_, "base": "main", "here": True}]))
+    check(f"FM-006 · v0.19.1 · `--queue` reads a branch whose commits `--check` refuses where the default branch's configuration cannot be read as a wait that says so, and where (saw {[r_[2] for r_ in q_e_]!r})",
+          [r_[2] for r_ in q_e_] == [f"wait: no pull request — TRIAGE.md change not judged — origin/main's configuration cannot be read here ({c_e2b_[:7]})"])
+    git(root, "switch", "-q", "main"); git(root, "mv", "tr", "docs/work-tracker"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    c_rt_, g_rt_ = made37_("ap/037-tracker-at-root", "AP-037: the tracker at the root", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = ""\n[kinds]', 1)),
+                                                                                       (root / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a book"))), SEAT_)
+    check(f"FM-006 · v0.19.1 · an empty `tracker_dir` is read as the tool reads it, TRIAGE.md at the root — never as the default folder: a seat's commit that points it there, at a TRIAGE.md of its own, is refused (saw {g_rt_[0]!r})",
+          len(g_rt_[0]) == 1 and g_rt_[0][0].startswith(f'refused: commit {c_rt_[:7]} "AP-037: the tracker at the root" points the tracker directory elsewhere (`docs/work-tracker` → ``), and the tool reads `## The intent` otherwise — '
+                                                        "its author `implementer@seat` is not the Owner (`h@x`)"))
+    # v0.19.1 · a submodule where the default branch's configuration was: no file at that path is a configuration that cannot be read, never no configuration
+    git(root, "switch", "-q", "main"); git(root, "rm", "-q", "--cached", "shoalmark.toml"); (root / "shoalmark.toml").unlink()
+    git(root, "update-index", "--add", "--cacheinfo", "160000," + "1" * 40 + ",shoalmark.toml"); git(root, "commit", "-q", "-m", "a submodule where the configuration was"); git(root, "push", "-q", "origin", "main")
+    def own37_():                                       # the branch's own configuration, a file again, names the seat the Owner — and the seat changes the intent
+        cfg_ = root / "shoalmark.toml"
+        if cfg_.is_dir():
+            cfg_.rmdir()
+        cfg_.write_text(cfg37_.replace('owner = "h@x signed"\nimplementer = "implementer@seat"', 'owner = "implementer@seat"')); text37_("lose a loan", "lose a book")()
+    c_gl_, g_gl_ = made37_("ap/037-gitlink", "AP-037: the seat, the Owner", own37_, SEAT_)
+    code_gl_, out_gl_, err_gl_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · a submodule at the default branch's configuration path is a configuration that cannot be read, never none: a seat's commit that names itself the Owner and changes `## The intent` is refused, exit 4, in one line (saw {code_gl_}, {g_gl_!r})",
+          code_gl_ == fm.EXIT_LINT and g_gl_[0] == [f'refused: commit {c_gl_[:7]} "AP-037: the seat, the Owner" changes `docs/work-tracker/TRIAGE.md` and `shoalmark.toml` — {unread37_}']
+          and g_gl_[1].startswith("the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: "
+                                  "shoalmark.toml: not a file — git records a submodule at that path, and only a file is read as the configuration"))
+    # v0.19.1 · `git cat-file --batch` may answer a submodule `<oid> submodule` — no size, nothing after it; every git is made to answer so here
+    def subm_stream_(real_):
+        """`subprocess.run` as the tool sees it from a git whose `git cat-file --batch` answers each submodule `<oid> submodule`, where another answers
+        `<spec> missing` — the stream git wrote, re-written header by header; every other call as it is. The headers it hands on are kept."""
+        def run_(args, *a, **k):
+            r_ = real_(args, *a, **k)
+            if list(args) != ["git", "cat-file", "--batch"]:
+                return r_
+            data_, i_, out_ = r_.stdout, 0, b""
+            for spec_ in k["input"].decode("utf-8").split("\n")[:-1]:
+                nl_ = data_.index(b"\n", i_); head_ = data_[i_:nl_]
+                if head_.endswith(b" missing"):
+                    oid_ = real_(["git", "rev-parse", "--verify", "-q", spec_], cwd=k.get("cwd"), env=k.get("env"), capture_output=True, text=True).stdout.strip()
+                    head_ = (oid_ + " submodule").encode() if oid_ else head_
+                end_ = nl_ + 1 if head_.endswith((b" missing", b" ambiguous", b" submodule")) else nl_ + 1 + int(head_.rsplit(b" ", 1)[1]) + 1
+                out_ += head_ + data_[nl_:end_]; run_.heads.append(head_.decode()); i_ = end_
+            return subprocess.CompletedProcess(r_.args, r_.returncode, out_, r_.stderr)
+        run_.heads = []
+        return run_
+    def at_subm_(fn_):
+        real_ = subprocess.run; subprocess.run = subm_stream_(real_)
+        try:
+            return fn_(), subprocess.run.heads
+        except ValueError as e:                         # a header read as `<oid> <type> <size>` where it has none
+            return f"ValueError: {e}", subprocess.run.heads
+        finally:
+            subprocess.run = real_
+    show_ = lambda spec: subprocess.run(["git", "-C", str(root), "show", spec], capture_output=True, env=_ENV).stdout.decode("utf-8", "replace")
+    types_sm_, specs_sm_ = {}, ["origin/main:README.md", "origin/main:shoalmark.toml", "origin/main:docs/work-tracker/TRIAGE.md"]
+    blobs_sm_, heads_sm_ = at_subm_(lambda: fm.cat_blobs(specs_sm_, types=types_sm_))
+    g_sm_, gheads_sm_ = at_subm_(guard37_)
+    check(f"FM-006 · v0.19.1 · `git cat-file --batch` answering a submodule `<oid> submodule`, no size and nothing after it: a submodule between two files is no text "
+          f"and a submodule's type, the file after it read whole, and the configuration that is a submodule is one that cannot be read — the guard refuses as for any answer (saw {heads_sm_[1:2]}, {blobs_sm_!r:.160}, "
+          f"{types_sm_}, {g_sm_!r:.200})",
+          heads_sm_[1:2] == ["1" * 40 + " submodule"] and any(h.endswith(" submodule") for h in gheads_sm_)
+          and blobs_sm_ == {specs_sm_[0]: show_(specs_sm_[0]), specs_sm_[1]: None, specs_sm_[2]: show_(specs_sm_[2])} and len(blobs_sm_[specs_sm_[2]]) > 100
+          and types_sm_ == {specs_sm_[0]: "blob", specs_sm_[1]: "commit", specs_sm_[2]: "blob"} and g_sm_ == g_gl_)
+    git(root, "switch", "-q", "main")
+    if (root / "shoalmark.toml").is_dir():
+        (root / "shoalmark.toml").rmdir()
+    git(root, "rm", "-q", "--cached", "shoalmark.toml"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the configuration, a file again"); git(root, "push", "-q", "origin", "main")
+    # v0.19.1 · the tracker folder the guard watches is the tool's own (`tracker_folder`): written with /, nested or at the root, it reads as before
+    c_xf_, g_xf_ = made37_("ap/037-explicit-folder", "AP-037: a pass recorded", lambda: ((root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "docs/work-tracker"\n[kinds]', 1)),
+                                                                                        text37_("*None yet.*", "**2026-10-04 — a pass.**")()), SEAT_)
+    git(root, "switch", "-q", "main"); (root / "TRIAGE.md").write_text(filled_); (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = ""\n[kinds]', 1)); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker at the root"); git(root, "push", "-q", "origin", "main")
+    c_rp_, g_rp_ = made37_("ap/037-root-pass", "AP-037: a pass recorded", text37_("*None yet.*", "**2026-10-04 — a pass.**", root / "TRIAGE.md"), SEAT_)
+    check(f"FM-006 · v0.19.1 · `tracker_dir` written with /, nested and the default, and empty, the root: a seat's `## Passes` entry passes the guard in each (saw {g_xf_!r}, {g_rp_!r})",
+          g_xf_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-explicit-folder` since origin/main, none changes them or their signers file")
+          and g_rp_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-root-pass` since origin/main, none changes them or their signers file"))
+    git(root, "switch", "-q", "main"); git(root, "rm", "-q", "TRIAGE.md"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    # v0.19.1 · `tracker_dir` written with a backslash is refused as the configuration is read, on every system; a commit that carries one is one whose configuration the guard cannot read
+    bs37_ = cfg37_.replace("[kinds]", 'tracker_dir = "docs\\\\work-tracker"\n[kinds]', 1)
+    def backslash37_():                                 # the configuration names a folder with a backslash; on POSIX a folder of that very name holds a TRIAGE.md of the seat's own
+        (root / "shoalmark.toml").write_text(bs37_)
+        if os.name != "nt":
+            (root / "docs\\work-tracker").mkdir(); (root / "docs\\work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
+    (c_bs1_,) = by_hand37_("ap/037-backslash", "main", ("AP-037: tidy the folder", backslash37_, SEAT_))
+    try:
+        code_bs_, said_bs_ = run(root, "--check")[0], ""
+    except SystemExit as e_:
+        code_bs_, said_bs_ = None, str(e_)
+    git(root, "switch", "-q", "ap/037-backslash"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written with /", SEAT_)
+    c_bs2_, g_bs_ = sha37_(), guard37_(); code_bs2_, _o, err_bs2_ = run(root, "--check")
+    check(f"FM-006 · v0.19.1 · a `tracker_dir` holding a backslash is refused in one line ending \"write the folder with /\", and a commit carrying one is refused by `--check`, exit 4 (saw {said_bs_!r}, {code_bs2_}, {g_bs_[0]!r})",
+          said_bs_.startswith("shoalmark.toml: `tracker_dir = ") and said_bs_.endswith("— write the folder with /") and "\n" not in said_bs_ and code_bs2_ == fm.EXIT_LINT and len(g_bs_[0]) == 2
+          and any(l_.startswith(f'refused: commit {c_bs1_[:7]} "AP-037: tidy the folder" changes ') and f"where shoalmark.toml at {c_bs1_[:7]} cannot be read here — {said_bs_}" in l_ for l_ in g_bs_[0])
+          and any(l_.startswith(f'refused: commit {c_bs2_[:7]} "AP-037: the folder written with /" changes `shoalmark.toml` where shoalmark.toml at {c_bs1_[:7]} cannot be read here') for l_ in g_bs_[0]))
+    git(root, "switch", "-q", "main")
+    # v0.19.1 · a `tracker_dir` some system reads as drive-qualified is refused as the configuration is read; a commit that carries one is one whose configuration the guard cannot read
+    dq37_ = cfg37_.replace("[kinds]", 'tracker_dir = "C:/work-tracker"\n[kinds]', 1)
+    def drive37_():                                     # the configuration names `C:/work-tracker`; where a folder may be named so, it holds a TRIAGE.md of the seat's own
+        (root / "shoalmark.toml").write_text(dq37_)
+        if os.name != "nt":
+            (root / "C:" / "work-tracker").mkdir(parents=True); (root / "C:" / "work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
+    (c_dq1_,) = by_hand37_("ap/037-drive", "main", ("AP-037: tidy the folder", drive37_, SEAT_))
+    try:
+        code_dq_, said_dq_ = run(root, "--check")[0], ""
+    except SystemExit as e_:
+        code_dq_, said_dq_ = None, str(e_)
+    git(root, "switch", "-q", "ap/037-drive"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written relative", SEAT_)
+    c_dq2_, g_dq_ = sha37_(), guard37_(); code_dq2_ = run(root, "--check")[0]
+    check(f"FM-006 · v0.19.1 · a `tracker_dir` some system reads as drive-qualified is refused as the configuration is read, in one line, and a commit carrying one is refused by `--check`, "
+          f"exit 4, as one whose configuration cannot be read (saw {said_dq_!r}, {code_dq2_}, {g_dq_[0]!r})",
+          said_dq_ == 'shoalmark.toml: `tracker_dir = "C:/work-tracker"` is read as absolute or drive-qualified on some system — `tracker_dir` is a folder written relative to the repository, with /'
+          and code_dq2_ == fm.EXIT_LINT and len(g_dq_[0]) == 2
+          and any(l_.startswith(f'refused: commit {c_dq1_[:7]} "AP-037: tidy the folder" changes ') and f"where shoalmark.toml at {c_dq1_[:7]} cannot be read here — {said_dq_}" in l_ for l_ in g_dq_[0])
+          and any(l_.startswith(f'refused: commit {c_dq2_[:7]} "AP-037: the folder written relative" changes `shoalmark.toml` where shoalmark.toml at {c_dq1_[:7]} cannot be read here') for l_ in g_dq_[0]))
+    git(root, "switch", "-q", "main")
+    # v0.19.1 · a path the guard watches, in another case or Unicode normalization: on a file system that ignores both — macOS's default, Windows's — it can be the file the tool reads
+    def variant37_(branch, path):                       # a seat's commit, made with git's plumbing as on a file system that keeps case and normalization apart: `path` holds an intent of its own
+        git(root, "switch", "-q", "-c", branch, "main")
+        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=filled_.replace("lose a loan", "lose a ledger"), capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "-c", "core.precomposeunicode=false", "update-index", "--add", "--cacheinfo", f"100644,{blob_},{path}")
+        git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_)
+        c_, g_ = sha37_(), guard37_(); code_ = run(root, "--check")[0]
+        git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")    # where the file system folds the two, leaving the variant took the Owner's file with it
+        return c_, g_, code_
+    variant_line37_ = lambda c_, path_, home_path_: (f'refused: commit {c_[:7]} "AP-037: a note" changes `{path_}` which a file system that ignores case or Unicode normalization reads as `{home_path_}` — '
+                                                    f"its author `implementer@seat` is not the Owner (`h@x`): not the Owner's signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}")
+    c_v1_, g_v1_, code_v1_ = variant37_("ap/037-lower-name", "docs/work-tracker/triage.md")
+    check(f"FM-006 · v0.19.1 · a seat's commit that writes `triage.md` beside the Owner's `TRIAGE.md` is refused by `--check`, exit 4, in one line naming it and the file it is read as (saw {code_v1_}, {g_v1_[0]!r})",
+          code_v1_ == fm.EXIT_LINT and g_v1_[0] == [variant_line37_(c_v1_, "docs/work-tracker/triage.md", "docs/work-tracker/TRIAGE.md")])
+    c_v2_, g_v2_, code_v2_ = variant37_("ap/037-folder-case", "Docs/Work-Tracker/TRIAGE.md")
+    check(f"FM-006 · v0.19.1 · a seat's commit that writes a TRIAGE.md in the tracker folder spelled in another case is refused by `--check`, exit 4, in one line naming it and the file it is read as (saw {code_v2_}, {g_v2_[0]!r})",
+          code_v2_ == fm.EXIT_LINT and g_v2_[0] == [variant_line37_(c_v2_, "Docs/Work-Tracker/TRIAGE.md", "docs/work-tracker/TRIAGE.md")])
+    ue37_ = unicodedata.normalize("NFC", "docs/Übersicht"); git(root, "switch", "-q", "main"); git(root, "mv", "docs/work-tracker", ue37_)
+    (root / ".gitignore").write_text((root / ".gitignore").read_text() + f"{ue37_}/index.html\n{ue37_}/view/\n")
+    (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", f'tracker_dir = "{ue37_}"\n[kinds]', 1)); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker in a folder whose name is not ASCII"); git(root, "push", "-q", "origin", "main")
+    nfd37_ = unicodedata.normalize("NFD", ue37_) + "/TRIAGE.md"
+    c_v4_, g_v4_, code_v4_ = variant37_("ap/037-folder-nfd", nfd37_)
+    check(f"FM-006 · v0.19.1 · a seat's commit that writes a TRIAGE.md in the tracker folder spelled in another Unicode normalization is refused by `--check`, exit 4, in one line naming it and the file it is read as (saw {code_v4_}, {g_v4_[0]!r})",
+          code_v4_ == fm.EXIT_LINT and g_v4_[0] == [variant_line37_(c_v4_, nfd37_, ue37_ + "/TRIAGE.md")])
+    git(root, "switch", "-q", "main"); git(root, "mv", ue37_, "docs/work-tracker"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    # v0.19.1 · where a commit moves the tracker's home, every path its tree holds that is that home in another case or normalization is refused
+    seat_text37_ = filled_.replace("lose a loan", "lose a ledger")
+    def staged37_(path_, text_):                        # one file staged with git's plumbing, as on a file system that keeps case apart — nothing checked out
+        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=text_, capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root, "-c", "core.precomposeunicode=false", "update-index", "--add", "--cacheinfo", f"100644,{blob_},{path_}")
+    tracked37_ = [p_ for p_ in subprocess.run(["git", "-C", str(root), "ls-files", "docs/work-tracker"], capture_output=True, text=True, env=_ENV).stdout.split("\n") if p_]
+    git(root, "switch", "-q", "-c", "ap/037-case-move", "main")
+    staged37_("shoalmark.toml", cfg37_.replace("[kinds]", 'tracker_dir = "DOCS/WORK-TRACKER"\n[kinds]', 1))
+    for p_ in tracked37_:                               # the whole tracker, its words the Owner's byte for byte, under the folder spelled in capitals
+        staged37_("DOCS/WORK-TRACKER/" + p_[len("docs/work-tracker/"):], subprocess.run(["git", "-C", str(root), "show", f"main:{p_}"], capture_output=True, text=True, env=_ENV).stdout)
+    staged37_("docs/work-tracker/TRIAGE.md", seat_text37_)
+    (base / "msg37").write_text("AP-037: a note\n", encoding="utf-8"); code_cm_, _o, err_cm_ = run(root, "--commit-msg", str(base / "msg37"))
+    git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_); c_cm_, g_cm_ = sha37_(), guard37_(); code_cc_ = run(root, "--check")[0]
+    git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    case_said37_ = "changes `docs/work-tracker/TRIAGE.md` which a file system that ignores case or Unicode normalization reads as `DOCS/WORK-TRACKER/TRIAGE.md`"
+    check(f"FM-006 · v0.19.1 · where a commit moves the tracker's home, a path that is that home in another case is refused, by `--commit-msg` and `--check`, exit 4, in one line (saw {code_cm_}, {code_cc_}, {g_cm_[0]!r})",
+          code_cm_ == fm.EXIT_LINT and any(l_.strip().startswith('refused: this commit "AP-037: a note" ') and case_said37_ in l_ for l_ in err_cm_.splitlines())
+          and code_cc_ == fm.EXIT_LINT and len(g_cm_[0]) == 1 and g_cm_[0][0].startswith(f'refused: commit {c_cm_[:7]} "AP-037: a note" ') and case_said37_ in g_cm_[0][0])
+    c_m1_, _g = made37_("ap/037-elsewhere-back", "AP-037: the tracker elsewhere", lambda: (shutil.copytree(str(root / "docs/work-tracker"), str(root / "elsewhere")),
+                                                                                         (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "elsewhere"\n[kinds]', 1))), SEAT_)
+    staged37_("docs/work-tracker/triage.md", seat_text37_); git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_); c_m2_ = sha37_()
+    (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "shoalmark.toml"); git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: the tracker back", SEAT_)
+    c_m3_, g_m_ = sha37_(), guard37_(); code_m_ = run(root, "--check")[0]
+    git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    check(f"FM-006 · v0.19.1 · a commit that moves the home back where its tree holds that home in another case is refused, naming it (saw {code_m_}, {g_m_!r})",
+          code_m_ == fm.EXIT_LINT and g_m_[0] == [f'refused: commit {c_m3_[:7]} "AP-037: the tracker back" holds `docs/work-tracker/triage.md` which a file system that ignores case or Unicode normalization reads as `docs/work-tracker/TRIAGE.md` — '
+                                                  f"its author `implementer@seat` is not the Owner (`h@x`): not the Owner's signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}"]
+          and g_m_[1].endswith("— 3 commit(s) on `ap/037-elsewhere-back` since origin/main, 1 change them or their signers file, 1 refused"))
+    c_om_, g_om_ = made37_("ap/037-owner-move", "AP-037: the tracker moves", lambda: (git(root, "mv", "docs/work-tracker", "kept"),
+                                                                                    (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "kept"\n[kinds]', 1))), "-S", OWNER_)
+    check(f"FM-006 · v0.19.1 · the Owner's signed commit that moves the tracker folder, no path colliding with its new home, passes the guard (saw {g_om_!r})",
+          g_om_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-move` since origin/main, none changes them or their signers file"))
+    git(root, "switch", "-q", "main")
+    # v0.19.1 · the branch tip as a merge brings it: where its home is not the default branch's, a path that is either home in another case is refused
+    git(root, "switch", "-q", "main"); git(root, "mv", "docs/work-tracker", "away"); (root / ".gitignore").write_text((root / ".gitignore").read_text() + "away/index.html\naway/view/\n")
+    (root / "shoalmark.toml").write_text(cfg37_.replace("[kinds]", 'tracker_dir = "away"\n[kinds]', 1)); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "the tracker away"); git(root, "push", "-q", "origin", "main")
+    (c_tv_,) = by_hand37_("ap/037-tip-variant", "main", ("AP-037: a note", lambda: ((root / "docs/work-tracker").mkdir(parents=True), (root / "docs/work-tracker/triage.md").write_text(seat_text37_)), SEAT_))
+    git(root, "switch", "-q", "main")
+    if (root / "docs/work-tracker").is_dir():
+        (root / "docs/work-tracker").rmdir()
+    (root / "docs").mkdir(exist_ok=True); git(root, "mv", "away", "docs/work-tracker"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "the tracker back in docs/work-tracker"); git(root, "push", "-q", "origin", "main")
+    git(root, "switch", "-q", "ap/037-tip-variant"); g_tv_ = guard37_(); code_tv_ = run(root, "--check")[0]
+    git(root, "-c", "core.precomposeunicode=false", "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    check(f"FM-006 · v0.19.1 · a branch tip holding a path that is the default branch's home in another case is refused, exit 4, in one line (saw {code_tv_}, {g_tv_[0]!r})",
+          code_tv_ == fm.EXIT_LINT and g_tv_[0] == [f"refused: the branch tip `{c_tv_[:7]}` holds `docs/work-tracker/triage.md` which a file system that ignores case or Unicode normalization reads as "
+                                                    "`docs/work-tracker/TRIAGE.md` — origin/main's TRIAGE.md is `docs/work-tracker/TRIAGE.md`, the tip's `away/TRIAGE.md`, and a merge brings it: carry the work onto a branch without it"])
+    fm.configure(root); q_tv_ = _no_git_env(lambda: fm.queue_actions([], [{"name": "ap/037-tip-variant", "sha": c_tv_, "base": "main", "here": True}]))
+    check(f"FM-006 · v0.19.1 · `--queue` waits on a branch whose tip `--check` refuses as a merge would bring it (saw {[r_[2] for r_ in q_tv_]!r})",
+          [r_[2] for r_ in q_tv_] == [f"wait: no pull request — TRIAGE.md home in another case at the branch tip ({c_tv_[:7]})"])
+    # v0.19.1 · a symlink at the default branch's configuration path is a configuration that cannot be read — never one naming no Owner
+    git(root, "switch", "-q", "main"); blob37_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input='name = "g"', capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "update-index", "--cacheinfo", f"120000,{blob37_},shoalmark.toml"); git(root, "commit", "-q", "-m", "the configuration, a symlink"); git(root, "push", "-q", "origin", "main")
+    (c_cl_,) = by_hand37_("ap/037-config-link", "main", ("AP-037: a better intent", lambda: ((root / "shoalmark.toml").write_text(cfg37_), text37_("lose a loan", "lose a book")()), SEAT_))
+    g_cl_ = guard37_(); code_cl_ = run(root, "--check")[0]
+    check(f"FM-006 · v0.19.1 · a symlink at the default branch's configuration path is a configuration that cannot be read: a change to `## The intent` is refused, exit 4 (saw {code_cl_}, {g_cl_!r})",
+          code_cl_ == fm.EXIT_LINT and g_cl_[0] == [f'refused: commit {c_cl_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}']
+          and g_cl_[1].startswith("the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: "
+                                  "shoalmark.toml: not a file — git records a symlink at that path"))
+    git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    if os.path.lexists(root / "shoalmark.toml"):
+        (root / "shoalmark.toml").unlink()
+    (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "the configuration, a file again"); git(root, "push", "-q", "origin", "main")
     # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
@@ -7902,6 +9582,149 @@ with tempfile.TemporaryDirectory() as tmp:
     c_ko_, g_ko_ = made37_("ap/037-owner-path", "AP-037: his line, his key", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), "-S", OWNER_)
     check(f"FM-037 · AU-19 · the Owner's real key still verifies against the default branch's file: his signed change to the signers file is accepted, and his signed change to the path (saw {g_k_!r})",
           g_k_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-owner-keys` since origin/main, 1 change them or their signers file, each their own commit") and g_ko_[0] == [])
+    # v0.19.1 · the signers file this clone names, made a symlink by a branch, to a file outside the repository: nothing verifies against it
+    if _SYMLINKS:
+        outside37_ = base / "outside_signers"; outside37_.write_text("h@x " + skey_.with_suffix(".pub").read_text())
+        def link37_():                                  # the checkout's signers file, a link to a file no checkout holds, the seat's key under the Owner's email
+            signers37_.unlink(); os.symlink(str(outside37_), str(signers37_))
+        as_owner_with_seat_key37_ = (OWNER_, "-c", "user.signingkey=" + str(skey_), "-c", "commit.gpgsign=true")
+        c_l1_, c_l2_ = by_hand37_("ap/037-signers-link", "main", ("AP-037: the signers file", link37_, *as_owner_with_seat_key37_),
+                                  ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
+        g_l_ = guard37_(); code_l_, _o, err_l_ = run(root, "--check")
+        link_said37_ = "the signers file is, or is reached through, a symlink, and nothing verifies against it"
+        check(f"FM-006 · v0.19.1 · a signers file reached through a symlink in a checkout verifies nothing, exit 4, the line saying so (saw {code_l_}, {g_l_[0]!r})",
+              code_l_ == fm.EXIT_LINT and len(g_l_[0]) == 2 and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}" in l_ and link_said37_ in l_ for l_ in g_l_[0])
+              and any(f"`{c_l2_[:10]}`" in l_ and "changes the text under `## The intent`" in l_ for l_ in g_l_[0]) and link_said37_ in err_l_)
+        git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard")
+    else:
+        _skipped("FM-006 · v0.19.1 · a signers file that is a symlink", 1, "this system makes no symlinks")
+    # v0.19.1 · the signers file this clone names, spelled otherwise: which working tree holds it is decided by the file system's identity, never by spelling
+    try:                                                # does this file system fold case? Asked of the file system itself
+        (base / "case_probe").write_text("x", encoding="utf-8")
+        folds37_ = os.path.exists(base / "CASE_PROBE") and os.stat(base / "CASE_PROBE").st_ino == os.stat(base / "case_probe").st_ino
+    except OSError as e_:
+        folds37_ = None                                 # the probe could not run: the checks that need it fail, never skip
+    as_owner_with_seat_key37_ = (OWNER_, "-c", "user.signingkey=" + str(skey_), "-c", "commit.gpgsign=true")
+    seat_keyed37_ = lambda: signers37_.write_text(signers37_.read_text() + "h@x " + skey_.with_suffix(".pub").read_text())
+    def seat_signed37_(branch, conf_, first_, frm="main"):   # a branch of two commits signed with the seat's key under the Owner's email — `first_`, then a change to the intent — judged with `conf_` named
+        git(root, "config", "gpg.ssh.allowedSignersFile", conf_)
+        made_ = by_hand37_(branch, frm, ("AP-037: the signers file", first_, *as_owner_with_seat_key37_),
+                           ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
+        g_ = guard37_(); code_ = run(root, "--check")[0]
+        return made_, g_, code_
+    def back37_():
+        git(root, "switch", "-q", "-f", "main"); git(root, "reset", "-q", "--hard"); git(root, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+    refused_unverified37_ = lambda g_, code_: code_ == fm.EXIT_LINT and len(g_[0]) == 2 and all("the Owner's email, and its signature does not verify" in l_ for l_ in g_[0])
+    refused_link37_ = lambda g_, code_, conf_: code_ == fm.EXIT_LINT and len(g_[0]) == 2 and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {conf_}" in l_ and link_said37_ in l_ for l_ in g_[0])
+    k_names37_ = {
+        "K1": "FM-006 · v0.19.1 · a signers file named in another case is read at the default branch's copy: a key a branch appends verifies nothing, the change refused, exit 4",
+        "K2": "FM-006 · v0.19.1 · a symlinked signers file named in another case verifies nothing, exit 4, the line saying so",
+        "K7": "FM-006 · v0.19.1 · a symlinked signers file named through the firmlink verifies nothing, exit 4, the line saying so",
+        "K9": "FM-006 · v0.19.1 · a signers file named in another case below the working tree is read at git's spelling on the default branch: the Owner's signed change passes, an appended key verifies nothing",
+    }
+    if folds37_ is None:
+        for k_ in ("K1", "K2", "K9"):
+            check(f"{k_names37_[k_]} (saw: whether this file system folds case could not be asked)", False)
+    elif not folds37_:
+        for k_ in ("K1", "K2", "K9"):
+            _skipped(k_names37_[k_], 1, "this file system keeps case apart")
+    else:
+        typed37_ = str(signers37_).replace(f"{os.sep}wc{os.sep}", f"{os.sep}WC{os.sep}", 1)
+        (c_k1a_, c_k1b_), g_k1_, code_k1_ = seat_signed37_("ap/037-signers-case", typed37_, seat_keyed37_)
+        check(f"{k_names37_['K1']} (saw {code_k1_}, {g_k1_[0]!r})", refused_unverified37_(g_k1_, code_k1_)
+              and any(l_.startswith(f'refused: commit {c_k1a_[:7]} "AP-037: the signers file" changes the signers file `docs/work-tracker/allowed_signers`') for l_ in g_k1_[0])
+              and any(l_.startswith(f'refused: commit {c_k1b_[:7]} "AP-037: a better intent" changes the text under `## The intent`') for l_ in g_k1_[0]))
+        back37_()
+        if _SYMLINKS:
+            _made, g_k2_, code_k2_ = seat_signed37_("ap/037-signers-case-link", typed37_, link37_)
+            check(f"{k_names37_['K2']} (saw {code_k2_}, {g_k2_[0]!r})", refused_link37_(g_k2_, code_k2_, typed37_))
+            back37_()
+        else:
+            _skipped(k_names37_["K2"], 1, "this system makes no symlinks")
+        below37_ = str(signers37_).replace(f"{os.sep}docs{os.sep}work-tracker{os.sep}allowed_signers", f"{os.sep}Docs{os.sep}Work-Tracker{os.sep}Allowed_Signers")
+        _made, g_k9_, code_k9_ = seat_signed37_("ap/037-signers-case-below", below37_, seat_keyed37_)
+        fm.configure(root); rel_k9_ = _no_git_env(fm.trusted_signers)["rel"]
+        back37_(); git(root, "config", "gpg.ssh.allowedSignersFile", below37_)
+        (c_k9o_,) = by_hand37_("ap/037-signers-case-below-owner", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
+        g_k9o_ = guard37_(); back37_()
+        check(f"{k_names37_['K9']} (saw {rel_k9_!r}, {code_k9_}, {g_k9_[0]!r}, {g_k9o_!r})",
+              rel_k9_ == "docs/work-tracker/allowed_signers" and refused_unverified37_(g_k9_, code_k9_)
+              and g_k9o_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-signers-case-below-owner` since origin/main, 1 change them or their signers file, each their own commit"))
+    firm37_ = "/System/Volumes/Data" + str(signers37_)
+    if not (_SYMLINKS and os.path.isdir("/System/Volumes/Data") and os.path.exists(firm37_) and os.stat(firm37_).st_ino == os.stat(signers37_).st_ino):
+        _skipped(k_names37_["K7"], 1, "no firmlink to the data volume here, or no symlinks")
+    else:
+        _made, g_k7_, code_k7_ = seat_signed37_("ap/037-signers-firmlink", firm37_, link37_)
+        check(f"{k_names37_['K7']} (saw {code_k7_}, {g_k7_[0]!r})", refused_link37_(g_k7_, code_k7_, firm37_))
+        back37_()
+    k8_name37_ = "FM-006 · v0.19.1 · a symlink before a `..` on the way to the signers file is read before the `..` applies: nothing verifies, exit 4, the line saying so"
+    if _SYMLINKS:
+        far37_ = base / "far"; (far37_ / "kit").mkdir(parents=True); (far37_ / "work-tracker").mkdir()
+        (far37_ / "work-tracker" / "allowed_signers").write_text("h@x " + skey_.with_suffix(".pub").read_text())
+        git(root, "switch", "-q", "main"); (root / "docs/kit").mkdir(); (root / "docs/kit/x").write_text("x\n"); git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "a kit folder", OWNER_); git(root, "push", "-q", "origin", "main")
+        dotted37_ = str(root / "docs" / "kit" / ".." / "work-tracker" / "allowed_signers")
+        def kit_link37_():                              # the kit folder, a link to a folder outside whose neighbour holds the seat's key
+            shutil.rmtree(root / "docs/kit"); os.symlink(str(far37_ / "kit"), str(root / "docs/kit"))
+        _made, g_k8_, code_k8_ = seat_signed37_("ap/037-signers-dotdot", dotted37_, kit_link37_)
+        check(f"{k8_name37_} (saw {code_k8_}, {g_k8_[0]!r})", code_k8_ == fm.EXIT_LINT and len(g_k8_[0]) == 1
+              and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {dotted37_}" in l_ and link_said37_ in l_ for l_ in g_k8_[0]))
+        back37_()
+    else:
+        _skipped(k8_name37_, 1, "this system makes no symlinks")
+    # a signers file in ANOTHER clone's working tree: a branch checked out there writes it — nothing verifies against it
+    (c_k10a_, c_k10b_) = by_hand37_("ap/037-signers-other-clone", "main", ("AP-037: the signers file", seat_keyed37_, *as_owner_with_seat_key37_),
+                                    ("AP-037: a better intent", text37_("lose a loan", "lose a ledger"), *as_owner_with_seat_key37_))
+    git(root, "push", "-q", "origin", "ap/037-signers-other-clone")
+    second37_ = base / "second"; subprocess.run(["git", "clone", "-q", str(base / "origin.git"), str(second37_)], check=True, capture_output=True, env=_ENV)
+    git(second37_, "switch", "-q", "ap/037-signers-other-clone"); git(second37_, "remote", "set-head", "origin", "main")
+    git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))          # the first clone's file — checked out there on the seat's branch
+    code_k10_, _o, err_k10_ = run(second37_, "--check"); g_k10_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
+    fm.configure(root); back37_()
+    check(f"FM-006 · v0.19.1 · a signers file in another clone's working tree verifies nothing, exit 4, the line saying so (saw {code_k10_}, {g_k10_[0]!r})",
+          code_k10_ == fm.EXIT_LINT and len(g_k10_[0]) == 2
+          and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, inside another checkout" in l_
+                  and "the signers file is inside another checkout, where a branch writes it — name this repository's own file, or one outside every checkout" in l_ for l_ in g_k10_[0]))
+    # a signers file that is, or is reached through, a symlink in another clone's working tree: nothing verifies against it
+    x10a_name37_ = "FM-006 · v0.19.1 · a signers file that is a symlink in another clone's working tree verifies nothing, exit 4, the line saying so"
+    x10b_name37_ = "FM-006 · v0.19.1 · a signers file reached through a symlinked folder in another clone's working tree verifies nothing, exit 4, the line saying so"
+    if _SYMLINKS:
+        git(root, "push", "-q", "origin", "ap/037-signers-link"); git(root, "switch", "-q", "-f", "ap/037-signers-link")     # the first clone holds the link its branch wrote
+        git(second37_, "fetch", "-q", "origin"); git(second37_, "switch", "-q", "-f", "ap/037-signers-link")
+        git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+        code_x10a_ = run(second37_, "--check")[0]; g_x10a_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
+        fm.configure(root); back37_()
+        check(f"{x10a_name37_} (saw {code_x10a_}, {g_x10a_[0]!r})", code_x10a_ == fm.EXIT_LINT and len(g_x10a_[0]) == 2
+              and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, and `{signers37_}` on the way to it is a symlink" in l_ and link_said37_ in l_ for l_ in g_x10a_[0]))
+        ext37_ = base / "ext"; shutil.copytree(str(root / "docs/work-tracker"), str(ext37_ / "work-tracker"))
+        (ext37_ / "work-tracker" / "allowed_signers").write_text("h@x " + skey_.with_suffix(".pub").read_text())
+        git(root, "switch", "-q", "-c", "ap/037-docs-elsewhere", "main"); git(root, "rm", "-rq", "--cached", "docs"); shutil.rmtree(root / "docs")
+        os.symlink(str(ext37_), str(root / "docs")); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: docs elsewhere", SEAT_)     # the first clone: `docs`, a link to a folder outside
+        git(second37_, "switch", "-q", "-f", "ap/037-signers-other-clone"); git(second37_, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+        code_x10b_ = run(second37_, "--check")[0]; g_x10b_ = (fm.configure(second37_), _no_git_env(fm.triage_guard))[1]
+        fm.configure(root); back37_()
+        check(f"{x10b_name37_} (saw {code_x10b_}, {g_x10b_[0]!r})", code_x10b_ == fm.EXIT_LINT and len(g_x10b_[0]) == 2
+              and all(f"it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` names {signers37_}, and `{root / 'docs'}` on the way to it is a symlink" in l_ and link_said37_ in l_ for l_ in g_x10b_[0]))
+    else:
+        _skipped(x10a_name37_, 1, "this system makes no symlinks"); _skipped(x10b_name37_, 1, "this system makes no symlinks")
+    # a working tree whose folder is gone holds nothing: a regular signers file outside every checkout, beside its folder, is used as it is
+    git(root, "worktree", "add", "-q", "--detach", str(base / "wtgone"), "main"); shutil.rmtree(base / "wtgone")
+    keys37_ = base / "keys"; keys37_.mkdir(); (keys37_ / "allowed_signers").write_text("h@x " + okey_.with_suffix(".pub").read_text())
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(keys37_ / "allowed_signers"))
+    (c_x8_,) = by_hand37_("ap/037-gone-worktree", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
+    g_x8_ = guard37_(); back37_(); git(root, "worktree", "prune")
+    check(f"FM-006 · v0.19.1 · a working tree whose folder is gone holds no signers file: a regular one outside every checkout beside it is used as it is, the Owner's signed change passing (saw {g_x8_!r})",
+          g_x8_ == ([], "the Owner's two sections: guarded — 1 commit(s) on `ap/037-gone-worktree` since origin/main, 1 change them or their signers file, each their own commit"))
+    # still accepted: the Owner's own signed change, the signers file named relative to the root, and named through a link outside every checkout where one is on the way
+    via37_ = next((str(signers37_).replace(r_, l_, 1) for l_, r_ in (("/tmp/", "/private/tmp/"), ("/var/", "/private/var/")) if str(signers37_).startswith(r_) and os.path.islink(l_.rstrip("/"))), None)
+    owner_ok37_ = {}
+    for conf_ in ["docs/work-tracker/allowed_signers", *([via37_] if via37_ else [])]:
+        git(root, "config", "gpg.ssh.allowedSignersFile", conf_)
+        (c_ok_,) = by_hand37_(f"ap/037-owner-conf-{len(owner_ok37_)}", "main", ("AP-037: his line, his key", text37_("lose a loan", "lose a book"), OWNER_, "-c", "commit.gpgsign=true"))
+        owner_ok37_[conf_] = guard37_(); git(root, "switch", "-q", "main")
+    git(root, "config", "gpg.ssh.allowedSignersFile", str(signers37_))
+    check(f"FM-006 · v0.19.1 · the Owner's signed change passes with the signers file named relative to the root, and through a link outside every checkout (saw {owner_ok37_!r})",
+          all(g_[0] == [] and g_[1].endswith("1 change them or their signers file, each their own commit") for g_ in owner_ok37_.values()))
     # the cold re-review's R1 · `--answer` asks the gate's own test before it pushes — the default branch's signers file. Mid
     # key rotation, his new key only on his branch's copy: the answer it signs is NOT pushed, and neither the command nor the
     # gate tells him to sign a commit he signed — each names the file the key must reach first
@@ -7938,6 +9761,118 @@ with tempfile.TemporaryDirectory() as tmp:
           "commit its first version there, signed — a branch cannot prove a key the default branch does not hold" and on_vouch_[1] == c_r2_[:7])
     rm_git(root)
 fm.configure(HERE)
+
+
+def _backslash_said(text):
+    """What `read_config` says of a configuration: its one refusal line, or "" where it reads it."""
+    try:
+        fm.read_config(text)
+        return ""
+    except SystemExit as e_:
+        return str(e_)
+
+
+_bs_said = _backslash_said('tracker_dir = "docs\\\\work-tracker"\n')
+check(f"FM-006 · v0.19.1 · `read_config` refuses a `tracker_dir` written with a backslash, on every system, in one line ending \"write the folder with /\" — the same folder written with / reads (saw {_bs_said!r})",
+      _bs_said.startswith('shoalmark.toml: `tracker_dir = "docs\\\\work-tracker"` holds a backslash') and _bs_said.endswith("— write the folder with /") and "\n" not in _bs_said
+      and _backslash_said('tracker_dir = "docs/work-tracker"\n') == "" and fm.read_config('tracker_dir = "docs/work-tracker"\n') == {"tracker_dir": "docs/work-tracker"})
+
+
+def _configured_on(root_, named_):
+    """`configure` on `root_` — a pure path, of any system's kind — whose configuration names `named_` as `tracker_dir`: its one refusal line, or the
+    tracker folder it binds."""
+    real_ = (fm.find_root, fm.board_text)
+    fm.find_root, fm.board_text = (lambda start=None: root_), (lambda path: f'tracker_dir = "{named_}"\n[kinds]\nMSR = "Work"\n')
+    try:
+        fm.configure()
+        return fm.TRACKER_DIR
+    except SystemExit as e_:
+        return str(e_)
+    finally:
+        fm.find_root, fm.board_text = real_
+        fm.configure(HERE)
+
+
+_anchored_line = lambda v_: (f'shoalmark.toml: `tracker_dir = "{v_}"` is read as absolute or drive-qualified on some system — '
+                             "`tracker_dir` is a folder written relative to the repository, with /")
+_anchored = {v_: _backslash_said(f'tracker_dir = "{v_}"\n') for v_ in ("/srv/tracker", "//srv/share/tracker", "C:/t/base/outside", "c:tracker", "C:",
+                                                                     "./C:/x", "docs/C:/work-tracker", "a/c:x")}
+_anchored_win = {(r_, v_): _configured_on(PureWindowsPath(r_), v_) for v_ in ("C:/t/base/outside", "./C:/x", "docs/C:/work-tracker", "a/c:x") for r_ in ("C:/t/base/repo", "D:/t/base/repo")}
+def _ratio_records(named_):
+    """`[ratio]`'s default records where the configuration names `named_` as `tracker_dir`."""
+    kept_ = fm.CONFIG
+    try:
+        fm.CONFIG = {**kept_, "tracker_dir": named_}
+        return fm.ratio_defaults()["records"]
+    finally:
+        fm.CONFIG = kept_
+
+
+_records = _ratio_records("./docs//work-tracker/")
+check(f"FM-006 · v0.19.1 · `tracker_dir` is a folder written relative to the repository: one any system reads as absolute or drive-qualified — a leading / or //, "
+      f"or a drive in any part — is refused as the configuration is read, in one line, and never joined under the repository's root; a relative one reads, and `[ratio]`'s "
+      f"default records are the folder the tool binds (saw {_anchored!r:.300}, {_anchored_win!r}, {_records})",
+      all(_anchored[v_] == _anchored_line(v_) for v_ in _anchored) and len(_anchored_win) == 8 and all(_anchored_win[(r_, v_)] == _anchored_line(v_) for r_, v_ in _anchored_win)
+      and all(_backslash_said(f'tracker_dir = "{v_}"\n') == "" for v_ in ("docs/work-tracker", "./docs/work-tracker/", "a/b/c", "tr", "", "../outside")) and _records == ["docs/work-tracker/"])
+
+# --- v0.19.1 · a name holding a line break: `cat_blobs` never asks git for it — git would read it as two names and answer each — and the gate
+# refuses a tracker whose file name holds one, in one line
+def _cat_line_break():
+    """`cat_blobs` in a repository of three files, asked for each with two names holding a line break between them: {spec: text}."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d).resolve(); git(root, "init", "-q")
+        for n_ in ("a", "b", "c"):
+            (root / f"{n_}.md").write_text(f"the text of {n_}\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "three files")
+        specs_ = ["HEAD:a.md", "HEAD:docs/work-tracker/AP-1-a\nb.md", "HEAD:b.md", "HEAD:docs/work-tracker/AP-2-c\rd.md", "HEAD:c.md"]
+        try:
+            fm.configure(root); got_ = _no_git_env(lambda: fm.cat_blobs(specs_))
+        finally:
+            fm.configure(HERE)
+        rm_git(root)
+    return specs_, got_
+_lb_specs, _lb_got = _cat_line_break()
+check(f"FM-006 · v0.19.1 · `cat_blobs` never asks git for a name holding a line break: such a name has no text, and every other name, before and after it, "
+      f"gets its own (saw {_lb_got!r})",
+      _lb_got == {_lb_specs[0]: "the text of a\n", _lb_specs[1]: None, _lb_specs[2]: "the text of b\n", _lb_specs[3]: None, _lb_specs[4]: "the text of c\n"})
+
+
+def _line_break_gate(which):
+    """`--check` on a seat's branch since origin/main, in a repository whose tracker `AP-1` is filed under a name holding a line break and `AP-2`
+    under an ordinary one: `other` — the seat closes AP-2, and edits AP-1 in the same commit; `self` — the seat closes AP-1. (exit, stderr)"""
+    def text_(tid, status, more=""):
+        return f'---\nid: {tid}\nstatus: {status}\nconsidered: none\nhook: "h of {tid}"\n---\n\n# {tid} — t\n\n## What is true now\n\n**One thing is left.**{more}\n\n## Done when\n\nit is.\n'
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "wc"
+        subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+        git(root, "remote", "add", "origin", str(base / "origin.git"))
+        (root / "shoalmark.toml").write_text('name = "s"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgo99"\nimplementer = "implementer@seat"\n', encoding="utf-8")
+        w_ = root / "docs" / "work-tracker"; w_.mkdir(parents=True)
+        odd_, plain_ = w_ / "AP-1-a\nb.md", w_ / "AP-2-x.md"
+        odd_.write_text(text_("AP-1", "In Progress"), encoding="utf-8"); plain_.write_text(text_("AP-2", "In Progress"), encoding="utf-8")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "--author=holgo <holgo99>")
+        git(root, "branch", "-q", "-M", "main"); git(root, "push", "-q", "-u", "origin", "main"); git(root, "remote", "set-head", "origin", "main")
+        git(root, "switch", "-q", "-c", "ap/002-done")
+        if which == "other":
+            plain_.write_text(text_("AP-2", "Closed"), encoding="utf-8"); odd_.write_text(text_("AP-1", "In Progress", " More."), encoding="utf-8")
+        else:
+            odd_.write_text(text_("AP-1", "Closed"), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "AP-2: done", "--author=impl <implementer@seat>")
+        run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "AP-2: the index", "--allow-empty", "--author=impl <implementer@seat>")
+        code_, _o, err_ = run(root, "--check")
+        rm_git(root)
+    fm.configure(HERE)
+    return code_, err_
+_lb_line = ('"docs/work-tracker/AP-1-a\\nb.md": a tracker\'s file name holds a line break — git reads it as two names, so no change to the tracker can be judged; '
+            "give the file a name without one")
+if os.name == "nt":
+    _skipped("FM-006 · v0.19.1 · the gate refuses a tracker whose file name holds a line break", 1, "this system makes no file name with a line break")
+else:
+    _lb_other, _lb_self = _line_break_gate("other"), _line_break_gate("self")
+    check(f"FM-006 · v0.19.1 · the gate refuses a tracker whose file name holds a line break, in one line, exit 4 — a seat's close of another tracker in the same "
+          f"commit is refused as it is alone, and a seat's close of that tracker is refused (saw {_lb_other!r:.400}, {_lb_self!r:.300})",
+          _lb_other[0] == fm.EXIT_LINT and _lb_self[0] == fm.EXIT_LINT and _lb_line in _lb_other[1] and _lb_line in _lb_self[1]
+          and "AP-2: in `" in _lb_other[1] and "this change is a `close` — `implementer@seat` is the seat `implementer`, which does not hold `close`" in _lb_other[1])
 
 # FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
 # walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged

@@ -5,7 +5,7 @@
 ## 1. Put the tool in the repository
 
 ```
-git clone --branch v0.19.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
+git clone --branch v0.19.1 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
 cd <your repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
@@ -36,8 +36,8 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 
 - **git:** plain hooks — the index is regenerated and checked on every commit; a work item that contradicts itself is refused.
 - **Subversion:** the TortoiseSVN hook properties and `svn:ignore` for the board. Subversion's command line runs no
-  client-side hook, so the contract tells agents to run the tool before `svn commit`. For a gate nobody can skip, call
-  `--check` from your server's `pre-commit` hook.
+  client-side hook, so the contract tells agents to run the tool before `svn commit`. `--check` after the commit is what
+  judges it.
 
 ## 4. Say who answers — and who the agents are
 

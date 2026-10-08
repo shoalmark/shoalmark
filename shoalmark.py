@@ -45,6 +45,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import unicodedata
 import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -144,6 +145,12 @@ def read_config(text):
         value = (re.sub(r'\\(.)', r"\1", text_value) if text_value is not None else int(number) if number is not None
                  else re.findall(r'"((?:[^"\\]|\\.)*)"', items) if items is not None else flag == "true")
         (out if table is None else table)[key] = value
+    if isinstance(out.get("tracker_dir"), str) and "\\" in out["tracker_dir"]:     # one system reads it as a separator, another as a letter of the folder's name
+        raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` holds a backslash, which Windows reads as a folder's separator "
+                         "and every other system as a letter of the folder's name — write the folder with /")
+    if isinstance(out.get("tracker_dir"), str) and (out["tracker_dir"].startswith("/") or any(p[1:2] == ":" for p in out["tracker_dir"].split("/"))):     # a root, or a drive in any part: never a folder of the repository
+        raise SystemExit(f"{CONFIG_NAME}: `tracker_dir = {json.dumps(out['tracker_dir'])}` is read as absolute or drive-qualified on some system — "
+                         "`tracker_dir` is a folder written relative to the repository, with /")
     return out
 
 
@@ -179,7 +186,7 @@ def tree_write(path):
     """Whether a write lands in the tree this run tracks — inside the repository as written, outside its git directory. A destination a person names
     elsewhere (`--vendor`, `--brand`, a calendar file) and `--install-hook`'s hooks and copy are not — a named one is resolved once, where it is named, and
     judged again under the folder it resolves to; a tracker folder outside the repository is refused before any run reads it (`load_trackers`)."""
-    return in_tree(path) and not in_git_dir(path)
+    return in_tree(path) and not in_git_dir_on_disk(path)
 
 
 def write_rule(path):
@@ -275,12 +282,19 @@ def in_git_dir(path):
     return any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for p in ps for d in git_dirs())
 
 
+def in_git_dir_on_disk(path):
+    """Whether `path`, as written or as it resolves, lies inside one of the repository's git directories as the file system compares paths (`git_dir_holding`):
+    where it ignores case and Unicode normalization, a git directory spelled in another case or normalization is that git directory."""
+    p = _norm(path)
+    return git_dir_holding(p) or git_dir_holding(os.path.normcase(os.path.realpath(p)))
+
+
 def write_problem(path):
     """Why a hook's run of the copy, or the board's run, does not write `path`, or "": it lies outside the repository or inside its git directory —
     where the hooks and their copy are — is reached through a symlink, or is no regular file."""
     if not in_tree(path):
         return "outside the repository"
-    if in_git_dir(path):
+    if in_git_dir_on_disk(path):
         return "inside the git directory"
     if not real_inside(path):
         return "a symlink, or reached through one"
@@ -342,7 +356,7 @@ def tracker_folder_problem(what="the board is not refreshed"):
     real = pathlib.Path(os.path.realpath(_norm(d)))
     if not in_tree(real):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — {what}"
-    if in_git_dir(d):
+    if in_git_dir_on_disk(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the git directory, where the hooks and their copy are — {what}"
     if not real_inside(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — {what}"
@@ -571,6 +585,16 @@ BUILTIN_RIGHTS = {"owner": set(RIGHTS), "planner": {"ask", "close", "triage"}, "
                   "principal": {"ask", "close", "triage"}, "implementer": set()}     # FM-024: `planner` and `builder` are the seats' names from 0.19.0;
                                                                                      # `principal` and `implementer`, their old spellings, hold the same
 TRIAGE_KEYS = ("kind-of-problem", "tier", "rank", "triaged")     # `considered:` too — except on a filing, which is the rule, not a verdict
+# THE KEYS A RIGHT IS JUDGED ON (the Owner's ruling of 2026-10-04, v0.19.1): `status` (`close`), `next` (`ask`), the three answer lines
+# (`answer`, and `ask`'s clearing move), `considered` and the triage keys (`triage`). Each is read from ONE line, written in lower case
+# (`guarded_key_problems`): a second line, or one in capitals, would be a line the reader keeps and another one judged
+GUARDED_KEYS = ("status", "next", "answer", "answered", "answered-by", "considered", *TRIAGE_KEYS)
+
+
+def tracker_folder(cfg, prefix=""):
+    """The tracker folder a configuration names — its `tracker_dir` — as a path below `prefix`: "" for one from the
+    repository's own root, as `configure` binds `TRACKER_DIR`. One reading of `tracker_dir`, for every caller."""
+    return pathlib.PurePosixPath(prefix) / cfg.get("tracker_dir", DEFAULTS["tracker_dir"])
 
 
 def configure(root=None):
@@ -583,7 +607,7 @@ def configure(root=None):
     path = ROOT / CONFIG_NAME
     text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
     CONFIG = {**DEFAULTS, **(read_config(text) if text is not None else {})}
-    TRACKER_DIR = ROOT / CONFIG["tracker_dir"]
+    TRACKER_DIR = ROOT / tracker_folder(CONFIG)
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
     global FREEZE_AT
@@ -632,6 +656,19 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
+    _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
+    _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
+    global _SVN_NEW, _WALK, _WALK_FAILED
+    _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
+    _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
+    _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
+    global _WALK_COMMITS, _HAS_SESSIONS
+    _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
+    global _ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN
+    _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
+    _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
+    _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     KIND_LABELS = dict(CONFIG["kinds"])
@@ -1066,6 +1103,7 @@ def extract(path, text=None):
         # `next: run`: the next move, written by a triage pass on what it ranks. The three ready
         # marks are derived from the file, never typed (see `ready_needs`).
         "fm": fm,
+        "key_problems": guarded_key_problems(tracker_id, text),    # a key a right is judged on, repeated or in capitals (`lint` refuses it)
         "next": (fm.get("next") or "").strip().lower(),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
         **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
@@ -1553,7 +1591,7 @@ def on_their_way(trackers):
     if vcs() != "git" or not trackers:
         return {}
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git)
+    trunk = default_trunk(git, ask=False)               # the board asks no server
     if not trunk:
         return {}
     refs = git("for-each-ref", f"--no-merged={trunk}", "--format=%(refname:lstrip=3)%00%(objectname)", "refs/remotes/origin/answer/")
@@ -1799,7 +1837,7 @@ def pushed_branches(prs):
         git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking])
     gone = set(have_not(sorted(lacking)))
     kept = [(name, sha) for name, sha in named if sha in gone
-            or not (inside(sha, f"origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
+            or not (inside(sha, f"refs/remotes/origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
     kept = [(name, sha) for name, sha in kept if sha in gone or not any(
         (other != sha and inside(sha, other)) or (other == sha and o_name < name) for o_name, other in kept if other not in gone)]
     return [{"name": name, "sha": sha, "base": default, "here": sha not in gone} for name, sha in kept]
@@ -1992,7 +2030,7 @@ def answer_branch_reading(head, base):
         return action
     stray = stray_below(at, base)
     if stray is None:
-        return "wait", f"wait: the base {base} is not fetched here — fetch it; the commits below {at[:7]} are unread", ""
+        return "wait", f"wait: the base {ref_name(base)} is not fetched here — fetch it; the commits below {at[:7]} are unread", ""
     return ("wait", stray, "") if stray else action
 
 
@@ -2019,16 +2057,29 @@ def triage_reading(head, base):
     """FM-037 in `--queue`: (`wait: TRIAGE.md changed unsigned`, the commit) where a commit of the head's own — not on `base`
     — changes the Owner's two sections and is not their signed commit, the walk and the judgement `--check` makes on the
     branch; (`wait: TRIAGE.md change not verified here — <why>`, the commit) where it is signed and this clone cannot check
-    it; None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default
-    branch's, as `--check` reads them — never a stacked pull request's base, which a seat's branch can be."""
+    it; (`wait: TRIAGE.md change not judged — <the configuration> cannot be read here`, the commit) where the refusal is
+    one `--check` makes because a configuration cannot be read — the default branch's, or one on the branch; (`wait:
+    TRIAGE.md home in another case at the branch tip`, the head) where `--check` refuses the tip as a merge would bring it
+    (`tip_variants`); None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default branch's, as
+    `--check` reads them — never a stacked pull request's base, which a seat's branch can be. No git call of its own beyond
+    the walk's: `--queue` asks this for every pull request."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    owners = owners_at(default_trunk(git) or base)
-    if not owners:
+    trunk, why = default_trunk(git) or base, []
+    owners = owners_at(trunk, why)
+    if not owners and not why:
         return None
-    verdicts = guard_verdicts(guard_walk(head, "^" + base, keys=signers_paths(default_trunk(git) or base))[1], owners)
+    changed = guard_walk(head, "^" + base, keys=signers_paths(trunk), unread=not owners)[1]
+    if not owners:
+        return (f"wait: TRIAGE.md change not judged — {ref_name(trunk)}'s configuration cannot be read here", changed[0][0][:7]) if changed else None
+    verdicts = guard_verdicts(changed, owners)
     refused = [v for v in verdicts if v[4] == "refused"]
+    unread = next((w[3][len("where "):].split(" — ", 1)[0] for w in (refused[0][3] if refused else []) if w[0] == "unread"), "")
+    if unread:
+        return f"wait: TRIAGE.md change not judged — {unread}", refused[0][0][:7]
     if refused:
         return "wait: TRIAGE.md changed unsigned", refused[0][0][:7]
+    if tip_variants(trunk, head):
+        return "wait: TRIAGE.md home in another case at the branch tip", head[:7]
     gaps = [v for v in verdicts if v[4] == "checkout"]
     return (f"wait: TRIAGE.md change not verified here — {gaps[0][5]}", gaps[0][0][:7]) if gaps else None
 
@@ -2064,7 +2115,7 @@ def queue_actions(prs, branches=()):
     prs = [p for p in prs if not p.get("isCrossRepository")]
     git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
-    head, base, num = (lambda p: p["headRefOid"]), (lambda p: "origin/" + p["baseRefName"]), (lambda p: p["number"])
+    head, base, num = (lambda p: p["headRefOid"]), (lambda p: "refs/remotes/origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
 
@@ -2327,7 +2378,7 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     only where nothing of theirs is on it (FM-030 C, as ruled). Where `--queue` waits on it for a commit not theirs —
     `answer_branch_reading`, its own line — the advice says how that clears: the commit lands on the trunk first, by its
     own pull request; theirs are kept (RV-713)."""
-    span = [branch, "--not", trunk] if trunk else [branch, "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
+    span = [f"refs/heads/{branch}", "--not", trunk] if trunk else [f"refs/heads/{branch}", "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
     own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
     his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
     if not his:
@@ -2337,7 +2388,7 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     tip = (git("rev-parse", "--verify", "--quiet", branch).stdout or "").strip()
     reading = answer_branch_reading(tip, trunk)[1] if trunk and tip else ""            # `--queue`'s own line for it
     stray = reading if reading.startswith(STRAY_WAITS) else ""
-    held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{trunk}` first, by its own pull request, "
+    held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{ref_name(trunk)}` first, by its own pull request, "
             f"never through yours" if stray else "")
     if how["flag"] in ("--done", "--due"):
         there = git("show", f"{branch}:{rel}")
@@ -2630,22 +2681,22 @@ def owner_change(tid, t, how):
         # on that branch; where this clone has only `origin`'s, a local one is made from it, tracking it
         step(2, f"switching to `{branch}` — your act is on its way there, and this commits on top of it")
         had = git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0
-        r = git("switch", branch) if had else git("switch", "-c", branch, "--track", f"origin/{branch}")
+        r = git("switch", branch) if had else git("switch", "-c", branch, "--track", f"refs/remotes/origin/{branch}")
         if r.returncode:
             return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
         created, cut_at, switched = not had, git("rev-parse", "HEAD").stdout.strip(), True
     elif here != branch:
-        if git("rev-parse", "--verify", "-q", branch).returncode == 0:
+        if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0:
             # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
             # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for them
             trunk = default_trunk(git)
-            if not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0:
-                print(f"{flag}: `{branch}` exists and is not merged into `{trunk or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
+            if not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0:
+                print(f"{flag}: `{branch}` exists and is not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
                 return EXIT_LINT
             if git("branch", "-D", branch).returncode != 0:
-                print(f"{flag}: `{branch}` is merged into `{trunk}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
-            print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{trunk}` — deleted, and cut fresh", file=sys.stderr)
+            print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{ref_name(trunk)}` — deleted, and cut fresh", file=sys.stderr)
         step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
         r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
         created = r.returncode == 0
@@ -2737,13 +2788,69 @@ def refusal_reason(what, said=""):
     return first_words(" ".join((head + (f": {pick}" if pick else "")).split()), 240)
 
 
-def default_trunk(git):
-    """`origin`'s default branch as this clone last fetched it — `origin/HEAD`, else `origin/main`, else `origin/master` —
-    or None: what an earlier `answer/<id>` must be merged into before `--answer` deletes it."""
+def default_trunk(git, ask=None):
+    """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what an earlier `answer/<id>` must be merged
+    into before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
+    name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target is
+    returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). Where
+    this clone has no `origin/HEAD` and holds no `origin/main` or `origin/master` either — a pull request's shallow checkout —
+    None, asking nothing. Where it holds one, a name a seat can push, a run that walks the branch's commits — `--check`, or the
+    default run, on a clean tree (`_ASK_ORIGIN`) — asks origin which branch is its default (`origin_default`, once per run) and
+    returns that branch's ref; where origin cannot be read, or names a branch this clone has not fetched, None, and
+    `walk_problems` refuses in one line (v0.19.1). An origin that names none — its `HEAD` unborn — leaves the ref this clone
+    holds, and so does a clone with no `origin` configured, which nobody can push to. Every other run — the hooks', the
+    board's, the reports', the Owner's commands — asks no server and refuses nothing (`ask=False`): it takes origin's answer
+    where this run has it, else the ref this clone holds, as before. What the tool prints is `ref_name`'s."""
+    global _TRUNK_UNTOLD
+    ask = _ASK_ORIGIN if ask is None else ask
     head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
     if head.startswith("refs/remotes/"):
-        return head[len("refs/remotes/"):]
-    return next((r for r in ("origin/main", "origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+        return head                                     # set: nothing is asked of origin
+    here = next((r for r in ("refs/remotes/origin/main", "refs/remotes/origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
+    if not here:
+        return None                                     # no default branch here at all: the newest commit alone is judged, and `--check` says so
+    if (not ask and _ORIGIN_DEFAULT is None) or git("config", "--get", "remote.origin.url").returncode != 0:
+        return here                                     # no origin to push to, or a reader that asks no server: the ref this clone holds
+    named = origin_default()
+    if named == "":
+        return here                                     # origin names no default branch: the one this clone holds
+    if named and git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{named}^{{commit}}").returncode == 0:
+        return f"refs/remotes/origin/{named}"
+    if not ask:
+        return here
+    _TRUNK_UNTOLD = ("the default branch cannot be told — this clone has no `origin/HEAD`, and origin "
+                     + (f"names `{named}`, which this clone has not fetched: fetch it, or run" if named else "could not be read: run")
+                     + " `git remote set-head origin <the default branch>`, then run again")
+    return None
+
+
+def origin_default():
+    """The name origin gives its default branch — `git ls-remote --symref origin HEAD`, asked once per run at most and kept —
+    "" where origin names none (its `HEAD` is unborn), None where origin could not be read or did not say the name. No
+    prompt: a server that wants a password it is not given is one that could not be read."""
+    global _ORIGIN_DEFAULT
+    if _ORIGIN_DEFAULT is None:
+        try:
+            r = subprocess.run(["git", "ls-remote", "--symref", "origin", "HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT="0"))
+        except (OSError, subprocess.TimeoutExpired):
+            r = None
+        lines = [l_.split("\t") for l_ in r.stdout.splitlines()] if r is not None and r.returncode == 0 else None
+        named = next((sha[len("ref: refs/heads/"):] for sha, *ref in lines if sha.startswith("ref: refs/heads/") and ref == ["HEAD"]), None) if lines is not None else None
+        _ORIGIN_DEFAULT = named if named else "" if lines is not None and not any(ref == ["HEAD"] for _sha, *ref in lines) else False
+    return _ORIGIN_DEFAULT if _ORIGIN_DEFAULT is not False else None
+
+
+_ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN = None, None, False      # per run: `configure` sets them again, and `main` the last
+
+
+def ref_name(ref):
+    """What the tool prints for a ref it hands git in full — `refs/remotes/origin/main` as `origin/main`, `refs/heads/main` as
+    `main`; anything else as it is. Git is always handed the full ref (`default_trunk`)."""
+    for prefix in ("refs/remotes/", "refs/heads/"):
+        if ref and ref.startswith(prefix):
+            return ref[len(prefix):]
+    return ref
 
 
 def ship_log_table(lines):
@@ -3067,7 +3174,11 @@ blocked=t=>OPEN.has(t[2])&&t[16].some(b=>b.startsWith("Owner")||byId.has(b)&&OPE
 // word INDEX.md prints); `triaged` repeats the
 // newest pass under `triage`. A judgement on work in progress holds __DAYS__ days, then it is back in `triage`; parked work does not go stale.
 LAST=T.reduce((m,t)=>t[17]>m?t[17]:m,""),
-fresh=t=>!!t[17]&&Date.now()-Date.parse(t[17])<(__DAYS__+1)*864e5,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
+// a bare date — `YYYY-MM-DD`, a day with no hour — is a LOCAL calendar day, as `--owner`, `--standup` and the triage worksheet count it: its age is the
+// difference of two local dates, never elapsed time ÷ 24 h (`Date.parse` reads it as UTC's midnight, and a daylight-saving day has 23 or 25 hours).
+// Both dates go onto one scale — their calendar fields as UTC midnights — so the difference is whole days; NaN where the text is no bare date.
+ago=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(s),n=new Date();return m?Math.round((Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())-Date.UTC(+m[1],m[2]-1,+m[3]))/864e5):NaN},
+fresh=t=>!!t[17]&&ago(t[17])<=__DAYS__,   // through day __DAYS__ inclusive — the same day the command stops calling it fresh
 recent=t=>!!t[17]&&t[17]==LAST,
 untriaged=t=>t[19]=="triage"||t[2]=="In Progress"&&!fresh(t),   // exactly what the next `--triage` lists: the generator's word, and work in progress judged too long ago
 // the page's SECOND clock rule (FM-030), beside the first: an act owed to the Owner is due until its time, overdue after
@@ -3113,7 +3224,7 @@ function draw(){
     // ask as one; what was sent back is listed after the queue, with its reason, for the seat that wrote it.
     const w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);
     // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
-    const days=t=>t[29][2]?Math.floor((Date.now()-Date.parse(t[29][2]))/864e5):null,old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
+    const days=t=>(d=>d==d?d:null)(ago(t[29][2])),old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
     w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
     // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —
     // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
@@ -3245,7 +3356,7 @@ function view(id){
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(r=>r.length?` · <i>${l("relation."+r[0],r[1])}${r[2]?": "+esc(r[2]):""}</i>`:"")(t[29][11])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
-<b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&Date.now()-Date.parse(t[24][0])>=(__DAYS__+1)*864e5?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
+<b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&ago(t[24][0])>__DAYS__?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?esc(t[21]):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
 <b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const i of v.querySelectorAll(".md img"))if(!safeUrl(i.getAttribute("src")||"")||/^mailto:/i.test((i.getAttribute("src")||"").trim()))i.replaceWith(document.createTextNode(i.alt||""));      // the DOM's last word on what an image loads
@@ -4671,28 +4782,100 @@ BLAME_ANSWERS = ("E195002", "E200009")      # the history's own answer *not comm
                                             # revision (scheduled for addition), E200009 the target is not in version control (a file not yet `svn add`ed). A failure to READ is none of them
 
 
+def svn_new(rel):
+    """Whether Subversion holds no committed revision of this path, read from its own record of it — `svn info`'s schedule:
+    `add` or `replace`, a copy included, or a path not in version control at all (the Owner's ruling of 2026-10-04, v0.19.1).
+    Read once per path and kept; where the record cannot be read, SvnUnreadable — kept too, as `svn_blame` keeps it."""
+    if rel in _SVN_NEW:
+        if isinstance(_SVN_NEW[rel], Exception):
+            raise _SVN_NEW[rel]
+        return _SVN_NEW[rel]
+    try:
+        info = svn_run("info", rel, xml=True, answers=("E200009",))      # E200009: not in version control
+    except SvnUnreadable as e:
+        _SVN_NEW[rel] = e
+        raise
+    _SVN_NEW[rel] = info is None or (info.findtext("entry/wc-info/schedule") or "").strip() in ("add", "replace")
+    return _SVN_NEW[rel]
+
+
+MERGED_IN = object()         # the author of a line older than a merge that put its path here: no one's, refused (`svn_blame`, `line_author`)
+
+
+def svn_merged(rev):
+    """Whether revision `rev` merged anything — `svn log -g` lists the revisions it merged under it — read at the repository's root,
+    which this run reads once, and kept by revision: each revision's log is asked once per run. Where Subversion cannot
+    answer, SvnUnreadable (v0.19.1)."""
+    if ("root",) not in _SVN_BLAME:
+        _SVN_BLAME[("root",)] = (svn_run("info", "--show-item", "repos-root-url", ".") or "").strip()
+    if not _SVN_BLAME[("root",)]:
+        raise SvnUnreadable("svn info did not name the repository's root")
+    if ("merged", rev) not in _SVN_BLAME:
+        log = svn_run("log", "-q", "-g", "-r", str(rev), f'{_SVN_BLAME[("root",)]}@{rev}', xml=True)
+        top = log.find("logentry") if log is not None else None
+        if top is None:
+            raise SvnUnreadable(f"svn log did not answer for revision {rev}")
+        _SVN_BLAME[("merged", rev)] = top.find("logentry") is not None
+    return _SVN_BLAME[("merged", rev)]
+
+
+def svn_tracker_new(t):
+    """`svn_new` of a tracker's file — where Subversion's record cannot be read, True: the rights refuse it, in their one line (`blame_refusal`)."""
+    try:
+        return svn_new((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())
+    except SvnUnreadable:
+        return True
+
+
 def svn_blame(rel):
     """{line number: (author, revision)} for one file, from the server's own record — read once per file and kept:
     the gate asks about several lines of the same tracker, and `svn blame` is a round trip to the repository. {} for a
     file that is not committed. Where the blame CANNOT be read (no server, no network, svn not there) SvnUnreadable, with
     svn's own error — kept as well, so the one failure is raised again, not asked again: a rights check that cannot read
-    who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling)."""
+    who wrote a line refuses, and never passes unread (the second fail-open of the cold audit's round, the Owner's ruling).
+    A blame follows a copy to its source: a line older than the path's own first revision — the oldest of `svn log
+    --stop-on-copy` — was put at this path by that revision. Where that revision merged nothing, the line is its author's: a
+    copy is its copier's — and its own author's, as the blame reads it through the copy, is kept beside it, so a guarded line
+    passes only where both hold its right (`line_author`). Where it merged anything (`svn_merged`), the line is no one's here —
+    `MERGED_IN`, refused, neither credited to that revision's author nor followed to an earlier one (v0.19.1). A line a merge
+    brought into a path that was already here is its own author's (`-g`)."""
     if rel in _SVN_BLAME:
         if isinstance(_SVN_BLAME[rel], Exception):
             raise _SVN_BLAME[rel]
         return _SVN_BLAME[rel]
     out = {}
     try:
-        blame = svn_run("blame", rel, xml=True, answers=BLAME_ANSWERS)
+        blame = svn_run("blame", "-g", rel, xml=True, answers=BLAME_ANSWERS)     # `-g`: a line a merge brought is its author's, never the merger's (v0.19.1)
     except SvnUnreadable as e:
         _SVN_BLAME[rel] = e
         raise
     try:
         for e in (blame.iter("entry") if blame is not None else []):
-            who, c = e.find("commit/author"), e.find("commit")
+            c = e.find("merged/commit") if e.find("merged/commit") is not None else e.find("commit")
+            who = c.find("author") if c is not None else None
             out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
-    except (ValueError, TypeError):
-        out = {}
+    except (ValueError, TypeError):                     # a blame that cannot be read is no answer of the history's: refused, never read as nothing committed
+        _SVN_BLAME[rel] = SvnUnreadable("svn blame printed lines that could not be read")
+        raise _SVN_BLAME[rel]
+    if out:
+        try:
+            log = svn_run("log", "-q", "--stop-on-copy", rel, xml=True)
+        except SvnUnreadable as e:
+            _SVN_BLAME[rel] = e
+            raise
+        first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
+        if first is not None and (first.get("revision") or "").isdigit():
+            at, by = int(first.get("revision")), first.findtext("author")
+            if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()):
+                try:
+                    by = MERGED_IN if svn_merged(at) else by      # a merge that put the path here: its older lines are no one's here
+                except SvnUnreadable as e:
+                    _SVN_BLAME[rel] = e
+                    raise
+                if by is not MERGED_IN:                         # a copy: each older line's own author, read through it by the same blame (v0.19.1)
+                    _SVN_BLAME[("through", rel)] = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
+                out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
+            _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
     return out
 
@@ -4723,28 +4906,111 @@ def line_regex(needle):
     return "^" + "".join("\\" + c if c in ERE_META else c for c in needle)
 
 
+FM_BREAKS = re.compile("[\n\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")       # where `str.splitlines` breaks a line, once newlines are translated
+
+
+def frontmatter_keys(raw, cr_breaks=False):
+    """[(key, line, the key as written)] — every front-matter line `parse_frontmatter` reads a key from, in order: the text as `extract`
+    reads it (its newlines translated), split as `str.splitlines` splits it, each key stripped and lower-cased — the LAST entry for a key
+    is the one the parser keeps. `line` is the 1-based line it stands on as version control counts lines in `raw`, the file as written:
+    git breaks a line at `\\n` alone, Subversion at a lone `\\r` as well (`cr_breaks`)."""
+    text, line_of, n, i = [], [], 1, 0
+    while i < len(raw):
+        c = raw[i]
+        if c == "\r":
+            text.append("\n"); line_of.append(n)
+            if raw[i + 1:i + 2] == "\n":
+                i += 1; n += 1
+            elif cr_breaks:
+                n += 1
+        else:
+            text.append(c); line_of.append(n)
+            n += c == "\n"
+        i += 1
+    text = "".join(text)
+    if not text.startswith("---\n"):
+        return []
+    end = text.find("\n---", 4)
+    if end == -1:
+        return []
+    out, at = [], 4
+    for m in [*FM_BREAKS.finditer(text, 4, end), None]:
+        part = text[at:m.start() if m else end]
+        if ":" in part:
+            k = part.partition(":")[0]
+            out.append((k.strip().lower(), line_of[at], k.strip()))
+        at = m.end() if m else end
+    return out
+
+
+def guarded_key_problems(tid, text):
+    """LAYER 2 (the Owner's ruling of 2026-10-04, v0.19.1): a front matter that repeats a key a right is judged on (`GUARDED_KEYS`), or
+    spells one other than in lower case, is refused — one line for each such key, naming its lines and the way through. Every other key
+    may repeat and carry capitals, as prose in a front matter does."""
+    seen = {}
+    for key, line, written in frontmatter_keys(text):
+        if key in GUARDED_KEYS:
+            seen.setdefault(key, []).append((line, written))
+    out = []
+    for key, at in seen.items():
+        odd = list(dict.fromkeys(w for _l, w in at if w != key))
+        if len(at) > 1 or odd:
+            out.append(f'{tid}: the front matter carries `{key}:` on line{"s" if len(at) > 1 else ""} {" and ".join(str(l) for l, _w in at)}'
+                       + (f', spelled {", ".join(f"`{w}:`" for w in odd)}' if odd else "")
+                       + f' — a key a right is judged on is read from one line: write one `{key}:` line, in lower case')
+    return out
+
+
+def guarded_line(raw, key, cr_breaks=False):
+    """The line `parse_frontmatter` keeps for `key` — the last one, its key's case folded — as version control numbers it (`frontmatter_keys`), or None."""
+    return next((line for k, line, _w in reversed(frontmatter_keys(raw, cr_breaks)) if k == key), None)
+
+
+def exact_line_regex(line):
+    """The pattern git's `-G` is handed for one exact line: anchored at both ends, the characters an extended regular expression reserves
+    escaped as `line_regex` escapes them, and an optional carriage return before the end — the line as committed with CRLF."""
+    return "^" + "".join("\\" + c if c in ERE_META else c for c in line) + "\r?$"
+
+
 def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
-    file: (name, email, system, commit), or (None, None, "uncommitted", ""). Git's author is a string anyone can type,
+    file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
+    is not committed yet (the working copy or the index carries it, no commit does), (None, None, "unattributed", "")
+    where it names no commit for a line a commit carries, and on Subversion (None, None, "merged", <revision>) for a line older
+    than a merge that put the tracker's path here (`svn_blame`). Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
     has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one.
 
     The needle names a LINE, not a substring. A tracker's body discusses its own keys — "an `answer:` counts only from
     the account it is filed from" is a sentence FM-007 carries — and a substring test cannot tell that prose from the
     front-matter line, so it answered with the commit that wrote the prose, and read a line nobody had committed as
-    committed. Both tests are anchored to the line start now: git's `-G` (below) and `startswith` here."""
+    committed. The line read is the one the parser keeps (`guarded_line`): the needle's key, its case folded, the LAST such
+    line of the front matter — git's `-G` searches for that line exactly as written, and Subversion's blame is read at its
+    number (the Owner's ruling of 2026-10-04, v0.19.1)."""
     rel = pathlib.Path(path).resolve().relative_to(ROOT).as_posix()
-    hit = _LINE_AUTHOR.get((rel, needle))
+    key = needle.partition(":")[0].strip().lower()      # the line is found as the parser keeps it: its key's case folded, the last one (v0.19.1)
+    hit = _LINE_AUTHOR.get((rel, key))
     if hit is not None:
         return hit
     out = (None, None, "uncommitted", "")
+    raw = pathlib.Path(path).read_bytes().decode("utf-8", errors="replace")
     if vcs() == "svn":
         by_line = svn_blame(rel)                          # ONE blame per file, however many of its lines are asked about
-        lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
-        n = next((i for i, l in enumerate(lines) if l.startswith(needle)), None)
-        if n is not None and (n + 1) in by_line:
-            who, rev = by_line[n + 1]
-            out = (who, None, "svn", rev)
+        n = guarded_line(raw, key, cr_breaks=True)
+        if n is not None and n in by_line:
+            who, rev = by_line[n]
+            through = _SVN_BLAME.get(("through", rel), {})
+            own = through.get(n)
+            right = {"answer": "answer", "next": "ask", "status": "close"}.get(key, "triage")
+            may = (lambda w: holds(seat_of(w, None), right)) if SEATS else (lambda w: right == "answer" and w in may_answer())
+            if key == "considered":
+                if own and own[1] != through.get(1, (None, None))[1]:
+                    who, rev = own                      # a `considered:` changed after its source's filing is its own author's triage, not the copy's filing
+            elif own and own[0] != who and may(who) and not may(own[0]):
+                who, rev = own                          # a copied line passes only where its copier and its own author both hold its right (v0.19.1)
+            out = (None, None, "merged", rev) if who is MERGED_IN else (who, None, "svn", rev) if rev else out   # no revision yet: changed in the working copy
+        elif by_line:
+            out = (None, None, "unattributed", "")
     else:
         # `--full-history` or the answer is the wrong seat's. Git's default history simplification follows ONE parent of
         # a merge when the merge is TREESAME to it — and a branch that moves a line away and back (owner -> review ->
@@ -4758,16 +5024,46 @@ def line_author(path, needle):
         # which is right: the setter is whoever wrote the line the file carries now.
         # during a merge the line may be committed on the side coming in: its history is read too, and "is it committed"
         # asks every parent, not HEAD alone — or an answer a merge brings reads as never committed (FM-019)
+        # the line searched for is the one the parser keeps (`guarded_line`), exactly as written; it is committed where a tip carries it,
+        # and `-G` names the last commit that wrote or removed that exact line — `--full-history`, as above
         tips = ["HEAD", *merge_heads()]
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", line_regex(needle), *tips, "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-        if log.returncode == 0 and log.stdout.strip():
-            commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
-            dirty = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", rel], cwd=ROOT, env=nested_git_env()).returncode != 0
-            at = lambda rev: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout
-            if not (dirty and not any(l.startswith(needle) for rev in tips for l in at(rev).splitlines())):
+        n = guarded_line(raw, key)
+        line = raw.split("\n")[n - 1].rstrip("\r") if n is not None else None
+        if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys
+            _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for rev in tips for l in subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True,
+                                                                                                     env=nested_git_env()).stdout.decode("utf-8", errors="replace").split("\n")]
+        if line is None:
+            out = (None, None, "unattributed", "")
+        elif line in _LINE_AUTHOR[("tips", rel)]:
+            try:
+                log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
+                                     text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+            except ValueError:                          # a NUL in the line: no argument can carry it
+                log = None
+            if log is not None and log.returncode == 0 and log.stdout.strip():
+                commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
                 out = (name, email, "git", commit)
-    _LINE_AUTHOR[(rel, needle)] = out
+            else:
+                out = (None, None, "unattributed", "")
+    _LINE_AUTHOR[(rel, key)] = out
     return out
+
+
+def unattributed(t, needle, how, named=True):
+    """LAYER 3 (the Owner's ruling of 2026-10-04, v0.19.1): a guarded line no commit can be named for is refused, in one line — never judged
+    as whoever runs the gate. Not committed yet, it is judged only in the run that makes its commit (git's pre-commit hook), as that
+    commit's author; Subversion knows who makes a commit only once it is made. `named`: the line opens with the tracker's id — not
+    where the caller's own lines are prefixed with it (`seat_problems`, read through `ask_problems`)."""
+    who = f'{t["id"]}: ' if named else ""
+    if how == "merged":
+        return (f'{who}`{needle}` is older than the merge that put this tracker here, so who set it is not known; it is refused, never credited '
+                f'to the merge\'s author. Write the line again, in a commit of its own after the merge')
+    if how == "uncommitted":
+        return (f'{who}`{needle}` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes '
+                f'that commit judges it before: commit it' + (" (on Subversion who makes a commit is known only once it is made)" if vcs() == "svn" else "")
+                + ", then run again")
+    return (f'{who}`{needle}` — version control names no commit for this line, so who set it is not known; it is refused, never judged '
+            f'as whoever runs the gate. Write it again, in a commit of its own')
 
 
 def pending_author():
@@ -4821,7 +5117,11 @@ def trusted_signers():
     for nothing. Where the default branch does not carry it, NOTHING verifies against it until its first version lands
     there (FM-037's cold re-review, R2): the checkout's copy is whatever branch is checked out, and a checkout on a branch
     that writes one vouched for another pull request's commits. A file outside every checkout is used as it is: no branch
-    writes it; so is the clone's file where there is no default branch to read. Read once per run."""
+    writes it; so is the clone's file where there is no default branch to read. A path that is a symlink, or is reached
+    through one, inside a checkout — a link a branch can write — is refused before anything decides which checkout holds
+    it, as a deriver is (`run_deriver`): nothing verifies against it (`symlink_in_checkout`). Which working tree holds it
+    is decided by the file system's identity, never by spelling (`signers_home`), its path spelled as git spells it
+    (`signers_rel`); one in another clone's working tree is refused: a branch writes it. Read once per run."""
     global _SIGNERS
     if _SIGNERS is not None:
         return _SIGNERS
@@ -4829,17 +5129,22 @@ def trusted_signers():
     if not conf:
         _SIGNERS = {"file": None, "why": "`gpg.ssh.allowedSignersFile` is not set", "rel": None, "trunk": None}
         return _SIGNERS
-    path = (pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf).resolve()
-    rels = []                                               # its path under each checkout that holds it — the nearest one wins,
-    for line in (git_out("worktree", "list", "--porcelain") or "").splitlines():     # for a checkout nested in another
-        if line.startswith("worktree "):
-            try:
-                rels.append(path.relative_to(pathlib.Path(line[len("worktree "):]).resolve()).as_posix())
-            except ValueError:
-                continue
-    rel = min(rels, key=lambda r: r.count("/")) if rels else None
+    written = pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf
+    trees = {top: fs_chain(top)[:1] for top in (os.path.normcase(t) for t in worktree_tops())}
+    link = symlink_in_checkout(written, trees)
+    if link:
+        _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, and `{link}` on the way to it is a symlink in a checkout: the signers file "
+                                         "is, or is reached through, a symlink, and nothing verifies against it — name the file itself", "rel": None, "trunk": None}
+        return _SIGNERS
+    path = written.resolve()
+    top, below, other = signers_home(str(path), trees)       # the working tree that holds it, by the file system's identity — or another clone's
+    if other:
+        _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, inside another checkout ({other}): the signers file is inside another checkout, "
+                                         "where a branch writes it — name this repository's own file, or one outside every checkout", "rel": None, "trunk": None}
+        return _SIGNERS
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git) if rel else None
+    trunk = default_trunk(git) if top is not None else None
+    rel = signers_rel(top, below, str(path), trunk) if top is not None else None
     blob = cat_blobs([f"{trunk}:{rel}"]).get(f"{trunk}:{rel}") if trunk else None
     if blob is not None:
         fd, tmp = tempfile.mkstemp(prefix="shoalmark-signers-")
@@ -4848,13 +5153,64 @@ def trusted_signers():
         atexit.register(lambda: os.path.exists(tmp) and os.remove(tmp))
         _SIGNERS = {"file": tmp, "why": "", "rel": rel, "trunk": trunk}
     elif trunk:
-        _SIGNERS = {"file": None, "why": f"`{rel}` is not on {trunk}: commit its first version there, signed — a branch cannot prove a key the default branch does not hold",
+        _SIGNERS = {"file": None, "why": f"`{rel}` is not on {ref_name(trunk)}: commit its first version there, signed — a branch cannot prove a key the default branch does not hold",
                     "rel": rel, "trunk": trunk}
     elif not path.is_file():
         _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, which does not exist", "rel": rel, "trunk": trunk}
     else:
         _SIGNERS = {"file": str(path), "why": "", "rel": rel, "trunk": trunk}
     return _SIGNERS
+
+
+def symlink_in_checkout(path, trees):
+    """The first symlink on the way to `path` — itself, or a folder above it — whose folder lies in one of the working trees
+    `trees` (`tree_holding`), or in another git working tree (`signers_home`): a link a branch can write. The path is
+    walked as written, a name at a time, each link read before a `..` after it applies — as the system reads the path. ""
+    where there is none: a link outside every working tree — the system's own, say — is no branch's to write."""
+    parts = pathlib.PurePath(os.fspath(path)).parts
+    at = parts[0] if parts else ""
+    for name in parts[1:]:
+        if name in ("", "."):
+            continue
+        if name == "..":
+            at = os.path.dirname(at)
+            continue
+        step = os.path.join(at, name)
+        if os.path.islink(step):
+            if tree_holding(os.path.realpath(at), trees) is not None or signers_home(os.path.realpath(at), trees)[2]:
+                return step
+            at = os.path.realpath(step)
+        else:
+            at = step
+    return ""
+
+
+def signers_home(real, trees):
+    """(the working tree of `trees` that holds the resolved path `real`, the names below it as they are written there, "") —
+    or (None, None, the folder of another git working tree that holds it, where a `.git` file or folder is found first) —
+    or (None, None, ""): outside every working tree. One walk up its ancestors, nearest first, each matched by the file
+    system's own identity (`fs_chain`), never by spelling — a working tree whose folder is gone holds nothing."""
+    held = {folder[0][0]: top for top, folder in trees.items() if folder and not folder[0][1]}
+    parts = pathlib.PurePath(real).parts
+    for ident, below in fs_chain(real):
+        at = os.path.join(*parts[:len(parts) - len(below)])
+        if ident in held:
+            return held[ident], list(parts[len(parts) - len(below):]), ""
+        if os.path.lexists(os.path.join(at, ".git")):
+            return None, None, at
+    return None, None, ""
+
+
+def signers_rel(top, below, real, trunk):
+    """The signers file's path in the repository, as git spells it on the default branch — never as it was typed: the path of
+    the default branch's tree (`tree_paths`) that names the names `below` the working tree `top`, as a file system that
+    ignores case and Unicode normalization reads them (`fs_fold`), and is that very file there (`fs_identity`) where it is
+    there. Where the default branch holds no such path, the names as written: no copy there, and nothing verifies."""
+    typed = "/".join(below)
+    here = fs_identity(real)
+    same = [p for p in (tree_paths(trunk) or [] if trunk else []) if p == typed or (fs_fold(p) == fs_fold(typed)
+            and (here is None or fs_identity(os.path.join(top, *p.split("/"))) == here))]
+    return typed if typed in same or len(same) != 1 else same[0]
 
 
 def signers_args():
@@ -4892,9 +5248,9 @@ def unverified(commit, tail):
     s = trusted_signers()
     ssh = signature_kind(commit) == "ssh"
     if ssh and s["file"] and (git_out(*signers_args(), "log", "-1", "--format=%G?", commit) or "").strip() in ("G", "U"):
-        held = f"`{s['rel']}` on {s['trunk']}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
+        held = f"`{s['rel']}` on {ref_name(s['trunk'])}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
         return (f"it is signed, but not with a key {held} holds for that identity — a new key verifies once it is there"
-                + (f": the Owner's signed commit to that file, merged into {s['trunk']} first" if s["rel"] and s["trunk"] else "")
+                + (f": the Owner's signed commit to that file, merged into {ref_name(s['trunk'])} first" if s["rel"] and s["trunk"] else "")
                 + f" — see {SIGNING_PAGE}")
     return tail
 
@@ -4903,8 +5259,19 @@ def unverified(commit, tail):
 # keyring), a pinned file this checkout has not got. Each is said on stderr, grouped, and never written into the generated
 # INDEX: written there, the INDEX a fresh clone generated differed from the committed one by that line, and `--check` said
 # STALE where no tracker had changed. The drift test is not widened; the finding still fails the run. Recognised by these
-# words, which the two places that write such a finding use and nothing else does.
-CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it")
+# words, which the places that write such a finding use and nothing else does — a default branch this clone cannot tell
+# is one too (`default_trunk`, v0.19.1).
+CHECKOUT_MARKS = ("this clone cannot verify", "this checkout cannot read it", "the default branch cannot be told — this clone has no `origin/HEAD`")
+
+
+PENDING_MARKS = ("` is not committed yet — who set a line is read from the commit that made it", ": is not committed yet, and it carries ",
+                 ": the answer is not committed yet — commit it under your own name")     # the lines that judge the commit being made, not the ledger
+
+
+def pending_finding(problem):
+    """A line that says a line is not committed yet: it judges the commit being made, not the ledger — so INDEX.md leaves it out, and the
+    INDEX.md written before such a commit is the one the next run writes (v0.19.1). It is printed, and refuses, as every line does."""
+    return any(m in problem for m in PENDING_MARKS)
 
 
 def checkout_finding(problem):
@@ -5109,18 +5476,23 @@ def seat_problems(t):
     `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
     also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
     about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
-    the line, so the Owner's QUEUE can drop an ask that reached them another way. It catches an agent that does not
-    know the rule, not one that lies: that is FM-007's class, and no gate closes it."""
+    the line, so the Owner's QUEUE can drop an ask that reached them another way. A made merge's own `next: owner` is
+    judged on its change as well, under that merge's author (`rights_problems`). Anywhere else, a line no commit can be
+    named for is refused (`unattributed`). It catches an agent that does not know the rule, not one that lies: that is
+    FM-007's class, and no gate closes it."""
     if not SEATS or not in_this_commit(t):
         return []
     try:
         name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
     except SvnUnreadable as e:
         return blame_refusal(t, e)
-    if how == "uncommitted":
-        if vcs() == "svn":
-            return []                                    # Subversion has no client hook; the server's gate reads it next
-        name, email, commit = (*pending_author(), "")    # not committed yet: the author git is about to write is who is asking
+    if how not in ("git", "svn"):
+        if how == "uncommitted" and vcs() == "git" and COMMITTING:
+            name, email, commit = (*pending_author(), "")    # the pre-commit run: the author git is about to write is who is asking
+        elif how == "uncommitted" and vcs() == "svn" and svn_tracker_new(t):
+            return []                                    # a tracker Subversion holds no revision of: the rights refuse it, in one line
+        else:
+            return [unattributed(t, "next: owner", how, named=False)]        # `lint` names the tracker on `ask_problems`' lines
     seat = seat_of(name, email)
     if seat is None or not holds(seat, "ask"):
         return [no_seat(name, email, "ask", "`next: owner` puts a question in front of the Owner")]
@@ -5203,33 +5575,52 @@ def read_changes():
     read against HEAD; on a clean tree, the commit at HEAD read against its parent.
 
     A MERGE (FM-019) is two kinds of change, and neither is the merger's alone:
-    1. EACH COMMIT IT BRINGS — every non-merge commit reachable from it and not from its first parent — against its own
-       parent, under its own author and its own signature. A commit made without the hook (`--no-verify`, a clone with no
-       hook installed, the forge's editor) was never judged; a merge must not launder it.
+    1. EACH COMMIT IT BRINGS — every commit reachable from it and not from its first parent — under its own author and its
+       own signature: an ordinary commit against its own parent; a merge among them, nested at any depth, by ITS OWN
+       CHANGE (2), against each of its parents (the Owner's ruling of 2026-10-03, v0.19.1). A commit made without the hook
+       (`--no-verify`, a clone with no hook installed, the forge's editor) was never judged; a merge must not launder it.
     2. ITS OWN CHANGE — the tracker files where the result differs from EVERY parent (a conflict resolved, an edit made in
        the merge), judged under the merger. A clean merge adds nothing of its own.
     Read against its first parent alone, a merge was everything its branch carried and all of it the merger's: `--check`
     on a trunk went red on the first pull request carrying an answer or a close, the forge's merge identity being no
     seat. The same two parts hold for a merge being committed now — HEAD and `MERGE_HEAD` are its parents. The commits a
-    merge brings are read only when there is a merge: one `git log` for all of them."""
+    merge brings are read only when there is a merge: one `git log` for all of them, the merges among them included.
+
+    On a clean tree, every commit of the branch since `origin`'s default branch is read the same way (1) — one more `git log`
+    — so a change made under a later commit is judged where `--check` runs, as the merge's walk judges it on the trunk
+    (the Owner's ruling of 2026-10-04, v0.19.1). Where no default branch is found (`default_trunk`), the newest commit
+    alone is judged, as before, and `--check` says so in one line — never the whole history."""
+    global _WALK
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
-    def brought(tips, first):
-        """(1): every non-merge commit reachable from `tips` and not from `first`, oldest first, each with its files."""
+    def brought(tips, first, why="which the merge brings"):
+        """(1): every commit reachable from `tips` and not from `first`, oldest first, each with its files — an ordinary commit's
+        against its parent; a merge's, its own change (2): `-c` lists only the files where its result differs from every parent,
+        from its diff against each of them, and the merge is read against all its parents, as the merge at HEAD is."""
         if not tips:
             return []
         out = []
-        log = git("log", "-z", "--no-merges", "--reverse", "--relative", "--name-only", "--format=%x01%H%x02%an%x02%ae", *tips, "--not", first)
-        for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email, then the NUL-separated files --name-only lists under it
+        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
+                  *tips, "--not", first)                # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
+        if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
+            global _WALK_FAILED
+            said = next((l.strip() for l in log.stderr.splitlines() if l.strip()), f"git log exited {log.returncode}")
+            _WALK_FAILED = _WALK_FAILED or (f"the branch's commits could not be read — git could not walk them since `{ref_name(first)}` ({said}) — so they are "
+                                            f"not judged, and not passed unread. Fetch `origin`, or set its default branch again (`git remote set-head origin --auto`), then run again")
+        for record in log.stdout.split("\x01")[1:]:         # one per commit: hash · name · email · parents · trailers, then the NUL-separated files --name-only lists under it
             head, _, files = record.partition("\x00")
-            c, an, ae = (head.split("\x02") + ["", ""])[:3]
-            out.append(([f"{c}^1"], set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), which the merge brings"))
+            c, an, ae, ps, tr = (head.split("\x02") + ["", "", "", ""])[:5]
+            _WALK_COMMITS[c] = (ps.split(), tr.strip("\n"))
+            bases = ps.split() if len(ps.split()) > 1 else [f"{c}^1"]
+            out.append((bases, set(files.lstrip("\n").split("\x00")) - {""}, an, ae.strip(), c, c, f"in `{c[:10]}` ({ae.strip() or an}), {why}"))
         return out
 
     heads = merge_heads()
-    if COMMITTING or (git("diff", "--name-only", "--relative", "HEAD").stdout.strip()):
+    if COMMITTING or worktree_edited(git):
         files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "HEAD"))
+        if not COMMITTING:
+            _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for h in heads:
             files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
         return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
@@ -5241,50 +5632,129 @@ def read_changes():
         got = names(git("diff", "-z", "--name-only", "--relative", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
-    return (brought(parents[1:], parents[0]) if len(parents) > 1 else []) + [(parents, files, name, email, commit, "HEAD", "")]
+    merged = brought(parents[1:], parents[0]) if len(parents) > 1 else []
+    trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
+    _WALK = trunk or ("untold" if _TRUNK_UNTOLD else "")      # none: the newest commit alone is judged, and `--check` says so — never the whole history
+    seen = {c[4] for c in merged} | {commit}
+    own = [c for c in brought(["HEAD"], trunk, f"on this branch since {ref_name(trunk)}") if c[4] not in seen] if trunk else []
+    return own + merged + [(parents, files, name, email, commit, "HEAD", "")]
+
+
+def staged_absent(rels):
+    """{path: tracker} — in the pre-commit run, each tracker the index carries and the working tree lacks (deleted or moved there,
+    unstaged), read from the index as the commit being made holds it; nothing in any other run (v0.19.1)."""
+    if not COMMITTING:
+        return {}
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    names = [rel for rel in sorted(staged_now()) if rel not in rels and pathlib.PurePath(rel).parent.as_posix() == home
+             and rel.endswith(".md") and KIND_RE.match(pathlib.PurePath(rel).name)]
+    texts = cat_blobs([f":./{rel}" for rel in names], index_env())
+    return {rel: extract(ROOT / rel, texts[f":./{rel}"]) for rel in names if texts.get(f":./{rel}") is not None}
+
+
+def worktree_edited(git):
+    """Whether the working tree holds an edit against HEAD (`git diff --name-only HEAD`) — the one reading `read_changes` and `main`
+    share: a diff git cannot make reads as no edit in both, so a run that walks the branch's commits asks origin as it walks
+    (v0.19.1)."""
+    return bool(git("diff", "--name-only", "--relative", "HEAD").stdout.strip())
+
+
+def walk_problems():
+    """The one line where git could not walk the commits this run judges — a default branch `origin/HEAD` names and this clone does
+    not hold, or any `git log` of the walk that failed (`read_changes`) — or where the default branch cannot be told (`default_trunk`):
+    they are refused, never judged as nothing (v0.19.1)."""
+    if _WALK_FAILED:
+        return [_WALK_FAILED]
+    if vcs() == "git":
+        default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
+    return [_TRUNK_UNTOLD] if _TRUNK_UNTOLD else []
+
+
+def line_break_problems(trackers):
+    """A tracker whose file name holds a line break, refused in one line: asked for that file's text, git reads its name as two, so
+    no change to it can be judged. The trackers this run loads, and — under git — each tracker file a change it judges touches."""
+    rels = {(TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix() for t in trackers if "\n" in t.get("file", "") or "\r" in t.get("file", "")}
+    if vcs() == "git":
+        home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+        rels |= {rel for c in changes_under_review() for rel in c[1] if ("\n" in rel or "\r" in rel) and rel.endswith(".md")
+                 and pathlib.PurePosixPath(rel).parent.as_posix() == home and KIND_RE.match(pathlib.PurePosixPath(rel).name)}
+    return [f"{json.dumps(rel)}: a tracker's file name holds a line break — git reads it as two names, so no change to the tracker can be "
+            "judged; give the file a name without one" for rel in sorted(rels)]
 
 
 def rights_problems(trackers):
-    """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every
-    transition the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has
-    no line left to judge and is read here, from the change, under `ask`: FM-014.) Under Subversion there is no
-    pending commit to read and no client hook to read it in — the server's own `pre-commit` hook runs the gate, and
-    the author of each line is the one the server authenticated, so the transitions are read from the lines."""
+    """`answer`, `close` and `triage`: the author of the change must be a seat that holds the right for every transition
+    the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has no line
+    left to judge and is read here, from the change, under `ask`: FM-014; and a made merge's own `next: owner`, which no
+    parent carries, read from that merge's own change under its author — the Owner's ruling of 2026-10-03, v0.19.1.)
+    Under Subversion there is no pending commit to read and no client hook to read it in, and the author of each line is
+    the one the server authenticated, so the transitions are read from the lines. A tracker Subversion holds no
+    committed revision of — added, replaced or copied, or not yet `svn add`ed (`svn_new`) — has no author to read until
+    the commit is made, so it may carry no line a right guards: where it does, it is refused before the commit, in one
+    line naming the rights (the Owner's ruling of 2026-10-03, v0.19.1)."""
     if not SEATS or vcs() not in ("git", "svn"):
         return []
     out = []
     if vcs() == "svn":
         for t in trackers:
-            for right, needle in (("answer", "answer:"), ("close", "status:"), ("triage", "considered:")):
+            fm_ = t.get("fm", {})
+            guarded = [r for r, on in (("answer", any((fm_.get(k) or "").strip() for k in ("answer", "answered", "answered-by"))), ("ask", t.get("next") == "owner"),
+                                       ("close", t["status"] not in OPEN_STATUSES), ("triage", any((fm_.get(k) or "").strip() for k in TRIAGE_KEYS))) if on]
+            if guarded:
+                try:
+                    fresh = svn_new((TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())      # no committed revision: no line has an author
+                except SvnUnreadable as e:
+                    out += blame_refusal(t, e)
+                    continue
+                if fresh:
+                    named = " and ".join([", ".join(f"`{r}`" for r in guarded[:-1]), f"`{guarded[-1]}`"] if len(guarded) > 1 else [f"`{guarded[0]}`"])
+                    out.append(f'{t["id"]}: is not committed yet, and it carries {"a line" if len(guarded) == 1 else "lines"} that {named} guard{"s" if len(guarded) == 1 else ""} — '
+                               'on Subversion who makes a commit is known only once it is made, so a tracker not yet committed may carry no protected state. '
+                               'File it open, with no such line, and make that change in a commit of its own')
+                    continue
+            fm_ = t.get("fm", {})
+            judged = ([("answer", "answer:"), ("close", "status:")] + [("triage", k + ":") for k in TRIAGE_KEYS if (fm_.get(k) or "").strip()]   # each triage key
+                      + ([("triage", "considered:")] if (fm_.get("considered") or "").strip() else []))                                    # that carries a value (v0.19.1)
+            for right, needle in judged:
                 if right == "close" and t["status"] in OPEN_STATUSES:
                     continue
                 if right == "answer" and not t.get("answer"):
                     continue
-                if right == "triage" and not any((t.get("fm", {}).get(k) or "").strip() for k in TRIAGE_KEYS):
-                    continue
-                if right == "triage":
-                    needle = next(k + ":" for k in TRIAGE_KEYS if (t.get("fm", {}).get(k) or "").strip())
                 try:
-                    name, _e, how, _rev = line_author(TRACKER_DIR / t["file"], needle)
+                    name, _e, how, rev = line_author(TRACKER_DIR / t["file"], needle)
                 except SvnUnreadable as e:
                     out += blame_refusal(t, e)
                     break                                # the tracker's blame is unreadable: one line, not one for each right
-                if how == "svn" and not holds(seat_of(name, None), right):
+                if needle == "considered:" and ((how in ("svn", "merged") and rev == _SVN_BLAME.get(("first", (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix())))
+                                                or (how == "uncommitted" and svn_tracker_new(t))):
+                    continue                             # written when the tracker is filed — here, a merge's filing too: the filing rule, not a verdict
+                if how in ("uncommitted", "unattributed", "merged"):
+                    if right != "answer":                # the answer gate says it of the answer line
+                        out.append(unattributed(t, needle, how))
+                elif how == "svn" and not holds(seat_of(name, None), right):
                     out.append(f'{t["id"]}: ' + no_seat(name, None, right, f'`{needle}` is a `{right}` change'))
         return out
-    show = lambda rev, rel: subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
-    for bases, files, name, email, commit, result, label in changes_under_review():
+    rels.update(staged_absent(rels))                    # the commit being made: a tracker it carries that the working tree lacks is judged too
+    changes = changes_under_review()
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
+                                         for rev in ([result] if result else []) + list(bases))))     # one call for every change (v0.19.1)
+    show = lambda rev, rel: (lambda t_: None if t_ is None else t_.replace("\r\n", "\n").replace("\r", "\n"))(blobs.get(f"{rev}:{rel}"))
+    for bases, files, name, email, commit, result, label in changes:
         seat, where = seat_of(name, email), (label + " — " if label else "")
-        for rel in sorted(files & set(rels)):
+        on_line = set() if commit and len(bases) > 1 else {"ask"}        # a made merge's own `next: owner` is judged on its change, under its author
+        touched = sorted(files & set(rels))
+        staged = cat_blobs([f":./{rel}" for rel in touched], index_env()) if result is None and COMMITTING else {}     # the commit being made is what its index holds
+        for rel in touched:
             t = rels[rel]
-            now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8") if result is None else show(result, rel).stdout
+            now = ((show(result, rel) or "") if result is not None else (staged.get(f":./{rel}") or "") if COMMITTING
+                   else (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
             moves = None                                # a merge's own move is one it makes against EVERY parent (FM-019)
             for base in bases:
                 was = show(base, rel)
-                made = transitions(was.stdout if was.returncode == 0 else "", now, new_file=was.returncode != 0)
+                made = transitions(was if was is not None else "", now, new_file=was is None)
                 moves = made if moves is None else moves & made
-            for move in sorted(moves - {"ask"}):
+            for move in sorted(moves - on_line):
                 right = "ask" if move == "clear" else move
                 if not holds(seat, right):
                     out.append(f'{t["id"]}: {where}' + no_seat(name, email, right, "this change clears an answered ask — the seat that acts on an answer holds `ask`"
@@ -5467,21 +5937,23 @@ def shipped_moves(rels):
     if vcs() == "svn":
         yield from svn_shipped_moves(rels)
         return
-    for bases, files, _name, _email, _commit, result, label in changes_under_review():
-        touched = sorted(files & set(rels))
-        if not touched:
-            continue
-        spec = lambda rev, rel: f"{rev}:./{rel}"                            # `./`: from the working directory, which is ROOT — as `--relative` made the paths
+    spec = lambda rev, rel: f"{rev}:./{rel}"                                # `./`: from the working directory, which is ROOT — as `--relative` made the paths
+    changes = [(c, sorted(c[1] & set(rels))) for c in changes_under_review()]
+    changes = [(c, touched) for c, touched in changes if touched]
+    made = cat_blobs([spec(c[5], rel) for c, touched in changes if c[5] is not None for rel in touched])     # every change's trackers, one call (v0.19.1)
+    moved = []
+    for (bases, files, _name, _email, _commit, result, label), touched in changes:
         if result is None and COMMITTING:
             texts = cat_blobs([f":./{rel}" for rel in touched], index_env())         # the commit being made is what its index holds, not the working tree
             now = {rel: texts.get(f":./{rel}") for rel in touched}
         elif result is None:
             now = {rel: (TRACKER_DIR / rels[rel]["file"]).read_text(encoding="utf-8") for rel in touched}
         else:
-            texts = cat_blobs([spec(result, rel) for rel in touched])      # one call for every tracker the change touches
-            now = {rel: texts.get(spec(result, rel)) for rel in touched}
-        shipped = [rel for rel in touched if is_shipped(now.get(rel))]
-        before = cat_blobs([spec(base, rel) for rel in shipped for base in bases])
+            now = {rel: made.get(spec(result, rel)) for rel in touched}
+        moved.append((bases, label, now, [rel for rel in touched if is_shipped(now.get(rel))]))
+    earlier = cat_blobs([spec(base, rel) for bases, _l, _n, shipped in moved for rel in shipped for base in bases])      # …and what each move was against, one call
+    for bases, label, now, shipped in moved:
+        before = {spec(base, rel): earlier.get(spec(base, rel)) for rel in shipped for base in bases}
         for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
             d = pathlib.PurePath(rel).parent.as_posix()
             was = next((n for n in (git_out("ls-tree", "-z", "--name-only", f"{base}:./{d}") or "").split("\x00") if n.startswith(rels[rel]["id"] + "-") and n.endswith(".md")), None)
@@ -5502,6 +5974,8 @@ def ship_problems(trackers):
             rels[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
         except (KeyError, ValueError):
             continue                                     # no file, or a link to one outside the repository — as `in_this_commit` reads it
+    if vcs() == "git":
+        rels.update(staged_absent(rels))                 # the commit being made: a tracker it carries that the working tree lacks is judged too
     if not rels:
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
@@ -5632,7 +6106,8 @@ RATIO_DAYS = 7          # the window when `--since` is not given, and the rollin
 def ratio_defaults():
     """`[ratio]`'s defaults as `DEFAULTS` keeps every other: `records` is the tracker directory this tool is configured with
     (`tracker_dir`, wherever a repository keeps it), `exclude` is empty."""
-    return {"records": [str(CONFIG["tracker_dir"]).strip("/") + "/"], "exclude": []}
+    folder = tracker_folder(CONFIG).as_posix()           # the folder `configure` binds, as `tracker_folder` reads it
+    return {"records": [("" if folder == "." else folder) + "/"], "exclude": []}
 
 
 def ratio_paths(section):
@@ -5725,7 +6200,7 @@ def ratio_cmd(since=None, until=None):
         return 2
     log = git_out("log", "--first-parent", "--merges", "--format=%H%x00%cI", trunk)
     if log is None:
-        print(f"--ratio: git could not read {trunk}", file=sys.stderr)
+        print(f"--ratio: git could not read {ref_name(trunk)}", file=sys.stderr)
         return 2
     lo = first - datetime.timedelta(days=RATIO_DAYS - 1)           # the sums of the window's first days reach back before it
     days = {}
@@ -5749,7 +6224,7 @@ def ratio_cmd(since=None, until=None):
     span = lambda a, b: [a + datetime.timedelta(days=i) for i in range((b - a).days + 1)]
     print(f"records-to-product ratio \u2014 records: {', '.join(records)}"
           + (f" (left out: {', '.join(exclude)})" if exclude else "") + "; product: every other path; a submodule pointer is no line, a binary file 0 lines")
-    print(f"trunk {trunk} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
+    print(f"trunk {ref_name(trunk)} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
           + ("" if berlin else " \u2014 NOT: no time zone database here, so each day is the merge's own UTC offset"))
     print("added and deleted lines are apart, never netted; the ratio is records added : product added\n")
     whole = empty()
@@ -5980,7 +6455,8 @@ def session_problems():
         seat = seat_of(name, email)
         if seat in (None, "owner"):
             continue
-        sid = (trailers_of(commit, "Session") or [""])[0] if commit else (git_out("config", "--get", "seat.session") or "").strip()
+        sid = ((trailer_values(_WALK_COMMITS[commit][1], "Session") if commit in _WALK_COMMITS else trailers_of(commit, "Session")) or [""])[0] if commit \
+            else (git_out("config", "--get", "seat.session") or "").strip()
         who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
         shape = SESSION_ID_RE.fullmatch(sid)
         if not sid:
@@ -5991,9 +6467,39 @@ def session_problems():
             why = f"{who} is the seat {seat}, and its Session: {sid} names the seat {shape[1]}"
         else:
             continue
-        if history_has_sessions(bases):
+        if sessions_before(_WALK_COMMITS[commit][0][:1] if commit in _WALK_COMMITS else bases):
             out.append(f"{label + ' — ' if label else ''}refused: {why}")
     return out
+
+
+def sessions_before(revs):
+    """`history_has_sessions`, answered from the walk's own log where `revs` are commits it listed — a commit carries a `Session:`, or one
+    of its parents' histories does — and with one git call for each other revision, kept: a fixed number of calls however long the
+    branch (v0.19.1)."""
+    for rev in [r for r in revs if r in _WALK_COMMITS]:
+        todo = [rev]
+        while todo:                                     # oldest first, without recursion: a long branch is a deep chain
+            c = todo[-1]
+            if c in _HAS_SESSIONS:
+                todo.pop()
+                continue
+            parents, block = _WALK_COMMITS[c]
+            pending = [q for q in parents if q in _WALK_COMMITS and q not in _HAS_SESSIONS]
+            if pending:
+                todo += pending
+                continue
+            _HAS_SESSIONS[c] = bool(trailer_values(block, "Session")) or any(
+                _HAS_SESSIONS[q] if q in _WALK_COMMITS else outside_sessions(q) for q in parents)
+            todo.pop()
+    return any(_HAS_SESSIONS[r] if r in _WALK_COMMITS else outside_sessions(r) for r in revs)
+
+
+def outside_sessions(rev):
+    """`history_has_sessions` of one revision outside the walk, asked once per run."""
+    key = ("outside", rev)
+    if key not in _HAS_SESSIONS:
+        _HAS_SESSIONS[key] = history_has_sessions([rev])
+    return _HAS_SESSIONS[key]
 
 
 def session_check():
@@ -6039,15 +6545,21 @@ def commit_list(*revs):
     return got
 
 
-def cat_blobs(specs, env=None):
+def cat_blobs(specs, env=None, types=None):
     """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there. `env`:
-    the hook's own, where `:<path>` must read the index git hands it (FM-037)."""
-    if not specs:
-        return {}
-    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in specs).encode("utf-8"), cwd=ROOT,
+    the hook's own, where `:<path>` must read the index git hands it (FM-037). `types`, where given, gets each object's type —
+    `blob` for a file, `tree` for a folder, `commit` for a submodule: one whose commit this clone holds, and one git answers
+    `<oid> submodule` for — a header with no size and nothing after it — whose text is None. A header read no other way is
+    no text, and nothing after it is read: where its object ends cannot be told, so neither can the next one's header. A
+    spec holding a line break is never asked — git would read it as two names, and answer each — and its text is None."""
+    got = {s_: None for s_ in specs if "\n" in s_ or "\r" in s_}
+    asked = [s_ for s_ in specs if s_ not in got]
+    if not asked:
+        return got
+    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in asked).encode("utf-8"), cwd=ROOT,
                        capture_output=True, env=env or nested_git_env())
-    got, data, i = {}, r.stdout, 0
-    for spec in specs:
+    data, i = r.stdout, 0
+    for spec in asked:
         nl = data.find(b"\n", i)
         if nl < 0:
             break
@@ -6055,7 +6567,18 @@ def cat_blobs(specs, env=None):
         if head.endswith((" missing", " ambiguous")):
             got[spec] = None
             continue
-        size = int(head.rsplit(" ", 1)[1])
+        if re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64}) submodule", head):
+            got[spec] = None                            # a submodule: no text, and the next header follows at once
+            if types is not None:
+                types[spec] = "commit"
+            continue
+        m = re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64}) ([a-z]+) ([0-9]+)", head)
+        if not m or data[i + int(m[2]):i + int(m[2]) + 1] != b"\n":
+            got[spec] = None                            # a header it cannot read, or an object cut short: no text, and nothing after it is read
+            break
+        size = int(m[2])
+        if types is not None:
+            types[spec] = m[1]
         got[spec], i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
     return got
 
@@ -6138,7 +6661,7 @@ def build_judgement(subject=None):
         return _BUILD
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
-    if trunk and branch == trunk.split("/", 1)[1]:
+    if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
         return _BUILD
     if COMMITTING:
@@ -6150,7 +6673,7 @@ def build_judgement(subject=None):
     base = git("merge-base", trunk, "HEAD").stdout.strip()
     commits = commit_list(f"{base}..HEAD") if base else []
     refused = judge_commits(commits, branch)
-    _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+    _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
                        + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker"))
     return _BUILD
 
@@ -6212,7 +6735,7 @@ def commit_msg_check(message_file):
         return EXIT_OK
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
-    if trunk and branch == trunk.split("/", 1)[1]:
+    if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         return EXIT_OK                                     # on the default branch nothing is judged
     comment = ((git_out("config", "--get", "core.commentChar") or "#").strip() or "#")[:1]
     comment = "#" if comment == "a" else comment          # `auto`: git picks one the message does not use; `#` is its first choice
@@ -6257,6 +6780,10 @@ GUARD_WAY = ("the Owner commits it signed; a seat proposes the change as an ask 
 GUARD_LIMIT = "a commit signed with the Owner's key passes; at tier 0 any process on their account holds that key (FM-007)"
 # what it can prove where their seat asks for no signature (clause 5) — and where it proves nothing, Subversion's working copy
 GUARD_AUTHOR_ONLY = "the author only — mark `owner` signed to prove the key"
+# where this tool refuses the default branch's configuration, who the Owner is is not known: a change to what only they change is
+# refused, not left unguarded (the Owner's ruling of 2026-10-03, v0.19.1) — and the way through, the words such a refusal ends on
+GUARD_UNREAD = "configuration cannot be read here, so who the Owner is is not known, and a change to their two sections or their signers file is not passed unread"
+GUARD_UNREAD_WAY = "land the configuration change on the default branch first, or upgrade there"
 GUARD_SVN = ("the Owner's two sections: Subversion is out of scope for FM-037 — its working copy carries no signature, so "
              "nothing here can tell their commit from a seat's")
 _GUARD = None
@@ -6273,36 +6800,118 @@ def guarded_sections(text, heads):
     return out
 
 
-def triage_views(revs, env=None):
+_MODES = {}
+_TREES = {}
+_VIEWS = {}
+
+
+def tree_paths(rev, env=None):
+    """Every path `rev` holds, from the repository's root — "" the index (`env` the hook's) — or None where git cannot list
+    them: one `git ls-tree -r` (for the index `git ls-files`) a revision, read once per run."""
+    key = (str(ROOT), rev)
+    if key not in _TREES:
+        args = ["ls-files", "-z", "--full-name", "--", ":/"] if rev == "" else ["ls-tree", "-r", "-z", "--name-only", "--full-tree", rev]
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        _TREES[key] = [x for x in r.stdout.split("\x00") if x] if r.returncode == 0 else None
+    return _TREES[key]
+
+
+def path_mode(rev, path, env=None):
+    """The mode git records for `path`, from the repository's root, at `rev` — "" where nothing is there, "?" where git
+    cannot say; "" as `rev` is the index (`env` carries the hook's). Asked only where `git cat-file` found nothing, which
+    is also what it says of a submodule whose commit this clone does not hold: one `git ls-tree` a revision and path, read
+    once per run."""
+    key = (str(ROOT), rev, path)
+    if key not in _MODES:
+        args = ["ls-files", "-s", "-z", "--full-name", "--", f":/{path}"] if rev == "" else ["ls-tree", "-z", "--full-tree", rev, "--", path]
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        rows = [row.partition("\t") for row in r.stdout.split("\x00") if row]
+        _MODES[key] = ("?" if r.returncode != 0 else next((m.split(" ", 1)[0] for m, _t, name in rows if name == path), "040000" if rows else ""))
+    return _MODES[key]
+
+
+def config_not_file(kind):
+    """Why a revision's configuration cannot be read where git records no file at its path: `kind` the mode or the type."""
+    what = {"160000": "a submodule", "commit": "a submodule", "040000": "a folder", "tree": "a folder", "120000": "a symlink"}.get(kind, f"no file it can list (`{kind}`)")
+    return f"{CONFIG_NAME}: not a file — git records {what} at that path, and only a file is read as the configuration"
+
+
+def guard_config(text, prefix=""):
+    """(`tracker_dir`, `[headings]`, the tracker folder below `prefix`) as `configure` reads them from one revision's
+    configuration — `text` None: there is none, the defaults. The folder is `tracker_folder`'s, the one `configure` binds:
+    the guard computes no path of its own. Where this tool cannot read it as `configure` would — `read_config` refuses it,
+    `tracker_dir` is no folder of the repository, `[headings]` is not the table `configure` takes — SystemExit with the
+    reason: never the defaults."""
+    cfg = read_config(text) if text is not None else {}
+    tdir, heads = cfg.get("tracker_dir", DEFAULTS["tracker_dir"]), cfg.get("headings", {})
+    if not isinstance(tdir, str) or tracker_folder(cfg).is_absolute() or ".." in tracker_folder(cfg).parts:
+        raise SystemExit(f"{CONFIG_NAME}: `tracker_dir` is a folder inside the repository, its path in quotes — got {tdir!r}")
+    if not isinstance(heads, dict) or set(heads) - set(DEFAULTS["headings"]) or not all(isinstance(v, str) and v.strip() for v in heads.values()):
+        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
+    return tdir, {**DEFAULTS["headings"], **heads}, tracker_folder(cfg, prefix).as_posix()
+
+
+def view_label(rev):
+    """A revision as a guard's line names it: a commit by its 7 characters, the index as what the commit being made stages."""
+    return "what this commit stages" if rev == "" else rev[:7] if re.fullmatch(r"[0-9a-f]{40}", rev) else ref_name(rev)
+
+
+def triage_views(revs, env=None, prefix=None, modes=()):
     """{rev: (its `tracker_dir`, its TRIAGE.md from the repository's root, whether that file is there, its two sections, its
-    `[headings]`)} — each revision read under its OWN `shoalmark.toml`; "" is the index, what a commit being made stages
-    (`env` carries the hook's `GIT_INDEX_FILE`). A configuration that cannot be read counts as none: the defaults. Two
-    `git cat-file --batch` calls for all of them."""
-    prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+    `[headings]`, "" — or why its configuration cannot be read, its tracker folder from the root)} — the folder and the
+    home `tracker_folder`'s, as the tool reads them — each revision read under its OWN `shoalmark.toml`; "" is
+    the index, what a commit being made stages (`env` carries the hook's `GIT_INDEX_FILE`). A configuration this tool cannot
+    read (`guard_config`), or no file at its path — a submodule, a folder (`path_mode`) — is never read as the defaults: its
+    view says so, and reads no sections — every reader of a view refuses where one it needs cannot be read. Only a path
+    with nothing at it is no configuration: the defaults, as `configure` reads them. A symlink there is no file either: its
+    mode is read (`path_mode`) for each revision of `modes` — the default branch, and a revision that changes the
+    configuration's path; at any other, the path holds what its parent's did. `prefix`: the repository's, where the caller
+    has it. Two `git cat-file --batch` calls for all of them that this run has not read yet — a revision is read once per
+    run (`_VIEWS`), the index never kept."""
+    if prefix is None:
+        prefix = _VIEWS.get((str(ROOT), "prefix"))
+        if prefix is None:
+            prefix = _VIEWS[(str(ROOT), "prefix")] = (git_out("rev-parse", "--show-prefix") or "").strip()
+    key = lambda r: (str(ROOT), prefix, r, r in modes)
+    kept = {r: _VIEWS[key(r)] for r in revs if r != "" and key(r) in _VIEWS}
+    revs = [r for r in revs if r not in kept]
     at = lambda rev, path: f"{rev}:{path}"
-    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env)
+    types = {}
+    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env, types)
     where = {}
     for r in revs:
+        spec = at(r, prefix + CONFIG_NAME)
         try:
-            cfg = read_config(configs.get(at(r, prefix + CONFIG_NAME)) or "")
-        except SystemExit:
-            cfg = {}
-        tdir = str(cfg.get("tracker_dir") or DEFAULTS["tracker_dir"])
-        heads = {**DEFAULTS["headings"], **(cfg["headings"] if isinstance(cfg.get("headings"), dict) else {})}
-        home = "/".join(x for x in (prefix + tdir + "/TRIAGE.md").replace("\\", "/").split("/") if x not in ("", "."))
-        where[r] = (tdir, home, heads)
-    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h) in where.items()}), env)
-    return {r: (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads)
-            for r, (tdir, home, heads) in where.items()}
+            kind = types.get(spec, "blob") if configs.get(spec) is not None else path_mode(r, prefix + CONFIG_NAME, env) or "blob"
+            if kind == "blob" and r in modes and path_mode(r, prefix + CONFIG_NAME, env) == "120000":
+                kind = "120000"
+            if kind != "blob":
+                raise SystemExit(config_not_file(kind))
+            tdir, heads, folder = guard_config(configs.get(spec), prefix)
+        except SystemExit as e:
+            where[r] = (None, "", None, f"{prefix + CONFIG_NAME} at {view_label(r)} cannot be read here — {e}", "")
+            continue
+        where[r] = (tdir, (pathlib.PurePosixPath(folder) / "TRIAGE.md").as_posix(), heads, "", folder)
+    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why, _f) in where.items() if not why}), env)
+    read = {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why, folder) if why else
+               (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads, "", folder)
+            for r, (tdir, home, heads, why, folder) in where.items()}
+    _VIEWS.update({key(r): v for r, v in read.items() if r != ""})
+    return {**kept, **read}
 
 
-def section_changes(now, before):
+def section_changes(now, before, touched=()):
     """[(key, what it did, the heading, the rest of the phrase)] — what one commit does to each of the two sections, `now` and
     `before` read by `triage_views`:
     nothing where its text is its parent's — for a merge, ANY parent's: the text a merge carries was judged on the commit
     that made it, and only a text no parent had is the merge's own (FM-019). A root commit has no parent: it had none. A
-    scaffold, where no parent had the section, is not a change (clause 3): `unwritten`."""
-    tdir, home, there, secs, heads = now
+    scaffold, where no parent had the section, is not a change (clause 3): `unwritten`. Where a view on either side cannot
+    be read, nothing is read as the sections: the commit changes the files `touched` names — every TRIAGE.md and the
+    configuration file it changes (`guard_touched`) — where that configuration cannot be read (`unread`)."""
+    why = next((v[5] for v in (now, *before) if v[5]), "")
+    if why:
+        return [("unread", "changes", f"`{p}`", f"where {why}") for p in (touched or ["TRIAGE.md"])]
+    tdir, home, there, secs, heads, _why, _f = now
     out = []
     for k in GUARDED:
         had = [b[3][k] for b in before] or [None]
@@ -6310,7 +6919,7 @@ def section_changes(now, before):
             continue
         if all(h is None for h in had) and unwritten(k, secs[k]):
             continue
-        b_dir, b_home, b_there, b_secs, _h = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads)
+        b_dir, b_home, b_there, b_secs, _h, _w, _f = before[0] if before else (tdir, home, False, {g: None for g in GUARDED}, heads, "", "")
         name = f"`{(b_secs[k] or secs[k] or '## ' + heads[k]).split(chr(10), 1)[0].rstrip()}`"
         if len(before) > 1:
             out.append((k, "brings a text under", name, f"in {home} that no parent had"))
@@ -6355,11 +6964,13 @@ def kept_changes(path, now, before):
 def signers_paths(trunk):
     """The signers files the guard keeps (AU-19), from the repository's root: the one `gpg.ssh.allowedSignersFile` names,
     where it sits in a checkout of this repository, and the default branch's `<tracker dir>/allowed_signers` — where the
-    signing page puts it — whether this clone names it or not."""
+    signing page puts it — whether this clone names it or not. Where the default branch's configuration cannot be read, its
+    tracker directory is not known and the second is not named: there, `owners_at` refuses that configuration, and the
+    guard refuses every change to a file named `allowed_signers` (`guard_touched`)."""
     out = [trusted_signers()["rel"]]
-    if trunk:
-        home = triage_views([trunk])[trunk][1]
-        out.append((home.rsplit("/", 1)[0] + "/" if "/" in home else "") + "allowed_signers")
+    view = triage_views([trunk], modes={trunk})[trunk] if trunk else None
+    if view and not view[5]:
+        out.append((pathlib.PurePosixPath(view[6]) / "allowed_signers").as_posix())
     return list(dict.fromkeys(x for x in out if x))
 
 
@@ -6372,22 +6983,83 @@ def did_words(what):
     return "; ".join(f"{verb} {' and '.join(names)} {tail}".rstrip() for (verb, tail), names in said.items())
 
 
-def guard_walk(*revs, keys=()):
+def guard_touched(files, prefix, keys=(), unread=False, homes=()):
+    """The files of `files` (paths from the repository's root) a reading of the two sections depends on: every `TRIAGE.md`,
+    in any folder, the root's included, each TRIAGE.md `homes` names (`tracker_folder`'s), and the configuration file — and,
+    where the default branch's configuration cannot be read (`unread`), every file named `allowed_signers` and each `keys`
+    names: its tracker directory, and so its signers file, is not known there. Each compared as a file system that ignores
+    case and Unicode normalization compares it (`fs_fold`), on every system."""
+    base = lambda f: fs_fold(f.rsplit("/", 1)[-1])
+    names = {fs_fold("TRIAGE.md"), *([fs_fold("allowed_signers")] if unread else [])}
+    watched = {fs_fold(w) for w in (*homes, prefix + CONFIG_NAME, *(keys if unread else ()))}
+    return sorted({f for f in files if base(f) in names or fs_fold(f) in watched})
+
+
+def variant_changes(files, watched):
+    """[("variant", "changes", the file, the path it is read as)] — each of `files` that a path the guard watches, other than
+    itself, is as a file system that ignores case and Unicode normalization reads it (`fs_fold`): on such a file system —
+    macOS's default one, Windows's — the two are one file, and it can be the very file the tool reads. Folded on every
+    system."""
+    out = []
+    for f in sorted(files):
+        other = next((w for w in watched if w != f and fs_fold(w) == fs_fold(f)), None)
+        if other is not None:
+            out.append(("variant", "changes", f"`{f}`", f"which a file system that ignores case or Unicode normalization reads as `{other}`"))
+    return out
+
+
+def tree_variants(home, paths, files):
+    """[("variant", "holds", the path, its home)] — where a commit's TRIAGE.md home is not its parent's (the tracker moved, or
+    `tracker_dir` respelled), each path its tree holds (`paths`, `tree_paths`), other than the home, that is the home as a
+    file system that ignores case and Unicode normalization reads it — one the commit changes itself (`files`) is
+    `variant_changes`'. None as `paths`: git could not list them, and the move is refused."""
+    if paths is None:
+        return [("variant", "moves the tracker to", f"`{home}`", "where git cannot list the files beside it")]
+    return [("variant", "holds", f"`{p}`", f"which a file system that ignores case or Unicode normalization reads as `{home}`")
+            for p in sorted(paths) if p != home and p not in files and fs_fold(p) == fs_fold(home)]
+
+
+def guard_changes(now, before, kept, files, prefix, keys=(), unread=False, tree=None):
+    """What one commit does that FM-037 judges: `section_changes` and `kept_changes` (`kept`), read under the views `now` and
+    `before`, each of the files it changes (`files`) that is a watched path in another case or Unicode normalization
+    (`variant_changes`), and — where its TRIAGE.md home is not a parent's — each path its tree holds that is that home so
+    (`tree_variants`; `tree` lists them, once) — where a view on either side cannot be read, the files `guard_touched`
+    names, refused as changes, never read under the defaults. `unread`: the default branch's configuration cannot be read —
+    every file `guard_touched` names is a change, whatever the views read."""
+    views = (now, *before)
+    homes = [v[1] for v in views if v[1]]
+    touched = guard_touched(files, prefix, keys, unread, homes)
+    if any(v[5] for v in views):
+        own = ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else section_changes(now, before, touched)) if touched else []
+    else:
+        own = section_changes(now, before) + variant_changes(files, [*dict.fromkeys([*homes, prefix + CONFIG_NAME, *keys])])
+        if tree is not None and (not before or any(b[1] != now[1] for b in before)):
+            own += tree_variants(now[1], tree(), files)
+    own += kept
+    return own or ([("unread", "changes", f"`{p}`", "") for p in touched] if unread else [])
+
+
+def guard_walk(*revs, keys=(), unread=False):
     """FM-037's walk of `git log <revs>` — merges INCLUDED, each read against every parent: (how many commits it read,
-    [(commit, subject, TRIAGE.md's path at it, what `section_changes` and `kept_changes` say of it)] for each that changes
-    one of the two sections, or one of the files `keys` names (`signers_paths`))."""
-    out = git_out("log", "--format=%x00%H %P%x01%s", *revs) or ""
-    commits = []
-    for rec in out.split("\x00")[1:]:
-        shas, _, subject = rec.partition("\x01")
-        c, *ps = shas.split()
-        commits.append((c, ps, subject.strip()))
-    revs_ = sorted({c for c, _p, _s in commits} | {p for _c, ps, _s in commits for p in ps})
-    views = triage_views(revs_) if commits else {}
+    [(commit, subject, TRIAGE.md's path at it, what `guard_changes` says of it)] for each that changes one of the two
+    sections, or one of the files `keys` names (`signers_paths`) — or, where a view cannot be read, or the default branch's
+    configuration cannot be (`unread`), a file the reading depends on (`guard_touched`). The same one `git log` names the
+    files each commit changes — a merge's, those that differ from every parent — split on a mark no commit can carry."""
+    mark = f"\x1f{os.urandom(8).hex()}\x1f"
+    out = git_out("-c", "diff.relative=false", "-c", "log.showSignature=false", "-c", "log.showRoot=true", "log", "-z", "-c",
+                  "--name-only", "--no-renames", f"--format={mark}%H %P{mark}%s{mark}", *revs) or ""
+    parts, commits = out.split(mark)[1:], []
+    for i in range(0, len(parts) - 2, 3):
+        c, *ps = parts[i].split()
+        commits.append((c, ps, parts[i + 1].strip(), [f.lstrip("\n") for f in parts[i + 2].split("\x00") if f.lstrip("\n")]))
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if commits else ""
+    revs_ = sorted({c for c, _p, _s, _f in commits} | {p for _c, ps, _s, _f in commits for p in ps})
+    views = triage_views(revs_, prefix=prefix, modes={c for c, _p, _s, files in commits if prefix + CONFIG_NAME in files}) if commits else {}
     kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys]) if commits else {}
-    changed = [(c, subject, views[c][1], section_changes(views[c], [views[p] for p in ps])
-                + [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])])
-               for c, ps, subject in commits]
+    changed = [(c, subject, next((views[r][1] for r in (c, *ps) if views[r][1]), "TRIAGE.md"),
+                guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
+                              files, prefix, keys, unread, lambda c=c: tree_paths(c)))
+               for c, ps, subject, files in commits]
     return len(commits), [row for row in changed if row[3]]
 
 
@@ -6413,15 +7085,25 @@ def owners_of(cfg):
 
 def owners_at(rev, refused=None):
     """The Owner as `rev`'s `shoalmark.toml` names them — the default branch's, so a branch never names its own Owner — or
-    this checkout's where `rev` is None or carries no configuration. Where this tool refuses that configuration, nobody —
-    and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2)."""
+    this checkout's where `rev` is None or carries no configuration — nothing at its path (`path_mode`); a submodule or a
+    folder there is a configuration this tool cannot read. Where this tool refuses that configuration, nobody —
+    and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2), and
+    refuses every change to the two sections (v0.19.1) — a configuration whose tracker directory or `[headings]` the guard
+    cannot read (`guard_config`) is refused the same way."""
     if not rev:
         return may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
-    text = cat_blobs([f"{rev}:{prefix}{CONFIG_NAME}"]).get(f"{rev}:{prefix}{CONFIG_NAME}")
-    if text is None:
+    spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
+    text = cat_blobs([spec], types=types).get(spec)
+    kind = types.get(spec, "blob") if text is not None else path_mode(rev, prefix + CONFIG_NAME)
+    if kind == "blob" and path_mode(rev, prefix + CONFIG_NAME) == "120000":       # a symlink: its text is no configuration
+        kind = "120000"
+    if not kind:                                        # nothing at that path: no configuration — the adoption, as documented
         return may_answer()
     try:
+        if kind != "blob":
+            raise SystemExit(config_not_file(kind))
+        guard_config(text)                              # where it puts the two sections, as the guard reads them
         return owners_of(read_config(text))
     except SystemExit as e:
         if refused is not None:
@@ -6473,7 +7155,25 @@ def guard_proof(owners):
 def guard_why(what):
     """Whose the thing changed is: their two sections, the keys their signature is verified against, or both."""
     keys = {k for k, *_r in what}
-    return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & set(GUARDED))), (GUARD_WHY_KEYS, "signers" in keys)) if on)
+    return "; ".join(w for w, on in ((GUARD_WHY, bool(keys & {*GUARDED, "unread", "variant"})), (GUARD_WHY_KEYS, "signers" in keys)) if on)
+
+
+def unread_why(trunk):
+    """Why a change to the Owner's two sections or their signers file is refused where this tool refuses `trunk`'s configuration,
+    and the way through — last, so a refusal of this kind is told by its end (`unread_refusal`)."""
+    return f"{ref_name(trunk)}'s {GUARD_UNREAD}. The way through: {GUARD_UNREAD_WAY}"
+
+
+def unread_lines(changed, trunk):
+    """FM-037 where this tool refuses `trunk`'s configuration: each commit of `guard_walk` that changes the two sections or their
+    signers file, refused in one line — whoever made it, signed or not."""
+    return [f'refused: commit {c[:7]} "{first_words(subject, 60)}" {did_words(what)} — {unread_why(trunk)}' for c, subject, _home, what in changed]
+
+
+def unread_refusal(line):
+    """Whether a line of the guard is the refusal `unread_why` ends: no author and no signature judged, so the lines on what a
+    signature proves are not said under it. Told by its end — every other line of the guard ends on fixed words of its own."""
+    return line.endswith(GUARD_UNREAD_WAY)
 
 
 def guard_lines(verdicts, owners):
@@ -6496,35 +7196,57 @@ def triage_pending(subject):
     against each of its parents — and every commit a merge being made brings, walked as `--check` walks them. What the
     hook CAN prove is the author: git signs the commit after the hook has run, so the Owner's own commit passes here on their
     name and a seat's is refused before it is made. `--check` on the branch judges the signature: it is the gate, the hook
-    best-effort (the 0.18.3 ruling on FM-033's hook). `subject` names the commit in what it says."""
+    best-effort (the 0.18.3 ruling on FM-033's hook). Where this tool refuses the default branch's configuration, who the Owner
+    is is not known, and every such change is refused, whoever makes it (v0.19.1) — as is every change to a file the reading
+    depends on (`guard_touched`), and so where a view of the index or a parent cannot be read. `subject` names the commit in
+    what it says."""
     if vcs() != "git":
         return [], []
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git)
-    owners = owners_at(trunk)
-    if not owners:
+    trunk, why = default_trunk(git), []
+    owners = owners_at(trunk, why)
+    if not owners and not why:
         return [], []
     heads = merge_heads()
     parents = (["HEAD"] if git("rev-parse", "--verify", "-q", "HEAD").returncode == 0 else []) + heads
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    views = triage_views(["", *parents], env)                  # "" — the index: what this commit carries
+    prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+    staged = staged_files(parents, env)
+    views = triage_views(["", *parents], env, prefix, {""} if prefix + CONFIG_NAME in staged else ())     # "" — the index: what this commit carries
     keys = signers_paths(trunk)
     kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
-    what = section_changes(views[""], [views[p] for p in parents]) + [
-        w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])]
-    refused = guard_lines(guard_verdicts(guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys)[1], owners), owners) if heads else []
+    what = guard_changes(views[""], [views[p] for p in parents],
+                         [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
+                         staged, prefix, keys, not owners, lambda: tree_paths("", env))
+    brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []
+    refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
     if what:
         name, email = pending_author()
         mode = next((m for who, m in owners.items() if who in (email, name)), None)
         this = f'this commit "{first_words(subject, 60)}"' if subject else "this commit"
-        if mode is None:
+        if not owners:
+            refused.append(f'refused: {this} {did_words(what)} — {unread_why(trunk)}')
+        elif mode is None:
             refused.append(f'refused: {this} {did_words(what)} — its author `{email or name or "nobody git can name"}` is not the Owner '
                            f'({" · ".join(f"`{w}`" for w in owners)}): {guard_proof(owners)} — {guard_why(what)}. The way through: {GUARD_WAY}')
         else:
             notes.append(f"note: {this} {did_words(what)}, under the Owner's name — "
                          + ("its signature is judged on the commit, by `--check` on the branch" if mode == "signed" else GUARD_AUTHOR_ONLY))
     return refused, notes
+
+
+def staged_files(parents, env):
+    """The files the commit being made changes, from the repository's root: what its index (`env`) holds that differs from
+    every parent — a merge being made, from each of its parents; a first commit, all it holds. One `git diff` a parent."""
+    run = lambda *a: subprocess.run(["git", "-c", "diff.relative=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    every_file = lambda: run("ls-files", "-z", "--full-name", "--", ":/")
+    sets = [run("diff", "--cached", "--name-only", "-z", "--no-renames", p) for p in parents] or [every_file()]
+    names = [set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else None for r in sets]
+    if any(n is None for n in names):                          # git could not say: every file it holds counts — and where it cannot list them, a TRIAGE.md
+        r = every_file()
+        return set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else {"TRIAGE.md"}
+    return set.intersection(*names)
 
 
 def commit_msg_hook(message_file):
@@ -6538,7 +7260,7 @@ def commit_msg_hook(message_file):
     refused, notes = triage_pending(message_subject(text) or literal_subject(text))
     for line in refused + notes:
         print(f"  {line}", file=sys.stderr)
-    if refused or notes:
+    if notes or not all(unread_refusal(line) for line in refused):          # what the hook proves, where it judged an author
         print("  the hook proves the author only: git signs a commit after its hooks have run — `--check` on the branch is the gate, "
               "and it judges the signature", file=sys.stderr)
         print(f"  the limit: {GUARD_LIMIT}", file=sys.stderr)
@@ -6548,13 +7270,36 @@ def commit_msg_hook(message_file):
 def guard_footer(problems):
     """The refusal's last line, under every line the run printed (clause 6): what a signature proves — the key, not the hand.
     Said once, where the guard said anything."""
-    return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems for p_ in (_GUARD or ([], ""))[0]) else []
+    return [f"  the limit: {GUARD_LIMIT}"] if any(p_ in problems and not unread_refusal(p_) for p_ in (_GUARD or ([], ""))[0]) else []
+
+
+def tip_variants(trunk, tip=None):
+    """FM-037 on the branch tip as a merge would bring it: where its TRIAGE.md home is not the default branch's — the tracker
+    moved on either side — each path the tip's tree holds (`tree_paths`, one listing), other than a home, that is either
+    home as a file system that ignores case and Unicode normalization reads it (`fs_fold`). Refused whoever made it, in
+    one line each; nothing listed where the two homes are one, or one cannot be read (the walk judges that). `tip`: the
+    commit to judge — `--queue`'s pull request head — else HEAD."""
+    tip = tip or (git_out("rev-parse", "--verify", "-q", "HEAD") or "").strip()
+    if not tip or not trunk:
+        return []
+    views = triage_views([trunk, tip], modes={trunk})
+    homes = list(dict.fromkeys(v[1] for v in (views[trunk], views[tip])))
+    if len(homes) < 2 or not all(homes):
+        return []
+    held = tree_paths(tip)
+    if held is None:
+        return [f"refused: the branch tip `{tip[:7]}` moves the tracker from {ref_name(trunk)}'s `{homes[0]}` to `{homes[1]}`, and git cannot list the files beside it"]
+    return [f"refused: the branch tip `{tip[:7]}` holds `{p}` which a file system that ignores case or Unicode normalization reads as `{h}` — "
+            f"{ref_name(trunk)}'s TRIAGE.md is `{homes[0]}`, the tip's `{homes[1]}`, and a merge brings it: carry the work onto a branch without it"
+            for p in sorted(held) for h in homes if p not in homes and fs_fold(p) == fs_fold(h)]
 
 
 def triage_guard():
     """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
-    merges walked and judged by the text they bring. Read once per run; the pre-commit run judges nothing here (the
-    commit-msg hook judges the commit being made)."""
+    merges walked and judged by the text they bring — where this tool refuses the default branch's configuration, each commit
+    that changes them, their signers file, a TRIAGE.md or the configuration file refused, signed or not (the Owner's ruling of
+    2026-10-03, v0.19.1). Read once per run; the pre-commit run judges nothing here (the commit-msg hook judges the commit
+    being made)."""
     global _GUARD
     if COMMITTING:
         return [], ""
@@ -6566,19 +7311,26 @@ def triage_guard():
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if not trunk:
-        _GUARD = ([], "the Owner's two sections: no `origin` default branch to measure from — nothing is judged")
+        _GUARD = ([], "the Owner's two sections: " + ("the default branch cannot be told — nothing is judged until it can" if _TRUNK_UNTOLD
+                                                      else "no `origin` default branch to measure from — nothing is judged"))
         return _GUARD
     why = []
     owners = owners_at(trunk, why)
+    if not owners and why:                                   # refused here: every change to the two sections, their signers file, a TRIAGE.md or the configuration
+        n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk), unread=True)
+        refused = unread_lines(changed, trunk) + tip_variants(trunk)
+        _GUARD = (refused, f"the Owner's two sections: guarded — {ref_name(trunk)}'s configuration cannot be read here, so every change to them or their signers file is refused: {why[0]} — "
+                           f"{n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
+                           + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if changed or refused else "none changes them or their signers file"))
+        return _GUARD
     if not owners:
-        _GUARD = ([], f"the Owner's two sections: not guarded — " + (f"{trunk}'s configuration is refused here, so it names nobody — {why[0]}" if why
-                       else f"{trunk}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
+        _GUARD = ([], f"the Owner's two sections: not guarded — {ref_name(trunk)}'s configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)")
         return _GUARD
     n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk))
     verdicts = guard_verdicts(changed, owners)
-    refused = guard_lines(verdicts, owners)
+    refused = guard_lines(verdicts, owners) + tip_variants(trunk)
     proof = "" if all(m == "signed" for m in owners.values()) else f" ({GUARD_AUTHOR_ONLY})"
-    _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {trunk}, "
+    _GUARD = (refused, f"the Owner's two sections: guarded{proof} — {n} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
                        + (f"{len(changed)} change them or their signers file, {len(refused)} refused" if refused
                           else f"{len(changed)} change them or their signers file, each their own commit" if changed else "none changes them or their signers file"))
     return _GUARD
@@ -6717,8 +7469,11 @@ def read_history(*revs):
 
 
 def trunk_ref():
-    """The trunk a verdict's branch is measured against: `origin/main`, else `main`, else `master`."""
-    return next((ref for ref in ("origin/main", "main", "master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
+    """The trunk a verdict's branch is measured against — a report's, never a refusal's: the default branch as `--check` reads it
+    (`default_trunk`, asking no server: origin's answer where this run has it), else the local `main`, else `master` — each by its
+    full ref (v0.19.1)."""
+    held = default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
+    return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
 def verdict_reports(days=None):
@@ -7051,10 +7806,10 @@ def done_cmd(words, trackers):
     if not act and t and vcs() == "git":                    # R3: their answer — the act — may be on `answer/<id>`, not merged yet
         git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
-        if git("rev-parse", "--verify", "-q", branch).returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", branch, trunk).returncode != 0):
-            there = git("show", f"{branch}:{rel}")
+        if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0):
+            there = git("show", f"refs/heads/{branch}:{rel}")
             if there.returncode == 0 and act_of(extract(ROOT / rel, there.stdout)):
-                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{trunk or 'origin'}` — " + unmerged_advice(
+                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(
                     git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
                 return EXIT_LINT
     if not act:
@@ -7228,13 +7983,16 @@ def lint(trackers, committing=False):
               f'It is removed no sooner than the release after 0.17.3: before 0.17.3 this note never reached a repository '
               f'without `[seats]`, so the clock starts at 0.17.3', file=sys.stderr)
     problems += answerers_problems()
+    problems += line_break_problems(trackers)        # a tracker whose file name git would read as two names (v0.19.1)
     problems += rights_problems(trackers)
     problems += ship_problems(trackers)              # FM-005: no move to Shipped without a commit behind it, every author
     problems += session_problems()                   # FM-024, FM-032: a seat's commit names a session of its own seat
+    problems += walk_problems()                      # v0.19.1: a walk of those commits git could not make is refused, never read as nothing
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
     by_ask = asks_by_key(trackers)
     for t in trackers:
+        problems += t.get("key_problems") or []         # each key a right is judged on is read from one line, in lower case (v0.19.1)
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
         problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask)]
         problems += record_problems(t) if committing else []
@@ -7259,8 +8017,12 @@ def lint(trackers, committing=False):
                     pass                                 # refused above: who wrote the answer cannot be read
                 elif how == "uncommitted" and committing:
                     print(f'  {t["id"]}: the answer is being committed now — its author and signature are verified on the commit, by the next run', file=sys.stderr)
+                elif how == "uncommitted" and SEATS and vcs() == "svn" and svn_tracker_new(t):
+                    pass                                 # a tracker Subversion holds no revision of: the rights refuse it, in one line (`rights_problems`)
                 elif how == "uncommitted":
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
+                elif how in ("unattributed", "merged"):
+                    problems.append(unattributed(t, "answer:", how))
                 elif SEATS and not holds(seat, "answer"):
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):
@@ -7959,7 +8721,7 @@ def install_hook_svn():
     code = svn_ignore_board() or code
     print(f"Commit the property changes (`svn update` first if Subversion calls the directory out of date). `svn commit` on the command line runs no hook — Subversion has none on the client: "
           f"run `{CMD}` before it and commit the INDEX.md it writes (the contract in AGENTS.md says so). "
-          f"For a gate nobody can skip, call `{CMD} --check` from the server's pre-commit hook.")
+          f"`{CMD} --check` after the commit is what judges it.")
     return code
 
 
@@ -7969,10 +8731,11 @@ def copy_files():
 
 
 def default_branch():
-    """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only — or None where it cannot be told."""
+    """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only and
+    asking no server — or None where it cannot be told."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git)
-    return trunk.split("/", 1)[1] if trunk else None
+    trunk = default_trunk(git, ask=False)
+    return ref_name(trunk).split("/", 1)[1] if trunk else None
 
 
 def install_copy():
@@ -8093,16 +8856,55 @@ def hooks_copy_drift():
     return ""
 
 
-def worktree_tops(live=False):
-    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved. `live`: only
-    those it does not mark `prunable` — a worktree whose folder is gone has no tree, and no hook runs there."""
+def worktree_tops():
+    """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved: one it marks
+    `prunable`, whose folder is gone, included, for that folder can come back."""
     tops = {os.path.realpath(ROOT)}
     for record in (git_out("worktree", "list", "--porcelain") or "").split("\n\n"):
-        lines = record.splitlines()
-        top = next((l[len("worktree "):] for l in lines if l.startswith("worktree ")), None)
-        if top and not (live and any(l == "prunable" or l.startswith("prunable ") for l in lines)):
+        top = next((l[len("worktree "):] for l in record.splitlines() if l.startswith("worktree ")), None)
+        if top:
             tops.add(os.path.realpath(top))
     return sorted(tops)
+
+
+def worktree_git_dirs():
+    """Every worktree of this repository as (its folder, its git directory, the files of its own configuration), whether or not the folder is there: the main
+    one — the common git directory, its `config` and `config.worktree` — and each linked one under the common git directory's `worktrees/`, its
+    `config.worktree`, its folder as its `gitdir` file names it (None where that cannot be read)."""
+    common = os.path.abspath(ROOT / ((git_out("rev-parse", "--git-common-dir") or "").strip() or ".git"))
+    main = next((l[len("worktree "):] for l in (git_out("worktree", "list", "--porcelain") or "").splitlines() if l.startswith("worktree ")), None)
+    found = [(os.path.realpath(main or ROOT), common, [os.path.join(common, "config"), os.path.join(common, "config.worktree")])]
+    try:
+        names = sorted(os.listdir(os.path.join(common, "worktrees")))
+    except OSError:
+        names = []
+    for name in names:
+        gitdir = os.path.join(common, "worktrees", name)
+        if not os.path.isdir(gitdir):
+            continue
+        said = ""
+        if os.path.isfile(os.path.join(gitdir, "gitdir")):
+            try:
+                said = pathlib.Path(gitdir, "gitdir").read_text(encoding="utf-8", errors="replace").strip()
+            except OSError:
+                pass
+        found.append((os.path.realpath(os.path.join(gitdir, re.sub(r"[\\/]\.git$", "", said))) if said else None, gitdir, [os.path.join(gitdir, "config.worktree")]))
+    return found
+
+
+def config_file_unreadable(path):
+    """Why git cannot read the configuration file `path`, in a few words — or "": it is there, and is not a regular file, or cannot be opened to read. A
+    file that is not there is no problem: git reads none."""
+    if not os.path.lexists(path):
+        return ""
+    if not os.path.isfile(path):
+        return f"{path} is not a regular file"
+    try:
+        with open(path, "rb"):
+            pass
+    except OSError as e:
+        return f"{path} cannot be read ({e.strerror or type(e).__name__})"
+    return ""
 
 
 def hooks_folder_problem(hooks):
@@ -8114,48 +8916,114 @@ def hooks_folder_problem(hooks):
     tops = worktree_tops()
     said = (git_out("config", "--path", "--get", "core.hooksPath") or "").strip()
     seen = [hooks] if not said or os.path.isabs(said) else [os.path.join(top, said) for top in tops]
+    trees = {top: fs_chain(top)[:1] for top in tops}
     for where in seen:
-        real = os.path.normcase(os.path.realpath(where))
-        if in_git_dir(real):
-            continue
-        for top in tops:
-            top = os.path.normcase(top)
-            if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
-                return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
-                        f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
+        top = tree_holding(os.path.normcase(os.path.realpath(where)), trees)
+        if top:
+            return (f"--install-hook: the hooks folder {where} is inside the working tree {top}, where a branch can change the hooks themselves — no hook and no copy is "
+                    f"written; point `core.hooksPath` outside every working tree, or read the README's paragraph on a repository with its own hook runner (§Sessions)")
     return ""
+
+
+def tree_holding(real, trees):
+    """The working tree of `trees` that the path `real`, resolved, is or lies in, outside the repository's git directories (`git_dir_holding`) — or None:
+    the judgement the hooks folder and the configuration check share, made as the file system compares paths. A tree is found by the file system's own
+    identity (`fs_chain`) — the path, or one of its ancestors that exists, is the tree's folder, so a spelling in another case, where the file system
+    ignores case, is the same tree — and by its spelling, `os.path.normcase`d. The tree is returned `os.path.normcase`d. `trees` maps each tree's folder to
+    its `fs_chain(…)[:1]`, read once by the caller for every path it judges."""
+    if git_dir_holding(real):
+        return None
+    mine, real = fs_chain(real), os.path.normcase(real)
+    for top, folder in trees.items():
+        top = os.path.normcase(top)
+        if real == top or real.startswith(top.rstrip(os.sep) + os.sep):
+            return top
+        if folder and any(ident == folder[0][0] and below[:len(folder[0][1])] == folder[0][1] for ident, below in mine):
+            return top
+    return None
+
+
+def git_dir_holding(real):
+    """Whether the path `real`, resolved, lies in one of the repository's git directories as the file system compares paths: as `in_git_dir` finds it, or —
+    where `os.path.normcase` keeps case — spelled so in another case or Unicode normalization (`fs_fold`), its ancestor there being that git directory by
+    the file system's own identity."""
+    if in_git_dir(real):
+        return True
+    if os.path.normcase("A") != "A":
+        return False
+    parts = real.rstrip(os.sep).split(os.sep)
+    for gd in git_dirs():
+        named = gd.rstrip(os.sep).split(os.sep)
+        if len(parts) >= len(named) and [fs_fold(p) for p in parts[:len(named)]] == [fs_fold(p) for p in named]:
+            same = fs_identity(os.sep.join(parts[:len(named)]))
+            if same is not None and same == fs_identity(gd):
+                return True
+    return False
+
+
+def fs_identity(path):
+    """The file system's own identity of `path` — its device and inode, symlinks followed — or None where it is not there or has no inode."""
+    try:
+        st = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return (st.st_dev, st.st_ino) if st.st_ino else None
+
+
+def fs_chain(path):
+    """The path `path`, resolved, as the file system knows it: for it and each of its ancestors that has an identity (`fs_identity`), nearest first,
+    (that identity, and the names of the path below it, folded as `fs_fold` folds them)."""
+    chain, below = [], []
+    while True:
+        ident = fs_identity(path)
+        if ident is not None:
+            chain.append((ident, tuple(below)))
+        parent = os.path.dirname(path)
+        if parent == path:
+            return chain
+        below.insert(0, fs_fold(os.path.basename(path)))
+        path = parent
+
+
+def fs_fold(name):
+    """A file's name as a file system that ignores case and Unicode normalization compares it — macOS's default one does both: case-folded, and in one
+    normalization (NFD) before and after."""
+    return unicodedata.normalize("NFD", unicodedata.normalize("NFD", name).casefold())
 
 
 def config_file_problem():
     """Why `--install-hook` writes nothing because of where git reads its configuration from, in one line — or "": a value comes from a file that resolves,
     symlinks resolved, inside a working tree of this repository and outside its git directory (an `include.path` into the tree, say), so a branch can
     change what git runs — a hooks folder, a filter, a program. Read from `git config --list --show-origin` and judged as the hooks folder is: against
-    every working tree `git worktree list` names; the git directories themselves (`.git/config`, a worktree's `config.worktree`) pass. The target of every include
-    setting is judged the same way (`include_targets`): conditional ones whether or not the condition holds, and whether or not the target exists yet. The
-    settings are read from EVERY working tree, as each reads them — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`) —
-    as the hooks folder is judged in every one; a worktree marked `prunable` is skipped (`worktree_tops`)."""
-    tops = [os.path.normcase(t) for t in worktree_tops(live=True)]
-    inside = lambda real: next((t for t in tops if real == t or real.startswith(t.rstrip(os.sep) + os.sep)), None)
-    for here in tops:
-        out = subprocess.run(["git", "-C", here, "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                             errors="replace", env=nested_git_env())
-        listing = out.stdout.split("\0") if out.returncode == 0 else []
-        for origin in listing[0::2]:
+    every working tree `git worktree list` names, removed ones included (`worktree_tops`); the git directories themselves (`.git/config`, a worktree's
+    `config.worktree`) pass. The target of every include setting is judged the same way (`include_targets`): conditional ones whether or not the condition
+    holds, and whether or not the target exists yet. The settings of EVERY worktree are read, removed ones included, from its git directory
+    (`worktree_git_dirs`) as git reads them there — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`), with its include
+    settings — as the hooks folder is judged in every one. Where the settings of a worktree cannot be read — a file of its own configuration is not a
+    regular file git can read (`config_file_unreadable`), or `git config` fails — that is the one line, naming the worktree and why."""
+    trees = {top: fs_chain(top)[:1] for top in (os.path.normcase(t) for t in worktree_tops())}
+    for folder, gitdir, own in worktree_git_dirs():
+        why = next((w for w in map(config_file_unreadable, own) if w), "")
+        out = None if why else subprocess.run(["git", f"--git-dir={gitdir}", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True,
+                                                text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        if out is not None and out.returncode:
+            why = "; ".join(dict.fromkeys(l.strip() for l in out.stderr.splitlines() if l.strip())) or f"`git config` exits {out.returncode}"
+        if why:
+            return (f"--install-hook: the configuration of the worktree {folder or gitdir} cannot be read — {why} — no hook and no copy is written; fix it, "
+                    f"or remove the worktree (`git worktree remove`, or `git worktree prune` where its folder is gone)")
+        listing = out.stdout.split("\0")
+        for origin in dict.fromkeys(listing[0::2]):
             if not origin.startswith("file:"):
                 continue
             where = origin[len("file:"):]
-            real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(here, where)))
-            if in_git_dir(real):
-                continue
-            top = inside(real)
+            real = os.path.normcase(os.path.realpath(where if os.path.isabs(where) else os.path.join(ROOT, where)))
+            top = tree_holding(real, trees)
             if top:
                 return (f"--install-hook: git reads configuration from {real}, inside the working tree {top}, where a branch can change what git runs — no hook and no "
                         f"copy is written; keep that setting in .git/config or outside every working tree")
-        for holder, target in include_targets(listing, here):
+        for holder, target in include_targets(listing):
             real = os.path.normcase(os.path.realpath(target))
-            if in_git_dir(real):
-                continue
-            top = inside(real)
+            top = tree_holding(real, trees)
             if top:
                 return (f"--install-hook: an include setting in {os.path.realpath(holder) if holder else 'the command line'} names {real}, inside the working tree {top}, "
                         f"where a branch can change what git runs — no hook and no copy is written; point every include outside every working tree, whatever its condition")
@@ -8165,12 +9033,12 @@ def config_file_problem():
 INCLUDE_KEY = re.compile(r"include(?:if\..*)?\.path", re.I | re.S)     # `include.path`, and `includeIf.<condition>.path` whatever the condition
 
 
-def include_targets(listing, here=None):
+def include_targets(listing):
     """Every include setting of git's configuration, as (the file that holds it, or None for the command line; its target). The target is taken as
     written, whether or not it exists: `~` from the home folder, `%(prefix)/` from git's own, any other relative target from the folder of the file that
     holds it. A target that is a file is read for its own include settings in turn, whatever its condition. `listing` is `git config --list --show-origin
-    -z` split at its NULs, run in the working tree `here` (the repository's root where none is named): a relative origin is read from there."""
-    at = lambda origin: os.path.join(here or ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
+    -z` split at its NULs, run at the repository's root: a relative origin is read from there."""
+    at = lambda origin: os.path.join(ROOT, origin[len("file:"):]) if origin.startswith("file:") else None
     todo = [(at(o), *e.partition("\n")[::2]) for o, e in zip(listing[0::2], listing[1::2])]
     found, read = [], set()
     while todo:
@@ -8227,16 +9095,30 @@ def install_hook():
 
 
 def init(key=None):
+    refused = tracker_folder_problem("nothing is written")  # the tracker folder, judged first, as every run judges it (`load_trackers`)
+    if refused:
+        print(refused, file=sys.stderr)
+        return EXIT_LINT
     wrote = []
     key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
     if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
         print(f"--key: {key!r} is not an id prefix — letters and digits, starting with a letter", file=sys.stderr)
         return EXIT_LINT
     fresh_config = not (ROOT / CONFIG_NAME).exists()
-    made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, CONFIG_TEMPLATE.format(name=ROOT.name, key=key)),
+    config_text = CONFIG_TEMPLATE.format(name=ROOT.name.replace("\\", "\\\\").replace('"', '\\"'), key=key)       # the folder's name as a TOML string
+    if fresh_config:                                        # read back before anything is written: a name it cannot carry is refused in one line
+        try:
+            read_config(config_text)
+        except SystemExit:
+            print(f"--init: the folder's name {ROOT.name!r} cannot be written into {CONFIG_NAME} as one line — nothing is written; give the folder a name "
+                  "without a line break", file=sys.stderr)
+            return EXIT_LINT
+    made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, config_text),
                                             (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
-    for path, _text in made:                                # the write rule for both, before a folder is made
-        write_rule(path)
+    agents, claude, ignore, svn = ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / ".gitignore", vcs() == "svn"
+    had_agents, had_ignore = board_text(agents) or "", board_text(ignore) or ""        # the reading rule, before anything is written
+    for path in [path for path, _text in made] + [agents] + ([] if claude.exists() else [claude]) + ([ignore] if not svn and (vcs() == "git" or ignore.exists()) else []):
+        write_rule(path)                                    # the write rule for every file --init may write, before the first is written or a folder made
     for path, text in made:
         path.parent.mkdir(parents=True, exist_ok=True)
         put(path, text)
@@ -8244,8 +9126,7 @@ def init(key=None):
     if fresh_config:
         configure(ROOT)
     section = CONTRACT_BEGIN + "\n" + CONTRACT.format(dir=TRACKER_DIR.relative_to(ROOT).as_posix(), gate=GATE_SAYS.get(vcs(), GATE_SAYS[""]).format(cmd=CMD), state=HEAD["state"], cmd=CMD, key=KINDS[0], lkey=KINDS[0].lower()) + CONTRACT_END + "\n"
-    agents = ROOT / "AGENTS.md"
-    have = board_text(agents) or ""                         # the reading rule
+    have = had_agents
     if LEGACY_CONTRACT[0] in have and LEGACY_CONTRACT[1] in have:        # the block an older copy wrote, under the old name
         a = have.index(LEGACY_CONTRACT[0]); have = have[:a] + have[have.index(LEGACY_CONTRACT[1]) + len(LEGACY_CONTRACT[1]):].lstrip("\n")
     if CONTRACT_BEGIN in have and CONTRACT_END in have:
@@ -8255,14 +9136,12 @@ def init(key=None):
     if new != have:
         put(agents, new)
         wrote.append(agents)
-    claude = ROOT / "CLAUDE.md"
     if not claude.exists():                                 # Claude Code reads CLAUDE.md, not AGENTS.md — a router, never a second copy
         put(claude, "# CLAUDE.md\n\nThe contract for agents in this repository is [`AGENTS.md`](AGENTS.md) — read it first. This file owns no rules.\n")
         wrote.append(claude)
-    ignore, rel = ROOT / ".gitignore", TRACKER_DIR.relative_to(ROOT).as_posix()
-    have = board_text(ignore) or ""
+    rel, have = TRACKER_DIR.relative_to(ROOT).as_posix(), had_ignore
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
-    if vcs() == "svn":                                      # Subversion ignores by property, not by file
+    if svn:                                                 # Subversion ignores by property, not by file
         svn_ignore_board()
     elif lines and (vcs() == "git" or ignore.exists()):     # no version control here (yet): nothing to ignore for
         put(ignore, have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n")
@@ -8615,6 +9494,10 @@ def main(argv=None):
         return EXIT_LINT
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
+    global _ASK_ORIGIN
+    _ASK_ORIGIN = (mode in ("check", "write") and not args.print_written and vcs() == "git"       # `--check`, or the default run, on a clean tree: the
+                   and not worktree_edited(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                                                                     errors="replace", env=nested_git_env())))      # runs that walk the branch's commits — no hook's (v0.19.1)
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     today = datetime.date.today().isoformat()
@@ -8631,8 +9514,9 @@ def main(argv=None):
         + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
         + f"> Generated {today} · {len(trackers)} trackers ({counts})."
     )
-    if ledger:
-        header += f"\n>\n> ❌ {len(ledger)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in ledger)
+    banner = [p for p in ledger if not pending_finding(p)]          # the commit being made is judged on stderr, not in INDEX.md
+    if banner:
+        header += f"\n>\n> ❌ {len(banner)} ledger-integrity violation(s):\n>\n" + "\n".join(f"> - {p}" for p in banner)
     if unknown:
         header += (f"\n>\n> ⚠️ {len(unknown)} tracker(s) have no machine-readable status — add a\n"
                    f"> front-matter `status:` to fix: {', '.join(sorted(unknown))}.")
@@ -8655,6 +9539,10 @@ def main(argv=None):
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
+        if _WALK == "":                                     # v0.19.1: no default branch to read the branch's commits since
+            print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
+        elif _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
+            print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
             print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)

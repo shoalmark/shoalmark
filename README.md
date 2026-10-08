@@ -340,9 +340,11 @@ Who is at the keyboard, and what that seat may change. **Four rights**, each a f
 a diff: `answer` (the three answer lines) · `ask` (`next: owner`, and clearing an answered ask with its record) · `close` (a terminal status) · `triage`
 (`considered:`, `kind-of-problem:`, tier, rank); anything else is open to every seat. The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none; `principal` and `implementer`, their former names, still read and hold the same — any other name says so in `[rights]`, in the same diff as anything it would allow.
 **The Owner is not a seat.** A top-level `owner = "you@example.org signed"`, before any table, names them — one identity or a list of them, `signed` per identity as for a seat — and they hold all four rights. **A `signed` identity is an email address, and it verifies by SSH only:** the commit's signature is SSH, good under the default branch's signers file, and its principal equals that email exactly — never a principal that merely contains it, never the commit's author standing in for it. A `signed` identity that is not an email is refused when the configuration is read, exit 1, with the way to migrate: write the email the signers file names for the key. A GPG or X.509 signature on a signed line is refused: `sign with SSH; GPG returns with a fingerprint binding`. `[seats] owner` is still read, as its old spelling: both present and the same are read once, both present and different are refused at configuration, in one line naming both, and so is an `owner` key inside any other table (in `[rights]`, a list of rights is the Owner's own), which is where a line meant for the top lands when it is written below a `[table]` header. Absent `[seats]` and `owner`, nothing of this is enforced. The seats are called Planner and Builder in prose and in `[seats]`: this repository's keys are `planner` and `builder`, each with its GitHub App's bot address beside the old one (§*Seat icons on the forge*). A **merge**
-is judged by what it changes itself — the files where it differs from every parent — under the merger, and every commit
-it brings against its own parent, under that commit's own author and signature: a clean merge adds nothing, and never
-launders a commit that was made without the hook.
+is judged by what it changes itself — the files where it differs from every parent — under the merger, and an `answer` or
+a `next: owner` it sets in its own change is refused: set it in a commit of its own. Every commit it brings is judged under
+that commit's own author and signature: an ordinary commit against its own parent, a merge, nested at any depth, by what
+it changes itself. A merge that equals a parent in every tracker adds nothing, and never launders a commit that was made
+without the hook.
 
 ```toml
 owner = "you@example.org signed"        # the Owner, not a seat: at the top, before any table; `signed` as for a seat
@@ -360,9 +362,9 @@ FM-007's class, and nothing moves work except the Owner's signed answer. **On Su
 account and `signed` is refused — the server authenticated the commit, and the gate reads the author it recorded
 (`svn blame --xml`, as the answer gate does). One seat = one SVN account whose credentials exist only in that seat's
 environment (a container, or its own Windows user), never the Owner's cached ones (`~/.subversion/auth`, the Windows
-credential store); the svn command line runs no hook, so the server's own `pre-commit` hook running `<cmd> --check` is
-the layer that refuses and the board's *sent back* group is the backstop. A seat's **charter** — how it thinks, a bold
-Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
+credential store); the svn command line runs no hook, so a protected edit is committed there, and `--check` after the
+commit is what judges it, with the board's *sent back* group as the backstop. A seat's **charter** — how it thinks, a
+bold Planner against a steady one — is `<tracker dir>/seats/<name>.md`, read by the agent at start, never by the gate.
 
 ### Seat icons on the forge
 
@@ -450,7 +452,11 @@ hooks are plain files in the hooks folder git reads, and they run only the copy.
 
 **The commit hook is best-effort. The gate is `--check` on the branch, and it must be green on the pull request's head
 before merge. A bypass of the hook alone, which `--check` catches, is P3.** Git's `--no-verify` skips any hook by
-design; what protects the default branch is `--check` on the branch.
+design; what protects the default branch is `--check` on the branch. Without `origin/HEAD` — a CI checkout often has
+none — `--check` asks `origin` for its default branch where `origin/main` or `origin/master` is all it holds, and
+refuses in one line where origin cannot be read — a private repository's checkout that keeps no credentials
+(`persist-credentials: false`), on a push to the default branch or with `fetch-depth: 0`, or a clone offline: run
+`git remote set-head origin <default>` first there.
 
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
 per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its
@@ -481,17 +487,20 @@ refused: this commit by planner@seat is the seat planner, and its Session: a9f3c
 
 The pre-commit hook `--install-hook` writes runs it on every commit — `--session-check`, the session rule alone, a
 tracker staged or not. It judges what the rights are judged on: the commit being made (by its worktree's
-`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer, and every commit a merge brings,
-each by its own. A repository adopts the rule with its first `Session:`: a commit whose history carries none is not
-judged, so a repository that never set `seat.session` is not refused when it vendors.
+`seat.session`, the trailer its hook will write), the commit at HEAD by its trailer and, in `--check` on a clean tree,
+every commit since `origin`'s default branch — the newest alone where none is found, and none where the tree has
+uncommitted edits, as `--check` says — and every commit a merge brings, each by its own. A repository adopts the rule
+with its first `Session:`: a commit whose history carries none is not judged, so a repository that never set
+`seat.session` is not refused when it vendors.
 
 **Verdicts:** a review commit names the tip it judged — the Reviewer types this trailer: `Reviewed: <sha>`. `--check`
 reports each verdict of the last `triage_days` days. The reviewed range is the branch's own commits —
-`git rev-list <tip> ^<trunk> --no-merges` (`origin/main`, else `main`, else `master`), less other verdicts; for a tip
-the trunk has since merged, the trunk as it stood before that merge — so what the branch merged in from the trunk is
-not its, and the report does not change when it lands. The verdict is **independent** when its session's root (`a9` of
-`a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is one of them — a Reviewer run as a
-sub-agent of the author's session is not independent — **untraced** when either side names no session, and **on
+`git rev-list <tip> ^<trunk> --no-merges` (the default branch as `--check` reads it, else `main`, else `master`),
+less other verdicts; for a tip the trunk has since merged, the trunk as it stood before that merge — so what the branch
+merged in from the trunk is not its, and the report does not change when it lands. The verdict is **independent**
+when its session's root (`a9` of `a9/reviewer-1`) is none of the range's sessions' roots, **same session** when it is
+one of them — a Reviewer run as a sub-agent of the author's session is not independent — **untraced** when either side
+names no session, and **on
 trunk — not a branch verdict** when the tip is on the trunk's own first-parent line. A count, not a refusal: the refusal is a later slice, after a week of counts. `--queue` reads a
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
