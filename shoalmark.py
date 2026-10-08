@@ -432,8 +432,8 @@ def board_write(path, text, changed_only=False):
 
 
 _PATH_SEP = re.compile(r"[\\/]")
-READ_ONLY_GIT = frozenset({"rev-parse", "log", "show", "cat-file", "diff", "var", "for-each-ref", "symbolic-ref", "ls-files", "rev-list", "merge-base",
-                           "show-ref", "worktree", "config", "branch"})
+READ_ONLY_GIT = frozenset({"rev-parse", "log", "show", "cat-file", "diff", "var", "for-each-ref", "symbolic-ref", "ls-files", "ls-tree", "rev-list",
+                           "merge-base", "show-ref", "worktree", "config", "branch"})
 READ_ONLY_GIT_C = ("core.quotePath=", "gpg.ssh.allowedSignersFile=")        # the only `-c` the tool hands git: how it prints a path, and the signers it verifies against
 
 

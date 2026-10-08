@@ -1681,6 +1681,16 @@ _CMDS_ = [["git", "log", "-1", "--format=%H%n%an"], ["git", "-C", "C:\\a b\\c", 
 check("FM-006 · a private security report · the board's run starts read-only git and nothing else: the calls it makes pass, and `fetch`, `gh`, `svn`, a write form of `config`, `branch` or `symbolic-ref`, "
       "`--output`, a `-c` other than the two the tool uses, a shell and a bare string do not; a Windows command line is read back to its list, as `subprocess` writes it",
       all(fm.read_only_git(a_) for a_ in _RO_) and not any(fm.read_only_git(a_) for a_ in _NOT_) and all(fm.split_cmdline(subprocess.list2cmdline(a_)) == a_ for a_ in _CMDS_))
+# FM-045: `git ls-tree` lists a tree and writes nothing — the tree listings the tool makes, as it sends them, are read-only git; bent, they are not
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); (root / "a").mkdir(); (root / "a" / "b.txt").write_text("b\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "a tree"); fm.configure(root)
+    lists_ = argv_of(lambda: (fm.tree_paths("HEAD"), fm.path_mode("HEAD", "a/b.txt")))
+    bent_ = [[*l_[:1], "-c", "core.fsmonitor=x", *l_[1:]] for l_ in lists_] + [[*l_[:2], "--output=x", *l_[2:]] for l_ in lists_]
+    check(f"FM-045 · `git ls-tree` is read-only git: the tree listings the tool makes pass as it sends them; with `--output`, or a `-c` other than the two the tool uses, they do not (saw {lists_})",
+          len(lists_) == 2 and all(l_[1] == "ls-tree" and fm.read_only_git(l_) for l_ in lists_) and not any(fm.read_only_git(l_) for l_ in bent_))
+    rm_git(root)
+fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); _board_repo(root); run(root, "--html-only"); fm.configure(root)
     saw_ = {}
