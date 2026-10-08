@@ -2043,8 +2043,9 @@ def _git_starts(src):
         return others.append((line, who))
 
     def keywords(call):
-        """{keyword: [the values it can take]} of a start, its `**` expansions resolved in full — a dict literal, a name bound to one and kept, or a
-        callable's own `**k` that every call of it fills by keyword, the callable called and handed nowhere else; None where one is not."""
+        """{keyword: [every value it can take]} of a start, its `**` expansions resolved in full — a dict literal, a name bound to one and kept, or a
+        callable's own `**k`, read from every call of it, in any order: the callable called and handed nowhere else, each call filling it by keyword, and
+        `**k` used in the callable only as a process start's own `**` expansion. None where one is not."""
         out = collections.defaultdict(list)
         for k in call.keywords:
             if k.arg:
@@ -2060,6 +2061,9 @@ def _git_starts(src):
                     refs = [n for n in every if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and fn in target(n)]
                     if not refs or any(not (isinstance(parent.get(n), ast.Call) and parent[n].func is n) for n in refs):
                         return None
+                    if any(not (isinstance(parent.get(n), ast.keyword) and parent[n].arg is None and parent[n].value is n
+                                and any(parent.get(parent[n]) is c for c, _k in starts)) for n in loads[v.id] if bindings(n) == bs):
+                        return None             # `**k` changed, read or handed on in the callable: its content is not established
                     for n in refs:
                         for kk in parent[n].keywords:
                             if not kk.arg:
@@ -2093,12 +2097,13 @@ def _git_starts(src):
         exes = [v for v in kw.get("executable", []) + (args[2:3] if kind == "argv" else []) if not (isinstance(v, ast.Constant) and v.value is None)]
         if kind in ("argv", "exec"):
             if kind == "argv":
-                argv = args[0] if args else (kw.get("args") or [None])[0]
-                if argv is None:
+                argvs = args[:1] + kw.get("args", []) + kw.get("argv", [])       # every value it can take, from every call
+                if not argvs:
                     return unread.append((call.lineno, f"a start with no argv the reading can see: {ast.unparse(call)[:80]}"))
-                lists = [[argv]] if whole(argv) is not None and not re.search(r"\s", whole(argv)) else argv_lists(argv)
+                parts = [[[a]] if whole(a) is not None and not re.search(r"\s", whole(a)) else argv_lists(a) for a in argvs]
+                lists = None if None in parts else [x for p in parts for x in p]
             else:
-                lists = [list(args)] if args else None
+                lists = [list(args)] if args and "program" not in kw else None
             if not lists:
                 return unread.append((call.lineno, f"a process started with an argv the reading does not resolve in full: {ast.unparse(call)[:80]}"))
             for elts in lists:
@@ -2411,6 +2416,15 @@ with tempfile.TemporaryDirectory() as d:
         'not read: `from subprocess import *`': ('from subprocess import *\n\n\ndef _injected():\n    return run(["git", "gc"])\n', None),
         'not read: `exec`': ('def _injected():\n    exec("import subprocess")\n', None),
         'not read: `__import__`': ('def _injected():\n    return __import__("subprocess").run(["git", "gc"])\n', None),
+        "a helper's forwarded argv, a list, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["echo", "hello"])\n    return _injected_helper(args=["git", "gc"])\n', ('unclassified', 'gc')),
+        "a helper's forwarded argv, a list, read from every call — git's call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"])\n    return _injected_helper(args=["echo", "hello"])\n', ('unclassified', 'gc')),
+        "a helper's forwarded argv, a tuple, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("echo", "hello"))\n    return _injected_helper(args=("git", "gc"))\n', ('unclassified', 'gc')),
+        "a helper's forwarded argv, a tuple, read from every call — git's call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"))\n    return _injected_helper(args=("echo", "hello"))\n', ('unclassified', 'gc')),
+        "a helper's forwarded `executable`, read from every call": ('def _injected_helper(**k):\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    _injected_helper(capture_output=True)\n    return _injected_helper(executable="git")\n', ('unclassified', 'count-objects')),
+        "not read: a helper's forwarded options, a default set in it first": ('def _injected_helper(**k):\n    k.setdefault("executable", "git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
+        "not read: a helper's forwarded options, updated in it first": ('def _injected_helper(**k):\n    k.update(executable="git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
+        "not read: a helper's forwarded options, written in it first": ('def _injected_helper(**k):\n    k["args"] = ["git", "gc"]\n    return subprocess.run(**k)\n\n\ndef _injected():\n    return _injected_helper(args=["echo", "hello"])\n', None),
+        "not read: a helper's forwarded options, merged in it into another": ('def _injected_helper(**k):\n    return subprocess.run(["echo", "count-objects"], **{**k, "executable": "git"})\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
     }
     shut45_ = {}
     for what_, (code_, want_) in closed45_.items():
@@ -2419,7 +2433,8 @@ with tempfile.TemporaryDirectory() as d:
         shut45_[what_] = unclassified_(f_) == [want_[1]] if want_ else len(u_) > len(unread_)
     check(f"FM-045 · Check A accepts a start only in the form the product writes: a process API called by its plain name, imported by any name — `subprocess`'s, `os.exec*`, "
           f"`os.spawn*`, `os.posix_spawn*`, `asyncio`'s and `asyncio.subprocess`'s `create_subprocess_exec`, `pty.spawn` — with its argument list and every argument that can "
-          f"choose the program or a shell resolved in full, by keyword, by position or through `**`, is read and its git classified; any other reference to a process API or a "
+          f"choose the program or a shell resolved in full, by keyword, by position or through `**` — a helper's forwarded options and argv read from every call of it, in any "
+          f"order, list or tuple — is read and its git classified; forwarded options changed in the helper, any other reference to a process API or a "
           f"process module, code handed to any shell or interpreter, a start through a wrapper, a program the system chooses, and an argument it cannot resolve in full are each "
           f"named as not read (saw {shut45_})", all(shut45_.values()))
     osa45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["osascript", "-e", f"'))
@@ -2441,6 +2456,9 @@ with tempfile.TemporaryDirectory() as d:
                                                          '    return subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)])\n'),
         "a third form inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run(["sh", str(exe)])\n' + der45_, 1),
         "the deriver's form a second time inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run([str(exe)])\n' + der45_, 1),
+        'the osascript form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
+        'the PowerShell form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
+        "the deriver's form through a helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
     }
     ends45_ = {}
     for what_, text_ in copies45_.items():
@@ -2448,8 +2466,8 @@ with tempfile.TemporaryDirectory() as d:
         f_, u_, _o, x_ = _git_starts(copy_.read_text(encoding="utf-8"))
         ends45_[what_] = text_ != src_ and not (not unclassified_(f_) and not u_ and as_named_(x_))
     check(f"FM-045 · Check A's two exceptions, the Owner's, each matched by its site and met once, admit nothing else: the osascript or PowerShell form outside `notify_argv`, "
-          f"directly or through `__call__`, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the deriver's form outside "
-          f"`run_deriver`, a third start inside it and its form a second time each fail the check; the first ends when `notify_argv`'s code is made literal, and the check then "
+          f"directly, through `__call__` or through a helper, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the "
+          f"deriver's form outside `run_deriver`, directly or through a helper, a third start inside it and its form a second time each fail the check; the first ends when `notify_argv`'s code is made literal, and the check then "
           f"fails while the first exception still names it (saw {ends45_})", all(ends45_.values()))
 
 
