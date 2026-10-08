@@ -7925,6 +7925,28 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# …the watch's own control: a hook-started board's run is seen — `git switch`'s `post-checkout` and `--answer`'s, each a named list of git starts — and a watch
+# that recorded nothing fails the same judgement: the switch judged as if nothing were recorded, and the switch back with `GIT_TRACE2_EVENT` unset, which records none
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    seen_ = _bm_events(base_, root_, "main", only=("answer", "switch"))
+    named_ = {ev_: sorted({_git_command(a_) for a_ in seen_[ev_]["starts"]}) for ev_ in ("answer", "switch")}
+    runs_ = {ev_: [(k_, len(a_)) for k_, a_ in seen_[ev_]["runs"]] for ev_ in ("answer", "switch")}
+    check(f"FM-045 · the board matrix · the watch's control · a hook-started board's run is seen: `git switch`'s `post-checkout` run and `--answer`'s each start a non-zero, "
+          f"named list of git — `for-each-ref` on origin's answer branches among them — every one a read `read_only_git` admits (saw runs {runs_}; named {named_})",
+          all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and "for-each-ref" in named_[ev_] for ev_ in ("answer", "switch"))
+          and any(k_ == "--answer · post-checkout" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "post-checkout" and n_ for k_, n_ in runs_["switch"]))
+    nothing_ = {**seen_["switch"], **_bm_watched([], "post-checkout")}
+    before_ = _bm_board(root_)
+    back_ = subprocess.run(["git", "-C", str(root_), "switch", "-q", "main"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_BM_ENV)
+    blind_ = _bm_watch(base_ / "trace-blind.json")
+    check(f"FM-045 · the board matrix · the watch's control · a watch that recorded nothing fails: the same switch judged with no git start recorded FAILS, and the switch "
+          f"back with `GIT_TRACE2_EVENT` unset — its hook still run, the board rewritten — records none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
+          f"board rewritten {_bm_board(root_) != before_}, recorded {blind_})",
+          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and _bm_board(root_) != before_ and blind_ == [])
+    rm_git(root_)
+fm.configure(HERE)
+
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
