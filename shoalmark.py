@@ -240,6 +240,7 @@ _TEMP = ""                # the system's temporary directory, read before the tr
 _IN_TRIPWIRE = [False]    # the hook is not judged by itself
 BOARD_LEFT = []           # what the run left alone, as (file, why) — said once, at its end
 TRIPPED = []              # …and what the tripwire refused
+BUILT_NAME = "built.json" # FM-045: the board's basis, `view/built.json` — what the board was built from, written last (`write_built`)
 
 
 class ReadOnlyRun(BaseException):
@@ -566,9 +567,10 @@ def board_judge(event, args):
 
 
 def board_target(path):
-    """Whether `path` is one of the board's files: the page, a view, or the one temporary file the signers are verified against."""
+    """Whether `path` is one of the board's files: the page, a view, `view/built.json` by its exact path and nothing beside it (FM-045), or the one
+    temporary file the signers are verified against."""
     p = _norm(os.fsdecode(path))
-    if p == _norm(HTML_OUT) or (os.path.dirname(p) == _norm(VIEW_DIR) and p.endswith(os.path.normcase(".js"))):
+    if p == _norm(HTML_OUT) or p == _norm(VIEW_DIR / BUILT_NAME) or (os.path.dirname(p) == _norm(VIEW_DIR) and p.endswith(os.path.normcase(".js"))):
         return True
     return os.path.dirname(p) == _TEMP and os.path.basename(p).startswith("shoalmark-signers-")
 
@@ -1580,7 +1582,7 @@ def acts_lines(trackers, now=None):
 def answer_refs():
     """What `on_their_way` reads of origin's answer branches, in one place: (the default branch by its full ref — `default_trunk`, asking no
     server — or None, and its one `git for-each-ref --no-merged` of `refs/remotes/origin/answer/` as git prints it, a `<branch>\\0<tip>` line
-    each — "" where git fails)."""
+    each — "" where git fails). The board's basis reads the same (`board_basis`, FM-045)."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git, ask=False)               # the board asks no server
     if not trunk:
@@ -4084,6 +4086,92 @@ def built_on():
         return ""
     out = subprocess.run(["git", "branch", "--show-current"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return out.stdout.strip() if out.returncode == 0 else ""
+
+
+# THE BOARD'S BASIS (FM-045, the Owner's ruling of 2026-10-08 on C, option 1): what the board shows is built from — the tracker folder, the
+# configuration, the answer branches it reads — recorded beside the page in `view/built.json`, written last by the board's own write, and
+# `--owner` and `--standup` say in one line when any of it differs now. HEAD moving alone is never said: an ordinary commit changes nothing
+# the board shows. On Subversion and in a plain folder nothing is recorded and nothing is said.
+BASIS_PARTS = (("trackers", "the tracker folder"), ("configuration", "the configuration"), ("answers", "the answer branches"))
+
+
+def head_commit():
+    """HEAD's full sha, with one read-only `git rev-parse` — "" where there is none: an unborn branch, or no git. In `view/built.json` for the line's
+    wording only."""
+    if vcs() != "git":
+        return ""
+    out = subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    sha = out.stdout.strip()
+    return sha if out.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) else ""
+
+
+def board_basis():
+    """FM-045 — what the board is built from, one SHA-256 per part, computed one way for the board's run, every run that writes the board, and
+    `--owner` and `--standup`:
+    - `trackers`, the tracker folder: each tracker, each triage worksheet and `TRIAGE.md` — the files of it the board reads;
+    - `configuration`: `shoalmark.toml`, and the repository's brand files in `<tracker dir>/brand/` as `brand` reads them — theme.css, the first of
+      logo.svg and logo.png there is, wordmark.svg, labels.yaml;
+    - `answers`, the answer branches: what `on_their_way` reads of them (`answer_refs`) — the default branch it measures against, and each unmerged
+      `origin/answer/<id>` with its tip.
+    A file is its path from the repository and the SHA-256 of its bytes, read under the reading rule; one that is not there, or is not read, is `-`.
+    {} on Subversion and in a plain folder: nothing is recorded there."""
+    if vcs() != "git":
+        return {}
+    def files(paths):
+        h = hashlib.sha256()
+        for p in paths:
+            data = pathlib.Path(p).read_bytes() if board_isfile(p) else None       # the reading rule
+            h.update(f"{os.path.relpath(p, ROOT).replace(os.sep, '/')}\0{hashlib.sha256(data).hexdigest() if data is not None else '-'}\n".encode("utf-8"))
+        return h.hexdigest()
+    trackers = [p for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)]
+    sheets = sorted((TRACKER_DIR / "evidence" / "triage").glob("triage-*.md"))
+    brand_dir, brand_read = TRACKER_DIR / "brand", []
+    if brand_dir.is_dir():                                  # as `brand` reads the repository's place: its theme, the first logo there is, its wordmark, its labels
+        logo = next((brand_dir / n for n in ("logo.svg", "logo.png") if board_isfile(brand_dir / n)), None)
+        brand_read = [brand_dir / "theme.css", *([logo] if logo else []), brand_dir / "wordmark.svg", brand_dir / "labels.yaml"]
+    trunk, refs = answer_refs()
+    return {"trackers": files([*trackers, *sheets, TRACKER_DIR / "TRIAGE.md"]),     # in the order the board reads them
+            "configuration": files([ROOT / CONFIG_NAME, *brand_read]),
+            "answers": hashlib.sha256(f"{trunk or ''}\n{refs}".encode("utf-8")).hexdigest()}
+
+
+def write_built(basis, left):
+    """FM-045 — `view/built.json`: `basis`, read before the board was rendered, and HEAD for the line's wording, written by the board's own write —
+    last, and only where the page and every view were written in this run: nothing of them left alone since `left`, what was left before the writes.
+    Nothing on Subversion or in a plain folder (`basis` is {} there). A run that stops before it leaves the previous one. Returns whether it wrote."""
+    if not basis or len(BOARD_LEFT) != left:
+        return False
+    return board_write(VIEW_DIR / BUILT_NAME, json.dumps({"commit": head_commit(), **basis}) + "\n")
+
+
+def board_basis_line():
+    """FM-045 — the one line `--owner` and `--standup` print where the board is older than what it shows: a part of `board_basis` differs from what
+    `view/built.json` records, or the board records none. "" where nothing is said: on Subversion and in a plain folder, where there is no board, and
+    where nothing it shows has changed — HEAD moving alone is never said. Read-only: the page and `built.json` are read under the reading rule; nothing
+    is written."""
+    if vcs() != "git" or not board_isfile(HTML_OUT):
+        return ""
+    text = board_text(VIEW_DIR / BUILT_NAME)
+    try:
+        built = json.loads(text) if text is not None else None
+    except ValueError:
+        built = None
+    if not isinstance(built, dict) or not all(isinstance(built.get(k), str) for k, _w in BASIS_PARTS):
+        return f"the board records nothing of what it was built from: `{CMD} --html-only` rebuilds it"
+    now = board_basis()
+    changed = [words for key, words in BASIS_PARTS if built[key] != now[key]]
+    if not changed:
+        return ""
+    at = built.get("commit") if isinstance(built.get("commit"), str) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", built.get("commit")) else ""
+    named = changed[0] if len(changed) == 1 else ", ".join(changed[:-1]) + " and " + changed[-1]
+    return f"the board is older than what it shows — {named} changed since it was built{' at ' + at[:7] if at else ''}: `{CMD} --html-only` rebuilds it"
+
+
+def say_board_basis():
+    """`--owner` and `--standup`: `board_basis_line`, after a blank line, where there is one."""
+    line = board_basis_line()
+    if line:
+        print("\n" + line)
 
 
 def board_blob():
@@ -9300,7 +9388,7 @@ def new_tracker(words, trackers, tags_arg=None):
 
 def board_run(root):
     """`--html-only`: the board's own run, the one a checkout and a merge hook starts (a private security report). It reads what the repository holds
-    and writes the board — `index.html` and `view/<ID>.js` in the tracker folder — and does nothing else:
+    and writes the board — `index.html`, `view/<ID>.js` and, last, `view/built.json` (FM-045) in the tracker folder — and does nothing else:
     - it starts no deriver and no program but read-only git — `board_tripwire` refuses anything else where Python does it;
     - it reads the tree only as regular files inside the repository, through no symlink: the trackers, the configuration, the brand's files;
     - the tracker folder must resolve inside the repository, and the board is written only there, never through a symlink and never over a file git tracks;
@@ -9320,6 +9408,7 @@ def board_run(root):
             print(refused, file=sys.stderr)
             return EXIT_LINT
         arm_tripwire()
+        basis = board_basis()                                       # FM-045: what the board is built from, read before the trackers are
         trackers = load_trackers()
         no_derived(trackers)                                        # no deriver: no derived column, file, note or key
         if TRACKER_DIR.is_dir():
@@ -9329,9 +9418,11 @@ def board_run(root):
                 if board_write(HTML_OUT, tracked_board_page(line)):     # a page git tracks itself is left as committed, with its line
                     print(line, file=sys.stderr)                    # in place of the link
             else:                                                   # a page git tracks is left as committed, its line said in place of the link
-                written = board_write(HTML_OUT, render_html(trackers))
+                page, left = render_html(trackers), len(BOARD_LEFT)
+                written = board_write(HTML_OUT, page)
                 write_views(trackers)
                 if written:
+                    write_built(basis, left)                        # FM-045: last, only after the page and every view
                     print(board_link())                             # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
             drift = hooks_copy_drift()
             if drift:
@@ -9458,6 +9549,7 @@ def main(argv=None):
         return notify_cmd(trackers)
     if args.owner:
         code = owner_digest(trackers)
+        say_board_basis()                                   # FM-045: where the board is older than what it shows, one line
         queue_section()
         return code
     if args.answered:
@@ -9475,6 +9567,7 @@ def main(argv=None):
     if args.standup is not None:
         code = standup(trackers, args.standup)
         if not args.standup:                                # the agenda, not the calendar invite
+            say_board_basis()                               # FM-045: where the board is older than what it shows, one line
             queue_section()
         return code
     if args.next:
@@ -9591,8 +9684,11 @@ def main(argv=None):
                 print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
             else:
                 put(OUT, body)
-            board_write(HTML_OUT, render_html(trackers))   # git-ignored; never staged
+            basis = board_basis()                                   # FM-045: what the board is built from, read before it is rendered
+            page, left = render_html(trackers), len(BOARD_LEFT)
+            board_write(HTML_OUT, page)                             # git-ignored; never staged
             write_views(trackers)
+            write_built(basis, left)                                # FM-045: last, only after the page and every view
             if not DERIVER_LEFT:
                 print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
                 print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
