@@ -35,11 +35,28 @@ refuses a read the run needs, and the board an Owner returns to stays stale.
 
 ## Done when
 
+The Owner's rule: a failed board refresh is a product failure, so the fix carries checks for the whole class, not this
+case alone. It ships as 0.19.2, a patch release that holds this fix only.
 - `ls-tree` is on the board's run's read-only list. Nothing that writes is added.
 - A check builds the shape above, runs `--html-only`, and asserts exit 0, the board written, and the answer shown on its
   way. Its control fails beside v0.19.1.
-- Every git command that 0.19.1 added or changed is checked against the read-only list. The run accepts each one it can
-  reach, and a check covers each such path.
+- **Every git command is classified.** A check classifies every git command the tool can start, each either on
+  `READ_ONLY_GIT` or named as never started in the board's run, with its reason (`ls-remote` among them). An unclassified
+  one fails CI.
+- **An end-to-end board matrix:**
+  - **The events:** real merges, checkouts and rebases fire the real hooks (`post-merge`, `post-checkout`,
+    `post-rewrite`), and an `--answer` fires `board_after_act`.
+  - **What each asserts:** the board changed, exit 0, no "stopped" line and no traceback.
+  - **The shapes:**
+    - a signers file in the tree, with signed answers;
+    - answer branches, local and on origin;
+    - linked worktrees;
+    - a moved tracker folder;
+    - origin/HEAD set and unset;
+    - several hundred trackers;
+    - a foreign hook runner, in the style of lefthook;
+    - Subversion.
+  - **Where it runs:** on all five CI systems, on synthetic data only.
 
 ## Ship log
 
