@@ -59,6 +59,10 @@ case alone. It ships as 0.19.2, a patch release that holds this fix only.
     - a foreign hook runner, in the style of lefthook;
     - Subversion.
   - **Where it runs:** on all five CI systems, on synthetic data only.
+- **The board says what it was built from** (the Owner's ruling of 2026-10-08, its read-only half).
+  - The board records the commit it was built from.
+  - Where that commit is older than HEAD, `--owner` and `--standup` each say so in one line, read-only.
+  - The page's own notice, a stamp the board's run writes first, leads 0.19.3 with its own review.
 
 ## Ship log
 
