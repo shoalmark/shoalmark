@@ -65,3 +65,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix only.
 | Date | Event |
 |---|---|
 | 2026-10-08 | Filed. |
+| 2026-10-08 | **The board matrix — built** (slice 2) by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-the-board-matrix`, in `test_shoalmark.py` only: `bdda4ad` — an `--answer`, `git switch`, `git merge --no-ff` and `git rebase` fire the real hooks in eight git shapes (a signers file in the tree with signed answers, answer branches local and on origin, a linked worktree, a moved tracker folder, origin/HEAD set, origin/HEAD unset, 304 trackers, a lefthook-style runner), and `svn update` and `svn switch` are followed by `--html-only`: 35 checks; `df63f68` — its control, each event's own board hook taken out: 3 checks; `7823a7d` — the matrix's total printed only where its shapes ran. The signers shape fails on this branch and beside v0.19.1: its board's run stops on `git ls-tree`. |
