@@ -35,8 +35,14 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   control takes each event's own hook out.
 - **On `release/v0.19.2`:** slice 1 merged at `13bb2c4`, slice 2 at `b62ad2a`, main at `a36bc03`; the release commit
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages.
-- **Left:** the release's critical verdict and the full run on its final head, the merge and the tag; then Shipped. The
-  keep is unranked: the next full pass ranks it.
+- **C's read-only half — built** on `fm/045-the-board-records-its-commit`, not on `release/v0.19.2` (`1c50400`,
+  `1c611f4`, `866988c`): every run that writes the board writes `view/built.json` last, through the board's own write —
+  what the board was built from: the tracker folder, the configuration and the answer branches it reads. `--owner` and
+  `--standup` say in one line when any of it has changed since; HEAD moving alone is never said, and on Subversion and in
+  a plain folder nothing is recorded or said. The tripwire admits `view/built.json` by its exact path alone. Its
+  CHANGELOG line and the ADOPT pins come with the release it joins.
+- **Left:** the release's critical verdict and the full run on its final head, the merge and the tag; then Shipped. C's
+  read-only half: its review, and the release it joins. The keep is unranked: the next full pass ranks it.
 
 ## Why
 
@@ -67,9 +73,11 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
     - a foreign hook runner, in the style of lefthook;
     - Subversion.
   - **Where it runs:** on all five CI systems, on synthetic data only.
-- **The board says what it was built from** (the Owner's ruling of 2026-10-08, its read-only half).
-  - The board records the commit it was built from.
-  - Where that commit is older than HEAD, `--owner` and `--standup` each say so in one line, read-only.
+- **The board says what it was built from** (the Owner's ruling of 2026-10-08 on C, option 1: its read-only half).
+  - The board records what it was built from — the tracker folder, the configuration and the answer branches it reads —
+    in `view/built.json`, written last through the board's own write.
+  - Where any of it has changed since, `--owner` and `--standup` each say so in one line, read-only. HEAD moving alone is
+    never said: what the board shows decides. On Subversion and in a plain folder nothing is said.
   - The page's own notice, a stamp the board's run writes first, leads 0.19.3 with its own review.
 
 ## Ship log
@@ -82,3 +90,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | Built by `b3bdb000/implementer-115`: `b2b8bdb` — a check builds FM-045's shape and runs `--html-only` in process and as a program, origin/HEAD set and unset: exit 0, the board written, the answer on its way; beside v0.19.1 it fails. |
 | 2026-10-08 | **The board matrix — built** (slice 2) by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-the-board-matrix`, in `test_shoalmark.py` only: `bdda4ad` — an `--answer`, `git switch`, `git merge --no-ff` and `git rebase` fire the real hooks in eight git shapes (a signers file in the tree with signed answers, answer branches local and on origin, a linked worktree, a moved tracker folder, origin/HEAD set, origin/HEAD unset, 304 trackers, a lefthook-style runner), and `svn update` and `svn switch` are followed by `--html-only`: 35 checks; `df63f68` — its control, each event's own board hook taken out: 3 checks; `7823a7d` — the matrix's total printed only where its shapes ran. The signers shape fails on this branch and beside v0.19.1: its board's run stops on `git ls-tree`. |
 | 2026-10-08 | **0.19.2 cut** by `b3bdb000/implementer-115` on `release/v0.19.2`: `09d5b31` — VERSION 0.19.2, the CHANGELOG section dated 2026-10-12, both ADOPT pins (SHA-256 `5dfcbff1…0d2f`) and the setup pages. RV-2730 to RV-2733 (P3, verdict `8ee4998`) fixed forward in *What is true now* and *Done when*; `next: review`. |
+| 2026-10-08 | **C's read-only half — built** by `b3bdb000/implementer-117` on `fm/045-the-board-records-its-commit`: `1c50400` — a refactor: `answer_refs` holds what `on_their_way` reads of origin's answer branches; `1c611f4` — `view/built.json`, written last by every run that writes the board, the one line from `--owner` and `--standup`, and the tripwire admitting that path alone; `866988c` — the C checks run to their end beside v0.19.1. |
