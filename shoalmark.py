@@ -435,6 +435,24 @@ _PATH_SEP = re.compile(r"[\\/]")
 READ_ONLY_GIT = frozenset({"rev-parse", "log", "show", "cat-file", "diff", "var", "for-each-ref", "symbolic-ref", "ls-files", "ls-tree", "rev-list",
                            "merge-base", "show-ref", "worktree", "config", "branch"})
 READ_ONLY_GIT_C = ("core.quotePath=", "gpg.ssh.allowedSignersFile=")        # the only `-c` the tool hands git: how it prints a path, and the signers it verifies against
+# EVERY OTHER GIT COMMAND THE TOOL STARTS, and why the board's run never starts it (FM-045). With READ_ONLY_GIT it classifies every git command this file
+# can start: the suite reads the file's source and fails on a command in neither, and on one of these that a board's run of its own starts.
+NEVER_IN_BOARD_RUN = {
+    "ls-remote": "asks a server; the board's run asks none (`default_trunk(…, ask=False)`)",
+    "fetch": "asks a server and writes refs: the queue's alone (`--queue`, `--owner`, `--standup`)",
+    "remote": "reads origin's address, to find its forge: the queue's alone",
+    "merge-tree": "writes objects (`--write-tree`): the queue's alone, telling a conflict",
+    "patch-id": "the queue's alone, telling one patch on two branches",
+    "switch": "writes the working tree: an act's alone (`--answer`, `--done`, `--due`, `--revoke`), to its branch and back",
+    "restore": "writes the working tree: an act's alone, undoing itself",
+    "add": "writes the index: an act's alone",
+    "commit": "writes a commit: an act's alone",
+    "push": "writes to a server: an act's alone",
+    "status": "refreshes the index and may write it: an act's and `--vendor`'s alone",
+    "tag": "`--vendor`'s alone, reading the tool's own tag",
+    "interpret-trailers": "writes the message file (`--in-place`): `--session-trailer`'s alone",
+    "--exec-path": "`--install-hook`'s alone, finding an include its configuration names",
+}
 
 
 def read_only_git(argv):
