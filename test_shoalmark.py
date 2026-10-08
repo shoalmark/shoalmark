@@ -1812,14 +1812,14 @@ def _git_starts(src):
                 if isinstance(n, ast.Assign):
                     for t in n.targets:
                         for x in ast.walk(t):
-                            if isinstance(x, ast.Name):
+                            if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Store):      # `x[i] = v` binds no name: it changes `x`
                                 out[x.id].append(("value", n.value) if t is x else ("opaque", n))
                 elif isinstance(n, (ast.AugAssign, ast.AnnAssign)) and isinstance(n.target, ast.Name):
                     out[n.target.id].append(("value", n.value) if isinstance(n, ast.AnnAssign) and n.value is not None else ("opaque", n))
                 elif isinstance(n, ast.NamedExpr):
                     out[n.target.id].append(("value", n.value))
                 elif isinstance(n, ast.Delete):
-                    for x in (x for t in n.targets for x in ast.walk(t) if isinstance(x, ast.Name)):
+                    for x in (x for t in n.targets for x in ast.walk(t) if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Del)):
                         out[x.id].append(("opaque", n))
                 elif isinstance(n, ast.Import):
                     for al in n.names:
@@ -1852,6 +1852,11 @@ def _git_starts(src):
                     todo.extend(ast.iter_child_nodes(n))
                 elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                     todo.extend(n.decorator_list + ([] if isinstance(n, ast.ClassDef) else n.args.defaults + [d for d in n.args.kw_defaults if d]))
+            for d in ast.walk(scope):               # a nested scope's `global` or `nonlocal` rebinds a name of this one
+                if d is not scope and (isinstance(d, ast.Global) and isinstance(scope, ast.Module) or isinstance(d, ast.Nonlocal) and not isinstance(scope, ast.Module)):
+                    for nm in d.names:
+                        if isinstance(d, ast.Global) or nm in out:
+                            out[nm].append(("opaque", d))
             bound[scope] = out
         return bound[scope]
 
@@ -2425,6 +2430,14 @@ with tempfile.TemporaryDirectory() as d:
         "not read: a helper's forwarded options, updated in it first": ('def _injected_helper(**k):\n    k.update(executable="git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
         "not read: a helper's forwarded options, written in it first": ('def _injected_helper(**k):\n    k["args"] = ["git", "gc"]\n    return subprocess.run(**k)\n\n\ndef _injected():\n    return _injected_helper(args=["echo", "hello"])\n', None),
         "not read: a helper's forwarded options, merged in it into another": ('def _injected_helper(**k):\n    return subprocess.run(["echo", "count-objects"], **{**k, "executable": "git"})\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
+        "not read: a module's options changed in another function": ('_INJECTED_KW = {"cwd": "."}\n\n\ndef _injected_setup():\n    _INJECTED_KW["executable"] = "git"\n\n\ndef _injected():\n    return subprocess.run(["echo", "count-objects"], **_INJECTED_KW)\n', None),
+        "not read: a module's argv changed in another function": ('_INJECTED_AV = ["git", "log"]\n\n\ndef _injected_setup():\n    _INJECTED_AV[1] = "gc"\n\n\ndef _injected():\n    return subprocess.run(_INJECTED_AV)\n', None),
+        "not read: a module's options rebound by `global`": ('_INJECTED_KW2 = {"cwd": "."}\n\n\ndef _injected_setup():\n    global _INJECTED_KW2\n    _INJECTED_KW2 = {"executable": "git"}\n\n\ndef _injected():\n    return subprocess.run(["echo", "count-objects"], **_INJECTED_KW2)\n', None),
+        'not read: options changed in an inner function': ('def _injected():\n    o = {"cwd": "."}\n    def s():\n        o["executable"] = "git"\n    s()\n    return subprocess.run(["echo", "count-objects"], **o)\n', None),
+        'not read: a program name rebound by `global`': ('_INJECTED_P = "git"\n\n\ndef _injected_setup():\n    global _INJECTED_P\n    _INJECTED_P = "/bin/sh"\n\n\ndef _injected():\n    return subprocess.run([_INJECTED_P, "log"])\n', None),
+        "not read: a module's argv cut by `del` in another function": ('_INJECTED_AV2 = ["git", "log", "gc"]\n\n\ndef _injected_setup():\n    del _INJECTED_AV2[1]\n\n\ndef _injected():\n    return subprocess.run(_INJECTED_AV2)\n', None),
+        'not read: an argv changed in an inner function': ('def _injected():\n    cmd = ["git", "log"]\n    def s():\n        cmd[1] = "gc"\n    s()\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv rebound by `nonlocal`': ('def _injected():\n    cmd = ["git", "log"]\n    def s():\n        nonlocal cmd\n        cmd = ["git", "gc"]\n    s()\n    return subprocess.run(cmd)\n', None),
     }
     shut45_ = {}
     for what_, (code_, want_) in closed45_.items():
