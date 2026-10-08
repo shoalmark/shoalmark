@@ -62,9 +62,10 @@ def rm_git(root):
     shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
 
 
-# FM-045: every git argv a board's run of the suite starts — each `--html-only` in process (`run`), and each of this tool's as a program (`_tool_run`) — is
-# recorded by an audit hook, for the classification's runtime half at the suite's end: none of the commands the tool names as never started there is started
-_BOARD_GIT, _BOARD_RUNS, _WATCHING = [], {"in process": 0, "a program": 0}, [False]
+# FM-045: every git argv started by a board's run the suite watches — each `--html-only` in process (`run`) and each `--html-only` of this tool's own file as a
+# program in the suite's own environment (`_tool_run`), by an audit hook; every board's run of the board matrix, through git's trace (`_bm_record`) — is recorded,
+# for the classification's runtime half at the suite's end: none of the commands the tool names as never started there is started
+_BOARD_GIT, _BOARD_RUNS, _WATCHING = [], {"in process": 0, "a program": 0, "through git's trace": 0}, [False]
 
 
 def _watch_git(event, args):
@@ -7676,16 +7677,26 @@ else:
 # Real merges, checkouts and rebases fire the real hooks `--install-hook` writes (`post-merge`, `post-checkout`, `post-rewrite`), and an `--answer` its rebuild right after
 # the act (`board_after_act`), in each shape the Owner named; on Subversion, which has no checkout or merge hook, `svn update` and `svn switch` are followed by the board's
 # run itself, `--html-only`, as the README says. Each event asserts: the board's file changed and shows what the event brought — what the board before it could not show —;
-# git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes —; no line says "stopped" or "not refreshed"; no
-# traceback. Synthetic data only: every repository, its origin and its signing key are made here. Nothing here is POSIX-only: Git for Windows runs every hook, the
-# runner's too, through its own `sh`. The signers shape fails beside v0.19.1 (211ce0b), whose board's run stops on `git ls-tree`. Each shape prints its seconds, and the
-# matrix its total after the last.
-_BM_SECONDS = {}
+# git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes —; every git its board's runs start is a read
+# `read_only_git` admits; no line says "stopped" or "not refreshed"; no traceback. Synthetic data only: every repository, its origin and its signing key are made here.
+# Nothing here is POSIX-only: Git for Windows runs every hook, the runner's too, through its own `sh`. The signers shape fails beside v0.19.1 (211ce0b), whose board's
+# run stops on `git ls-tree`. Each shape prints its seconds, and the matrix its total after the last, with the git starts it watched.
+# THE WATCH — every board's run of the matrix, through git's own trace: `GIT_TRACE2_EVENT`, set in the environment the event's git or command starts with, is
+# inherited by everything under it — a hook's `sh`, the runner's, the hooks' copy run with `-I` (which drops only Python's own variables), `--answer` and its rebuild
+# — and every git started anywhere below writes its own `start` event, its argv as started. Git also exports its session id (`GIT_TRACE2_PARENT_SID`) to all it
+# starts, so a git started by a hook's run carries, one level down, the id of the git that started the hook, and that git's `child_start` and `child_exit` for the
+# hook bound its run in time (`_bm_watch`). What it reads is recorded where the classification's runtime half reads it (`_BOARD_GIT`, `_bm_record`).
+_BM_SECONDS, _BM_PLAIN, _BM_STARTS = {}, {}, {}
 _BM_ENV = {k_: v_ for k_, v_ in _ENV.items() if not k_.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_"))}      # the clone's own `user.name` — the Owner's, as `--answer` asks
 _BM_SAID = {"answer": "`--answer`, the board rebuilt right after the act by the checkout hook (`board_after_act`)", "switch": "`git switch`, which fires `post-checkout`",
             "merge": "`git merge --no-ff`, which fires `post-merge`", "rebase": "`git rebase`, which fires `post-checkout` before its replay and `post-rewrite` after",
-            "svn update": "`svn update`, then `--html-only`", "svn switch": "`svn switch`, then `--html-only`"}
-_BM_ASSERT = 'the board changed and shows what it brought, git and every hook exit 0, no "stopped" or "not refreshed" line, no traceback'
+            "svn update": "`svn update`, then `--html-only`", "svn switch": "`svn switch`, then `--html-only`",
+            "by hand": "the board's run by hand before the events, `--html-only`"}
+_BM_ASSERT = ('the board changed and shows what it brought, git and every hook exit 0, every git its board\'s runs start is a read `read_only_git` admits, '
+              'no "stopped" or "not refreshed" line, no traceback')
+_BM_HAND = 'exit 0, the board written, every git it starts is a read `read_only_git` admits, no "stopped" line, no traceback'
+_BM_HOOKS = ("post-checkout", "post-merge", "post-rewrite")           # the hooks whose run is the board's
+_BM_OWN = (["rev-parse", "--show-toplevel"], ["rev-parse", "--git-common-dir"])      # a hook's own two reads, which find the copy before it starts it
 _BM_LINE = re.compile(r"^(.+) exists and is not shoalmark's — left alone\. Add to it: `(.+)`$")      # what `--install-hook` names for a hook that is not its own
 _BM_RUNNER = ("#!/bin/sh\n# a hook runner in lefthook's style: this hook runs each command its configuration names for it, and fails where one fails\n"
               'hook=$(basename "$0")\nstatus=0\n'
@@ -7707,6 +7718,62 @@ def _bm_trace(path):
         elif e_.get("event") == "child_exit" and k_ in started_:
             out_.setdefault(started_[k_], []).append(e_.get("code"))
     return out_
+
+
+def _bm_watch(path, kind="hooks"):
+    """[(which run, [each git argv it started, in order])] — every board's run the trace2 events at `path` show. A hook's (`post-checkout`, `post-merge`,
+    `post-rewrite`): each git one level below the git that started it, started between that git's `child_start` and `child_exit` for it, but the hook's own two
+    reads that find the copy (`_BM_OWN`). `kind` "act" — an `--answer`: its hooks' runs, and `board_after_act`'s own reads and run, the gits it starts at the top
+    after its last `git switch` ended; "plain" — one `--html-only` started with the trace set: every git at the top."""
+    evs_ = []
+    for line_ in (path.read_text(encoding="utf-8").splitlines() if path.is_file() else []):
+        try:
+            evs_.append(json.loads(line_))
+        except ValueError:
+            continue
+    starts_ = sorted((e_["time"], e_["sid"], e_["argv"]) for e_ in evs_ if e_.get("event") == "start" and "time" in e_ and "argv" in e_)
+    tops_ = [(t_, s_, a_) for t_, s_, a_ in starts_ if "/" not in s_]
+    runs_, opened_ = [], {}
+    for e_ in evs_:
+        k_ = (e_.get("sid"), e_.get("child_id"))
+        if e_.get("event") == "child_start" and e_.get("child_class") == "hook" and e_.get("hook_name") in _BM_HOOKS:
+            opened_[k_] = e_
+        elif e_.get("event") == "child_exit" and k_ in opened_:
+            o_ = opened_.pop(k_)
+            argvs_ = [a_ for t_, s_, a_ in starts_ if s_.rpartition("/")[0] == o_["sid"] and o_["time"] < t_ < e_["time"]]
+            for own_ in _BM_OWN:
+                i_ = next((i_ for i_, a_ in enumerate(argvs_) if a_[1:] == own_), None)
+                if i_ is not None:
+                    del argvs_[i_]
+            runs_.append((("--answer · " if kind == "act" else "") + o_["hook_name"], argvs_))
+    if kind == "act":
+        back_ = [s_ for _t, s_, a_ in tops_ if _git_command(a_) == "switch"][-1:]
+        end_ = max((e_["time"] for e_ in evs_ if back_ and e_.get("sid") == back_[0] and e_.get("event") in ("exit", "atexit") and "time" in e_), default=None)
+        after_ = [a_ for t_, _s, a_ in tops_ if end_ and t_ > end_]
+        if after_:
+            runs_.append(("--answer · board_after_act", after_))
+    if kind == "plain":
+        runs_.append(("--html-only", [a_ for _t, _s, a_ in tops_]))
+    return runs_
+
+
+def _bm_record(runs):
+    """Each watched run into the suite's record — `_BOARD_GIT`, which the classification's runtime half reads, and the matrix's own counts — and back."""
+    for kind_, argvs_ in runs:
+        _BOARD_GIT.extend(argvs_)
+        _BOARD_RUNS["through git's trace"] = _BOARD_RUNS.get("through git's trace", 0) + 1
+        k_ = kind_.split(" · ")[0]
+        _BM_STARTS[k_] = _BM_STARTS.get(k_, 0) + len(argvs_)
+        _BM_STARTS["ls-tree"] = _BM_STARTS.get("ls-tree", 0) + sum(_git_command(a_) == "ls-tree" for a_ in argvs_)
+    return runs
+
+
+def _bm_watched(runs, hook):
+    """What the watch saw of an event: its runs, every git they started, whether its own hook's run was seen starting git (`hook` None: whether any run was;
+    "" — nothing asked), the starts `read_only_git` refuses, and how many list a tree (`ls-tree`)."""
+    starts_ = [a_ for _k, argvs_ in runs for a_ in argvs_]
+    seen_ = True if hook == "" else any(argvs_ for k_, argvs_ in runs if hook is None or k_.endswith(hook))
+    return dict(runs=runs, starts=starts_, seen=seen_, refused=[a_ for a_ in starts_ if not fm.read_only_git(a_)], listings=sum(_git_command(a_) == "ls-tree" for a_ in starts_))
 
 
 def _bm_board(at):
@@ -7735,10 +7802,14 @@ def _bm_fire(at, trace, *a):
 
 
 def _bm_refresh(at):
-    """The board refreshed by hand, as a hook refreshes it: the copy of the tool in the git directory, `--html-only`."""
+    """The board refreshed by hand, as a hook refreshes it — the copy of the tool in the git directory, `--html-only` — and watched through git's trace: what it
+    saw is kept for the events fired at `at` (`_BM_PLAIN`), which judge it first."""
     common_ = Path(subprocess.run(["git", "-C", str(at), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip())
-    subprocess.run([sys.executable, "-I", str((common_ if common_.is_absolute() else at / common_) / fm.COPY_DIR / "shoalmark.py"), "--root", str(at), "--html-only"],
-                   cwd=str(at), capture_output=True, env=_ENV)
+    trace_ = at.parent / f"trace-by-hand-{at.name}.json"; trace_.unlink(missing_ok=True)
+    r_ = subprocess.run([sys.executable, "-I", str((common_ if common_.is_absolute() else at / common_) / fm.COPY_DIR / "shoalmark.py"), "--root", str(at), "--html-only"],
+                        cwd=str(at), capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_)))
+    _BM_PLAIN[str(at)] = dict(code=r_.returncode, said=r_.stdout + r_.stderr, hooks={}, hook=None, changed=_bm_board(at) is not None,
+                              missing=[] if "board: file:" in r_.stdout else ["said 'board: file:'"], **_bm_watched(_bm_record(_bm_watch(trace_, "plain")), None))
 
 
 def _bm_answered(root, tid, since):
@@ -7749,7 +7820,7 @@ def _bm_answered(root, tid, since):
     git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid}: answered", "-S", "--author=owner <o@x>"); git(root, "switch", "-q", "-")
 
 
-def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=False, answers=False):
+def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=False, answers=False, refresh=True):
     """A clone of a bare `origin` whose `main` carries an ask (AP-501) and three trackers in progress (AP-502 … AP-504), the Owner's seat `signed` with an SSH key
     made here, pushed; the hooks installed from the tool under test, and three branches, each bringing the board what the board before it cannot show: `side`
     AP-502 Proposed (the checkout), `feature` AP-503 Proposed (the merge), `work` AP-504 Proposed (the rebase, onto `main` once the merge moved it).
@@ -7757,7 +7828,8 @@ def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=Fals
     `head`: `origin/HEAD` set, else unset with `origin/main` there. `runner`: `core.hooksPath` names a hook runner in lefthook's style beside the repository,
     wired as an adopter wires it: under each hook, the line `--install-hook` names for it (`HOOK_LINES`). `moved`: this clone's `main` moves the tracker
     folder, and its TRIAGE.md home with it, off `origin/main`'s. `answers`: answer branches before the events, each the Owner's signed answer — AP-505's
-    merged, here and on origin; AP-506's on this clone only; AP-507's on origin only. (the clone, what `--install-hook` said)"""
+    merged, here and on origin; AP-506's on this clone only; AP-507's on origin only. `refresh`: the board's run by hand after it all
+    (`_bm_refresh`). (the clone, what `--install-hook` said)"""
     root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", "--bare", "--initial-branch=main", str(base / "origin.git")], check=True, capture_output=True, env=_ENV)
     subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, capture_output=True, env=_ENV)
@@ -7809,19 +7881,22 @@ def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=Fals
     if runner:
         lines_ = [m_.groups() for m_ in map(_BM_LINE.match, (inst_[1] + inst_[2]).splitlines()) if m_]
         (base / "runner/commands").write_bytes("".join(f"{Path(p_).name}: {l_}\n" for p_, l_ in lines_).encode("utf-8"))
-    _bm_refresh(root)
+    if refresh:
+        _bm_refresh(root)
     return root, inst_
 
 
-def _bm_events(base, at, home, also=(), drop=False):
+def _bm_events(base, at, home, also=(), drop=False, only=("answer", "switch", "merge", "rebase")):
     """The events, fired at the checkout `at`, which stands on `home`: an `--answer` on AP-501, `git switch side`, `git merge --no-ff feature` back on `home`,
-    and `git rebase <home>` from `work`. Between them the checkout moves with no hook (`git`), so the board before each is the one the event before it left,
-    and each brings what that board cannot show; after the answer, every board still shows it on its way, and the answers of `also` throughout. `drop`: the
-    control — no answer, and each event's own board hook taken out of the hooks folder while it fires, then put back. {event: what it saw}"""
-    seen_, way_ = {}, []
+    and `git rebase <home>` from `work` — those of `only`. Between them the checkout moves with no hook (`git`), so the board before each is the one the event
+    before it left, and each brings what that board cannot show; after the answer, every board still shows it on its way, and the answers of `also` throughout.
+    Every board's run is watched (`_bm_watch`); the run by hand before them (`_bm_refresh`) is judged first, as `by hand`. `drop`: the control — no answer and
+    no run by hand, and each event's own board hook taken out of the hooks folder while it fires, then put back. {event: what it saw}"""
+    hand_ = _BM_PLAIN.pop(str(at), None)
+    seen_, way_ = ({"by hand": hand_} if hand_ and not drop else {}), []
     def one_(name_, hook_, fire_, shows_, says_=("board: file:",)):
         trace_, held_ = base / f"trace-{name_}.json", at / ".git/hooks" / hook_
-        kept_ = held_.read_bytes() if drop else None
+        trace_.unlink(missing_ok=True); kept_ = held_.read_bytes() if drop else None
         if drop:
             held_.unlink()
         before_ = _bm_board(at); code_, said_ = fire_(trace_); after_ = _bm_board(at)
@@ -7830,18 +7905,21 @@ def _bm_events(base, at, home, also=(), drop=False):
         page_ = (after_ or b"").decode("utf-8", "replace")
         seen_[name_] = dict(code=code_, said=said_, hooks=_bm_trace(trace_), hook=hook_, changed=after_ is not None and after_ != before_,
                             missing=[w_ for w_, rx_ in shows_() + way_ + [_bm_way(at, t_) for t_ in also] if not re.search(rx_, page_)]
-                            + [f"said {s_!r}" for s_ in says_ if s_ not in said_])
-    if not drop:
+                            + [f"said {s_!r}" for s_ in says_ if s_ not in said_], **_bm_watched(_bm_record(_bm_watch(trace_, "act" if name_ == "answer" else "hooks")), hook_))
+    if "answer" in only and not drop:
         def answer_(trace_):
             c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, "--answer", "AP-501", "accept", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_)))
             return c_, o_ + e_
         one_("answer", "post-checkout", answer_, lambda: [_bm_way(at, "AP-501")], ("the board was rebuilt by the checkout hook",))
         way_ = [_bm_way(at, "AP-501")]
-    one_("switch", "post-checkout", lambda t_: _bm_fire(at, t_, "switch", "-q", "side"), lambda: [_bm_row("AP-502", "Proposed")])
-    git(at, "switch", "-q", home)
-    one_("merge", "post-merge", lambda t_: _bm_fire(at, t_, "merge", "-q", "--no-ff", "--no-edit", "feature"), lambda: [_bm_row("AP-503", "Proposed"), _bm_row("AP-502", "In Progress")])
-    git(at, "switch", "-q", "work")
-    one_("rebase", "post-rewrite", lambda t_: _bm_fire(at, t_, "rebase", "-q", home), lambda: [_bm_row("AP-504", "Proposed"), _bm_row("AP-503", "Proposed")])
+    if "switch" in only:
+        one_("switch", "post-checkout", lambda t_: _bm_fire(at, t_, "switch", "-q", "side"), lambda: [_bm_row("AP-502", "Proposed")])
+    if "merge" in only:
+        git(at, "switch", "-q", home)
+        one_("merge", "post-merge", lambda t_: _bm_fire(at, t_, "merge", "-q", "--no-ff", "--no-edit", "feature"), lambda: [_bm_row("AP-503", "Proposed"), _bm_row("AP-502", "In Progress")])
+    if "rebase" in only:
+        git(at, "switch", "-q", "work")
+        one_("rebase", "post-rewrite", lambda t_: _bm_fire(at, t_, "rebase", "-q", home), lambda: [_bm_row("AP-504", "Proposed"), _bm_row("AP-503", "Proposed")])
     return seen_
 
 
@@ -7852,66 +7930,68 @@ def _bm_bad(said):
 
 def _bm_ok(g):
     """The matrix's one judgement of an event: git (or the run) exits 0, every hook it started exits 0 and the event's own is among them, the board's file changed
-    and shows what the event brought, and no line says the refresh failed (`_bm_bad`)."""
+    and shows what the event brought, the watch saw the event's own board's run start git and every git it started is a read `read_only_git` admits, and no line
+    says the refresh failed (`_bm_bad`)."""
     return (g["code"] == 0 and (g["hook"] is None or g["hook"] in g["hooks"]) and all(c_ == 0 for cs_ in g["hooks"].values() for c_ in cs_)
-            and g["changed"] and not g["missing"] and not _bm_bad(g["said"]))
+            and g["changed"] and not g["missing"] and g["seen"] and not g["refused"] and not _bm_bad(g["said"]))
 
 
 def _bm_saw(g):
     bad_ = _bm_bad(g["said"])
     return (f"exit {g['code']}, hooks {g['hooks']}, board changed {g['changed']}" + (f", not shown {g['missing']}" if g["missing"] else "")
-            + (f", said {bad_[0][:240]!r}" if bad_ else ""))
+            + f", its board's runs started {len(g['starts'])} git ({g['listings']} ls-tree)" + ("" if g["seen"] else ", its own board's run not seen")
+            + (f", refused {g['refused'][:3]}" if g["refused"] else "") + (f", said {bad_[0][:240]!r}" if bad_ else ""))
 
 
 def _bm_done(shape, t0, seen):
-    """Each event as its check reads it — (what it is, the judgement, what it saw) — and the shape's seconds, printed."""
+    """Each event as its check reads it — (what it is and what is asserted, the judgement, what it saw) — and the shape's seconds, printed."""
     _BM_SECONDS[shape] = time.monotonic() - t0
     print(f"  time  FM-045 · the board matrix · {shape}: {_BM_SECONDS[shape]:.1f} s")
     fm.configure(HERE)
-    return [(_BM_SAID[ev_], _bm_ok(g_), _bm_saw(g_)) for ev_, g_ in seen.items()]
+    return [(f"{_BM_SAID[ev_]}: {_BM_HAND if ev_ == 'by hand' else _BM_ASSERT}", _bm_ok(g_), _bm_saw(g_)) for ev_, g_ in seen.items()]
 
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")
     for said_, ok_, saw_ in _bm_done("signers", t0_, _bm_events(base_, root_, "main")):
-        check(f"FM-045 · the board matrix · a signers file in the tree, with signed answers · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · a signers file in the tree, with signed answers · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, answers=True)
     for said_, ok_, saw_ in _bm_done("answer branches", t0_, _bm_events(base_, root_, "main", also=("AP-507",))):
-        check(f"FM-045 · the board matrix · answer branches, local and on origin — AP-507's on origin only on its way throughout · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · answer branches, local and on origin — AP-507's on origin only on its way throughout · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
-    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, refresh=False)
     linked_ = base_ / "linked"; git(root_, "worktree", "add", "-q", "-b", "lw", str(linked_), "main"); _bm_refresh(linked_)
     for said_, ok_, saw_ in _bm_done("linked worktree", t0_, _bm_events(base_, linked_, "lw")):
-        check(f"FM-045 · the board matrix · a linked worktree, every event fired in it · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · a linked worktree, every event fired in it · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, moved=True)
     for said_, ok_, saw_ in _bm_done("moved tracker folder", t0_, _bm_events(base_, root_, "main")):
-        check(f"FM-045 · the board matrix · a moved tracker folder, its TRIAGE.md home with it, off origin's default branch · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · a moved tracker folder, its TRIAGE.md home with it, off origin's default branch · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, head=True)
     for said_, ok_, saw_ in _bm_done("origin/HEAD set", t0_, _bm_events(base_, root_, "main")):
-        check(f"FM-045 · the board matrix · origin/HEAD set · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · origin/HEAD set · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, head=False)
     for said_, ok_, saw_ in _bm_done("origin/HEAD unset", t0_, _bm_events(base_, root_, "main")):
-        check(f"FM-045 · the board matrix · origin/HEAD unset, origin/main there · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · origin/HEAD unset, origin/main there · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, more=300)
     for said_, ok_, saw_ in _bm_done("304 trackers", t0_, _bm_events(base_, root_, "main")):
-        check(f"FM-045 · the board matrix · several hundred trackers (304), each hook's run within the board's bound · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · several hundred trackers (304), each hook's run within the board's bound · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
@@ -7922,7 +8002,7 @@ with tempfile.TemporaryDirectory() as d:
           inst_[0] == fm.EXIT_LINT and sorted(l_.split(":", 1)[0] for l_ in wired_.splitlines()) == sorted(fm.HOOK_LINES)
           and all(f"{n_}: {fm.PY} -I {fm.COPY_AT} {a_}" in wired_.splitlines() for n_, a_ in fm.HOOK_LINES.items()) and (root_ / ".git" / fm.COPY_DIR / "shoalmark.py").is_file())
     for said_, ok_, saw_ in _bm_done("foreign hook runner", t0_, _bm_events(base_, root_, "main")):
-        check(f"FM-045 · the board matrix · a foreign hook runner in lefthook's style · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+        check(f"FM-045 · the board matrix · a foreign hook runner in lefthook's style · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 if not _SVN:
@@ -7944,20 +8024,25 @@ else:
                 svn_("switch", to_, cwd=other_)
             t_ = other_ / f"docs/work-tracker/{tid_}-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("status: In Progress", "status: Proposed"), encoding="utf-8")
             svn_("commit", "-m", f"{tid_}: proposed", cwd=other_)
-        _tool_run(HERE / "shoalmark.py", root_, "--html-only")
-        seen_ = {}
+        trace_ = lambda ev_: base_ / f"trace-{ev_.replace(' ', '-')}.json"         # each board's run watched through git's trace, as the matrix's are
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_("by hand"))))
+        seen_ = {"by hand": dict(code=c_, said=o_ + e_, hooks={}, hook=None, changed=_bm_board(root_) is not None, missing=[] if "board: file:" in o_ else ["said 'board: file:'"],
+                                 **_bm_watched(_bm_record(_bm_watch(trace_("by hand"), "plain")), ""))}
         for ev_, argv_, shows_ in (("svn update", ["update"], [_bm_row("AP-503", "Proposed")]),
                                    ("svn switch", ["switch", url_ + "/branches/side"], [_bm_row("AP-502", "Proposed"), _bm_row("AP-503", "In Progress")])):
-            before_ = _bm_board(root_); s_ = svn_(*argv_, cwd=root_); c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only"); after_ = _bm_board(root_)
+            before_ = _bm_board(root_); s_ = svn_(*argv_, cwd=root_)
+            c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_(ev_)))); after_ = _bm_board(root_)
             page_ = (after_ or b"").decode("utf-8", "replace")
             seen_[ev_] = dict(code=s_.returncode or c_, said=s_.stdout + s_.stderr + o_ + e_, hooks={}, hook=None, changed=after_ is not None and after_ != before_,
-                              missing=[w_ for w_, rx_ in shows_ if not re.search(rx_, page_)] + ([] if "board: file:" in o_ else ["said 'board: file:'"]))
+                              missing=[w_ for w_, rx_ in shows_ if not re.search(rx_, page_)] + ([] if "board: file:" in o_ else ["said 'board: file:'"]),
+                              **_bm_watched(_bm_record(_bm_watch(trace_(ev_), "plain")), ""))
         for said_, ok_, saw_ in _bm_done("Subversion", t0_, seen_):
-            check(f"FM-045 · the board matrix · Subversion, which has no checkout or merge hook — the board's run after it, as the README says · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+            check(f"FM-045 · the board matrix · Subversion, which has no checkout or merge hook — the board's run after it, as the README says · {said_} (saw {saw_})", ok_)
 
 fm.configure(HERE)
 if _BM_SECONDS:                                             # the matrix's total where its shapes ran — not where one check of it is run alone
-    print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes")
+    print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes · git starts watched through git's trace, by run: "
+          + ", ".join(f"{k_} {v_}" for k_, v_ in _BM_STARTS.items() if k_ != "ls-tree") + f" — {_BM_STARTS.get('ls-tree', 0)} of them `ls-tree`")
 
 # …its control: the board's own hook taken out while each event fires — the matrix's judgement must fail, so its "the board changed" is no check that always passes
 with tempfile.TemporaryDirectory() as d:
@@ -7966,6 +8051,28 @@ with tempfile.TemporaryDirectory() as d:
         check(f"FM-045 · the board matrix · the control · {_BM_SAID[ev_]}, with `{g_['hook']}` taken out of the hooks folder: it does not fire, and the matrix's judgement FAILS — "
               f"what the event brought is not shown, and where no other hook writes the board, the board did not change (saw {_bm_saw(g_)})",
               not _bm_ok(g_) and g_["hook"] not in g_["hooks"] and bool(g_["missing"]) and (ev_ == "rebase" or not g_["changed"]))
+    rm_git(root_)
+fm.configure(HERE)
+
+# …the watch's own control: a hook-started board's run is seen — `git switch`'s `post-checkout` and `--answer`'s, each a named list of git starts — and a watch
+# that recorded nothing fails the same judgement: the switch judged as if nothing were recorded, and the switch back with `GIT_TRACE2_EVENT` unset, which records none
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    seen_ = _bm_events(base_, root_, "main", only=("answer", "switch"))
+    named_ = {ev_: sorted({_git_command(a_) for a_ in seen_[ev_]["starts"]}) for ev_ in ("answer", "switch")}
+    runs_ = {ev_: [(k_, len(a_)) for k_, a_ in seen_[ev_]["runs"]] for ev_ in ("answer", "switch")}
+    check(f"FM-045 · the board matrix · the watch's control · a hook-started board's run is seen: `git switch`'s `post-checkout` run and `--answer`'s each start a non-zero, "
+          f"named list of git — `for-each-ref` on origin's answer branches among them — every one a read `read_only_git` admits (saw runs {runs_}; named {named_})",
+          all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and "for-each-ref" in named_[ev_] for ev_ in ("answer", "switch"))
+          and any(k_ == "--answer · post-checkout" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "post-checkout" and n_ for k_, n_ in runs_["switch"]))
+    nothing_ = {**seen_["switch"], **_bm_watched([], "post-checkout")}
+    before_ = _bm_board(root_)
+    back_ = subprocess.run(["git", "-C", str(root_), "switch", "-q", "main"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_BM_ENV)
+    blind_ = _bm_watch(base_ / "trace-blind.json")
+    check(f"FM-045 · the board matrix · the watch's control · a watch that recorded nothing fails: the same switch judged with no git start recorded FAILS, and the switch "
+          f"back with `GIT_TRACE2_EVENT` unset — its hook still run, the board rewritten — records none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
+          f"board rewritten {_bm_board(root_) != before_}, recorded {blind_})",
+          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and _bm_board(root_) != before_ and blind_ == [])
     rm_git(root_)
 fm.configure(HERE)
 
@@ -11704,10 +11811,12 @@ check(f"FM-006 · the setup pages clone the release they ship with — every `--
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
-# --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Every
-#     `--html-only` the suite ran in process, and every one it ran of this tool as a program, was watched by an audit hook that recorded each git argv it
-#     started (`_BOARD_GIT`); this block adds its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its
-#     control names `ls-tree`, which FM-045's shape starts, as never started — and the same reading finds it
+# --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
+#     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
+#     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
+#     hooks' copy that `post-checkout`, `post-merge` and `post-rewrite` start, the lefthook-style runner's, `--answer`'s, and its runs by hand. This block adds
+#     its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its control names `ls-tree`, which FM-045's shape
+#     starts, as never started — and the same reading finds it
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = _signers_repo(base)
     for head_ in (True, False):
@@ -11719,9 +11828,11 @@ with tempfile.TemporaryDirectory() as tmp:
     never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
     hit_, moved_ = _started_never(_BOARD_GIT, never_), _started_never(_BOARD_GIT, {**never_, "ls-tree": "the control"})
     other_, wrapped_ctl_ = _not_git_itself(_BOARD_GIT), _not_git_itself(_BOARD_GIT + [["env", "git", "log"], ["/usr/bin/GIT.EXE", "log"]])
-    check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — every board's run of the suite "
-          f"watched, in process and as a program, FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs in process and "
-          f"{_BOARD_RUNS['a program']} as a program, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
+    traced_ = _BOARD_RUNS["through git's trace"]
+    check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — watched: each `--html-only` "
+          f"the suite runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of the board matrix through git's trace "
+          f"(the hooks' copy, the runner's, `--answer`'s, by hand), FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs "
+          f"in process, {_BOARD_RUNS['a program']} as a program and {traced_} through git's trace, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
           "ls-remote" in never_ and _BOARD_RUNS["in process"] >= 3 and _BOARD_RUNS["a program"] >= 3 and not hit_ and moved_ == ["ls-tree"])
     check(f"FM-045 · the classification's runtime half: every program a board's run of the suite starts is git itself, as `read_only_git` reads argv[0] — never through "
           f"`env` or another wrapper; its control, `env git log` among them, is found, and git by a path in another case is not (saw {len(_BOARD_GIT)} starts; not git "
