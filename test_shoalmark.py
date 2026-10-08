@@ -62,9 +62,10 @@ def rm_git(root):
     shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
 
 
-# FM-045: every git argv a board's run of the suite starts — each `--html-only` in process (`run`), and each of this tool's as a program (`_tool_run`) — is
-# recorded by an audit hook, for the classification's runtime half at the suite's end: none of the commands the tool names as never started there is started
-_BOARD_GIT, _BOARD_RUNS, _WATCHING = [], {"in process": 0, "a program": 0}, [False]
+# FM-045: every git argv started by a board's run the suite watches — each `--html-only` in process (`run`) and each `--html-only` of this tool's own file as a
+# program in the suite's own environment (`_tool_run`), by an audit hook; every board's run of the board matrix, through git's trace (`_bm_record`) — is recorded,
+# for the classification's runtime half at the suite's end: none of the commands the tool names as never started there is started
+_BOARD_GIT, _BOARD_RUNS, _WATCHING = [], {"in process": 0, "a program": 0, "through git's trace": 0}, [False]
 
 
 def _watch_git(event, args):
@@ -11682,10 +11683,12 @@ check(f"FM-006 · the setup pages clone the release they ship with — every `--
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
-# --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Every
-#     `--html-only` the suite ran in process, and every one it ran of this tool as a program, was watched by an audit hook that recorded each git argv it
-#     started (`_BOARD_GIT`); this block adds its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its
-#     control names `ls-tree`, which FM-045's shape starts, as never started — and the same reading finds it
+# --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
+#     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
+#     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
+#     hooks' copy that `post-checkout`, `post-merge` and `post-rewrite` start, the lefthook-style runner's, `--answer`'s, and its runs by hand. This block adds
+#     its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its control names `ls-tree`, which FM-045's shape
+#     starts, as never started — and the same reading finds it
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = _signers_repo(base)
     for head_ in (True, False):
@@ -11696,9 +11699,11 @@ with tempfile.TemporaryDirectory() as tmp:
     run(plain_, "--html-only"); _tool_run(HERE / "shoalmark.py", plain_, "--html-only")
     never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
     hit_, moved_ = _started_never(_BOARD_GIT, never_), _started_never(_BOARD_GIT, {**never_, "ls-tree": "the control"})
-    check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — every board's run of the suite "
-          f"watched, in process and as a program, FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs in process and "
-          f"{_BOARD_RUNS['a program']} as a program, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
+    traced_ = _BOARD_RUNS["through git's trace"]
+    check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — watched: each `--html-only` "
+          f"the suite runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of the board matrix through git's trace "
+          f"(the hooks' copy, the runner's, `--answer`'s, by hand), FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs "
+          f"in process, {_BOARD_RUNS['a program']} as a program and {traced_} through git's trace, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
           "ls-remote" in never_ and _BOARD_RUNS["in process"] >= 3 and _BOARD_RUNS["a program"] >= 3 and not hit_ and moved_ == ["ls-tree"])
     rm_git(root); rm_git(plain_)
 fm.configure(HERE)
