@@ -11838,8 +11838,8 @@ with tempfile.TemporaryDirectory() as tmp:
           f"(the hooks' copy, the runner's, `--answer`'s, by hand), FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs "
           f"in process, {_BOARD_RUNS['a program']} as a program and {traced_} through git's trace, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
           "ls-remote" in never_ and _BOARD_RUNS["in process"] >= 3 and _BOARD_RUNS["a program"] >= 3 and not hit_ and moved_ == ["ls-tree"])
-    check(f"FM-045 · the classification's runtime half: every program a board's run of the suite starts is git itself, as `read_only_git` reads argv[0] — never through "
-          f"`env` or another wrapper; its control, `env git log` among them, is found, and git by a path in another case is not (saw {len(_BOARD_GIT)} starts; not git "
+    check(f"FM-045 · the classification's runtime half: every program recorded as started by a board's run it watches is git itself, as `read_only_git` reads argv[0] — "
+          f"never through `env` or another wrapper; its control, `env git log` among them, is found, and git by a path in another case is not (saw {len(_BOARD_GIT)} starts; not git "
           f"itself {other_}; the control found {wrapped_ctl_})",
           len(_BOARD_GIT) > 0 and not other_ and wrapped_ctl_ == ["env"])
     rm_git(root); rm_git(plain_)
