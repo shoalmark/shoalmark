@@ -7,7 +7,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 **0.19.2 fixes the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The hooks run the copy of the tool kept in the git directory, so the fix reaches the board's refresh only once `--install-hook` has copied it there.
 
 ### Fixes
-- **The board's refresh.** `--html-only` — the run the checkout, merge and rewrite hooks start, and the rebuild right after an answer — no longer stops on `git ls-tree` where an unmerged answer branch on origin sets an answer and the signers file lies in the working tree. `git ls-tree` is on the read-only git the board's refresh may start, and the refresh writes the board, with the answer on its way.
+- **The board's refresh.** `--html-only` — the run the checkout, merge and rewrite hooks start, and the rebuild right after an answer — no longer stops on `git ls-tree` where an unmerged answer branch on origin sets an answer and the signers file lies in the working tree. `git ls-tree` is on the read-only git the board's refresh may start.
 
 ### Hardening
 - Every git command the tool can start is classified from its own source: read-only git the board's refresh may start, or a command it never starts, with the reason. The board's refresh runs end to end in CI on Ubuntu, macOS and Windows: real merges, checkouts and rebases fire the real hooks on git, and on Subversion the board's run follows `svn update` and `svn switch`.

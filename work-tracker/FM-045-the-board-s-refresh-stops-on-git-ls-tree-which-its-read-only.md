@@ -13,7 +13,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 
 ## What is true now
 
-**Built, and cut as 0.19.2 on `release/v0.19.2`, dated 2026-10-12; not yet reviewed as a release, merged or tagged.**
+**Built, and cut as 0.19.2 on `release/v0.19.2`, dated 2026-10-10; not yet reviewed as a release, merged or tagged.**
 - **What happened (v0.19.1):** `--html-only`, the board's run that the checkout, merge and rewrite hooks start, stopped
   with "the board's run was stopped: it would start git ls-tree -r -z — it starts nothing but read-only git and writes
   only the board", exit 4, nothing written. The hooks never blocked: each printed "the board is not refreshed (exit 4)"
@@ -66,7 +66,7 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
     - several hundred trackers;
     - a foreign hook runner, in the style of lefthook;
     - Subversion.
-  - **Where it runs:** on all five CI systems, on synthetic data only.
+  - **Where it runs:** in CI on Ubuntu, macOS and Windows, on synthetic data only.
 
 ## Ship log
 
