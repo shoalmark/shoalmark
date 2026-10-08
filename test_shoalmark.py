@@ -9196,7 +9196,7 @@ with tempfile.TemporaryDirectory() as tmp:
     codes_, o_, s_ = _bj_says(root)
     check(f"FM-045 · C · a configuration change and a tracker change together, the board not refreshed: one line each, naming both (saw {o_} · {s_})",
           codes_ == (0, 0) and o_ == s_ == [_bj_line("the tracker folder and the configuration", d_)])
-    run(root, "--html-only"); held_, page_ = (t_ / "view/built.json").read_bytes(), (t_ / "index.html").read_bytes()
+    run(root, "--html-only"); held_, page_ = (t_ / "view/built.json").read_bytes() if (t_ / "view/built.json").is_file() else None, (t_ / "index.html").read_bytes()
     tracker(root, "MSR-001", title="changed before a run that stops")
     real_views_ = fm.write_views
     def _stopped(trackers):
@@ -9208,9 +9208,9 @@ with tempfile.TemporaryDirectory() as tmp:
         fm.write_views = real_views_
     codes_, o_, s_ = _bj_says(root); e_ = _bj_rev(root)
     check(f"FM-045 · C · a board run that stops after the page leaves the previous `view/built.json` byte for byte — it is written last — and the line stays (saw exit {code_s_}, {err_s_.strip()[:100]!r} · {o_})",
-          code_s_ == fm.EXIT_LINT and "a forced stop" in err_s_ and (t_ / "view/built.json").read_bytes() == held_ and (t_ / "index.html").read_bytes() != page_
+          code_s_ == fm.EXIT_LINT and "a forced stop" in err_s_ and held_ is not None and (t_ / "view/built.json").read_bytes() == held_ and (t_ / "index.html").read_bytes() != page_
           and codes_ == (0, 0) and o_ == s_ == [_bj_line("the tracker folder", e_)])
-    (t_ / "view/built.json").unlink(); codes_, o_, s_ = _bj_says(root)
+    (t_ / "view/built.json").unlink(missing_ok=True); codes_, o_, s_ = _bj_says(root)
     nothing_ = f"the board records nothing of what it was built from: `{fm.CMD} --html-only` rebuilds it"
     (t_ / "index.html").unlink(); none_ = _bj_says(root)
     check(f"FM-045 · C · a board with no `view/built.json` — one an earlier version built — gives one line, once each; no board gives none (saw {o_} · {none_})",
