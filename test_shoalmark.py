@@ -7544,6 +7544,304 @@ else:
     fm.configure(HERE)
 
 
+# --- FM-045 · the board matrix — the Owner's rule of 2026-10-08: a failed board refresh is a product failure, so the checks cover the class, not this case alone ------------
+# Real merges, checkouts and rebases fire the real hooks `--install-hook` writes (`post-merge`, `post-checkout`, `post-rewrite`), and an `--answer` its rebuild right after
+# the act (`board_after_act`), in each shape the Owner named; on Subversion, which has no checkout or merge hook, `svn update` and `svn switch` are followed by the board's
+# run itself, `--html-only`, as the README says. Each event asserts: the board's file changed and shows what the event brought — what the board before it could not show —;
+# git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes —; no line says "stopped" or "not refreshed"; no
+# traceback. Synthetic data only: every repository, its origin and its signing key are made here. Nothing here is POSIX-only: Git for Windows runs every hook, the
+# runner's too, through its own `sh`. The signers shape fails beside v0.19.1 (211ce0b), whose board's run stops on `git ls-tree`. Each shape prints its seconds, and the
+# matrix its total after the last.
+_BM_SECONDS = {}
+_BM_ENV = {k_: v_ for k_, v_ in _ENV.items() if not k_.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_"))}      # the clone's own `user.name` — the Owner's, as `--answer` asks
+_BM_SAID = {"answer": "`--answer`, the board rebuilt right after the act by the checkout hook (`board_after_act`)", "switch": "`git switch`, which fires `post-checkout`",
+            "merge": "`git merge --no-ff`, which fires `post-merge`", "rebase": "`git rebase`, which fires `post-checkout` before its replay and `post-rewrite` after",
+            "svn update": "`svn update`, then `--html-only`", "svn switch": "`svn switch`, then `--html-only`"}
+_BM_ASSERT = 'the board changed and shows what it brought, git and every hook exit 0, no "stopped" or "not refreshed" line, no traceback'
+_BM_LINE = re.compile(r"^(.+) exists and is not shoalmark's — left alone\. Add to it: `(.+)`$")      # what `--install-hook` names for a hook that is not its own
+_BM_RUNNER = ("#!/bin/sh\n# a hook runner in lefthook's style: this hook runs each command its configuration names for it, and fails where one fails\n"
+              'hook=$(basename "$0")\nstatus=0\n'
+              'while IFS= read -r line <&3; do\n  case "$line" in\n    "$hook: "*) sh -c "${line#"$hook: "}" "$hook" "$@" || status=$? ;;\n  esac\ndone 3< "$(dirname "$0")/commands"\n'
+              "exit $status\n")
+
+
+def _bm_trace(path):
+    """{hook name: [its exit codes]} — every hook git started and how it ended, read from the trace2 events git wrote to `path` (`GIT_TRACE2_EVENT`)."""
+    started_, out_ = {}, {}
+    for line_ in (path.read_text(encoding="utf-8").splitlines() if path.is_file() else []):
+        try:
+            e_ = json.loads(line_)
+        except ValueError:
+            continue
+        k_ = (e_.get("sid"), e_.get("child_id"))
+        if e_.get("event") == "child_start" and e_.get("child_class") == "hook":
+            started_[k_] = e_.get("hook_name", "")
+        elif e_.get("event") == "child_exit" and k_ in started_:
+            out_.setdefault(started_[k_], []).append(e_.get("code"))
+    return out_
+
+
+def _bm_board(at):
+    """The board's file of the checkout at `at`, in the tracker folder its own `shoalmark.toml` names — its bytes, or None where there is none."""
+    cfg_ = (at / "shoalmark.toml").read_text(encoding="utf-8") if (at / "shoalmark.toml").is_file() else ""
+    m_ = re.search(r'^tracker_dir = "([^"]*)"', cfg_, re.M)
+    p_ = at / (m_.group(1) if m_ else "docs/work-tracker") / "index.html"
+    return p_.read_bytes() if p_.is_file() else None
+
+
+def _bm_row(tid, status):
+    """(what it is, what the board's page holds for it): tracker `tid`'s row at `status`."""
+    return f"{tid} {status}", r'\["' + tid + r'", "[^"]*", "' + status + r'", '
+
+
+def _bm_way(at, tid):
+    """(what it is, what the board's page holds for it): `tid`'s answer on its way — its row of `on_their_way`, with `origin/answer/<tid>`'s tip."""
+    tip_ = subprocess.run(["git", "-C", str(at), "rev-parse", "-q", "--verify", f"refs/remotes/origin/answer/{tid.lower()}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    return f"{tid}'s answer on its way", re.escape(f'["answer", "answer/{tid.lower()}", "{tip_ or "no such branch"}", ')
+
+
+def _bm_fire(at, trace, *a):
+    """git with the hooks running, as a person's own command runs them, its trace2 events written to `trace`: (its exit, what it and its hooks said)."""
+    r_ = subprocess.run(["git", "-C", str(at), *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace)))
+    return r_.returncode, r_.stdout + r_.stderr
+
+
+def _bm_refresh(at):
+    """The board refreshed by hand, as a hook refreshes it: the copy of the tool in the git directory, `--html-only`."""
+    common_ = Path(subprocess.run(["git", "-C", str(at), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip())
+    subprocess.run([sys.executable, "-I", str((common_ if common_.is_absolute() else at / common_) / fm.COPY_DIR / "shoalmark.py"), "--root", str(at), "--html-only"],
+                   cwd=str(at), capture_output=True, env=_ENV)
+
+
+def _bm_answered(root, tid, since):
+    """`answer/<tid>` cut from the branch `root` stands on, carrying the Owner's answer to `tid`'s ask, signed with their key — the lines `--answer` writes — and back."""
+    git(root, "switch", "-q", "-c", f"answer/{tid.lower()}")
+    t_ = next(root.glob(f"docs/work-tracker/{tid}-*.md"))
+    t_.write_text(t_.read_text(encoding="utf-8").replace("next: owner\n", f'next: build\nanswer: "accepted"\nanswered: {since}\nanswered-by: owner\n'), encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid}: answered", "-S", "--author=owner <o@x>"); git(root, "switch", "-q", "-")
+
+
+def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=False, answers=False):
+    """A clone of a bare `origin` whose `main` carries an ask (AP-501) and three trackers in progress (AP-502 … AP-504), the Owner's seat `signed` with an SSH key
+    made here, pushed; the hooks installed from the tool under test, and three branches, each bringing the board what the board before it cannot show: `side`
+    AP-502 Proposed (the checkout), `feature` AP-503 Proposed (the merge), `work` AP-504 Proposed (the rebase, onto `main` once the merge moved it).
+    `signers`: "tree" — the signers file in the working tree, committed on `main`; "beside" — beside the repository. `more`: that many trackers more.
+    `head`: `origin/HEAD` set, else unset with `origin/main` there. `runner`: `core.hooksPath` names a hook runner in lefthook's style beside the repository,
+    wired as an adopter wires it: under each hook, the line `--install-hook` names for it (`HOOK_LINES`). `moved`: this clone's `main` moves the tracker
+    folder, and its TRIAGE.md home with it, off `origin/main`'s. `answers`: answer branches before the events, each the Owner's signed answer — AP-505's
+    merged, here and on origin; AP-506's on this clone only; AP-507's on origin only. (the clone, what `--install-hook` said)"""
+    root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", "--initial-branch=main", str(base / "origin.git")], check=True, capture_output=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, capture_output=True, env=_ENV)
+    run(root, "--init", "--key", "ap")
+    key_ = base / "key"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_)], check=True, capture_output=True)
+    signers_ = root / "docs/work-tracker/allowed_signers" if signers == "tree" else base / "allowed_signers"
+    signers_.write_text("o@x " + key_.with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+    for k_, v_ in (("user.name", "owner"), ("user.email", "o@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key_)),
+                   ("gpg.ssh.allowedSignersFile", str(signers_)), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "m"\ntracker_dir = "docs/work-tracker"\n[kinds]\nAP = "Work"\n[seats]\nowner = "o@x signed"\nreviewer = "reviewer@seat"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q_: f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+    tracker(root, "AP-501", extra=ask_("Does the importer ship first?"), title="an ask")
+    for tid_ in ("AP-502", "AP-503", "AP-504"):
+        tracker(root, tid_, title="in progress")
+    for n_ in range(more):
+        tracker(root, f"AP-{1000 + n_}", title=f"one of {more} more")
+    for tid_, q_ in (("AP-505", "Does the exporter ship first?"), ("AP-506", "Does the loader ship first?"), ("AP-507", "Does the report ship first?")) if answers else ():
+        tracker(root, tid_, extra=ask_(q_), title="an ask")
+    run(root); fm.configure(HERE)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "-S", "--author=owner <o@x>"); git(root, "push", "-q", "-u", "origin", "main")
+    if head:
+        git(root, "remote", "set-head", "origin", "main")
+    if answers:
+        for tid_ in ("AP-505", "AP-506", "AP-507"):
+            _bm_answered(root, tid_, since_)
+        git(root, "merge", "-q", "--no-ff", "--no-edit", "answer/ap-505"); git(root, "push", "-q", "origin", "main", "answer/ap-505", "answer/ap-507")
+        git(root, "branch", "-q", "-D", "answer/ap-507")
+    if moved:                                               # the tracker folder and its TRIAGE.md home, moved on this clone's `main` only
+        git(root, "mv", "docs/work-tracker", "work")
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace('"docs/work-tracker"', '"work"'), encoding="utf-8")
+        (root / ".gitignore").write_text("work/index.html\nwork/view/\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "the tracker folder moves", "-S", "--author=owner <o@x>")
+    tdir_ = root / ("work" if moved else "docs/work-tracker")
+    for branch_, tid_ in (("side", "AP-502"), ("feature", "AP-503"), ("work", "AP-504")):
+        git(root, "switch", "-q", "-c", branch_, "main")
+        t_ = tdir_ / f"{tid_}-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("status: In Progress", "status: Proposed"), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid_}: proposed")
+    git(root, "switch", "-q", "main")
+    if runner:                                              # the runner's own hook for each hook `--install-hook` writes: it leaves each alone and names the line to add
+        hooks_ = base / "runner"; hooks_.mkdir()
+        for name_ in fm.HOOK_LINES:
+            (hooks_ / name_).write_bytes(_BM_RUNNER.encode("utf-8")); (hooks_ / name_).chmod(0o755)
+        (hooks_ / "commands").write_bytes(b"")
+        git(root, "config", "core.hooksPath", hooks_.as_posix())
+    inst_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+    if runner:
+        lines_ = [m_.groups() for m_ in map(_BM_LINE.match, (inst_[1] + inst_[2]).splitlines()) if m_]
+        (base / "runner/commands").write_bytes("".join(f"{Path(p_).name}: {l_}\n" for p_, l_ in lines_).encode("utf-8"))
+    _bm_refresh(root)
+    return root, inst_
+
+
+def _bm_events(base, at, home, also=(), drop=False):
+    """The events, fired at the checkout `at`, which stands on `home`: an `--answer` on AP-501, `git switch side`, `git merge --no-ff feature` back on `home`,
+    and `git rebase <home>` from `work`. Between them the checkout moves with no hook (`git`), so the board before each is the one the event before it left,
+    and each brings what that board cannot show; after the answer, every board still shows it on its way, and the answers of `also` throughout. `drop`: the
+    control — no answer, and each event's own board hook taken out of the hooks folder while it fires, then put back. {event: what it saw}"""
+    seen_, way_ = {}, []
+    def one_(name_, hook_, fire_, shows_, says_=("board: file:",)):
+        trace_, held_ = base / f"trace-{name_}.json", at / ".git/hooks" / hook_
+        kept_ = held_.read_bytes() if drop else None
+        if drop:
+            held_.unlink()
+        before_ = _bm_board(at); code_, said_ = fire_(trace_); after_ = _bm_board(at)
+        if drop:
+            held_.write_bytes(kept_); held_.chmod(0o755)
+        page_ = (after_ or b"").decode("utf-8", "replace")
+        seen_[name_] = dict(code=code_, said=said_, hooks=_bm_trace(trace_), hook=hook_, changed=after_ is not None and after_ != before_,
+                            missing=[w_ for w_, rx_ in shows_() + way_ + [_bm_way(at, t_) for t_ in also] if not re.search(rx_, page_)]
+                            + [f"said {s_!r}" for s_ in says_ if s_ not in said_])
+    if not drop:
+        def answer_(trace_):
+            c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, "--answer", "AP-501", "accept", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_)))
+            return c_, o_ + e_
+        one_("answer", "post-checkout", answer_, lambda: [_bm_way(at, "AP-501")], ("the board was rebuilt by the checkout hook",))
+        way_ = [_bm_way(at, "AP-501")]
+    one_("switch", "post-checkout", lambda t_: _bm_fire(at, t_, "switch", "-q", "side"), lambda: [_bm_row("AP-502", "Proposed")])
+    git(at, "switch", "-q", home)
+    one_("merge", "post-merge", lambda t_: _bm_fire(at, t_, "merge", "-q", "--no-ff", "--no-edit", "feature"), lambda: [_bm_row("AP-503", "Proposed"), _bm_row("AP-502", "In Progress")])
+    git(at, "switch", "-q", "work")
+    one_("rebase", "post-rewrite", lambda t_: _bm_fire(at, t_, "rebase", "-q", home), lambda: [_bm_row("AP-504", "Proposed"), _bm_row("AP-503", "Proposed")])
+    return seen_
+
+
+def _bm_bad(said):
+    """The lines that say the refresh failed: "stopped", "not refreshed", "NOT rebuilt" — and a traceback."""
+    return [l_.strip() for l_ in said.splitlines() if "stopped" in l_ or "not refreshed" in l_ or "NOT rebuilt" in l_ or "Traceback" in l_]
+
+
+def _bm_ok(g):
+    """The matrix's one judgement of an event: git (or the run) exits 0, every hook it started exits 0 and the event's own is among them, the board's file changed
+    and shows what the event brought, and no line says the refresh failed (`_bm_bad`)."""
+    return (g["code"] == 0 and (g["hook"] is None or g["hook"] in g["hooks"]) and all(c_ == 0 for cs_ in g["hooks"].values() for c_ in cs_)
+            and g["changed"] and not g["missing"] and not _bm_bad(g["said"]))
+
+
+def _bm_saw(g):
+    bad_ = _bm_bad(g["said"])
+    return (f"exit {g['code']}, hooks {g['hooks']}, board changed {g['changed']}" + (f", not shown {g['missing']}" if g["missing"] else "")
+            + (f", said {bad_[0][:240]!r}" if bad_ else ""))
+
+
+def _bm_done(shape, t0, seen):
+    """Each event as its check reads it — (what it is, the judgement, what it saw) — and the shape's seconds, printed."""
+    _BM_SECONDS[shape] = time.monotonic() - t0
+    print(f"  time  FM-045 · the board matrix · {shape}: {_BM_SECONDS[shape]:.1f} s")
+    fm.configure(HERE)
+    return [(_BM_SAID[ev_], _bm_ok(g_), _bm_saw(g_)) for ev_, g_ in seen.items()]
+
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")
+    for said_, ok_, saw_ in _bm_done("signers", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · a signers file in the tree, with signed answers · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, answers=True)
+    for said_, ok_, saw_ in _bm_done("answer branches", t0_, _bm_events(base_, root_, "main", also=("AP-507",))):
+        check(f"FM-045 · the board matrix · answer branches, local and on origin — AP-507's on origin only on its way throughout · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    linked_ = base_ / "linked"; git(root_, "worktree", "add", "-q", "-b", "lw", str(linked_), "main"); _bm_refresh(linked_)
+    for said_, ok_, saw_ in _bm_done("linked worktree", t0_, _bm_events(base_, linked_, "lw")):
+        check(f"FM-045 · the board matrix · a linked worktree, every event fired in it · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, moved=True)
+    for said_, ok_, saw_ in _bm_done("moved tracker folder", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · a moved tracker folder, its TRIAGE.md home with it, off origin's default branch · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, head=True)
+    for said_, ok_, saw_ in _bm_done("origin/HEAD set", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · origin/HEAD set · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, head=False)
+    for said_, ok_, saw_ in _bm_done("origin/HEAD unset", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · origin/HEAD unset, origin/main there · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, more=300)
+    for said_, ok_, saw_ in _bm_done("304 trackers", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · several hundred trackers (304), each hook's run within the board's bound · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, runner=True)
+    wired_ = (base_ / "runner/commands").read_text(encoding="utf-8")
+    check(f"FM-045 · the board matrix · a foreign hook runner in lefthook's style · `--install-hook` leaves each of the runner's six hooks alone and names the line to add to each, "
+          f"exit 4, and writes the copy those lines run (saw exit {inst_[0]}, {len(wired_.splitlines())} line(s) wired)",
+          inst_[0] == fm.EXIT_LINT and sorted(l_.split(":", 1)[0] for l_ in wired_.splitlines()) == sorted(fm.HOOK_LINES)
+          and all(f"{n_}: {fm.PY} -I {fm.COPY_AT} {a_}" in wired_.splitlines() for n_, a_ in fm.HOOK_LINES.items()) and (root_ / ".git" / fm.COPY_DIR / "shoalmark.py").is_file())
+    for said_, ok_, saw_ in _bm_done("foreign hook runner", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · a foreign hook runner in lefthook's style · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+    rm_git(root_)
+
+if not _SVN:
+    _skipped("FM-045 · the board matrix · Subversion", 2, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as d:
+        t0_ = time.monotonic(); base_ = Path(d).resolve()
+        svn_ = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base_ / "repo")], check=True); url_ = (base_ / "repo").as_uri()
+        svn_("mkdir", "-m", "layout", url_ + "/trunk", url_ + "/branches"); svn_("checkout", url_ + "/trunk", str(base_ / "wc")); root_ = base_ / "wc"
+        run(root_, "--init", "--key", "ap")
+        for tid_ in ("AP-502", "AP-503"):
+            tracker(root_, tid_, title="in progress")
+        run(root_); fm.configure(HERE); svn_("add", "--force", ".", cwd=root_); svn_("commit", "-m", "the trackers", cwd=root_)
+        svn_("copy", "-m", "a branch", url_ + "/trunk", url_ + "/branches/side")
+        other_ = base_ / "other"; svn_("checkout", url_ + "/trunk", str(other_))          # another working copy: AP-503 proposed on trunk, then AP-502 on the branch
+        for tid_, to_ in (("AP-503", None), ("AP-502", url_ + "/branches/side")):
+            if to_:
+                svn_("switch", to_, cwd=other_)
+            t_ = other_ / f"docs/work-tracker/{tid_}-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("status: In Progress", "status: Proposed"), encoding="utf-8")
+            svn_("commit", "-m", f"{tid_}: proposed", cwd=other_)
+        _tool_run(HERE / "shoalmark.py", root_, "--html-only")
+        seen_ = {}
+        for ev_, argv_, shows_ in (("svn update", ["update"], [_bm_row("AP-503", "Proposed")]),
+                                   ("svn switch", ["switch", url_ + "/branches/side"], [_bm_row("AP-502", "Proposed"), _bm_row("AP-503", "In Progress")])):
+            before_ = _bm_board(root_); s_ = svn_(*argv_, cwd=root_); c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only"); after_ = _bm_board(root_)
+            page_ = (after_ or b"").decode("utf-8", "replace")
+            seen_[ev_] = dict(code=s_.returncode or c_, said=s_.stdout + s_.stderr + o_ + e_, hooks={}, hook=None, changed=after_ is not None and after_ != before_,
+                              missing=[w_ for w_, rx_ in shows_ if not re.search(rx_, page_)] + ([] if "board: file:" in o_ else ["said 'board: file:'"]))
+        for said_, ok_, saw_ in _bm_done("Subversion", t0_, seen_):
+            check(f"FM-045 · the board matrix · Subversion, which has no checkout or merge hook — the board's run after it, as the README says · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+
+fm.configure(HERE)
+if _BM_SECONDS:                                             # the matrix's total where its shapes ran — not where one check of it is run alone
+    print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes")
+
+# …its control: the board's own hook taken out while each event fires — the matrix's judgement must fail, so its "the board changed" is no check that always passes
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    for ev_, g_ in _bm_events(base_, root_, "main", drop=True).items():
+        check(f"FM-045 · the board matrix · the control · {_BM_SAID[ev_]}, with `{g_['hook']}` taken out of the hooks folder: it does not fire, and the matrix's judgement FAILS — "
+              f"what the event brought is not shown, and where no other hook writes the board, the board did not change (saw {_bm_saw(g_)})",
+              not _bm_ok(g_) and g_["hook"] not in g_["hooks"] and bool(g_["missing"]) and (ev_ == "rebase" or not g_["changed"]))
+    rm_git(root_)
+fm.configure(HERE)
+
+
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
