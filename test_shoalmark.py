@@ -1735,26 +1735,52 @@ fm.configure(HERE)
 # --- FM-045: every git command the tool can start is classified — on READ_ONLY_GIT, or named as never started in the board's run, with its reason
 #     (`NEVER_IN_BOARD_RUN`). Read from the tool's own source with `ast`: a command in neither fails here, and so does a start in a form the reading does not
 #     follow. Its control is a copy of the source with one start injected, in each form. The runtime half is at the suite's end
-# the programs that start the program a later word of their argv names — read through to it — and the shells and interpreters that run code they are
-# handed, whose code must name no git the reading can see, and must be code it can see; matched by name, any path, any case, `.exe` or not
-_WRAPPERS = frozenset({"env", "nice", "nohup", "timeout", "stdbuf", "setsid", "time", "command", "exec", "sudo", "doas", "xargs", "caffeinate", "ionice", "chrt",
-                      "taskset", "flock", "arch", "unbuffer", "wsl", "start"})
-_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "fish", "busybox", "cmd", "powershell", "pwsh", "python", "python3", "py", "pythonw", "perl", "ruby", "node",
-                    "osascript", "cscript", "wscript"})
-_CODE_FLAGS = ("-c", "-e", "/c", "/k", "-command", "-encodedcommand", "-ec")
+# the programs a start may not name: the command wrappers, which start the program a later word of their argv names, and the shells and interpreters, which
+# run code or a script they are handed. A start of one is not read, but at the exceptions below and Python on the tool's own file; matched by name, any path,
+# any case, `.exe` or not
+_WRAPPERS = frozenset({"env", "nice", "nohup", "timeout", "stdbuf", "setsid", "time", "command", "exec", "builtin", "sudo", "doas", "xargs", "caffeinate", "ionice",
+                      "chrt", "taskset", "flock", "arch", "unbuffer", "wsl", "start"})
+_PYTHONS = frozenset({"python", "python3", "py", "pythonw"})
+_SHELLS = _PYTHONS | frozenset({"sh", "bash", "zsh", "dash", "ksh", "mksh", "ash", "fish", "csh", "tcsh", "busybox", "cmd", "powershell", "pwsh", "perl", "ruby", "node",
+                                "osascript", "cscript", "wscript"})
+_CODE_FLAGS = ("-c", "-e", "/c", "/k", "/r", "-command", "-encodedcommand", "-ec")
 _NAMES_GIT = re.compile(r"(?i)(?:^|[\s/\\\"'`;&|(=])git(?:\.exe)?(?=$|[\s\"'`;&|)])")
+# every API that starts a process, by module, and how its arguments name the program: "argv" (`subprocess`'s and `pty.spawn`: the argv, and `executable` and
+# `shell` by keyword, by position or by a `**` expansion), "exec" (`create_subprocess_exec`: the program, its words, `executable=`), "v0"/"l0"/"v1"/"l1"
+# (`os.exec*`, `os.spawn*`, `os.posix_spawn*`: the program by its path, then the argv apart or its words; "e" its environment last), "shell" (code handed to a
+# shell), or "unread" (a program the system chooses, or a private API)
+_PROCESS_APIS = {
+    "subprocess": {"run": "argv", "Popen": "argv", "call": "argv", "check_call": "argv", "check_output": "argv", "getoutput": "shell", "getstatusoutput": "shell"},
+    "os": {"system": "shell", "popen": "shell", "startfile": "unread", "posix_spawn": "v0", "posix_spawnp": "v0",
+           **{f"exec{s}": ("v0" if s.startswith("v") else "l0e" if s.endswith("e") else "l0") for s in ("v", "ve", "vp", "vpe", "l", "le", "lp", "lpe")},
+           **{f"spawn{s}": ("v1" if s.startswith("v") else "l1e" if s.endswith("e") else "l1") for s in ("v", "ve", "vp", "vpe", "l", "le", "lp", "lpe")}},
+    "asyncio": {"create_subprocess_exec": "exec", "create_subprocess_shell": "shell"},
+    "asyncio.subprocess": {"create_subprocess_exec": "exec", "create_subprocess_shell": "shell"},
+    "pty": {"spawn": "argv"},
+    "webbrowser": {"open": "unread", "open_new": "unread", "open_new_tab": "unread", "get": "unread"},
+    "_winapi": {"CreateProcess": "unread"},
+    "_posixsubprocess": {"fork_exec": "unread"},
+}
+# THE ONE EXCEPTION (the Owner's ruling of 2026-10-08): `notify_argv` hands code with parts that are not literal to osascript (`-e`) and to PowerShell (`-Command`). These two sites alone are admitted, each by the function, the program its branch starts and the flag, and each met once. The exception ends when that code is made literal: an entry no code meets fails the check until it is deleted
+_EXCEPTION = frozenset({("notify_argv", "osascript", "-e"), ("notify_argv", "powershell", "-command")})
+# THE DERIVER'S EXCEPTION, permanent (the Owner's ruling of 2026-10-08): `run_deriver` starts the repository's own program, `derive` in the tracker folder —
+# directly, and on Windows as `[sys.executable, derive]` — by design, on an explicit run only: never in a hook's run (the Owner's ruling *No deriver in hooks*,
+# filed in FM-006) and never in the board's run. These two forms alone are admitted, each by the function and the start's shape, and each met once
+_DERIVER = frozenset({("run_deriver", "derive"), ("run_deriver", "python", "derive")})
 
 
 def _git_starts(src):
     """Every git command a source can start, read with `ast` (FM-045): ({command: [line, …]}, [(line, what is not read)], [(line, program)] of each start that
-    starts no git, {command: [line, …]} of those started through a wrapper). Followed: a literal `["git", …]` argv, and one bound to a name apart from its call
-    (`args = [...] if … else [...]`, `for cmd in ([...], …)`); every callable that hands its own `*a` to git where the command goes — `git_out`, a local
-    `git = lambda *a: …`, a lambda or a name handed to a function whose parameter then starts git (`default_trunk(git)`) — and every call of one; git's own
-    options before the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git`
-    or `git.exe`, any case. A command wrapper (`_WRAPPERS`: `env`, `env -i`, `nice`, `timeout` …) is read through to the program it starts, and git there is
-    git started through a wrapper. Git named in the words of any other program — a shell's or an interpreter's code, a wrapper the reading does not know —
-    is not read, and neither is code handed to a shell or an interpreter (`_SHELLS`) that the reading cannot see. A process start, or a use of such a callable,
-    in a form not followed is named in the second list — never passed over."""
+    starts no git, {site: how many starts it admitted} of `_EXCEPTION` and `_DERIVER`). It accepts a start only in the form the product writes: a process API
+    (`_PROCESS_APIS`) called by its plain name — the module's attribute, or the name it is imported by, called directly — with its argument list resolved in
+    full, and every argument that can choose the program or a shell resolved too: `executable` and `shell`, by keyword, by position and through a `**`
+    expansion. Any other reference to a process API or a process module, in whatever access form, is not read and named in the second list; so is a start
+    of a shell, an interpreter or a command wrapper, but at the two exceptions, matched by their sites, and Python run on the tool's own file (`__file__`).
+    Followed: a literal `["git", …]` argv, and one bound to a name apart from its call (`args = [...] if … else [...]`, `for cmd in ([...], …)`), kept as it
+    was bound; every callable that hands its own `*a` to git where the command goes — `git_out`, a local `git = lambda *a: …`, a lambda or a name handed to
+    a function whose parameter then starts git (`default_trunk(git)`) — and every call of one, whose keywords resolve its own `**k`; git's own options before
+    the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
+    any case. A word of any other program that names git is not read."""
     tree = ast.parse(src)
     every = list(ast.walk(tree))           # every node, walked once
     parent = {c: n for n in every for c in ast.iter_child_nodes(n)}
@@ -1771,7 +1797,7 @@ def _git_starts(src):
 
     def names_bound(scope):
         """{name: [binding]} of one scope, its nested scopes left out: ("vararg", scope) · ("param", scope, name) · ("value", expr) · ("each", iterable) ·
-        ("def", FunctionDef) · ("opaque", node), bound in a way the reading does not follow."""
+        ("def", FunctionDef) · ("module", a process module) · ("api", module, name) · ("opaque", node), bound in a way the reading does not follow."""
         if scope not in bound:
             out = collections.defaultdict(list)
             if not isinstance(scope, ast.Module):
@@ -1795,7 +1821,20 @@ def _git_starts(src):
                 elif isinstance(n, ast.Delete):
                     for x in (x for t in n.targets for x in ast.walk(t) if isinstance(x, ast.Name)):
                         out[x.id].append(("opaque", n))
-                elif isinstance(n, (ast.For, ast.AsyncFor, ast.With, ast.AsyncWith, ast.ExceptHandler, ast.Import, ast.ImportFrom, ast.Global, ast.Nonlocal)):
+                elif isinstance(n, ast.Import):
+                    for al in n.names:
+                        top = al.name.split(".")[0]
+                        mod = al.name if al.asname else top          # `import a.b` binds `a`; `import a.b as x` binds `x` to `a.b`
+                        out[al.asname or top].append(("module", mod) if mod in _PROCESS_APIS else ("opaque", n))
+                elif isinstance(n, ast.ImportFrom):
+                    for al in n.names:
+                        if f"{n.module}.{al.name}" in _PROCESS_APIS:
+                            out[al.asname or al.name].append(("module", f"{n.module}.{al.name}"))
+                        elif n.module in _PROCESS_APIS:
+                            out[al.asname or al.name].append(("api", n.module, al.name))
+                        else:
+                            out[al.asname or al.name].append(("opaque", n))
+                elif isinstance(n, (ast.For, ast.AsyncFor, ast.With, ast.AsyncWith, ast.ExceptHandler, ast.Global, ast.Nonlocal)):
                     targets = ([n.target] if isinstance(n, (ast.For, ast.AsyncFor)) else [i.optional_vars for i in n.items if i.optional_vars] if isinstance(n, (ast.With, ast.AsyncWith))
                                else [])
                     for t in targets:
@@ -1804,9 +1843,6 @@ def _git_starts(src):
                                 out[x.id].append(("each", n.iter) if isinstance(n, (ast.For, ast.AsyncFor)) and t is x else ("opaque", n))
                     if isinstance(n, ast.ExceptHandler) and n.name:
                         out[n.name].append(("opaque", n))
-                    if isinstance(n, (ast.Import, ast.ImportFrom)):
-                        for al in n.names:
-                            out[(al.asname or al.name).split(".")[0]].append(("opaque", n))
                     if isinstance(n, (ast.Global, ast.Nonlocal)):
                         for nm in n.names:
                             out[nm].append(("opaque", n))
@@ -1866,12 +1902,13 @@ def _git_starts(src):
             loads[n.id].append(n)
 
     def kept(name_node):
-        """Whether a name bound to argv words is used only where the reading follows it — handed whole to a start, spread into a list or a call, returned,
-        or tested for truth — and so holds what it was bound to: a list changed in place, aliased or handed on is not read."""
+        """Whether a name bound to argv words, or to a start's keywords, is used only where the reading follows it — handed whole to a start, spread into a
+        list or a call, returned, or tested for truth — and so holds what it was bound to: one changed in place, aliased or handed on is not read."""
         bs = bindings(name_node)
         key = (name_node.id, tuple(id(x) for b in bs for x in b if isinstance(x, ast.AST)))
         if key not in kept_:
-            kept_[key] = all((isinstance(p, ast.Call) and p.args[:1] == [n] and any(p is c for c, _a in process)) or isinstance(p, ast.Starred)
+            kept_[key] = all((isinstance(p, ast.Call) and p.args[:1] == [n] and any(p is c for c, _k in starts)) or isinstance(p, ast.Starred)
+                             or (isinstance(p, ast.keyword) and p.arg is None and any(parent.get(p) is c for c, _k in starts))
                              or (isinstance(p, ast.Return) and scope_of(p) is not tree and all(scope_of(b[1]) is scope_of(p) for b in bs if isinstance(b[1], ast.AST)))
                              or (isinstance(p, ast.BoolOp) and isinstance(parent.get(p), (ast.If, ast.IfExp, ast.While)) and parent.get(p).test is p)
                              or (isinstance(p, ast.UnaryOp) and isinstance(p.op, ast.Not)) or (isinstance(p, (ast.If, ast.IfExp, ast.While)) and p.test is n)
@@ -1901,19 +1938,27 @@ def _git_starts(src):
             return None if not rets or None in parts else [x for p in parts for x in p]
         return None
 
+    THIS_TOOL = "<the tool's own file>"
+
     def program(expr):
-        """The programs an argv can begin with, as the source says: a constant; `sys.executable`; `shutil.which("x")`; `str(path)` and `<path> / "name"` by
-        the name; a name bound to one. None: not read."""
+        """The programs an argv word names, resolved in full as the source says: a constant; `sys.executable`; `shutil.which("x")`; `__file__`, the tool's own
+        file, through `str()`, `Path()` and `.resolve()`; a name bound to one. None: not resolved in full."""
         if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
             return {expr.value}
+        if isinstance(expr, ast.JoinedStr) and all(isinstance(v, ast.Constant) for v in expr.values):
+            return {"".join(v.value for v in expr.values)}
         if isinstance(expr, ast.Attribute) and ast.unparse(expr) == "sys.executable":
             return {"python"}
-        if isinstance(expr, ast.Call) and ast.unparse(expr.func) == "shutil.which" and expr.args and isinstance(expr.args[0], ast.Constant):
+        if isinstance(expr, ast.Name) and expr.id == "__file__" and not bindings(expr):
+            return {THIS_TOOL}
+        if isinstance(expr, ast.Call) and ast.unparse(expr.func) == "shutil.which" and len(expr.args) == 1 and isinstance(expr.args[0], ast.Constant) and not expr.keywords:
             return {expr.args[0].value}
-        if isinstance(expr, ast.Call) and ast.unparse(expr.func) == "str" and len(expr.args) == 1:
-            return program(expr.args[0])
-        if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Div) and isinstance(expr.right, ast.Constant) and isinstance(expr.right.value, str):
-            return {expr.right.value.replace("\\", "/").rsplit("/", 1)[-1]}
+        if isinstance(expr, ast.Call) and ast.unparse(expr.func) in ("str", "pathlib.Path") and len(expr.args) == 1 and not expr.keywords:
+            got = program(expr.args[0])
+            return got if ast.unparse(expr.func) == "str" or got == {THIS_TOOL} else None
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Attribute) and expr.func.attr == "resolve" and not expr.args and not expr.keywords:
+            got = program(expr.func.value)
+            return got if got == {THIS_TOOL} else None
         if isinstance(expr, ast.BoolOp):
             parts = [program(v) for v in expr.values]
             return None if None in parts else set().union(*parts)
@@ -1940,36 +1985,144 @@ def _git_starts(src):
             return literal(expr.left) + " " + literal(expr.right)
         return ""
 
-    def read_argv(elts, wrapped=False):
-        """What one argv starts: ("git", the index of git's own word, whether a wrapper starts it), ("other", the program), or ("unread", why)."""
-        prog = program(elts[0]) if elts and not isinstance(elts[0], ast.Starred) else None
-        if prog is None:
-            return "unread", f"a process whose program the reading does not follow: {ast.unparse(elts[0]) if elts else '(none)'}"
-        if any(git_name(p) for p in prog):
-            return "git", 0, wrapped
-        names = {base_name(p) for p in prog}
-        if names & _WRAPPERS:                 # a command wrapper: the first word that is git, or another wrapper or shell, is the program it starts
-            for i, w in enumerate(elts[1:], 1):
-                got = program(w) if not isinstance(w, ast.Starred) else None
-                if got is None:
-                    return "unread", f"a word of {'/'.join(sorted(names))} the reading cannot see: {ast.unparse(w)}"
-                if any(git_name(g) for g in got):
-                    return "git", i, True
-                if any(_NAMES_GIT.search(g) for g in got):
-                    return "unread", f"git inside a word of {'/'.join(sorted(names))}: {ast.unparse(w)}"
-                if {base_name(g) for g in got} & (_WRAPPERS | _SHELLS):
-                    inner = read_argv(elts[i:], True)
-                    return ("git", inner[1] + i, True) if inner[0] == "git" else inner
-            return "other", "/".join(sorted(names))
-        for i, w in enumerate(elts[1:], 1):  # any other program: git named in its words, or a shell's code the reading cannot see, is not read
-            if _NAMES_GIT.search(literal(w)):
-                return "unread", f"git named in the argv of {'/'.join(sorted(names))}: {ast.unparse(w)}"
-            if names & _SHELLS and literal(elts[i - 1]).lower() in _CODE_FLAGS and not literal(w).strip():
-                return "unread", f"code handed to {'/'.join(sorted(names))} that the reading cannot see: {ast.unparse(w)}"
-        return "other", "/".join(sorted(names))
+    def whole(expr):
+        """The text of a word that is literal in full, else None."""
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return expr.value
+        if isinstance(expr, ast.JoinedStr) and all(isinstance(v, ast.Constant) for v in expr.values):
+            return "".join(v.value for v in expr.values)
+        return None
 
-    starters, handed, via = set(), set(), set()     # callables that hand their own `*a` to git as its command; (function, parameter) a caller hands one;
-                                                    # those of either that start git through a wrapper
+    def top_function(node):
+        while node in parent and not (isinstance(parent[node], ast.Module) and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))):
+            node = parent[node]
+        return node.name if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) else ""
+
+    def the_deriver(expr):
+        """Whether a word is `str(x)`, `x` bound once in its function to `TRACKER_DIR / "derive"` — the deriver's own path, as `run_deriver` writes it."""
+        if not (isinstance(expr, ast.Call) and ast.unparse(expr.func) == "str" and len(expr.args) == 1 and isinstance(expr.args[0], ast.Name) and not expr.keywords):
+            return False
+        bs = bindings(expr.args[0])
+        return (len(bs) == 1 and bs[0][0] == "value" and isinstance(bs[0][1], ast.BinOp) and isinstance(bs[0][1].op, ast.Div)
+                and ast.unparse(bs[0][1].left) == "TRACKER_DIR" and isinstance(bs[0][1].right, ast.Constant) and bs[0][1].right.value == "derive")
+
+    def read_start(prog_expr, words, call, scope):
+        """One start, by its program and the words after it: git — its command classified; a command wrapper, a shell or an interpreter — not read, but at the
+        two exceptions and Python on the tool's own file; any other program — git named in its words is not read."""
+        line = call.lineno
+        if top_function(call) == "run_deriver":            # the deriver's exception: its two forms, by their shape
+            site = (("run_deriver", "derive") if not words and the_deriver(prog_expr) else
+                    ("run_deriver", "python", "derive") if ast.unparse(prog_expr) == "sys.executable" and len(words) == 1 and the_deriver(words[0]) else None)
+            if site:
+                excepted[site].add(id(call))
+                return others.append((line, f"{' '.join(site[1:])}: the repository's deriver, the exception"))
+        prog = program(prog_expr) if prog_expr is not None and not isinstance(prog_expr, ast.Starred) else None
+        if prog is None:
+            return unread.append((line, f"a process whose program the reading does not resolve in full: {ast.unparse(prog_expr) if prog_expr is not None else '(none)'}"))
+        if any(git_name(p) for p in prog):
+            return command(list(words), line, scope)
+        names = {base_name(p) for p in prog}
+        who = "/".join(sorted(names))
+        if names & _WRAPPERS:
+            return unread.append((line, f"a start through a wrapper, {who}"))
+        if names & _SHELLS:
+            i = 0
+            while i < len(words) and (whole(words[i]) or "").startswith("-") and whole(words[i]).lower() not in _CODE_FLAGS:
+                i += 1
+            if i + 2 == len(words) and (whole(words[i]) or "").lower() in _CODE_FLAGS and len(names) == 1 and whole(words[i + 1]) is None:
+                site = (top_function(words[i + 1]), who, whole(words[i]).lower())
+                if site in _EXCEPTION:
+                    excepted[site].add(id(words[i + 1]))
+                    return others.append((line, f"{who}: {site[0]}'s code, the exception"))
+            if names <= _PYTHONS and words and not isinstance(words[0], ast.Starred) and program(words[0]) == {THIS_TOOL}:
+                return others.append((line, f"{who}: the tool's own file"))
+            return unread.append((line, f"a start of {who}, a shell or an interpreter: {ast.unparse(call)[:80]}"))
+        for w in words:                       # any other program: git named in its words is not read
+            if _NAMES_GIT.search(literal(w)):
+                return unread.append((line, f"git named in the argv of {who}: {ast.unparse(w)}"))
+        return others.append((line, who))
+
+    def keywords(call):
+        """{keyword: [the values it can take]} of a start, its `**` expansions resolved in full — a dict literal, a name bound to one and kept, or a
+        callable's own `**k` that every call of it fills by keyword, the callable called and handed nowhere else; None where one is not."""
+        out = collections.defaultdict(list)
+        for k in call.keywords:
+            if k.arg:
+                out[k.arg].append(k.value)
+                continue
+            v = k.value
+            if isinstance(v, ast.Name):
+                bs = bindings(v)
+                if len(bs) == 1 and bs[0][0] == "value" and isinstance(bs[0][1], ast.Dict) and kept(v):
+                    v = bs[0][1]
+                elif len(bs) == 1 and bs[0][0] == "param" and bs[0][1].args.kwarg is not None and bs[0][1].args.kwarg.arg == v.id:
+                    fn = bs[0][1]
+                    refs = [n for n in every if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and fn in target(n)]
+                    if not refs or any(not (isinstance(parent.get(n), ast.Call) and parent[n].func is n) for n in refs):
+                        return None
+                    for n in refs:
+                        for kk in parent[n].keywords:
+                            if not kk.arg:
+                                return None
+                            out[kk.arg].append(kk.value)
+                    continue
+                else:
+                    return None
+            if isinstance(v, ast.Dict) and all(isinstance(key, ast.Constant) and isinstance(key.value, str) for key in v.keys):
+                for key, val in zip(v.keys, v.values):
+                    out[key.value].append(val)
+                continue
+            return None
+        return out
+
+    def read_call(call, kind):
+        """One start, by its API's kind: its program, every argument that can choose the program or a shell, and its words."""
+        scope, args = scope_of(call), call.args
+        if kind == "unread":
+            return unread.append((call.lineno, f"a start whose program the system chooses, or a private API: {ast.unparse(call.func)}"))
+        if kind == "shell":
+            return unread.append((call.lineno, f"code handed to a shell: {ast.unparse(call)[:80]}"))
+        kw = keywords(call)
+        if kw is None:
+            return unread.append((call.lineno, f"a `**` expansion the reading does not resolve in full: {ast.unparse(call)[:80]}"))
+        if any(isinstance(a, ast.Starred) for a in (args if kind in ("argv", "exec") else args[:int(kind[1]) + 2])):
+            return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
+        shells = kw.get("shell", []) + (args[8:9] if kind == "argv" else [])
+        if any(not (isinstance(v, ast.Constant) and v.value in (False, None, 0)) for v in shells):
+            return unread.append((call.lineno, f"a start with `shell` set, or set by a word the reading does not resolve: {ast.unparse(call)[:80]}"))
+        exes = [v for v in kw.get("executable", []) + (args[2:3] if kind == "argv" else []) if not (isinstance(v, ast.Constant) and v.value is None)]
+        if kind in ("argv", "exec"):
+            if kind == "argv":
+                argv = args[0] if args else (kw.get("args") or [None])[0]
+                if argv is None:
+                    return unread.append((call.lineno, f"a start with no argv the reading can see: {ast.unparse(call)[:80]}"))
+                lists = [[argv]] if whole(argv) is not None and not re.search(r"\s", whole(argv)) else argv_lists(argv)
+            else:
+                lists = [list(args)] if args else None
+            if not lists:
+                return unread.append((call.lineno, f"a process started with an argv the reading does not resolve in full: {ast.unparse(call)[:80]}"))
+            for elts in lists:
+                if not elts:
+                    unread.append((call.lineno, "a process started with an empty argv"))
+                for prog in (exes or [elts[0]] if elts else []):
+                    read_start(prog, list(elts[1:]), call, scope)
+            return
+        at = int(kind[1])
+        if len(args) <= at + (1 if kind[0] == "v" else 0):
+            return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
+        if kind[0] == "v":
+            lists = argv_lists(args[at + 1])
+            if lists is None:
+                return unread.append((call.lineno, f"a process started with an argv the reading does not resolve in full: {ast.unparse(call)[:80]}"))
+            for elts in lists:
+                read_start(args[at], list(elts[1:]), call, scope)
+            return
+        words = list(args[at + 2:len(args) - 1 if kind.endswith("e") else len(args)])
+        if any(isinstance(a, ast.Starred) for a in words):
+            return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
+        return read_start(args[at], words, call, scope)
+
+    starters, handed = set(), set()         # callables that hand their own `*a` to git as its command; (function, parameter) a caller hands one
 
     def target(name_node):
         """What a name names, where it can name a callable that starts git: a FunctionDef or a Lambda it is bound to, or (function, parameter); several
@@ -1987,9 +2140,9 @@ def _git_starts(src):
     def starts_git(t):
         return t in starters or t in handed
 
-    found, unread, others, fixed, wrapped_found = collections.defaultdict(set), [], [], [], collections.defaultdict(set)
+    found, unread, others, fixed, excepted = collections.defaultdict(set), [], [], [], collections.defaultdict(set)
 
-    def command(elts, line, scope, wrapped=False):
+    def command(elts, line, scope):
         """The command of git's argv words after `git` (or of a call of a starter): git's own options skipped; a constant names it; the scope's own `*a`
         there makes the scope a starter; a name bound apart is read through; anything else is not read."""
         i = 0
@@ -2012,75 +2165,93 @@ def _git_starts(src):
         e = elts[i]
         if isinstance(e, ast.Constant) and isinstance(e.value, str):
             found[e.value].add(line)
-            if wrapped:
-                wrapped_found[e.value].add(line)
             return
         if isinstance(e, ast.Starred) and isinstance(e.value, ast.Name):
             bs = bindings(e.value)
             if bs and all(b[0] == "vararg" and b[1] is scope for b in bs):
                 starters.add(scope)
-                if wrapped:
-                    via.add(scope)
                 return
             alts = [alternatives(b) for b in bs]
             if bs and None not in alts and kept(e.value):
                 for alt in (x for a in alts for x in a):
-                    command(list(alt) + elts[i + 1:], line, scope, wrapped)
+                    command(list(alt) + elts[i + 1:], line, scope)
                 return
         unread.append((line, f"git started with {ast.unparse(e)} where its command goes"))
 
-    process = []                            # every start of a process: (call, its argv)
-    for n in every:
-        if isinstance(n, (ast.Import, ast.ImportFrom)):
-            mod = n.module if isinstance(n, ast.ImportFrom) else None
-            if mod in ("subprocess", "os", "pty", "asyncio", "multiprocessing") or any(a.name in ("pty", "asyncio", "multiprocessing") or (a.name in ("subprocess", "os") and a.asname)
-                                                                                         for a in n.names if isinstance(n, ast.Import)):
-                fixed.append((n.lineno, f"an import the reading does not follow: {ast.unparse(n)}"))
-        if isinstance(n, ast.Name) and n.id == "subprocess" and not isinstance(parent.get(n), ast.Attribute):
-            fixed.append((n.lineno, "`subprocess` used other than by its attribute"))
-        if not (isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)):
-            continue
-        sub = n.value.id == "subprocess" and n.attr in ("run", "Popen", "call", "check_call", "check_output", "getoutput", "getstatusoutput")
-        osx = n.value.id == "os" and (n.attr in ("system", "popen", "startfile") or n.attr.startswith(("exec", "spawn", "posix_spawn")))
-        if not (sub or osx):
-            continue
-        call = parent.get(n)
-        if (not (isinstance(call, ast.Call) and call.func is n) or osx or n.attr in ("getoutput", "getstatusoutput")
-                or any(k.arg in ("shell", "executable") for k in call.keywords)):
-            fixed.append((n.lineno, f"a process started by {ast.unparse(n)} in a form the reading does not follow"))
-            continue
-        process.append((call, call.args[0] if call.args else next((k.value for k in call.keywords if k.arg == "args"), None)))
+    def module_of(expr):
+        """The process module an expression names — a name an import binds to one, or a module's submodule (`asyncio.subprocess`) — else None."""
+        if isinstance(expr, ast.Name):
+            mods = {b[1] for b in bindings(expr) if b[0] == "module"}
+            return next(iter(mods)) if len(mods) == 1 and len(bindings(expr)) == 1 else ("?" if mods else None)
+        if isinstance(expr, ast.Attribute):
+            m = module_of(expr.value)
+            return f"{m}.{expr.attr}" if m and m != "?" and f"{m}.{expr.attr}" in _PROCESS_APIS else None
+        return None
+
+    starts = []                             # every start of a process: (call, its API's kind)
+    for n in every:                         # code, a module or a name the reading cannot see
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in ("eval", "exec", "compile", "__import__") and not bindings(n.func):
+            fixed.append((n.lineno, f"`{n.func.id}`: code the reading cannot see"))
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in ("importlib", "runpy") or (
+                isinstance(n, ast.Attribute) and ast.unparse(n) == "sys.modules"):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: a module or code the reading cannot see"))
+        if isinstance(n, ast.ImportFrom) and (n.module in ("importlib", "runpy") or (n.module in _PROCESS_APIS and any(al.name == "*" for al in n.names))):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: names the reading cannot see"))
+        if (isinstance(n, ast.Subscript) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name) and n.value.func.id in ("globals", "locals", "vars")
+                and not n.value.args):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: a name the reading cannot see"))
+        if isinstance(n, ast.Attribute) and n.attr in ("subprocess_exec", "subprocess_shell"):
+            fixed.append((n.lineno, f"an event loop's process API, a method: {ast.unparse(n)[:80]}"))
+        p = parent.get(n)
+        if isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Load):
+            m = module_of(n.value)
+            if m == "?":
+                fixed.append((n.lineno, f"a name bound to a process module and to something else: {ast.unparse(n)[:80]}"))
+            elif m and n.attr in _PROCESS_APIS[m]:
+                if isinstance(p, ast.Call) and p.func is n:
+                    starts.append((p, _PROCESS_APIS[m][n.attr]))
+                else:
+                    fixed.append((n.lineno, f"a process API reached other than by a call of its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
+            elif m and (n.attr.startswith("__") or f"{m}.{n.attr}" in _PROCESS_APIS and not (isinstance(p, ast.Attribute) and p.value is n)):
+                fixed.append((n.lineno, f"a process module reached other than by its plain name: {ast.unparse(n)[:80]}"))
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load):
+            bs = bindings(n)
+            apis = [b for b in bs if b[0] == "api" and b[2] in _PROCESS_APIS[b[1]]]
+            mods = [b for b in bs if b[0] == "module"]
+            if apis:
+                if len(bs) == 1 and isinstance(p, ast.Call) and p.func is n:
+                    starts.append((p, _PROCESS_APIS[apis[0][1]][apis[0][2]]))
+                else:
+                    fixed.append((n.lineno, f"a process API reached other than by a call of its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
+            elif any(b[0] == "api" and b[2].startswith("__") for b in bs):
+                fixed.append((n.lineno, f"a process module reached other than by its plain name: {n.id}"))
+            elif mods:
+                name = whole(p.args[1]) if (isinstance(p, ast.Call) and isinstance(p.func, ast.Name) and p.func.id == "getattr" and not bindings(p.func)
+                                            and p.args[:1] == [n] and len(p.args) > 1) else None
+                if isinstance(p, ast.Attribute) and p.value is n:
+                    pass                    # `module.name`: judged as itself
+                elif name is not None and not name.startswith("__") and not any(name in _PROCESS_APIS.get(b[1], {}) or f"{b[1]}.{name}" in _PROCESS_APIS for b in mods):
+                    pass                    # `getattr(module, "NAME", …)` of a name that starts nothing: as `module.NAME`
+                else:
+                    fixed.append((n.lineno, f"a process module reached other than by its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
 
     for _ in range(50):                     # to a fixed point: a starter found makes its callers' calls starts of git, and a parameter handed one a starter
-        size = (len(starters), len(handed), len(via))
-        found.clear(), others.clear(), unread.clear(), wrapped_found.clear()
-        for call, argv in process:
-            lists = argv_lists(argv) if argv is not None else None
-            if lists is None:
-                unread.append((call.lineno, f"a process started with an argv the reading does not follow: {ast.unparse(argv) if argv is not None else '(none)'}"))
-                continue
-            for elts in lists:
-                said = read_argv(list(elts))
-                if said[0] == "unread":
-                    unread.append((call.lineno, said[1]))
-                elif said[0] == "git":
-                    command(list(elts[said[1] + 1:]), call.lineno, scope_of(call), said[2])
-                else:
-                    others.append((call.lineno, said[1]))
+        size = (len(starters), len(handed))
+        found.clear(), others.clear(), unread.clear(), excepted.clear()
+        for call, kind in starts:
+            read_call(call, kind)
         for n in every:
             if not isinstance(n, ast.Call):
                 continue
             if isinstance(n.func, ast.Name) and any(starts_git(t) for t in target(n.func)):
-                command(list(n.args), n.lineno, scope_of(n), any(t in via for t in target(n.func)))
+                command(list(n.args), n.lineno, scope_of(n))
             if isinstance(n.func, ast.Name) and n.func.id in defs and any(b[0] == "def" for b in bindings(n.func)):
                 params = [a.arg for a in defs[n.func.id].args.posonlyargs + defs[n.func.id].args.args]
                 for pname, a in [(params[i], a) for i, a in enumerate(n.args) if i < len(params) and not isinstance(a, ast.Starred)] + [(k.arg, k.value) for k in n.keywords if k.arg]:
                     ts = [a] if isinstance(a, ast.Lambda) else target(a) if isinstance(a, ast.Name) else []
                     if any(starts_git(t) for t in ts):
                         handed.add((defs[n.func.id], pname))
-                        if any(t in via for t in ts):
-                            via.add((defs[n.func.id], pname))
-        if (len(starters), len(handed), len(via)) == size:
+        if (len(starters), len(handed)) == size:
             break
 
     for s in starters:                      # a starter is called by a name the reading follows, or handed to a module function — or it is named here
@@ -2097,9 +2268,9 @@ def _git_starts(src):
                 unread.append((n.lineno, f"{n.id}, which starts git, used where the reading does not follow it"))
     for n in every:                         # …and a git argv is one a start is handed
         if (isinstance(n, ast.List) and n.elts and isinstance(n.elts[0], ast.Constant) and isinstance(n.elts[0].value, str)
-                and (git_name(n.elts[0].value) or base_name(n.elts[0].value) in _WRAPPERS) and n not in reached):
-            unread.append((n.lineno, "a git argv no start the reading follows is handed"))
-    return {k: sorted(v) for k, v in found.items()}, sorted(set(unread + fixed)), sorted(set(others)), {k: sorted(v) for k, v in wrapped_found.items()}
+                and (git_name(n.elts[0].value) or base_name(n.elts[0].value) in _WRAPPERS | _SHELLS) and n not in reached):
+            unread.append((n.lineno, "an argv no start the reading follows is handed"))
+    return {k: sorted(v) for k, v in found.items()}, sorted(set(unread + fixed)), sorted(set(others)), {site: len(v) for site, v in excepted.items()}
 
 
 def _git_command(argv):
@@ -2123,73 +2294,163 @@ def _started_never(argvs, never):
 
 
 with tempfile.TemporaryDirectory() as d:
-    src_ = Path(fm.__file__).read_text(encoding="utf-8"); found_, unread_, others_, wrapped_ = _git_starts(src_)
+    src_ = Path(fm.__file__).read_text(encoding="utf-8"); found_, unread_, others_, excepted_ = _git_starts(src_)
     never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
     unclassified_ = lambda found: sorted(set(found) - set(fm.READ_ONLY_GIT) - set(never_))
-    wrapped_listed_ = lambda wrapped: sorted(set(wrapped) - set(never_))       # the board's run refuses a wrapper: git through one is never started there
+    as_named_ = lambda excepted: set(excepted) == set(_EXCEPTION) | set(_DERIVER) and all(v_ == 1 for v_ in excepted.values())     # each exception's sites, each met once
     check(f"FM-045 · every git command the tool can start is classified — on READ_ONLY_GIT, or named as never started in the board's run with its reason in one line, `ls-remote` among "
-          f"them; none in both, none named that the tool never starts, one started through a wrapper named never started, and every start's form read (saw {len(found_)} "
-          f"commands, {len(never_)} never started; unclassified {unclassified_(found_)}; through a wrapper {wrapped_}; not read {unread_}; programs not git "
-          f"{sorted({p_ for _l, p_ in others_})})",
-          len(found_) > 1 and not unclassified_(found_) and not wrapped_listed_(wrapped_) and not unread_ and "ls-remote" in never_ and not set(never_) & set(fm.READ_ONLY_GIT)
+          f"them; none in both, none named that the tool never starts; Check A accepts a start only in the form the product writes — a process API called by its plain name, "
+          f"its argument list and every argument that can choose the program or a shell resolved in full — and reads any other as not read, but at the Owner's two exceptions, "
+          f"each matched by its site and met once: `notify_argv`'s code handed to osascript and to PowerShell, which ends when that code is made literal, and the repository's "
+          f"deriver that `run_deriver` starts, which is permanent (saw {len(found_)} commands, {len(never_)} never started; unclassified {unclassified_(found_)}; not read "
+          f"{unread_}; the exceptions {excepted_}; programs not git {sorted({p_ for _l, p_ in others_})})",
+          len(found_) > 1 and not unclassified_(found_) and not unread_ and as_named_(excepted_) and "ls-remote" in never_ and not set(never_) & set(fm.READ_ONLY_GIT)
           and set(never_) <= set(found_) and all(isinstance(w_, str) and w_.strip() and "\n" not in w_ for w_ in never_.values()))
-    injected_ = {       # each form the reading follows, starting a command the table does not hold; then four it does not follow, each named
-        "a literal argv": ('def _injected():\n    return subprocess.run(["git", "gc"], capture_output=True)\n', "gc"),
-        "`git_out`": ('def _injected():\n    return git_out("prune")\n', "prune"),
-        "after `*signers_args()`": ('def _injected():\n    return git_out(*signers_args(), "notes", "show")\n', "notes"),
-        "a local wrapper": ('def _injected():\n    git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a])\n    return git("repack")\n', "repack"),
-        "a wrapper handed to a function": ('def _injected(run_git):\n    return run_git("fsck")\n\n\ndef _injected_caller():\n    return _injected(lambda *a: subprocess.run(["git", *a]))\n', "fsck"),
-        "an argv built apart": ('def _injected(x):\n    args = ["count-objects"] if x else ["log"]\n    return subprocess.run(["git", *args])\n', "count-objects"),
-        "an argv built in a loop": ('def _injected():\n    return [subprocess.run(["git", "-C", "x", *c]) for c in (["maintenance", "run"], ["log"])]\n', "maintenance"),
-        "a whole argv bound to a name": ('def _injected():\n    cmd = ["git", "update-ref", "-d", "x"]\n    return subprocess.run(cmd)\n', "update-ref"),
-        "not followed: an argv handed in": ('def _injected(cmd):\n    return subprocess.run(cmd)\n', None),
-        "not followed: a shell": ('def _injected():\n    return os.system("git gc")\n', None),
-        "not followed: a program named apart": ('def _injected():\n    return subprocess.run(["x", "gc"], executable="git")\n', None),
-        "not followed: a wrapper kept in a dict": ('def _injected():\n    g = lambda *a: subprocess.run(["git", *a])\n    return {"g": g}\n', None),
+    injected_ = {       # each form the reading follows, starting a command the table does not hold; then those it does not follow, each named
+        'a literal argv': ('def _injected():\n    return subprocess.run(["git", "gc"], capture_output=True)\n', 'gc'),
+        '`git_out`': ('def _injected():\n    return git_out("prune")\n', 'prune'),
+        'after `*signers_args()`': ('def _injected():\n    return git_out(*signers_args(), "notes", "show")\n', 'notes'),
+        'a local wrapper': ('def _injected():\n    git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a])\n    return git("repack")\n', 'repack'),
+        'a wrapper handed to a function': ('def _injected(run_git):\n    return run_git("fsck")\n\n\ndef _injected_caller():\n    return _injected(lambda *a: subprocess.run(["git", *a]))\n', 'fsck'),
+        'an argv built apart': ('def _injected(x):\n    args = ["count-objects"] if x else ["log"]\n    return subprocess.run(["git", *args])\n', 'count-objects'),
+        'an argv built in a loop': ('def _injected():\n    return [subprocess.run(["git", "-C", "x", *c]) for c in (["maintenance", "run"], ["log"])]\n', 'maintenance'),
+        'a whole argv bound to a name': ('def _injected():\n    cmd = ["git", "update-ref", "-d", "x"]\n    return subprocess.run(cmd)\n', 'update-ref'),
+        'a program named by `executable=`': ('def _injected():\n    return subprocess.run(["x", "gc"], executable="git")\n', 'gc'),
+        'not followed: an argv handed in': ('def _injected(cmd):\n    return subprocess.run(cmd)\n', None),
+        'not followed: code handed to a shell': ('def _injected():\n    return os.system("git gc")\n', None),
+        'not followed: a wrapper kept in a dict': ('def _injected():\n    g = lambda *a: subprocess.run(["git", *a])\n    return {"g": g}\n', None),
     }
     caught_ = {}
     for what_, (code_, want_) in injected_.items():
         copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
-        f_, u_, _o, _w = _git_starts(copy_.read_text(encoding="utf-8"))
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
         caught_[what_] = unclassified_(f_) == [want_] if want_ else len(u_) > len(unread_)
     check(f"FM-045 · the classification's control: a source line starting a git command the table does not hold fails it, in each form the reading follows — a literal argv, "
-          f"`git_out`, after `*signers_args()`, a local wrapper, a wrapper handed to a function, an argv built apart, in a loop or bound whole to a name — and a start in a form "
-          f"it does not follow is named (saw {caught_})", all(caught_.values()))
-    program_ = {        # the program as `read_only_git` reads it, and the wrappers it is started through: each injected start fails the check as the rule says
-        "git by its absolute path": ('def _injected():\n    return subprocess.run(["/usr/bin/git", "gc"])\n', ("unclassified", "gc")),
-        "git as `git.exe`": ('def _injected():\n    return subprocess.run(["git.exe", "prune"])\n', ("unclassified", "prune")),
-        "git in mixed case, by a Windows path": ('def _injected():\n    return subprocess.run(["C:\\\\Program Files\\\\Git\\\\cmd\\\\Git.EXE", "repack"])\n', ("unclassified", "repack")),
-        "`env`": ('def _injected():\n    return subprocess.run(["env", "git", "fsck"])\n', ("unclassified", "fsck")),
-        "`env -i`": ('def _injected():\n    return subprocess.run(["env", "-i", "PATH=/usr/bin", "git", "count-objects"])\n', ("unclassified", "count-objects")),
-        "`nice` around `timeout` around git by its path": ('def _injected():\n    return subprocess.run(["nice", "-n", "5", "timeout", "10", "/usr/local/bin/git", "maintenance"])\n',
-                                                         ("unclassified", "maintenance")),
-        "`env` before a command the read-only list holds": ('def _injected():\n    return subprocess.run(["env", "GIT_PAGER=cat", "git", "log"])\n', ("wrapped", "log")),
-        "a local wrapper that starts `env git`": ('def _injected():\n    g = lambda *a: subprocess.run(["env", "git", *a])\n    return g("show")\n', ("wrapped", "show")),
-        "not read: an argv[0] from a name the reading cannot see": ('def _injected(prog):\n    return subprocess.run([prog, "gc"])\n', None),
-        "not read: a word of `env` the reading cannot see": ('def _injected(extra):\n    return subprocess.run(["env", extra, "git", "gc"])\n', None),
-        "not read: git inside a word of `env -S`": ('def _injected():\n    return subprocess.run(["env", "-S", "git gc"])\n', None),
-        "not read: git in a shell's code": ('def _injected():\n    return subprocess.run(["sh", "-c", "git gc --auto"])\n', None),
+          f"`git_out`, after `*signers_args()`, a local wrapper, a wrapper handed to a function, an argv built apart, in a loop or bound whole to a name, a program named by "
+          f"`executable=` — and a start in a form it does not follow is named (saw {caught_})", all(caught_.values()))
+    program_ = {        # the program as `read_only_git` reads it; a start through a wrapper; what the reading cannot resolve
+        'git by its absolute path': ('def _injected():\n    return subprocess.run(["/usr/bin/git", "gc"])\n', ('unclassified', 'gc')),
+        'git as `git.exe`': ('def _injected():\n    return subprocess.run(["git.exe", "prune"])\n', ('unclassified', 'prune')),
+        'git in mixed case, by a Windows path': ('def _injected():\n    return subprocess.run(["C:\\\\Program Files\\\\Git\\\\cmd\\\\Git.EXE", "repack"])\n', ('unclassified', 'repack')),
+        'not read: a start through `env`': ('def _injected():\n    return subprocess.run(["env", "git", "fsck"])\n', None),
+        'not read: a start through `env -i`': ('def _injected():\n    return subprocess.run(["env", "-i", "PATH=/usr/bin", "git", "count-objects"])\n', None),
+        'not read: a start through `nice` around `timeout`': ('def _injected():\n    return subprocess.run(["nice", "-n", "5", "timeout", "10", "/usr/local/bin/git", "maintenance"])\n', None),
+        'not read: `env` before a command the read-only list holds': ('def _injected():\n    return subprocess.run(["env", "GIT_PAGER=cat", "git", "log"])\n', None),
+        'not read: a local wrapper that starts `env git`': ('def _injected():\n    g = lambda *a: subprocess.run(["env", "git", *a])\n    return g("show")\n', None),
+        'not read: an argv[0] from a name the reading cannot see': ('def _injected(prog):\n    return subprocess.run([prog, "gc"])\n', None),
+        'not read: a word of `env` the reading cannot see': ('def _injected(extra):\n    return subprocess.run(["env", extra, "git", "gc"])\n', None),
+        'not read: git inside a word of `env -S`': ('def _injected():\n    return subprocess.run(["env", "-S", "git gc"])\n', None),
+        "not read: a shell's literal code": ('def _injected():\n    return subprocess.run(["sh", "-c", "git gc --auto"])\n', None),
         "not read: a shell's code the reading cannot see": ('def _injected(code):\n    return subprocess.run(["bash", "-c", code])\n', None),
-        "not read: git in the words of a wrapper the reading does not know": ('def _injected():\n    return subprocess.run(["mywrap", "--", "git", "gc"])\n', None),
-        "not read: an argv changed in place": ('def _injected():\n    cmd = ["git", "log"]\n    cmd.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
-        "not read: an argv reversed in place": ('def _injected():\n    cmd = ["gc", "git"]\n    cmd.reverse()\n    return subprocess.run(cmd)\n', None),
-        "not read: an argv a helper changes and returns": ('def _injected_argv():\n    cmd = ["git", "log"]\n    cmd.insert(1, "gc")\n    return cmd\n\n\ndef _injected():\n'
-                                                           '    return subprocess.run(_injected_argv())\n', None),
+        'not read: git in the words of a wrapper the reading does not know': ('def _injected():\n    return subprocess.run(["mywrap", "--", "git", "gc"])\n', None),
+        'not read: an argv changed in place': ('def _injected():\n    cmd = ["git", "log"]\n    cmd.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv reversed in place': ('def _injected():\n    cmd = ["gc", "git"]\n    cmd.reverse()\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv a helper changes and returns': ('def _injected_argv():\n    cmd = ["git", "log"]\n    cmd.insert(1, "gc")\n    return cmd\n\n\ndef _injected():\n    return subprocess.run(_injected_argv())\n', None),
         "not read: a module's argv changed in place": ('_INJECTED = ["git", "log"]\n_INJECTED.insert(1, "gc")\n\n\ndef _injected():\n    return subprocess.run(_INJECTED)\n', None),
-        "not read: an argv changed through an alias": ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
-        "not read: an argv aliased through `or`": ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd or []\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv changed through an alias': ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv aliased through `or`': ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd or []\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
         "not read: a module's argv a getter hands out": ('_INJECTED_G = ["git", "log"]\n\n\ndef _injected_get():\n    return _INJECTED_G\n\n\ndef _injected():\n    _injected_get().insert(1, "gc")\n    return subprocess.run(_INJECTED_G)\n', None),
     }
     read_ = {}
     for what_, (code_, want_) in program_.items():
         copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
-        f_, u_, _o, w_ = _git_starts(copy_.read_text(encoding="utf-8"))
-        read_[what_] = (unclassified_(f_) == [want_[1]] if want_ and want_[0] == "unclassified" else not unclassified_(f_) and wrapped_listed_(w_) == [want_[1]] if want_
-                        else len(u_) > len(unread_))
-    check(f"FM-045 · the classification's control for the program: git by any path, as `git.exe`, in any case, and through `env`, `env -i` and nested wrappers fails it as "
-          f"unclassified; a command the read-only list holds, started through a wrapper, fails it; an argv[0] or a wrapper's word the reading cannot see, git in a shell's "
-          f"code or in an unknown wrapper's words, and an argv changed in place — through a helper, at module level or by an alias — are each named as not read (saw {read_})",
-          all(read_.values()))
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        read_[what_] = unclassified_(f_) == [want_[1]] if want_ else len(u_) > len(unread_)
+    check(f"FM-045 · the classification's control for the program: git by any path, as `git.exe` and in any case fails it as unclassified; a start through `env`, `env -i` or "
+          f"nested wrappers, a shell's code, an argv[0] or a wrapper's word the reading cannot see, git in an unknown wrapper's words, and an argv changed in place — through a "
+          f"helper, at module level, by an alias, through `or` or a getter — are each named as not read (saw {read_})", all(read_.values()))
+    closed45_ = {       # a process API called by its plain name, its arguments resolved in full, is read; every other form is named as not read
+        '`import subprocess as sp`': ('import subprocess as sp\n\n\ndef _injected():\n    return sp.run(["git", "count-objects"])\n', ('unclassified', 'count-objects')),
+        '`from subprocess import run as r`': ('from subprocess import run as r\n\n\ndef _injected():\n    return r(["git", "maintenance"])\n', ('unclassified', 'maintenance')),
+        '`os.execvp`': ('def _injected():\n    os.execvp("git", ["git", "prune"])\n', ('unclassified', 'prune')),
+        '`os.spawnlp`': ('def _injected():\n    return os.spawnlp(os.P_WAIT, "git", "git", "repack")\n', ('unclassified', 'repack')),
+        '`os.posix_spawnp`': ('def _injected():\n    return os.posix_spawnp("git", ["git", "fsck"], os.environ)\n', ('unclassified', 'fsck')),
+        '`asyncio.create_subprocess_exec`': ('import asyncio\n\n\nasync def _injected():\n    return await asyncio.create_subprocess_exec("git", "count-objects")\n', ('unclassified', 'count-objects')),
+        '`import asyncio.subprocess`, its `create_subprocess_exec`': ('import asyncio.subprocess\n\n\nasync def _injected():\n    return await asyncio.subprocess.create_subprocess_exec("git", "prune")\n', ('unclassified', 'prune')),
+        '`from asyncio import subprocess as asp`, its `create_subprocess_exec`': ('from asyncio import subprocess as asp\n\n\nasync def _injected():\n    return await asp.create_subprocess_exec("git", "repack")\n', ('unclassified', 'repack')),
+        '`pty.spawn`': ('import pty\n\n\ndef _injected():\n    return pty.spawn(["git", "notes"])\n', ('unclassified', 'notes')),
+        '`executable` by a `**` expansion of a dict it resolves': ('def _injected():\n    options = {"executable": "git"}\n    return subprocess.run(["echo", "count-objects"], capture_output=True, **options)\n', ('unclassified', 'count-objects')),
+        "`Popen`'s positional `executable`": ('def _injected():\n    return subprocess.Popen(["echo", "count-objects"], -1, "git", stdout=subprocess.PIPE).communicate()\n', ('unclassified', 'count-objects')),
+        "`asyncio`'s `executable=`": ('import asyncio\n\n\nasync def _injected():\n    return await asyncio.create_subprocess_exec("echo", "count-objects", executable="git", stdout=asyncio.subprocess.PIPE)\n', ('unclassified', 'count-objects')),
+        'not read: a `**` expansion it cannot resolve': ('def _injected(options):\n    return subprocess.run(["echo", "count-objects"], capture_output=True, **options)\n', None),
+        'not read: `sh -c` code with a part that is not literal': ('def _injected(program):\n    return subprocess.run(["sh", "-c", f"{program} count-objects"])\n', None),
+        'not read: a `shell=True` f-string': ('def _injected(sub):\n    return subprocess.run(f"git {sub}", shell=True)\n', None),
+        'not read: `shell=True`, literal': ('def _injected():\n    return subprocess.run("git gc", shell=True)\n', None),
+        'not read: `os.system` with a part that is not literal': ('def _injected(sub):\n    return os.system("git " + sub)\n', None),
+        'not read: `create_subprocess_shell` with a part that is not literal': ('import asyncio\n\n\nasync def _injected(sub):\n    return await asyncio.create_subprocess_shell(f"git {sub}")\n', None),
+        'not read: `subprocess.getoutput`': ('def _injected():\n    return subprocess.getoutput("git rerere")\n', None),
+        'not read: `import os.path` in a function, then `os.system`': ('def _injected():\n    import os.path\n    return os.system("git gc")\n', None),
+        'not read: a wrapper handed an expansion in shell code': ('def _injected():\n    return os.system("exec $GIT gc")\n', None),
+        'not read: a substitution in shell code': ('def _injected():\n    return os.system("echo $(git gc)")\n', None),
+        'not read: a backslash-newline in shell code': ('def _injected():\n    return subprocess.run(["sh", "-c", "g\\\\\\nit count-objects"])\n', None),
+        'not read: `sh -xc`': ('def _injected():\n    return subprocess.run(["sh", "-xc", "g\'\'it count-objects"])\n', None),
+        'not read: the words a shell gets from a name': ('def _injected(words):\n    return subprocess.run(["bash", *words])\n', None),
+        'not read: the words an interpreter gets from a name': ('def _injected(script):\n    return subprocess.run([sys.executable, script])\n', None),
+        "not read: Python's literal code": ('def _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess; subprocess.run([\'git\', \'fsck\'])"])\n', None),
+        "not read: Python's `-m`": ('def _injected():\n    return subprocess.run([sys.executable, "-m", "pip", "list"])\n', None),
+        "not read: Perl's literal code": ('def _injected():\n    return subprocess.run(["perl", "-e", \'system("git","count-objects")\'])\n', None),
+        "not read: cmd's literal code": ('def _injected():\n    return subprocess.run(["cmd", "/c", "g^it gc"])\n', None),
+        "not read: PowerShell's literal code": ('def _injected():\n    return subprocess.run(["powershell", "-Command", "& (\'g\'+\'it\') gc"])\n', None),
+        "not read: osascript's literal code": ('def _injected():\n    return subprocess.run(["osascript", "-e", \'do shell script "g" & "it gc"\'])\n', None),
+        'not read: `shell=` it cannot resolve': ('def _injected(flag):\n    return subprocess.run("git gc", shell=flag)\n', None),
+        'not read: `getattr(subprocess, "run")`': ('def _injected():\n    return getattr(subprocess, "run")(["git", "notes"])\n', None),
+        'not read: a call target from `getattr` with a name that is not literal': ('def _injected(name):\n    return getattr(subprocess, name)(["git", "gc"])\n', None),
+        'not read: `os.system.__call__`': ('def _injected():\n    return os.system.__call__("git gc")\n', None),
+        'not read: `subprocess.run.__call__`': ('def _injected():\n    return subprocess.run.__call__(("git", "count-objects"), capture_output=True)\n', None),
+        'not read: `subprocess.__dict__["run"]`': ('def _injected():\n    return subprocess.__dict__["run"](("git", "count-objects"), capture_output=True)\n', None),
+        'not read: `getattr(subprocess.run, "__call__")`': ('def _injected():\n    return getattr(subprocess.run, "__call__")(("git", "count-objects"), capture_output=True)\n', None),
+        'not read: `import_module("subprocess")`': ('from importlib import import_module\n\n\ndef _injected():\n    mod = import_module("subprocess")\n    return mod.run(("git", "count-objects"), capture_output=True)\n', None),
+        'not read: an API bound to a name': ('def _injected():\n    start = subprocess.Popen\n    return start(["git", "rerere"])\n', None),
+        'not read: an API handed to a function': ('def _injected(start):\n    return start(["git", "gc"])\n\n\ndef _injected_caller():\n    return _injected(subprocess.check_output)\n', None),
+        'not read: a callable handed in': ('import threading\n\n\ndef _injected():\n    return threading.Thread(target=subprocess.run, args=(["git", "gc"],)).start()\n', None),
+        'not read: an API kept in a dict': ('def _injected():\n    return {"run": subprocess.run}\n', None),
+        'not read: a process module handed on': ('def _injected():\n    return [subprocess]\n', None),
+        "not read: an event loop's `subprocess_exec`": ('async def _injected(loop, factory):\n    return await loop.subprocess_exec(factory, "git", "maintenance")\n', None),
+        'not read: `os.startfile`': ('def _injected():\n    return os.startfile("x.txt")\n', None),
+        'not read: `webbrowser.open`': ('import webbrowser\n\n\ndef _injected():\n    return webbrowser.open("x")\n', None),
+        'not read: `from subprocess import *`': ('from subprocess import *\n\n\ndef _injected():\n    return run(["git", "gc"])\n', None),
+        'not read: `exec`': ('def _injected():\n    exec("import subprocess")\n', None),
+        'not read: `__import__`': ('def _injected():\n    return __import__("subprocess").run(["git", "gc"])\n', None),
+    }
+    shut45_ = {}
+    for what_, (code_, want_) in closed45_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        shut45_[what_] = unclassified_(f_) == [want_[1]] if want_ else len(u_) > len(unread_)
+    check(f"FM-045 · Check A accepts a start only in the form the product writes: a process API called by its plain name, imported by any name — `subprocess`'s, `os.exec*`, "
+          f"`os.spawn*`, `os.posix_spawn*`, `asyncio`'s and `asyncio.subprocess`'s `create_subprocess_exec`, `pty.spawn` — with its argument list and every argument that can "
+          f"choose the program or a shell resolved in full, by keyword, by position or through `**`, is read and its git classified; any other reference to a process API or a "
+          f"process module, code handed to any shell or interpreter, a start through a wrapper, a program the system chooses, and an argument it cannot resolve in full are each "
+          f"named as not read (saw {shut45_})", all(shut45_.values()))
+    osa45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["osascript", "-e", f"'))
+    ns45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["notify-send", '))
+    der45_ = next(l_ for l_ in src_.splitlines() if l_.strip().startswith("run = subprocess.run(([sys.executable]"))
+    ind45_, tail45_ = der45_[:len(der45_) - len(der45_.lstrip())], "    return None\n\n\ndef post_notice"
+    copies45_ = {       # each exception admits its own sites and nothing else; the first ends when that code is made literal: each copy fails the check
+        "the osascript form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["osascript", "-e", f"return {value}"])\n',
+        "the PowerShell form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["powershell", "-NoProfile", "-Command", f"Write-Output {value}"])\n',
+        "the osascript form through `__call__` outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("osascript", "-e", f"return {value}"), capture_output=True)\n',
+        "the PowerShell form through `__call__` outside `notify_argv`": src_ + ('\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("powershell", "-Command", f"Write-Output {value}"), '
+                                                                               'capture_output=True)\n'),
+        "another program's code inside `notify_argv`": src_.replace(ns45_, 'return ["sh", "-c", f"echo {platform}"]', 1),
+        "a second branch handing code to osascript inside `notify_argv`": src_.replace(tail45_, '    if platform == "x":\n        return ["osascript", "-e", f"return {platform}"]\n' + tail45_, 1),
+        "Python code defining its own `notify_argv`": src_ + ('\n\ndef _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess\\ndef notify_argv(t):\\n'
+                                                           '    return subprocess.run([\'osascript\', \'-e\', f\'return {t}\'])\\n"])\n'),
+        "`notify_argv`'s osascript code made literal, the exception still named": src_.replace(osa45_, 'return ["osascript", "-e", "return 1"]', 1),
+        "the deriver's form outside `run_deriver`": src_ + ('\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n'
+                                                         '    return subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)])\n'),
+        "a third form inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run(["sh", str(exe)])\n' + der45_, 1),
+        "the deriver's form a second time inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run([str(exe)])\n' + der45_, 1),
+    }
+    ends45_ = {}
+    for what_, text_ in copies45_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(text_, encoding="utf-8")
+        f_, u_, _o, x_ = _git_starts(copy_.read_text(encoding="utf-8"))
+        ends45_[what_] = text_ != src_ and not (not unclassified_(f_) and not u_ and as_named_(x_))
+    check(f"FM-045 · Check A's two exceptions, the Owner's, each matched by its site and met once, admit nothing else: the osascript or PowerShell form outside `notify_argv`, "
+          f"directly or through `__call__`, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the deriver's form outside "
+          f"`run_deriver`, a third start inside it and its form a second time each fail the check; the first ends when `notify_argv`'s code is made literal, and the check then "
+          f"fails while the exception still names it (saw {ends45_})", all(ends45_.values()))
 
 
 def _signers_repo(base):
