@@ -1761,7 +1761,7 @@ _PROCESS_APIS = {
     "_winapi": {"CreateProcess": "unread"},
     "_posixsubprocess": {"fork_exec": "unread"},
 }
-# THE ONE EXCEPTION (the Owner's ruling of 2026-10-08): `notify_argv` hands code with parts that are not literal to osascript (`-e`) and to PowerShell (`-Command`). These two sites alone are admitted, each by the function, the program its branch starts and the flag, and each met once. The exception ends when that code is made literal: an entry no code meets fails the check until it is deleted
+# THE FIRST EXCEPTION (the Owner's ruling of 2026-10-08): `notify_argv` hands code with parts that are not literal to osascript (`-e`) and to PowerShell (`-Command`). These two sites alone are admitted, each by the function, the program its branch starts and the flag, and each met once. The exception ends when that code is made literal: an entry no code meets fails the check until it is deleted
 _EXCEPTION = frozenset({("notify_argv", "osascript", "-e"), ("notify_argv", "powershell", "-command")})
 # THE DERIVER'S EXCEPTION, permanent (the Owner's ruling of 2026-10-08): `run_deriver` starts the repository's own program, `derive` in the tracker folder —
 # directly, and on Windows as `[sys.executable, derive]` — by design, on an explicit run only: never in a hook's run (the Owner's ruling *No deriver in hooks*,
@@ -2015,7 +2015,7 @@ def _git_starts(src):
                     ("run_deriver", "python", "derive") if ast.unparse(prog_expr) == "sys.executable" and len(words) == 1 and the_deriver(words[0]) else None)
             if site:
                 excepted[site].add(id(call))
-                return others.append((line, f"{' '.join(site[1:])}: the repository's deriver, the exception"))
+                return others.append((line, f"{' '.join(site[1:])}: the repository's deriver, the deriver's exception"))
         prog = program(prog_expr) if prog_expr is not None and not isinstance(prog_expr, ast.Starred) else None
         if prog is None:
             return unread.append((line, f"a process whose program the reading does not resolve in full: {ast.unparse(prog_expr) if prog_expr is not None else '(none)'}"))
@@ -2033,7 +2033,7 @@ def _git_starts(src):
                 site = (top_function(words[i + 1]), who, whole(words[i]).lower())
                 if site in _EXCEPTION:
                     excepted[site].add(id(words[i + 1]))
-                    return others.append((line, f"{who}: {site[0]}'s code, the exception"))
+                    return others.append((line, f"{who}: {site[0]}'s code, the first exception"))
             if names <= _PYTHONS and words and not isinstance(words[0], ast.Starred) and program(words[0]) == {THIS_TOOL}:
                 return others.append((line, f"{who}: the tool's own file"))
             return unread.append((line, f"a start of {who}, a shell or an interpreter: {ast.unparse(call)[:80]}"))
@@ -2436,7 +2436,7 @@ with tempfile.TemporaryDirectory() as d:
         "a second branch handing code to osascript inside `notify_argv`": src_.replace(tail45_, '    if platform == "x":\n        return ["osascript", "-e", f"return {platform}"]\n' + tail45_, 1),
         "Python code defining its own `notify_argv`": src_ + ('\n\ndef _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess\\ndef notify_argv(t):\\n'
                                                            '    return subprocess.run([\'osascript\', \'-e\', f\'return {t}\'])\\n"])\n'),
-        "`notify_argv`'s osascript code made literal, the exception still named": src_.replace(osa45_, 'return ["osascript", "-e", "return 1"]', 1),
+        "`notify_argv`'s osascript code made literal, the first exception still named": src_.replace(osa45_, 'return ["osascript", "-e", "return 1"]', 1),
         "the deriver's form outside `run_deriver`": src_ + ('\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n'
                                                          '    return subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)])\n'),
         "a third form inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run(["sh", str(exe)])\n' + der45_, 1),
@@ -2450,7 +2450,7 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-045 · Check A's two exceptions, the Owner's, each matched by its site and met once, admit nothing else: the osascript or PowerShell form outside `notify_argv`, "
           f"directly or through `__call__`, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the deriver's form outside "
           f"`run_deriver`, a third start inside it and its form a second time each fail the check; the first ends when `notify_argv`'s code is made literal, and the check then "
-          f"fails while the exception still names it (saw {ends45_})", all(ends45_.values()))
+          f"fails while the first exception still names it (saw {ends45_})", all(ends45_.values()))
 
 
 def _signers_repo(base):
