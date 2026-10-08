@@ -7744,12 +7744,12 @@ def _bm_done(shape, t0, seen):
 
 
 # --- FM-045 · the board's reads fetch nothing — watched by git's own event trace, and by `.git` itself -----------------------------------------------------
-# A git read can start processes of its own, which the interpreter's audit hook never sees. So every board's run of the matrix — each one a hook starts, from
-# the hooks' copy, and each one by hand — is watched where git and the disk see it: git writes its trace2 events for the event, each process of a board's run
-# carries a mark in its session id, and `.git`'s objects and refs are read before the run and after it. The judgement: no git of a board's run starts a
-# process by itself — but the SSH signature check its `%G?` reads ask for —, and `.git`'s objects and refs are what they were before it. The matrix's own
-# helpers are wrapped here, never edited, so each of its blocks runs watched; and its shapes gain a blobless and a treeless clone, made here with filters
-# from an origin that allows them.
+# A git read can start processes of its own, which the interpreter's audit hook never sees. So every board's run of the matrix a hook starts, from the hooks'
+# copy, is watched where git and the disk see it: git writes its trace2 events for the event, and a board's run is every git one level below the git that
+# started its hook, started while the hook ran, with all below them (git's own session ids, `GIT_TRACE2_PARENT_SID`); and `.git`'s objects and refs are read
+# before the hook and after it. The judgement: no git of a board's run starts a process by itself — but the SSH signature check its `%G?` reads ask for —, and
+# `.git`'s objects and refs are what they were before it; for the board refreshed by hand, `.git`'s. The matrix's own helpers are wrapped here, never edited,
+# so each of its blocks runs watched; and its shapes gain a blobless and a treeless clone, made here with filters from an origin that allows them.
 _BW_HOOKS = ("post-checkout", "post-merge", "post-rewrite")       # the hooks that refresh the board
 _BW_VERIFY = ("find-principals", "verify", "check-novalidate")    # what `ssh-keygen -Y` is asked for git's `%G?`
 _BW_ASSERT = ("no git of the board's run starts a process by itself but the SSH signature check its `%G?` reads ask for, and `.git`'s objects and refs "
@@ -7787,7 +7787,7 @@ if __name__ == "__main__":                  # the watch's wrapper: one snapshot,
         f.write(json.dumps(dict(state(common), pid=pid, hook=hook, when=when, trace=os.environ.get("GIT_TRACE2_EVENT", ""))) + "\n")
 '''
 _bw_ns = {"__name__": "rv_snap"}; exec(compile(_BW_STATE_PY, "rv-snap.py", "exec"), _bw_ns); _bw_state = _bw_ns["state"]
-_BW_HAND = {}               # the board refreshed by hand in each matrix shape, watched: {the shape's folder: [a watch, …]}
+_BW_HAND = {}               # the board refreshed by hand in each matrix shape: {the shape's folder: [what changed in `.git`, …]}
 _bw_v = re.search(r"(\d+)\.(\d+)", subprocess.run(["git", "version"], capture_output=True, text=True, env=_ENV).stdout)
 _BW_NEW_GIT = bool(_bw_v) and (int(_bw_v.group(1)), int(_bw_v.group(2))) >= (2, 44)      # this machine's git keeps a read from fetching (`GIT_NO_LAZY_FETCH`)
 
@@ -7801,32 +7801,40 @@ def _bw_changed(before, after):
     return out_
 
 
-def _bw_trace(trace):
-    """From git's trace2 events at `trace`, the board's runs' own — each process whose session id carries the watch's mark, `rvboard`: (how many git processes
-    of theirs, how many SSH signature checks they started for `%G?`, every other process they started by themselves — as (the command that started it, its
-    first words) —, the commands they ran)."""
-    starts_, kids_ = {}, []
+def _bw_trace(trace, hooks=False):
+    """From git's trace2 events at `trace`, a board's run's own processes: with `hooks`, the gits each hook that refreshes the board ran — one level below the
+    git that started the hook, started between that git's `child_start` and `child_exit` for it — else every git the trace holds (a run started with the trace
+    set); and every process below them. (how many gits of theirs, how many SSH signature checks they started for `%G?`, every other process they started by
+    themselves — as (the command that started it, its first words) —, the commands they ran)."""
+    evs_ = []
     for l_ in (trace.read_text(encoding="utf-8", errors="replace").splitlines() if trace.is_file() else []):
         try:
-            e_ = json.loads(l_)
+            evs_.append(json.loads(l_))
         except ValueError:
             continue
-        sid_ = str(e_.get("sid", ""))
-        if "rvboard" not in sid_:
-            continue
-        if e_.get("event") == "start":
-            starts_[sid_] = [str(a_) for a_ in e_.get("argv") or []]
-        elif e_.get("event") == "child_start":
-            kids_.append((sid_, [str(a_) for a_ in e_.get("argv") or []]))
+    starts_ = {str(e_["sid"]): (str(e_.get("time", "")), [str(a_) for a_ in e_.get("argv") or []]) for e_ in evs_ if e_.get("event") == "start" and "sid" in e_}
+    tops_ = set(starts_)
+    if hooks:
+        opened_, spans_ = {}, []
+        for e_ in evs_:
+            k_ = (e_.get("sid"), e_.get("child_id"))
+            if e_.get("event") == "child_start" and e_.get("child_class") == "hook" and e_.get("hook_name") in _BW_HOOKS:
+                opened_[k_] = e_
+            elif e_.get("event") == "child_exit" and k_ in opened_:
+                o_ = opened_.pop(k_)
+                spans_.append((str(o_.get("sid")), str(o_.get("time", "")), str(e_.get("time", ""))))
+        tops_ = {s_ for s_, (t_, _a) in starts_.items() if any(s_.rpartition("/")[0] == p_ and t0_ < t_ < t1_ for p_, t0_, t1_ in spans_)}
+    board_ = {s_ for s_ in starts_ if s_ in tops_ or any(s_.startswith(b_ + "/") for b_ in tops_)}
+    kids_ = [(str(e_["sid"]), [str(a_) for a_ in e_.get("argv") or []]) for e_ in evs_ if e_.get("event") == "child_start" and str(e_.get("sid")) in board_]
     checks_, other_ = 0, []
     for sid_, argv_ in kids_:
-        by_ = starts_.get(sid_, [])
+        by_ = starts_.get(sid_, ("", []))[1]
         if (argv_[:1] and re.split(r"[\\/]", argv_[0])[-1].lower() in ("ssh-keygen", "ssh-keygen.exe") and argv_[1:2] == ["-Y"] and argv_[2:3]
                 and argv_[2] in _BW_VERIFY and _git_command(by_) == "log" and any("%G" in a_ for a_ in by_)):
             checks_ += 1
         else:
             other_.append((_git_command(by_) or "?", argv_[:4]))
-    return len(starts_), checks_, other_, sorted({_git_command(a_) for a_ in starts_.values()} - {""})
+    return len(board_), checks_, other_, sorted({_git_command(starts_[s_][1]) for s_ in board_} - {""})
 
 
 def _bw_runs(log, trace):
@@ -7847,7 +7855,7 @@ def _bw_runs(log, trace):
 
 def _bw_watch(trace, log):
     """One event's watch: the board's runs its hooks started, and what their gits started by themselves."""
-    gits_, checks_, other_, commands_ = _bw_trace(trace)
+    gits_, checks_, other_, commands_ = _bw_trace(trace, hooks=True)
     return {"runs": _bw_runs(log, trace), "gits": gits_, "checks": checks_, "other": other_, "commands": commands_}
 
 
@@ -7858,7 +7866,7 @@ def _bw_ok(w):
 
 def _bw_saw(w):
     changed_ = [c_ for _h, c_ in w["runs"] if c_]
-    return (f"{len(w['runs'])} board's run(s), {w['gits']} git process(es) of theirs, {w['checks']} SSH check(s)"
+    return (f"{len(w['runs'])} board's run(s), {'untraced:' if w['gits'] is None else w['gits']} git process(es) of theirs, {w['checks']} SSH check(s)"
             + (f", {len(w['other'])} process(es) started by themselves {w['other'][:3]}" if w["other"] else "")
             + (f", .git changed by {len(changed_)} run(s), {sum(map(len, changed_))} path(s): {changed_[0][:4]}" if changed_ else ""))
 
@@ -7873,7 +7881,7 @@ def _bw_paths(at):
 def _bw_wrap(base, at, stub=None):
     """Wrap each hook of the checkout `at` that refreshes the board in the watch: the hook itself, moved into `rv-watched/` with the folder's other files (a
     runner reads its commands beside it), run by `sh` between two snapshots of `.git` (`_bw_state`, logged to `base/rv-watch.jsonl` with the trace git
-    writes for the event), every process of its run marked in git's trace session id (`rvboard<pid>`); `stub`: that folder first on the run's PATH. The log."""
+    writes for the event); `stub`: that folder first on the run's PATH. The log."""
     hooks_, common_ = _bw_paths(at)
     snap_, log_, held_ = base / "rv-snap.py", base / "rv-watch.jsonl", hooks_ / "rv-watched"
     snap_.write_text(_BW_STATE_PY, encoding="utf-8")
@@ -7888,8 +7896,8 @@ def _bw_wrap(base, at, stub=None):
         if (held_ / h_).is_file():
             snap_line_ = f"{q_(sys.executable)} {q_(snap_)} {q_(common_)} {q_(log_)} $$ {h_}"
             (hooks_ / h_).write_bytes((
-                "#!/bin/sh\n# the suite's watch of the board's run this hook starts (FM-045): `.git` before and after it, its processes marked in git's trace\n"
-                f"{snap_line_} before\n" + 'GIT_TRACE2_PARENT_SID="${GIT_TRACE2_PARENT_SID}/rvboard$$" ' + (f'PATH="{Path(stub).as_posix()}:$PATH" ' if stub else "")
+                "#!/bin/sh\n# the suite's watch of the board's run this hook starts (FM-045): `.git` before it and after it\n"
+                f"{snap_line_} before\n" + (f'PATH="{Path(stub).as_posix()}:$PATH" ' if stub else "")
                 + f'sh {q_(held_ / h_)} "$@"\ncode=$?\n{snap_line_} after\nexit $code\n').encode("utf-8"))
             (hooks_ / h_).chmod(0o755)
     return log_
@@ -7897,10 +7905,10 @@ def _bw_wrap(base, at, stub=None):
 
 def _bw_program(base, at, tag, *a, path=None):
     """The tool under test as a program at the checkout `at` (`_tool_run`) — the board's run, or the Owner's digest — watched as a hook's board's run is: git's
-    trace for it (`trace-<tag>.json`), its processes marked, `.git` before and after it; `path`: the PATH it runs with. (exit, stdout, stderr, the watch)"""
+    trace for it (`trace-<tag>.json`), every git in it its own, `.git` before and after it; `path`: the PATH it runs with. (exit, stdout, stderr, the watch)"""
     _h, common_ = _bw_paths(at)
     trace_, before_ = base / f"trace-{tag}.json", _bw_state(common_)
-    c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, *a, env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_), GIT_TRACE2_PARENT_SID=f"rvboard-{tag}", **({"PATH": path} if path else {})))
+    c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, *a, env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_), **({"PATH": path} if path else {})))
     gits_, checks_, other_, commands_ = _bw_trace(trace_)
     return c_, o_, e_, {"runs": [(tag, _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_, "other": other_, "commands": commands_}
 
@@ -7933,42 +7941,53 @@ def _bw_partial(base, root, filt, ahead=False):
     return part_
 
 
-_bm_events_unwatched, _bm_done_unwatched = _bm_events, _bm_done
+_bm_events_unwatched, _bm_done_unwatched, _bm_refresh_unwatched = _bm_events, _bm_done, _bm_refresh
 
 
-def _bm_refresh(at):
-    """The board refreshed by hand as a hook refreshes it — the copy of the tool in the git directory, `--html-only` — watched as a hook's run is: git's trace
-    for it, its processes marked, `.git` before and after it; the watch kept for its shape's check (`_BW_HAND`)."""
+def _bm_refresh(at, *a, **k):
+    """The board refreshed by hand as a hook refreshes it (`_bm_refresh_unwatched`), `.git` read before it and after it — and, where that run writes git's trace
+    (`trace-by-hand-<the checkout's name>.json` beside it), every git in it watched: what it saw is kept for its shape's check (`_BW_HAND`)."""
     _h, common_ = _bw_paths(at)
-    trace_ = at.parent / f"trace-by-hand-{len(_BW_HAND.get(at.parent, []))}.json"
+    trace_ = at.parent / f"trace-by-hand-{at.name}.json"; trace_.unlink(missing_ok=True)
     before_ = _bw_state(common_)
-    subprocess.run([sys.executable, "-I", str(common_ / fm.COPY_DIR / "shoalmark.py"), "--root", str(at), "--html-only"], cwd=str(at), capture_output=True,
-                   env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_), GIT_TRACE2_PARENT_SID="rvboard-by-hand"))
-    gits_, checks_, other_, commands_ = _bw_trace(trace_)
+    out_ = _bm_refresh_unwatched(at, *a, **k)
+    gits_, checks_, other_, commands_ = _bw_trace(trace_) if trace_.is_file() else (None, 0, [], [])
     _BW_HAND.setdefault(at.parent, []).append({"runs": [("by hand", _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_,
                                                "other": other_, "commands": commands_})
+    return out_
 
 
-def _bm_events(base, at, home, also=(), drop=False):
-    """The matrix's events (`_bm_events_unwatched`), every board's run their hooks start watched (`_bw_wrap`): each event's watch rides with what it saw."""
+def _bm_events(base, at, home, *a, **k):
+    """The matrix's events (`_bm_events_unwatched`), every board's run their hooks start watched (`_bw_wrap`): the watch of each event a hook fired rides with
+    what it saw."""
     log_ = _bw_wrap(base, at)
-    seen_ = _bm_events_unwatched(base, at, home, also, drop)
+    seen_ = _bm_events_unwatched(base, at, home, *a, **k)
     for ev_, g_ in seen_.items():
-        g_["watch"], g_["base"] = _bw_watch(base / f"trace-{ev_}.json", log_), base
+        g_["base"] = base
+        if g_.get("hook") and (base / f"trace-{ev_}.json").is_file():
+            g_["watch"] = _bw_watch(base / f"trace-{ev_}.json", log_)
     return seen_
 
 
-def _bm_done(shape, t0, seen):
+def _bm_done(shape, t0, seen, *a, **k):
     """The matrix's rows for a shape (`_bm_done_unwatched`) — and the watch's own checks: each event's board's runs, and the board refreshed by hand."""
-    rows_ = _bm_done_unwatched(shape, t0, seen)
+    rows_ = _bm_done_unwatched(shape, t0, seen, *a, **k)
     for ev_, g_ in seen.items():
         if g_.get("watch") is not None:
             check(f"FM-045 · the board matrix, watched by git's own trace · {shape} · {_BM_SAID[ev_]}: {_BW_ASSERT} (saw {_bw_saw(g_['watch'])})", _bw_ok(g_["watch"]))
     hand_ = _BW_HAND.pop(next((g_["base"] for g_ in seen.values() if "base" in g_), None), [])
-    if hand_:
-        check(f"FM-045 · the board matrix, watched by git's own trace · {shape} · the board refreshed by hand, as a hook refreshes it ({len(hand_)} run(s)): "
-              f"{_BW_ASSERT} (saw {[_bw_saw(w_) for w_ in hand_ if not _bw_ok(w_)][:2] or 'each as asserted'})", all(_bw_ok(w_) for w_ in hand_))
+    traced_ = [w_ for w_ in hand_ if w_["gits"] is not None]
+    if hand_:                                               # each run by hand: `.git` as it was; and where it was traced, its gits judged as a hook's run's are
+        check(f"FM-045 · the board matrix, watched by git's own trace · {shape} · the board refreshed by hand, as a hook refreshes it ({len(hand_)} run(s), "
+              f"{len(traced_)} traced): `.git`'s objects and refs are what they were before it, and where git's trace was written for it, no git of the run starts "
+              f"a process by itself but the SSH signature check its `%G?` reads ask for (saw {[_bw_saw(w_) for w_ in hand_ if not _bw_hand_ok(w_)][:2] or 'each as asserted'})",
+              all(_bw_hand_ok(w_) for w_ in hand_))
     return rows_
+
+
+def _bw_hand_ok(w):
+    """A run by hand's judgement: `.git` as it was; where it was traced, gits of its own, and none of them started a process by itself but the SSH check."""
+    return not any(c_ for _h, c_ in w["runs"]) and (w["gits"] is None or (w["gits"] > 0 and not w["other"]))
 
 
 # the board's two reads of the clone itself — whether it is partial, from its configuration, and git's version, in a partial clone — as the tool sends them
@@ -8009,7 +8028,7 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
               f"whether the clone is partial, from its configuration (saw exit {c_}, {line_[:1]}, {_bw_saw(w_)}, commands {w_['commands']})",
               c_ == 0 and o_.startswith("board: file:") and "Traceback" not in o_ + e_ and len(line_) == 1 and "fetching what the clone lacks" in line_[0]
               and _bw_ok(w_) and {"config", "version"} <= set(w_["commands"]))
-        c2_, o2_, e2_ = run(part_, "--html-only", git_env={"GIT_TRACE2_EVENT": str(base_ / "trace-fresh-in.json"), "GIT_TRACE2_PARENT_SID": "rvboard-fresh-in"})
+        c2_, o2_, e2_ = run(part_, "--html-only", git_env={"GIT_TRACE2_EVENT": str(base_ / "trace-fresh-in.json")})
         unread_, page_ = list(getattr(fm, "BOARD_UNREAD", [])), (_bm_board(part_) or b"").decode("utf-8", "replace")
         g2_, k2_, x2_, _c = _bw_trace(base_ / "trace-fresh-in.json")
         check(f"FM-045 · the board's run in process, in {shape_} that lacks what it reads: what it could not read is named — what is on its way on "
@@ -8020,7 +8039,7 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
               and not re.search(_bm_way(part_, "AP-507")[1], page_) and "version control names no commit for this line" not in page_ and g2_ > 0 and not x2_)
         b3_, t3_ = _bw_state(common_), base_ / "trace-control.json"
         subprocess.run(["git", "-C", str(part_), "cat-file", "-p", "refs/remotes/origin/cold:cold.txt"], capture_output=True,
-                       env=dict(_ENV, GIT_TRACE2_EVENT=str(t3_), GIT_TRACE2_PARENT_SID="rvboard-control"))
+                       env=dict(_ENV, GIT_TRACE2_EVENT=str(t3_)))
         g3_, k3_, x3_, _c = _bw_trace(t3_); ch3_ = _bw_changed(b3_, _bw_state(common_))
         check(f"FM-045 · the watch's control, in {shape_}: a read made with git's own default — as the board's were made before — fetches what the clone lacks; "
               f"the watch finds the processes it started by itself and the objects it wrote, and its judgement fails (saw {x3_[:2]}, .git changed {ch3_[:3]})",
@@ -8044,7 +8063,8 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
         t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree", answers=True); _BW_HAND.pop(base_, None)
         part_ = _bw_partial(base_, root_, filt_)
         for said_, ok_, saw_ in _bm_done(shape_, t0_, _bm_events(base_, part_, "main")):
-            check(f"FM-045 · the board matrix · {shape_} of its origin, made with a filter — its answer on origin not in it · {said_}: {_BM_ASSERT} (saw {saw_})", ok_)
+            check(f"FM-045 · the board matrix · {shape_} of its origin, made with a filter — its answer on origin not in it · "
+                  + (said_ if ": " in said_ else f"{said_}: {_BM_ASSERT}") + f" (saw {saw_})", ok_)
         rm_git(part_); rm_git(root_)
 
 # where git is older than 2.44 — a stub that says 2.43 and, as such a git, does not know the switch, everything else the real git's — in a blobless clone
