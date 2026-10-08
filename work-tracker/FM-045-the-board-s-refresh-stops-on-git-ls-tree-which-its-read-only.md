@@ -29,10 +29,16 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   written, the answer on its way (`b2b8bdb`). Beside v0.19.1 it fails.
 - **Every git command classified** (`e44f73e`): `NEVER_IN_BOARD_RUN`, beside `READ_ONLY_GIT`, names the fourteen other git
   commands the tool starts, each with why the board's run never starts it. A check reads the tool's source with `ast`
-  and fails on an unclassified command or an unread form. It reads git by any path, as `git.exe` and in any case, and
-  through command wrappers; git started through a wrapper must be a command named never started (`de05c9c`). Its runtime
-  half watches each `--html-only` the suite runs in process, each of this tool's own file it runs as a program in its own
-  environment, and every board's run of the board matrix through git's trace.
+  and fails on an unclassified command or an unread form. It reads git by any path, as `git.exe` and in any case
+  (`de05c9c`). It accepts a start only in the form the product writes (`42fbd86`): a process API called by its plain
+  name, its argument list and every argument that can choose the program or a shell resolved in full. Any other
+  reference to a process API or a process module, code handed to any shell or interpreter, and a start through a
+  command wrapper are not read and fail it. Two exceptions, the Owner's, each matched by its site and each site met
+  once: `notify_argv`'s code handed to osascript and to PowerShell, which ends when that code is made literal; and the
+  repository's deriver, which `run_deriver` starts directly and on Windows by Python, a permanent one — started on an
+  explicit run only, never in a hook's run or the board's run. Its runtime half watches each `--html-only` the suite
+  runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of
+  the board matrix through git's trace.
 - **The board matrix** (`bdda4ad`, `df63f68`, `7823a7d`): real merges, checkouts and rebases fire the real hooks, and an
   `--answer` its rebuild, in eight git shapes; on Subversion the board's run follows `svn update` and `svn switch`. Its
   control takes each event's own hook out. Every board's run of it — the hooks', the runner's, `--answer`'s and by hand —
@@ -87,3 +93,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | Built by `b3bdb000/implementer-115` on `fm/045-rv-2780-check-a-reads-wrapped-git`: `de05c9c` — Check A reads the program as `read_only_git` does (any path, `git.exe`, any case); reads through command wrappers (`env`, `env -i`, `VAR=value`, nested: `nice`, `timeout` and the rest of its list), and git started through one must be a command named never started; names as not read what it cannot resolve — an argv[0] or a wrapper's word it cannot see, git in a shell's code or in an unknown wrapper's words, code handed to a shell it cannot see, an argv list changed in place, through a helper, at module level or by an alias. A control for each form; the runtime half holds every program a board's run starts to be git itself. The tool's own reading is unchanged: 29 commands, nothing unread. RV-2780 (P2), RV-2770 and RV-2771 (P3). |
 | 2026-10-08 | **Every board's run of the matrix watched** by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-rv-2781-every-board-run-watched-3`, from `9a7ed43`, in `test_shoalmark.py` only: `f9cd059` — through git's trace (`GIT_TRACE2_EVENT`), the runs the hooks' copy makes for `post-checkout`, `post-merge` and `post-rewrite`, the lefthook-style runner's, `--answer`'s and the runs by hand: each event's own run seen, every git it starts a read `read_only_git` admits, `ls-tree` counted, all recorded for the runtime half; `65b6875` — the watch's control; `2490ebc` — the runtime half's name says exactly what it watches. |
 | 2026-10-08 | Built by `b3bdb000/implementer-124`: `f781491` — the landing names v0.19.2 in the Owner's words; the CHANGELOG's headline, Fixes line and CI line; `d76743a` — the Fixes line says only that `git ls-tree` is on the read-only git; the tracker's day and CI systems. |
+| 2026-10-08 | Built by `b3bdb000/implementer-115`: `42fbd86` — Check A accepts a start only in the form the product writes: a process API called by its plain name, its argument list and every argument that can choose the program or a shell resolved in full; any other reference to a process API or module, code handed to any shell or interpreter and a start through a wrapper are not read. Two exceptions, each matched by its site and met once: `notify_argv`'s code handed to osascript and to PowerShell, ending when that code is made literal, and the repository's deriver, permanent. A control for each kind; the tool's own reading: 29 commands, nothing unread. |
