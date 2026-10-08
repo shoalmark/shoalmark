@@ -3,7 +3,9 @@ id: FM-045
 status: Proposed
 considered: FM-030, FM-037
 tags: bug
-next: wait
+next: build
+triaged: 2026-10-08
+tier: P0
 hook: "Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and the board goes stale."
 ---
 
