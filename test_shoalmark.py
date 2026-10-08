@@ -1778,7 +1778,7 @@ def _git_starts(src):
     of a shell, an interpreter or a command wrapper, but at the two exceptions, matched by their sites, and Python run on the tool's own file (`__file__`).
     Followed: a literal `["git", …]` argv, and one bound to a name apart from its call (`args = [...] if … else [...]`, `for cmd in ([...], …)`), kept as it
     was bound; every callable that hands its own `*a` to git where the command goes — `git_out`, a local `git = lambda *a: …`, a lambda or a name handed to
-    a function whose parameter then starts git (`default_trunk(git)`) — and every call of one, whose keywords resolve its own `**k`; git's own options before
+    a function whose parameter then starts git (`default_trunk(git)`) — and every call of one; each call of a forwarding helper read as its own start, with that caller's own keywords; git's own options before
     the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
     any case. A word of any other program that names git is not read."""
     tree = ast.parse(src)
@@ -2047,20 +2047,24 @@ def _git_starts(src):
                 return unread.append((line, f"git named in the argv of {who}: {ast.unparse(w)}"))
         return others.append((line, who))
 
-    def keywords(call):
-        """{keyword: [every value it can take]} of a start, its `**` expansions resolved in full — a dict literal, a name bound to one and kept, or a
-        callable's own `**k`, read from every call of it, in any order: the callable called and handed nowhere else, each call filling it by keyword, and
-        `**k` used in the callable only as a process start's own `**` expansion. None where one is not."""
-        out = collections.defaultdict(list)
-        for k in call.keywords:
-            if k.arg:
-                out[k.arg].append(k.value)
-                continue
-            v = k.value
+    def dict_of(node):
+        """{keyword: value} of a dict literal whose every key is a literal string, else None."""
+        if isinstance(node, ast.Dict) and all(isinstance(key, ast.Constant) and isinstance(key.value, str) for key in node.keys):
+            return {key.value: val for key, val in zip(node.keys, node.values)}
+        return None
+
+    def calls_of(call):
+        """Each call a start stands for, as its own keywords — the start's own, each `**` expansion resolved: a dict literal, a name bound to one and kept,
+        or a callable's own `**k`, filled by one call of that callable at a time. Each call of a forwarding helper is read as its own start, with that
+        caller's own arguments. A list of {keyword: value}, or of why one call's keywords cannot be resolved; None where the start's own cannot be: a `**k`
+        of a callable called other than directly, or used in it other than as a process start's own `**` expansion."""
+        out = [{k.arg: k.value for k in call.keywords if k.arg}]
+        for k in (k for k in call.keywords if not k.arg):
+            v, alts = k.value, None
             if isinstance(v, ast.Name):
                 bs = bindings(v)
-                if len(bs) == 1 and bs[0][0] == "value" and isinstance(bs[0][1], ast.Dict) and kept(v):
-                    v = bs[0][1]
+                if len(bs) == 1 and bs[0][0] == "value" and dict_of(bs[0][1]) is not None and kept(v):
+                    alts = [dict_of(bs[0][1])]
                 elif len(bs) == 1 and bs[0][0] == "param" and bs[0][1].args.kwarg is not None and bs[0][1].args.kwarg.arg == v.id:
                     fn = bs[0][1]
                     refs = [n for n in every if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and fn in target(n)]
@@ -2069,44 +2073,52 @@ def _git_starts(src):
                     if any(not (isinstance(parent.get(n), ast.keyword) and parent[n].arg is None and parent[n].value is n
                                 and any(parent.get(parent[n]) is c for c, _k in starts)) for n in loads[v.id] if bindings(n) == bs):
                         return None             # `**k` changed, read or handed on in the callable: its content is not established
-                    for n in refs:
-                        for kk in parent[n].keywords:
-                            if not kk.arg:
-                                return None
-                            out[kk.arg].append(kk.value)
-                    continue
-                else:
-                    return None
-            if isinstance(v, ast.Dict) and all(isinstance(key, ast.Constant) and isinstance(key.value, str) for key in v.keys):
-                for key, val in zip(v.keys, v.values):
-                    out[key.value].append(val)
-                continue
-            return None
+                    alts = [{kk.arg: kk.value for kk in parent[n].keywords} if all(kk.arg for kk in parent[n].keywords)
+                            else f"a call at line {n.lineno} whose keywords the reading cannot see: {ast.unparse(parent[n])[:80]}" for n in refs]
+            elif dict_of(v) is not None:
+                alts = [dict_of(v)]
+            if alts is None:
+                return None
+            out = [base if isinstance(base, str) else alt if isinstance(alt, str) else f"a keyword given twice: {sorted(set(base) & set(alt))}"
+                   if set(base) & set(alt) else {**base, **alt} for base in out for alt in alts]
         return out
 
     def read_call(call, kind):
-        """One start, by its API's kind: its program, every argument that can choose the program or a shell, and its words."""
+        """One start, by its API's kind: for each call it stands for (`calls_of`), its program — its `executable` where one is given, else its argv[0] —
+        every other argument that can choose the program or a shell, and its words. What cannot be resolved for one call is not read, for that call."""
         scope, args = scope_of(call), call.args
         if kind == "unread":
             return unread.append((call.lineno, f"a start whose program the system chooses, or a private API: {ast.unparse(call.func)}"))
         if kind == "shell":
             return unread.append((call.lineno, f"code handed to a shell: {ast.unparse(call)[:80]}"))
-        kw = keywords(call)
-        if kw is None:
+        each = calls_of(call)
+        if each is None:
             return unread.append((call.lineno, f"a `**` expansion the reading does not resolve in full: {ast.unparse(call)[:80]}"))
         if any(isinstance(a, ast.Starred) for a in (args if kind in ("argv", "exec") else args[:int(kind[1]) + 2])):
             return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
-        shells = kw.get("shell", []) + (args[8:9] if kind == "argv" else [])
+        for kw in each:
+            if isinstance(kw, str):
+                unread.append((call.lineno, kw))
+            else:
+                read_one(call, kind, kw, scope, args)
+
+    def read_one(call, kind, kw, scope, args):
+        """One call of a start, with its own keywords `kw`."""
+        none = lambda v: isinstance(v, ast.Constant) and v.value is None
+        shells = ([kw["shell"]] if "shell" in kw else []) + (args[8:9] if kind == "argv" else [])
         if any(not (isinstance(v, ast.Constant) and v.value in (False, None, 0)) for v in shells):
             return unread.append((call.lineno, f"a start with `shell` set, or set by a word the reading does not resolve: {ast.unparse(call)[:80]}"))
-        exes = [v for v in kw.get("executable", []) + (args[2:3] if kind == "argv" else []) if not (isinstance(v, ast.Constant) and v.value is None)]
+        exes = ([kw["executable"]] if "executable" in kw else []) + (args[2:3] if kind == "argv" else [])
+        if len(exes) > 1:
+            return unread.append((call.lineno, f"a start given its `executable` twice: {ast.unparse(call)[:80]}"))
+        exe = exes[0] if exes and not none(exes[0]) else None
         if kind in ("argv", "exec"):
             if kind == "argv":
-                argvs = args[:1] + kw.get("args", []) + kw.get("argv", [])       # every value it can take, from every call
-                if not argvs:
-                    return unread.append((call.lineno, f"a start with no argv the reading can see: {ast.unparse(call)[:80]}"))
-                parts = [[[a]] if whole(a) is not None and not re.search(r"\s", whole(a)) else argv_lists(a) for a in argvs]
-                lists = None if None in parts else [x for p in parts for x in p]
+                argvs = args[:1] + [kw[k] for k in ("args", "argv") if k in kw]
+                if len(argvs) != 1:
+                    return unread.append((call.lineno, f"a start given {'no argv' if not argvs else 'its argv twice'}: {ast.unparse(call)[:80]}"))
+                a = argvs[0]
+                lists = [[a]] if whole(a) is not None and not re.search(r"\s", whole(a)) else argv_lists(a)
             else:
                 lists = [list(args)] if args and "program" not in kw else None
             if not lists:
@@ -2114,8 +2126,8 @@ def _git_starts(src):
             for elts in lists:
                 if not elts:
                     unread.append((call.lineno, "a process started with an empty argv"))
-                for prog in (exes or [elts[0]] if elts else []):
-                    read_start(prog, list(elts[1:]), call, scope)
+                else:
+                    read_start(exe if exe is not None else elts[0], list(elts[1:]), call, scope)
             return
         at = int(kind[1])
         if len(args) <= at + (1 if kind[0] == "v" else 0):
@@ -2426,6 +2438,14 @@ with tempfile.TemporaryDirectory() as d:
         "a helper's forwarded argv, a tuple, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("echo", "hello"))\n    return _injected_helper(args=("git", "gc"))\n', ('unclassified', 'gc')),
         "a helper's forwarded argv, a tuple, read from every call — git's call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"))\n    return _injected_helper(args=("echo", "hello"))\n', ('unclassified', 'gc')),
         "a helper's forwarded `executable`, read from every call": ('def _injected_helper(**k):\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    _injected_helper(capture_output=True)\n    return _injected_helper(executable="git")\n', ('unclassified', 'count-objects')),
+        'an executable given by one call and omitted by another, a list, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["git", "gc"])\n', ('unclassified', 'gc')),
+        'an executable given by one call and omitted by another, a list, the omitted first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"])\n    return _injected_helper(args=["true"], executable="/bin/true")\n', ('unclassified', 'gc')),
+        'an executable given by one call and omitted by another, a tuple, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("true",), executable="/bin/true")\n    return _injected_helper(args=("git", "gc"))\n', ('unclassified', 'gc')),
+        'an executable given by one call and omitted by another, a tuple, the omitted first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"))\n    return _injected_helper(args=("true",), executable="/bin/true")\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a list, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["git", "gc"], executable=None)\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a list, the `None` first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"], executable=None)\n    return _injected_helper(args=["true"], executable="/bin/true")\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a tuple, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("true",), executable="/bin/true")\n    return _injected_helper(args=("git", "gc"), executable=None)\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a tuple, the `None` first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"), executable=None)\n    return _injected_helper(args=("true",), executable="/bin/true")\n', ('unclassified', 'gc')),
         "not read: a helper's forwarded options, a default set in it first": ('def _injected_helper(**k):\n    k.setdefault("executable", "git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
         "not read: a helper's forwarded options, updated in it first": ('def _injected_helper(**k):\n    k.update(executable="git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
         "not read: a helper's forwarded options, written in it first": ('def _injected_helper(**k):\n    k["args"] = ["git", "gc"]\n    return subprocess.run(**k)\n\n\ndef _injected():\n    return _injected_helper(args=["echo", "hello"])\n', None),
@@ -2446,8 +2466,8 @@ with tempfile.TemporaryDirectory() as d:
         shut45_[what_] = unclassified_(f_) == [want_[1]] if want_ else len(u_) > len(unread_)
     check(f"FM-045 · Check A accepts a start only in the form the product writes: a process API called by its plain name, imported by any name — `subprocess`'s, `os.exec*`, "
           f"`os.spawn*`, `os.posix_spawn*`, `asyncio`'s and `asyncio.subprocess`'s `create_subprocess_exec`, `pty.spawn` — with its argument list and every argument that can "
-          f"choose the program or a shell resolved in full, by keyword, by position or through `**` — a helper's forwarded options and argv read from every call of it, in any "
-          f"order, list or tuple — is read and its git classified; forwarded options changed in the helper, any other reference to a process API or a "
+          f"choose the program or a shell resolved in full, by keyword, by position or through `**` — each call of a forwarding helper read as its own start, with that caller's own "
+          f"arguments, in any order, list or tuple — is read and its git classified; forwarded options changed in the helper, any other reference to a process API or a "
           f"process module, code handed to any shell or interpreter, a start through a wrapper, a program the system chooses, and an argument it cannot resolve in full are each "
           f"named as not read (saw {shut45_})", all(shut45_.values()))
     osa45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["osascript", "-e", f"'))
@@ -2472,6 +2492,9 @@ with tempfile.TemporaryDirectory() as d:
         'the osascript form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
         'the PowerShell form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
         "the deriver's form through a helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
+        'the osascript form through a forwarding helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
+        'the PowerShell form through a forwarding helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
+        "the deriver's form through a forwarding helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
     }
     ends45_ = {}
     for what_, text_ in copies45_.items():
@@ -2479,7 +2502,7 @@ with tempfile.TemporaryDirectory() as d:
         f_, u_, _o, x_ = _git_starts(copy_.read_text(encoding="utf-8"))
         ends45_[what_] = text_ != src_ and not (not unclassified_(f_) and not u_ and as_named_(x_))
     check(f"FM-045 · Check A's two exceptions, the Owner's, each matched by its site and met once, admit nothing else: the osascript or PowerShell form outside `notify_argv`, "
-          f"directly, through `__call__` or through a helper, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the "
+          f"directly, through `__call__` or through a helper, a forwarding one too, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the "
           f"deriver's form outside `run_deriver`, directly or through a helper, a third start inside it and its form a second time each fail the check; the first ends when `notify_argv`'s code is made literal, and the check then "
           f"fails while the first exception still names it (saw {ends45_})", all(ends45_.values()))
 
