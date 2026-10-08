@@ -7788,6 +7788,8 @@ if __name__ == "__main__":                  # the watch's wrapper: one snapshot,
 '''
 _bw_ns = {"__name__": "rv_snap"}; exec(compile(_BW_STATE_PY, "rv-snap.py", "exec"), _bw_ns); _bw_state = _bw_ns["state"]
 _BW_HAND = {}               # the board refreshed by hand in each matrix shape, watched: {the shape's folder: [a watch, …]}
+_bw_v = re.search(r"(\d+)\.(\d+)", subprocess.run(["git", "version"], capture_output=True, text=True, env=_ENV).stdout)
+_BW_NEW_GIT = bool(_bw_v) and (int(_bw_v.group(1)), int(_bw_v.group(2))) >= (2, 44)      # this machine's git keeps a read from fetching (`GIT_NO_LAZY_FETCH`)
 
 
 def _bw_changed(before, after):
@@ -7857,7 +7859,8 @@ def _bw_ok(w):
 def _bw_saw(w):
     changed_ = [c_ for _h, c_ in w["runs"] if c_]
     return (f"{len(w['runs'])} board's run(s), {w['gits']} git process(es) of theirs, {w['checks']} SSH check(s)"
-            + (f", started by themselves {w['other'][:3]}" if w["other"] else "") + (f", .git changed {changed_[0][:4]}" if changed_ else ""))
+            + (f", {len(w['other'])} process(es) started by themselves {w['other'][:3]}" if w["other"] else "")
+            + (f", .git changed by {len(changed_)} run(s), {sum(map(len, changed_))} path(s): {changed_[0][:4]}" if changed_ else ""))
 
 
 def _bw_paths(at):
@@ -7905,8 +7908,9 @@ def _bw_program(base, at, tag, *a, path=None):
 def _bw_partial(base, root, filt, ahead=False):
     """A partial clone of the matrix's origin, made with `--filter=<filt>` over `file://` from an origin that allows filters (`uploadpack.allowFilter`): the
     matrix's branches pushed there first, with `cold`, a branch whose file no reader asks for; this clone's own branches cut from origin's, the Owner's key and
-    signers file set as the matrix sets them, the hooks installed from the tool under test and the board refreshed. `ahead`: origin's `main` then moves one
-    commit — the signers file and a tracker changed — and this clone fetches it, which its filter keeps from bringing what it filters."""
+    signers file set as the matrix sets them, the hooks installed from the tool under test — and no board yet: the first board's run in it is the one a check
+    watches. `ahead`: origin's `main` then moves one commit — the signers file and a tracker changed — and this clone fetches it, which its filter keeps from
+    bringing what it filters."""
     origin_, part_ = base / "origin.git", base / "partial"
     git(origin_, "config", "uploadpack.allowFilter", "true")
     git(root, "switch", "-q", "-c", "cold", "main"); (root / "cold.txt").write_text("a file no reader asks for\n", encoding="utf-8")
@@ -7926,7 +7930,6 @@ def _bw_partial(base, root, filt, ahead=False):
         git(root, "add", "-A"); git(root, "commit", "-qm", "origin moves on", "-S", "--author=owner <o@x>"); git(root, "push", "-q", "origin", "main")
         git(part_, "fetch", "-q", "origin")
     _tool_run(HERE / "shoalmark.py", part_, "--install-hook")
-    _bm_refresh(part_)
     return part_
 
 
@@ -7993,7 +7996,9 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 # the board's run in a fresh partial clone that lacks what it reads — an answer on its way on origin, and origin's signers file, which origin moved since
-for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")):
+if not _BW_NEW_GIT:
+    _skipped("FM-045 · the board's run in a partial clone that lacks what it reads", 8, "git here is older than 2.44 and cannot keep a read from fetching — the checks where git is older than 2.44 run here")
+for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")) if _BW_NEW_GIT else ():
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree", answers=True); part_ = _bw_partial(base_, root_, filt_, ahead=True); _BW_HAND.pop(base_, None)
         _h, common_ = _bw_paths(part_)
@@ -8032,7 +8037,9 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
 fm.configure(HERE)
 
 # the board matrix's own shapes, two more: a blobless and a treeless clone of its origin, every event and every board's run in it, watched
-for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")):
+if not _BW_NEW_GIT:
+    _skipped("FM-045 · the board matrix · a blobless and a treeless clone", 16, "git here is older than 2.44 and cannot keep a read from fetching — the checks where git is older than 2.44 run here")
+for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")) if _BW_NEW_GIT else ():
     with tempfile.TemporaryDirectory() as d:
         t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree", answers=True); _BW_HAND.pop(base_, None)
         part_ = _bw_partial(base_, root_, filt_)
@@ -8069,7 +8076,7 @@ else:
               all(c_ == 0 and len(ls_) == 1 and ls_[0].startswith(f"{a_}: nothing read — this is a partial clone") and "git 2.43 " in ls_[0] and _bw_ok(w_)
                   and set(w_["commands"]) <= {"rev-parse", "config"} for a_, (c_, ls_, w_) in said2_.items()))
         b3_ = _bw_state(common_)
-        subprocess.run([str(stub_ / "git"), "-C", str(part_), "cat-file", "-e", "refs/remotes/origin/answer/ap-507:docs/work-tracker/AP-507-x.md"], capture_output=True,
+        subprocess.run([str(stub_ / "git"), "-C", str(part_), "cat-file", "-e", "refs/remotes/origin/cold:cold.txt"], capture_output=True,
                        env=dict(_ENV, GIT_NO_LAZY_FETCH="1"))
         ch3_ = _bw_changed(b3_, _bw_state(common_))
         check(f"FM-045 · the stub's control: with the switch set, a read through it fetches what the clone lacks, as a git older than 2.44 does — so that the "
