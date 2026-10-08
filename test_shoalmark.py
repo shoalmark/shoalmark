@@ -1721,7 +1721,7 @@ _CMDS_ = [["git", "log", "-1", "--format=%H%n%an"], ["git", "-C", "C:\\a b\\c", 
 check("FM-006 · a private security report · the board's run starts read-only git and nothing else: the calls it makes pass, and `fetch`, `gh`, `svn`, a write form of `config`, `branch` or `symbolic-ref`, "
       "`--output`, a `-c` other than the two the tool uses, a shell and a bare string do not; a Windows command line is read back to its list, as `subprocess` writes it",
       all(fm.read_only_git(a_) for a_ in _RO_) and not any(fm.read_only_git(a_) for a_ in _NOT_) and all(fm.split_cmdline(subprocess.list2cmdline(a_)) == a_ for a_ in _CMDS_))
-# FM-045: `git ls-tree` lists a tree and writes nothing — the tree listings the tool makes, as it sends them, are read-only git; bent, they are not
+# FM-045: `ls-tree` is on the read-only list, READ_ONLY_GIT — the tree listings the tool makes, as it sends them, are read-only git; bent, they are not
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); (root / "a").mkdir(); (root / "a" / "b.txt").write_text("b\n", encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-q", "-m", "a tree"); fm.configure(root)
@@ -4094,11 +4094,11 @@ _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
 _NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
                   "`svn update`: run `--html-only` to rebuild it.")
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
-      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (8 October 2026, 0.19.1's), and the player stats keep theirs",
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (10 October 2026, 0.19.2's), and the player stats keep theirs",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
       "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
       and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
-      and 'v0.19.1, released 8 October 2026 — a security release: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and 'v0.19.2, released 10 October 2026 — a fix for the board\'s refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
       and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html"))
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
