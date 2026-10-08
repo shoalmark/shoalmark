@@ -2084,6 +2084,29 @@ def _signers_repo(base):
     return root
 
 
+# --- FM-045's shape: the signers file in the working tree, origin's default branch known, an answer on its way on origin. The board's run, in process and as a
+#     program — what a hook starts —, with origin/HEAD set and unset: exit 0, the board written, no "stopped" line, the answer shown on its way, and none of the
+#     commands named as never started in the board's run started
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _signers_repo(base); page_ = root / "docs/work-tracker/index.html"
+    tip_ = subprocess.run(["git", "-C", str(root), "rev-parse", "origin/answer/ap-001"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    saw_, ok_ = {}, []
+    for head_ in ("set", "unset"):
+        if head_ == "unset":
+            git(root, "remote", "set-head", "origin", "--delete")
+        for how_, go_ in (("in process", lambda: run(root, "--html-only")), ("as a program", lambda: _tool_run(HERE / "shoalmark.py", root, "--html-only"))):
+            page_.unlink(missing_ok=True); from_ = len(_BOARD_GIT)
+            code_, out_, err_ = go_(); shown_ = page_.read_text(encoding="utf-8") if page_.is_file() else ""
+            saw_[f"origin/HEAD {head_}, {how_}"] = (code_, err_.strip()[-200:])
+            ok_.append(code_ == 0 and out_.startswith("board: file:") and "stopped" not in out_ + err_ and f'["answer", "answer/ap-001", "{tip_}", ' in shown_
+                       and not _started_never(_BOARD_GIT[from_:], getattr(fm, "NEVER_IN_BOARD_RUN", {})))
+    check(f"FM-045 · the board's refresh where the signers file lies in the working tree, origin's default branch is known and an answer is on its way on origin: `--html-only`, "
+          f"in process and as a program, with origin/HEAD set and unset, exits 0, writes the board, says no \"stopped\" line and shows the answer on its way (saw {saw_})",
+          len(ok_) == 4 and all(ok_))
+    rm_git(root)
+fm.configure(HERE)
+
+
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); _board_repo(root); run(root, "--html-only"); fm.configure(root)
     saw_ = {}
