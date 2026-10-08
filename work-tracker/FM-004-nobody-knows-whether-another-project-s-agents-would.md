@@ -50,6 +50,20 @@ done; what flips the verdict is *no migration* plus *the Owner uses it*, not a f
 | What no file and no board does | 3 of 3, unprompted: *"Eine Datei ruft Sie nicht an, und eine Tafel müssen Sie auch erst öffnen."* — nothing **pushes**, and nothing **enforces**: the gate checks a tracker's form, not that the test it names exists. |
 | Their protocol | two to four weeks with twenty lines in the plan they have (*Wartet auf Owner*: question, date, what it blocks, *our proposal if no answer comes*); if the median age of open Owner questions stays above one working day **and** the Owner prefers a page in the browser — switch at a package boundary, keeping their numbers. Measures offered: median age of open Owner questions · packages in progress at once · minutes to a fresh session's first useful move · overwritten status lines per week. |
 
+## Part B — the probe's next version, and onboarding through the agents (2026-10-08)
+
+The Owner's work package after v0.19.1, in two lanes that meet at the landing page's dialog. **B1, the landing page,**
+in English and German from one template: a primary button that copies a probe prompt and opens a dialog, built behind a
+switch that stays off until the probe has passed; a secondary "How it works"; and figures generated from the repository
+when the site is built. **The probe lane** rewrites ADOPT.md and ADOPT.de.md as an honest evaluation of fit that may end
+in "no fit": prerequisites first (Python and git on every machine, and svn's command-line tools on Subversion), the
+human's yes before it runs, the working copy read-only within a time and file budget, the one first result that fits
+where the project stands, a report of benefit and cost, the yes-path at a work-item boundary, an optional feedback
+report the human sends, and the probe in the project's language. Nothing in it says or implies that shoalmark scans for
+security problems or data leaks, and it fits one person in charge. Nothing goes outside before it passes a fixed rule:
+a set number of consecutive clean end-to-end runs, from the landing page's button to the feedback file; any failure is
+fixed, and the count restarts.
+
 ## Done when
 
 The three reports are recorded here with their counts and verdicts, the note is corrected for what they found, and
