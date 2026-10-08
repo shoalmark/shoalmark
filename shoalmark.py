@@ -1577,6 +1577,18 @@ def acts_lines(trackers, now=None):
 # committed, and another machine has it after a fetch. Nothing is written to remember it, and nothing is fetched to read it.
 
 
+def answer_refs():
+    """What `on_their_way` reads of origin's answer branches, in one place: (the default branch by its full ref — `default_trunk`, asking no
+    server — or None, and its one `git for-each-ref --no-merged` of `refs/remotes/origin/answer/` as git prints it, a `<branch>\\0<tip>` line
+    each — "" where git fails)."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git, ask=False)               # the board asks no server
+    if not trunk:
+        return None, ""
+    refs = git("for-each-ref", f"--no-merged={trunk}", "--format=%(refname:lstrip=3)%00%(objectname)", "refs/remotes/origin/answer/")
+    return trunk, refs.stdout if refs.returncode == 0 else ""
+
+
 def on_their_way(trackers):
     """{id: reading} — every `origin/answer/<id>` this clone holds that is NOT merged into the default branch
     (`default_trunk`; one `git for-each-ref --no-merged` for all of them), whose tracker at the tip carries a `done:`, an
@@ -1609,12 +1621,11 @@ def on_their_way(trackers):
     if vcs() != "git" or not trackers:
         return {}
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git, ask=False)               # the board asks no server
+    trunk, refs = answer_refs()
     if not trunk:
         return {}
-    refs = git("for-each-ref", f"--no-merged={trunk}", "--format=%(refname:lstrip=3)%00%(objectname)", "refs/remotes/origin/answer/")
     by_id, heads = {t["id"]: t for t in trackers}, []
-    for line in refs.stdout.splitlines() if refs.returncode == 0 else []:
+    for line in refs.splitlines():
         branch, _, tip = line.partition("\x00")
         t = by_id.get(branch[len("answer/"):].upper()) if branch.startswith("answer/") else None
         if t and tip:
