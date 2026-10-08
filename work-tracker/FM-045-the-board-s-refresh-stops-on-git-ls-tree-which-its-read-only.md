@@ -43,7 +43,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 
 ## Why
 
-The board's run starts nothing but read-only git. `git ls-tree` lists a tree and writes nothing, so a list without it
+The board's run starts nothing but read-only git. `git ls-tree` lists a tree, so a list without it
 refuses a read the run needs, and the board an Owner returns to stays stale.
 
 ## Done when
