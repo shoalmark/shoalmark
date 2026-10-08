@@ -29,10 +29,13 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   written, the answer on its way (`b2b8bdb`). Beside v0.19.1 it fails.
 - **Every git command classified** (`e44f73e`): `NEVER_IN_BOARD_RUN`, beside `READ_ONLY_GIT`, names the fourteen other git
   commands the tool starts, each with why the board's run never starts it. A check reads the tool's source with `ast`
-  and fails on an unclassified command or an unread form; its runtime half watches the suite's board runs.
+  and fails on an unclassified command or an unread form. Its runtime half watches each `--html-only` the suite runs in
+  process, each of this tool's own file it runs as a program in its own environment, and every board's run of the board
+  matrix through git's trace.
 - **The board matrix** (`bdda4ad`, `df63f68`, `7823a7d`): real merges, checkouts and rebases fire the real hooks, and an
   `--answer` its rebuild, in eight git shapes; on Subversion the board's run follows `svn update` and `svn switch`. Its
-  control takes each event's own hook out.
+  control takes each event's own hook out. Every board's run of it — the hooks', the runner's, `--answer`'s and by hand —
+  is watched through git's trace, each git it starts a read `read_only_git` admits (`f9cd059`, its control `65b6875`).
 - **On `release/v0.19.2`:** slice 1 merged at `13bb2c4`, slice 2 at `b62ad2a`, main at `a36bc03`; the release commit
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages.
 - **Left:** the release's critical verdict and the full run on its final head, the merge and the tag; then Shipped. The
@@ -78,3 +81,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | Built by `b3bdb000/implementer-115`: `b2b8bdb` — a check builds FM-045's shape and runs `--html-only` in process and as a program, origin/HEAD set and unset: exit 0, the board written, the answer on its way; beside v0.19.1 it fails. |
 | 2026-10-08 | **The board matrix — built** (slice 2) by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-the-board-matrix`, in `test_shoalmark.py` only: `bdda4ad` — an `--answer`, `git switch`, `git merge --no-ff` and `git rebase` fire the real hooks in eight git shapes (a signers file in the tree with signed answers, answer branches local and on origin, a linked worktree, a moved tracker folder, origin/HEAD set, origin/HEAD unset, 304 trackers, a lefthook-style runner), and `svn update` and `svn switch` are followed by `--html-only`: 35 checks; `df63f68` — its control, each event's own board hook taken out: 3 checks; `7823a7d` — the matrix's total printed only where its shapes ran. The signers shape fails on this branch and beside v0.19.1: its board's run stops on `git ls-tree`. |
 | 2026-10-08 | **0.19.2 cut** by `b3bdb000/implementer-115` on `release/v0.19.2`: `09d5b31` — VERSION 0.19.2, the CHANGELOG section dated 2026-10-12, both ADOPT pins (SHA-256 `5dfcbff1…0d2f`) and the setup pages. RV-2730 to RV-2733 (P3, verdict `8ee4998`) fixed forward in *What is true now* and *Done when*; `next: review`. |
+| 2026-10-08 | **Every board's run of the matrix watched** by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-rv-2781-every-board-run-watched-3`, from `9a7ed43`, in `test_shoalmark.py` only: `f9cd059` — through git's trace (`GIT_TRACE2_EVENT`), the runs the hooks' copy makes for `post-checkout`, `post-merge` and `post-rewrite`, the lefthook-style runner's, `--answer`'s and the runs by hand: each event's own run seen, every git it starts a read `read_only_git` admits, `ls-tree` counted, all recorded for the runtime half; `65b6875` — the watch's control; `2490ebc` — the runtime half's name says exactly what it watches. |
