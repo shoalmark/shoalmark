@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## 0.19.2 — 2026-10-10
+## 0.19.2 — 2026-10-09
 
 **0.19.2 fixes the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The hooks run the copy of the tool kept in the git directory, so the fix reaches the board's refresh only once `--install-hook` has copied it there.
 

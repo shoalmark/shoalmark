@@ -13,7 +13,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 
 ## What is true now
 
-**Built, and cut as 0.19.2 on `release/v0.19.2`, dated 2026-10-10; not yet reviewed as a release, merged or tagged.**
+**Built, and cut as 0.19.2 on `release/v0.19.2`, dated 2026-10-09; not yet reviewed as a release, merged or tagged.**
 - **What happened (v0.19.1):** `--html-only`, the board's run that the checkout, merge and rewrite hooks start, stopped
   with "the board's run was stopped: it would start git ls-tree -r -z — it starts nothing but read-only git and writes
   only the board", exit 4, nothing written. The hooks never blocked: each printed "the board is not refreshed (exit 4)"
@@ -46,7 +46,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 - **On `release/v0.19.2`:** slice 1 merged at `13bb2c4`, slice 2 at `b62ad2a`, main at `a36bc03`; the release commit
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages; RV-2780 merged at `e55a23d`, RV-2781
   at `1fcfdc7`, RV-2782 at `c9da264`: the landing names v0.19.2 in the Owner's words, and the CHANGELOG's section carries
-  the Owner's headline, dated 2026-10-10 (`f781491`, `d76743a`).
+  the Owner's headline, dated 2026-10-09 (`f781491`, `d76743a`).
 - **Left:** the release's critical verdict and the full run on its final head, the merge and the tag; then Shipped. The
   keep is unranked: the next full pass ranks it.
 
