@@ -1012,14 +1012,43 @@ def nested_git_env():
     parent instead. The generator then silently rewrites every derived live tag
     to `—` during commit even though a direct `--check` is green.
 
-    And while this run's reads fetch nothing (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks.
+    And while this run's reads are the board's (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks, and the settings
+    the board's reads run with (`BOARD_SETTINGS`), after every other.
     """
     env = os.environ.copy()
     for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"):
         env.pop(key, None)
     if LAZY_OFF:
         env[LAZY_FETCH_SWITCH] = "1"
+        env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), board_settings()) if p)
     return env
+
+
+# THE SETTINGS THE BOARD'S READS RUN WITH, fixed in the same place as the switch, whatever the repository, the user or the environment configures: no read of
+# the board's starts a program a configuration names, but the SSH signature check its `%G?` asks for (`gpg.ssh.program`). Git reads `GIT_CONFIG_PARAMETERS` —
+# the scope `git -c` writes — after every configuration file and after `GIT_CONFIG_COUNT`, and the last value of a key there wins: these are appended to what
+# the run inherited. The `-c` the tool hands git on a command line (`READ_ONLY_GIT_C`) comes after them, and names none of these keys.
+# - `log.showSignature` false: a `git log` verifies no signature it was not asked for;
+# - `core.fsmonitor` false: `git ls-files` asks no file-system monitor, neither a hook nor git's own daemon;
+# - `gpg.program`, `gpg.openpgp.program` and `gpg.x509.program`: the board trusts SSH signatures only, and git starts the program of a signature's own
+#   format for `%G?`. Each names `NO_SIGNATURE_PROGRAM`, a path inside the tool's own file, which no file system can hold: git's start of it fails before
+#   anything runs, and `%G?` reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
+# Textconv is the one setting git takes from no configuration and no environment: a diff driver's `textconv`, which an attribute in the tree names, runs in
+# `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — the board's six such reads carry it
+# (`board_diff_args`), and every other run's do not.
+NO_SIGNATURE_PROGRAM = str(pathlib.Path(__file__).resolve() / "no-signature-program")
+BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("gpg.program", NO_SIGNATURE_PROGRAM),
+                  ("gpg.openpgp.program", NO_SIGNATURE_PROGRAM), ("gpg.x509.program", NO_SIGNATURE_PROGRAM))
+
+
+def board_settings():
+    """`BOARD_SETTINGS` as `GIT_CONFIG_PARAMETERS` holds them: each `'key=value'`, quoted as git quotes it."""
+    return " ".join("'" + f"{k}={v}".replace("'", "'\\''") + "'" for k, v in BOARD_SETTINGS)
+
+
+def board_diff_args():
+    """`--no-textconv` while this run's reads are the board's (`LAZY_OFF`), for each of its reads that diffs or searches a diff — else nothing."""
+    return ["--no-textconv"] if LAZY_OFF else []
 
 
 # THE BOARD'S READS FETCH NOTHING. In a partial clone a git read that meets an object the clone lacks fetches it from the remote that promised it, by itself:
@@ -1647,7 +1676,7 @@ def recover_from_log(need):
     # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
     # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `git show <sha>:./<path>` reads them;
     # `-U0`: only the lines that changed
-    log = git("log", "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+    log = git("log", *board_diff_args(), "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
               "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
     if log.returncode != 0 and unread_here():           # the walk met an object the partial clone lacks: the relations stay as they read, not computable
         for rel in need:
@@ -1782,7 +1811,7 @@ def on_their_way(trackers):
             answered = bool(at.get("answer")) and at["answer"] != was.get("answer")
             word = ANSWER_WORD_RE.fullmatch(answer_norm(at.get("answer")))
             due = at.get("due", "") if at.get("due") and at.get("due") != was.get("due") else ""
-            newest = lambda key: read_out(git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?%x00%s", "-G", line_regex(key), tip, "^" + trunk, "--", rel))
+            newest = lambda key: read_out(git(*signers_args(), "log", *board_diff_args(), "-1", "--format=%H%x00%cI%x00%G?%x00%s", "-G", line_regex(key), tip, "^" + trunk, "--", rel))
             log = ""
             if at.get("done") and at["done"] != was.get("done"):
                 kind, key = "done", "done:"
@@ -2097,7 +2126,7 @@ def refusal_record(commit):
     under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
     `--queue` admits it below their act as it admits a review file's commit (RV-712) — a forged one in their name carries in
     one line under `## Acts` that rules nothing, and nothing outside it."""
-    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
+    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     head, _, diff = r.stdout.partition("\n")
     parents, _, subject = head.partition("\x00")
@@ -2219,7 +2248,7 @@ def answer_branch_reading(head, base):
     widening; RV-735, the same below their `answer:` since 0.18.4) — and where `base` is not here, a wait that says so: a
     reader that cannot see below their act never says merge (RV-711)."""
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    found = git_out("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel)
+    found = git_out("log", *board_diff_args(), "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel)
     if found is None and unread_here():
         raise Unread                                        # its walk met an object the partial clone lacks: no answer
     at = (found or "").strip()
@@ -5239,7 +5268,7 @@ def line_author(path, needle):
             out = (None, None, "unattributed", "")
         elif line in _LINE_AUTHOR[("tips", rel)]:
             try:
-                log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
+                log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
                                      text=True, encoding="utf-8", errors="replace", env=nested_git_env())
             except ValueError:                          # a NUL in the line: no argument can carry it
                 log = None
@@ -8148,7 +8177,7 @@ def acted_on(trackers):
         if t.get("ask") or not t.get("asks_block"):
             continue
         rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode != 0 and unread_here():
             note_unread(f"the history of {rel}")         # the walk met an object the partial clone lacks: not read here
             continue
