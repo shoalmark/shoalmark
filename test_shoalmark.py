@@ -2229,6 +2229,13 @@ def _git_starts(src):
         if (isinstance(n, ast.Subscript) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name) and n.value.func.id in ("globals", "locals", "vars")
                 and not n.value.args):
             fixed.append((n.lineno, f"`{ast.unparse(n)}`: a name the reading cannot see"))
+        if isinstance(n, (ast.Import, ast.ImportFrom)) and any((al.name if isinstance(n, ast.Import) else n.module or "").split(".")[0] in ("ctypes", "_ctypes", "builtins", "posix", "nt")
+                                                                for al in n.names):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: a module that reaches a process or code the reading cannot see"))
+        if isinstance(n, ast.Name) and n.id == "__builtins__":
+            fixed.append((n.lineno, "`__builtins__`: names the reading cannot see"))
+        if isinstance(n, ast.Attribute) and n.attr in ("os", "_os", "subprocess", "_subprocess", "pty", "asyncio") and module_of(n.value) is None:
+            fixed.append((n.lineno, f"a process module reached through another module: {ast.unparse(n)[:80]}"))
         if isinstance(n, ast.Attribute) and n.attr in ("subprocess_exec", "subprocess_shell"):
             fixed.append((n.lineno, f"an event loop's process API, a method: {ast.unparse(n)[:80]}"))
         p = parent.get(n)
@@ -2241,7 +2248,7 @@ def _git_starts(src):
                     starts.append((p, _PROCESS_APIS[m][n.attr]))
                 else:
                     fixed.append((n.lineno, f"a process API reached other than by a call of its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
-            elif m and (n.attr.startswith("__") or f"{m}.{n.attr}" in _PROCESS_APIS and not (isinstance(p, ast.Attribute) and p.value is n)):
+            elif m and (n.attr.startswith(("__", "_exec", "_spawn", "_posixsubprocess", "_winapi")) or f"{m}.{n.attr}" in _PROCESS_APIS and not (isinstance(p, ast.Attribute) and p.value is n)):
                 fixed.append((n.lineno, f"a process module reached other than by its plain name: {ast.unparse(n)[:80]}"))
         if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load):
             bs = bindings(n)
@@ -2259,7 +2266,7 @@ def _git_starts(src):
                                             and p.args[:1] == [n] and len(p.args) > 1) else None
                 if isinstance(p, ast.Attribute) and p.value is n:
                     pass                    # `module.name`: judged as itself
-                elif name is not None and not name.startswith("__") and not any(name in _PROCESS_APIS.get(b[1], {}) or f"{b[1]}.{name}" in _PROCESS_APIS for b in mods):
+                elif name is not None and not name.startswith(("__", "_exec", "_spawn", "_posixsubprocess", "_winapi")) and not any(name in _PROCESS_APIS.get(b[1], {}) or f"{b[1]}.{name}" in _PROCESS_APIS for b in mods):
                     pass                    # `getattr(module, "NAME", …)` of a name that starts nothing: as `module.NAME`
                 else:
                     fixed.append((n.lineno, f"a process module reached other than by its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
@@ -2441,6 +2448,11 @@ with tempfile.TemporaryDirectory() as d:
         'not read: `from subprocess import *`': ('from subprocess import *\n\n\ndef _injected():\n    return run(["git", "gc"])\n', None),
         'not read: `exec`': ('def _injected():\n    exec("import subprocess")\n', None),
         'not read: `__import__`': ('def _injected():\n    return __import__("subprocess").run(["git", "gc"])\n', None),
+        'not read: a process module reached through another module': ('def _injected():\n    return shutil.os.system("git gc")\n', None),
+        'not read: `posix`': ('def _injected():\n    import posix\n    return posix.system("git gc")\n', None),
+        'not read: `ctypes`': ('def _injected():\n    import ctypes\n    return ctypes.CDLL(None).system(b"git gc")\n', None),
+        'not read: `builtins`': ('def _injected():\n    import builtins\n    return builtins.__import__("subprocess").run(("git", "gc"))\n', None),
+        "not read: a process module's private helper": ('def _injected():\n    os._execvpe("git", ("git", "gc"))\n', None),
         "a helper's forwarded argv, a list, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["echo", "hello"])\n    return _injected_helper(args=["git", "gc"])\n', ('unclassified', 'gc')),
         "a helper's forwarded argv, a list, read from every call — git's call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"])\n    return _injected_helper(args=["echo", "hello"])\n', ('unclassified', 'gc')),
         "a helper's forwarded argv, a tuple, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("echo", "hello"))\n    return _injected_helper(args=("git", "gc"))\n', ('unclassified', 'gc')),
