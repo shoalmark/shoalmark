@@ -2,8 +2,8 @@
 # The agents' document is README.md, rendered into the site by inclusion — never copied.
 name: docs
 # A release tag or a run by hand builds the site and deploys it. A pull request that changes the site's own sources — its pages,
-# the launch states' words, templates, configuration, the README, the scripts the build runs, this file — builds it and runs its
-# checks, and deploys nothing.
+# the launch states' words, templates, configuration, the README, the scripts in scripts/ that the build runs, this file — builds it
+# and runs its checks, and deploys nothing.
 # A change to the trackers alone does not start it.
 on:
   push: {tags: ["v*"]}

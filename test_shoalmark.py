@@ -12522,6 +12522,70 @@ else:
               f_.get("pins") == {"ADOPT_COMMIT": tagged_, "TAG": "v0.19.2", "ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}
               and f_.get("read") == {"date": "2026-10-09", "date_en": "9 October 2026", "date_de": "9. Oktober 2026", "sha": tagged_[:7]})
 
+# FM-006, B1, RV-2881: wrecks_json is written inside a <script> and a Jinja block — a title or a report that holds `</script>`, a comment's
+# opening, a Jinja delimiter or a JavaScript line separator is escaped in it, and reads back as written
+_lf_nasty = "a </script> b </SCRIPT c <!-- d {{ e }} f {% g %} h {# i #} j \u2028 k \u2029 l"
+_lf_esc_mod = _lf_module()
+
+
+def _lf_esc_block(js_string):
+    """facts.html's wrecks_json for one wreck whose title and report hold `_lf_nasty`, written with `js_string`."""
+    real_, _lf_esc_mod.js_string = _lf_esc_mod.js_string, js_string
+    try:
+        text_ = _lf_esc_mod.facts_html("0" * 40, {"tag": "v0.0.1", "version": "0.0.1", "date_en": "1 October 2026", "date_de": "1. Oktober 2026"}, "1/2", 2,
+                                       {"date": "2026-10-01", "date_en": "1 October 2026", "date_de": "1. Oktober 2026", "sha": "0000000"},
+                                       {"ADOPT_COMMIT": "0" * 40, "TAG": "v0.0.1", "ARCHIVE_URL": "x", "ARCHIVE_SHA256": "x"},
+                                       [{"id": "FM-099", "inc": "0000000", "filed": "2026-10-01", "status": "Proposed", "lon": 8.0, "lat": 54.0,
+                                         "title": "title " + _lf_nasty, "report": "hook " + _lf_nasty, "url": "https://github.com/shoalmark/shoalmark"}],
+                                       {"waiting": 0, "acts": 0, "act": None}, {"wrecks": 1, "open": 1})
+    finally:
+        _lf_esc_mod.js_string = real_
+    return re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text_, re.S).group(1)
+
+
+def _lf_esc_holds(block):
+    """(whether it holds, what it found): none of `</`, `<!--`, a Jinja delimiter or U+2028/U+2029 in the block, no brace inside its strings,
+    and the title and the report read back as written."""
+    found = [x for x in ("</", "<!--", "{{", "}}", "{%", "%}", "{#", "#}", "\u2028", "\u2029") if x in block]
+    found += ["a brace in a string"] if any(c in lit for lit in re.findall(r'"(?:[^"\\]|\\.)*"', block) for c in "{}") else []
+    try:
+        back = json.loads(block)
+        same = back[0]["title"] == "title " + _lf_nasty and back[0]["report"] == "hook " + _lf_nasty
+    except ValueError:
+        same = False
+    return not found and same, found + ([] if same else ["does not read back"])
+
+
+_lf_esc_ok, _lf_esc_found = _lf_esc_holds(_lf_esc_block(_lf_esc_mod.js_string))
+_lf_esc_ctl, _lf_esc_ctl_found = _lf_esc_holds(_lf_esc_block(lambda v: json.dumps(v, ensure_ascii=False)))
+check(f"FM-006 · B1 · RV-2881: a title and a report holding `</script>`, `</SCRIPT`, `<!--`, `{{{{`, `{{%`, `{{#`, U+2028 and U+2029 give a wrecks_json with none "
+      f"of `</`, `<!--`, a Jinja delimiter or a line separator, and no brace inside a string, that reads back to the same strings; its control, the "
+      f"strings written as plain json.dumps, holds them (saw {_lf_esc_found}; the control's {_lf_esc_ctl_found})",
+      _lf_esc_ok and not _lf_esc_ctl and {"</", "<!--", "{{", "{%", "a brace in a string"} <= set(_lf_esc_ctl_found))
+
+if _lf_why:
+    _skipped("FM-006 · B1 · RV-2882: trackers whose names git quotes", 1, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        clone_ = _lf_clone(Path(d).resolve())
+        for name_, title_ in (("FM-096-über.md", "Über a name git quotes"), ('FM-097-a"b.md', 'A name with a " in it')):
+            text_ = (f'---\nid: {name_[:6]}\nstatus: Proposed\ntags: security\nhook: "{title_.replace(chr(34), chr(39))}, filed for a probe."\n---\n\n'
+                     f"# {name_[:6]} — {title_}\n\n## What is true now\n\nA probe.\n")
+            blob_ = subprocess.run(["git", "-C", str(clone_), "hash-object", "-w", "--stdin"], input=text_.encode("utf-8"), capture_output=True, check=True, env=_ENV).stdout.decode().strip()
+            git(clone_, "update-index", "--add", "--cacheinfo", f"100644,{blob_},work-tracker/{name_}")      # never on disk: Windows refuses `"` in a name
+        git(clone_, "commit", "-q", "-m", "two trackers whose names git quotes")
+        lf_ = _lf_module()
+        g_ = lf_.Git(clone_)
+        read_ = {w["id"]: w["url"] for w in lf_.read_wrecks(g_, g_("rev-parse", "HEAD").strip(), "https://github.com/shoalmark/shoalmark")}
+        quoted_ = [ln for ln in subprocess.run(["git", "-C", str(clone_), "-c", "core.quotePath=true", "ls-tree", "--name-only", "HEAD", "work-tracker/"],
+                                               capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.splitlines() if re.match(r"^work-tracker/(FM-(\d+))-.*\.md$", ln)]
+        check(f"FM-006 · B1 · RV-2882: trackers named FM-096-über.md and FM-097-a\"b.md, both tagged security, are read as wrecks, each linked by its name "
+              f"percent-encoded; its control, the listing without -z that git quotes, misses both (saw {len(read_)} wrecks, {read_.get('FM-096')}, {read_.get('FM-097')}; "
+              f"the listing without -z finds {sum('FM-09' in q for q in quoted_)} of them)",
+              read_.get("FM-096") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-096-%C3%BCber.md"
+              and read_.get("FM-097") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-097-a%22b.md"
+              and len(read_) == 30 and not any("FM-096" in q or "FM-097" in q for q in quoted_))
+
 if _lf_why:
     _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)
 else:
@@ -12653,7 +12717,7 @@ else:
               _lf_stops(untitled_, facts_, "names no ACTS_TITLE"))
 
 if _lf_why:
-    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 12, _lf_why)
+    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 14, _lf_why)
 else:
     import zipfile
     lf_ = _lf_module()
@@ -12669,9 +12733,10 @@ else:
         asum_, tsum_, osum_ = (hashlib.sha256(b).hexdigest() for b in (zip_.read_bytes(), tool_, old_))
         url_ = "https://github.com/shoalmark/shoalmark/releases/download/{}/shoalmark-{}.zip"
 
-        def _lf_notes(tag="v0.19.2", asum=asum_, tsum=tsum_, de_url=None, svn=""):
-            """The four ADOPT notes as the probe lane's pins.md lays out the pin: one line in each, five fields, the Subversion notes without."""
-            url = url_.format(tag, tag[1:])
+        def _lf_notes(tag="v0.19.2", asum=asum_, tsum=tsum_, de_url=None, svn="", url=None):
+            """The four ADOPT notes as the probe lane's pins.md lays out the pin: one line in each, five fields, the Subversion notes without;
+            `url`, where given, the archive's address in both."""
+            url = url or url_.format(tag, tag[1:])
             return {"ADOPT.md": f"# Adopt shoalmark\n\nThe pin: release `{tag}`; the archive `{url}`, SHA-256 `{asum}`; in it, `shoalmark.py`, SHA-256 `{tsum}`.\n",
                     "ADOPT.de.md": f"# shoalmark übernehmen\n\nDie Festlegung: Release `{tag}`; das Archiv `{de_url or url}`, SHA-256 `{asum}`; darin `shoalmark.py`, "
                                    f"SHA-256 `{tsum}`.\n",
@@ -12702,6 +12767,12 @@ else:
         for what_, case_, says_ in (
                 ("a Subversion note missing", lambda: _lf_pins(_lf_notes(), drop=("ADOPT.svn.de.md",)), "pins check 1: ADOPT.svn.de.md is missing"),
                 ("the German note pinning another address", lambda: _lf_pins(_lf_notes(de_url=url_.format("v0.19.2", "x"))), "pins check 2: the two notes pin different things"),
+                ("both notes pinning an address whose dot segments lead out of the release, to another repository", lambda: _lf_pins(_lf_notes(
+                    url="https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/../../../../../attacker/fork/releases/download/v1/x.zip")),
+                 "pins check 2: https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/../../../../../attacker/fork/releases/download/v1/x.zip is not an asset of v0.19.2"),
+                ("both notes pinning that address with its dots and slashes percent-escaped", lambda: _lf_pins(_lf_notes(
+                    url="https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/%2e%2e%2f%2E%2E%2Fattacker%2ffork%2freleases%2fdownload%2fv1%2fx.zip")),
+                 "pins check 2: https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/%2e%2e%2f%2E%2E%2Fattacker%2ffork%2freleases%2fdownload%2fv1%2fx.zip is not an asset of v0.19.2"),
                 ("a Subversion note carrying a SHA-256", lambda: _lf_pins(_lf_notes(svn=f" `{tsum_}`")), "pins check 2: ADOPT.svn.md carries a pin"),
                 ("a pin line still holding its placeholders", lambda: _lf_pins({**_lf_notes(), "ADOPT.md": "The pin: release `{{TAG}}`; the archive `{{ARCHIVE_URL}}`, SHA-256 "
                                                                                  "`{{ARCHIVE_SHA256}}`; in it, `shoalmark.py`, SHA-256 `{{TOOL_SHA256}}`.\n"}), "pins check 2: the two notes pin different things"),
@@ -12908,7 +12979,7 @@ def _docs_wf_properties(text):
     return [
         ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
         ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, the launch states' words, templates, configuration, the README, "
-         "the scripts the build runs and docs.yml — and never on one that changes trackers alone",
+         "the scripts in scripts/ that the build runs and docs.yml — and never on one that changes trackers alone",
          isinstance(on, dict) and set(on) == {"push", "workflow_dispatch", "pull_request"} and on.get("push") == {"tags": ["v*"]} and isinstance(pr, dict)
          and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
         ("the deploy job runs after the build, only in the public repository, and never for a pull request",
@@ -12917,9 +12988,10 @@ def _docs_wf_properties(text):
          "and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy"}
          and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in str(s.get("run") or "") for s in steps)),
-        ("the build checks out the whole history with its tags, writes the landing's figures before `zensical build` and checks the release after it, each "
-         "told the event and the ref as GitHub names them",
-         (checkout.get("with") or {}).get("fetch-depth") == 0 and None not in (facts, zensical, release) and facts < zensical < release),
+        ("the build checks out the whole history with its tags, without keeping the token in the checkout, writes the landing's figures before "
+         "`zensical build` and checks the release after it, each told the event and the ref as GitHub names them",
+         (checkout.get("with") or {}).get("fetch-depth") == 0 and (checkout.get("with") or {}).get("persist-credentials") is False
+         and None not in (facts, zensical, release) and facts < zensical < release),
         ("only the deploy job is in a concurrency group: a pull request's build neither waits for a deployment nor cancels one",
          "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}),
     ]
@@ -12944,6 +13016,7 @@ def _docs_wf_regressions(text):
         ("an expression inside a `run:`", lambda t: t.replace('--event "$GITHUB_EVENT_NAME"', "--event ${{ github.event_name }}", 1)),
         ("an expression inside a `run: |` block", lambda t: t.replace("      - run: zensical build --clean\n", "      - run: |\n          echo ${{ github.head_ref }}\n          zensical build --clean\n", 1)),
         ("the checkout's history cut to one commit", lambda t: t.replace("{fetch-depth: 0, persist-credentials: false}", "{persist-credentials: false}", 1)),
+        ("the checkout keeps its token", lambda t: t.replace(", persist-credentials: false}", "}", 1)),
         ("the figures written after `zensical build`", facts_after_build),
         ("the figures read as a pull request's whatever the event", lambda t: t.replace('landing_facts.py --event "$GITHUB_EVENT_NAME"', "landing_facts.py --event pull_request", 1)),
         ("the release check told no event", lambda t: t.replace('--check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"', "--check site", 1)),
