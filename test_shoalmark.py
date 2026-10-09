@@ -4513,6 +4513,57 @@ check("FM-006 · B1 · the landing's source check is not blind: each of a German
       f"the footer's sentence changed, the facts file not read and the German page off the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 7)
 
 
+# --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
+# The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
+# fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.
+_LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md", *(f"launch/{s}/how-it-works.{l}.md" for s in ("interim", "probe") for l in ("en", "de")))
+_SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft Ihren Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
+
+
+def _launch_problems(src):
+    """What is wrong with the launch state and the pages that say it, one line each; none where the switch and the folder agree, each page takes its
+    words from one include, names the button as the landing labels it, and says nothing of scanning that the Owner did not rule."""
+    words, bad = _landing_words(src)
+    toml = src["zensical.toml"]
+    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n", toml)
+    folder = re.search(r"(?m)^pymdownx\.snippets\.base_path = \[(.*)\]$", toml)
+    state = {"true": "probe", "false": "interim"}[switch.group(1)] if switch else None
+    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != [state]:
+        bad.append("zensical.toml: the probe switch and the launch folder in the snippets' base path disagree, or one is missing")
+    if '= "how-it-works.md" }' not in toml or '= "de/how-it-works.md" }' not in toml:
+        bad.append("zensical.toml: How it works is not in the navigation in both languages")
+    for lang, page in (("en", "docs/how-it-works.md"), ("de", "docs/de/how-it-works.md")):
+        if src[page].count(f'--8<-- "how-it-works.{lang}.md"') != 1 or "<!-- state" in src[page]:
+            bad.append(f"how it works ({lang}) does not take its launch state's words from one include")
+        quote = '"%s"' if lang == "en" else "„%s“"
+        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe")):
+            if quote % words[lang].get(key, "?") not in src[f"launch/{launch}/how-it-works.{lang}.md"]:
+                bad.append(f"how it works ({lang}), {launch}: it does not name the button as the landing labels it ({words[lang].get(key)})")
+    prose = " ".join(src[f] for f in ("docs/how-it-works.md", "docs/de/how-it-works.md")) + json.dumps(words, ensure_ascii=False)
+    for allowed in _SCAN_FREE:
+        prose = prose.replace(allowed, "")
+    if re.search(r"(?i)\bscan|scannt|durchsucht|\bleak|datenleck|security (problem|issue|hole|check)|sicherheits(prüfung|problem|lücke)", prose):
+        bad.append("a page says or implies that shoalmark scans for security problems or data leaks")
+    if "one person in charge" not in src["docs/how-it-works.md"] or "standup" not in " ".join(map(str, words["en"].values())).lower() or "Standup" not in src["docs/de/how-it-works.md"]:
+        bad.append("'It fits one person in charge' or 'Standup' is gone")
+    return bad
+
+
+_ls = _sources(_LAUNCH_FILES)
+_lp = _launch_problems(_ls)
+check("FM-006 · B1 · the launch state is one fact in two places that agree (the probe switch, off, and the interim folder of the snippets' base path), How it works stands in the navigation "
+      "and takes its words from that folder in English and German, names the button as the landing labels it in both states, and no page says that shoalmark scans for security problems "
+      f"or data leaks (problems found: {_lp})", _lp == [])
+_ctl = {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n"),
+        "a button named differently in How it works": _with(_ls, "launch/probe/how-it-works.en.md", '"Copy the prompt"', '"Run probe prompt"'),
+        "a scan claimed": _with(_ls, "docs/how-it-works.md", "It does not scan your code for security problems or data leaks.", "It scans your code for security problems."),
+        "a state fence left in the page": _with(_ls, "docs/de/how-it-works.md", '--8<-- "how-it-works.de.md"', "<!-- state: interim -->"),
+        "the English page out of the navigation": _with(_ls, "zensical.toml", '{ "How it works" = "how-it-works.md" },\n', "")}
+_ctl_saw = {name: len(_launch_problems(src)) for name, src in _ctl.items()}
+check("FM-006 · B1 · the launch check is not blind: each of the switch on with its folder off, a button named differently in How it works, a scan claimed, a state fence left in the page and "
+      f"the English page out of the navigation leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 5)
+
+
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")

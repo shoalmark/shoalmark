@@ -1,0 +1,1 @@
+Der Knopf „Agenten die Notiz geben“ führt zu `ADOPT.de.md`, einer Notiz für die Agenten Ihres Projekts. Sie lädt zu einer Messung ein, nicht zu einer Anweisung: etwa zwanzig Minuten, alles in einem Wegwerf-Ordner, nichts im echten Arbeitsverzeichnis. Am Ende berichten die Agenten Ihnen, und Sie entscheiden.

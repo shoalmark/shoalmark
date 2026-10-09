@@ -134,3 +134,26 @@ body[data-md-color-scheme][data-md-color-primary]{
    outranks the rule above and paints the foot's link in the page's ink, 1.12:1 on the band by day; inside the foot the
    page's ink is the band's */
 .md-footer-meta{--md-default-fg-color:var(--bandink)}
+
+/* B1 — "How it works": the week's picture, drawn from a real tracker (FM-024), the real board and a real commit (4127dba) of this
+   repository. Three cards down the page's column, each a verbatim excerpt (a cut is marked …), the theme's own tokens; the board's
+   card keeps the board's magenta for what is owed to the Owner, as the landing's excerpt does. */
+.md-typeset .week{margin:2rem 0;display:grid;gap:.2rem;text-align:left}
+.md-typeset .week-card{position:relative;margin:.7rem 0 0;border:1px solid var(--contour);background:var(--panel);padding:1.1rem .9rem .7rem}
+.md-typeset .week-card>.t{position:absolute;top:-.85em;left:.8rem;margin:0;padding:0 .5rem;background:var(--panel);font:600 .66rem/1.7 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:0}
+.md-typeset .week-card>.t::before{content:"## ";content:"## " / "";color:var(--watt);font-weight:400}
+.md-typeset .week-card .src{margin:0 0 .5rem;font:400 .6rem/1.5 "IBM Plex Mono",ui-monospace,monospace;color:var(--mute)}
+.md-typeset .week-card pre{margin:0;padding:.55rem .7rem;background:var(--shallow);border-left:3px solid var(--watt);font:400 .62rem/1.65 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.md-typeset .week-card .add{color:var(--watt)}.md-typeset .week-card .del{color:var(--mute);text-decoration:line-through;text-decoration-thickness:1px}
+.md-typeset .week-card.board{border-color:#b9559f}
+.md-typeset .week-card .wk-board{padding:.55rem .7rem;background:var(--shallow);font:400 .62rem/1.65 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink)}
+.md-typeset .week-card .wk-board p{margin:.2rem 0}
+.md-typeset .week-card .wk-board i{font-style:normal;color:var(--watt)}
+.md-typeset .week-card .wk-board b.hot{color:#a2327f}
+.md-typeset .week-card .wk-board .id{background:var(--land);color:var(--landink);padding:0 .3rem}
+.md-typeset .week-card .wk-board .chip{margin-left:.5rem;padding:0 .4rem;border:1px solid #b9559f;color:#8d2a6c;font-weight:600}
+.md-typeset .week-arrow{margin:.3rem 0 -.3rem;text-align:center;font:400 1rem/1 "IBM Plex Mono",ui-monospace,monospace;color:var(--watt)}
+.md-typeset .week figcaption{max-width:none;margin:.8rem 0 0;text-align:left;font-size:.7rem;color:var(--mute)}
+body[data-md-color-scheme=slate][data-md-color-primary] .md-typeset .week-card.board{border-color:#ee92d4}
+body[data-md-color-scheme=slate][data-md-color-primary] .md-typeset .week-card .wk-board b.hot{color:#ee92d4}
+body[data-md-color-scheme=slate][data-md-color-primary] .md-typeset .week-card .wk-board .chip{border-color:#ee92d4;color:#ee92d4}
