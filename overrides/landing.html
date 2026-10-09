@@ -932,13 +932,23 @@ addEventListener("resize", scale);
 (function () {
   const open = document.getElementById("probe-open"), dlg = document.getElementById("probe");
   if (!open || !dlg || typeof dlg.showModal !== "function") return;   // no dialog, no script: the link reads the same text at its short address
-  const $ = id => document.getElementById(id), ta = $("probe-text"), line = $("probe-status"), s1 = $("probe-s1"), again = $("probe-again"), done = $("probe-done"), box = $("probe-prompt"), more = $("probe-more"), x = $("probe-x");
+  const $ = id => document.getElementById(id), ta = $("probe-text"), line = $("probe-status"), s1 = $("probe-s1"), again = $("probe-again"), done = $("probe-done"), box = $("probe-prompt"), more = $("probe-more"), x = $("probe-x"), sc = dlg.querySelector(".probe-scroll"), appr = dlg.querySelector(".probe-approvals");
+  const FULL = ta.value; ta.value = FULL.replace(/\n$/, "");   // the box ends at the prompt's last line: a textarea draws a final line ending as an empty line, so the box holds the text without it; what is copied is FULL, line ending included, byte for byte
   const W = {{ {"ok": w.dlg_s1_ok, "fail": w.dlg_failed, "done": w.dlg_again_done, "more": w.dlg_more, "less": w.dlg_less} | tojson }};
   let timer = null;
   const say = (state, text) => { line.dataset.state = state; s1.dataset.state = state; line.textContent = text; };
-  const fit = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight + 2) + "px"; };   // open, the box shows the whole prompt: the dialog scrolls, not the box
+  // open, the box grows as far as the window allows and scrolls inside itself beyond that, with a floor of three lines: the dialog, its approvals folded, does not scroll (a window too small for the floor makes it scroll)
+  const fit = () => {
+    const was = appr.open, lh = parseFloat(getComputedStyle(ta).lineHeight), floor = 3 * lh + 26; appr.open = false;
+    for (let i = 0; i < 2; i++) {   // twice: a scrollbar takes some width, and the text then wraps differently
+      ta.style.height = "0px"; const whole = ta.scrollHeight + 2; ta.style.height = whole + "px";
+      const over = sc.scrollHeight - sc.clientHeight;
+      ta.style.height = (over > 0 ? Math.max(floor, whole - over) : whole) + "px";
+    }
+    appr.open = was;
+  };
   const show = on => { box.dataset.open = on; more.setAttribute("aria-expanded", on); more.textContent = on ? W.less : W.more; if (on) fit(); else ta.style.height = ""; };
-  const write = () => { try { return navigator.clipboard.writeText(ta.value).then(() => true, () => false); } catch (err) { return Promise.resolve(false); } };   // asked inside the click, while the page holds the user's gesture
+  const write = () => { try { return navigator.clipboard.writeText(FULL).then(() => true, () => false); } catch (err) { return Promise.resolve(false); } };   // asked inside the click, while the page holds the user's gesture
   const legacy = () => { ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} if (ok) ta.blur(); return ok; };
   const good = again_ => { say("ok", W.ok); if (again_) { done.textContent = W.done; clearTimeout(timer); timer = setTimeout(() => { done.textContent = ""; }, 2600); } };   // the box stays as it is
   const bad = () => { say("fail", W.fail); done.textContent = ""; show(true); ta.focus(); ta.select(); };   // step 1 says so, the box opens whole and its text is selected
@@ -950,6 +960,7 @@ addEventListener("resize", scale);
   });
   again.addEventListener("click", () => { write().then(ok => (ok || legacy()) ? good(true) : bad()); });
   more.addEventListener("click", () => show(box.dataset.open !== "true"));
+  ta.addEventListener("copy", e => { if (ta.selectionStart === 0 && ta.selectionEnd === ta.value.length && e.clipboardData) { e.clipboardData.setData("text/plain", FULL); e.preventDefault(); } });   // Ctrl+C on the whole prompt copies FULL
   addEventListener("resize", () => { if (box.dataset.open === "true") fit(); });
   x.addEventListener("click", () => dlg.close());
   dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });   // a click on the backdrop

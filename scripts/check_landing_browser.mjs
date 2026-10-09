@@ -64,7 +64,7 @@ async function open(url, {w, h, clipboard = "ok"}) {
   await call("Emulation.setEmulatedMedia", {features: [{name: "prefers-reduced-motion", value: "reduce"}]});
   // the clipboard is stubbed, so that the two states of the dialog happen on demand; the page's own code runs unchanged
   await call("Page.addScriptToEvaluateOnNewDocument", {source: clipboard == "ok"
-    ? `Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: () => Promise.resolve()}})`
+    ? `Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: t => { window.__copied = t; return Promise.resolve() }}})`
     : `Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: () => Promise.reject(new Error("refused"))}}); document.execCommand = () => false`});
   await call("Page.navigate", {url: origin + url}); await sleep(1500);
   await js("document.fonts.ready.then(() => 1)");
@@ -85,6 +85,13 @@ const OUTSIDE = `(() => { const d = document.getElementById("probe"), e = docume
 // an element inside the dialog that scrolls inside itself (the prompt's own box excepted)
 const SCROLLS = `(() => [...document.querySelectorAll("#probe *")].filter(e => e.tagName != "TEXTAREA" && e.tagName != "PRE" && ["auto", "scroll"].includes(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map(e => (e.id || e.className || e.tagName) + " " + e.scrollHeight + ">" + e.clientHeight))()`;
 
+// how the opened box stands in the window: it grows as far as the window allows, then scrolls inside itself, with a floor of three lines; with the approvals folded the dialog does not scroll
+// (a window too small for the floor makes it scroll); the box ends at the prompt's last line, which the page still copies with its line ending
+const FIT = `(() => { const ta = document.getElementById("probe-text"), sc = document.querySelector("#probe .probe-scroll"), floor = 3 * parseFloat(getComputedStyle(ta).lineHeight) + 26, maxH = parseFloat(getComputedStyle(sc).maxHeight), appr = document.querySelector("#probe .probe-approvals");
+  return {box: Math.round(ta.getBoundingClientRect().height), floor: Math.round(floor), whole: ta.scrollHeight <= ta.clientHeight + 1, dialogScrolls: sc.scrollHeight > sc.clientHeight + 1, filled: sc.clientHeight >= maxH - 2, apprOpen: appr.open,
+    shownEnd: ta.value.endsWith("\\n"), keptEnd: ta.defaultValue.endsWith("\\n"), sideways: sc.scrollWidth > sc.clientWidth + 1} })()`;
+const fitsOk = f => !f.apprOpen && !f.shownEnd && f.keptEnd && !f.sideways && (f.dialogScrolls ? f.box <= f.floor + 1 : (f.whole || f.filled));
+
 for (const page of PAGES) for (const [w, h] of SIZES) {
   const t = await open(page, {w, h});
   const m = await t.js(`({sw: document.documentElement.scrollWidth, iw: innerWidth})`);
@@ -99,6 +106,8 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
     const ax = (await t.call("Accessibility.getFullAXTree")).nodes.filter(n => !n.ignored && n.role?.value == "dialog");
     verdict(page, w, h, "the accessibility tree names the dialog and says it is modal", ax.length == 1 && !!ax[0].name?.value?.trim() && ax[0].properties?.find(p => p.name == "modal")?.value?.value === true, JSON.stringify(ax.map(n => [n.name?.value, n.properties])).slice(0, 300));
     verdict(page, w, h, "focus moves into the dialog", dlg.inside, await t.js(ACTIVE));
+    const copied = await t.js(`(() => ({copied: window.__copied, shown: document.getElementById("probe-text").defaultValue}))()`);
+    verdict(page, w, h, "the prompt copied is the prompt of the page, byte for byte, its line ending included", typeof copied.copied == "string" && copied.copied == copied.shown && copied.shown.endsWith("\n"), JSON.stringify([String(copied.copied).length, copied.shown.length]));
     const focusable = await t.js(`document.querySelectorAll('#probe a[href], #probe button, #probe textarea, #probe summary, #probe input, #probe [tabindex]:not([tabindex="-1"])').length`);
     let leaked = null;
     for (let i = 0; i < focusable + 3 && !leaked; i++) { await t.press("Tab"); if (await t.js(OUTSIDE)) leaked = "Tab " + (i + 1) + ": " + await t.js(ACTIVE) }
@@ -122,10 +131,18 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
     verdict(page, w, h, "the fade is decorative: it takes no pointer events and never covers the button", shut.fadePE == "none" && shut.fadeClear, JSON.stringify(shut));
     await t.js(`(document.getElementById("probe-more") || document.body).focus()`);
     await t.press("Enter");
-    const opened = await t.js(PB);
+    const opened = await t.js(PB), fitO = await t.js(FIT);
+    verdict(page, w, h, "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)", fitsOk(fitO), JSON.stringify(fitO));
+    if (w == 1440) {   // a resize, or a turned phone: the box follows the window it is in
+      await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 600, deviceScaleFactor: 1, mobile: false}); await sleep(400);
+      const low = await t.js(FIT);
+      await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: h, deviceScaleFactor: 1, mobile: false}); await sleep(400);
+      const back = await t.js(FIT);
+      verdict(page, w, h, "the opened box follows a resize: smaller in a lower window, as large again when the window is", fitsOk(low) && low.box < fitO.box && fitsOk(back) && back.box == fitO.box, JSON.stringify([fitO.box, low, back.box]));
+    }
     await t.press("Space");
     const folded = await t.js(PB);
-    verdict(page, w, h, "the button opens the prompt whole by Enter and folds it back by Space", opened.expanded == "true" && opened.whole && opened.h > shut.h && folded.expanded == "false" && folded.h == shut.h, JSON.stringify([shut.h, opened, folded.h, folded.expanded]));
+    verdict(page, w, h, "the button opens the box by Enter and folds it back by Space", opened.expanded == "true" && opened.h > shut.h && folded.expanded == "false" && folded.h == shut.h, JSON.stringify([shut.h, opened, folded.h, folded.expanded]));
     const box = await t.js(`(() => { const b = document.querySelector("#probe").getBoundingClientRect(); return {l: Math.round(b.left), r: Math.round(b.right), sw: document.documentElement.scrollWidth, iw: innerWidth} })()`);
     verdict(page, w, h, "the dialog fits the window, and the page does not scroll sideways under it", box.l >= 0 && box.r <= box.iw && box.sw <= box.iw, JSON.stringify(box));
     if (w < 500) {
@@ -151,21 +168,22 @@ if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.sta
   for (let w = 1000; w <= 1400 && first === null; w++) { await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false}); if (await shows()) first = w }
   const bar = first === null ? null : await t.js(`(() => ({rows: [...document.querySelectorAll(".hud nav a")].filter(a => getComputedStyle(a).display != "none").map(a => Math.round(a.getBoundingClientRect().height)), gap: Math.round((document.querySelector(".hud nav").getBoundingClientRect().left - document.querySelector(".hud .langsw").getBoundingClientRect().right) * 10) / 10}))()`);
   verdict(page, first ?? 0, 900, "the top bar's anchors stand in one row, clear of the switch, where they first show", bar !== null && Math.max(...bar.rows) < 36 && bar.gap >= 0, `first shown at ${first} px: ${JSON.stringify(bar)}`);
-  info.push({page, w: first, state: "the width where the top bar's anchors first show", scrollsInside: []});
+  info.push({page, w: first, state: "the width where the top bar's anchors first show"});
   await t.close();
 }
-// a refused copy: the dialog says so and selects the prompt, so that Ctrl+C copies it. The prompt stands open there by design, so how far the dialog then
-// scrolls inside itself is measured and printed, not judged.
-if (state == "probe") for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844]]) {
+// a refused copy: the dialog says so, the box opens as far as the window allows and its whole text is selected and focused, so that Ctrl+C copies it all
+if (state == "probe") for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844], [1440, 900]]) {
   const t = await open(page, {w, h, clipboard: "refused"});
   await t.js(`document.getElementById("probe-open").click()`); await sleep(500);
   const s = await t.js(`(() => { const a = document.getElementById("probe-text"), st = document.getElementById("probe-status"), b = document.getElementById("probe-more"); return {state: st.dataset.state, text: st.textContent.trim(), selected: a.selectionStart == 0 && a.selectionEnd == a.value.length && a.value.length > 0,
-    focused: document.activeElement === a, expanded: b ? b.getAttribute("aria-expanded") : null, whole: a.scrollHeight <= a.clientHeight + 1} })()`);
-  verdict(page, w, h, "where the copy is refused, the dialog says so, the box opens whole and its text is selected and focused, so that Ctrl+C copies it all", s.state == "fail" && s.text.length > 0 && s.selected && s.focused && s.expanded == "true" && s.whole, JSON.stringify(s));
+    focused: document.activeElement === a, expanded: b ? b.getAttribute("aria-expanded") : null} })()`);
+  const f = await t.js(FIT);
+  verdict(page, w, h, "where the copy is refused, the dialog says so, the box opens, and its whole text is selected and focused, so that Ctrl+C copies it all", s.state == "fail" && s.text.length > 0 && s.selected && s.focused && s.expanded == "true", JSON.stringify(s));
+  verdict(page, w, h, "where the copy is refused, the opened box grows as far as the window allows and the dialog does not scroll (but for the box's floor)", fitsOk(f), JSON.stringify(f));
   await t.js(`navigator.clipboard.writeText = () => Promise.resolve()`); await t.js(`document.getElementById("probe-again").click()`); await sleep(400);
   const later = await t.js(`({state: document.getElementById("probe-status").dataset.state, expanded: (document.getElementById("probe-more") || {getAttribute: () => null}).getAttribute("aria-expanded")})`);
   verdict(page, w, h, "a later successful copy returns step 1 to the clipboard line and leaves the box as it is", later.state == "ok" && later.expanded == "true", JSON.stringify(later));
-  info.push({page, w, h, state: "copy refused, the prompt open", scrollsInside: await t.js(SCROLLS)});
+  info.push({page, w, h, state: "copy refused, the box open", box: f.box, dialogScrolls: f.dialogScrolls});
   await t.close();
 }
 

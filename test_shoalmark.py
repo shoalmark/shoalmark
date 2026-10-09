@@ -12400,21 +12400,31 @@ else:
                 "wraps": ("a top bar whose anchors show a width too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1129px){.hud nav a:not(.docs){display:none}}", "@media (max-width:1099px){.hud nav a:not(.docs){display:none}}", "bar"),
                           "the top bar's anchors stand in one row, clear of the switch, where they first show"),
                 "box-aria": ("a prompt box whose button does not say aria-expanded", _mutate("box-aria", "index.html", 'more.setAttribute("aria-expanded", on);', "", "390x844"),
-                             "the button opens the prompt whole by Enter and folds it back by Space"),
+                             "the button opens the box by Enter and folds it back by Space"),
                 "box-shut": ("a prompt box that never opens whole", _mutate("box-shut", "index.html", 'if (on) fit(); else ta.style.height = "";', 'ta.style.height = "";', "390x844"),
-                             "the button opens the prompt whole by Enter and folds it back by Space"),
+                             "the button opens the box by Enter and folds it back by Space"),
                 "box-failed": ("a failed copy that leaves the box closed", _mutate("box-failed", "index.html", 'say("fail", W.fail); done.textContent = ""; show(true); ta.focus();', 'say("fail", W.fail); done.textContent = ""; ta.focus();', "390x844"),
-                               "where the copy is refused, the dialog says so, the box opens whole and its text is selected and focused, so that Ctrl+C copies it all"),
+                               "where the copy is refused, the dialog says so, the box opens, and its whole text is selected and focused, so that Ctrl+C copies it all"),
                 "box-fade": ("a fade that takes the pointer", _mutate("box-fade", "index.html", "</head>", "<style>.probe-fade{pointer-events:auto!important}</style></head>", "390x844"),
                              "the fade is decorative: it takes no pointer events and never covers the button"),
                 "box-later": ("a later success that folds the box", _mutate("box-later", "index.html", 'const good = again_ => { say("ok", W.ok);', 'const good = again_ => { say("ok", W.ok); show(false);', "390x844"),
                               "a later successful copy returns step 1 to the clipboard line and leaves the box as it is"),
+                "box-unlimited": ("an opened box that never yields to the window", _mutate("box-unlimited", "index.html", 'ta.style.height = (over > 0 ? Math.max(floor, whole - over) : whole) + "px";', 'ta.style.height = whole + "px";', "390x844"),
+                                  "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)"),
+                "box-fixed": ("an opened box of a fixed size", _mutate("box-fixed", "index.html", 'ta.style.height = (over > 0 ? Math.max(floor, whole - over) : whole) + "px";', 'ta.style.height = "172px";', "1440x900"),
+                              "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)"),
+                "box-blank": ("an opened box that ends in an empty line", _mutate("box-blank", "index.html", 'ta.value = FULL.replace(/\\n$/, "");', "", "390x844"),
+                              "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)"),
+                "box-copy": ("a copy that loses the last line ending", _mutate("box-copy", "index.html", "navigator.clipboard.writeText(FULL)", "navigator.clipboard.writeText(ta.value)", "390x844"),
+                             "the prompt copied is the prompt of the page, byte for byte, its line ending included"),
+                "box-resize": ("an opened box that does not follow the window", _mutate("box-resize", "index.html", 'addEventListener("resize", () => { if (box.dataset.open === "true") fit(); });', "", "1440x900"),
+                               "the opened box follows a resize: smaller in a lower window, as large again when the window is"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens whole, a failed copy that leaves the box closed, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
