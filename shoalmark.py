@@ -2123,9 +2123,9 @@ def review_addendum():
 def addenda_between(r, h, v=None):
     """every commit from r to h touches only review addenda (`review_addendum`) — the verdict `v` its own review file
     anywhere under evidence/ too, and with `v` None every commit its own — and none is a merge, which brings a line's
-    files; False where git cannot read the range"""
+    files; False where git cannot read the range. A submodule's pointer counts as a change, whatever `.gitmodules` says (`--ignore-submodules=none`)"""
     ok = review_addendum()
-    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}"],
+    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", f"{r}..{h}"],
                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode != 0 and unread_here():
         raise Unread                                        # its walk met a tree the partial clone lacks: no answer
@@ -2152,7 +2152,8 @@ def refusal_record(commit):
     under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
     `--queue` admits it below their act as it admits a review file's commit (RV-712) — a forged one in their name carries in
     one line under `## Acts` that rules nothing, and nothing outside it."""
-    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
+    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff",
+                        "--ignore-submodules=none", commit],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     head, _, diff = r.stdout.partition("\n")
     parents, _, subject = head.partition("\x00")
@@ -2178,8 +2179,10 @@ def refusal_record(commit):
             and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1):
         return False
     # ONE file changed, as git's own list of the commit's changes names them — not as its `+++` lines do: git prints none for a change with no text to
-    # show, a binary or an empty file added, changed or deleted, or a mode alone. The record changes its tracker's text and nothing else, not its mode
-    listed = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", commit], cwd=ROOT,
+    # show, a binary or an empty file added, changed or deleted, or a mode alone. The record changes its tracker's text and nothing else, not its mode.
+    # `--ignore-submodules=none`, here and in the diff above: a `.gitmodules` that says `ignore = all` for a submodule leaves its pointer out of every
+    # list git makes, but where the command line asks for it — the checkout's own configuration does not
+    listed = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", "--ignore-submodules=none", commit], cwd=ROOT,
                             capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if listed.returncode != 0 and unread_here():
         raise Unread                                        # its trees are not in the partial clone: no answer
@@ -2245,10 +2248,11 @@ def stray_below(commit, base, skip=True):
     tool's own refusal record (`refusal_record`), as the wait that names it: `wait: a seat's commit on your answer branch
     (<sha>, <author>)`, or where its author may answer, `wait: an unverified commit in your name on your answer branch
     (<sha>)` — never *a seat's* of a commit in their name (RV-712). "" where there is none; None where the walk cannot run —
-    `base` is not here (RV-711): nothing below is proven, and a reader waits."""
+    `base` is not here (RV-711): nothing below is proven, and a reader waits. A submodule's pointer counts as a path changed, whatever `.gitmodules` says
+    (`--ignore-submodules=none`)."""
     ok = review_addendum()
     full = (git_out("rev-parse", "--verify", "--quiet", commit + "^{commit}") or "").strip()
-    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", commit, "^" + base],
+    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", commit, "^" + base],
                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode != 0 and full and unread_here() and git_out("rev-parse", "--verify", "--quiet", base + "^{commit}"):
         raise Unread                                        # the base is here, and the walk met a tree the partial clone lacks: no answer

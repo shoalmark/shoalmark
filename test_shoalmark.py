@@ -9012,6 +9012,117 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# a submodule whose `.gitmodules` on the default branch says `ignore = all`: a commit below the Owner's signed answer that also moves its pointer — shaped as
+# the tool's refusal record, or a seat's commit beside a review file, or a seat's commit that moves the pointer alone — is waited on in `--queue` and on the
+# board, as it is where `.gitmodules` says `ignore = none`; the tool's own record and a seat's review file alone still read as theirs to merge
+def _bw_below_answer(root, rel, ops, author=("owner", "o@x"), record=True, subject="AP-501: --answer refused — the push was refused"):
+    """`answer/ap-501` on origin: one commit by `author` below the Owner's signed answer — with `record`, shaped as the tool's refusal record on `rel` —
+    that also makes the changes `ops`: ("link", None, <a commit id>, path) a submodule's pointer, ("add", mode, data, path) a file; made with a separate
+    index and `commit-tree` alone, its head also as a pull request's (`refs/pull/1/head`). The head."""
+    idx_ = dict(_ENV, GIT_INDEX_FILE=str(root.parent / "rv-index"))
+    g_ = lambda *a, inp=None, env=None: subprocess.run(["git", "-C", str(root), *a], input=inp, capture_output=True, env=env or idx_).stdout.decode("utf-8", "replace").strip()
+    blob_ = lambda data: g_("hash-object", "-w", "--stdin", inp=data)
+    text_ = g_("show", f"main:{rel}")
+    record_ = text_.rstrip("\n") + "\n\n## Acts\n\n**2026-10-09 12:00** · shoalmark --answer AP-501 accept refused — the push was refused\n"
+    answer_ = (record_ if record else text_).replace("next: owner\n", f'next: build\nanswer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: owner\n')
+    g_("read-tree", "main")
+    if record:
+        g_("update-index", "--add", "--cacheinfo", f"100644,{blob_(record_.encode('utf-8'))},{rel}")
+    for op_, mode_, data_, path_ in ops:
+        g_("update-index", "--add", "--cacheinfo", f"160000,{data_},{path_}" if op_ == "link" else f"{mode_},{blob_(data_)},{path_}")
+    by_ = dict(_ENV, GIT_AUTHOR_NAME=author[0], GIT_AUTHOR_EMAIL=author[1], GIT_COMMITTER_NAME=author[0], GIT_COMMITTER_EMAIL=author[1], GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"])
+    below_ = g_("commit-tree", g_("write-tree"), "-p", "main", "-m", subject, env=by_)
+    g_("update-index", "--cacheinfo", f"100644,{blob_(answer_.encode('utf-8'))},{rel}")
+    owner_ = dict(_ENV, GIT_AUTHOR_NAME="owner", GIT_AUTHOR_EMAIL="o@x", GIT_COMMITTER_NAME="owner", GIT_COMMITTER_EMAIL="o@x", GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"])
+    head_ = g_("commit-tree", "-S", g_("write-tree"), "-p", below_, "-m", "AP-501: answered", env=owner_)
+    git(root, "push", "-q", "-f", "origin", f"{head_}:refs/heads/answer/ap-501", f"{head_}:refs/pull/1/head")
+    git(root, "fetch", "-q", "origin")
+    return head_
+
+
+def _bw_above_answer(root, head, ops, author):
+    """`answer/ap-501` on origin: one commit by `author` on top of `head` — the Owner's signed answer — making the changes `ops` as `_bw_below_answer` makes
+    them; its head also as a pull request's. The head."""
+    idx_ = dict(_ENV, GIT_INDEX_FILE=str(root.parent / "rv-index"))
+    g_ = lambda *a, inp=None, env=None: subprocess.run(["git", "-C", str(root), *a], input=inp, capture_output=True, env=env or idx_).stdout.decode("utf-8", "replace").strip()
+    g_("read-tree", head)
+    for op_, mode_, data_, path_ in ops:
+        g_("update-index", "--add", "--cacheinfo", f"160000,{data_},{path_}" if op_ == "link" else f"{mode_},{g_('hash-object', '-w', '--stdin', inp=data_)},{path_}")
+    by_ = dict(_ENV, GIT_AUTHOR_NAME=author[0], GIT_AUTHOR_EMAIL=author[1], GIT_COMMITTER_NAME=author[0], GIT_COMMITTER_EMAIL=author[1], GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"])
+    top_ = g_("commit-tree", g_("write-tree"), "-p", head, "-m", "review: a note", env=by_)
+    git(root, "push", "-q", "-f", "origin", f"{top_}:refs/heads/answer/ap-501", f"{top_}:refs/pull/1/head")
+    git(root, "fetch", "-q", "origin")
+    return top_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    rel_ = "docs/work-tracker/AP-501-x.md"; review_ = "docs/work-tracker/evidence/reviews/review-x.md"
+    pin_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    moved_ = [("link", None, "1234567890abcdef1234567890abcdef12345678", "vendor/lib")]       # the pointer moved to another commit of the submodule
+    bare_, real_run_, real_which_, real_forge_ = base_ / "origin.git", subprocess.run, fm.shutil.which, fm.github_remote
+
+    def queue_(head):
+        """`--queue` as the Owner runs it, `gh` answering with one open pull request — `answer/ap-501` at `head` — and nothing merged or closed: its action."""
+        pr_ = [{"number": 1, "title": "AP-501: answered", "headRefName": "answer/ap-501", "headRefOid": head, "baseRefName": "main", "mergeable": "MERGEABLE",
+                "mergeStateStatus": "CLEAN", "createdAt": "2026-10-09T10:00:00Z", "isCrossRepository": False}]
+        def stub_(*a, **k):
+            if a and list(a[0])[:1] == ["gh-stub"]:
+                state_ = list(a[0])[list(a[0]).index("--state") + 1]
+                return subprocess.CompletedProcess(a[0], 0, json.dumps(pr_ if state_ == "open" else []), "")
+            return real_run_(*a, **k)
+        subprocess.run, fm.shutil.which = stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which_(name, *a, **k))
+        fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge_(url)
+        try:
+            c_, o_, e_ = run_safe(root_, "--queue")
+        finally:
+            subprocess.run, fm.shutil.which, fm.github_remote = real_run_, real_which_, real_forge_
+        return next((re.split(r" {2,}", l_)[1] for l_ in o_.splitlines() if l_.startswith("PR 1  ")), f"no line for PR 1 (exit {c_}: {(e_ or o_).strip()[-120:]!r})")
+
+    def board_():
+        """The board's run as a hook starts it: (its reading of `answer/ap-501`, the wait the queue's reading names, or "")."""
+        _tool_run(HERE / "shoalmark.py", root_, "--html-only")
+        page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+        at_ = page_.find('["answer", "answer/ap-501"')
+        w_ = json.JSONDecoder().raw_decode(page_[at_:])[0] if at_ >= 0 else None
+        return (w_[6], w_[14]) if w_ else ("not shown", "")
+
+    below_ = lambda h_: subprocess.run(["git", "-C", str(root_), "rev-parse", h_ + "~1"], capture_output=True, text=True, env=_ENV).stdout.strip()[:7]
+    for ignore_ in ("all", "none"):
+        (root_ / ".gitmodules").write_text(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n', encoding="utf-8")
+        git(root_, "add", ".gitmodules"); git(root_, "update-index", "--add", "--cacheinfo", f"160000,{pin_},vendor/lib")
+        git(root_, "commit", "-qm", f"the trunk vendors a submodule, `ignore = {ignore_}`"); git(root_, "push", "-q", "origin", "main")
+        head_ = _bw_below_answer(root_, rel_, []); q_, b_ = queue_(head_), board_()
+        check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a refusal record as the tool writes it, below the Owner's signed answer, "
+              f"still reads as theirs: `merge: your answer` in `--queue` and on the board (saw `--queue` {q_!r}, the board {b_})",
+              q_ == "merge: your answer" and b_ == ("merge: your answer", ""))
+        head_ = _bw_below_answer(root_, rel_, [("add", "100644", b"# a review\n", review_)], author=("seat", "seat@x"), record=False, subject="review: a note")
+        q_, b_ = queue_(head_), board_()
+        check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a seat's commit of a review file alone, below the Owner's signed "
+              f"answer, is a review addendum: `merge: your answer` in `--queue` and on the board (saw `--queue` {q_!r}, the board {b_})",
+              q_ == "merge: your answer" and b_ == ("merge: your answer", ""))
+        for shape_, ops_, author_, record_, subject_, wait_ in (
+                ("a commit shaped as the tool's refusal record, in the Owner's name and unsigned, that also moves the submodule's pointer", moved_, ("owner", "o@x"), True,
+                 "AP-501: --answer refused — the push was refused", "wait: an unverified commit in your name on your answer branch ({})"),
+                ("a seat's commit of a review file that also moves the submodule's pointer", moved_ + [("add", "100644", b"# a review\n", review_)],
+                 ("seat", "seat@x"), False, "review: a note", "wait: a seat's commit on your answer branch ({}, seat@x)"),
+                ("a seat's commit that moves the submodule's pointer alone", moved_, ("seat", "seat@x"), False, "chore",
+                 "wait: a seat's commit on your answer branch ({}, seat@x)")):
+            head_ = _bw_below_answer(root_, rel_, ops_, author=author_, record=record_, subject=subject_)
+            want_ = wait_.format(below_(head_)); q_, b_ = queue_(head_), board_()
+            check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, below the Owner's signed answer, {shape_}: `--queue` and the board "
+                  f"wait on it, `{want_.split(' (')[0]}` (saw `--queue` {q_!r}, the board {b_})",
+                  q_ == want_ and b_[1] == want_)
+        head_ = _bw_above_answer(root_, _bw_below_answer(root_, rel_, [], record=False, author=("owner", "o@x"), subject="AP-501: an empty step"),
+                                 moved_ + [("add", "100644", b"# a review\n", review_)], ("seat", "seat@x"))
+        q_, b_ = queue_(head_), board_()
+        check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a seat's commit of a review file that also moves the submodule's pointer, "
+              f"on top of the Owner's signed answer, is no review addendum: `--queue` and the board read the head, `wait: not an answerer (seat@x)` (saw `--queue` "
+              f"{q_!r}, the board {b_})",
+              q_ == "wait: not an answerer (seat@x)" and b_[1] == "wait: not an answerer (seat@x)")
+    rm_git(root_)
+fm.configure(HERE)
+
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")
