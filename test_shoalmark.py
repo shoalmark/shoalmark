@@ -8805,6 +8805,34 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# a branch's own attribute that calls every tracker binary, or not to be diffed: the board's reads still name the commit that wrote each ask, and the gate's
+# reads, which keep git's default, refuse each line they name no commit for — closed, as every line no commit is named for is
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    tracker(root_, "AP-508", extra=f'next: owner\nask: "Does the archive ship first?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n', title="an ask")
+    run(root_); fm.configure(HERE)
+    git(root_, "add", "-A"); git(root_, "commit", "-qm", "a second ask", "-S", "--author=owner <o@x>"); git(root_, "push", "-q", "origin", "main")
+    seen_ = {}
+    for attr_ in ("*.md binary", "*.md -diff"):
+        (root_ / ".gitattributes").write_text(attr_ + "\n", encoding="utf-8")
+        git(root_, "add", ".gitattributes"); git(root_, "commit", "-qm", f"every tracker: {attr_}"); git(root_, "push", "-q", "origin", "main")
+        c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only")
+        page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+        c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root_, "--owner")
+        c3_, o3_, e3_ = _tool_run(HERE / "shoalmark.py", root_, "--check")
+        gate_ = o3_ + e3_
+        seen_[attr_] = dict(board=(c1_, page_.count("version control names no commit for this line")), queue=(re.findall(r"^(\d+) NEED THE OWNER", o2_, re.M) or ["none"])[0],
+                            asks=[t_ for t_ in ("AP-501", "AP-508") if re.search(rf"^{t_}\b", o2_, re.M)],
+                            gate=(c3_, [t_ for t_ in ("AP-501", "AP-508") if f"{t_}: `next: owner` — version control names no commit for this line" in gate_]))
+    check(f"FM-045 · a branch's own `.gitattributes` that calls every tracker `binary`, and then `-diff`: the board's reads still name the commit that wrote each "
+          f"ask — none is refused on the board, and each stays in `--owner`'s queue —, and the gate, whose reads keep git's default, refuses each line it names no "
+          f"commit for, exit 4: it fails closed (saw {seen_})",
+          all(g_["board"] == (0, 0) and g_["queue"] == "2" and g_["asks"] == ["AP-501", "AP-508"] and g_["gate"] == (fm.EXIT_LINT, ["AP-501", "AP-508"])
+              for g_ in seen_.values()) and len(seen_) == 2)
+    rm_git(root_)
+fm.configure(HERE)
+
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")

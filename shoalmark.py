@@ -1045,7 +1045,9 @@ PATHSPEC_VARIABLES = ("GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_
 #   anything runs, and `%G?` reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
 # Textconv is the one setting git takes from no configuration and no environment: a diff driver's `textconv`, which an attribute in the tree names, runs in
 # `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — the board's six such reads carry it
-# (`board_diff_args`), and every other run's do not.
+# (`board_diff_args`), and every other run's do not. Beside it, `--text`: an attribute in the tree that calls a tracker `binary`, or `-diff`, makes `-G`
+# pass over its every change and `-p` print none of it, and the board would read no commit for a line a commit wrote. The gate's reads keep git's default:
+# where they name no commit, the gate refuses the line.
 NO_SIGNATURE_PROGRAM = str(pathlib.Path(__file__).resolve() / "no-signature-program")
 BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("gpg.program", NO_SIGNATURE_PROGRAM),
                   ("gpg.openpgp.program", NO_SIGNATURE_PROGRAM), ("gpg.x509.program", NO_SIGNATURE_PROGRAM))
@@ -1057,8 +1059,8 @@ def board_settings():
 
 
 def board_diff_args():
-    """`--no-textconv` while this run's reads are the board's (`LAZY_OFF`), for each of its reads that diffs or searches a diff — else nothing."""
-    return ["--no-textconv"] if LAZY_OFF else []
+    """`--no-textconv` and `--text` while this run's reads are the board's (`LAZY_OFF`), for each of its reads that diffs or searches a diff — else nothing."""
+    return ["--no-textconv", "--text"] if LAZY_OFF else []
 
 
 # THE BOARD'S READS FETCH NOTHING. In a partial clone a git read that meets an object the clone lacks fetches it from the remote that promised it, by itself:
