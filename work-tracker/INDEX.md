@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-08 · 43 trackers (43 work).
+> Generated 2026-10-09 · 43 trackers (43 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -48,7 +48,6 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
-| [FM-045](FM-045-the-board-s-refresh-stops-on-git-ls-tree-which-its-read-only.md) | P0 | Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and… | In Progress | progress | 2026-10-08 |
 | [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | P2 | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | In Progress | progress | 2026-09-30 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | P2 | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress | progress | 2026-09-27 |
@@ -71,6 +70,7 @@
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
 | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | P2 | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed | progress | 2026-09-25 |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
+| [FM-045](FM-045-the-board-s-refresh-stops-on-git-ls-tree-which-its-read-only.md) | P0 | Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and… | Shipped | ended | 2026-10-08 |
 | [FM-040](FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md) | P2 | the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it | Shipped | ended | 2026-09-28 |
 | [FM-036](FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md) | P2 | On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-… | Shipped | ended | 2026-09-25 |
 | [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Shipped | ended | 2026-09-25 |

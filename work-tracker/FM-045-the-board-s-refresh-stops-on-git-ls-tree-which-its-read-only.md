@@ -1,6 +1,6 @@
 ---
 id: FM-045
-status: In Progress
+status: Shipped
 considered: FM-030, FM-037
 tags: bug
 next: review
@@ -13,7 +13,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 
 ## What is true now
 
-**Built, and cut as 0.19.2 on `release/v0.19.2`, dated 2026-10-09; not yet reviewed as a release, merged or tagged.**
+**Shipped in v0.19.2, 2026-10-09: `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156), tagged `v0.19.2` on `ceb21b8`.**
 - **What happened (v0.19.1):** `--html-only`, the board's run that the checkout, merge and rewrite hooks start, stopped
   with "the board's run was stopped: it would start git ls-tree -r -z — it starts nothing but read-only git and writes
   only the board", exit 4, nothing written. The hooks never blocked: each printed "the board is not refreshed (exit 4)"
@@ -46,9 +46,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 - **On `release/v0.19.2`:** slice 1 merged at `13bb2c4`, slice 2 at `b62ad2a`, main at `a36bc03`; the release commit
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages; RV-2780 merged at `e55a23d`, RV-2781
   at `1fcfdc7`, RV-2782 at `c9da264`: the landing names v0.19.2 in the Owner's words, and the CHANGELOG's section carries
-  the Owner's headline, dated 2026-10-09 (`f781491`, `d76743a`).
-- **Left:** the release's critical verdict and the full run on its final head, the merge and the tag; then Shipped. The
-  keep is unranked: the next full pass ranks it.
+  the Owner's headline (`f781491`), its Fixes line (`d76743a`), dated 2026-10-09 by `c458e4d`.
 
 ## Why
 
@@ -94,3 +92,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | **Every board's run of the matrix watched** by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-rv-2781-every-board-run-watched-3`, from `9a7ed43`, in `test_shoalmark.py` only: `f9cd059` — through git's trace (`GIT_TRACE2_EVENT`), the runs the hooks' copy makes for `post-checkout`, `post-merge` and `post-rewrite`, the lefthook-style runner's, `--answer`'s and the runs by hand: each event's own run seen, every git it starts a read `read_only_git` admits, `ls-tree` counted, all recorded for the runtime half; `65b6875` — the watch's control; `2490ebc` — the runtime half's name says exactly what it watches. |
 | 2026-10-08 | Built by `b3bdb000/implementer-124`: `f781491` — the landing names v0.19.2 in the Owner's words; the CHANGELOG's headline, Fixes line and CI line; `d76743a` — the Fixes line says only that `git ls-tree` is on the read-only git; the tracker's day and CI systems. |
 | 2026-10-08 | Built by `b3bdb000/implementer-115`: `42fbd86` — Check A accepts a start only in the form the product writes: a process API called by its plain name, its argument list and every argument that can choose the program or a shell resolved in full; any other reference to a process API or module, code handed to any shell or interpreter and a start through a wrapper are not read. Two exceptions, each matched by its site and met once: `notify_argv`'s code handed to osascript and to PowerShell, ending when that code is made literal, and the repository's deriver, permanent. A control for each kind; the tool's own reading: 29 commands, nothing unread. |
+| 2026-10-09 | **Shipped in v0.19.2:** `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156); tagged `v0.19.2` on `ceb21b8`. |
