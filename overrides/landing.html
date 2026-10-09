@@ -5,25 +5,28 @@
     (c) R3 the chart's texts above the CRT overlay, (d) the font loading. -#}
 {#- FM-006 v0.19.0 first screen: the Owner's ruling filed in FM-006 (What a stranger meets first) — A1's lead and its one action,
     the link previews, C the fleet, E's two lines, the phone's first screen. Each edit is marked where it stands, as above. -#}
+{#- The landing's English words are in partials/landing/en.html (`w`, read as {{ w.key }}); the rest of the page is here. -#}
+{%- import "partials/landing/en.html" as L -%}
+{%- set w = L.w -%}
 <!doctype html>
-<html lang="en">
+<html lang="{{ w.lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>shoalmark — the agents keep the work; the person keeps the word</title>{# FM-006 v0.19.0 first screen: A1, the title #}
-<meta name="description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">{# FM-006 v0.19.0 first screen: A1, the one description #}
+<title>{{ w.title }}</title>{# FM-006 v0.19.0 first screen: A1, the title #}
+<meta name="description" content="{{ w.description }}">{# FM-006 v0.19.0 first screen: A1, the one description #}
 {# FM-006 v0.19.0 first screen: the link previews, in the landing's own head — the image is docs/assets/preview.png, a render of this page's chart with its wordmark #}
 <link rel="canonical" href="https://shoalmark.github.io/shoalmark/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="shoalmark">
-<meta property="og:locale" content="en_GB">
+<meta property="og:locale" content="{{ w.locale }}">
 <meta property="og:url" content="https://shoalmark.github.io/shoalmark/">
-<meta property="og:title" content="The agents keep the work; the person keeps the word.">
-<meta property="og:description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">
+<meta property="og:title" content="{{ w.og_title }}">
+<meta property="og:description" content="{{ w.description }}">
 <meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.">
+<meta property="og:image:alt" content="{{ w.og_image_alt }}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="alternate" type="text/plain" title="llms.txt — for agents" href="https://shoalmark.github.io/shoalmark/llms.txt">
 <link rel="icon" href="{{ 'assets/favicon.svg' | url }}">{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the site's Pricke as the landing's icon — the file the theme names (zensical.toml favicon), so the browser asks for no /favicon.ico #}
@@ -321,24 +324,24 @@ section.band{padding-block:72px 40px}
 
 <header class="hud">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="shoalmark, to the top"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="#d9e4ec"/></svg>shoalmark</a>
-    <div class="score" role="list" aria-label="The release and the record">
+    <a class="brand" href="#top" aria-label="{{ w.hud_brand_aria }}"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="#d9e4ec"/></svg>shoalmark</a>
+    <div class="score" role="list" aria-label="{{ w.hud_score_aria }}">
       <div role="listitem">release<b>v0.19.2</b></div>
       <div role="listitem" class="opt">hi-score<b>71/82</b></div>
-      <div role="listitem" class="mid">wrecks<b id="hud-w">27</b></div>
+      <div role="listitem" class="mid">{{ w.hud_wrecks }}<b id="hud-w">27</b></div>
       <div role="listitem" class="hot">open<b id="hud-o">10</b></div>{# FM-006 v0.19.0 player stats: the top bar, the board excerpt, the high scores, the wrecks and the footer as the Auditor read them at the cut c830470, 1 October 2026, 12:47–12:55 CEST (FM-006, the landing's player stats at the v0.19.0 cut) #}
     </div>
-    <nav aria-label="Sections">
-      <a href="#agents"><i>1P</i> agents</a><a href="#people"><i>2P</i> people</a><a href="#scores">scores</a><a href="#register">wrecks</a><a href="#start">start</a>
+    <nav aria-label="{{ w.nav_aria }}">
+      <a href="#agents">{{ w.nav_agents }}</a><a href="#people">{{ w.nav_people }}</a><a href="#scores">{{ w.nav_scores }}</a><a href="#register">{{ w.nav_wrecks }}</a><a href="#start">{{ w.nav_start }}</a>
     <a class="docs" href="https://shoalmark.github.io/shoalmark/setup.html">Docs</a>
     </nav>
   </div>
 </header>
 
 <main id="top">
-<section class="hero" aria-label="The chart of the German Wadden coast, and its wrecks">
+<section class="hero" aria-label="{{ w.hero_aria }}">
   <div class="stage" id="stage">
-    <canvas id="chart" width="320" height="205" role="img" aria-label="A night chart of the German Bight: the East Frisian islands from Borkum to Wangerooge, the Jade, the Weser and the Elbe, the flats and sandbanks between them, Helgoland offshore. Magenta wrecks lie on the flats; each is a defect from shoalmark's own tracker, listed in the wreck register below."></canvas>
+    <canvas id="chart" width="320" height="205" role="img" aria-label="{{ w.chart_aria }}"></canvas>
     <canvas id="fleet" width="320" height="205" aria-hidden="true"></canvas>
     <div id="names" aria-hidden="true"></div>
     <div id="wrecks"></div>
@@ -348,9 +351,9 @@ section.band{padding-block:72px 40px}
   </div>
   <div class="title">
     <svg class="wm" viewBox="0 0 130 16" role="img" aria-label="shoalmark"><path class="pricke" shape-rendering="crispEdges" d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/><path d="M41.42 14.22Q39.91 14.22 38.82 13.73Q37.73 13.24 37.06 12.43L38.27 11.35Q38.88 12.02 39.64 12.37Q40.41 12.72 41.45 12.72Q42.41 12.72 42.99 12.4Q43.58 12.07 43.58 11.39Q43.58 11.1 43.47 10.9Q43.36 10.71 43.16 10.58Q42.97 10.45 42.7 10.38Q42.44 10.31 42.16 10.27L40.68 10.04Q40.14 9.97 39.58 9.81Q39.02 9.64 38.58 9.35Q38.14 9.05 37.86 8.58Q37.58 8.11 37.58 7.39Q37.58 5.97 38.67 5.23Q39.76 4.5 41.54 4.5Q42.84 4.5 43.78 4.88Q44.73 5.27 45.36 5.95L44.26 7.11Q43.9 6.69 43.24 6.34Q42.57 5.99 41.47 5.99Q39.51 5.99 39.51 7.23Q39.51 7.83 39.93 8.05Q40.36 8.28 40.93 8.35L42.41 8.58Q42.97 8.67 43.52 8.82Q44.06 8.96 44.5 9.26Q44.95 9.55 45.22 10.02Q45.5 10.49 45.5 11.21Q45.5 12.61 44.41 13.41Q43.33 14.22 41.42 14.22ZM47.86 0.68H49.82V6.3H49.91Q50.06 5.94 50.28 5.6Q50.51 5.27 50.83 5.03Q51.16 4.78 51.59 4.64Q52.02 4.5 52.6 4.5Q54 4.5 54.86 5.41Q55.73 6.33 55.73 8.02V14H53.77V8.31Q53.77 6.1 51.84 6.1Q51.46 6.1 51.1 6.2Q50.74 6.3 50.45 6.49Q50.17 6.69 50 7Q49.82 7.3 49.82 7.7V14H47.86ZM62.1 14.22Q61.07 14.22 60.26 13.87Q59.44 13.53 58.87 12.9Q58.3 12.27 58 11.37Q57.69 10.47 57.69 9.36Q57.69 8.24 58 7.34Q58.3 6.44 58.87 5.81Q59.44 5.18 60.26 4.84Q61.07 4.5 62.1 4.5Q63.13 4.5 63.95 4.84Q64.76 5.18 65.33 5.81Q65.9 6.44 66.2 7.34Q66.51 8.24 66.51 9.36Q66.51 10.47 66.2 11.37Q65.9 12.27 65.33 12.9Q64.76 13.53 63.95 13.87Q63.13 14.22 62.1 14.22ZM62.1 12.67Q63.18 12.67 63.82 12.01Q64.46 11.35 64.46 10.06V8.65Q64.46 7.36 63.82 6.7Q63.18 6.04 62.1 6.04Q61.02 6.04 60.38 6.7Q59.74 7.36 59.74 8.65V10.06Q59.74 11.35 60.38 12.01Q61.02 12.67 62.1 12.67ZM75.91 14Q75.06 14 74.64 13.57Q74.21 13.14 74.12 12.43H74.03Q73.76 13.28 73.05 13.75Q72.34 14.22 71.24 14.22Q69.82 14.22 68.98 13.47Q68.13 12.72 68.13 11.41Q68.13 10.06 69.13 9.35Q70.13 8.64 72.2 8.64H73.98V7.92Q73.98 6.03 71.98 6.03Q71.08 6.03 70.52 6.38Q69.97 6.73 69.59 7.3L68.42 6.35Q68.81 5.59 69.75 5.05Q70.69 4.5 72.16 4.5Q73.93 4.5 74.93 5.34Q75.94 6.19 75.94 7.79V12.45H77.11V14ZM71.8 12.78Q72.76 12.78 73.37 12.34Q73.98 11.91 73.98 11.23V9.88H72.23Q70.11 9.88 70.11 11.16V11.52Q70.11 12.15 70.56 12.46Q71.01 12.78 71.8 12.78ZM78.75 12.42H81.83V2.26H78.75V0.68H83.79V12.42H86.87V14H78.75ZM88.54 14V4.71H90.22V5.92H90.31Q90.52 5.32 90.93 4.91Q91.33 4.5 92.09 4.5Q92.83 4.5 93.23 4.9Q93.64 5.31 93.74 6.01H93.82Q94.07 5.38 94.52 4.94Q94.97 4.5 95.81 4.5Q96.89 4.5 97.32 5.25Q97.74 6.01 97.74 7.47V14H96.07V7.72Q96.07 6.75 95.83 6.38Q95.6 6.01 95.08 6.01Q94.61 6.01 94.29 6.32Q93.98 6.64 93.98 7.27V14H92.3V7.72Q92.3 6.75 92.08 6.38Q91.85 6.01 91.33 6.01Q90.85 6.01 90.53 6.32Q90.22 6.64 90.22 7.27V14ZM106.96 14Q106.11 14 105.69 13.57Q105.26 13.14 105.17 12.43H105.08Q104.81 13.28 104.1 13.75Q103.39 14.22 102.29 14.22Q100.87 14.22 100.03 13.47Q99.18 12.72 99.18 11.41Q99.18 10.06 100.18 9.35Q101.18 8.64 103.25 8.64H105.03V7.92Q105.03 6.03 103.03 6.03Q102.13 6.03 101.57 6.38Q101.02 6.73 100.64 7.3L99.47 6.35Q99.86 5.59 100.8 5.05Q101.74 4.5 103.21 4.5Q104.98 4.5 105.98 5.34Q106.99 6.19 106.99 7.79V12.45H108.16V14ZM102.85 12.78Q103.81 12.78 104.42 12.34Q105.03 11.91 105.03 11.23V9.88H103.28Q101.16 9.88 101.16 11.16V11.52Q101.16 12.15 101.61 12.46Q102.06 12.78 102.85 12.78ZM109.82 12.42H112.28V6.3H109.82V4.71H114.25V7.18H114.35Q114.48 6.69 114.71 6.24Q114.95 5.79 115.31 5.46Q115.67 5.13 116.19 4.92Q116.71 4.71 117.41 4.71H118.53V6.58H116.69Q115.61 6.58 114.93 7.22Q114.25 7.86 114.25 8.94V12.42H117.61V14H109.82ZM120.38 0.68H122.35V8.73H122.44L123.89 7.23L126.5 4.71H128.83L125.06 8.37L129.24 14H126.88L123.64 9.48L122.35 10.69V14H120.38Z"/></svg>
-    <p class="claim">A Pricke on the Wadden flats keeps the fleet in the channel.</p>
-    <h1>The agents keep the work; the person keeps the word.</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
-    <p class="lede">Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your repository, no <em>done</em> gets through without a commit behind it, and what waits for your word comes first.</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
+    <p class="claim">{{ w.claim }}</p>
+    <h1>{{ w.h1 }}</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
+    <p class="lede">{{ w.lede }}</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
     <div class="cta">
       <a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>
     </div>{# FM-006 v0.19.0 first screen: A1, the one action, to the English note; the three anchors (1P for agents, 2P for people, press start) left the page — the HUD's nav keeps their destinations where it shows them #}
@@ -359,122 +362,122 @@ section.band{padding-block:72px 40px}
 
 <div class="wrap console">
   <article class="box inc" id="inc" aria-live="polite">
-    <h2 class="t">incident</h2>
+    <h2 class="t">{{ w.inc_h }}</h2>
     <div class="inc-head">
       <svg viewBox="0 0 9 6" id="inc-spr" aria-hidden="true"><use href="#wa"/></svg>
       <dl class="facts">
-        <div><dt>tracker</dt><dd id="i-id"></dd></div>
-        <div><dt>incident</dt><dd id="i-inc"></dd></div>
-        <div><dt>filed</dt><dd id="i-day"></dd></div>
-        <div><dt>status</dt><dd class="st" id="i-st"></dd></div>
-        <div><dt>position</dt><dd id="i-pos"></dd></div>
+        <div><dt>{{ w.inc_tracker }}</dt><dd id="i-id"></dd></div>
+        <div><dt>{{ w.inc_incident }}</dt><dd id="i-inc"></dd></div>
+        <div><dt>{{ w.inc_filed }}</dt><dd id="i-day"></dd></div>
+        <div><dt>{{ w.inc_status }}</dt><dd class="st" id="i-st"></dd></div>
+        <div><dt>{{ w.inc_position }}</dt><dd id="i-pos"></dd></div>
       </dl>
     </div>
     <h3 id="i-title"></h3>
     <p id="i-rep"></p>
-    <div class="foot"><span id="i-mode">attract mode — the next open wreck in 6 s; pick one to stop</span><a id="i-link" href="#">read the tracker →</a></div>
+    <div class="foot"><span id="i-mode">{{ w.inc_mode_attract }}</span><a id="i-link" href="#">{{ w.inc_link }}</a></div>
   </article>
-  <aside class="box key" aria-label="The chart's key">
-    <h2 class="t">key</h2>
+  <aside class="box key" aria-label="{{ w.key_aria }}">
+    <h2 class="t">{{ w.key_h }}</h2>
     <ul>
-      <li><svg viewBox="0 0 9 6" fill="#ee92d4"><use href="#wa"/></svg><span><b>open</b>filed and not yet raised — in progress, or on the chart</span></li>
-      <li><svg viewBox="0 0 9 6" fill="#b07ca3"><use href="#wa"/></svg><span><b>raised</b>its fix merged: the tracker shipped</span></li>
-      <li><svg viewBox="0 0 9 6" fill="#8595a2"><use href="#wa"/></svg><span><b>closed</b>closed without a fix</span></li>
-      <li><svg viewBox="0 0 12 12"><use href="#ship"/></svg><span><b>the fleet</b>convoys keeping to the fairways — the Elbe, the Jade, the Weser</span></li>
-      <li><svg viewBox="0 0 16 16" fill="#bccd8f"><use href="#pricke"/></svg><span><b>pricken</b>the birch stakes that mark a channel across the flats — Neuwerk's, off Cuxhaven</span></li>
+      <li><svg viewBox="0 0 9 6" fill="#ee92d4"><use href="#wa"/></svg><span><b>{{ w.key_open_b }}</b>{{ w.key_open }}</span></li>
+      <li><svg viewBox="0 0 9 6" fill="#b07ca3"><use href="#wa"/></svg><span><b>{{ w.key_raised_b }}</b>{{ w.key_raised }}</span></li>
+      <li><svg viewBox="0 0 9 6" fill="#8595a2"><use href="#wa"/></svg><span><b>{{ w.key_closed_b }}</b>{{ w.key_closed }}</span></li>
+      <li><svg viewBox="0 0 12 12"><use href="#ship"/></svg><span><b>{{ w.key_fleet_b }}</b>{{ w.key_fleet }}</span></li>
+      <li><svg viewBox="0 0 16 16" fill="#bccd8f"><use href="#pricke"/></svg><span><b>{{ w.key_pricken_b }}</b>{{ w.key_pricken }}</span></li>
     </ul>
-    <p class="small" style="margin-top:14px">Incident: the commit that filed the tracker. Positions are a drawing, not a fix.</p>
-    <span class="stamp">not for navigation</span>
+    <p class="small" style="margin-top:14px">{{ w.key_note }}</p>
+    <span class="stamp">{{ w.key_stamp }}</span>
   </aside>
 </div>
 
 {# FM-006 v0.19.0 first screen: C, the fleet — a section of its own, early: the first after the chart and its console. Its first line the ruled definition; four tiles as ruled — badge, name, character, the one line; where a clause is needed, README §Seats's own words: the four rights the gate sees (RV-2186) and a seat's charter, beside D1's ruled phrase for the tool's three seats. Each badge inlined from brand/seats/<seat>.svg, its drawing verbatim (the built site carries no brand/), its title left out: decorative, and the four specialists unnamed #}
 <section class="band wrap fleet" id="seats" aria-labelledby="h-fleet">
-  <div class="sec-h"><h2 id="h-fleet">The fleet</h2></div>
-  <p class="fleet-def">A seat is a role an agent takes, with its duties and its rights written down.</p>
-  <p class="fleet-rights">The tool knows the Owner, and three seats with their rights built in — <span><b>planner</b> ask · close · triage</span>, <span><b>reviewer</b> triage</span>, <span><b>builder</b> none</span>. <b>Four rights</b>, each a front-matter transition the gate sees in a diff; anything else is open to every seat.</p>
+  <div class="sec-h"><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
+  <p class="fleet-def">{{ w.fleet_def }}</p>
+  <p class="fleet-rights">{{ w.fleet_rights }}</p>
   <ul class="seats">
     <li class="box seat"><h3 class="t">Planner</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><path fill="#5b83a3" d="M6 6h8v1h-8Z"/><path fill="#f1d47a" d="M9 6h2v1h-2Z"/><path fill="#07111b" d="M6 7h8v1h-8Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
-      <p class="ch">the skipper</p><p>turns the Owner's direction into trackers, and puts the agents' open questions to the Owner, one sentence each.</p></li>
+      <p class="ch">{{ w.seat_planner_ch }}</p><p>{{ w.seat_planner }}</p></li>
     <li class="box seat"><h3 class="t">Builder</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#bccd8f" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#f1d47a" d="M8 4h4v1h-4ZM7 5h6v1h-6ZM6 6h8v1h-8ZM5 7h10v1h-10Z"/><path fill="#e8d4a0" d="M9 4h2v3h-2Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
-      <p class="ch">the shipwright</p><p>builds one change from its tracker, in a worktree of its own, and never accepts its own work.</p></li>
+      <p class="ch">{{ w.seat_builder_ch }}</p><p>{{ w.seat_builder }}</p></li>
     <li class="box seat"><h3 class="t">Reviewer</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8fb9f3" d="M6 6h8v1h-8ZM5 7h10v6h-10ZM6 13h8v1h-8Z"/><path fill="#d9e4ec" d="M11 7h4v1h-4ZM10 8h1v4h-1ZM15 8h1v4h-1ZM11 12h4v1h-4ZM15 13h1v2h-1Z"/><path fill="#15293d" d="M12 9h2v2h-2Z"/><path fill="#15293d" d="M6 10h2v1h-2Z"/><path fill="#f38a80" d="M6 12h1v1h-1Z"/></svg>
-      <p class="ch">the inspector</p><p>reads a branch against its tracker and writes READY, or what must change. It never merges.</p></li>
-    <li class="box seat spec"><h3 class="t">Specialists</h3><div class="four" aria-hidden="true"><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><path fill="#f38a80" d="M13 12h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><path fill="#f1d47a" d="M9 11h2v2h-2Z"/></svg></div>
-      <p class="ch">(customizable)</p><p>called in when the work needs them. Name your own in <code>[seats]</code>, with the rights <code>[rights]</code> gives them.</p></li>
+      <p class="ch">{{ w.seat_reviewer_ch }}</p><p>{{ w.seat_reviewer }}</p></li>
+    <li class="box seat spec"><h3 class="t">{{ w.seat_spec_h }}</h3><div class="four" aria-hidden="true"><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><path fill="#f38a80" d="M13 12h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><path fill="#f1d47a" d="M9 11h2v2h-2Z"/></svg></div>
+      <p class="ch">{{ w.seat_spec_ch }}</p><p>{{ w.seat_spec }}</p></li>
   </ul>
   <div class="fleet-foot">
-    <p>A seat's <b>charter</b> — how it thinks, a bold Planner against a steady one — is <code>&lt;tracker dir&gt;/seats/&lt;name&gt;.md</code>, read by the agent at start, never by the gate.</p>
+    <p>{{ w.fleet_foot }}</p>
     <a href="https://shoalmark.github.io/shoalmark/seats/">All seats <span aria-hidden="true">→</span></a>
   </div>
 </section>
 
 <section class="band wrap" id="agents" aria-labelledby="h-players">
-  <div class="sec-h"><span class="n">— select player —</span><h2 id="h-players">Two players, one record</h2></div>{# FM-006 v0.19.0 first screen: A1 — the subtitle that said the H1 went #}
+  <div class="sec-h"><span class="n">{{ w.players_n }}</span><h2 id="h-players">{{ w.players_h }}</h2></div>{# FM-006 v0.19.0 first screen: A1 — the subtitle that said the H1 went #}
   <div class="players">
     <article class="box player p1" aria-labelledby="h-p1">
-      <h3 class="t">1P · for agents</h3>
+      <h3 class="t">{{ w.p1_tag }}</h3>
       <div class="who"><svg viewBox="0 0 12 12" aria-hidden="true"><use href="#ship"/></svg>
-        <div><h3 id="h-p1">For agents</h3>{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the agents' card is headed For agents; The fleet is the new section's #}<p>State that outlives a session, one source of truth, a gate that refuses a <em>done</em> without a commit behind it. The contract is written for the agent that has to use it.</p></div></div>
-      <dl class="moves" aria-label="Moves">
-        <div><dt>--next</dt><dd>A cold start in one command: what to work on, and what is true now.</dd></div>
-        <div><dt>--new "…"</dt><dd>Look before you file: the closest trackers come first. The default is a slice of one that exists.</dd></div>
-        <div><dt>--triage</dt><dd>The seat judges, the command applies — tier, rank and park are written from the worksheet, never by hand.</dd></div>
-        <div><dt>--check</dt><dd>The gate on every commit refuses what contradicts itself.</dd></div>
+        <div><h3 id="h-p1">{{ w.p1_h }}</h3>{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the agents' card is headed For agents; The fleet is the new section's #}<p>{{ w.p1_text }}</p></div></div>
+      <dl class="moves" aria-label="{{ w.moves_aria }}">
+        <div><dt>--next</dt><dd>{{ w.p1_next }}</dd></div>
+        <div><dt>--new "…"</dt><dd>{{ w.p1_new }}</dd></div>
+        <div><dt>--triage</dt><dd>{{ w.p1_triage }}</dd></div>
+        <div><dt>--check</dt><dd>{{ w.p1_check }}</dd></div>
       </dl>
-      <ol class="rules" aria-label="House rules">
-        <li><span><b>The tracker is canonical.</b> Never a side plan, a chat or a TODO comment.</span></li>
-        <li><span><b>Look before you file.</b></span></li>
-        <li><span><b>An id never changes and says nothing that can.</b></span></li>
-        <li><span><b>The seat judges, the command applies.</b></span></li>
-        <li><span><b>Close out by asking what this made obsolete</b> — and delete it in the same change.</span></li>
+      <ol class="rules" aria-label="{{ w.rules_aria }}">
+        <li><span>{{ w.rule_1 }}</span></li>
+        <li><span>{{ w.rule_2 }}</span></li>
+        <li><span>{{ w.rule_3 }}</span></li>
+        <li><span>{{ w.rule_4 }}</span></li>
+        <li><span>{{ w.rule_5 }}</span></li>
       </ol>
-      <pre class="hs"><span class="c"># an agent at work — the contract is tools/shoalmark/README.md</span>
+      <pre class="hs"><span class="c">{{ w.hs_comment }}</span>
 <span class="p">$</span> python3 tools/shoalmark/shoalmark.py --next</pre>
       <p class="small">Agent, sent here by your Owner? Read <a href="https://shoalmark.github.io/shoalmark/agents/index.html">the contract</a>; <a href="https://shoalmark.github.io/shoalmark/llms.txt">llms.txt</a> is at the site's root.</p>
     </article>
     <article class="box player p2" id="people" aria-labelledby="h-p2">
-      <h3 class="t">2P · for people</h3>
+      <h3 class="t">{{ w.p2_tag }}</h3>
       <div class="who"><svg viewBox="0 0 16 16" fill="#e8d4a0" aria-hidden="true"><use href="#pricke"/></svg>
-        <div><h3 id="h-p2">The Owner</h3><p>Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions and puts them to you once a day.</p></div></div>
-      <dl class="moves" aria-label="Moves">
-        <div><dt>the board</dt><dd>What waits for you, how long, and what it blocks — first, above everything else.</dd></div>
-        <div><dt>--standup</dt><dd>One sitting, fifteen minutes, at the time you choose. The invite comes as a calendar file.</dd></div>
-        <div><dt>--answer AP-007 accept</dt><dd>One command per answer: it writes the answer, signs it with your key and pushes it.</dd></div>
+        <div><h3 id="h-p2">{{ w.p2_h }}</h3><p>{{ w.p2_text }}</p></div></div>
+      <dl class="moves" aria-label="{{ w.moves_aria }}">
+        <div><dt>{{ w.p2_board_dt }}</dt><dd>{{ w.p2_board }}</dd></div>
+        <div><dt>--standup</dt><dd>{{ w.p2_standup }}</dd></div>
+        <div><dt>--answer AP-007 accept</dt><dd>{{ w.p2_answer }}</dd></div>
         <div><dt>your signature</dt><dd>Only your signed word counts. A click, a merge or a line in chat is not an answer — four tiers, from a key anything on your account can use to one that needs your touch.</dd></div>
       </dl>
-      <figure class="peek" aria-label="An excerpt of shoalmark's own board">
+      <figure class="peek" aria-label="{{ w.peek_aria }}">
         <div class="peek-box"><span class="peek-t">owed to the owner</span>
-          <p><i>##</i> <b class="hot">waiting for you: 1</b></p>
-          <p><i>##</i> <b>your acts, with their time: 1</b></p>
-          <p><span class="id">FM-007</span> after the scoring, once the key is delivered · promised 2026-09-25 · no date yet <span class="chip">done</span><span class="chip">reschedule</span></p>
+          <p><i>##</i> <b class="hot">{{ w.peek_1 }}</b></p>
+          <p><i>##</i> <b>{{ w.peek_2 }}</b></p>
+          <p><span class="id">FM-007</span> {{ w.peek_3 }} <span class="chip">{{ w.peek_chip_done }}</span><span class="chip">{{ w.peek_chip_resched }}</span></p>
         </div>
         <figcaption>shoalmark's own board, 1 October 2026 — what waits for its Owner comes first.</figcaption>
       </figure>
-      <p class="loses"><b>You lose nothing.</b>What you keep today stays where it is: shoalmark changes only what it wrote itself.</p>
+      <p class="loses"><b>{{ w.p2_loses_b }}</b>{{ w.p2_loses }}</p>
     </article>
   </div>
 </section>
 
 <section class="band wrap" id="scores" aria-labelledby="h-scores">
-  <div class="sec-h"><span class="n">— measured, not promised —</span><h2 id="h-scores">High scores</h2><p>In shoalmark's own repository, which runs on shoalmark.</p></div>
+  <div class="sec-h"><span class="n">{{ w.scores_n }}</span><h2 id="h-scores">{{ w.scores_h }}</h2><p>{{ w.scores_sub }}</p></div>
   <div class="scores">
     <article class="box board" aria-labelledby="h-board">
-      <h3 class="t" id="h-board">pull requests with a reviewer's file when opened</h3>
+      <h3 class="t" id="h-board">{{ w.board_t }}</h3>
       <table>
-        <thead><tr><th>rank</th><th>score</th><th>period</th></tr></thead>
+        <thead><tr><th>{{ w.th_rank }}</th><th>{{ w.th_score }}</th><th>{{ w.th_period }}</th></tr></thead>
         <tbody>
           <tr><td class="rk">1st</td><td class="sc">71/82</td><td class="pd"><b>after the rule</b>pull requests 47–144, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to 1 October 2026</td></tr>
-          <tr class="lo"><td class="rk">2nd</td><td class="sc">10/37</td><td class="pd"><b>before it</b>pull requests 1–43, before the Owner's signed answer of 24 September 2026, 11:07 CEST</td></tr>{# FM-006 v0.19.0 first screen: E, the Owner named #}
+          <tr class="lo"><td class="rk">{{ w.rk_2 }}</td><td class="sc">10/37</td><td class="pd"><b>{{ w.pd_2_b }}</b>{{ w.pd_2 }}</td></tr>{# FM-006 v0.19.0 first screen: E, the Owner named #}
         </tbody>
       </table>
       <p class="small" style="margin-top:16px">Counted on 1 October 2026 with <code>gh</code> from pull requests 1–144 of shoalmark/shoalmark: merged ones only, without the Owner's own answer branches. One counts when a commit adding or changing a file under <code>work-tracker/evidence/reviews/</code>, merge commits excluded, is dated before the pull request was opened.</p>
     </article>
     <article class="box over" aria-labelledby="h-over">
-      <h3 class="t" id="h-over">game over — the repository it came from</h3>
-      <p class="big"><em>200</em> pull requests merged in <em>22</em> days. <em>85 %</em> less than a minute after opening. <em>None</em> with a review.</p>
-      <p>Asked what slows them most, three independent agents gave the same answer, by a wide margin: the Owner's unanswered questions — one question, open three days, held three packages.</p>
-      <p>Blocking and stamping have one root: a person asked for many small decisions in the middle of the work.</p>
+      <h3 class="t" id="h-over">{{ w.over_t }}</h3>
+      <p class="big">{{ w.over_big }}</p>
+      <p>{{ w.over_1 }}</p>
+      <p>{{ w.over_2 }}</p>
     </article>
   </div>
 </section>
@@ -482,29 +485,29 @@ section.band{padding-block:72px 40px}
 <section class="band wrap" id="register" aria-labelledby="h-reg">
   <div class="sec-h"><span class="n">— the wreck register —</span><h2 id="h-reg">Every defect, on the chart</h2><p id="reg-sum"></p></div>
   <div class="regwrap"><table class="reg">
-    <thead><tr><th>tracker</th><th>incident</th><th>filed</th><th>status</th><th>report</th><th><span class="sr">chart</span></th></tr></thead>
+    <thead><tr><th>{{ w.reg_th_tracker }}</th><th>{{ w.reg_th_incident }}</th><th>{{ w.reg_th_filed }}</th><th>{{ w.reg_th_status }}</th><th>{{ w.reg_th_report }}</th><th><span class="sr">{{ w.reg_th_chart }}</span></th></tr></thead>
     <tbody id="reg"></tbody>
   </table></div>
 </section>
 
 <section class="band wrap" id="start" aria-labelledby="h-start">
-  <div class="sec-h"><span class="n">— insert coin —</span><h2 id="h-start">Your agents set it up</h2></div>
-  <div class="loses beta"><b>In this beta:</b><ul>
-    <li>Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.</li>
-    <li>For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.</li>
-    <li>Not proof that work is right. The gate refuses a <em>done</em> without a commit behind it. Whether that commit did the job is what a review is for.</li>
+  <div class="sec-h"><span class="n">{{ w.start_n }}</span><h2 id="h-start">{{ w.start_h }}</h2></div>
+  <div class="loses beta"><b>{{ w.beta_b }}</b><ul>
+    <li>{{ w.beta_1 }}</li>
+    <li>{{ w.beta_2 }}</li>
+    <li>{{ w.beta_3 }}</li>
     <li>Made and tested on <code>git</code> with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need <code>git</code>, and the pull-request queue <code>git</code> and GitHub.</li>{# FM-006 v0.19.0, In this beta: the fourth line, the Owner's ruling filed in FM-006's release section (d7712b5), word for word #}
   </ul></div>{# FM-006 v0.19.0, In this beta: the Owner's ruling filed in FM-006's release section — In this beta: and its three English lines, word for word, in place of the line that called FM-026's path coming (FM-026 is Parked) #}
   <ol class="stages">
-    <li>They fetch shoalmark at a release tag and put a pinned copy in the repository, every file with its checksum (<code>--vendor</code>).</li>
-    <li><code>--init</code> writes the configuration, the triage file and the agents' contract.</li>
-    <li>The agents read the contract and file the work: one Markdown file per work item.</li>
-    <li class="you">You write three lines in your own words: what the repository is for, what is true when it works, what nobody may do to get there. Then you set up your signature, once.</li>
+    <li>{{ w.stage_1 }}</li>
+    <li>{{ w.stage_2 }}</li>
+    <li>{{ w.stage_3 }}</li>
+    <li class="you">{{ w.stage_4 }}</li>
   </ol>
-  <div class="costs" aria-label="What a day costs you">
-    <p class="cost"><b>One sitting, fifteen minutes</b>at the time you choose. The invite comes as a calendar file.</p>
-    <p class="cost"><b>One command per answer</b><code>--answer AP-007 accept</code> writes the answer, signs it with your key and pushes it.</p>
-    <p class="cost"><b>The rest comes to you</b>every session's last message ends with what waits for you. You open nothing.</p>
+  <div class="costs" aria-label="{{ w.costs_aria }}">
+    <p class="cost"><b>{{ w.cost_1_b }}</b>{{ w.cost_1 }}</p>
+    <p class="cost"><b>{{ w.cost_2_b }}</b>{{ w.cost_2 }}</p>
+    <p class="cost"><b>{{ w.cost_3_b }}</b>{{ w.cost_3 }}</p>
   </div>
   <div class="coins">
     <div class="coin"><span class="go">▶ 2P</span><b>You, the Owner</b><span><a href="https://shoalmark.github.io/shoalmark/setup.html">Set up in ten minutes</a> · <a href="https://shoalmark.github.io/shoalmark/signing.html">Your answer is your commit</a> · <a href="https://shoalmark.github.io/shoalmark/standup.html">The standup</a></span></div>
@@ -514,14 +517,14 @@ section.band{padding-block:72px 40px}
 </section>
 
 <div class="ticker" aria-label="What it is not"><div>
-  <span>needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> a gate on every commit <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b></span>
-  <span aria-hidden="true">needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> a gate on every commit <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b></span>
+  <span>{{ w.ticker }}</span>
+  <span aria-hidden="true">{{ w.ticker }}</span>
 </div></div>
 </main>
 
 <footer class="foot-band">
   <div class="wrap">
-    <p class="claim">A Pricke on the Wadden flats keeps the fleet in the channel.</p>
+    <p class="claim">{{ w.foot_claim }}</p>
     <span class="mk"><a href="https://github.com/shoalmark/shoalmark"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="currentColor"/></svg>shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2</a></span>
     <p class="fine">v0.19.2, released 9 October 2026 — a fix for the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt: read on 1 October 2026, 12:47 CEST.</p>{# FM-006 slice L, edit (a): the facts dated — the high scores, the wrecks and the board's excerpt, read at the v0.19.0 cut c830470 on 1 October 2026, 12:47 CEST, the Auditor's reading; the wrecks and the headline from evidence/FM-006/landing/start-page/facts.mjs, unchanged, at c830470 #}{# FM-006 slice L, edit (a), the release re-read for 0.19.2 (FM-045): VERSION names 0.19.2 and the CHANGELOG's heading is ## 0.19.2 — 2026-10-09. Here, in the HUD and in the foot's link, the release VERSION names, as the setup pages' clone tag does; the date is the CHANGELOG heading's (The release day), and it moves with the heading if the tag moves; then a dash and CHANGELOG.md's bold headline word for word, its Markdown as HTML (the Owner's ruling filed at 5ae97b7); for 0.19.2 the line's first sentence is the Owner's own words for v0.19.2, ruled on 8 October 2026, not the CHANGELOG's headline. The licence and the readings sentence stand as in v0.19.1's line: the line carries no read-at-its-cut sentence for the release #}
   </div>
