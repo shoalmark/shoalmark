@@ -1761,20 +1761,13 @@ _PROCESS_APIS = {
     "_winapi": {"CreateProcess": "unread"},
     "_posixsubprocess": {"fork_exec": "unread"},
 }
-# THE NOTICE'S FIXED CODE (FM-030): a start of osascript or of PowerShell is read only where its argv is, word for word and literal in full, the notice's —
-# the fixed code `notify_argv` hands them, which reads the notice's title and body from the environment and starts no process. Any other code handed to
-# either, anywhere, is not read. The notice's own checks hold `notify_argv` to these words
+# THE NOTICE'S FIXED CODE (FM-030): a start of osascript is read only where its argv is, word for word and literal in full, the notice's — the fixed
+# code `notify_argv` hands it on macOS, which reads the notice's title and body from the environment and starts no process. Any other code handed to
+# osascript, and any code handed to PowerShell, anywhere, is not read. The notice's own checks hold `notify_argv` to these words
 _NOTICE_ARGV = {
     "osascript": ["osascript", "-e", 'use framework "Foundation"\nuse scripting additions\n'
                                      "set e to current application's NSProcessInfo's processInfo()'s environment()\n"
                                      """display notification ((e's objectForKey:"SM_BODY") as text) with title ((e's objectForKey:"SM_TITLE") as text)"""],
-    "powershell": ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                   "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; "
-                   "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
-                   "$t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode($env:SM_TITLE)) > $null; "
-                   "$t.Item(1).AppendChild($x.CreateTextNode($env:SM_BODY)) > $null; "
-                   "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')"
-                   ".Show([Windows.UI.Notifications.ToastNotification]::new($x))"],
 }
 # THE DERIVER'S EXCEPTION, permanent (the Owner's ruling of 2026-10-08): `run_deriver` starts the repository's own program, `derive` in the tracker folder —
 # directly, and on Windows as `[sys.executable, derive]` — by design, on an explicit run only: never in a hook's run (the Owner's ruling *No deriver in hooks*,
@@ -2364,10 +2357,11 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-045 · every git command the tool can start is classified — on READ_ONLY_GIT, or named as never started in the board's run with its reason in one line, `ls-remote` among "
           f"them; none in both, none named that the tool never starts; Check A accepts a start only in the form the product writes — a process API called by its plain name, "
           f"its argument list and every argument that can choose the program or a shell resolved in full — and reads any other as not read, but at the Owner's one exception, "
-          f"the repository's deriver that `run_deriver` starts, matched by its site and met once; the notice's starts of osascript and PowerShell are ordinary starts, their "
-          f"argv the notice's fixed code word for word (saw {len(found_)} commands, {len(never_)} never started; unclassified {unclassified_(found_)}; not read "
+          f"the repository's deriver that `run_deriver` starts, matched by its site and met once; the notice's start of osascript is an ordinary start, its argv the "
+          f"notice's fixed code word for word, and no start of PowerShell is read in the tool (saw {len(found_)} commands, {len(never_)} never started; unclassified {unclassified_(found_)}; not read "
           f"{unread_}; the exception {excepted_}; programs not git {sorted({p_ for _l, p_ in others_})})",
-          len(found_) > 1 and not unclassified_(found_) and not unread_ and as_named_(excepted_) and notice45_ <= {p_ for _l, p_ in others_} and "ls-remote" in never_
+          len(found_) > 1 and not unclassified_(found_) and not unread_ and as_named_(excepted_) and notice45_ <= {p_ for _l, p_ in others_}
+          and not any("powershell" in p_.lower() for _l, p_ in others_) and "ls-remote" in never_
           and not set(never_) & set(fm.READ_ONLY_GIT) and set(never_) <= set(found_) and all(isinstance(w_, str) and w_.strip() and "\n" not in w_ for w_ in never_.values()))
     injected_ = {       # each form the reading follows, starting a command the table does not hold; then those it does not follow, each named
         'a literal argv': ('def _injected():\n    return subprocess.run(["git", "gc"], capture_output=True)\n', 'gc'),
@@ -2529,11 +2523,11 @@ with tempfile.TemporaryDirectory() as d:
         f"\n{ind45_}run = " + ast.get_source_segment(src_, run45_.value).replace("subprocess.run(", "_review_run(args=", 1) for _ in range(times)), 1)    # its start through a forwarding helper, `times` invocations
     copies45_ = {       # the deriver's exception admits its own sites and the notice's fixed code itself, word for word, and nothing else: each copy fails the check
         "code handed to osascript inside `notify_argv` in place of its fixed code": src_.replace(fixed45_.get("osascript", "\0"), '["osascript", "-e", f"return {title}"]', 1),
-        "code handed to PowerShell inside `notify_argv` in place of its fixed code": src_.replace(fixed45_.get("powershell", "\0"), '["powershell", "-Command", f"Write-Output {title}"]', 1),
+        "a branch handing code to PowerShell inside `notify_argv`": src_.replace(tail45_, '    if platform == "win32":\n        return ["powershell", "-Command", f"Write-Output {title}"]\n' + tail45_, 1),
+        "a branch handing literal code to PowerShell inside `notify_argv`": src_.replace(tail45_, '    if platform == "win32":\n        return ["powershell", "-NoProfile", "-NonInteractive", '
+                                                                                         '"-Command", "Write-Output 1"]\n' + tail45_, 1),
         "the notice's fixed osascript code with a statement added": src_.replace(fixed45_.get("osascript", "\0"), repr(_NOTICE_ARGV["osascript"][:-1] + [_NOTICE_ARGV["osascript"][-1]
                                                                                                                        + '\ndo shell script "git gc"']), 1),
-        "the notice's fixed PowerShell code with a statement added": src_.replace(fixed45_.get("powershell", "\0"), repr(_NOTICE_ARGV["powershell"][:-1] + [_NOTICE_ARGV["powershell"][-1]
-                                                                                                                         + "; & git gc"]), 1),
         "the notice's fixed argv with a word more": src_.replace(fixed45_.get("osascript", "\0"), repr(_NOTICE_ARGV["osascript"] + ["-e", 'do shell script "git gc"']), 1),
         "the osascript form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["osascript", "-e", f"return {value}"])\n',
         "the PowerShell form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["powershell", "-NoProfile", "-Command", f"Write-Output {value}"])\n',
@@ -2564,10 +2558,11 @@ with tempfile.TemporaryDirectory() as d:
     f_, u_, _o, x_ = _git_starts(helper45_(1))
     once45_ = helper45_(1) != src_ and not unclassified_(f_) and not u_ and as_named_(x_)
     check(f"FM-045 · the Owner's one exception, the deriver's, matched by its site and met once, and the notice's fixed code, word for word, admit nothing else: code "
-          f"handed to osascript or PowerShell inside `notify_argv` in place of its fixed code, added to it or after it, or outside `notify_argv` directly, through `__call__` "
-          f"or through a helper, a forwarding one too, another program's code inside it, a second branch handing code to osascript, Python code that defines its own "
+          f"handed to osascript inside `notify_argv` in place of its fixed code, added to it or after it, a branch there handing code to PowerShell, literal or not, code handed to "
+          f"either outside `notify_argv` directly, through `__call__` or through a helper, a forwarding one too, another program's code inside it, a second branch handing code to "
+          f"osascript, Python code that defines its own "
           f"`notify_argv`, the deriver's form outside `run_deriver`, directly or through a helper, a third start inside it, its form a second time and a forwarding helper "
-          f"inside it invoked twice each fail the check; that helper invoked once is admitted (saw {ends45_}; once {once45_})", len(fixed45_) == 2 and all(ends45_.values()) and once45_)
+          f"inside it invoked twice each fail the check; that helper invoked once is admitted (saw {ends45_}; once {once45_})", len(fixed45_) == 1 and all(ends45_.values()) and once45_)
     held45_ = _held_by(HERE / "test_shoalmark.py")
     check(f"FM-045 · Check A releases what it holds as its reading returns: one reading of the tool leaves under 5,000 tracked objects behind, the collector paused — its "
           f"parsed tree and per-call tables are gone (saw {held45_})", held45_ is not None and held45_ < 5_000)
@@ -9767,8 +9762,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · D · a moved act's invite carries a higher SEQUENCE — its records under `## Acts` — so importing it again replaces the event; an act with no `due:` yet and one that is done have none (saw {err_n.strip()!r})",
           "SEQUENCE:2\r\n" in seq_ and f"DTSTART:{utc_(300)}\r\n" in seq_ and code_n == code_d == fm.EXIT_LINT
           and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and "--due AP-434 <time>" in err_n and "AP-435 owes the Owner no act" in err_d)
-    check("FM-030 · D · the notifier is the system's own, each where present: macOS `osascript`, Linux `notify-send`, Windows PowerShell's toast — and none where there is none",
-          [(fm.notify_argv("t", "b", p_, lambda n: "/usr/bin/" + n) or [None])[0] for p_ in ("darwin", "linux", "win32")] == ["osascript", "notify-send", "powershell"]
+    check("FM-030 · D · the notifier is the system's own, each where present: macOS `osascript`, Linux `notify-send` — none on Windows, and none where there is none",
+          [(fm.notify_argv("t", "b", p_, lambda n: "/usr/bin/" + n) or [None])[0] for p_ in ("darwin", "linux", "win32")] == ["osascript", "notify-send", None]
           and fm.notify_argv("t", "b", "darwin", lambda n: None) is None and fm.notify_argv("t", "b", "sunos5", lambda n: "/x") is None)
     posted_, real_post_, state_was_ = [], fm.post_notice, os.environ.get("XDG_STATE_HOME")
     fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
@@ -9815,10 +9810,10 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# --- FM-030: the notice's code is a fixed literal, and its title and body travel as data — on macOS and on Windows in the environment, which that code reads;
-#     on Linux as `notify-send`'s own arguments, after `--`. Each platform's check holds `notify_argv` to its words for every vector below, and its control
-#     runs the same check beside ceb21b8's `notify_argv`. Where the platform's program is here, a real run of the fixed code's own reading of the environment
-#     shows each vector's text arrive whole
+# --- FM-030: the notice's code is a fixed literal, and its title and body travel as data — on macOS in the environment, which that code reads; on Linux as
+#     `notify-send`'s own arguments, after `--`. On Windows `--notify` starts no program: each notice is printed. Each platform's check holds `notify_argv`
+#     to its words for every vector below, and its control runs the same check beside ceb21b8's `notify_argv`. Where macOS's program is here, a real run of the
+#     fixed code's own reading of the environment shows each vector's text arrive whole
 _NOTICE_QUOTES = "'\"`\u00b4\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u2039\u203a\u00ab\u00bb\u300c\u300d\u301d\u301e\uff02\uff07"
 _NOTICE_VECTORS = [(f'd · AP-1 — {q_}; Write-Output NOTICE-RAN; {q_} & (do shell script "echo NOTICE-RAN") & {q_}', f"{q_}{q_} the promise {q_}\\{q_}") for q_ in _NOTICE_QUOTES] + [
     ("d · AP-1 — due in 5 min", "the promise · due 10:00\nthe question?"), ('back\\slash \\\\ \\" end \\', "\\ the body \\\\"), ("-e", "--help"),
@@ -9827,25 +9822,38 @@ _NOTICE_VECTORS = [(f'd · AP-1 — {q_}; Write-Output NOTICE-RAN; {q_} & (do sh
 _NOTICE_REAL = [("".join(t_ for t_, _b in _NOTICE_VECTORS[:len(_NOTICE_QUOTES)]) + " \\ \0 \U0001f600", "line\nbreak\r\nand\rcarriage \u2028 \u2029 \u00ac " + "L" * 5000),
                 ("-e", "$(echo NOTICE-RAN) `echo NOTICE-RAN` %PATH% \\")]
 _NOTICE_REV = "ceb21b8"
+_NOTICE_WATCH = []          # while a check watches a `--notify` run in this process: [the starts it saw, [whether a notice is being posted]]
+
+
+def _watch_notice(event, args):
+    """The audit hook of the notice's checks: each process start a watched run asks for — its kind, whether a notice was being posted, its argv."""
+    if _NOTICE_WATCH and event in ("subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile"):
+        argv_ = [str(a_) for a_ in args[1]] if event == "subprocess.Popen" and isinstance(args[1], (list, tuple)) else repr(args[:2])
+        _NOTICE_WATCH[0].append((event, _NOTICE_WATCH[1][0], argv_))
+
+
+sys.addaudithook(_watch_notice)
 
 
 def _notice_held(platform, notify_argv, notify_env):
-    """The vectors `notify_argv` and `notify_env` (None where the tool has none) do not hold on `platform`, each as (title, body, the argv's last word):
-    on macOS and Windows the argv is that platform's fixed argv word for word, its code holds neither the title nor the body, and the environment carries
-    both, byte for byte, as `SM_TITLE` and `SM_BODY`, a NUL as U+FFFD, the rest of it this process's; on Linux it is `notify-send --app-name=shoalmark --`,
-    then the title and the body, each its own argument, a NUL as U+FFFD."""
+    """The vectors `notify_argv` and `notify_env` (None where the tool has none) do not hold on `platform`, each as (title, body, the argv's last word),
+    every program found where looked for: on macOS the argv is the fixed argv word for word, its code holds neither the title nor the body, and the
+    environment carries both, byte for byte, as `SM_TITLE` and `SM_BODY`, a NUL as U+FFFD, the rest of it this process's; on Linux it is `notify-send
+    --app-name=shoalmark --`, then the title and the body, each its own argument, a NUL as U+FFFD; on Windows there is none."""
     as_, bad_ = lambda v: v.replace("\0", "\ufffd"), []
     rest_ = lambda e: {k_: v_ for k_, v_ in e.items() if k_ not in ("SM_TITLE", "SM_BODY")}
     for t_, b_ in _NOTICE_VECTORS:
-        a_ = notify_argv(t_, b_, platform, lambda n: "/usr/bin/" + n) or [None]
-        if platform == "linux":
+        a_ = notify_argv(t_, b_, platform, lambda n: "/usr/bin/" + n)
+        if platform == "win32":
+            ok_ = a_ is None
+        elif platform == "linux":
             ok_ = a_ == ["notify-send", "--app-name=shoalmark", "--", as_(t_), as_(b_)]
         else:
-            e_ = notify_env(t_, b_) if notify_env else {}
-            ok_ = (a_ == _NOTICE_ARGV[{"darwin": "osascript", "win32": "powershell"}[platform]] and as_(t_) not in a_[-1] and as_(b_) not in a_[-1]
+            a_, e_ = a_ or [None], notify_env(t_, b_) if notify_env else {}
+            ok_ = (a_ == _NOTICE_ARGV["osascript"] and as_(t_) not in a_[-1] and as_(b_) not in a_[-1]
                    and e_.get("SM_TITLE") == as_(t_) and e_.get("SM_BODY") == as_(b_) and rest_(e_) == rest_(os.environ))
         if not ok_:
-            bad_.append((t_[:20], b_[:20], str(a_[-1])[:60]))
+            bad_.append((t_[:20], b_[:20], str((a_ or [None])[-1])[:60]))
     return bad_
 
 
@@ -9857,26 +9865,13 @@ def _notice_mac_reading(argv):
     return [*argv[:-1], "\n".join(lines_[:-1] + [f"return id of (({m_.group(2)}) & linefeed & ({m_.group(1)}))"])] if m_ else None
 
 
-def _notice_win_reading(argv):
-    """Windows' fixed script's own statements that read the environment — each but those that name `Windows.UI.Notifications` — run against the toast's
-    template in a .NET XmlDocument, then each text element's UTF-16 code units printed, one line each. None where the script reads no `$env:`."""
-    reading_ = [s_ for s_ in (argv or [""])[-1].split("; ") if "[Windows.UI.Notifications." not in s_]
-    if not any("$env:" in s_ for s_ in reading_):
-        return None
-    return [*argv[:-1], "$x = New-Object System.Xml.XmlDocument; "
-                        "$x.LoadXml('<toast><visual><binding template=\"ToastText02\"><text id=\"1\"></text><text id=\"2\"></text></binding></visual></toast>'); "
-                        + "; ".join(reading_) + "; foreach ($n in $t) { [Console]::Out.WriteLine((([int[]][char[]]($n.InnerText)) -join ' ')) }"]
-
-
 with tempfile.TemporaryDirectory() as tmp:
     held_ = {p_: _notice_held(p_, fm.notify_argv, getattr(fm, "notify_env", None)) for p_ in ("darwin", "win32", "linux")}
-    ps_ = (fm.notify_argv("t", "b", "win32", lambda n: "/usr/bin/" + n) or [""])[-1]
     check(f"FM-030 · the notice on macOS: `osascript -e` is handed the fixed code, word for word, for every vector — quote characters of every kind, backslashes, raw "
           f"line breaks, U+2028 and U+2029, NUL, a leading dash, long text — that code holds neither the title nor the body, and the environment carries both, byte for "
           f"byte, as SM_TITLE and SM_BODY, a NUL as U+FFFD (saw {held_['darwin'][:2]})", not held_["darwin"])
-    check(f"FM-030 · the notice on Windows: PowerShell's `-Command` is handed the fixed script, word for word, for every vector; it reads `$env:SM_TITLE` and "
-          f"`$env:SM_BODY` once each and holds neither the title nor the body, and the environment carries both, byte for byte, a NUL as U+FFFD (saw {held_['win32'][:2]})",
-          not held_["win32"] and ps_.count("$env:SM_TITLE") == 1 and ps_.count("$env:SM_BODY") == 1)
+    check(f"FM-030 · the notice on Windows: `notify_argv` names no program for any vector, whatever programs are found there — `--notify` starts none "
+          f"(saw {held_['win32'][:2]})", not held_["win32"])
     check(f"FM-030 · the notice on Linux: `notify-send --app-name=shoalmark --`, then the title and the body, each its own argument, for every vector, a NUL as U+FFFD "
           f"(saw {held_['linux'][:2]})", not held_["linux"])
     if _has_rev(_NOTICE_REV):
@@ -9890,7 +9885,6 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         _skipped("FM-030 · the notice · the control", 1, f"this clone does not hold {_NOTICE_REV}")
     as_ = lambda v: v.replace("\0", "\ufffd")
-    units_ = lambda s: [int.from_bytes(s.encode("utf-16-le")[i_:i_ + 2], "little") for i_ in range(0, len(s.encode("utf-16-le")), 2)]
     if sys.platform == "darwin" and shutil.which("osascript"):
         ran_ = []
         for t_, b_ in _NOTICE_REAL:
@@ -9902,17 +9896,6 @@ with tempfile.TemporaryDirectory() as tmp:
               f"characters of every kind, backslashes, raw line breaks, U+2028 and U+2029, a NUL as U+FFFD, a leading dash, long text (saw {ran_})", ran_ == [True, True])
     else:
         _skipped("FM-030 · the notice on macOS, run", 1, "no osascript here, macOS's")
-    if sys.platform == "win32" and shutil.which("powershell"):
-        ran_ = []
-        for t_, b_ in _NOTICE_REAL:
-            r_ = _notice_win_reading(fm.notify_argv(t_, b_))
-            r_ = r_ and subprocess.run(r_, env=getattr(fm, "notify_env", lambda t, b: None)(t_, b_), capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                       timeout=120)
-            ran_.append(bool(r_) and r_.returncode == 0 and [[int(x_) for x_ in l_.split()] for l_ in r_.stdout.splitlines() if l_.strip()] == [units_(as_(t_)), units_(as_(b_))])
-        check(f"FM-030 · the notice on Windows, run: PowerShell runs the fixed script's own reading of `$env:SM_TITLE` and `$env:SM_BODY`, and each arrives whole, as "
-              f"data — quote characters of every kind, backslashes, raw line breaks, U+2028 and U+2029, a NUL as U+FFFD, a leading dash, long text (saw {ran_})", ran_ == [True, True])
-    else:
-        _skipped("FM-030 · the notice on Windows, run", 1, "no PowerShell here, Windows'")
     out_, real_argv_ = Path(tmp) / "env.json", fm.notify_argv
     writer_ = [sys.executable, "-c", "import json, os, sys; open(sys.argv[1], 'w', encoding='utf-8').write(json.dumps([os.environ.get('SM_TITLE'), os.environ.get('SM_BODY')]))", str(out_)]
     fm.notify_argv = lambda title, body, platform=None, which=None: writer_
@@ -9951,6 +9934,47 @@ with tempfile.TemporaryDirectory() as tmp:
           f"never stops another's notice (saw exit {code_n}, {out_n.splitlines()[:1]} · {err_n[-120:]!r})",
           code_n == 1 and len(posted_) == 3 and out_n.startswith("--notify: 2 posted · 0 posted before · 0 not yet within 30 minutes · 1 NOT posted — remembered in ")
           and lines_.get("AP-2", "").endswith(" — NOT posted — ValueError") and lines_.get("AP-1", "").endswith(" — posted") and lines_.get("AP-3", "").endswith(" — posted"))
+    # on Windows, run here with `sys.platform` set to win32 and a PowerShell found where one is looked for: three acts due, one whose text is hostile
+    win_ = Path(tmp).resolve() / "win"; win_.mkdir()
+    subprocess.run(["git", "init", "-q", str(win_)], check=True, env=_ENV)
+    (win_ / "shoalmark.toml").write_text('name = "d"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    for tid_, title_ in (("AP-1", "the act of AP-1"), ("AP-2", 'a notice \u2019; Write-Output NOTICE-RAN; \u2018 " & (do shell script "echo NOTICE-RAN") & " \\ \0 $(echo NOTICE-RAN)'),
+                         ("AP-3", "the act of AP-3")):
+        tracker(win_, tid_, extra=f"next: run\ndue: {past_}\n", title=title_)
+    state_was_, seen_, posting_ = os.environ.get("XDG_STATE_HOME"), [], [False]
+    real_post_, real_which_, real_platform_ = fm.post_notice, shutil.which, sys.platform
+
+    def watched_post_(title, body):
+        posting_[0] = True
+        try:
+            return real_post_(title, body)
+        finally:
+            posting_[0] = False
+    os.environ["XDG_STATE_HOME"] = str(Path(tmp) / "state-win")
+    fm.post_notice = watched_post_
+    shutil.which = lambda n, *a, **k: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" if n == "powershell" else real_which_(n, *a, **k)
+    sys.platform, _NOTICE_WATCH[:] = "win32", [seen_, posting_]
+    try:
+        code_w, out_w, err_w = run(win_, "--notify")
+    except Exception as e_:                 # a run that stops fails the checks below
+        code_w, out_w, err_w = None, "", f"{type(e_).__name__}: {e_}"
+    finally:
+        _NOTICE_WATCH[:] = []
+        sys.platform, shutil.which, fm.post_notice = real_platform_, real_which_, real_post_
+        if state_was_ is None:
+            os.environ.pop("XDG_STATE_HOME", None)
+        else:
+            os.environ["XDG_STATE_HOME"] = state_was_
+    win_lines_ = {l_.split(" — ")[0].strip(): l_ for l_ in out_w.splitlines()[1:]}
+    check(f"FM-030 · on Windows `--notify` starts no program for a notice — none while each is posted, a PowerShell found where looked for — and every program its run "
+          f"starts is read-only git (saw exit {code_w}; {[x_[2][:3] if isinstance(x_[2], list) else x_[2] for x_ in seen_][:4]} · {err_w[-100:]!r})",
+          code_w == 0 and not [x_ for x_ in seen_ if x_[1]] and all(x_[0] == "subprocess.Popen" and isinstance(x_[2], list) and fm.read_only_git(x_[2]) for x_ in seen_))
+    check(f"FM-030 · on Windows `--notify` prints each act's notice, its line ending *printed — no notice is posted on Windows* (saw {out_w.splitlines()[1:]})",
+          sorted(win_lines_) == ["AP-1", "AP-2", "AP-3"] and all(l_.endswith(" — printed — no notice is posted on Windows") for l_ in win_lines_.values()))
+    check(f"FM-030 · on Windows a run with one notice of hostile text — a NUL, quotes, code of each notifier's language — prints that notice and every other one, and "
+          f"exits 0 (saw exit {code_w}, {win_lines_.get('AP-2', '')[-110:]!r})",
+          code_w == 0 and "NOTICE-RAN" in win_lines_.get("AP-2", "") and all(win_lines_.get(t_, "").endswith(" — printed — no notice is posted on Windows")
+                                                                             for t_ in ("AP-1", "AP-2", "AP-3")))
     rm_git(root)
 fm.configure(HERE)
 
