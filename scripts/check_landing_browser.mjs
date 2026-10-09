@@ -108,6 +108,9 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
     verdict(page, w, h, "focus moves into the dialog", dlg.inside, await t.js(ACTIVE));
     const copied = await t.js(`(() => ({copied: window.__copied, shown: document.getElementById("probe-text").defaultValue}))()`);
     verdict(page, w, h, "the prompt copied is the prompt of the page, byte for byte, its line ending included", typeof copied.copied == "string" && copied.copied == copied.shown && copied.shown.endsWith("\n"), JSON.stringify([String(copied.copied).length, copied.shown.length]));
+    const addr = await t.js(`(() => { const a = document.querySelector("#probe .probe-steps li:nth-child(2) a"), sc = document.querySelector("#probe .probe-scroll"); return a ? {href: a.getAttribute("href"), text: a.textContent, sideways: sc.scrollWidth > sc.clientWidth + 1} : null })()`);
+    const wantAddr = "https://shoalmark.github.io/shoalmark/" + (page.startsWith("de/") ? "de/" : "") + "probe.txt";
+    verdict(page, w, h, "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll", !!addr && addr.href == wantAddr && addr.text == wantAddr.replace("https://", "") && !addr.sideways, JSON.stringify(addr));
     const focusable = await t.js(`document.querySelectorAll('#probe a[href], #probe button, #probe textarea, #probe summary, #probe input, #probe [tabindex]:not([tabindex="-1"])').length`);
     let leaked = null;
     for (let i = 0; i < focusable + 3 && !leaked; i++) { await t.press("Tab"); if (await t.js(OUTSIDE)) leaked = "Tab " + (i + 1) + ": " + await t.js(ACTIVE) }

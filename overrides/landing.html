@@ -16,7 +16,8 @@
 {%- set probe = config.extra and config.extra.probe -%}
 {%- set rdate = F.release.date_de if de else F.release.date_en -%}
 {#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
-{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{probe_abs}", urls.probe_abs) | replace("{waiting}", F.excerpt.waiting | string) | replace("{acts}", F.excerpt.acts | string) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
+{%- set probe_short = urls.probe_abs | replace("https://", "") | replace("/", "/<wbr>") -%}   {#- the short address as it is typed, from the value the link goes to, so that the two cannot differ; it may break after a slash -#}
+{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{probe_short}", probe_short) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{probe_abs}", urls.probe_abs) | replace("{waiting}", F.excerpt.waiting | string) | replace("{acts}", F.excerpt.acts | string) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
 <!doctype html>
 <html lang="{{ w.lang }}">
 <head>
@@ -331,7 +332,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-step[data-state=fail]::before{background:var(--coral)}
 .probe-body{min-width:0;padding-top:4px}
 .probe-body p{margin:0;color:var(--ink)}
-.probe-body a{color:var(--blue)}
+.probe-body a{color:var(--blue);overflow-wrap:anywhere}
 .probe-line{min-height:1.6em;font-weight:600}
 .probe-line[data-state=ok]::before{content:"✓";content:"✓" / "";margin-right:9px;color:var(--watt)}
 .probe-line[data-state=fail]{color:var(--ink)}
@@ -351,7 +352,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-fold>:not(summary){margin:12px 14px}
 .probe-fold>:last-child{margin-bottom:14px}
 .probe-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 6px;font:400 11px/1.4 var(--pix);text-transform:uppercase;color:var(--mute)}
-.probe-ph{font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:4px 7px}{# the tag that marks the prompt as the placeholder it is: delete it, and `dlg_ph_badge`, when the probe lane's words are final #}
+.probe-ph{font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:4px 7px}{# the tag that marks the prompt as the draft it is: delete it, and `dlg_ph_badge`, when the probe lane's words are final #}
 .probe-pbox{position:relative}
 .probe-ta{display:block;width:100%;height:calc(2 * 1.6em + 26px);margin:0;padding:12px 14px;resize:none;overflow:hidden;overflow-wrap:anywhere;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap}{# closed, two lines of the prompt; the whole text stays in the box, so that selecting it and assistive technology reach all of it #}
 .probe-prompt[data-open=true] .probe-ta{overflow:auto}

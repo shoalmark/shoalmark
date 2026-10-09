@@ -20,8 +20,10 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
     label = LABELS[lang] if probe else ("Hand your agents the note" if en else "Agenten die Notiz geben")
     primary = (f'<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}</a>' if probe else
                f'<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT{"" if en else ".de"}.md">{label}</a>')
+    short = SITE_URL + ("" if en else "de/") + "probe.txt"
     dialog = (f'<dialog class="probe" id="probe" aria-labelledby="probe-h"><h2 id="probe-h">The probe prompt</h2>'
-              f'<textarea id="probe-text" readonly>{PROMPT.replace(chr(34), "&#34;")}</textarea></dialog>') if probe else ""
+              f'<textarea id="probe-text" readonly>{PROMPT.replace(chr(34), "&#34;")}</textarea>'
+              f'<a href="{short}">{short.replace("https://", "").replace("/", "/<wbr>")}</a></dialog>') if probe else ""
     return (f'<!doctype html><html lang="{lang}"><head><title>{"The agents keep the work" if en else "Die Agenten tragen die Arbeit"}</title>'
             f'<meta name="description" content="{"A work tracker" if en else "Ein Arbeits-Tracker"}">'
             f'<link rel="canonical" href="{where}">'
@@ -189,6 +191,10 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("index.html", ' aria-labelledby="probe-h"', ""), "not one labelled dialog", probe=True)
         self.refused(self.edit("de/index.html", '<textarea id="probe-text" readonly>', '<textarea id="other" readonly>'), "not one labelled dialog", probe=True)
         self.refused(self.edit("index.html", '<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">', '<a class="btn" href="probe.txt">'), "does not copy the prompt", probe=True)
+        self.refused(self.edit("index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>", ">probe.txt</a>"), "second step does not link to", probe=True)
+        self.refused(self.edit("de/index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>de/<wbr>probe.txt</a>", ">https://shoalmark.github.io/shoalmark/de/probe.txt</a>"), "second step does not link to", probe=True)
+        self.refused(self.edit("de/index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>de/<wbr>probe.txt</a>", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>"), "second step does not link to", probe=True)
+        self.refused(self.edit("index.html", '<a href="https://shoalmark.github.io/shoalmark/probe.txt">', '<a href="https://example.org/probe.txt">'), "second step does not link to", probe=True)
 
     def test_how_it_works_names_the_button_as_the_landing_labels_it(self):
         self.refused(self.edit("how-it-works.html", '"Hand your agents the note"', '"Run probe prompt"'), "does not name the primary button")

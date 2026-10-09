@@ -1,7 +1,7 @@
 {#- The landing's English words: the template's `{{ w.key }}`, one dict. A value is HTML where it carries <em>, <code>, <b> or <a>; the engine
     does not escape on its own, so no value holds a straight double quote that an attribute would meet. A value may hold a slot the template fills:
     {tag}, {date}, {hiscore_last}, {waiting}, {acts}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt}, {adopt_other} and {probe_abs}
-    are the addresses in `urls` below. `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
+    are the addresses in `urls` below, and {probe_short} is the last of them as the visitor types it, without its scheme. `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
 {% set w = {
   "lang": "en",
   "locale": "en_GB",
@@ -185,11 +185,11 @@
   "dlg_h": "The probe prompt",
   "dlg_close": "Close",
   "dlg_failed": "Copying did not work, so the text is selected: Ctrl+C (Cmd+C on a Mac) copies it.",
-  "dlg_ph_badge": "placeholder",
+  "dlg_ph_badge": "draft",
   "dlg_s1_ok": "The prompt is on your clipboard.",
   "dlg_again": "Copy again",
   "dlg_again_done": "Copied",
-  "dlg_s2": "Paste it into the Claude Code or Codex session you already use, on the machine where your agent runs. If you can't copy between machines, open <a href=\"{probe_abs}\">probe.txt</a> there.",
+  "dlg_s2": "Paste it into the Claude Code or Codex session you already use, on the machine where your agent runs. If you can't copy between machines, open <a href=\"{probe_abs}\">{probe_short}</a> there.",
   "dlg_s3": "Your agent checks first and asks your yes before it writes anything. It can take up to 45 minutes, and the answer may be \"no fit\". You decide.",
   "dlg_fold_appr": "What your agent will ask you to approve",
   "dlg_prompt_label": "The prompt",

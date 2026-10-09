@@ -288,6 +288,10 @@ for rel, lang, other, canonical, image, adopt, how in (
             fail(f"{rel}: the probe switch is on, but the primary button does not copy the prompt and lead to probe.txt")
         if not label or not p.textareas.get("probe-text", "").strip():
             fail(f"{rel}: the probe switch is on, but its dialog is not one labelled dialog that shows the prompt")
+        short = SITE_URL + ("de/" if lang == "de" else "") + "probe.txt"
+        step2 = [a for a in p.anchors if a["attrs"].get("href") == short]
+        if len(step2) != 1 or step2[0]["text"] != short.replace("https://", ""):
+            fail(f"{rel}: the dialog's second step does not link to {short} with that address, without its scheme, as the link's text")
     else:
         if button["attrs"].get("href") != "https://github.com/shoalmark/shoalmark/blob/main/" + adopt or button["attrs"].get("id") or p.dialogs or "probe-text" in p.textareas:
             fail(f"{rel}: the probe switch is off, but the primary button is not the note's ({adopt}) alone, or a dialog is built")

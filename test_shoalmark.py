@@ -4501,6 +4501,12 @@ def _landing_problems(src):
         bad.append("the prompt's fold and its words are still there, or the box's two button words are not the script's")
     if [(w.get("dlg_prompt_label"), w.get("dlg_more"), w.get("dlg_less")) for w in (en, de)] != [("The prompt", "Show all", "Show less"), ("Der Prompt", "Alles anzeigen", "Weniger anzeigen")]:
         bad.append("the box's label and the button's two words are not the ones given, in both languages")
+    # the dialog's tag reads draft, and step 2's link shows the whole short address, taken from the value its href has
+    if (en.get("dlg_ph_badge"), de.get("dlg_ph_badge")) != ("draft", "Entwurf"):
+        bad.append("the dialog's coral tag does not read draft (English) and Entwurf (German)")
+    if not all('<a href="{probe_abs}">{probe_short}</a>' in w.get("dlg_s2", "") for w in (en, de)) \
+            or '{%- set probe_short = urls.probe_abs | replace("https://", "") | replace("/", "/<wbr>") -%}' not in code or 'replace("{probe_short}", probe_short)' not in code:
+        bad.append("step 2's link does not show the short address taken from the value its href has, without the scheme")
     if any(gone in tpl + src["zensical.toml"] + json.dumps(words) for gone in ("register_up", "chart_gloss", "chart_note_gloss")):
         bad.append("a switch the Owner's answers removed is still there")
     order = [tpl.find(f'id="{section}"') for section in ("agents", "seats", "scores", "register", "start")]
@@ -4540,6 +4546,10 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the prompt's fold words back": _with(_ls, "overrides/partials/landing/de.html", '  "dlg_more": "Alles anzeigen",\n', '  "dlg_more": "Alles anzeigen",\n  "dlg_fold_prompt": "Der Prompt im Wortlaut",\n'),
         "a German button word changed": _with(_ls, "overrides/partials/landing/de.html", '"dlg_less": "Weniger anzeigen"', '"dlg_less": "Zuklappen"'),
         "the approvals' fold gone": _with(_ls, "overrides/landing.html", '<details class="probe-fold probe-approvals">', '<div class="probe-approvals-x">'),
+        "the tag as it was": _with(_ls, "overrides/partials/landing/en.html", '"dlg_ph_badge": "draft"', '"dlg_ph_badge": "placeholder"'),
+        "the German tag as it was": _with(_ls, "overrides/partials/landing/de.html", '"dlg_ph_badge": "Entwurf"', '"dlg_ph_badge": "Platzhalter"'),
+        "step 2's link text as it was": _with(_ls, "overrides/partials/landing/de.html", '">{probe_short}</a>', '">probe.txt</a>'),
+        "step 2's address typed in the template": _with(_ls, "overrides/landing.html", 'urls.probe_abs | replace("https://", "")', '"shoalmark.github.io/shoalmark/probe.txt" | replace("https://", "")'),
         "the act's line escaped a second time": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}"),
         "the act's line printed twice": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }} <span", "{{ F.excerpt.act.line }} {{ F.excerpt.act.line }} <span"),
         "a top bar count typed": _with(_ls, "overrides/landing.html", '<b id="hud-w">{{ F.counts.wrecks }}</b>', '<b id="hud-w">27</b>'),
@@ -4547,7 +4557,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the caption's day typed": _with(_ls, "overrides/partials/landing/en.html", "board, {read_date}:", "board, 1 October 2026:")}
 _ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
 check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
-      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed and the approvals' fold gone leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 21)
+      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed, the approvals' fold gone, either tag as it was, step 2's link text as it was and its address typed in the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 25)
 
 
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
@@ -12419,12 +12429,16 @@ else:
                              "the prompt copied is the prompt of the page, byte for byte, its line ending included"),
                 "box-resize": ("an opened box that does not follow the window", _mutate("box-resize", "index.html", 'addEventListener("resize", () => { if (box.dataset.open === "true") fit(); });', "", "1440x900"),
                                "the opened box follows a resize: smaller in a lower window, as large again when the window is"),
+                "addr-short": ("a second step whose link shows only probe.txt", _mutate("addr-short", "index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>", ">probe.txt</a>", "360x780"),
+                               "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
+                "addr-wide": ("a second step whose address is wider than the dialog and does not wrap", _mutate("addr-wide", "index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>", '><span style="white-space:nowrap;font-size:24px">shoalmark.github.io/shoalmark/probe.txt</span></a>', "360x780"),
+                              "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
