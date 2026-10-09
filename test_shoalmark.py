@@ -4527,7 +4527,8 @@ check("FM-006 · B1 · the landing's source check is not blind: each of a German
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
 # The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
 # fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.
-_LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md", *(f"launch/{s}/how-it-works.{l}.md" for s in ("interim", "probe") for l in ("en", "de")))
+_LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md",
+                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")))
 _SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft Ihren Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
 
 
@@ -4550,6 +4551,14 @@ def _launch_problems(src):
         for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe")):
             if quote % words[lang].get(key, "?") not in src[f"launch/{launch}/how-it-works.{lang}.md"]:
                 bad.append(f"how it works ({lang}), {launch}: it does not name the button as the landing labels it ({words[lang].get(key)})")
+    # the start pages' Markdown twins lead with the page's own action in each state: the note, or the prompt's short address under the button's own label
+    for lang, page, adopt, short in (("en", "docs/index.md", "blob/main/ADOPT.md)", "shoalmark/probe.txt)"), ("de", "docs/de/index.md", "blob/main/ADOPT.de.md)", "shoalmark/de/probe.txt)")):
+        if src[page].count(f'--8<-- "start.{lang}.md"') != 1:
+            bad.append(f"the start page's twin ({lang}) does not take its action from one include")
+        for launch, want, other in (("interim", adopt, "probe.txt"), ("probe", short, "ADOPT")):
+            line = src[f"launch/{launch}/start.{lang}.md"]
+            if want not in line or other in line or (launch == "probe" and f"[{words[lang].get('btn_probe')}](" not in line):
+                bad.append(f"the start page's twin ({lang}), {launch}: its action is not the page's ({want})")
     prose = " ".join(src[f] for f in ("docs/how-it-works.md", "docs/de/how-it-works.md")) + json.dumps(words, ensure_ascii=False)
     for allowed in _SCAN_FREE:
         prose = prose.replace(allowed, "")
@@ -4569,10 +4578,12 @@ _ctl = {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = 
         "a button named differently in How it works": _with(_ls, "launch/probe/how-it-works.en.md", '"Copy the prompt"', '"Run probe prompt"'),
         "a scan claimed": _with(_ls, "docs/how-it-works.md", "It does not scan your code for security problems or data leaks.", "It scans your code for security problems."),
         "a state fence left in the page": _with(_ls, "docs/de/how-it-works.md", '--8<-- "how-it-works.de.md"', "<!-- state: interim -->"),
-        "the English page out of the navigation": _with(_ls, "zensical.toml", '{ "How it works" = "how-it-works.md" },\n', "")}
+        "the English page out of the navigation": _with(_ls, "zensical.toml", '{ "How it works" = "how-it-works.md" },\n', ""),
+        "a start twin leading with the other state's action": _with(_ls, "launch/probe/start.de.md", "de/probe.txt)", "ADOPT.de.md)"),
+        "a start page's action typed in the page": _with(_ls, "docs/index.md", '--8<-- "start.en.md"', "**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**")}
 _ctl_saw = {name: len(_launch_problems(src)) for name, src in _ctl.items()}
-check("FM-006 · B1 · the launch check is not blind: each of the switch on with its folder off, a button named differently in How it works, a scan claimed, a state fence left in the page and "
-      f"the English page out of the navigation leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 5)
+check("FM-006 · B1 · the launch check is not blind: each of the switch on with its folder off, a button named differently in How it works, a scan claimed, a state fence left in the page, "
+      f"the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 7)
 
 
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",

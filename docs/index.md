@@ -14,7 +14,7 @@ template: landing.html
 Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your
 repository, no done gets through without a commit behind it, and what waits for your word comes first.
 
-**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**
+--8<-- "start.en.md"
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
 sentence per question, once a day, and make their answer one command.

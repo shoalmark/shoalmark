@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
 for page in ("index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html", "setup.html", "signing.html", "de/signing.html", "agents/index.html", "llms.txt",
-             "how-it-works/index.md", "de/index.md", "de/how-it-works/index.md"):
+             "index.md", "how-it-works/index.md", "de/index.md", "de/how-it-works/index.md"):
     if not (site / page).is_file():
         raise SystemExit(f"site check: missing {page}")
 contract = (site / "agents/index.html").read_text(encoding="utf-8")
@@ -295,6 +295,11 @@ for rel, lang, other, canonical, image, adopt, how in (
     label_of = [a["text"] for a in p.anchors if "rel" in classes(a)]
     if len(releases) != 2 or len(set(releases)) != 1 or len(label_of) != 1 or not label_of[0].endswith(releases[0]):
         fail(f"{rel}: the top bar's release label and its link and the footer's link do not name one release")
+    twin_text = (site / ("index.md" if lang == "en" else "de/index.md")).read_text(encoding="utf-8")
+    goes = button["attrs"].get("href") if not probe_on else SITE_URL + ("de/" if lang == "de" else "") + "probe.txt"
+    first_link = re.search(r"\]\(([^)\s]+)\)", twin_text)
+    if not first_link or first_link.group(1) != goes or (not probe_on and "probe.txt" in twin_text):
+        fail(f"{rel}'s Markdown twin does not lead with the page's own action: its first link is {goes}, and there is no probe.txt while the switch is off")
 if pages["index.html"].title == pages["de/index.html"].title or pages["index.html"].meta.get("description") == pages["de/index.html"].meta.get("description"):
     fail("the two landings share a title or a description")
 

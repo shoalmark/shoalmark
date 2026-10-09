@@ -46,7 +46,9 @@ def good_site(site, probe=False):
              "de/how-it-works.html": '<html lang="de"><body>„%s“ ist der Knopf.</body></html>' % (LABELS["de"] if probe else "Agenten die Notiz geben"),
              "how-it-works/index.md": TWIN_TEXT.replace("Hand your agents the note", LABELS["en"] if probe else "Hand your agents the note"),
              "de/how-it-works/index.md": '# So funktioniert\'s\n\n„%s“ ist der Knopf.\n' % (LABELS["de"] if probe else "Agenten die Notiz geben"),
-             "de/index.md": "# shoalmark\n\n[Einrichtung](setup/index.md), [Vertrag](../agents/README/index.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n",
+             "index.md": "# shoalmark\n\n**[%s](%s)**\n" % ((LABELS["en"], SITE_URL + "probe.txt") if probe else ("Hand your agents the note", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md")),
+             "de/index.md": "# shoalmark\n\n**[%s](%s)**\n\n[Einrichtung](setup/index.md), [Vertrag](../agents/README/index.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n"
+                            % ((LABELS["de"], SITE_URL + "de/probe.txt") if probe else ("Geben Sie Ihren Agenten die Notiz", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md")),
              "de/setup/index.md": "# Einrichtung\n", "agents/README/index.md": "# README\n",
              "llms.txt": "- [How it works](how-it-works/index.md)\n- [shoalmark](de/index.md)\n- [So funktioniert's](de/how-it-works/index.md)\n",
              "stylesheets/x.css": "body{color:#fff}", "assets/preview.png": "png", "assets/preview-de.png": "png"}
@@ -150,7 +152,7 @@ class Landings(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_the_german_landing_and_the_new_pages_are_there(self):
-        for name in ("de/index.html", "how-it-works.html", "de/how-it-works.html", "de/how-it-works/index.md", "de/index.md"):
+        for name in ("de/index.html", "how-it-works.html", "de/how-it-works.html", "de/how-it-works/index.md", "de/index.md", "index.md"):
             self.refused(lambda site, name=name: (site / name).unlink(), f"missing {name}")
 
     def test_the_two_languages_name_each_other(self):
@@ -194,6 +196,15 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("de/how-it-works.html", '„Prompt kopieren“', '„Probe-Prompt starten“'), "does not name the primary button", probe=True)
         self.refused(self.edit("de/how-it-works.html", '<html lang="de">', '<html lang="en">'), "says lang='en'")
 
+    def test_the_start_pages_twins_lead_with_the_pages_own_action(self):
+        note = "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"
+        self.refused(self.edit("index.md", "](%s)" % note, "](%s)" % (SITE_URL + "probe.txt")), "does not lead with the page's own action")
+        self.refused(self.edit("index.md", "](%s)" % note, "](setup/index.md)"), "does not lead with the page's own action")
+        self.refused(self.edit("de/index.md", "](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)**", "](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**"), "does not lead with the page's own action")
+        self.refused(self.edit("de/index.md", "Einrichtung", "Einrichtung, probe.txt"), "does not lead with the page's own action")
+        self.refused(self.edit("index.md", "](%sprobe.txt)" % SITE_URL, "](%s)" % note), "does not lead with the page's own action", probe=True)
+        self.refused(self.edit("de/index.md", "](%sde/probe.txt)" % SITE_URL, "](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)"), "does not lead with the page's own action", probe=True)
+
     def test_the_twins_are_text(self):
         self.refused(self.edit("how-it-works/index.md", "```\nnext: owner\n```", '<figure class="week"><pre>next: owner</pre></figure>'), "carries raw HTML")
         self.refused(self.edit("de/how-it-works/index.md", "# So", '--8<-- "how-it-works.de.md"\n# So'), "carries raw HTML, an include or a state fence")
@@ -230,8 +241,10 @@ class Twins(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = Path(tmp.name)
-        files = {"docs/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n[Set up](setup.md)\n",
-                 "docs/de/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n[Einrichtung](setup.md), [Vertrag](../agents/README.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n",
+        files = {"docs/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n--8<-- \"start.en.md\"\n[Set up](setup.md)\n",
+                 "docs/de/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n--8<-- \"start.de.md\"\n[Einrichtung](setup.md), [Vertrag](../agents/README.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n",
+                 "launch/%s/start.en.md" % ("probe" if probe else "interim"): "**[Copy the prompt](https://x.example/probe.txt)**\n" if probe else "**[Hand your agents the note](https://x.example/ADOPT.md)**\n",
+                 "launch/%s/start.de.md" % ("probe" if probe else "interim"): "**[Prompt kopieren](https://x.example/de/probe.txt)**\n" if probe else "**[Geben Sie Ihren Agenten die Notiz](https://x.example/ADOPT.de.md)**\n",
                  "docs/how-it-works.md": how or "# How it works\n\n" + FIGURE + "\n\n## Try it\n\n--8<-- \"how-it-works.en.md\"\n\n[Set up](setup.md)\n",
                  "docs/de/how-it-works.md": "# So funktioniert's\n\n--8<-- \"how-it-works.de.md\"\n\n[Einrichtung](setup.md)\n",
                  "docs/setup.md": "# Set up\n", "docs/de/setup.md": "# Einrichtung\n", "docs/agents/README.md": '--8<-- "README.md"\n', "README.md": "# README\n",
@@ -269,6 +282,10 @@ class Twins(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn(kept, (site / "how-it-works/index.md").read_text(encoding="utf-8"))
                 self.assertNotIn(other, (site / "how-it-works/index.md").read_text(encoding="utf-8"))
+                start, other_start = (("ADOPT.md", "probe.txt"), ("probe.txt", "ADOPT.md"))[probe]
+                self.assertIn("](https://x.example/" + start + ")", (site / "index.md").read_text(encoding="utf-8"))
+                self.assertNotIn(other_start, (site / "index.md").read_text(encoding="utf-8"))
+                self.assertIn(start.replace("ADOPT.md", "ADOPT.de.md").replace("probe.txt", "de/probe.txt"), (site / "de/index.md").read_text(encoding="utf-8"))
 
     def test_probe_txt_is_the_prompt_the_dialog_shows_and_only_while_the_switch_is_on(self):
         site, result = self.written(probe=False)
