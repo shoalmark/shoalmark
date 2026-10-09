@@ -4726,6 +4726,78 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
       f"(problems found: {_nctl_saw})", all(_nctl_saw.values()) and len(_nctl_saw) == 4)
 
 
+# --- FM-006 · B1 · the hero's cue and the arcade labels' cabinet parts ------------------------------------------------------------------------------------
+# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green; only its icon and
+# words blink, four blinks of a second each, then stay lit, and under reduced motion nothing blinks. The players label has a joystick and the start label a coin,
+# neither blinking; the other labels have no icon. Every icon is aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
+_CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
+_CUE_WORDS = {"en": {"cue": "— press start —", "players_n": "— select player —", "start_n": "— insert coin —", "scores_n": "— measured, not promised —", "reg_n": "— the wreck register —"},
+              "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —", "reg_n": "— das Wrackregister —"}}
+
+
+def _cue_problems(src):
+    """What is wrong with the hero's cue and the labels' icons, one line each; none where they are as the Owner ruled them."""
+    bad, tpl = [], src["overrides/landing.html"]
+    code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)
+    words, more = _landing_words(src)
+    bad += more
+    for lang in ("en", "de"):
+        for key, want in _CUE_WORDS[lang].items():
+            if words[lang].get(key) != want:
+                bad.append(f"the {lang} word {key} is not {want!r}")
+    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, its icon the dome after the first dash of the words
+    probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
+    cue = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
+    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue") != 1 or "w.cue" in code.replace(cue, ""):
+        bad.append("the cue is not, in the probe state alone, the strip over the primary button, hidden from screen readers, with the dome after its first dash")
+    # the animation: only the cue's words and icon blink, at most 5 s in all, then they stay lit; nothing blinks under reduced motion
+    rules = re.findall(r"([^{}]+)\{([^{}]*animation[^{}]*)\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S))
+    mine = [(sel.strip().split(".")[-1], body) for sel, body in rules if re.search(r"\.(cue|cab|n-ic|n|cta-main)\b", sel)]
+    timed = [(sel, re.search(r"animation:\s*blink\s+([\d.]+)s\s+steps\(1\)\s+(\d+)\b", body)) for sel, body in mine]
+    if len(timed) != 1 or timed[0][0] != "cue-t" or not timed[0][1] or float(timed[0][1].group(1)) * int(timed[0][1].group(2)) > 5 or "infinite" in mine[0][1] or "forwards" in mine[0][1]:
+        bad.append("the cue's words and icon are not the only things of the cue and the labels that animate, blinking at most 5 s in all and then lit")
+    if "*,*::before,*::after{animation:none!important" not in code:
+        bad.append("the rule that ends every animation under reduced motion is not there")
+    # the icons: three, each aria-hidden and not focusable; the labels keep their words and take the icon after the first dash; the others take none
+    icons = re.findall(r'<svg class="cab cab-(dome|stick|coin)"([^>]*)>', code)
+    if sorted(n for n, _ in icons) != ["coin", "dome", "stick"] or not all('aria-hidden="true"' in a and 'focusable="false"' in a for _, a in icons):
+        bad.append("the three icons, dome, joystick and coin, are not each aria-hidden and not focusable")
+    for key, icon in (("players_n", "icon_stick"), ("start_n", "icon_coin")):
+        if f'<span class="n n-ic">{{{{ w.{key} | replace("— ", "— " ~ {icon} ~ " ") }}}}</span>' not in code:
+            bad.append(f"the {key} label is not its words with the {icon} after the first dash")
+    for key in ("scores_n", "reg_n"):
+        if f'<span class="n">{{{{ w.{key} }}}}</span>' not in code:
+            bad.append(f"the {key} label is not its words alone")
+    if "--gold:#e3b84c" not in code.replace(" ", ""):
+        bad.append("the coin's gold is not the token --gold")
+    return bad
+
+
+_cs = _sources(_CUE_FILES)
+_cp = _cue_problems(_cs)
+check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, in both languages' words; only its icon and words blink, "
+      "four seconds at most and then lit, and nothing blinks under reduced motion; the joystick and the coin stand on the players and start labels, the other labels have none, every icon is "
+      f"aria-hidden, and the labels keep their words (problems found: {_cp})", _cp == [])
+_cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html", "{%- else %}\n      <a class=\"btn\" href=\"{{ urls.adopt }}\">", "{%- else %}\n      <span class=\"cue\" aria-hidden=\"true\">{{ w.cue }}</span><a class=\"btn\" href=\"{{ urls.adopt }}\">"),
+         "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main"><a id="probe-open"></a><span class="cue" aria-hidden="true">'),
+         "the cue read by screen readers": _with(_cs, "overrides/landing.html", '<span class="cue" aria-hidden="true">', '<span class="cue">'),
+         "the cue's German words changed": _with(_cs, "overrides/partials/landing/de.html", '"cue": "— Start drücken —"', '"cue": "— Los —"'),
+         "the cue blinking for ever": _with(_cs, "overrides/landing.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}"),
+         "the cue blinking longer than 5 s": _with(_cs, "overrides/landing.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 6}"),
+         "the rules blinking too": _with(_cs, "overrides/landing.html", "border-block:1px dashed var(--watt);white-space:nowrap}", "border-block:1px dashed var(--watt);white-space:nowrap;animation:blink 1s steps(1) 4}"),
+         "a label blinking": _with(_cs, "overrides/landing.html", ".n-ic{display:inline-flex;align-items:center;gap:8px}", ".n-ic{display:inline-flex;align-items:center;gap:8px;animation:blink 1s steps(1) 4}"),
+         "the reduced-motion rule gone": _with(_cs, "overrides/landing.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}"),
+         "an icon read by screen readers": _with(_cs, "overrides/landing.html", '<svg class="cab cab-coin" viewBox="0 0 7 7" aria-hidden="true"', '<svg class="cab cab-coin" viewBox="0 0 7 7"'),
+         "an icon on the scores label": _with(_cs, "overrides/landing.html", '<span class="n">{{ w.scores_n }}</span>', '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_coin ~ " ") }}</span>'),
+         "an icon on the register label": _with(_cs, "overrides/landing.html", '<span class="n">{{ w.reg_n }}</span>', '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_stick ~ " ") }}</span>'),
+         "the players label reworded": _with(_cs, "overrides/partials/landing/en.html", '"players_n": "— select player —"', '"players_n": "— choose —"'),
+         "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"')}
+_cctl_saw = {name: len(_cue_problems(src)) for name, src in _cctl.items()}
+check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s or "
+      "with its rules, a label blinking, the reduced-motion rule gone, an icon read by screen readers or on the scores or register label, and a label reworded leaves a problem "
+      f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 14)
+
+
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
@@ -12539,12 +12611,26 @@ else:
                               "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
                 "ticker": ("a ticker that does not clip its band", _mutate("ticker", "index.html", "</head>", "<style>.ticker{overflow:visible!important}</style></head>", "360x780"),
                            "the ticker clips its own band and takes no room of the page"),
+                "cue-wide": ("a cue wider than the primary button", _mutate("cue-wide", "index.html", "</head>", "<style>.cue{min-width:130%!important}</style></head>", "cue"),
+                             "the cue is as wide as the primary button and centred on it, above it"),
+                "cue-aside": ("a cue off the button's centre", _mutate("cue-aside", "index.html", "</head>", "<style>.cue{position:relative;left:14px}</style></head>", "cue"),
+                              "the cue is as wide as the primary button and centred on it, above it"),
+                "cue-chart": ("a cue that touches the chart's labels", _mutate("cue-chart", "index.html", "</head>", "<style>#names .name{left:15%!important;top:48%!important}</style></head>", "cue"),
+                              "the cue stands clear of every chart label, by at least 2 px"),
+                "cue-motion": ("a cue that blinks under reduced motion", _mutate("cue-motion", "index.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}", "1440x900"),
+                               "under reduced motion nothing animates: the document has no animation"),
+                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}", "cue"),
+                                "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-rules": ("a cue whose rules blink too", _mutate("cue-rules", "index.html", "</head>", "<style>.cue{animation:blink 1s steps(1) 4}</style></head>", "cue"),
+                              "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 4 forwards}", "cue"),
+                             "after the blink the cue is at rest and lit"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element

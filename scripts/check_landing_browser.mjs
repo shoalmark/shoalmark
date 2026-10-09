@@ -4,13 +4,15 @@
 //   no sideways scroll, no script error, no failed request, no request to any other host.
 // On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show, with the widest three-digit
 // hi-score (888/888) set in it.
+// In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
+// clear of every chart label; with motion allowed only its icon and words blink, 5 s at most, then lit; under reduced motion the document has no animation.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
 // names; focus is inside it; Tab and Shift+Tab never reach the page behind; the prompt stands in step 1 as a box of two lines with a fade whose button opens it whole
 // and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
 // button; it fits the window and the page does not scroll sideways under it; and, with the folds closed, nothing inside it scrolls at 360×780, 375×667 and
 // 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
-// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors) narrow the run to what is named; the whole run is every page at
-// 360×780, 375×667, 390×844 and 1440×900, and the bar.
+// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue) narrow the run to what is named; the whole run is every page at
+// 360×780, 375×667, 390×844 and 1440×900, the bar and the cue.
 import {spawn} from "node:child_process";
 import {createServer} from "node:http";
 import {existsSync, mkdtempSync, readFileSync, statSync, writeFileSync} from "node:fs";
@@ -44,7 +46,7 @@ for (let i = 0; i < 80 && !version; i++) { try { version = (await (await fetch(`
 if (!version) { console.error("check_landing_browser: Chrome did not start"); chrome.kill(); server.close(); process.exit(2) }
 
 // a tab: js(expr), call(method, params), press(key, modifiers), close(); log holds what the page did
-async function open(url, {w, h, clipboard = "ok"}) {
+async function open(url, {w, h, clipboard = "ok", reduce = true}) {
   const t = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, {method: "PUT"})).json();
   const ws = new WebSocket(t.webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
   let id = 0; const pending = new Map(), asked = new Map();
@@ -61,7 +63,7 @@ async function open(url, {w, h, clipboard = "ok"}) {
     if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails).slice(0, 400)); return r.result.value };
   await call("Runtime.enable"); await call("Network.enable"); await call("Page.enable");
   await call("Emulation.setDeviceMetricsOverride", {width: w, height: h, deviceScaleFactor: 1, mobile: false});
-  await call("Emulation.setEmulatedMedia", {features: [{name: "prefers-reduced-motion", value: "reduce"}]});
+  await call("Emulation.setEmulatedMedia", {features: [{name: "prefers-reduced-motion", value: reduce ? "reduce" : "no-preference"}]});
   // the clipboard is stubbed, so that the two states of the dialog happen on demand; the page's own code runs unchanged
   await call("Page.addScriptToEvaluateOnNewDocument", {source: clipboard == "ok"
     ? `Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: t => { window.__copied = t; return Promise.resolve() }}})`
@@ -79,7 +81,7 @@ const rows = [], info = [];
 const verdict = (page, w, h, name, ok, detail = "") => rows.push({page, w, h, check: name, ok: !!ok, ...(ok ? {} : {detail})});
 const PAGES = only ? only.split(",") : ["index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html"];
 const SIZES = sizes ? sizes.split(",").filter(s => s.includes("x")).map(s => s.split("x").map(Number)) : [[360, 780], [375, 667], [390, 844], [1440, 900]];
-const BAR = !sizes || sizes.split(",").includes("bar");   // the top bar's anchors, a run of their own
+const BAR = !sizes || sizes.split(",").includes("bar"), CUEON = !sizes || sizes.split(",").includes("cue");   // the top bar's anchors, a run of their own
 const ACTIVE = `(() => { const e = document.activeElement; return e ? (e.id || e.className || e.tagName) : "none" })()`;
 const OUTSIDE = `(() => { const d = document.getElementById("probe"), e = document.activeElement; return !!e && e !== document.body && e !== document.documentElement && !d.contains(e) })()`;
 // an element inside the dialog that scrolls inside itself (the prompt's own box excepted)
@@ -161,9 +163,45 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
     const gone = await t.js(`({open: document.getElementById("probe").open, focus: document.activeElement.id})`);
     verdict(page, w, h, "Escape closes the dialog and focus is back on the button", !gone.open && gone.focus == "probe-open", JSON.stringify(gone));
   }
+  if (page.endsWith("index.html") && !page.startsWith("how")) {
+    const moving = await t.js(`document.getAnimations().length`);
+    verdict(page, w, h, "under reduced motion nothing animates: the document has no animation", moving === 0, String(moving));
+  }
   verdict(page, w, h, "no script error", t.log.errors.length == 0, t.log.errors.join(" | ").slice(0, 400));
   verdict(page, w, h, "no failed request", t.log.failed.length == 0, t.log.failed.join(" | ").slice(0, 400));
   verdict(page, w, h, "no request to any other host", [...t.log.hosts].every(x => x.startsWith("127.0.0.1")), [...t.log.hosts].filter(x => !x.startsWith("127.0.0.1")).join(" "));
+  await t.close();
+}
+// the hero's cue (the probe state): a strip as wide as the primary button and centred on it, over the stacked buttons on a phone; clear of every chart label; blinking its icon and
+// words alone, 5 s at most, then lit. The chart's labels are its names, its figures and the wrecks' labels; the strip stands clear of each by at least 2 px.
+const CUE = `(() => { const r = e => { const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width, cx: (b.left + b.right) / 2} }, c = document.querySelector(".cue"), b = document.getElementById("probe-open"), a = document.querySelector(".btn.alt");
+  if (!c || !b || !a) return {missing: true};
+  const labels = [...document.querySelectorAll(".name, .fig, .wreck .lbl")].filter(e => getComputedStyle(e).display != "none" && e.getBoundingClientRect().width > 0), rc = r(c);
+  let gap = Infinity, nearest = ""; for (const e of labels) { const x = r(e), g = Math.max(x.l - rc.r, rc.l - x.r, x.t - rc.b, rc.t - x.b); if (g < gap) { gap = g; nearest = e.textContent.trim().slice(0, 20) } }
+  return {cue: rc, btn: r(b), alt: r(a), gap: Math.round(gap * 10) / 10, nearest, hidden: c.getAttribute("aria-hidden"), sw: document.documentElement.scrollWidth - innerWidth} })()`;
+if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844], [1024, 768], [1280, 720], [1366, 768], [1440, 900], [1536, 864], [1599, 900], [1600, 900], [1920, 1080], [2560, 1300]]) {
+  const t = await open(page, {w, h});
+  const q = await t.js(CUE);
+  if (q.missing) { verdict(page, w, h, "the hero's cue is there, over the primary button", false, "no cue"); await t.close(); continue }
+  const near = (a, b) => Math.abs(a - b) <= 1;
+  const phone = w < 700;
+  verdict(page, w, h, phone ? "the cue is centred over the stacked buttons, as wide as they" : "the cue is as wide as the primary button and centred on it, above it",
+    near(q.cue.w, q.btn.w) && near(q.cue.cx, q.btn.cx) && q.cue.b <= q.btn.t && (phone ? near(q.cue.cx, q.alt.cx) && q.alt.t >= q.btn.b : q.alt.l >= q.btn.r), JSON.stringify([q.cue, q.btn, q.alt].map(o => [Math.round(o.l), Math.round(o.w)])));
+  verdict(page, w, h, "the cue is hidden from screen readers and takes no room sideways", q.hidden == "true" && q.sw <= 0, JSON.stringify([q.hidden, q.sw]));
+  if (w >= 1280) verdict(page, w, h, "the cue stands clear of every chart label, by at least 2 px", q.gap >= 2, `nearest ${q.nearest}: ${q.gap}px`);
+  if (w >= 1280 && (w == 1440 || w == 1600 || w == 2560)) info.push({page, w, h, state: "the cue's clearance of the chart's labels", gap: q.gap, nearest: q.nearest});
+  await t.close();
+}
+// the blink: with motion allowed, the cue's icon and words alone animate, 5 s at most, and are lit and at rest afterwards; the rules, the buttons and the labels never animate
+if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
+  const t = await open(page, {w: 1440, h: 900, reduce: false});
+  const during = await t.js(`(() => { const an = e => e.getAnimations().map(a => [a.animationName, a.effect.getComputedTiming().endTime, (i => Number.isFinite(i) ? i : -1)(a.effect.getComputedTiming().iterations)]);
+    return {words: an(document.querySelector(".cue-t") || {getAnimations: () => []}), others: [".cue", "#probe-open", ".btn.alt", ".sec-h .n"].flatMap(s => [...document.querySelectorAll(s)].flatMap(an)), icons: [...document.querySelectorAll(".cab")].flatMap(e => e.getAnimations()).length} })()`);
+  const blink = during.words.length == 1 && during.words[0][0] == "blink" && during.words[0][1] <= 5000 && during.words[0][2] > 0;
+  verdict(page, 1440, 900, "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does", blink && during.others.length == 0 && during.icons == 0, JSON.stringify(during));
+  await sleep(5300);
+  const after = await t.js(`(() => { const w = document.querySelector(".cue-t"), c = document.querySelector(".cue"); return {n: w ? w.getAnimations().length : -1, op: w ? getComputedStyle(w).opacity : null, rules: c ? getComputedStyle(c).opacity : null} })()`);
+  verdict(page, 1440, 900, "after the blink the cue is at rest and lit", after.n == 0 && after.op == "1" && after.rules == "1", JSON.stringify(after));
   await t.close();
 }
 // the top bar's five anchors, wherever the page first shows them (stepping the window up from 1000 px): one row each, and clear of the language switch
