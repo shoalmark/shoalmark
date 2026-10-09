@@ -46,7 +46,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 - **On `release/v0.19.2`:** slice 1 merged at `13bb2c4`, slice 2 at `b62ad2a`, main at `a36bc03`; the release commit
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages; RV-2780 merged at `e55a23d`, RV-2781
   at `1fcfdc7`, RV-2782 at `c9da264`: the landing names v0.19.2 in the Owner's words, and the CHANGELOG's section carries
-  the Owner's headline (`f781491`, `d76743a`), dated 2026-10-09 by `c458e4d`.
+  the Owner's headline (`f781491`), its Fixes line (`d76743a`), dated 2026-10-09 by `c458e4d`.
 
 ## Why
 
