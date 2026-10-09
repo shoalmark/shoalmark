@@ -1702,7 +1702,7 @@ with tempfile.TemporaryDirectory() as d:
     after_ = _tree(root, skip=("docs/work-tracker",)); wrote_ = sorted(set(_tree(root)) - set(_tree(root, skip=("docs/work-tracker/index.html", "docs/work-tracker/view"))))
     check("FM-006 · a private security report · the board's run writes the board and nothing else: its page and its `view/<ID>.js`, inside the tracker folder, and the tree outside it is "
           "byte for byte what it was (saw " + repr(wrote_) + ")",
-          code_ == 0 and out_.startswith("board: file:") and before_ == after_ and wrote_ == ["docs/work-tracker/index.html", "docs/work-tracker/view", "docs/work-tracker/view/MSR-001.js"])
+          code_ == 0 and out_.startswith("board: file:") and before_ == after_ and wrote_ == ["docs/work-tracker/index.html", "docs/work-tracker/view", "docs/work-tracker/view/MSR-001.js", "docs/work-tracker/view/built.json"])
     c2_, o2_, e2_ = run(root, "--html-only", "--check")
     check("FM-006 · a private security report · `--html-only` stands alone, with `--root`: another run named beside it is refused, one line, exit 2, nothing written",
           c2_ == 2 and "stands alone" in e2_ and "--check" in e2_ and o2_ == "" and len(e2_.strip().splitlines()) == 1)
@@ -10567,6 +10567,121 @@ with tempfile.TemporaryDirectory() as tmp:
           and here_(root) == "answer/ap-503" and "back on" not in out_w and "the board is rebuilt — no checkout hook rebuilt it" in out_w
           and (root / "docs/work-tracker/index.html").stat().st_mtime_ns != stamp_)
     rm_git(root)
+fm.configure(HERE)
+
+# --- FM-045, 0.19.2 — C's read-only half, as the Owner ruled it on 2026-10-08 (option 1): the board records what it was built from — the tracker folder,
+#     the configuration, the answer branches it reads — in `view/built.json`, written last through the board's own write, and `--owner` and `--standup`
+#     say in one line when any of it differs now. HEAD moving alone is never said. On Subversion and in a plain folder nothing is recorded or said.
+def _bj(root):
+    """`view/built.json` as a run left it, parsed — None where there is none, or it is no JSON object."""
+    p_ = root / "docs/work-tracker/view/built.json"
+    try:
+        v_ = json.loads(p_.read_text(encoding="utf-8")) if p_.is_file() else None
+    except ValueError:
+        v_ = None
+    return v_ if isinstance(v_, dict) else None
+def _bj_rev(root, ref="HEAD"):
+    """A ref's full sha, as git prints it (`_head` is a theme's reader by the time these blocks run)."""
+    return subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
+def _bj_says(root):
+    """What `--owner` and `--standup` say of what the board was built from: (both exits, the lines of `--owner`, the lines of `--standup`)."""
+    said_ = lambda out: [l_ for l_ in out.splitlines() if l_.startswith(("the board is older than what it shows", "the board records nothing of what it was built from"))]
+    o_, s_ = run(root, "--owner"), run(root, "--standup")
+    return (o_[0], s_[0]), said_(o_[1]), said_(s_[1])
+def _bj_line(parts, at):
+    """The line, as the tool words it, for the parts that changed and the commit the board was built at."""
+    return f"the board is older than what it shows — {parts} changed since it was built at {at[:7]}: `{fm.CMD} --html-only` rebuilds it"
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); t_ = root / "docs/work-tracker"
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "A"); a_ = _bj_rev(root)
+    code_, _o, _e = run(root, "--html-only"); bj_ = _bj(root)
+    stamps_ = [p_.stat().st_mtime_ns for p_ in [t_ / "index.html", *(t_ / "view").glob("*.js")]]
+    check(f"FM-045 · C · the board built by `--html-only` at commit A records what it was built from in `view/built.json` — a SHA-256 each for the tracker folder, the configuration and the answer branches, and A for the line's wording — written after the page and every view (saw {bj_})",
+          code_ == 0 and bj_ is not None and sorted(bj_) == ["answers", "commit", "configuration", "trackers"] and bj_["commit"] == a_
+          and all(re.fullmatch(r"[0-9a-f]{64}", str(bj_[k_])) for k_ in ("trackers", "configuration", "answers"))
+          and all((t_ / "view/built.json").stat().st_mtime_ns >= m_ for m_ in stamps_))
+    (root / "notes.txt").write_text("not a tracker\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "B"); git(root, "commit", "-q", "--allow-empty", "-m", "C")
+    codes_, o_, s_ = _bj_says(root)
+    check(f"FM-045 · C · the Owner's check 1: ordinary commits with no tracker change — HEAD moved twice, and nothing refreshed the board — give no line from `--owner` or `--standup` (saw {o_} · {s_})",
+          codes_ == (0, 0) and o_ == [] and s_ == [])
+    tracker(root, "MSR-001", title="changed with no hook"); git(root, "add", "-A"); git(root, "commit", "-qm", "D")
+    before_ = _tree(root); codes_, o_, s_ = _bj_says(root)
+    check(f"FM-045 · C · the Owner's check 2: a tracker change committed with no hook, the board not refreshed — `--owner` and `--standup` each print one line, once, naming the tracker folder, the commit the board was built at and the tool's command that rebuilds it; nothing is written (saw {o_} · {s_})",
+          codes_ == (0, 0) and o_ == s_ == [_bj_line("the tracker folder", a_)] and _tree(root) == before_)
+    run(root, "--html-only"); codes_, o_, s_ = _bj_says(root); d_ = _bj_rev(root)
+    check(f"FM-045 · C · the Owner's check 3: a refresh clears it — after `--html-only` neither prints the line, and `view/built.json` names the commit it was built at (saw {o_} · {s_})",
+          codes_ == (0, 0) and o_ == s_ == [] and (_bj(root) or {}).get("commit") == d_)
+    git(root, "switch", "-q", "-c", "side"); (root / "side.txt").write_text("1\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "side 1"); s1_ = _bj_rev(root)
+    (root / "side.txt").write_text("2\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "side 2"); s2_ = _bj_rev(root); git(root, "switch", "-q", "-")
+    git(root, "update-ref", "refs/remotes/origin/main", d_); run(root, "--html-only"); quiet_ = _bj_says(root)
+    git(root, "update-ref", "refs/remotes/origin/answer/msr-001", s1_); new_ = _bj_says(root)
+    run(root, "--html-only"); cleared_ = _bj_says(root)
+    git(root, "update-ref", "refs/remotes/origin/answer/msr-001", s2_); moved_ = _bj_says(root)
+    run(root, "--html-only"); again_ = _bj_says(root)
+    check(f"FM-045 · C · the Owner's check 2: an answer branch on origin, new and then moved, the board not refreshed — `--owner` and `--standup` each print the line once, naming the answer branches; a refresh clears it each time (saw {new_} · {moved_})",
+          quiet_ == cleared_ == again_ == ((0, 0), [], []) and new_ == moved_ == ((0, 0), [_bj_line("the answer branches", d_)], [_bj_line("the answer branches", d_)]))
+    cfg_ = root / "shoalmark.toml"; cfg_.write_text(re.sub(r'(?m)^name = "[^"]*"', 'name = "renamed"', cfg_.read_text(encoding="utf-8")), encoding="utf-8")
+    tracker(root, "MSR-001", title="changed beside the configuration")
+    codes_, o_, s_ = _bj_says(root)
+    check(f"FM-045 · C · a configuration change and a tracker change together, the board not refreshed: one line each, naming both (saw {o_} · {s_})",
+          codes_ == (0, 0) and o_ == s_ == [_bj_line("the tracker folder and the configuration", d_)])
+    run(root, "--html-only"); held_, page_ = (t_ / "view/built.json").read_bytes() if (t_ / "view/built.json").is_file() else None, (t_ / "index.html").read_bytes()
+    tracker(root, "MSR-001", title="changed before a run that stops")
+    real_views_ = fm.write_views
+    def _stopped(trackers):
+        raise fm.ReadOnlyRun("a forced stop, after the page and before the views")
+    fm.write_views = _stopped
+    try:
+        code_s_, _o, err_s_ = run(root, "--html-only")
+    finally:
+        fm.write_views = real_views_
+    codes_, o_, s_ = _bj_says(root); e_ = _bj_rev(root)
+    check(f"FM-045 · C · a board run that stops after the page leaves the previous `view/built.json` byte for byte — it is written last — and the line stays (saw exit {code_s_}, {err_s_.strip()[:100]!r} · {o_})",
+          code_s_ == fm.EXIT_LINT and "a forced stop" in err_s_ and held_ is not None and (t_ / "view/built.json").read_bytes() == held_ and (t_ / "index.html").read_bytes() != page_
+          and codes_ == (0, 0) and o_ == s_ == [_bj_line("the tracker folder", e_)])
+    (t_ / "view/built.json").unlink(missing_ok=True); codes_, o_, s_ = _bj_says(root)
+    nothing_ = f"the board records nothing of what it was built from: `{fm.CMD} --html-only` rebuilds it"
+    (t_ / "index.html").unlink(); none_ = _bj_says(root)
+    check(f"FM-045 · C · a board with no `view/built.json` — one an earlier version built — gives one line, once each; no board gives none (saw {o_} · {none_})",
+          codes_ == (0, 0) and o_ == s_ == [nothing_] and none_ == ((0, 0), [], []))
+    fm.configure(root)
+    def _admits(rel):
+        try:
+            fm.board_judge("open", (str(t_ / rel), "w", 0))
+            return fm.board_target(str(t_ / rel))
+        except fm.ReadOnlyRun:
+            return False
+        finally:
+            fm.TRIPPED.clear()
+    beside_ = {r_: _admits(r_) for r_ in ("view/built.json.tmp", "view/other.json", "built.json", "view/built.json/x", "view/sub/built.json")}
+    check(f"FM-045 · C · the tripwire admits `view/built.json` by its exact path and nothing beside it — `view/built.json.tmp`, `view/other.json`, `built.json` beside the page, `view/built.json/x`, `view/sub/built.json` (saw {beside_})",
+          _admits("view/built.json") and not any(beside_.values()))
+    rm_git(root)
+fm.configure(HERE)
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "A"); a_ = _bj_rev(root)
+    inst_ = run(root, "--install-hook")[0]                  # a throwaway repository: its hooks run the copy of this tool kept in its git directory
+    run(root, "--html-only"); tracker(root, "MSR-001", title="changed and committed through the hooks")
+    c_ = _hooked(root, "commit", "-qam", "B — a tracker change, through the hooks"); bj_ = _bj(root); codes_, o_, s_ = _bj_says(root)
+    check(f"FM-045 · C · the Owner's check 1, through the hooks: a commit with a tracker change, whose pre-commit run renders the board for the commit being made — `view/built.json` keeps the commit it was built at, and `--owner` and `--standup` print nothing (saw exit {c_[0]}, {o_} · {s_})",
+          inst_ == 0 and c_[0] == 0 and _bj_rev(root) != a_ and (bj_ or {}).get("commit") == a_ and codes_ == (0, 0) and o_ == s_ == [])
+    rm_git(root)
+fm.configure(HERE)
+for kind_ in ("Subversion", "a plain folder"):
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp).resolve()
+        if kind_ == "Subversion":
+            (root / ".svn").mkdir()
+        run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+        calls_ = argv_of(lambda: run(root, "--html-only")); code_ = run(root, "--html-only")[0]; run(root)
+        started_ = [c_ for c_ in calls_ if c_ and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
+        codes_, o_, s_ = _bj_says(root)
+        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn` and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
+              code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and not (root / "docs/work-tracker/view/built.json").exists() and started_ == []
+              and codes_ == (0, 0) and o_ == s_ == [])
 fm.configure(HERE)
 
 # --- FM-030, 0.18.6 — revoke: on what is on its way the board has ONE button, *revoke*, and it copies `--revoke <id> "<why>"` — a

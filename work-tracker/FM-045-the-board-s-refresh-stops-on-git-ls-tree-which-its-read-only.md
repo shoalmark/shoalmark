@@ -47,6 +47,13 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages; RV-2780 merged at `e55a23d`, RV-2781
   at `1fcfdc7`, RV-2782 at `c9da264`: the landing names v0.19.2 in the Owner's words, and the CHANGELOG's section carries
   the Owner's headline (`f781491`), its Fixes line (`d76743a`), dated 2026-10-09 by `c458e4d`.
+- **C's read-only half — built** on `fm/045-the-board-records-its-commit`, not in v0.19.2 (`1c50400`,
+  `1c611f4`, `866988c`): every run that writes the board writes `view/built.json` last, through the board's own write —
+  what the board was built from: the tracker folder, the configuration and the answer branches it reads. `--owner` and
+  `--standup` say in one line when any of it has changed since; HEAD moving alone is never said, and on Subversion and in
+  a plain folder nothing is recorded or said. The tripwire admits `view/built.json` by its exact path alone. Its
+  CHANGELOG line and the ADOPT pins come with the release it joins.
+- **Left:** C's read-only half: its review, and the release it joins.
 
 ## Why
 
@@ -77,6 +84,12 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
     - a foreign hook runner, in the style of lefthook;
     - Subversion.
   - **Where it runs:** in CI on Ubuntu, macOS and Windows, on synthetic data only.
+- **The board says what it was built from** (the Owner's ruling of 2026-10-08 on C, option 1: its read-only half).
+  - The board records what it was built from — the tracker folder, the configuration and the answer branches it reads —
+    in `view/built.json`, written last through the board's own write.
+  - Where any of it has changed since, `--owner` and `--standup` each say so in one line, read-only. HEAD moving alone is
+    never said: what the board shows decides. On Subversion and in a plain folder nothing is said.
+  - The page's own notice, a stamp the board's run writes first, leads 0.19.3 with its own review.
 
 ## Ship log
 
@@ -92,4 +105,5 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | **Every board's run of the matrix watched** by the Builder seat (`b3bdb000/implementer-116`) on `fm/045-rv-2781-every-board-run-watched-3`, from `9a7ed43`, in `test_shoalmark.py` only: `f9cd059` — through git's trace (`GIT_TRACE2_EVENT`), the runs the hooks' copy makes for `post-checkout`, `post-merge` and `post-rewrite`, the lefthook-style runner's, `--answer`'s and the runs by hand: each event's own run seen, every git it starts a read `read_only_git` admits, `ls-tree` counted, all recorded for the runtime half; `65b6875` — the watch's control; `2490ebc` — the runtime half's name says exactly what it watches. |
 | 2026-10-08 | Built by `b3bdb000/implementer-124`: `f781491` — the landing names v0.19.2 in the Owner's words; the CHANGELOG's headline, Fixes line and CI line; `d76743a` — the Fixes line says only that `git ls-tree` is on the read-only git; the tracker's day and CI systems. |
 | 2026-10-08 | Built by `b3bdb000/implementer-115`: `42fbd86` — Check A accepts a start only in the form the product writes: a process API called by its plain name, its argument list and every argument that can choose the program or a shell resolved in full; any other reference to a process API or module, code handed to any shell or interpreter and a start through a wrapper are not read. Two exceptions, each matched by its site and met once: `notify_argv`'s code handed to osascript and to PowerShell, ending when that code is made literal, and the repository's deriver, permanent. A control for each kind; the tool's own reading: 29 commands, nothing unread. |
+| 2026-10-08 | **C's read-only half — built** by `b3bdb000/implementer-117` on `fm/045-the-board-records-its-commit`: `1c50400` — a refactor: `answer_refs` holds what `on_their_way` reads of origin's answer branches; `1c611f4` — `view/built.json`, written last by every run that writes the board, the one line from `--owner` and `--standup`, and the tripwire admitting that path alone; `866988c` — the C checks run to their end beside v0.19.1. |
 | 2026-10-09 | **Shipped in v0.19.2:** `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156); tagged `v0.19.2` on `ceb21b8`. |
