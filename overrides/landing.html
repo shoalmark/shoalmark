@@ -72,7 +72,7 @@ a{color:var(--blue)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* THE HUD — the navy band, ending at the drying line */
-.hud{position:sticky;top:0;z-index:20;background:var(--band);border-bottom:2px solid var(--drying)}
+.hud{position:sticky;top:0;z-index:20;background:var(--band);border-bottom:2px solid var(--drying);overflow-x:clip}{# B1: the bar clips its own overflow, so that it can never make the page scroll sideways: at 360px the bar has no room to spare, and a release label whose digits are wider than the last one's pushed the German bar 1px past the window #}
 .hud .wrap{display:flex;align-items:center;gap:22px;height:54px;max-width:none;padding-inline:24px}
 .hud .brand{display:flex;align-items:center;gap:10px;color:var(--bandink);text-decoration:none;font:500 17px var(--mono)}
 .hud .brand svg{width:32px;height:32px;image-rendering:pixelated}
