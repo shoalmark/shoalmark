@@ -184,18 +184,16 @@
 
   "dlg_h": "Der Probe-Prompt",
   "dlg_close": "Schließen",
-  "dlg_copied": "In die Zwischenablage kopiert.",
   "dlg_failed": "Das Kopieren hat nicht funktioniert, deshalb ist der Text markiert: Strg+C (auf dem Mac Cmd+C) kopiert ihn.",
-  "dlg_paste": "Fügen Sie ihn jetzt in Claude Code oder Codex ein – in die Session, mit der Sie ohnehin arbeiten.",
-  "dlg_ph_badge": "preview values",
-  "dlg_fit": "Heute passt shoalmark zu Projekten, in denen eine Person das Sagen hat.",
+  "dlg_ph_badge": "Platzhalter",
+  "dlg_s1_ok": "Der Prompt liegt in Ihrer Zwischenablage.",
+  "dlg_again": "Erneut kopieren",
+  "dlg_again_done": "Kopiert",
+  "dlg_s2": "Fügen Sie ihn auf dem Rechner, auf dem Ihr Agent läuft, in die Session ein, die Sie ohnehin in Claude Code oder Codex nutzen. Können Sie nicht zwischen Rechnern kopieren, öffnen Sie dort <a href=\"{probe_abs}\">probe.txt</a>.",
+  "dlg_s3": "Ihr Agent prüft zuerst und fragt nach Ihrem Ja, bevor er etwas schreibt. Das kann bis zu 45 Minuten dauern, und die Antwort darf „passt nicht“ lauten. Sie entscheiden.",
+  "dlg_fold_appr": "Wofür Ihr Agent Sie um Freigabe bitten wird",
+  "dlg_fold_prompt": "Der Prompt im Wortlaut",
   "dlg_close_aria": "Dialog schließen",
-  "short_addr": "shoalmark.github.io/shoalmark/de/probe.txt",
-  "dlg_prompt_label": "Der Prompt",
-  "dlg_what": "shoalmark legt die Arbeit Ihres Projekts als Textdateien im Projekt selbst ab, sodass jeder Agent, der daran arbeitet, denselben aktuellen Stand liest. Es zeigt Ihnen zuerst, was auf Ihre Antwort wartet, und lässt Arbeit nur dann als „fertig“ gelten, wenn eine gespeicherte Änderung (ein Commit) im Verlauf des Projekts dahintersteht.",
-  "dlg_does": "Eine ehrliche Prüfung, ob shoalmark zu diesem Projekt passt. Nur lesend; ohne Ihr Ja wird nichts geändert.",
-  "dlg_machine": "Öffnen Sie diese Seite auf dem Rechner, auf dem Ihr Agent läuft.",
-  "dlg_appr_lead": "Ihr Agent wird Sie um ein paar Freigaben bitten:",
   "dlg_ap_1": "Netzwerk, für zwei Downloads von GitHub: den Text der Probe und das Release-Archiv des Werkzeugs (öffentlich, ohne Anmeldung).",
   "dlg_ap_2": "Den Prüfsummen-Befehl des Systems ausführen (unter Windows Get-FileHash, sonst shasum oder sha256sum), für das geladene Archiv und das Werkzeug darin.",
   "dlg_ap_3": "In einen neuen Ordner außerhalb dieses Projekts schreiben, den Wegwerf-Ordner; Sie können ihn danach löschen.",
@@ -205,8 +203,6 @@
   "dlg_ap_7": "Nur bei einem Projekt, das schon im Einsatz ist: den Code des Projekts ausführen, um einen Fehler nachzustellen, nie etwas, das Daten schreibt, einen laufenden Dienst anspricht oder das Projekt ändert.",
   "dlg_ap_8": "Erst nach Ihrem Ja zur Übernahme: Änderungen am Projekt selbst; vor dem ersten Commit fragt der Agent noch einmal.",
   "dlg_appr_close": "Das ist so vorgesehen.",
-  "dlg_time": "Das kann bis zu 45 Minuten dauern.",
-  "dlg_short": "Kopieren zwischen Rechnern geht nicht? Öffnen Sie diese Adresse auf dem Rechner, auf dem Ihr Agent läuft: Dort steht derselbe Prompt als reiner Text.",
 
   "js": {
     "status_progress": "Bergung läuft",
@@ -243,6 +239,7 @@
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}
+{#- The probe prompt: the probe lane's hand-over v2, a placeholder until the lane's words are final. Its four pins (the commit and the tag, the archive's address and its SHA-256) are facts.html's. It is built only under the `probe` switch. -#}
 {% set probe_prompt %}Prüfe bitte ehrlich, ob shoalmark zu diesem Projekt passt; die Antwort darf „passt nicht“ lauten. Das kann bis zu 45 Minuten dauern.
 Lies diesen Text ganz, als reinen Text und nicht als Zusammenfassung, und folge ihm:
 https://raw.githubusercontent.com/shoalmark/shoalmark/{{ADOPT_COMMIT}}/ADOPT.de.md

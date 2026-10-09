@@ -185,18 +185,16 @@
 
   "dlg_h": "The probe prompt",
   "dlg_close": "Close",
-  "dlg_copied": "Copied to your clipboard.",
   "dlg_failed": "Copying did not work, so the text is selected: Ctrl+C (Cmd+C on a Mac) copies it.",
-  "dlg_paste": "Paste it now into the Claude Code or Codex session you already use.",
-  "dlg_ph_badge": "preview values",
-  "dlg_fit": "Today shoalmark fits a project with one person in charge.",
+  "dlg_ph_badge": "placeholder",
+  "dlg_s1_ok": "The prompt is on your clipboard.",
+  "dlg_again": "Copy again",
+  "dlg_again_done": "Copied",
+  "dlg_s2": "Paste it into the Claude Code or Codex session you already use, on the machine where your agent runs. If you can't copy between machines, open <a href=\"{probe_abs}\">probe.txt</a> there.",
+  "dlg_s3": "Your agent checks first and asks your yes before it writes anything. It can take up to 45 minutes, and the answer may be \"no fit\". You decide.",
+  "dlg_fold_appr": "What your agent will ask you to approve",
+  "dlg_fold_prompt": "The prompt, in full",
   "dlg_close_aria": "Close dialog",
-  "short_addr": "shoalmark.github.io/shoalmark/probe.txt",
-  "dlg_prompt_label": "The prompt",
-  "dlg_what": "shoalmark keeps your project's work as plain files inside the project, so every agent that works on it reads the same current state. It shows you first what is waiting for your answer, and it counts work as done only when a saved change (a commit) in the project's history backs it.",
-  "dlg_does": "An honest check of whether shoalmark fits this project. Read-only; nothing is changed without your yes.",
-  "dlg_machine": "Open this page on the machine where the agent runs.",
-  "dlg_appr_lead": "Your agent will ask you to approve a few things:",
   "dlg_ap_1": "The network, for two downloads from GitHub: the probe's text and the tool's release archive (public, no login).",
   "dlg_ap_2": "Running the system's checksum command (Get-FileHash on Windows, shasum or sha256sum elsewhere) on the downloaded archive and on the tool in it.",
   "dlg_ap_3": "Writing into one new folder outside this project, the throwaway folder; you can delete it afterwards.",
@@ -206,8 +204,6 @@
   "dlg_ap_7": "Only for a project already in use: running the project's own code to reproduce a bug, never anything that writes data, calls a live service or changes the project.",
   "dlg_ap_8": "Only after your yes to adopt: changes in the project itself; the agent asks again before its first commit.",
   "dlg_appr_close": "That is as intended.",
-  "dlg_time": "It can take up to 45 minutes.",
-  "dlg_short": "Can't copy between machines? Open this address on the machine where your agent runs: it shows the same prompt as plain text.",
 
   "js": {
     "status_progress": "salvage under way",
@@ -244,6 +240,7 @@
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}
+{#- The probe prompt: the probe lane's hand-over v2, a placeholder until the lane's words are final. Its four pins (the commit and the tag, the archive's address and its SHA-256) are facts.html's. It is built only under the `probe` switch. -#}
 {% set probe_prompt %}Please check honestly whether shoalmark fits this project; the answer may be "no fit". It can take up to 45 minutes.
 Read this text whole, as plain text and not as a summary, and follow it:
 https://raw.githubusercontent.com/shoalmark/shoalmark/{{ADOPT_COMMIT}}/ADOPT.md

@@ -18,7 +18,7 @@
 {%- set probe = config.extra and config.extra.probe -%}
 {%- set rdate = F.release.date_de if de else F.release.date_en -%}
 {#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
-{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
+{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{probe_abs}", urls.probe_abs) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
 <!doctype html>
 <html lang="{{ w.lang }}">
 <head>
@@ -314,34 +314,52 @@ section.band{padding-block:72px 40px}
 .chart-note svg{flex:none;width:27px;height:18px;margin-top:calc((1.4em - 18px) / 2);fill:var(--magenta);shape-rendering:crispEdges}
 .chart-wrap + .console{padding-top:26px}
 
-/* B1 — the probe dialog: a real modal (<dialog>, showModal): labelled, focus moves in and back out, Escape closes it, the page behind is inert */
+/* B1 — the probe dialog: a real modal (<dialog>, showModal): labelled, focus moves in and back out, Escape closes it, Tab stays inside, the page behind is inert.
+   Three steps, the prompt and the approvals folded away (<details>: Enter and Space on the line open them) */
 html.modal{overflow:hidden}
-dialog.probe{padding:0;border:0;background:none;color:var(--ink);width:min(800px,calc(100vw - 24px));max-width:none;max-height:none;overflow:visible;font:15px/1.6 var(--mono)}
+dialog.probe{padding:0;border:0;background:none;color:var(--ink);width:min(680px,calc(100vw - 24px));max-width:none;max-height:none;overflow:visible;font:15px/1.6 var(--mono)}
 dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-box{position:relative;border:1px solid var(--watt);background:var(--panel);box-shadow:6px 6px 0 var(--band);padding:0}
 .probe-box>.t{background:var(--watt);color:var(--landink)}.probe-box>.t::before{color:inherit}
 .probe-bar{display:flex;justify-content:flex-end;padding:8px 10px;border-bottom:1px dashed var(--contour)}
 .probe-x{font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--field);padding:8px 10px;cursor:pointer}
-.probe-x:hover{border-color:var(--drying);color:var(--watt)}
-.probe-scroll{max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow:auto;padding:20px 26px 24px;display:grid;gap:16px}
-.probe-col{display:grid;gap:16px;align-content:start;min-width:0}
-@media (min-width:960px){dialog.probe{width:min(1060px,calc(100vw - 48px))}.probe-scroll{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:30px;align-items:start}.probe-scroll>.probe-col:first-child{grid-row:span 2}.probe-ap{grid-column:2}}
-@media (min-width:1240px){dialog.probe{width:min(1320px,calc(100vw - 48px))}.probe-scroll{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr)}.probe-scroll>.probe-col:first-child{grid-row:auto}.probe-ap{grid-column:auto}}{# B1: on a desktop the dialog is two columns — the prompt and its status on the left, what it is on the right — so it fits a 900px window without scrolling #}
-.probe-status{margin:0;padding:10px 14px;min-height:3.6em;display:flex;align-items:center;border-left:3px solid var(--contour);background:var(--panel2);color:var(--ink);font-weight:600}
-.probe-status:empty{visibility:hidden}
-.probe-status[data-state=ok]{border-color:var(--watt)}.probe-status[data-state=ok]::before{content:"✓";content:"✓" / "";margin-right:10px;color:var(--watt)}
-.probe-status[data-state=fail]{border-color:var(--coral)}.probe-status[data-state=fail]::before{content:"!";content:"!" / "";margin-right:10px;color:var(--coral);font-family:var(--pix);align-self:flex-start;margin-top:.3em}
-.probe-paste{margin:0;font-size:16px;color:var(--ink)}
-.probe-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 6px;font:400 11px/1.4 var(--pix);text-transform:uppercase;color:var(--mute)}
-.probe-ph{font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:4px 7px}
-.probe-ta{display:block;width:100%;height:calc(14 * 1.6em + 26px);max-height:calc(30 * 1.6em + 26px);margin:0;padding:12px 14px;resize:vertical;overflow-wrap:anywhere;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap;overflow:auto}
+.probe-x:hover,.probe-again:hover{border-color:var(--drying);color:var(--watt)}
+.probe-scroll{max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow:auto;padding:22px 26px 24px;display:grid;gap:18px}
+/* the steps: a number in the pixel face on a watt tile, a dashed rail between them */
+.probe-steps{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;gap:18px}
+.probe-step{counter-increment:s;position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:16px;align-items:start}
+.probe-step::before{content:counter(s);content:counter(s) / "";display:grid;place-items:center;width:34px;height:34px;background:var(--watt);color:var(--landink);font:700 15px/1 var(--pix);box-shadow:3px 3px 0 var(--band)}
+.probe-step:not(:last-child)::after{content:"";position:absolute;left:16px;top:42px;bottom:-14px;border-left:2px dashed var(--contour)}
+.probe-step[data-state=fail]::before{background:var(--coral)}
+.probe-body{min-width:0;padding-top:4px}
+.probe-body p{margin:0;color:var(--ink)}
+.probe-body a{color:var(--blue)}
+.probe-line{min-height:1.6em;font-weight:600}
+.probe-line[data-state=ok]::before{content:"✓";content:"✓" / "";margin-right:9px;color:var(--watt)}
+.probe-line[data-state=fail]{color:var(--ink)}
+.probe-act{display:flex;align-items:center;gap:14px;margin-top:10px}
+.probe-again{display:inline-flex;align-items:center;gap:9px;font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--field);padding:9px 11px;cursor:pointer}
+.probe-again .ic{flex:none;display:block;width:14px;height:16px;margin-block:-3px;fill:currentColor}
+.probe-done{font:700 11px/1 var(--pix);text-transform:uppercase;color:var(--watt)}
+/* the folds: one line each, a + that turns to a - */
+.probe-fold{border:1px solid var(--contour);background:var(--panel2)}
+.probe-prompt{position:relative;margin-top:12px}
+.probe-fold>summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none;font:600 13px/1.4 var(--mono);color:var(--ink)}
+.probe-fold>summary::-webkit-details-marker{display:none}
+.probe-fold>summary::before{content:"+";content:"+" / "";flex:none;width:12px;text-align:center;font:700 13px/1 var(--pix);color:var(--watt)}
+.probe-fold[open]>summary::before{content:"-";content:"-" / ""}
+.probe-fold[open]>summary{border-bottom:1px dashed var(--contour)}
+.probe-fold>summary:hover{color:var(--watt)}
+.probe-fold>:not(summary){margin:12px 14px}
+.probe-fold>:last-child{margin-bottom:14px}
+.probe-ph{position:absolute;top:-8px;right:12px;font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:3px 6px}{# the tag that marks the prompt as the placeholder it is: delete it, and `dlg_ph_badge`, when the probe lane's words are final #}
+.probe-ta{display:block;width:calc(100% - 28px);height:calc(9 * 1.6em + 26px);margin-inline:14px;padding:12px 14px;resize:vertical;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere}
+.probe-step[data-state=fail] .probe-ta{height:calc(5 * 1.6em + 26px)}
 .probe-ta::selection{background:var(--blue);color:var(--landink)}
-.probe-pv{margin:6px 0 0;font:700 10px/1.4 var(--pix);text-transform:uppercase;color:var(--coral)}
-.probe-what{margin:0;color:var(--dim)}
+.probe-apps{margin-bottom:0;padding-left:22px;display:grid;gap:6px;font-size:13px;line-height:1.5;color:var(--dim)}.probe-apps li::marker{color:var(--watt);font-family:var(--pix);font-size:11px}.probe-apps li.cond{border-left:2px dashed var(--land);padding-left:8px;margin-left:-10px;color:var(--mute)}.probe-apps li.cond::marker{color:var(--land)}
 .probe-lead{margin:0;color:var(--ink)}
-.probe-apps{margin:0;padding-left:22px;display:grid;gap:6px;font-size:13px;line-height:1.5;color:var(--dim)}.probe-apps li::marker{color:var(--watt);font-family:var(--pix);font-size:11px}.probe-apps li.cond{border-left:2px dashed var(--land);padding-left:8px;margin-left:-10px;color:var(--mute)}.probe-apps li.cond::marker{color:var(--land)}
-.probe-list{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--dim)}.probe-list li::marker{color:var(--land)}
-.probe-short{margin:0;font-size:13px;color:var(--mute);overflow-wrap:anywhere}
+
+@media (max-height:720px){.probe-step[data-state=fail] .probe-prompt>summary{display:none}.probe-step[data-state=fail] .probe-prompt>:not(summary){margin-top:10px}}
 
 /* narrower screens: the title leaves the sea and stands above the chart */
 @media (max-width:1279px){
@@ -381,8 +399,10 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 @media (max-width:700px){
   .chart-note{gap:14px}
   dialog.probe{width:calc(100vw - 16px)}
-  .probe-scroll{padding:16px 16px 20px;max-height:calc(100vh - 100px);max-height:calc(100dvh - 100px)}
-  .probe-ta{height:calc(8 * 1.6em + 26px);font-size:12px}
+  .probe-scroll{padding:14px 14px 16px;gap:12px;max-height:calc(100vh - 88px);max-height:calc(100dvh - 88px)}
+  .probe-steps{gap:14px}.probe-step{grid-template-columns:28px minmax(0,1fr);gap:11px}.probe-step::before{width:28px;height:28px;font-size:13px;box-shadow:2px 2px 0 var(--band)}.probe-step:not(:last-child)::after{left:13px;top:34px;bottom:-12px}
+  .probe-body{padding-top:2px;font-size:14px;line-height:1.5}.probe-fold>summary{padding:10px 12px;font-size:12.5px}.probe-fold>:not(summary){margin-inline:12px}
+  .probe-ta{height:calc(7 * 1.6em + 26px);font-size:12px}.probe-step[data-state=fail] .probe-ta{height:calc(3 * 1.6em + 26px)}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -623,33 +643,28 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 
 
 {%- if probe %}
-{# B1 §1: the probe dialog — a real modal. Its prompt is a PLACEHOLDER until the probe lane's first hand-over, marked in the render itself; never published. #}
+{# B1 §1: the probe dialog — a real modal that guides in three steps (the Owner's words); the prompt (the probe lane's hand-over v2, a placeholder until the lane's words are final, so marked) and the approvals fold away. Built only under the `probe` switch. #}
 <dialog class="probe" id="probe" aria-labelledby="probe-h">
   <div class="box probe-box">
     <h2 class="t" id="probe-h">{{ w.dlg_h }}</h2>
     <div class="probe-bar"><button type="button" class="probe-x" id="probe-x" aria-label="{{ w.dlg_close_aria }}">{{ w.dlg_close }} <span aria-hidden="true">✕</span></button></div>
     <div class="probe-scroll">
-      <div class="probe-col">
-        <p class="probe-status" id="probe-status" role="status"></p>
-        <p class="probe-paste">{{ w.dlg_paste }}</p>
-        <div>
-          <label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label>
-          <textarea class="probe-ta" id="probe-text" readonly autofocus spellcheck="false" rows="14">{{ L.probe_prompt | e }}</textarea>
-          <p class="probe-pv">ADOPT_COMMIT, TAG: today's values · ARCHIVE_URL, ARCHIVE_SHA256: stand-ins, no archive exists yet</p>{# B1 preview annotation, not a product word: the commit and the tag are today's values, the two archive pins are marked stand-ins; the build fills all four. Remove at build. #}
-        </div>
-      </div>
-      <div class="probe-col">
-        <p class="probe-what">{{ w.dlg_what }}</p>
-        <ul class="probe-list">
-          <li>{{ w.dlg_does }}</li>
-          <li>{{ w.dlg_fit }}</li>
-          <li>{{ w.dlg_machine }}</li>
-          <li>{{ w.dlg_time }}</li>
-        </ul>
-        <p class="probe-short">{{ w.dlg_short }} <a href="{{ urls.probe_abs }}">{{ w.short_addr }}</a></p>
-      </div>
-      <div class="probe-col probe-ap">
-        <p class="probe-lead">{{ w.dlg_appr_lead }}</p>
+      <ol class="probe-steps" role="list">
+        <li class="probe-step" id="probe-s1">
+          <div class="probe-body">
+            <p class="probe-line" id="probe-status" role="status"></p>
+            <div class="probe-act"><button type="button" class="probe-again" id="probe-again" autofocus><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.dlg_again }}</button><span class="probe-done" id="probe-done" role="status"></span></div>
+            <details class="probe-fold probe-prompt" id="probe-prompt">
+              <summary><span>{{ w.dlg_fold_prompt }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></summary>
+              <textarea class="probe-ta" id="probe-text" readonly spellcheck="false" aria-label="{{ w.dlg_fold_prompt }}" rows="9">{{ L.probe_prompt | e }}</textarea>
+            </details>
+          </div>
+        </li>
+        <li class="probe-step"><div class="probe-body"><p>{{ T(w.dlg_s2) }}</p></div></li>
+        <li class="probe-step"><div class="probe-body"><p>{{ w.dlg_s3 }}</p></div></li>
+      </ol>
+      <details class="probe-fold probe-approvals">
+        <summary><span>{{ w.dlg_fold_appr }}</span></summary>
         <ol class="probe-apps">
           <li>{{ w.dlg_ap_1 }}</li>
           <li>{{ w.dlg_ap_2 }}</li>
@@ -661,7 +676,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
           <li class="cond">{{ w.dlg_ap_8 }}</li>
         </ol>
         <p class="probe-lead">{{ w.dlg_appr_close }}</p>
-      </div>
+      </details>
     </div>
   </div>
 </dialog>
@@ -904,20 +919,26 @@ addEventListener("resize", scale);
 (function () {
   const open = document.getElementById("probe-open"), dlg = document.getElementById("probe");
   if (!open || !dlg || typeof dlg.showModal !== "function") return;   // no dialog, no script: the link reads the same text at its short address
-  const ta = document.getElementById("probe-text"), st = document.getElementById("probe-status"), x = document.getElementById("probe-x");
-  const W = {{ {"copied": w.dlg_copied, "failed": w.dlg_failed} | tojson }};
-  const say = (state, text) => { st.dataset.state = state; st.textContent = text; };
-  const fit = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, innerHeight * .6) + "px"; };   // the prompt shows whole, up to 60% of the window
-  const done = ok => { if (ok) say("ok", W.copied); else { say("fail", W.failed); ta.focus(); ta.select(); } };
+  const $ = id => document.getElementById(id), ta = $("probe-text"), line = $("probe-status"), s1 = $("probe-s1"), again = $("probe-again"), done = $("probe-done"), fold = $("probe-prompt"), x = $("probe-x");
+  const W = {{ {"ok": w.dlg_s1_ok, "fail": w.dlg_failed, "done": w.dlg_again_done} | tojson }};
+  let timer = null;
+  const say = (state, text) => { line.dataset.state = state; s1.dataset.state = state; line.textContent = text; };
+  const fit = () => { if (s1.dataset.state === "fail") return; ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, innerHeight * .5) + "px"; };   // opened by hand, the prompt shows whole, up to half the window
+  const write = () => { try { return navigator.clipboard.writeText(ta.value).then(() => true, () => false); } catch (err) { return Promise.resolve(false); } };   // asked inside the click, while the page holds the user's gesture
+  const legacy = () => { const was = fold.open; fold.open = true; ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} if (ok) { fold.open = was; ta.blur(); } return ok; };
+  const good = again_ => { say("ok", W.ok); ta.style.height = ""; if (again_) { done.textContent = W.done; clearTimeout(timer); timer = setTimeout(() => { done.textContent = ""; }, 2600); } };
+  const bad = () => { say("fail", W.fail); done.textContent = ""; fold.open = true; ta.style.height = ""; ta.focus(); ta.select(); };   // step 1 says so, the text stands open and selected
   open.addEventListener("click", e => {
     e.preventDefault();
-    let p; try { p = navigator.clipboard.writeText(ta.value); } catch (err) { p = Promise.reject(err); }   // asked inside the click, while the page holds the user's gesture
-    say("", ""); dlg.showModal(); document.documentElement.classList.add("modal"); fit();
-    p.then(() => done(true), () => { ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} done(ok); });
+    const p = write();
+    say("", ""); done.textContent = ""; fold.open = false; ta.style.height = ""; dlg.showModal(); document.documentElement.classList.add("modal");
+    p.then(ok => (ok || legacy()) ? good(false) : bad());
   });
+  again.addEventListener("click", () => { write().then(ok => (ok || legacy()) ? good(true) : bad()); });
+  fold.addEventListener("toggle", () => { if (fold.open) fit(); });
   x.addEventListener("click", () => dlg.close());
   dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });   // a click on the backdrop
-  dlg.addEventListener("close", () => { document.documentElement.classList.remove("modal"); open.focus(); });
+  dlg.addEventListener("close", () => { document.documentElement.classList.remove("modal"); clearTimeout(timer); open.focus(); });
 })();
 {%- endif %}
 </script>
