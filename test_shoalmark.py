@@ -12264,6 +12264,83 @@ else:
                 _same("slice A's checks.json", got, _b2["checks.json"], _derive_board(got) if got else None)
 fm.configure(HERE)
 
+# --- FM-006 · B1: the landings in a real browser, in both launch states -------------------------------------------------------------
+# scripts/check_landing_browser.mjs drives headless Chrome over a built site served from 127.0.0.1 alone: for each landing and How it works page at 360,
+# 375, 390 and 1440 px no sideways scroll, no script error, no failed request, no request to another host; and in the probe state the dialog is a real
+# modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that does not scroll inside itself on a phone with its folds closed.
+# Behind SHOALMARK_REGENERATE=1, like the other browser rebuilds: the site is built twice, as docs.yml builds it (the figures first, Zensical as
+# requirements-docs.txt pins it, then llms_txt.py); each control changes one thing in a built site and the browser must find it.
+_B1_NAME = "FM-006 · B1 · the landings in a real browser"
+_why = ("SHOALMARK_REGENERATE=1 is not set (the browser run builds the site twice and takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
+        else "no Node here" if not _have_node else "no scripts/landing_facts.py here, so the landing's figures cannot be written" if not (HERE / "scripts/landing_facts.py").is_file() else "")
+if _why:
+    _regen_skip(_B1_NAME, 4, _why)
+else:
+    _node_ok = subprocess.run([_have_node, "-e", "process.exit(typeof WebSocket == 'function' && typeof fetch == 'function' ? 0 : 1)"], capture_output=True, env=_ENV).returncode == 0
+    if not _node_ok:
+        _regen_skip(_B1_NAME, 4, "this Node has no WebSocket (Node 22 or newer has)")
+    else:
+        _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
+        _facts = subprocess.run([sys.executable, "scripts/landing_facts.py"], cwd=str(HERE), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900, env=_ENV)
+
+        def _b1_site(work, state):
+            """This tree built as docs.yml builds it, in the launch state `state`: the switch and its launch folder turned, Zensical, then llms_txt.py."""
+            stage = work / state
+            shutil.copytree(HERE, stage, ignore=shutil.ignore_patterns(".git", "site", "__pycache__", ".cache", "work-tracker"))
+            if state == "probe":
+                toml = (stage / "zensical.toml").read_text(encoding="utf-8")
+                assert "\nprobe = false\n" in toml and '"launch/interim"' in toml
+                (stage / "zensical.toml").write_text(toml.replace("\nprobe = false\n", "\nprobe = true\n").replace('"launch/interim"', '"launch/probe"'), encoding="utf-8")
+            subprocess.run([_uvx, f"zensical@{_pin}", "build", "--clean"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+            subprocess.run([sys.executable, "scripts/llms_txt.py", "site"], cwd=str(stage), check=True, capture_output=True, timeout=300, env=_ENV)
+            return stage / "site"
+
+        def _b1_browser(site, state, out, pages=None, sizes=None):
+            """(exit code, the failing checks' names) of the browser run over `site`; the run narrowed to `pages` and `sizes` where they are named."""
+            r = subprocess.run([_have_node, str(HERE / "scripts/check_landing_browser.mjs"), str(site), state, str(out)] + ([pages] + ([sizes] if sizes else []) if pages else []),
+                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME, CHROME_FLAGS=" ".join(_CHROME_FLAGS)))
+            rows = json.loads(Path(out).read_text(encoding="utf-8"))["rows"] if Path(out).exists() else []
+            return r.returncode, sorted({row["check"] for row in rows if not row["ok"]}), len(rows)
+
+        check("FM-006 · B1 · the landing's figures are written before the build (scripts/landing_facts.py exits 0)", _facts.returncode == 0)
+        with tempfile.TemporaryDirectory() as d:
+            _work = Path(d).resolve()
+            _saw = {}
+            for _state in ("interim", "probe"):
+                _site = _b1_site(_work, _state)
+                _saw[_state] = _b1_browser(_site, _state, _work / f"{_state}.json")
+                check(f"{_B1_NAME}, {_state} state: both landings and both How it works pages at 360, 375, 390 and 1440 px — no sideways scroll, no script error, no failed request, no request "
+                      f"to another host" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
+                                            "copy and, with its folds closed, does not scroll inside itself at 360×780, 375×667 and 390×844" if _state == "probe" else "")
+                      + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
+            # the controls: one thing changed in a copy of the probe site, and the browser finds exactly that
+            _probe = _work / "probe" / "site"
+
+            def _mutate(name, rel, old, new):
+                _copy = _work / ("control-" + name)
+                shutil.copytree(_probe, _copy)
+                _text = (_copy / rel).read_text(encoding="utf-8")
+                assert old in _text, (rel, old)
+                (_copy / rel).write_text(_text.replace(old, new, 1), encoding="utf-8")
+                return _b1_browser(_copy, "probe", _work / (name + ".json"), rel if rel.endswith("index.html") else "index.html", "360x780")
+            _controls = {
+                "no-label": ("an unlabelled dialog", _mutate("no-label", "index.html", ' aria-labelledby="probe-h"', ""), "the dialog is labelled"),
+                "sideways": ("a page wider than the window", _mutate("sideways", "de/index.html", "</head>", "<style>body{min-width:520px}</style></head>"), "no sideways scroll"),
+                "error": ("a script error", _mutate("error", "index.html", "</body>", "<script>throw new Error('control')</script></body>"), "no script error"),
+                "host": ("a request to another host", _mutate("host", "index.html", "</head>", '<script src="https://example.org/x.js"></script></head>'), "no request to any other host"),
+                "not-modal": ("a dialog that is not modal", _mutate("not-modal", "index.html", ".showModal()", ".show()"), "the dialog opens by keyboard, as a modal"),
+                "scrolls": ("a dialog that scrolls inside itself on a phone", _mutate("scrolls", "index.html", "</head>", "<style>.probe-scroll{max-height:240px!important}</style></head>"),
+                            "with its folds closed, nothing in the dialog scrolls inside itself"),
+                "unfolds": ("a fold that keyboard does not open", _mutate("unfolds", "index.html", "</body>", '<script>document.addEventListener("click", e => { if (e.target.closest("summary")) e.preventDefault() })</script></body>'),
+                            "fold 1 opens and closes by keyboard"),
+                "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
+                              "Escape closes the dialog and focus is back on the button"),
+            }
+            _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
+            check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open and a dialog that does not give focus back makes it exit 1 with that check failing "
+                  f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
+
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",
