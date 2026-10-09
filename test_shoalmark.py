@@ -9206,6 +9206,33 @@ with tempfile.TemporaryDirectory() as tmp:
         fm.notify_argv = real_argv_
     check(f"FM-030 · `post_notice` starts the notice's command in the environment `notify_env` builds: for every vector the process it starts reads the title as SM_TITLE "
           f"and the body as SM_BODY, byte for byte, a NUL as U+FFFD, and the notice is posted (saw {got_.count(True)} of {len(got_)})", all(got_))
+    root = Path(tmp).resolve() / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
+    (root / "shoalmark.toml").write_text('name = "d"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    past_ = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=10)).astimezone().replace(microsecond=0).isoformat()
+    for tid_ in ("AP-1", "AP-2", "AP-3"):
+        tracker(root, tid_, extra=f"next: run\ndue: {past_}\n", title=f"the act of {tid_}")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>")
+    state_was_, posted_ = os.environ.get("XDG_STATE_HOME"), []
+    os.environ["XDG_STATE_HOME"] = str(Path(tmp) / "state")
+    fm.notify_argv = lambda title, body, platform=None, which=None: (posted_.append(title), ["no\0such program"] if "AP-2" in title else writer_)[1]
+    try:
+        code_n, out_n, err_n = run(root, "--notify")
+    except Exception as e_:                 # a run that stops fails the check below
+        code_n, out_n, err_n = None, "", f"{type(e_).__name__}: {e_}"
+    finally:
+        fm.notify_argv = real_argv_
+        if state_was_ is None:
+            os.environ.pop("XDG_STATE_HOME", None)
+        else:
+            os.environ["XDG_STATE_HOME"] = state_was_
+    lines_ = {l_.split(" — ")[0].strip(): l_ for l_ in out_n.splitlines()[1:]}
+    check(f"FM-030 · a notice whose command cannot be started is NOT posted, and its line says why; `--notify` goes on with every other act's notice and exits 1 — one tracker "
+          f"never stops another's notice (saw exit {code_n}, {out_n.splitlines()[:1]} · {err_n[-120:]!r})",
+          code_n == 1 and len(posted_) == 3 and out_n.startswith("--notify: 2 posted · 0 posted before · 0 not yet within 30 minutes · 1 NOT posted — remembered in ")
+          and lines_.get("AP-2", "").endswith(" — NOT posted — ValueError") and lines_.get("AP-1", "").endswith(" — posted") and lines_.get("AP-3", "").endswith(" — posted"))
+    rm_git(root)
+fm.configure(HERE)
 
 # --- FM-030, the pass's R7 — its case, the cold review of the 0.18.4 cut's R2: the README's cron line makes the log's folder
 #     first. The shell opens `>>` before the tool runs, and on a fresh home only the tool made that folder, so `--notify` never

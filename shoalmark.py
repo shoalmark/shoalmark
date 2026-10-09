@@ -2536,7 +2536,7 @@ def post_notice(title, body):
         return "printed — no notifier here"
     try:
         r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, env=notify_env(title, body))
-    except (OSError, subprocess.TimeoutExpired) as e:
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:        # a notice that cannot be started is that notice's failure alone
         return f"NOT posted — {type(e).__name__}"
     return "posted" if r.returncode == 0 else "NOT posted — " + ((r.stderr or r.stdout or "").strip().splitlines() or [f"exit {r.returncode}"])[-1][:120]
 
