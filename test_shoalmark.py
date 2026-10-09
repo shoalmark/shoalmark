@@ -12186,7 +12186,7 @@ _lf_why = ("this clone is shallow" if _shallow32 != "false" else f"this clone do
            else "this clone does not hold ffa63b8, the Owner's answer the high scores are split at" if not _held("ffa63b8")
            else "no tz database for Europe/Berlin here (the filing days and the build's day are Berlin days)" if not _zone_ok else "")
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 6, _lf_why)
+    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 7, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -12222,6 +12222,12 @@ else:
             at_[i_] = drawing_[i_]
         check(f"FM-006 · B1 · the drawing's rule places FM-038, FM-039 and FM-040 where the drawing has them, each against the wrecks drawn before it "
               f"and the chart's names (saw {placed_})", placed_ == [(i, drawing_[i]) for i in ("FM-038", "FM-039", "FM-040")])
+        under_ = lambda box: [w["id"] for w in f_.get("wrecks", []) if not (chart_.x(w["lon"]) + lf_.WRECK[2] <= box[0] or chart_.x(w["lon"]) + lf_.WRECK[0] >= box[2]
+                                                                     or chart_.y(w["lat"]) + lf_.WRECK[3] <= box[1] or chart_.y(w["lat"]) + lf_.WRECK[1] >= box[3])]
+        clear_, grown_ = under_(lf_.TITLE), under_((lf_.TITLE[0], lf_.TITLE[1], lf_.TITLE[2] + 12, lf_.TITLE[3] + 12))
+        check(f"FM-006 · B1 · no wreck's button falls under the hero's text: each of the {len(f_.get('wrecks', []))} at {_LF_TAG} is clear of the title's box, "
+              f"{lf_.TITLE}, as the B1 template draws it; its control, the box 12 chart pixels wider and taller, has FM-013 and FM-029 under it (under it: "
+              f"{clear_}; the control's {grown_})", bool(f_.get("wrecks")) and not clear_ and grown_ == ["FM-029", "FM-013"])
         check(f"FM-006 · B1 · the probe switch off: the pins are the commit, the release's tag and the two marked stand-ins; `read` is the build's Berlin day, "
               f"as ISO and in English and German, and the commit (saw {f_.get('pins')}, {f_.get('read')})",
               f_.get("pins") == {"ADOPT_COMMIT": tagged_, "TAG": "v0.19.2", "ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}

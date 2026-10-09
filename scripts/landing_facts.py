@@ -24,8 +24,8 @@ and exit 1, and a build without the file stops at the template's import, so no p
   report's sentences as `work-tracker/evidence/FM-006/landing/start-page/facts.mjs` reads them. Open means In Progress or
   Proposed; any status but In Progress, Proposed, Shipped and Closed stops the build. A wreck keeps the position the chart's
   drawing gave it (`DRAWN`); one the drawing has not placed is placed by the drawing's rule, in the order of its id: the flat
-  pixel farthest from every other wreck and every name, at least 12 chart pixels inside the border, outside the title, its
-  7 × 5 footprint all flat or sand. The same trackers always give the same output.
+  pixel farthest from every other wreck and every name, at least 12 chart pixels inside the border, its button clear of the
+  hero's text, its 7 × 5 footprint all flat or sand. The same trackers always give the same output.
 - **pins**: the probe prompt's placeholders (the probe lane's pins.md). With the probe switch off — `[project.extra] probe` in
   zensical.toml — they are the commit, the release's tag and two marked stand-ins, and nothing of them is published. With it
   on they come from ADOPT's pin line, pins.md's checks 1–5 and 7 run (6 and 9 too on a deploy build), and a stand-in left
@@ -73,9 +73,11 @@ DRAWN = (
     ("FM-015", 8.02, 53.735), ("FM-016", 8.375, 53.948), ("FM-017", 8.33, 53.652), ("FM-019", 8.47, 53.8), ("FM-020", 8.57, 53.878),
     ("FM-021", 8.78, 54.075), ("FM-022", 6.72, 53.522),
 )
-# The title's box over the chart, in chart pixels, where the page lays it over the chart (1280 px wide and more): its widest and
-# tallest in both languages and both launch states, as the B1 design's build draws it.
-TITLE = (-6, 9, 164, 121)
+# Measured in Chrome on the B1 template at c00a747, in chart pixels (x0, y0, x1, y1), rounded outward. TITLE: the hero's text block
+# where the page lays it over the chart (1280 px wide and more) — its widest and tallest over both languages, both launch states,
+# 1280 to 2560 px wide and 720 to 1200 px high: 14, 9, 164, 120.71. WRECK: a wreck's button, its label included, around the point
+# it marks, at its largest (1280 to 1599 px wide): ±6.37, 6 above, 4 below. A new wreck's button stays clear of the title.
+TITLE, WRECK = (14, 9, 164, 121), (-6.5, -6, 6.5, 4)
 BORDER, FOOTPRINT = 12, (-3, 3, -2, 2)                   # the footprint: 7 pixels wide, 5 high, centred on the wreck's pixel
 EVENTS = ("", "pull_request", "push", "workflow_dispatch")
 
@@ -357,15 +359,15 @@ class Chart:
 
     def place(self, others):
         """The flat pixel farthest from every other wreck and every name, at least BORDER chart pixels inside the border, its
-        footprint outside the title and all flat or sand: (lon, lat) of its centre, to three places. The first such pixel, row by
-        row, where two are as far."""
+        button clear of the title, its footprint all flat or sand: (lon, lat) of its centre, to three places. The first such pixel,
+        row by row, where two are as far."""
         (fx0, fx1, fy0, fy1), points, best, at = FOOTPRINT, list(others) + self.names, -1.0, None
         for py in range(self.h):
             for px in range(self.w):
                 x, y = px + .5, py + .5
                 if not (BORDER <= x <= self.w - BORDER and BORDER <= y <= self.h - BORDER):
                     continue
-                if px + fx0 < TITLE[2] and px + fx1 + 1 > TITLE[0] and py + fy0 < TITLE[3] and py + fy1 + 1 > TITLE[1]:
+                if x + WRECK[0] < TITLE[2] and x + WRECK[2] > TITLE[0] and y + WRECK[1] < TITLE[3] and y + WRECK[3] > TITLE[1]:
                     continue
                 if self.kind(px, py) != "flat":
                     continue
