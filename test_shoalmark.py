@@ -4478,6 +4478,13 @@ def _landing_problems(src):
         bad.append("the footer's sentence is not the Owner's words for this release (English) and go-to-market's (German)")
     if (en.get("chart_note"), de.get("chart_note")) != _CHART_NOTE or code.count("{{ w.chart_note }}") != 1:
         bad.append("the line under the chart is not the Owner's words, once")
+    # the board's excerpt is facts.html's: its act's line is escaped once, by the script, so the template prints it once and as it stands; nothing of it is typed
+    if code.count("{{ F.excerpt.act.line }}") != 1 or re.search(r"F\.excerpt\.act\.line\s*\|", code) or code.count("F.excerpt.act.line") != 1:
+        bad.append("the act's line of the board's excerpt is not printed once, as facts.html holds it (it is escaped once already, and the engine does not escape on its own)")
+    if re.search(r'<span class="id">FM-\d', code) or "peek_3" in json.dumps(words) or any(("{waiting}" not in w.get("peek_1", "") or "{acts}" not in w.get("peek_2", "")) for w in words.values()):
+        bad.append("the board's excerpt is typed where facts.html gives it")
+    if not all("{read_date}" in w.get("peek_cap", "") for w in words.values()) or de.get("moves_aria") != "Spielzüge":
+        bad.append("the excerpt's caption does not name the day the figures were read, or the German move lists are not named Spielzüge")
     if any(gone in tpl + src["zensical.toml"] + json.dumps(words) for gone in ("register_up", "chart_gloss", "chart_note_gloss")):
         bad.append("a switch the Owner's answers removed is still there")
     order = [tpl.find(f'id="{section}"') for section in ("agents", "seats", "scores", "register", "start")]
@@ -4507,10 +4514,14 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
         "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "a fix for the board's refresh", "a security release"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
-        "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", "")}
+        "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
+        "the act's line escaped a second time": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}"),
+        "the act's line printed twice": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }} <span", "{{ F.excerpt.act.line }} {{ F.excerpt.act.line }} <span"),
+        "the act typed again": _with(_ls, "overrides/landing.html", '<span class="id">{{ F.excerpt.act.id }}</span>', '<span class="id">FM-007</span>'),
+        "the caption's day typed": _with(_ls, "overrides/partials/landing/en.html", "board, {read_date}:", "board, 1 October 2026:")}
 _ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
 check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
-      f"the footer's sentence changed, the facts file not read and the German page off the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 7)
+      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again and the caption's day typed leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 11)
 
 
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
@@ -12287,12 +12298,23 @@ else:
         _regen_skip(_B1_NAME, 4, "this Node has no WebSocket (Node 22 or newer has)")
     else:
         _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
-        _facts = subprocess.run([sys.executable, "scripts/landing_facts.py"], cwd=str(HERE), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900, env=_ENV)
+        _head = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
-        def _b1_site(work, state):
-            """This tree built as docs.yml builds it, in the launch state `state`: the switch and its launch folder turned, Zensical, then llms_txt.py."""
-            stage = work / state
+        def _b1_site(work, state, name=None, facts_edit=None, template_edit=None):
+            """This tree built as docs.yml builds it, in the launch state `state`: the figures first (scripts/landing_facts.py, read from this history at HEAD, the
+            pull requests from the recorded response, the probe switch as it stands, off), then the switch and its launch folder turned, Zensical, then llms_txt.py.
+            `facts_edit` and `template_edit` change what was written or what the landing is, for a control."""
+            stage = work / (name or state)
             shutil.copytree(HERE, stage, ignore=shutil.ignore_patterns(".git", "site", "__pycache__", ".cache", "work-tracker"))
+            run_ = subprocess.run([sys.executable, "scripts/landing_facts.py", "--repo", str(HERE), "--commit", _head, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-144.json")],
+                                  cwd=str(stage), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900, env=_ENV)
+            assert run_.returncode == 0, run_.stderr[-300:]
+            if facts_edit:
+                facts_file = stage / "overrides/partials/landing/facts.html"
+                facts_file.write_text(facts_edit(facts_file.read_text(encoding="utf-8")), encoding="utf-8")
+            if template_edit:
+                tpl_file = stage / "overrides/landing.html"
+                tpl_file.write_text(template_edit(tpl_file.read_text(encoding="utf-8")), encoding="utf-8")
             if state == "probe":
                 toml = (stage / "zensical.toml").read_text(encoding="utf-8")
                 assert "\nprobe = false\n" in toml and '"launch/interim"' in toml
@@ -12308,7 +12330,6 @@ else:
             rows = json.loads(Path(out).read_text(encoding="utf-8"))["rows"] if Path(out).exists() else []
             return r.returncode, sorted({row["check"] for row in rows if not row["ok"]}), len(rows)
 
-        check("FM-006 · B1 · the landing's figures are written before the build (scripts/landing_facts.py exits 0)", _facts.returncode == 0)
         with tempfile.TemporaryDirectory() as d:
             _work = Path(d).resolve()
             _saw = {}
@@ -12348,6 +12369,30 @@ else:
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
                   "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a dialog that does not give focus back and a top bar whose anchors show a width too early makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
+            # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
+            # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
+            _mark = "After midnight &lt;b&gt;the suite&lt;/b&gt; refuses &amp; &quot;every&quot; commit \u00b7 no date yet"
+
+            def _line_in(site):
+                """The act's line as the built landings' HTML holds it, English and German; None where a page has no such line."""
+                out_ = []
+                for rel_ in ("index.html", "de/index.html"):
+                    found_ = re.search(r'<p><span class="id">[^<]*</span> (.*?) <span class="chip">', (site / rel_).read_text(encoding="utf-8"), re.S)
+                    out_.append(found_.group(1) if found_ else None)
+                return out_
+
+            def _facts_with(line):
+                def edit_(text):
+                    assert text.count('"line": "') == 1
+                    return re.sub(r'("line": )"(?:[^"\\]|\\.)*"', lambda m: m.group(1) + json.dumps(line, ensure_ascii=False), text)
+                return edit_
+            _good = _line_in(_b1_site(_work, "interim", "excerpt-good", facts_edit=_facts_with(_mark)))
+            _twice = _line_in(_b1_site(_work, "interim", "excerpt-twice", facts_edit=_facts_with(_mark), template_edit=lambda s: s.replace("{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}")))
+            _bare = _line_in(_b1_site(_work, "interim", "excerpt-bare", facts_edit=_facts_with("After midnight <b>the suite</b> refuses & \"every\" commit")))
+            check("FM-006 · B1 · the board's excerpt reaches the page escaped, and once: an act's line holding markup, as the script writes it, is in the English and the German landing's HTML "
+                  f"as that text, `&lt;b&gt;` and no <b> element (saw {_good})", _good == [_mark, _mark])
+            check("FM-006 · B1 · the excerpt's check is not blind: a template that escapes the line a second time puts `&amp;lt;` on the page, and a script that does not escape it puts a <b> element on it "
+                  f"(saw {_twice}, {_bare})", _twice != [_mark, _mark] and "&amp;lt;" in str(_twice) and _bare != [_mark, _mark] and "<b>the suite</b>" in str(_bare))
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))

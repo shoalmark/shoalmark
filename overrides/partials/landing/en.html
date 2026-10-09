@@ -1,6 +1,6 @@
 {#- The landing's English words: the template's `{{ w.key }}`, one dict. A value is HTML where it carries <em>, <code>, <b> or <a>; the engine
     does not escape on its own, so no value holds a straight double quote that an attribute would meet. A value may hold a slot the template fills:
-    {tag}, {date}, {hiscore_last}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt} and {adopt_other}
+    {tag}, {date}, {hiscore_last}, {waiting}, {acts}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt} and {adopt_other}
     are the addresses in `urls` below. `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
 {% set w = {
   "lang": "en",
@@ -108,12 +108,11 @@
   "p2_sig": "As an answer, only your signed commit counts. A click, a merge or a line in chat is not an answer — four tiers, from a key anything on your account can use to one that needs your touch.",
   "peek_aria": "An excerpt of shoalmark's own board",
   "peek_t": "owed to the owner",
-  "peek_1": "waiting for you: 1",
-  "peek_2": "your acts, with their time: 1",
-  "peek_3": "after the scoring, once the key is delivered · promised 2026-09-25 · no date yet",
+  "peek_1": "waiting for you: {waiting}",
+  "peek_2": "your acts, with their time: {acts}",
   "peek_chip_done": "done",
   "peek_chip_resched": "reschedule",
-  "peek_cap": "An excerpt of shoalmark's own board, 1 October 2026: what waits for its Owner comes first.",
+  "peek_cap": "An excerpt of shoalmark's own board, {read_date}: what waits for its Owner comes first.",
   "p2_loses_b": "You lose nothing.",
   "p2_loses": "What you keep today stays where it is: shoalmark changes only what it wrote itself.",
 

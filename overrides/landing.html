@@ -16,7 +16,7 @@
 {%- set probe = config.extra and config.extra.probe -%}
 {%- set rdate = F.release.date_de if de else F.release.date_en -%}
 {#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
-{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{probe_abs}", urls.probe_abs) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
+{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{probe_abs}", urls.probe_abs) | replace("{waiting}", F.excerpt.waiting | string) | replace("{acts}", F.excerpt.acts | string) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
 <!doctype html>
 <html lang="{{ w.lang }}">
 <head>
@@ -534,11 +534,13 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
       </dl>
       <figure class="peek" aria-label="{{ w.peek_aria }}">
         <div class="peek-box"{% if de %} lang="en"{% endif %}><span class="peek-t">{{ w.peek_t }}</span>
-          <p><i>##</i> <b class="hot">{{ w.peek_1 }}</b></p>
-          <p><i>##</i> <b>{{ w.peek_2 }}</b></p>
-          <p><span class="id">FM-007</span> {{ w.peek_3 }} <span class="chip">{{ w.peek_chip_done }}</span><span class="chip">{{ w.peek_chip_resched }}</span></p>
+          <p><i>##</i> <b class="hot">{{ T(w.peek_1) }}</b></p>
+          <p><i>##</i> <b>{{ T(w.peek_2) }}</b></p>
+          {%- if F.excerpt.act %}
+          <p><span class="id">{{ F.excerpt.act.id }}</span> {{ F.excerpt.act.line }} <span class="chip">{{ w.peek_chip_done }}</span><span class="chip">{{ w.peek_chip_resched }}</span></p>
+          {%- endif %}
         </div>
-        <figcaption>{{ T(w.peek_cap) }}</figcaption>{# the board's excerpt above is typed, not read at build, and its caption names the day it was read, as the page's did #}
+        <figcaption>{{ T(w.peek_cap) }}</figcaption>{# The board's excerpt is facts.html's `excerpt`: what shoalmark.py --owner prints at the commit the site is built from, its counts and its first act. The act's line is HTML-escaped once by the script, so it is printed here as it stands, never through `e` (the engine does not escape on its own), and the caption names the day it was read #}
       </figure>
       <p class="loses"><b>{{ w.p2_loses_b }}</b>{{ w.p2_loses }}</p>
     </article>
