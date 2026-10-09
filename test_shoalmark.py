@@ -12240,6 +12240,47 @@ else:
               f_.get("pins") == {"ADOPT_COMMIT": tagged_, "TAG": "v0.19.2", "ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}
               and f_.get("read") == {"date": "2026-10-09", "date_en": "9 October 2026", "date_de": "9. Oktober 2026", "sha": tagged_[:7]})
 
+# FM-006, B1, RV-2881: wrecks_json is written inside a <script> and a Jinja block — a title or a report that holds `</script>`, a comment's
+# opening, a Jinja delimiter or a JavaScript line separator is escaped in it, and reads back as written
+_lf_nasty = "a </script> b </SCRIPT c <!-- d {{ e }} f {% g %} h {# i #} j \u2028 k \u2029 l"
+_lf_esc_mod = _lf_module()
+
+
+def _lf_esc_block(js_string):
+    """facts.html's wrecks_json for one wreck whose title and report hold `_lf_nasty`, written with `js_string`."""
+    real_, _lf_esc_mod.js_string = _lf_esc_mod.js_string, js_string
+    try:
+        text_ = _lf_esc_mod.facts_html("0" * 40, {"tag": "v0.0.1", "version": "0.0.1", "date_en": "1 October 2026", "date_de": "1. Oktober 2026"}, "1/2", 2,
+                                       {"date": "2026-10-01", "date_en": "1 October 2026", "date_de": "1. Oktober 2026", "sha": "0000000"},
+                                       {"ADOPT_COMMIT": "0" * 40, "TAG": "v0.0.1", "ARCHIVE_URL": "x", "ARCHIVE_SHA256": "x"},
+                                       [{"id": "FM-099", "inc": "0000000", "filed": "2026-10-01", "status": "Proposed", "lon": 8.0, "lat": 54.0,
+                                         "title": "title " + _lf_nasty, "report": "hook " + _lf_nasty, "url": "https://github.com/shoalmark/shoalmark"}],
+                                       {"waiting": 0, "acts": 0, "act": None}, {"wrecks": 1, "open": 1})
+    finally:
+        _lf_esc_mod.js_string = real_
+    return re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text_, re.S).group(1)
+
+
+def _lf_esc_holds(block):
+    """(whether it holds, what it found): none of `</`, `<!--`, a Jinja delimiter or U+2028/U+2029 in the block, no brace inside its strings,
+    and the title and the report read back as written."""
+    found = [x for x in ("</", "<!--", "{{", "}}", "{%", "%}", "{#", "#}", "\u2028", "\u2029") if x in block]
+    found += ["a brace in a string"] if any(c in lit for lit in re.findall(r'"(?:[^"\\]|\\.)*"', block) for c in "{}") else []
+    try:
+        back = json.loads(block)
+        same = back[0]["title"] == "title " + _lf_nasty and back[0]["report"] == "hook " + _lf_nasty
+    except ValueError:
+        same = False
+    return not found and same, found + ([] if same else ["does not read back"])
+
+
+_lf_esc_ok, _lf_esc_found = _lf_esc_holds(_lf_esc_block(_lf_esc_mod.js_string))
+_lf_esc_ctl, _lf_esc_ctl_found = _lf_esc_holds(_lf_esc_block(lambda v: json.dumps(v, ensure_ascii=False)))
+check(f"FM-006 · B1 · RV-2881: a title and a report holding `</script>`, `</SCRIPT`, `<!--`, `{{{{`, `{{%`, `{{#`, U+2028 and U+2029 give a wrecks_json with none "
+      f"of `</`, `<!--`, a Jinja delimiter or a line separator, and no brace inside a string, that reads back to the same strings; its control, the "
+      f"strings written as plain json.dumps, holds them (saw {_lf_esc_found}; the control's {_lf_esc_ctl_found})",
+      _lf_esc_ok and not _lf_esc_ctl and {"</", "<!--", "{{", "{%", "a brace in a string"} <= set(_lf_esc_ctl_found))
+
 if _lf_why:
     _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)
 else:
