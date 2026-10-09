@@ -12371,7 +12371,7 @@ else:
               _lf_stops(untitled_, facts_, "names no ACTS_TITLE"))
 
 if _lf_why:
-    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 12, _lf_why)
+    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 14, _lf_why)
 else:
     import zipfile
     lf_ = _lf_module()
@@ -12387,9 +12387,10 @@ else:
         asum_, tsum_, osum_ = (hashlib.sha256(b).hexdigest() for b in (zip_.read_bytes(), tool_, old_))
         url_ = "https://github.com/shoalmark/shoalmark/releases/download/{}/shoalmark-{}.zip"
 
-        def _lf_notes(tag="v0.19.2", asum=asum_, tsum=tsum_, de_url=None, svn=""):
-            """The four ADOPT notes as the probe lane's pins.md lays out the pin: one line in each, five fields, the Subversion notes without."""
-            url = url_.format(tag, tag[1:])
+        def _lf_notes(tag="v0.19.2", asum=asum_, tsum=tsum_, de_url=None, svn="", url=None):
+            """The four ADOPT notes as the probe lane's pins.md lays out the pin: one line in each, five fields, the Subversion notes without;
+            `url`, where given, the archive's address in both."""
+            url = url or url_.format(tag, tag[1:])
             return {"ADOPT.md": f"# Adopt shoalmark\n\nThe pin: release `{tag}`; the archive `{url}`, SHA-256 `{asum}`; in it, `shoalmark.py`, SHA-256 `{tsum}`.\n",
                     "ADOPT.de.md": f"# shoalmark übernehmen\n\nDie Festlegung: Release `{tag}`; das Archiv `{de_url or url}`, SHA-256 `{asum}`; darin `shoalmark.py`, "
                                    f"SHA-256 `{tsum}`.\n",
@@ -12420,6 +12421,12 @@ else:
         for what_, case_, says_ in (
                 ("a Subversion note missing", lambda: _lf_pins(_lf_notes(), drop=("ADOPT.svn.de.md",)), "pins check 1: ADOPT.svn.de.md is missing"),
                 ("the German note pinning another address", lambda: _lf_pins(_lf_notes(de_url=url_.format("v0.19.2", "x"))), "pins check 2: the two notes pin different things"),
+                ("both notes pinning an address whose dot segments lead out of the release, to another repository", lambda: _lf_pins(_lf_notes(
+                    url="https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/../../../../../attacker/fork/releases/download/v1/x.zip")),
+                 "pins check 2: https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/../../../../../attacker/fork/releases/download/v1/x.zip is not an asset of v0.19.2"),
+                ("both notes pinning that address with its dots and slashes percent-escaped", lambda: _lf_pins(_lf_notes(
+                    url="https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/%2e%2e%2f%2E%2E%2Fattacker%2ffork%2freleases%2fdownload%2fv1%2fx.zip")),
+                 "pins check 2: https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/%2e%2e%2f%2E%2E%2Fattacker%2ffork%2freleases%2fdownload%2fv1%2fx.zip is not an asset of v0.19.2"),
                 ("a Subversion note carrying a SHA-256", lambda: _lf_pins(_lf_notes(svn=f" `{tsum_}`")), "pins check 2: ADOPT.svn.md carries a pin"),
                 ("a pin line still holding its placeholders", lambda: _lf_pins({**_lf_notes(), "ADOPT.md": "The pin: release `{{TAG}}`; the archive `{{ARCHIVE_URL}}`, SHA-256 "
                                                                                  "`{{ARCHIVE_SHA256}}`; in it, `shoalmark.py`, SHA-256 `{{TOOL_SHA256}}`.\n"}), "pins check 2: the two notes pin different things"),

@@ -564,7 +564,8 @@ def read_pins(git, commit, release, slug, switch, deploy, main, archive):
     tag, url, archive_sum, tool, tool_sum = fields["ADOPT.md"]
     if not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
         stop(f"pins check 2: {tag} is no release tag")
-    if not url.startswith(f"https://github.com/{slug}/releases/download/{tag}/") or not re.fullmatch(r"https://[\w./-]+", url):
+    # one file name, in the tag's own folder of this repository's releases: no dot segment, no further slash, no percent-escape of either
+    if not re.fullmatch(rf"https://github\.com/{re.escape(slug)}/releases/download/{re.escape(tag)}/[A-Za-z0-9][A-Za-z0-9._-]*", url):
         stop(f"pins check 2: {url} is not an asset of {tag}")
     if tool != "shoalmark.py" or not all(re.fullmatch(r"[0-9a-f]{64}", s) for s in (archive_sum, tool_sum)):
         stop("pins check 2: the pin line's shape — release, archive, its SHA-256, `shoalmark.py`, its SHA-256")
