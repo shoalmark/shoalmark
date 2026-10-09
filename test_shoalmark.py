@@ -9088,7 +9088,7 @@ with tempfile.TemporaryDirectory() as d:
         return (w_[6], w_[14]) if w_ else ("not shown", "")
 
     below_ = lambda h_: subprocess.run(["git", "-C", str(root_), "rev-parse", h_ + "~1"], capture_output=True, text=True, env=_ENV).stdout.strip()[:7]
-    for ignore_ in ("all", "none"):
+    for ignore_ in ("all", "dirty", "untracked", "none"):
         (root_ / ".gitmodules").write_text(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n', encoding="utf-8")
         git(root_, "add", ".gitmodules"); git(root_, "update-index", "--add", "--cacheinfo", f"160000,{pin_},vendor/lib")
         git(root_, "commit", "-qm", f"the trunk vendors a submodule, `ignore = {ignore_}`"); git(root_, "push", "-q", "origin", "main")
@@ -9120,6 +9120,76 @@ with tempfile.TemporaryDirectory() as d:
               f"on top of the Owner's signed answer, is no review addendum: `--queue` and the board read the head, `wait: not an answerer (seat@x)` (saw `--queue` "
               f"{q_!r}, the board {b_})",
               q_ == "wait: not an answerer (seat@x)" and b_[1] == "wait: not an answerer (seat@x)")
+    rm_git(root_)
+fm.configure(HERE)
+
+# …and the other readers of what a commit changes, beside a submodule whose `.gitmodules` says `ignore = all`, `dirty`, `untracked` or `none`: an ordinary
+# pull request's verdict holds over review files alone, not over a commit that also moves the pointer; and the gate (FM-033) judges a commit that moves
+# the pointer alone — in `--check` on the branch, and in the commit's own hook
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    review_ = "docs/work-tracker/evidence/reviews/review-x.md"
+    cfg_ = root_ / "shoalmark.toml"; cfg_.write_text(cfg_.read_text(encoding="utf-8").replace('name = "m"\n', 'name = "m"\njudged_before_build = true\n'), encoding="utf-8")
+    git(root_, "add", "shoalmark.toml"); git(root_, "commit", "-qm", "a pass judges before the first build commit"); git(root_, "push", "-q", "origin", "main")
+    pin_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    other_ = "1234567890abcdef1234567890abcdef12345678"
+    bare_, real_run_, real_which_, real_forge_ = base_ / "origin.git", subprocess.run, fm.shutil.which, fm.github_remote
+    idx_ = dict(_ENV, GIT_INDEX_FILE=str(base_ / "rv-index"))
+    g_ = lambda *a, inp=None, env=None: subprocess.run(["git", "-C", str(root_), *a], input=inp, capture_output=True, env=env or idx_).stdout.decode("utf-8", "replace").strip()
+    seat_ = dict(idx_, GIT_AUTHOR_NAME="seat", GIT_AUTHOR_EMAIL="seat@x", GIT_COMMITTER_NAME="seat", GIT_COMMITTER_EMAIL="seat@x")
+
+    def made_(parent, ops, subject):
+        """One commit by a seat on `parent`, through a separate index: ("link", <id>, path) a submodule's pointer, ("add", <bytes>, path) a file."""
+        g_("read-tree", parent)
+        for op_, data_, path_ in ops:
+            g_("update-index", "--add", "--cacheinfo", f"160000,{data_},{path_}" if op_ == "link" else f"100644,{g_('hash-object', '-w', '--stdin', inp=data_)},{path_}")
+        return g_("commit-tree", g_("write-tree"), "-p", parent, "-m", subject, env=seat_)
+
+    def queue_pr(head):
+        """`--queue`, `gh` answering with one open pull request — `ap/001-work` at `head` — and nothing merged or closed: its action."""
+        pr_ = [{"number": 2, "title": "AP-502: work", "headRefName": "ap/001-work", "headRefOid": head, "baseRefName": "main", "mergeable": "MERGEABLE",
+                "mergeStateStatus": "CLEAN", "createdAt": "2026-10-09T10:00:00Z", "isCrossRepository": False}]
+        git(root_, "push", "-q", "-f", "origin", f"{head}:refs/heads/ap/001-work", f"{head}:refs/pull/2/head")
+        def stub_(*a, **k):
+            if a and list(a[0])[:1] == ["gh-stub"]:
+                state_ = list(a[0])[list(a[0]).index("--state") + 1]
+                return subprocess.CompletedProcess(a[0], 0, json.dumps(pr_ if state_ == "open" else []), "")
+            return real_run_(*a, **k)
+        subprocess.run, fm.shutil.which = stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which_(name, *a, **k))
+        fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge_(url)
+        try:
+            c_, o_, e_ = run_safe(root_, "--queue")
+        finally:
+            subprocess.run, fm.shutil.which, fm.github_remote = real_run_, real_which_, real_forge_
+        return next((re.split(r" {2,}", l_)[1] for l_ in o_.splitlines() if l_.startswith("PR 2  ")), f"no line for PR 2 (exit {c_}: {(e_ or o_).strip()[-120:]!r})")
+
+    for ignore_ in ("all", "dirty", "untracked", "none"):
+        (root_ / ".gitmodules").write_text(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n', encoding="utf-8")
+        git(root_, "add", ".gitmodules"); git(root_, "update-index", "--add", "--cacheinfo", f"160000,{pin_},vendor/lib")
+        git(root_, "commit", "-qm", f"the trunk vendors a submodule, `ignore = {ignore_}`"); git(root_, "push", "-q", "origin", "main")
+        main_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        work_ = made_(main_, [("add", b"work\n", "src/work.txt")], "AP-502: work")
+        verdict_ = g_("commit-tree", g_("rev-parse", work_ + "^{tree}"), "-p", work_, "-m", f"review: READY\n\nReviewed: {work_}", env=seat_)
+        alone_ = made_(verdict_, [("add", b"# a review\n", review_)], "review: a note")
+        both_ = made_(verdict_, [("add", b"# a review\n", review_), ("link", other_, "vendor/lib")], "review: a note")
+        qa_, qb_ = queue_pr(alone_), queue_pr(both_)
+        check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, an ordinary pull request's READY verdict holds over a review file "
+              f"alone, and not over a commit of a review file that also moves the submodule's pointer: `--queue` reads `merge`, then "
+              f"`wait: no verdict on <its head>` (saw {qa_!r}, then {qb_!r})",
+              qa_ == "merge" and qb_ == f"wait: no verdict on {both_[:7]}")
+        only_ = made_(main_, [("link", other_, "vendor/lib")], "chore: bump the library")
+        git(root_, "switch", "-q", "-c", f"bump-{ignore_}", only_)           # a branch of its own: on the default branch nothing is judged
+        c1_, o1_, e1_ = run_safe(root_, "--check")
+        gate_ = "\n".join(l_ for l_ in (o1_ + e1_).splitlines() if "chore: bump the library" in l_)
+        git(root_, "switch", "-q", "-c", f"bump-again-{ignore_}", main_)
+        git(root_, "update-index", "--add", "--cacheinfo", f"160000,{other_},vendor/lib")
+        c2_ = subprocess.run(["git", "-C", str(root_), "commit", "-q", "-m", "chore: bump the library"], capture_output=True, text=True, env=_BM_ENV)
+        made2_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip() != main_
+        git(root_, "reset", "-q", "--hard", main_); git(root_, "switch", "-q", "main")
+        check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a commit that moves the submodule's pointer alone and names no "
+              f"tracker is a build commit the gate judges (FM-033): `--check` on its branch refuses it, and so does its own commit hook (saw `--check` exit {c1_}, "
+              f"{gate_[:160]!r}; the commit made {made2_}, the hook said {[l_ for l_ in (c2_.stdout + c2_.stderr).splitlines() if 'FM-033' in l_][:1]})",
+              c1_ != 0 and "(FM-033)" in gate_ and c2_.returncode != 0 and not made2_ and "(FM-033)" in c2_.stdout + c2_.stderr)
     rm_git(root_)
 fm.configure(HERE)
 

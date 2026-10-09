@@ -1690,7 +1690,7 @@ def recover_from_log(need):
     # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
     # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `git show <sha>:./<path>` reads them;
     # `-U0`: only the lines that changed
-    log = git("log", *board_diff_args(), "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+    log = git("log", *board_diff_args(), "--full-history", "--no-renames", "--ignore-submodules=none", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
               "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
     if log.returncode != 0 and unread_here():           # the walk met an object the partial clone lacks: the relations stay as they read, not computable
         for rel in need:
@@ -2400,7 +2400,7 @@ def queue_actions(prs, branches=()):
         """its own commits — not on its base, merges aside — and each one's patch id"""
         def read():
             shas = git("rev-list", "--no-merges", head(p), "^" + base(p)).stdout.split()
-            diff = git("log", "-p", "--no-merges", "--no-color", "--no-ext-diff", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
+            diff = git("log", "-p", "--no-merges", "--no-color", "--no-ext-diff", "--ignore-submodules=none", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
             ids = git("patch-id", "--stable", input=diff).stdout if diff else ""
             return shas, {c: pid for pid, c in (l.split()[:2] for l in ids.splitlines() if len(l.split()) >= 2)}
         return cached(("own", num(p)), read)
@@ -4671,7 +4671,7 @@ def last_worked_on(path):
         commit, day, subject = (line.split(" ", 2) + [""])[:3]
         if "[sweep]" in subject:
             continue
-        names = subprocess.run(["git", "show", "--name-only", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT).as_posix())],
+        names = subprocess.run(["git", "show", "--name-only", "--ignore-submodules=none", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT).as_posix())],
                                cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.split()
         if len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
             return day
@@ -5688,7 +5688,7 @@ def staged_now():
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
+        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
         _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
@@ -5987,7 +5987,7 @@ def read_changes():
         if not tips:
             return []
         out = []
-        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
+        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", "--ignore-submodules=none", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
                   *tips, "--not", first)                # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
         if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
             global _WALK_FAILED
@@ -6008,14 +6008,14 @@ def read_changes():
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for h in heads:
-            files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", h))
+            files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", "--ignore-submodules=none", h))
         return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
     if not parents:
         return []                                        # a root commit has no parent to compare with
     files = None
     for parent in parents:
-        got = names(git("diff", "-z", "--name-only", "--relative", parent, "HEAD"))
+        got = names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     merged = brought(parents[1:], parents[0]) if len(parents) > 1 else []
@@ -6208,7 +6208,7 @@ def git_ship_verdicts(names, bases, records):
         unreached = set(beyond.stdout.split()) if beyond.returncode == 0 else set(shas.values())      # no parent (a first commit): nothing is behind it
         behind = {n: s for n, s in shas.items() if s not in unreached}
     if behind:
-        log = git("log", "-z", "--no-walk=unsorted", "-m", "--first-parent", "--no-renames", "--name-only", "--format=%x01%H", *dict.fromkeys(behind.values()))
+        log = git("log", "-z", "--no-walk=unsorted", "-m", "--first-parent", "--no-renames", "--name-only", "--ignore-submodules=none", "--format=%x01%H", *dict.fromkeys(behind.values()))
         for record in log.stdout.split("\x01")[1:]:         # NUL-separated names: a `"` or a tab in a name is no quoted name here (RV-2151)
             sha, _, files = record.partition("\x00")
             changed[sha.strip()] = [f for f in files.lstrip("\n").split("\x00") if f]
@@ -6517,9 +6517,9 @@ def ratio_class(path, records, exclude):
 def ratio_merge(merge, records, exclude):
     """One merge against its first parent: {"records": [added, deleted], "product": [added, deleted], "binary": files}."""
     tot = {"records": [0, 0], "product": [0, 0], "binary": 0}
-    raw = (git_out("diff", "--raw", "--no-renames", "-z", f"{merge}^1", merge) or "").split("\0")
+    raw = (git_out("diff", "--raw", "--no-renames", "-z", "--ignore-submodules=none", f"{merge}^1", merge) or "").split("\0")
     pointers = {raw[i + 1] for i in range(0, len(raw) - 1, 2) if "160000" in raw[i].lstrip(":").split()[:2]}       # ":100644 160000 <sha> <sha> M"
-    for entry in (git_out("diff", "--numstat", "--no-renames", "-z", f"{merge}^1", merge) or "").split("\0"):
+    for entry in (git_out("diff", "--numstat", "--no-renames", "-z", "--ignore-submodules=none", f"{merge}^1", merge) or "").split("\0"):
         if not entry:
             continue
         added, deleted, path = entry.split("\t", 2)
@@ -6923,7 +6923,7 @@ def named_trackers(subject, branch):
 def commit_list(*revs):
     """[(commit, its first parent, the paths it changes relative to ROOT, its subject)] of `git log --no-merges <revs>`,
     newest first — one call for all of them."""
-    out = git_out("log", "--no-merges", "--relative", "--name-only", "--format=%x00%H%x00%P%x00%s", *revs) or ""
+    out = git_out("log", "--no-merges", "--relative", "--name-only", "--ignore-submodules=none", "--format=%x00%H%x00%P%x00%s", *revs) or ""
     records, got = out.split("\x00")[1:], []
     for i in range(0, len(records) - 2, 3):
         subject, _, files = records[i + 2].partition("\n")
@@ -7078,7 +7078,7 @@ def pending_judgement(subject, git, trunk, branch):
         return []                                          # a first commit has no parent to be judged at
     # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative"], cwd=ROOT, capture_output=True, text=True,
+    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none"], cwd=ROOT, capture_output=True, text=True,
                             encoding="utf-8", errors="replace", env=env).stdout
     return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
 
@@ -7433,7 +7433,7 @@ def guard_walk(*revs, keys=(), unread=False):
     files each commit changes — a merge's, those that differ from every parent — split on a mark no commit can carry."""
     mark = f"\x1f{os.urandom(8).hex()}\x1f"
     out = git_out("-c", "diff.relative=false", "-c", "log.showSignature=false", "-c", "log.showRoot=true", "log", "-z", "-c",
-                  "--name-only", "--no-renames", f"--format={mark}%H %P{mark}%s{mark}", *revs) or ""
+                  "--name-only", "--no-renames", "--ignore-submodules=none", f"--format={mark}%H %P{mark}%s{mark}", *revs) or ""
     parts, commits = out.split(mark)[1:], []
     for i in range(0, len(parts) - 2, 3):
         c, *ps = parts[i].split()
@@ -7627,7 +7627,7 @@ def staged_files(parents, env):
     every parent — a merge being made, from each of its parents; a first commit, all it holds. One `git diff` a parent."""
     run = lambda *a: subprocess.run(["git", "-c", "diff.relative=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     every_file = lambda: run("ls-files", "-z", "--full-name", "--", ":/")
-    sets = [run("diff", "--cached", "--name-only", "-z", "--no-renames", p) for p in parents] or [every_file()]
+    sets = [run("diff", "--cached", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", p) for p in parents] or [every_file()]
     names = [set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else None for r in sets]
     if any(n is None for n in names):                          # git could not say: every file it holds counts — and where it cannot list them, a TRIAGE.md
         r = every_file()
