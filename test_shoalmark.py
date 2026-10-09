@@ -8280,6 +8280,13 @@ def _bm_done(shape, t0, seen):
 # so each of its blocks runs watched; and its shapes gain a blobless and a treeless clone, made here with filters from an origin that allows them.
 _BW_HOOKS = ("post-checkout", "post-merge", "post-rewrite")       # the hooks that refresh the board
 _BW_VERIFY = ("find-principals", "verify", "check-novalidate")    # what `ssh-keygen -Y` is asked for git's `%G?`
+
+
+def _bw_no_program(path):
+    """Whether `path` is the signature program the board's reads name for an OpenPGP or X.509 signature — `no-signature-program` under the tool's own file,
+    its own copy's or the hooks' copy's: a path below a regular file, which no file system can hold, so that git's start of it runs nothing."""
+    head_, tail_ = os.path.split(str(path))
+    return tail_ == "no-signature-program" and os.path.basename(head_) == "shoalmark.py" and os.path.isfile(head_)
 _BW_ASSERT = ("no git of the board's run starts a process by itself but the SSH signature check its `%G?` reads ask for, and `.git`'s objects and refs "
               "are what they were before it")
 _BW_STATE_PY = r'''import json, os, sys
@@ -8333,7 +8340,8 @@ def _bw_trace(trace, hooks=False):
     """From git's trace2 events at `trace`, a board's run's own processes: with `hooks`, the gits each hook that refreshes the board ran — one level below the
     git that started the hook, started between that git's `child_start` and `child_exit` for it — else every git the trace holds (a run started with the trace
     set); and every process below them. (how many gits of theirs, how many SSH signature checks they started for `%G?`, every other process they started by
-    themselves — as (the command that started it, its first words) —, the commands they ran)."""
+    themselves — as (the command that started it, its first words) —, the commands they ran, how many starts of the board's no-signature program they made —
+    each of which runs nothing)."""
     evs_ = []
     for l_ in (trace.read_text(encoding="utf-8", errors="replace").splitlines() if trace.is_file() else []):
         try:
@@ -8354,15 +8362,17 @@ def _bw_trace(trace, hooks=False):
         tops_ = {s_ for s_, (t_, _a) in starts_.items() if any(s_.rpartition("/")[0] == p_ and t0_ < t_ < t1_ for p_, t0_, t1_ in spans_)}
     board_ = {s_ for s_ in starts_ if s_ in tops_ or any(s_.startswith(b_ + "/") for b_ in tops_)}
     kids_ = [(str(e_["sid"]), [str(a_) for a_ in e_.get("argv") or []]) for e_ in evs_ if e_.get("event") == "child_start" and str(e_.get("sid")) in board_]
-    checks_, other_ = 0, []
+    checks_, other_, none_ = 0, [], 0
     for sid_, argv_ in kids_:
         by_ = starts_.get(sid_, ("", []))[1]
         if (argv_[:1] and re.split(r"[\\/]", argv_[0])[-1].lower() in ("ssh-keygen", "ssh-keygen.exe") and argv_[1:2] == ["-Y"] and argv_[2:3]
                 and argv_[2] in _BW_VERIFY and _git_command(by_) == "log" and any("%G" in a_ for a_ in by_)):
             checks_ += 1
+        elif argv_[:1] and _bw_no_program(argv_[0]) and _git_command(by_) == "log" and any("%G" in a_ for a_ in by_):
+            none_ += 1
         else:
             other_.append((_git_command(by_) or "?", argv_[:4]))
-    return len(board_), checks_, other_, sorted({_git_command(starts_[s_][1]) for s_ in board_} - {""})
+    return len(board_), checks_, other_, sorted({_git_command(starts_[s_][1]) for s_ in board_} - {""}), none_
 
 
 def _bw_runs(log, trace):
@@ -8383,8 +8393,8 @@ def _bw_runs(log, trace):
 
 def _bw_watch(trace, log):
     """One event's watch: the board's runs its hooks started, and what their gits started by themselves."""
-    gits_, checks_, other_, commands_ = _bw_trace(trace, hooks=True)
-    return {"runs": _bw_runs(log, trace), "gits": gits_, "checks": checks_, "other": other_, "commands": commands_}
+    gits_, checks_, other_, commands_, none_ = _bw_trace(trace, hooks=True)
+    return {"runs": _bw_runs(log, trace), "gits": gits_, "checks": checks_, "other": other_, "commands": commands_, "none": none_}
 
 
 def _bw_ok(w):
@@ -8395,6 +8405,7 @@ def _bw_ok(w):
 def _bw_saw(w):
     changed_ = [c_ for _h, c_ in w["runs"] if c_]
     return (f"{len(w['runs'])} board's run(s), {'untraced:' if w['gits'] is None else w['gits']} git process(es) of theirs, {w['checks']} SSH check(s)"
+            + (f", {w['none']} start(s) of the no-signature program, which runs nothing" if w.get("none") else "")
             + (f", {len(w['other'])} process(es) started by themselves {w['other'][:3]}" if w["other"] else "")
             + (f", .git changed by {len(changed_)} run(s), {sum(map(len, changed_))} path(s): {changed_[0][:4]}" if changed_ else ""))
 
@@ -8437,8 +8448,9 @@ def _bw_program(base, at, tag, *a, path=None):
     _h, common_ = _bw_paths(at)
     trace_, before_ = base / f"trace-{tag}.json", _bw_state(common_)
     c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, *a, env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_), **({"PATH": path} if path else {})))
-    gits_, checks_, other_, commands_ = _bw_trace(trace_)
-    return c_, o_, e_, {"runs": [(tag, _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_, "other": other_, "commands": commands_}
+    gits_, checks_, other_, commands_, none_ = _bw_trace(trace_)
+    return c_, o_, e_, {"runs": [(tag, _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_, "other": other_, "commands": commands_,
+                        "none": none_}
 
 
 def _bw_partial(base, root, filt, ahead=False):
@@ -8479,9 +8491,9 @@ def _bm_refresh(at, *a, **k):
     trace_ = at.parent / f"trace-by-hand-{at.name}.json"; trace_.unlink(missing_ok=True)
     before_ = _bw_state(common_)
     out_ = _bm_refresh_unwatched(at, *a, **k)
-    gits_, checks_, other_, commands_ = _bw_trace(trace_) if trace_.is_file() else (None, 0, [], [])
+    gits_, checks_, other_, commands_, none_ = _bw_trace(trace_) if trace_.is_file() else (None, 0, [], [], 0)
     _BW_HAND.setdefault(at.parent, []).append({"runs": [("by hand", _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_,
-                                               "other": other_, "commands": commands_})
+                                               "other": other_, "commands": commands_, "none": none_})
     return out_
 
 
@@ -8558,7 +8570,7 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
               and _bw_ok(w_) and {"config", "version"} <= set(w_["commands"]))
         c2_, o2_, e2_ = run(part_, "--html-only", git_env={"GIT_TRACE2_EVENT": str(base_ / "trace-fresh-in.json")})
         unread_, page_ = list(getattr(fm, "BOARD_UNREAD", [])), (_bm_board(part_) or b"").decode("utf-8", "replace")
-        g2_, k2_, x2_, _c = _bw_trace(base_ / "trace-fresh-in.json")
+        g2_, k2_, x2_, _c, _n = _bw_trace(base_ / "trace-fresh-in.json")
         check(f"FM-045 · the board's run in process, in {shape_} that lacks what it reads: what it could not read is named — what is on its way on "
               f"origin/answer/ap-507; where the board reads who set an ask, as it can in the blobless clone, the signers file on origin/main —, and nothing that "
               f"rests on it is said: AP-507's answer is not shown on its way, and no ask is refused for who set it; nothing is fetched (saw exit {c2_}, {unread_}, "
@@ -8568,7 +8580,7 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
         b3_, t3_ = _bw_state(common_), base_ / "trace-control.json"
         subprocess.run(["git", "-C", str(part_), "cat-file", "-p", "refs/remotes/origin/cold:cold.txt"], capture_output=True,
                        env=dict(_ENV, GIT_TRACE2_EVENT=str(t3_)))
-        g3_, k3_, x3_, _c = _bw_trace(t3_); ch3_ = _bw_changed(b3_, _bw_state(common_))
+        g3_, k3_, x3_, _c, _n = _bw_trace(t3_); ch3_ = _bw_changed(b3_, _bw_state(common_))
         check(f"FM-045 · the watch's control, in {shape_}: a read made with git's own default — as the board's were made before — fetches what the clone lacks; "
               f"the watch finds the processes it started by itself and the objects it wrote, and its judgement fails (saw {x3_[:2]}, .git changed {ch3_[:3]})",
               any("fetch" in a_ for _c, a_ in x3_) and any(c_.endswith(" added") for c_ in ch3_)
@@ -8658,6 +8670,86 @@ with tempfile.TemporaryDirectory() as d:
           all(c_ == 0 and len(ls_) == 1 and ls_[0].startswith(lead_[a_]) and "git 2.43 " in ls_[0] and set(cmds_) <= {"rev-parse", "config"}
               for a_, (c_, ls_, cmds_) in got_.items()) and _bm_board(part_) == board_)
     rm_git(part_); rm_git(root_)
+fm.configure(HERE)
+
+# the board's reads run with the settings that start a program fixed: each such setting, configured as a repository configures it, points at a marker program —
+# a script that writes its name to a log —, in a clone of the matrix's origin that holds what each one acts on: an OpenPGP- and an X.509-signed answer on
+# origin, an attribute naming a diff driver for every tracker, SSH-signed commits. The board's run as a program, `--owner`, and a checkout firing the hooks'
+# copy start no marker, and no git of theirs starts anything but the SSH signature check (`_bw_ok`), where a read with git's own default in the same clone does.
+_BW_MARKER = '#!/bin/sh\n# a marker program: it writes its name and its arguments to the log, and {does}\nprintf "%s %s\\n" "{name}" "$*" >> "{log}"\n{tail}'
+
+
+def _bw_signed_by_hand(root, tid, head):
+    """`answer/<tid>` on origin, cut from `main`: one commit that writes `done:` into `tid`'s tracker, carrying a signature header `head` — an OpenPGP or an
+    X.509 one, made by hand, which no key made: git starts that format's program to read it."""
+    git(root, "switch", "-q", "-c", f"answer/{tid.lower()}", "main")
+    t_ = next(root.glob(f"docs/work-tracker/{tid}-*.md"))
+    t_.write_text(t_.read_text(encoding="utf-8").replace('hook: "h of', 'done: "it is done · here"\nhook: "h of'), encoding="utf-8")
+    git(root, "add", "-A")
+    tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    parent_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    body_ = (f"tree {tree_}\nparent {parent_}\nauthor owner <o@x> 1700000000 +0000\ncommitter owner <o@x> 1700000000 +0000\ngpgsig {head}\n\n{tid}: done\n")
+    sha_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=body_, capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "update-ref", f"refs/heads/answer/{tid.lower()}", sha_); git(root, "push", "-q", "origin", f"answer/{tid.lower()}")
+    git(root, "switch", "-q", "-f", "main")
+    return sha_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree", answers=True); _BW_HAND.pop(base_, None)
+    (root_ / ".gitattributes").write_text("*.md diff=probe\n", encoding="utf-8")
+    git(root_, "add", "-A"); git(root_, "commit", "-qm", "an attribute names a diff driver for every tracker", "-S", "--author=owner <o@x>"); git(root_, "push", "-q", "origin", "main")
+    pgp_ = _bw_signed_by_hand(root_, "AP-502", "-----BEGIN PGP SIGNATURE-----\n \n iQ==\n -----END PGP SIGNATURE-----")
+    x509_ = _bw_signed_by_hand(root_, "AP-503", "-----BEGIN SIGNED MESSAGE-----\n MA==\n -----END SIGNED MESSAGE-----")
+    git(root_, "fetch", "-q", "origin"); _tool_run(HERE / "shoalmark.py", root_, "--install-hook")
+    log_, wrap_ = base_ / "markers.log", _bw_wrap(base_, root_)
+    def marker_(name_, does_, tail_):
+        p_ = base_ / f"marker-{name_}"
+        p_.write_text(_BW_MARKER.format(does=does_, name=name_, log=log_.as_posix(), tail=tail_), encoding="utf-8"); p_.chmod(0o755)
+        return p_.as_posix()
+    rel_ = "docs/work-tracker/AP-501-x.md"
+    shapes_ = {         # each setting: (what it is, the setting as the repository configures it, the read with git's own default that starts it, what it starts)
+        "gpg": ("`gpg.program`, the OpenPGP signature program", [("gpg.program", marker_("gpg", "fails, as no key verifies", "exit 1\n"))],
+                    ["log", "-1", "--format=%G?", "refs/remotes/origin/answer/ap-502"], "gpg"),
+        "gpgsm": ("`gpg.x509.program`, the X.509 signature program", [("gpg.x509.program", marker_("gpgsm", "fails, as no key verifies", "exit 1\n"))],
+                    ["log", "-1", "--format=%G?", "refs/remotes/origin/answer/ap-503"], "gpgsm"),
+        "showSignature": ("`log.showSignature`, which makes every `git log` verify what it shows", [("log.showSignature", "true")],
+                    ["log", "-1", "--format=%an", "main"], "ssh-keygen"),
+        "textconv": ("a diff driver's `textconv`, which the tree's attribute names for every tracker", [("diff.probe.textconv", marker_("textconv", "prints the file", 'cat "$1"\n'))],
+                    ["log", "-1", "--format=%h", "-G", "^next:", "--", rel_], "textconv"),
+        "fsmonitor": ("`core.fsmonitor`, a file-system monitor hook", [("core.fsmonitor", marker_("fsmonitor", "names no path", "exit 1\n"))],
+                    ["ls-files", "-z", "--", rel_], "fsmonitor"),
+    }
+    for tag_, (what_, sets_, plain_, starts_) in shapes_.items():
+        for k_, v_ in sets_:
+            git(root_, "config", k_, v_)
+        log_.write_text("", encoding="utf-8")
+        t0_ = base_ / f"trace-plain-{tag_}.json"
+        subprocess.run(["git", "-C", str(root_), *plain_], capture_output=True, env=dict(_ENV, GIT_TRACE2_EVENT=str(t0_)))
+        plain_marks_ = [l_ for l_ in log_.read_text(encoding="utf-8").splitlines() if l_.strip()]
+        plain_kids_ = [Path((json.loads(l_).get("argv") or ["?"])[0]).name for l_ in t0_.read_text(encoding="utf-8").splitlines()
+                       if l_.strip() and json.loads(l_).get("event") == "child_start"] if t0_.is_file() else []
+        live_ = (starts_ in plain_kids_) if starts_ == "ssh-keygen" else bool(plain_marks_)
+        log_.write_text("", encoding="utf-8")
+        c1_, o1_, e1_, w1_ = _bw_program(base_, root_, f"{tag_}-board", "--html-only")
+        c2_, o2_, e2_, w2_ = _bw_program(base_, root_, f"{tag_}-owner", "--owner")
+        marks_ = [l_ for l_ in log_.read_text(encoding="utf-8").splitlines() if l_.strip()]      # the two runs as programs: all their processes are theirs
+        c3_, said3_ = _bm_fire(root_, base_ / f"trace-{tag_}-switch.json", "switch", "-q", "side")     # the checkout's own git is the person's: its hook's run
+        w3_ = _bw_watch(base_ / f"trace-{tag_}-switch.json", wrap_)                                     # is judged by git's trace alone
+        git(root_, "switch", "-q", "main")
+        check(f"FM-045 · the board's reads run with {what_} fixed: set to a marker program as a repository sets it, it is started by none of the board's "
+              f"run and `--owner`, nor by the board's run a checkout's hook starts — {_BW_ASSERT}; a read with git's own default in the same clone starts it, so the shape is live (saw the "
+              f"plain read start {plain_marks_[:1] or plain_kids_[:3]}; exits {c1_}, {c2_}, {c3_}; the marker's log {marks_[:2]}; {_bw_saw(w1_)}; {_bw_saw(w2_)}; "
+              f"{_bw_saw(w3_)})",
+              live_ and c1_ == 0 and c2_ == 0 and c3_ == 0 and not marks_ and _bw_ok(w1_) and _bw_ok(w2_) and _bw_ok(w3_))
+        for k_, _v in sets_:
+            git(root_, "config", "--unset", k_)
+    page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+    read_ = {tid_: re.search(r'\["done", "answer/' + tid_ + r'", "[0-9a-f]+", "[0-9a-f]+", "[^"]*", "([A-Z])", "([^"]*)"', page_) for tid_ in ("ap-502", "ap-503")}
+    check(f"FM-045 · with the signature programs fixed, the board reads an OpenPGP- and an X.509-signed answer as it always has: no good signature (`N`), and "
+          f"waiting on a signature with SSH (saw {[(t_, m_.groups() if m_ else None) for t_, m_ in read_.items()]})",
+          all(m_ and m_.group(1) == "N" and m_.group(2).startswith("wait: sign with SSH") for m_ in read_.values()))
+    rm_git(root_)
 fm.configure(HERE)
 
 
