@@ -9,8 +9,11 @@ figure from it: `release`, `hiscore`, `hiscore_last`, `read`, `pins` and `wrecks
 it reads anything, and writes the new one only when every reading holds: whatever it cannot read stops the build with one line
 and exit 1, and a build without the file stops at the template's import, so no page is built with an empty or a stale figure.
 
-- **release**: the newest `v*` tag the commit holds, which must be the tag `VERSION` names; its day from that version's
-  CHANGELOG heading, written as *9 October 2026* and *9. Oktober 2026*.
+- **release**: the release `VERSION` names, its day from that version's CHANGELOG heading, written as *9 October 2026* and
+  *9. Oktober 2026*. A build that deploys — a tag's (`--event push`, its tag `--ref`) or one by hand (`--event
+  workflow_dispatch`) — and a local one are built from a tagged release: the newest `v*` tag the commit holds is the one VERSION
+  names. A pull request's build (`--event pull_request`), which never deploys, may run ahead of the newest tag: a release's
+  own pull request carries the next VERSION; it may not fall behind it.
 - **hiscore**, **hiscore_last**: FM-006's rule over the merged pull requests — the Owner's own answer branches left out — opened
   after the Owner's signed answer of 24 September 2026, 11:07 CEST (`ffa63b8`): one counts when a commit of its own, merge
   commits excluded, that adds or changes a file under `work-tracker/evidence/reviews/` is dated before the pull request was
@@ -74,6 +77,7 @@ DRAWN = (
 # tallest in both languages and both launch states, as the B1 design's build draws it.
 TITLE = (-6, 9, 164, 121)
 BORDER, FOOTPRINT = 12, (-3, 3, -2, 2)                   # the footprint: 7 pixels wide, 5 high, centred on the wreck's pixel
+EVENTS = ("", "pull_request", "push", "workflow_dispatch")
 
 
 class Stop(Exception):
@@ -144,21 +148,29 @@ def repo_url(git, commit):
 
 # --- the release -------------------------------------------------------------------------------------------------------------
 
-def read_release(git, commit):
+def read_release(git, commit, event="", ref=""):
     version = git("show", f"{commit}:VERSION", what=f"no VERSION at {commit[:7]}").strip()
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         stop(f"VERSION reads {version!r} at {commit[:7]}, not a release number")
     code, out = git.raw("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", commit)
     tag = out.decode("utf-8").strip() if code == 0 else ""
-    if tag != f"v{version}":
-        stop(f"VERSION says {version}, and the newest release tag {commit[:7]} holds is {tag or 'none'}: the site names the release "
-             f"it is built from, so it is built from a tagged release")
+    if event == "pull_request":                           # never deploys: a release's own pull request runs ahead of the newest tag
+        held = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+        if tag and not held:
+            stop(f"the newest release tag {commit[:7]} holds is {tag}, not vX.Y.Z")
+        if held and tuple(map(int, version.split("."))) < tuple(map(int, held.groups())):
+            stop(f"VERSION says {version}, behind the release tag {tag} that {commit[:7]} holds")
+    elif tag != f"v{version}":
+        stop(f"VERSION says {version}, and the newest release tag {commit[:7]} holds is {tag or 'none'}: a build that deploys, or a local "
+             f"one, is built from a tagged release (a pull request's build reads --event pull_request)")
+    if event == "push" and ref != f"v{version}":
+        stop(f"a tag's build of {ref or 'no tag'}, and VERSION says {version}: the tag pushed is the release the site names")
     changelog = git("show", f"{commit}:CHANGELOG.md", what=f"no CHANGELOG.md at {commit[:7]}")
     m = re.search(rf"^## {re.escape(version)} — (\d{{4}})-(\d{{2}})-(\d{{2}})$", changelog, re.M)
     if not m:
         stop(f"CHANGELOG.md has no heading `## {version} — YYYY-MM-DD` at {commit[:7]}: the release's day is read from it")
     day = datetime.date(*map(int, m.groups()))
-    return {"tag": tag, "version": version, "date_en": day_en(day), "date_de": day_de(day)}
+    return {"tag": f"v{version}", "version": version, "date_en": day_en(day), "date_de": day_de(day)}
 
 
 # --- the high scores ---------------------------------------------------------------------------------------------------------
@@ -578,7 +590,9 @@ def build(args):
         out.unlink()                                       # a failed reading leaves no file behind, so no build reads a stale one
     commit = git("rev-parse", "--verify", f"{args.commit}^{{commit}}", what=f"{args.commit} is no commit in {git.repo}").strip()
     url, slug = repo_url(git, commit)
-    release = read_release(git, commit)
+    if args.event not in EVENTS:
+        stop(f"--event {args.event!r}: pull_request, push or workflow_dispatch, as docs.yml's GITHUB_EVENT_NAME says, or none for a local build")
+    release = read_release(git, commit, args.event, args.ref)
     switch = probe_switch(args.config or ROOT / "zensical.toml")
     deploy = args.event in ("push", "workflow_dispatch")
     pins = read_pins(git, commit, release, slug, switch, deploy, args.main, args.archive)
@@ -605,7 +619,7 @@ def build(args):
 def check_site(args):
     git = Git(args.repo or ROOT)
     commit = git("rev-parse", "--verify", f"{args.commit}^{{commit}}", what=f"{args.commit} is no commit in {git.repo}").strip()
-    tag = read_release(git, commit)["tag"]
+    tag = read_release(git, commit, args.event, args.ref)["tag"]
     facts = Path(args.out) if args.out else ROOT / OUT
     if not facts.is_file():
         stop(f"no {facts}: run scripts/landing_facts.py before the build")
@@ -638,7 +652,8 @@ def main(argv=None):
     ap.add_argument("--repo", help="the git repository to read it from (default: the one this script is in)")
     ap.add_argument("--out", help=f"the file to write (default {OUT})")
     ap.add_argument("--config", help="the zensical.toml whose probe switch counts (default: the one beside this script's folder)")
-    ap.add_argument("--event", default="", help="docs.yml's GITHUB_EVENT_NAME: push and workflow_dispatch are deploy builds")
+    ap.add_argument("--event", default="", help="docs.yml's GITHUB_EVENT_NAME: push and workflow_dispatch deploy; pull_request never does")
+    ap.add_argument("--ref", default="", help="docs.yml's GITHUB_REF_NAME: on a tag's build, the tag pushed")
     ap.add_argument("--pulls", help="a recorded response of the closed pull requests, read instead of GitHub's API")
     ap.add_argument("--main", default="origin/main", help="the default branch's ref (default origin/main)")
     ap.add_argument("--archive", help="the release archive as a file, read instead of its address (pins check 9)")

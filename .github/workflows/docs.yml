@@ -34,15 +34,16 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install -q -r requirements-docs.txt
       - run: python3 scripts/test_check_site.py
+      # the release VERSION names: a tag's build and a run by hand only from a tagged release, a pull request's also ahead of it
       - name: the landing's figures and the probe prompt's pins, read from the repository at this commit
-        run: python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME"
+        run: python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"
         env: {LANDING_FACTS_TOKEN: "${{ github.token }}"}
       - run: zensical build --clean
       - name: llms.txt — the agents' index of the same source, and a Markdown twin of every page
         run: python3 scripts/llms_txt.py site
       - run: python3 scripts/check_site.py site
       - name: the landing names the release this commit reads
-        run: python3 scripts/landing_facts.py --check site
+        run: python3 scripts/landing_facts.py --check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"
       - uses: actions/upload-pages-artifact@v5
         with: {path: site}
   deploy:

@@ -12263,6 +12263,60 @@ else:
               _lf_stops(history_, facts_, "does not hold pull request #47's head 0000000"))
 
 if _lf_why:
+    _skipped("FM-006 · B1 · the release a build names, by its event", 9, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        clone_, facts_, off_, site_ = _lf_clone(base_), base_ / "facts.html", base_ / "off.toml", base_ / "site"
+        off_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
+        log_ = (clone_ / "CHANGELOG.md").read_text(encoding="utf-8")
+        (clone_ / "VERSION").write_text("0.19.3\n", encoding="utf-8")
+        (clone_ / "CHANGELOG.md").write_text(log_.replace("## 0.19.2 — 2026-10-09\n", "## 0.19.3 — 2026-10-10\n\nThe next release.\n\n## 0.19.2 — 2026-10-09\n", 1), encoding="utf-8")
+        git(clone_, "commit", "-q", "-a", "-m", "a release's own pull request: VERSION one release ahead")
+        ahead_ = subprocess.run(["git", "-C", str(clone_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+
+        def _lf_ev(*argv, at=ahead_):
+            facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
+            return _lf_run("--repo", str(clone_), "--commit", at, "--out", str(facts_), "--config", str(off_), "--pulls", str(_LF_PULLS), *argv)
+        pr_ = _lf_ev("--event", "pull_request")
+        pr_f_ = _lf_read(facts_) if pr_[0] == 0 else {}
+        shutil.rmtree(site_, ignore_errors=True); (site_ / "de").mkdir(parents=True)
+        (site_ / "index.html").write_text('<div role="listitem">release<b>v0.19.3</b></div><a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.19.3">v0.19.3</a>', encoding="utf-8")
+        checked_ = [_lf_run("--repo", str(clone_), "--commit", ahead_, "--out", str(facts_), "--check", str(site_), *ev) for ev in (("--event", "pull_request"), ("--event", "workflow_dispatch"))] \
+            if pr_[0] == 0 else []
+        check(f"FM-006 · B1 · a pull request's build of a release's own pull request — VERSION 0.19.3, one release ahead of the newest tag — names the release "
+              f"VERSION names, with its CHANGELOG heading's day, and its release check passes (saw {pr_[0]} {pr_[2].strip()[:160]!r}, {pr_f_.get('release')}, "
+              f"the check {[c[0] for c in checked_]})",
+              pr_[0] == 0 and pr_f_.get("release") == {"tag": "v0.19.3", "version": "0.19.3", "date_en": "10 October 2026", "date_de": "10. Oktober 2026"}
+              and pr_f_.get("pins", {}).get("TAG") == "v0.19.3" and [c[0] for c in checked_] == [0, 1])
+        dispatch_, unnamed_ = _lf_ev("--event", "workflow_dispatch"), _lf_ev()
+        check(f"FM-006 · B1 · the same tree as a build by hand stops it: it deploys, and VERSION is ahead of the newest tag (saw {dispatch_})",
+              _lf_stops(dispatch_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        check(f"FM-006 · B1 · …and as a local build, which names no event (saw {unnamed_})", _lf_stops(unnamed_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        untagged_ = _lf_ev("--event", "push", "--ref", "v0.19.3")
+        check(f"FM-006 · B1 · a tag's build of a commit the tag does not hold stops it (saw {untagged_})", _lf_stops(untagged_, facts_, "the newest release tag"))
+        git(clone_, "tag", "v0.19.4", ahead_)
+        other_ = _lf_ev("--event", "push", "--ref", "v0.19.4")
+        check(f"FM-006 · B1 · a tag's build where the tag, v0.19.4, differs from VERSION, 0.19.3, stops it (saw {other_})",
+              _lf_stops(other_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        git(clone_, "tag", "-d", "v0.19.4"); git(clone_, "tag", "v0.19.3", ahead_)
+        tagged_ = _lf_ev("--event", "push", "--ref", "v0.19.3")
+        check(f"FM-006 · B1 · …and where the tag pushed is the one VERSION names, it passes (saw {tagged_[0]} {tagged_[2].strip()[:160]!r})",
+              tagged_[0] == 0 and _lf_read(facts_).get("release", {}).get("tag") == "v0.19.3")
+        pushed_ = _lf_ev("--event", "push", "--ref", "v0.19.1")
+        check(f"FM-006 · B1 · a tag's build that names another tag than the one VERSION names stops it (saw {pushed_})",
+              _lf_stops(pushed_, facts_, "a tag's build of v0.19.1, and VERSION says 0.19.3"))
+        git(clone_, "checkout", "-q", "--detach", _LF_TAG)
+        (clone_ / "VERSION").write_text("0.19.1\n", encoding="utf-8")
+        git(clone_, "commit", "-q", "-a", "-m", "VERSION behind the newest tag")
+        behind_ = _lf_ev("--event", "pull_request", at="HEAD")
+        check(f"FM-006 · B1 · a pull request's build with VERSION behind the newest tag the commit holds stops it (saw {behind_})",
+              _lf_stops(behind_, facts_, "VERSION says 0.19.1, behind the release tag v0.19.2"))
+        named_ = _lf_ev("--event", "pull_request_target", at=_LF_TAG)
+        check(f"FM-006 · B1 · an event the build does not know stops it (saw {named_})", _lf_stops(named_, facts_, "--event 'pull_request_target'"))
+
+
+if _lf_why:
     _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 12, _lf_why)
 else:
     import zipfile
@@ -12503,8 +12557,8 @@ def _docs_wf_properties(text):
     steps = [s for j in jobs.values() for s in (j.get("steps") or []) if isinstance(s, dict)]
     built = [s for s in build.get("steps") or [] if isinstance(s, dict)]
     at = lambda pred: next((i for i, s in enumerate(built) if pred(str(s.get("run") or ""))), None)
-    facts, zensical, release = at(lambda r: r.startswith("python3 scripts/landing_facts.py --event")), at(lambda r: r.startswith("zensical build")), \
-        at(lambda r: r.startswith("python3 scripts/landing_facts.py --check"))
+    facts, zensical, release = at(lambda r: r == 'python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"'), \
+        at(lambda r: r.startswith("zensical build")), at(lambda r: r == 'python3 scripts/landing_facts.py --check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"')
     checkout = next((s for s in built if str(s.get("uses") or "").startswith("actions/checkout@")), {})
     return [
         ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
@@ -12518,7 +12572,8 @@ def _docs_wf_properties(text):
          "and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy"}
          and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in str(s.get("run") or "") for s in steps)),
-        ("the build checks out the whole history with its tags, writes the landing's figures before `zensical build`, and checks the release after it",
+        ("the build checks out the whole history with its tags, writes the landing's figures before `zensical build` and checks the release after it, each "
+         "told the event and the ref as GitHub names them",
          (checkout.get("with") or {}).get("fetch-depth") == 0 and None not in (facts, zensical, release) and facts < zensical < release),
         ("only the deploy job is in a concurrency group: a pull request's build neither waits for a deployment nor cancels one",
          "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}),
@@ -12544,6 +12599,9 @@ def _docs_wf_regressions(text):
         ("an expression inside a `run: |` block", lambda t: t.replace("      - run: zensical build --clean\n", "      - run: |\n          echo ${{ github.head_ref }}\n          zensical build --clean\n", 1)),
         ("the checkout's history cut to one commit", lambda t: t.replace("{fetch-depth: 0, persist-credentials: false}", "{persist-credentials: false}", 1)),
         ("the figures written after `zensical build`", facts_after_build),
+        ("the figures read as a pull request's whatever the event", lambda t: t.replace('landing_facts.py --event "$GITHUB_EVENT_NAME"', "landing_facts.py --event pull_request", 1)),
+        ("the release check told no event", lambda t: t.replace('--check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"', "--check site", 1)),
+        ("the figures told no tag", lambda t: t.replace('--event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"\n        env:', '--event "$GITHUB_EVENT_NAME"\n        env:', 1)),
         ("the whole workflow in the deployments' group again", lambda t: t.replace("# The image is pinned", "concurrency: {group: pages, cancel-in-progress: false}\n# The image is pinned", 1)),
     )
     out = []

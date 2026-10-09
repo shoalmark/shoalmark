@@ -35,7 +35,8 @@ python3 -m venv .venv
 On Windows, use `.venv\Scripts\python.exe` and `.venv\Scripts\zensical.exe` instead.
 `scripts/landing_facts.py` writes the landing's figures from the repository's full history before the build. It reads the
 pull requests from GitHub's API without a token, which allows 60 requests an hour, or offline with
-`--pulls scripts/landing_facts.pulls-1-144.json`.
+`--pulls scripts/landing_facts.pulls-1-144.json`. A local build names the tagged release VERSION names; on a release's
+branch, where VERSION runs ahead of the newest tag, build as its pull request does: `--event pull_request` on both runs.
 The agents’ contract is included from README.md; edit its source, not a generated copy.
 
 Keep a pull request focused and describe the behavior change and checks run. Link its issue and
