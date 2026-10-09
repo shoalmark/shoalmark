@@ -12291,11 +12291,11 @@ _B1_NAME = "FM-006 · B1 · the landings in a real browser"
 _why = ("SHOALMARK_REGENERATE=1 is not set (the browser run builds the site twice and takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
         else "no Node here" if not _have_node else "no scripts/landing_facts.py here, so the landing's figures cannot be written" if not (HERE / "scripts/landing_facts.py").is_file() else "")
 if _why:
-    _regen_skip(_B1_NAME, 4, _why)
+    _regen_skip(_B1_NAME, 5, _why)
 else:
     _node_ok = subprocess.run([_have_node, "-e", "process.exit(typeof WebSocket == 'function' && typeof fetch == 'function' ? 0 : 1)"], capture_output=True, env=_ENV).returncode == 0
     if not _node_ok:
-        _regen_skip(_B1_NAME, 4, "this Node has no WebSocket (Node 22 or newer has)")
+        _regen_skip(_B1_NAME, 5, "this Node has no WebSocket (Node 22 or newer has)")
     else:
         _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
         _head = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
