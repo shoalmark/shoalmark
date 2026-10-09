@@ -2130,7 +2130,8 @@ REFUSAL_LINE_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\*\* · .+ refu
 
 def refusal_record(commit):
     """The tool's own refusal record (FM-030, `record_refusal`), unsigned by design: one parent, the subject `<ID>: --<act>
-    refused — …`, ONE file changed — that tracker's —, and a diff that adds the one `**<date> <time>** · … refused — …`
+    refused — …`, ONE file changed — that tracker's, its text and not its mode, as git's own list of the commit's changes names
+    them —, and a diff that adds the one `**<date> <time>** · … refused — …`
     line and nothing else but the `## Acts` heading it may make and blank lines, and removes blank lines only: no
     front-matter key, no act. And, from the tracker's text at the parent and at the commit (RV-715, the Owner's cold
     re-check of `af5a9e2`, P1: a refusal-shaped line typed into *What is true now* passed the diff alone): the front
@@ -2162,6 +2163,15 @@ def refusal_record(commit):
     if not (name.startswith(tid.group(1) + "-") and name.endswith(".md") and "/" not in name and all(not x.strip() for x in removed)
             and all(not x.strip() or ACTS_HEAD_RE.match(x) or REFUSAL_LINE_RE.match(x) for x in added)
             and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1):
+        return False
+    # ONE file changed, as git's own list of the commit's changes names them — not as its `+++` lines do: git prints none for a change with no text to
+    # show, a binary or an empty file added, changed or deleted, or a mode alone. The record changes its tracker's text and nothing else, not its mode
+    listed = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", commit], cwd=ROOT,
+                            capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if listed.returncode != 0 and unread_here():
+        raise Unread                                        # its trees are not in the partial clone: no answer
+    changes = listed.stdout.split("\x00")[:-1]              # `:<mode> <mode> <id> <id> <status>`, then the path, for each change
+    if listed.returncode != 0 or len(changes) != 2 or changes[1] != files[0] or not re.fullmatch(r":(100644|100755) \1 [0-9a-f]+ [0-9a-f]+ M", changes[0]):
         return False
     return refusal_record_in_place(parents.strip(), commit, files[0])
 

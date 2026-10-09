@@ -8833,6 +8833,98 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# a commit shaped as the tool's own refusal record, in the Owner's name and unsigned, below their signed answer, that carries one more change — each kind git
+# prints no `+++` line for: `--queue` (`gh` stubbed, origin a local bare repository) and the board's run read the branch as waiting on it; the record alone,
+# as the tool writes it, still reads as theirs to merge
+_BW_NO_PLUS = {     # what each carries beside the record's line: (add a path with mode and content | remove a path | the same content at mode 100755)
+    "a binary file, added": [("add", "100644", b"\x00payload\x00" * 8, "payload.bin")],
+    "a binary file, changed": [("add", "100644", b"\x00other\x00" * 8, "old.bin")],
+    "a binary file, deleted": [("rm", None, None, "old.bin")],
+    "an empty file, added": [("add", "100644", b"", "new-empty.txt")],
+    "an empty file, deleted": [("rm", None, None, "empty.txt")],
+    "an empty file, renamed": [("rm", None, None, "empty.txt"), ("add", "100644", b"", "renamed-empty.txt")],
+    "another file's mode alone": [("x", None, None, "plain.txt")],
+    "the tracker's own mode, beside the line": [("x", None, None, "docs/work-tracker/AP-501-x.md")],
+}
+
+
+def _bw_refusal_shaped(root, rel, ops):
+    """`answer/ap-501` on origin: a commit shaped as the tool's refusal record on `rel` — the Owner's name, unsigned, one refusal line under `## Acts`, the
+    refusal's subject — that also makes the changes `ops`, then their signed answer on top; made with a separate index and `commit-tree` alone, so no file
+    system holds a payload; its head also as a pull request's (`refs/pull/1/head`). The head."""
+    idx_ = dict(_ENV, GIT_INDEX_FILE=str(root.parent / "rv-index"))
+    g_ = lambda *a, inp=None, env=None: subprocess.run(["git", "-C", str(root), *a], input=inp, capture_output=True, env=env or idx_).stdout.decode("utf-8", "replace").strip()
+    blob_ = lambda data: g_("hash-object", "-w", "--stdin", inp=data)
+    text_ = g_("show", f"main:{rel}")
+    record_ = text_.rstrip("\n") + "\n\n## Acts\n\n**2026-10-09 12:00** · shoalmark --answer AP-501 accept refused — the push was refused\n"
+    answer_ = record_.replace("next: owner\n", f'next: build\nanswer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: owner\n')
+    g_("read-tree", "main"); g_("update-index", "--add", "--cacheinfo", f"100644,{blob_(record_.encode('utf-8'))},{rel}")
+    for op_, mode_, data_, path_ in ops:
+        if op_ == "add":
+            g_("update-index", "--add", "--cacheinfo", f"{mode_},{blob_(data_)},{path_}")
+        elif op_ == "rm":
+            g_("update-index", "--force-remove", path_)
+        else:
+            g_("update-index", "--cacheinfo", f"100755,{g_('ls-files', '-s', '--', path_).split()[1]},{path_}")
+    owner_ = dict(_ENV, GIT_AUTHOR_NAME="owner", GIT_AUTHOR_EMAIL="o@x", GIT_COMMITTER_NAME="owner", GIT_COMMITTER_EMAIL="o@x")
+    record_c_ = g_("commit-tree", g_("write-tree"), "-p", "main", "-m", "AP-501: --answer refused — the push was refused", env=dict(owner_, GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"]))
+    mode_now_ = g_("ls-files", "-s", "--", rel).split()[0]
+    g_("update-index", "--cacheinfo", f"{mode_now_},{blob_(answer_.encode('utf-8'))},{rel}")
+    head_ = g_("commit-tree", "-S", g_("write-tree"), "-p", record_c_, "-m", "AP-501: answered", env=dict(owner_, GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"]))
+    git(root, "push", "-q", "-f", "origin", f"{head_}:refs/heads/answer/ap-501", f"{head_}:refs/pull/1/head")
+    git(root, "fetch", "-q", "origin")
+    return head_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    rel_ = "docs/work-tracker/AP-501-x.md"
+    for name_, data_ in (("old.bin", b"\x00old\x00" * 8), ("empty.txt", b""), ("plain.txt", b"plain\n")):
+        (root_ / name_).write_bytes(data_)
+    git(root_, "add", "-A"); git(root_, "commit", "-qm", "what the shapes change"); git(root_, "push", "-q", "origin", "main")
+    bare_, real_run_, real_which_, real_forge_ = base_ / "origin.git", subprocess.run, fm.shutil.which, fm.github_remote
+
+    def queue_(head):
+        """`--queue` as the Owner runs it, `gh` answering with one open pull request — `answer/ap-501` at `head` — and nothing merged or closed."""
+        pr_ = [{"number": 1, "title": "AP-501: answered", "headRefName": "answer/ap-501", "headRefOid": head, "baseRefName": "main", "mergeable": "MERGEABLE",
+                "mergeStateStatus": "CLEAN", "createdAt": "2026-10-09T10:00:00Z", "isCrossRepository": False}]
+        def stub_(*a, **k):
+            if a and list(a[0])[:1] == ["gh-stub"]:
+                state_ = list(a[0])[list(a[0]).index("--state") + 1]
+                return subprocess.CompletedProcess(a[0], 0, json.dumps(pr_ if state_ == "open" else []), "")
+            return real_run_(*a, **k)
+        subprocess.run, fm.shutil.which = stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which_(name, *a, **k))
+        fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge_(url)
+        try:
+            c_, o_, e_ = run_safe(root_, "--queue")
+        finally:
+            subprocess.run, fm.shutil.which, fm.github_remote = real_run_, real_which_, real_forge_
+        return next((re.split(r" {2,}", l_)[1] for l_ in o_.splitlines() if l_.startswith("PR 1  ")), f"no line for PR 1 (exit {c_}: {(e_ or o_).strip()[-120:]!r})")
+
+    def board_():
+        """The board's run as a hook starts it: what it reads of `answer/ap-501` — its reading, and the wait the queue's reading names, or ""."""
+        _tool_run(HERE / "shoalmark.py", root_, "--html-only")
+        page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+        at_ = page_.find('["answer", "answer/ap-501"')
+        w_ = json.JSONDecoder().raw_decode(page_[at_:])[0] if at_ >= 0 else None
+        return (w_[6], w_[14]) if w_ else ("not shown", "")
+
+    head_ = _bw_refusal_shaped(root_, rel_, [])
+    q0_, b0_ = queue_(head_), board_()
+    check(f"FM-045 · a refusal record as the tool writes it — the Owner's name, unsigned, one line under `## Acts` — below their signed answer still reads as "
+          f"theirs: `--queue` and the board both read `merge: your answer` (saw `--queue` {q0_!r}, the board {b0_})",
+          q0_ == "merge: your answer" and b0_ == ("merge: your answer", ""))
+    for shape_, ops_ in _BW_NO_PLUS.items():
+        head_ = _bw_refusal_shaped(root_, rel_, ops_)
+        q_, b_ = queue_(head_), board_()
+        below_ = subprocess.run(["git", "-C", str(root_), "rev-parse", head_ + "~1"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        want_ = f"wait: an unverified commit in your name on your answer branch ({below_[:7]})"
+        check(f"FM-045 · a commit shaped as the tool's refusal record, in the Owner's name and unsigned, below their signed answer, that also carries {shape_} — a "
+              f"change git prints no `+++` line for —: `--queue` and the board read the branch as waiting on it, `{want_[:51]}…` (saw `--queue` {q_!r}, the board {b_})",
+              q_ == want_ and b_[1] == want_)
+    rm_git(root_)
+fm.configure(HERE)
+
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")
