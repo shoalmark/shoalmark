@@ -1398,10 +1398,14 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
               CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"From: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
         # the newest turn that carries them, from the end of a log of several megabytes — never a whole-file read
         big = home.log(f".claude/projects/-Users-x-big/{PARENT[:-1]}1.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(30)] + [_turn("claude-sonnet-5-5", "max")])
-        cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.thread_time(); bw = run_safe(root, "--whoami"); took = time.thread_time() - t0     # the run is in this process: its CPU time, not the wall clock other work on the machine stretches
-        check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log, in under 20 s of this thread's CPU time "
-              f"(saw {bw[1].splitlines()[:1]}, {took:.1f} s)",
-              bw[1].splitlines()[0].endswith("claude-sonnet-5-5 · max") and took < 20)
+        cfg("seat.harness", PARENT[:-1] + "1"); t0, w0 = time.thread_time(), time.monotonic(); bw = run_safe(root, "--whoami"); took, walled = time.thread_time() - t0, time.monotonic() - w0
+        for _ in range(2):          # the wall clock, over the bound, is measured again: it fails only where each of three runs is over
+            if walled < 20:
+                break
+            w0 = time.monotonic(); run_safe(root, "--whoami"); walled = min(walled, time.monotonic() - w0)
+        check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log, in under 20 s of this thread's CPU time, "
+              f"and of the wall clock in one of three runs (saw {bw[1].splitlines()[:1]}, {took:.1f} s of CPU, {walled:.1f} s of the wall clock)",
+              bw[1].splitlines()[0].endswith("claude-sonnet-5-5 · max") and took < 20 and walled < 20)
         # a log that names nothing within the newest 8 MiB (or only one of the two) reads `—` and says why — never silence
         old = home.log(f".claude/projects/-Users-x-old/{PARENT[:-1]}2.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(90)])
         half_ = home.log(f".claude/projects/-Users-x-half/{PARENT[:-1]}3.jsonl", [_turn("claude-opus-4-8")])
