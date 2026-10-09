@@ -2494,24 +2494,37 @@ def state_dir():
     return pathlib.Path(base) / "shoalmark"
 
 
+def notice_text(text):
+    """A notice's title or body as the data it travels as: a NUL, which no argv and no environment can hold, as U+FFFD."""
+    return text.replace("\0", "\ufffd")
+
+
+def notify_env(title, body, environ=None):
+    """The environment a notice's command runs in: this process's (or `environ`), with the title as `SM_TITLE` and the body as
+    `SM_BODY` — the data the fixed code `notify_argv` hands macOS and Windows reads. Pure, so a test reads it."""
+    return {**(os.environ if environ is None else environ), "SM_TITLE": notice_text(title), "SM_BODY": notice_text(body)}
+
+
 def notify_argv(title, body, platform=None, which=None):
     """The command that posts one system notification on `platform`, or None where none is present: macOS `osascript`,
-    Linux `notify-send`, Windows PowerShell's toast. Pure — what it WOULD run — so a test reads every platform's."""
+    Linux `notify-send`, Windows PowerShell's toast. Pure — what it WOULD run — so a test reads every platform's. macOS and
+    Windows are handed fixed code, the same on every run, which reads the title and body from the environment `notify_env`
+    builds; Linux's `notify-send` takes them as its own arguments, after `--`."""
     platform, which = platform or sys.platform, which or shutil.which
     if platform == "darwin" and which("osascript"):
-        q = lambda v: '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
-        return ["osascript", "-e", f"display notification {q(body)} with title {q(title)}"]
+        return ["osascript", "-e", 'use framework "Foundation"\nuse scripting additions\n'
+                                   "set e to current application's NSProcessInfo's processInfo()'s environment()\n"
+                                   """display notification ((e's objectForKey:"SM_BODY") as text) with title ((e's objectForKey:"SM_TITLE") as text)"""]
     if platform.startswith("linux") and which("notify-send"):
-        return ["notify-send", "--app-name=shoalmark", "--", title, body]
-    if platform == "win32" and which("powershell"):
-        q = lambda v: "'" + v.replace("'", "''") + "'"
-        app = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe"     # PowerShell's own AppUserModelID
+        return ["notify-send", "--app-name=shoalmark", "--", notice_text(title), notice_text(body)]
+    if platform == "win32" and which("powershell"):                 # the toast's AppUserModelID is PowerShell's own
         return ["powershell", "-NoProfile", "-NonInteractive", "-Command",
                 "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; "
                 "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
-                f"$t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode({q(title)})) > $null; "
-                f"$t.Item(1).AppendChild($x.CreateTextNode({q(body)})) > $null; "
-                f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier({q(app)}).Show([Windows.UI.Notifications.ToastNotification]::new($x))"]
+                "$t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode($env:SM_TITLE)) > $null; "
+                "$t.Item(1).AppendChild($x.CreateTextNode($env:SM_BODY)) > $null; "
+                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')"
+                ".Show([Windows.UI.Notifications.ToastNotification]::new($x))"]
     return None
 
 
@@ -2522,8 +2535,8 @@ def post_notice(title, body):
     if not argv:
         return "printed — no notifier here"
     try:
-        r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
-    except (OSError, subprocess.TimeoutExpired) as e:
+        r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, env=notify_env(title, body))
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:        # a notice that cannot be started is that notice's failure alone
         return f"NOT posted — {type(e).__name__}"
     return "posted" if r.returncode == 0 else "NOT posted — " + ((r.stderr or r.stdout or "").strip().splitlines() or [f"exit {r.returncode}"])[-1][:120]
 

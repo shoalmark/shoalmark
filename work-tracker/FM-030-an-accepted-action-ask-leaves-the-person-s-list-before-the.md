@@ -31,6 +31,11 @@ its morning sitting. The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `ma
 an earlier chain of this branch, which was replaced before its merge to keep unredacted detail out of the record; it
 found R1–R16, and this text closes R1–R10.
 
+**The notice's code is literal, and its text travels as data, on every platform** — built for 0.19.3 on
+`fm/030-the-notice-carries-its-text-as-data`, not merged. `--notify` hands macOS `osascript` and Windows PowerShell fixed
+code, the same on every run, which reads the notice's title and body from the environment; on Linux they are
+`notify-send`'s own arguments, after `--`.
+
 **Built for 0.18.6 on `fm/030-the-done-dialog-shows-the-question`, merged as PR 103, not released** — on the two raise lines
 of 2026-09-27 (the Owner's word at 13:38:30, the E0 counter's row 20): an act that is a promise reads as what he
 promised, the question below it, on the board, in its *done* and *reschedule* dialogs, `--owner`, `--standup`,
@@ -190,3 +195,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-28 | **Raised, 12:43:02** (the Auditor through the Owner, his paste sha256 `4a6f20c85637094e3528c3f5ef780e0c9e942115d93df572a255a22b02cc8a7a`, item 1 of three): the done dialog's hint asks for one path where the command takes several results — his three evidence files for one act; folded here as the Done-when slice *The done dialog takes several results*, built after the acts board lands. Items 2 and 3 of the paste (features under the filing freeze) are asked on FM-018, FEAT-190's ledger row 57 first. |
 | 2026-09-28 | RV-758 (the docs pass `992fb5d` on `3a417db`): the paste's closing line *File and rank them your way.* is the Auditor's, not the Owner's — the raise line of 12:43:02 corrected in place before the merge. |
 | 2026-09-30 | **Raised, the Owner, two lines under *Raised*** (08:26:03, 08:30:15): the board's owed section does not carry a seat's branch pushed without a pull request, which `--queue` does; the open tab does not reload after his act — the file is right, the tab stale. Two slices for 0.18.7, nothing built; filed on his word *"file it"* (08:31:39). |
+| 2026-10-09 | RV-2830: recorded privately |
