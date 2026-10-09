@@ -96,6 +96,10 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
   const t = await open(page, {w, h});
   const m = await t.js(`({sw: document.documentElement.scrollWidth, iw: innerWidth})`);
   verdict(page, w, h, "no sideways scroll", m.sw <= m.iw, `${m.sw} > ${m.iw}`);
+  if (page.endsWith("index.html") && !page.startsWith("how")) {   // the ticker's words are long; it clips its own band and takes no room of the page
+    const tk = await t.js(`(() => { const e = document.querySelector(".ticker"), r = e.getBoundingClientRect(); return {overflowX: getComputedStyle(e).overflowX, right: Math.round(r.right), iw: innerWidth, sw: document.documentElement.scrollWidth} })()`);
+    verdict(page, w, h, "the ticker clips its own band and takes no room of the page", tk.overflowX == "hidden" && tk.right <= tk.iw && tk.sw <= tk.iw, JSON.stringify(tk));
+  }
   if (state == "probe" && page.endsWith("index.html") && !page.startsWith("how")) {
     await t.js(`document.getElementById("probe-open").focus()`);
     await t.press("Enter"); await sleep(400);

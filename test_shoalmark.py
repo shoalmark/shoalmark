@@ -4690,6 +4690,42 @@ check("FM-006 · B1 · the git wording's check is not blind: each of the README'
       f"sentence as it was leaves a problem (problems found: {_gctl_saw})", all(_gctl_saw.values()) and len(_gctl_saw) == 10)
 
 
+# --- FM-006 · B1 · no server or account of its own, in the Owner's words: the start pages and the ticker --------------------------------------
+# The same claim, in the sentence of each start page that says what shoalmark needs and in the landing's ticker of each language, as it stands in the README and
+# in How it works: no server or account of its own.
+_NEEDS_START = ("shoalmark needs no server or account of its own, and its ids are ones you can say out loud, like FM-012.",
+                "shoalmark braucht keinen eigenen Server und kein eigenes Konto, und seine IDs kann man aussprechen, etwa FM-012.")
+_NEEDS_TICKER = ('"ticker": "needs no server or account of its own <b>·</b> ids you can say out loud <b>·</b> ',
+                 '"ticker": "braucht keinen eigenen Server und kein eigenes Konto <b>·</b> IDs, die man aussprechen kann <b>·</b> ')
+
+
+def _needs_problems(src):
+    """What is wrong with the start pages' sentence and the two tickers on what shoalmark needs: each holds the Owner's words, in English and in German."""
+    bad = []
+    for path, want in (("docs/index.md", _NEEDS_START[0]), ("docs/de/index.md", _NEEDS_START[1])):
+        if want not in " ".join(src[path].split()):
+            bad.append(f"{path}'s sentence on what shoalmark needs is not the Owner's: no server or account of its own")
+    for path, want in (("overrides/partials/landing/en.html", _NEEDS_TICKER[0]), ("overrides/partials/landing/de.html", _NEEDS_TICKER[1])):
+        if want not in src[path]:
+            bad.append(f"{path}'s ticker does not begin with the Owner's words, no server or account of its own")
+    for path in ("docs/index.md", "docs/de/index.md", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html"):
+        if re.search(r"no server and no account|keinen Server und kein Konto", src[path]):
+            bad.append(f"{path} still says no server and no account")
+    return bad
+
+
+_np = _needs_problems(_gs)
+check("FM-006 · B1 · no server or account of its own, in the Owner's words: both start pages' sentence and the landing's ticker in English and German "
+      f"(problems found: {_np})", _np == [])
+_nctl = {"the English start page as it was": _with(_gs, "docs/index.md", "needs no server or account of its own,", "needs no server and no account,"),
+         "the German start page as it was": _with(_gs, "docs/de/index.md", "braucht keinen eigenen Server und kein eigenes Konto,", "braucht keinen Server und kein Konto,"),
+         "the English ticker as it was": _with(_gs, "overrides/partials/landing/en.html", '"ticker": "needs no server or account of its own <b>', '"ticker": "needs no server and no account <b>'),
+         "the German ticker as it was": _with(_gs, "overrides/partials/landing/de.html", '"ticker": "braucht keinen eigenen Server und kein eigenes Konto <b>', '"ticker": "braucht keinen Server und kein Konto <b>')}
+_nctl_saw = {name: len(_needs_problems(src)) for name, src in _nctl.items()}
+check("FM-006 · B1 · the no-server-or-account check is not blind: each of the English and the German start page and ticker as it was leaves a problem "
+      f"(problems found: {_nctl_saw})", all(_nctl_saw.values()) and len(_nctl_saw) == 4)
+
+
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
@@ -12501,12 +12537,14 @@ else:
                                "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
                 "addr-wide": ("a second step whose address is wider than the dialog and does not wrap", _mutate("addr-wide", "index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>", '><span style="white-space:nowrap;font-size:24px">shoalmark.github.io/shoalmark/probe.txt</span></a>', "360x780"),
                               "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
+                "ticker": ("a ticker that does not clip its band", _mutate("ticker", "index.html", "</head>", "<style>.ticker{overflow:visible!important}</style></head>", "360x780"),
+                           "the ticker clips its own band and takes no room of the page"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element

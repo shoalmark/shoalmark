@@ -73,7 +73,7 @@ geschrieben hat.
 
 ## Was es nicht ist
 
-shoalmark braucht keinen Server und kein Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
+shoalmark braucht keinen eigenen Server und kein eigenes Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
 Arbeitspaket, eine Python-Datei und ein Gate bei jedem Commit, das ablehnt, was sich widerspricht. Läuft mit git auf
 Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
 
