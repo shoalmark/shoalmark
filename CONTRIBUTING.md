@@ -25,12 +25,17 @@ For documentation, use Python 3.12 and an isolated environment:
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-docs.txt
+.venv/bin/python scripts/landing_facts.py
 .venv/bin/zensical build --clean
 .venv/bin/python scripts/llms_txt.py site
 .venv/bin/python scripts/check_site.py site
+.venv/bin/python scripts/landing_facts.py --check site
 ```
 
 On Windows, use `.venv\Scripts\python.exe` and `.venv\Scripts\zensical.exe` instead.
+`scripts/landing_facts.py` writes the landing's figures from the repository's full history before the build. It reads the
+pull requests from GitHub's API without a token, which allows 60 requests an hour, or offline with
+`--pulls scripts/landing_facts.pulls-1-144.json`.
 The agents’ contract is included from README.md; edit its source, not a generated copy.
 
 Keep a pull request focused and describe the behavior change and checks run. Link its issue and
