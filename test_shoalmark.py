@@ -8346,6 +8346,661 @@ def _bm_done(shape, t0, seen):
     return [(f"{_BM_SAID[ev_]}: {_BM_HAND if ev_ == 'by hand' else _BM_ASSERT}", _bm_ok(g_), _bm_saw(g_)) for ev_, g_ in seen.items()]
 
 
+# --- FM-045 · the board's reads fetch nothing — watched by git's own event trace, and by `.git` itself -----------------------------------------------------
+# A git read can start processes of its own, which the interpreter's audit hook never sees. So every board's run of the matrix a hook starts, from the hooks'
+# copy, is watched where git and the disk see it: git writes its trace2 events for the event, and a board's run is every git one level below the git that
+# started its hook, started while the hook ran, with all below them (git's own session ids, `GIT_TRACE2_PARENT_SID`); and `.git`'s objects and refs are read
+# before the hook and after it. The judgement: no git of a board's run starts a process by itself — but the SSH signature check its `%G?` reads ask for —, and
+# `.git`'s objects and refs are what they were before it; for the board refreshed by hand, `.git`'s. The matrix's own helpers are wrapped here, never edited,
+# so each of its blocks runs watched; and its shapes gain a blobless and a treeless clone, made here with filters from an origin that allows them.
+_BW_HOOKS = ("post-checkout", "post-merge", "post-rewrite")       # the hooks that refresh the board
+_BW_VERIFY = ("find-principals", "verify", "check-novalidate")    # what `ssh-keygen -Y` is asked for git's `%G?`
+
+
+def _bw_no_program(path):
+    """Whether `path` is the signature program the board's reads name for an OpenPGP or X.509 signature — `no-signature-program` under the tool's own file,
+    its own copy's or the hooks' copy's: a path below a regular file, which no file system can hold, so that git's start of it runs nothing."""
+    head_, tail_ = os.path.split(str(path))
+    return tail_ == "no-signature-program" and os.path.basename(head_) == "shoalmark.py" and os.path.isfile(head_)
+_BW_ASSERT = ("no git of the board's run starts a process by itself but the SSH signature check its `%G?` reads ask for, and `.git`'s objects and refs "
+              "are what they were before it")
+_BW_STATE_PY = r'''import json, os, sys
+
+
+def read(path):
+    with open(path, "rb") as f:
+        return f.read().decode("utf-8", "replace")
+
+
+def state(common):
+    """`.git`'s objects and refs, at the common git directory `common`: {path: size} of each file under `objects/`, and {path: content} of each ref file,
+    `packed-refs` and a reftable's tables — a lock, held a moment by whoever holds it, aside."""
+    objects, refs = {}, {}
+    for top, into in (("objects", objects), ("refs", refs), ("reftable", refs)):
+        for dp, _dn, fn in os.walk(os.path.join(common, top)):
+            for name in fn:
+                if name.endswith(".lock"):
+                    continue
+                path = os.path.join(dp, name)
+                try:
+                    into[os.path.relpath(path, common).replace(os.sep, "/")] = os.path.getsize(path) if into is objects else read(path)
+                except OSError:
+                    pass
+    if os.path.isfile(os.path.join(common, "packed-refs")):
+        refs["packed-refs"] = read(os.path.join(common, "packed-refs"))
+    return {"objects": objects, "refs": refs}
+
+
+if __name__ == "__main__":                  # the watch's wrapper: one snapshot, logged with the hook, its pid, and the trace git writes for the event
+    common, log, pid, hook, when = sys.argv[1:6]
+    with open(log, "a", encoding="utf-8") as f:
+        f.write(json.dumps(dict(state(common), pid=pid, hook=hook, when=when, trace=os.environ.get("GIT_TRACE2_EVENT", ""))) + "\n")
+'''
+_bw_ns = {"__name__": "rv_snap"}; exec(compile(_BW_STATE_PY, "rv-snap.py", "exec"), _bw_ns); _bw_state = _bw_ns["state"]
+_BW_HAND = {}               # the board refreshed by hand in each matrix shape: {the shape's folder: [what changed in `.git`, …]}
+_bw_v = re.search(r"(\d+)\.(\d+)", subprocess.run(["git", "version"], capture_output=True, text=True, env=_ENV).stdout)
+_BW_NEW_GIT = bool(_bw_v) and (int(_bw_v.group(1)), int(_bw_v.group(2))) >= (2, 44)      # this machine's git keeps a read from fetching (`GIT_NO_LAZY_FETCH`)
+
+
+def _bw_changed(before, after):
+    """What differs between two snapshots of `.git` (`_bw_state`): each object file or ref added, gone or changed."""
+    out_ = []
+    for k_ in ("objects", "refs"):
+        b_, a_ = before[k_], after[k_]
+        out_ += sorted(f"{k_[:-1]} {p_} " + ("added" if p_ not in b_ else "gone" if p_ not in a_ else "changed") for p_ in set(b_) | set(a_) if b_.get(p_) != a_.get(p_))
+    return out_
+
+
+def _bw_trace(trace, hooks=False):
+    """From git's trace2 events at `trace`, a board's run's own processes: with `hooks`, the gits each hook that refreshes the board ran — one level below the
+    git that started the hook, started between that git's `child_start` and `child_exit` for it — else every git the trace holds (a run started with the trace
+    set); and every process below them. (how many gits of theirs, how many SSH signature checks they started for `%G?`, every other process they started by
+    themselves — as (the command that started it, its first words) —, the commands they ran, how many starts of the board's no-signature program they made —
+    each of which runs nothing)."""
+    evs_ = []
+    for l_ in (trace.read_text(encoding="utf-8", errors="replace").splitlines() if trace.is_file() else []):
+        try:
+            evs_.append(json.loads(l_))
+        except ValueError:
+            continue
+    starts_ = {str(e_["sid"]): (str(e_.get("time", "")), [str(a_) for a_ in e_.get("argv") or []]) for e_ in evs_ if e_.get("event") == "start" and "sid" in e_}
+    tops_ = set(starts_)
+    if hooks:
+        opened_, spans_ = {}, []
+        for e_ in evs_:
+            k_ = (e_.get("sid"), e_.get("child_id"))
+            if e_.get("event") == "child_start" and e_.get("child_class") == "hook" and e_.get("hook_name") in _BW_HOOKS:
+                opened_[k_] = e_
+            elif e_.get("event") == "child_exit" and k_ in opened_:
+                o_ = opened_.pop(k_)
+                spans_.append((str(o_.get("sid")), str(o_.get("time", "")), str(e_.get("time", ""))))
+        tops_ = {s_ for s_, (t_, _a) in starts_.items() if any(s_.rpartition("/")[0] == p_ and t0_ < t_ < t1_ for p_, t0_, t1_ in spans_)}
+    board_ = {s_ for s_ in starts_ if s_ in tops_ or any(s_.startswith(b_ + "/") for b_ in tops_)}
+    kids_ = [(str(e_["sid"]), [str(a_) for a_ in e_.get("argv") or []]) for e_ in evs_ if e_.get("event") == "child_start" and str(e_.get("sid")) in board_]
+    checks_, other_, none_ = 0, [], 0
+    for sid_, argv_ in kids_:
+        by_ = starts_.get(sid_, ("", []))[1]
+        if (argv_[:1] and re.split(r"[\\/]", argv_[0])[-1].lower() in ("ssh-keygen", "ssh-keygen.exe") and argv_[1:2] == ["-Y"] and argv_[2:3]
+                and argv_[2] in _BW_VERIFY and _git_command(by_) == "log" and any("%G" in a_ for a_ in by_)):
+            checks_ += 1
+        elif argv_[:1] and _bw_no_program(argv_[0]) and _git_command(by_) == "log" and any("%G" in a_ for a_ in by_):
+            none_ += 1
+        else:
+            other_.append((_git_command(by_) or "?", argv_[:4]))
+    return len(board_), checks_, other_, sorted({_git_command(starts_[s_][1]) for s_ in board_} - {""}), none_
+
+
+def _bw_runs(log, trace):
+    """The board's runs hooks started for one event — the watch's snapshots that name the event's trace, each `before` paired with the `after` of its own
+    process —, each as (the hook, what changed in `.git` between them)."""
+    runs_, open_ = [], {}
+    for l_ in (log.read_text(encoding="utf-8").splitlines() if log.is_file() else []):
+        r_ = json.loads(l_)
+        if not (r_["trace"] and Path(r_["trace"]).name == trace.name):
+            continue
+        if r_["when"] == "before":
+            open_[r_["pid"]] = r_
+        else:
+            b_ = open_.pop(r_["pid"], None)
+            runs_.append((r_["hook"], _bw_changed(b_, r_) if b_ else ["no snapshot before it"]))
+    return runs_ + [(b_["hook"], ["no snapshot after it"]) for b_ in open_.values()]
+
+
+def _bw_watch(trace, log):
+    """One event's watch: the board's runs its hooks started, and what their gits started by themselves."""
+    gits_, checks_, other_, commands_, none_ = _bw_trace(trace, hooks=True)
+    return {"runs": _bw_runs(log, trace), "gits": gits_, "checks": checks_, "other": other_, "commands": commands_, "none": none_}
+
+
+def _bw_ok(w):
+    """The watch's judgement: a board's run was seen, with gits of its own; none of them started a process by itself but the SSH check; `.git` is as it was."""
+    return bool(w["runs"]) and w["gits"] > 0 and not w["other"] and not any(c_ for _h, c_ in w["runs"])
+
+
+def _bw_saw(w):
+    changed_ = [c_ for _h, c_ in w["runs"] if c_]
+    return (f"{len(w['runs'])} board's run(s), {'untraced:' if w['gits'] is None else w['gits']} git process(es) of theirs, {w['checks']} SSH check(s)"
+            + (f", {w['none']} start(s) of the no-signature program, which runs nothing" if w.get("none") else "")
+            + (f", {len(w['other'])} process(es) started by themselves {w['other'][:3]}" if w["other"] else "")
+            + (f", .git changed by {len(changed_)} run(s), {sum(map(len, changed_))} path(s): {changed_[0][:4]}" if changed_ else ""))
+
+
+def _bw_paths(at):
+    """(the hooks folder git runs for the checkout `at` — `core.hooksPath`'s, or the git directory's —, its common git directory), each absolute."""
+    rp_ = lambda *a: Path(subprocess.run(["git", "-C", str(at), "rev-parse", *a], capture_output=True, text=True, env=_ENV).stdout.strip())
+    hooks_, common_ = rp_("--git-path", "hooks"), rp_("--git-common-dir")
+    return (hooks_ if hooks_.is_absolute() else at / hooks_), (common_ if common_.is_absolute() else at / common_)
+
+
+def _bw_wrap(base, at, stub=None):
+    """Wrap each hook of the checkout `at` that refreshes the board in the watch: the hook itself, moved into `rv-watched/` with the folder's other files (a
+    runner reads its commands beside it), run by `sh` between two snapshots of `.git` (`_bw_state`, logged to `base/rv-watch.jsonl` with the trace git
+    writes for the event); `stub`: that folder first on the run's PATH. The log."""
+    hooks_, common_ = _bw_paths(at)
+    snap_, log_, held_ = base / "rv-snap.py", base / "rv-watch.jsonl", hooks_ / "rv-watched"
+    snap_.write_text(_BW_STATE_PY, encoding="utf-8")
+    if held_.is_dir():
+        return log_
+    held_.mkdir()
+    for f_ in hooks_.iterdir():
+        if f_.is_file():
+            shutil.copy2(f_, held_ / f_.name)
+    q_ = lambda p_: '"' + Path(p_).as_posix() + '"'
+    for h_ in _BW_HOOKS:
+        if (held_ / h_).is_file():
+            snap_line_ = f"{q_(sys.executable)} {q_(snap_)} {q_(common_)} {q_(log_)} $$ {h_}"
+            (hooks_ / h_).write_bytes((
+                "#!/bin/sh\n# the suite's watch of the board's run this hook starts (FM-045): `.git` before it and after it\n"
+                f"{snap_line_} before\n" + (f'PATH="{Path(stub).as_posix()}:$PATH" ' if stub else "")
+                + f'sh {q_(held_ / h_)} "$@"\ncode=$?\n{snap_line_} after\nexit $code\n').encode("utf-8"))
+            (hooks_ / h_).chmod(0o755)
+    return log_
+
+
+def _bw_program(base, at, tag, *a, path=None):
+    """The tool under test as a program at the checkout `at` (`_tool_run`) — the board's run, or the Owner's digest — watched as a hook's board's run is: git's
+    trace for it (`trace-<tag>.json`), every git in it its own, `.git` before and after it; `path`: the PATH it runs with. (exit, stdout, stderr, the watch)"""
+    _h, common_ = _bw_paths(at)
+    trace_, before_ = base / f"trace-{tag}.json", _bw_state(common_)
+    c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, *a, env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_), **({"PATH": path} if path else {})))
+    gits_, checks_, other_, commands_, none_ = _bw_trace(trace_)
+    return c_, o_, e_, {"runs": [(tag, _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_, "other": other_, "commands": commands_,
+                        "none": none_}
+
+
+def _bw_partial(base, root, filt, ahead=False):
+    """A partial clone of the matrix's origin, made with `--filter=<filt>` over `file://` from an origin that allows filters (`uploadpack.allowFilter`): the
+    matrix's branches pushed there first, with `cold`, a branch whose file no reader asks for; this clone's own branches cut from origin's, the Owner's key and
+    signers file set as the matrix sets them, the hooks installed from the tool under test — and no board yet: the first board's run in it is the one a check
+    watches. `ahead`: origin's `main` then moves one commit — the signers file and a tracker changed — and this clone fetches it, which its filter keeps from
+    bringing what it filters."""
+    origin_, part_ = base / "origin.git", base / "partial"
+    git(origin_, "config", "uploadpack.allowFilter", "true")
+    git(root, "switch", "-q", "-c", "cold", "main"); (root / "cold.txt").write_text("a file no reader asks for\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "cold"); git(root, "switch", "-q", "main"); git(root, "push", "-q", "origin", "side", "feature", "work", "cold")
+    git(base, "clone", "-q", f"--filter={filt}", origin_.as_uri(), str(part_))
+    said_ = lambda k_: subprocess.run(["git", "-C", str(root), "config", "--get", k_], capture_output=True, text=True, env=_ENV).stdout.strip()
+    signers_ = Path(said_("gpg.ssh.allowedSignersFile")); signers_ = part_ / signers_.relative_to(root) if signers_.is_relative_to(root) else signers_
+    for k_, v_ in (("user.name", "owner"), ("user.email", "o@x"), ("gpg.format", "ssh"), ("user.signingkey", said_("user.signingkey")),
+                   ("gpg.ssh.allowedSignersFile", str(signers_)), ("commit.gpgsign", "false")):
+        git(part_, "config", k_, v_)
+    for b_ in ("side", "feature", "work"):
+        git(part_, "branch", "-q", b_, f"origin/{b_}")
+    if ahead:
+        for p_, old_, new_ in (("docs/work-tracker/AP-502-x.md", "One thing is left.", "Two things are left."), ("docs/work-tracker/allowed_signers", "", "")):
+            if (root / p_).is_file():
+                (root / p_).write_text((root / p_).read_text(encoding="utf-8").replace(old_, new_) if old_ else (root / p_).read_text(encoding="utf-8") + "# kept on main\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "origin moves on", "-S", "--author=owner <o@x>"); git(root, "push", "-q", "origin", "main")
+        git(part_, "fetch", "-q", "origin")
+    _tool_run(HERE / "shoalmark.py", part_, "--install-hook")
+    return part_
+
+
+_bm_events_unwatched, _bm_done_unwatched, _bm_refresh_unwatched = _bm_events, _bm_done, _bm_refresh
+
+
+def _bm_refresh(at, *a, **k):
+    """The board refreshed by hand as a hook refreshes it (`_bm_refresh_unwatched`), `.git` read before it and after it — and, where that run writes git's trace
+    (`trace-by-hand-<the checkout's name>.json` beside it), every git in it watched: what it saw is kept for its shape's check (`_BW_HAND`)."""
+    _h, common_ = _bw_paths(at)
+    trace_ = at.parent / f"trace-by-hand-{at.name}.json"; trace_.unlink(missing_ok=True)
+    before_ = _bw_state(common_)
+    out_ = _bm_refresh_unwatched(at, *a, **k)
+    gits_, checks_, other_, commands_, none_ = _bw_trace(trace_) if trace_.is_file() else (None, 0, [], [], 0)
+    _BW_HAND.setdefault(at.parent, []).append({"runs": [("by hand", _bw_changed(before_, _bw_state(common_)))], "gits": gits_, "checks": checks_,
+                                               "other": other_, "commands": commands_, "none": none_})
+    return out_
+
+
+def _bm_events(base, at, home, *a, **k):
+    """The matrix's events (`_bm_events_unwatched`), every board's run their hooks start watched (`_bw_wrap`): the watch of each event a hook fired rides with
+    what it saw."""
+    log_ = _bw_wrap(base, at)
+    seen_ = _bm_events_unwatched(base, at, home, *a, **k)
+    for ev_, g_ in seen_.items():
+        g_["base"] = base
+        if g_.get("hook") and (base / f"trace-{ev_}.json").is_file():
+            g_["watch"] = _bw_watch(base / f"trace-{ev_}.json", log_)
+    return seen_
+
+
+def _bm_done(shape, t0, seen, *a, **k):
+    """The matrix's rows for a shape (`_bm_done_unwatched`) — and the watch's own checks: each event's board's runs, and the board refreshed by hand."""
+    rows_ = _bm_done_unwatched(shape, t0, seen, *a, **k)
+    for ev_, g_ in seen.items():
+        if g_.get("watch") is not None:
+            check(f"FM-045 · the board matrix, watched by git's own trace · {shape} · {_BM_SAID[ev_]}: {_BW_ASSERT} (saw {_bw_saw(g_['watch'])})", _bw_ok(g_["watch"]))
+    hand_ = _BW_HAND.pop(next((g_["base"] for g_ in seen.values() if "base" in g_), None), [])
+    traced_ = [w_ for w_ in hand_ if w_["gits"] is not None]
+    if hand_:                                               # each run by hand: `.git` as it was; and where it was traced, its gits judged as a hook's run's are
+        check(f"FM-045 · the board matrix, watched by git's own trace · {shape} · the board refreshed by hand, as a hook refreshes it ({len(hand_)} run(s), "
+              f"{len(traced_)} traced): `.git`'s objects and refs are what they were before it, and where git's trace was written for it, no git of the run starts "
+              f"a process by itself but the SSH signature check its `%G?` reads ask for (saw {[_bw_saw(w_) for w_ in hand_ if not _bw_hand_ok(w_)][:2] or 'each as asserted'})",
+              all(_bw_hand_ok(w_) for w_ in hand_))
+    return rows_
+
+
+def _bw_hand_ok(w):
+    """A run by hand's judgement: `.git` as it was; where it was traced, gits of its own, and none of them started a process by itself but the SSH check."""
+    return not any(c_ for _h, c_ in w["runs"]) and (w["gits"] is None or (w["gits"] > 0 and not w["other"]))
+
+
+# the board's two reads of the clone itself — whether it is partial, from its configuration, and git's version, in a partial clone — as the tool sends them
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); fm.configure(root)
+    keys_ = getattr(fm, "PROMISOR_KEYS", r"^(extensions\.partialclone|remote\..*\.(promisor|partialclonefilter))$")
+    sent_ = argv_of(lambda: (fm.promisor_remotes(), fm.git_version())) if hasattr(fm, "promisor_remotes") and hasattr(fm, "git_version") else []
+    bent_ = [["git", "config", "--get-regexp", keys_], ["git", "config", "-z", "--get-regexp", "."], ["git", "config", "-z", "--get-regexp", keys_, "x"],
+             ["git", "config", "--get-all", "remote.origin.promisor"], ["git", "config", "--list"], ["git", "config", "-z", "--list"],
+             ["git", "version", "--build-options"], ["git", "-c", "core.fsmonitor=x", "version"], ["git", "-c", "core.fsmonitor=x", "config", "-z", "--get-regexp", keys_]]
+    check(f"FM-045 · the board's reads of the clone's configuration and of git's version are read-only git as the tool sends them — `config -z --get-regexp` "
+          f"with the promisor keys, the one form of `--get-regexp` the list admits, and `version` with nothing after it —; another pattern, a word after it, "
+          f"`--get-all`, `--list`, `version` with an option, or a foreign `-c` do not pass (saw {sent_})",
+          [s_[1:] for s_ in sent_] == [["config", "-z", "--get-regexp", keys_], ["version"]] and all(fm.read_only_git(s_) for s_ in sent_)
+          and not any(fm.read_only_git(b_) for b_ in bent_))
+    for k_, v_ in (("remote.a.promisor", "true"), ("remote.b.promisor", "false"), ("remote.c.d.partialclonefilter", "blob:none"), ("extensions.partialClone", "e")):
+        git(root, "config", k_, v_)
+    named_ = fm.promisor_remotes() if hasattr(fm, "promisor_remotes") else None
+    git(root, "config", "--unset", "remote.a.promisor"); git(root, "config", "--unset", "remote.c.d.partialclonefilter"); git(root, "config", "--unset", "extensions.partialClone")
+    none_ = fm.promisor_remotes() if hasattr(fm, "promisor_remotes") else None
+    check(f"FM-045 · a partial clone is told from its configuration alone, in one read: every remote that promises what the clone lacks — a `promisor` that is "
+          f"true, a `partialclonefilter`, the remote `extensions.partialClone` names —, and none where the one `promisor` left is false (saw {named_}, then {none_})",
+          sorted(named_ or []) == ["a", "c.d", "e"] and none_ == [])
+    rm_git(root)
+fm.configure(HERE)
+
+# the board's run in a fresh partial clone that lacks what it reads — an answer on its way on origin, and origin's signers file, which origin moved since
+if not _BW_NEW_GIT:
+    _skipped("FM-045 · the board's run in a partial clone that lacks what it reads", 8, "git here is older than 2.44 and cannot keep a read from fetching — the checks where git is older than 2.44 run here")
+for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")) if _BW_NEW_GIT else ():
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree", answers=True); part_ = _bw_partial(base_, root_, filt_, ahead=True); _BW_HAND.pop(base_, None)
+        _h, common_ = _bw_paths(part_)
+        c_, o_, e_, w_ = _bw_program(base_, part_, "fresh", "--html-only")
+        line_ = [l_ for l_ in e_.splitlines() if l_.startswith("board: not read — ")]
+        check(f"FM-045 · the board's run in {shape_} that lacks what it reads — an answer on its way on origin, and origin's signers file, moved since —: exit 0, "
+              f"the board written, no traceback; one line says what it could not read and the command that reads it; nothing is fetched — {_BW_ASSERT}; and it read "
+              f"whether the clone is partial, from its configuration (saw exit {c_}, {line_[:1]}, {_bw_saw(w_)}, commands {w_['commands']})",
+              c_ == 0 and o_.startswith("board: file:") and "Traceback" not in o_ + e_ and len(line_) == 1 and "fetching what the clone lacks" in line_[0]
+              and _bw_ok(w_) and {"config", "version"} <= set(w_["commands"]))
+        c2_, o2_, e2_ = run(part_, "--html-only", git_env={"GIT_TRACE2_EVENT": str(base_ / "trace-fresh-in.json")})
+        unread_, page_ = list(getattr(fm, "BOARD_UNREAD", [])), (_bm_board(part_) or b"").decode("utf-8", "replace")
+        g2_, k2_, x2_, _c, _n = _bw_trace(base_ / "trace-fresh-in.json")
+        check(f"FM-045 · the board's run in process, in {shape_} that lacks what it reads: what it could not read is named — what is on its way on "
+              f"origin/answer/ap-507; where the board reads who set an ask, as it can in the blobless clone, the signers file on origin/main —, and nothing that "
+              f"rests on it is said: AP-507's answer is not shown on its way, and no ask is refused for who set it; nothing is fetched (saw exit {c2_}, {unread_}, "
+              f"started by themselves {x2_[:2]})",
+              c2_ == 0 and "what is on its way on origin/answer/ap-507" in unread_ and ("the signers file on origin/main" in unread_ or filt_ != "blob:none")
+              and not re.search(_bm_way(part_, "AP-507")[1], page_) and "version control names no commit for this line" not in page_ and g2_ > 0 and not x2_)
+        b3_, t3_ = _bw_state(common_), base_ / "trace-control.json"
+        subprocess.run(["git", "-C", str(part_), "cat-file", "-p", "refs/remotes/origin/cold:cold.txt"], capture_output=True,
+                       env=dict(_ENV, GIT_TRACE2_EVENT=str(t3_)))
+        g3_, k3_, x3_, _c, _n = _bw_trace(t3_); ch3_ = _bw_changed(b3_, _bw_state(common_))
+        check(f"FM-045 · the watch's control, in {shape_}: a read made with git's own default — as the board's were made before — fetches what the clone lacks; "
+              f"the watch finds the processes it started by itself and the objects it wrote, and its judgement fails (saw {x3_[:2]}, .git changed {ch3_[:3]})",
+              any("fetch" in a_ for _c, a_ in x3_) and any(c_.endswith(" added") for c_ in ch3_)
+              and not _bw_ok({"runs": [("control", ch3_)], "gits": g3_, "checks": k3_, "other": x3_}))
+        c4_ = _tool_run(HERE / "shoalmark.py", part_)[0]            # the command the line names: the default run, whose reads keep git's own default
+        c5_, o5_, e5_, w5_ = _bw_program(base_, part_, "after", "--html-only")
+        page5_ = (_bm_board(part_) or b"").decode("utf-8", "replace")
+        check(f"FM-045 · in {shape_}, the command the line names reads what the clone lacks, and the board's next run reads it: AP-507's answer on its way, no "
+              f"line, nothing fetched by the board's run (saw the default run's exit {c4_}, the board's {c5_}, {[l_ for l_ in e5_.splitlines() if 'not read' in l_][:1]}, "
+              f"{_bw_saw(w5_)})",
+              c5_ == 0 and not any(l_.startswith("board: not read") for l_ in e5_.splitlines()) and bool(re.search(_bm_way(part_, "AP-507")[1], page5_)) and _bw_ok(w5_))
+        rm_git(part_); rm_git(root_)
+fm.configure(HERE)
+
+# the board matrix's own shapes, two more: a blobless and a treeless clone of its origin, every event and every board's run in it, watched
+if not _BW_NEW_GIT:
+    _skipped("FM-045 · the board matrix · a blobless and a treeless clone", 16, "git here is older than 2.44 and cannot keep a read from fetching — the checks where git is older than 2.44 run here")
+for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")) if _BW_NEW_GIT else ():
+    with tempfile.TemporaryDirectory() as d:
+        t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree", answers=True); _BW_HAND.pop(base_, None)
+        part_ = _bw_partial(base_, root_, filt_)
+        for said_, ok_, saw_ in _bm_done(shape_, t0_, _bm_events(base_, part_, "main")):
+            check(f"FM-045 · the board matrix · {shape_} of its origin, made with a filter — its answer on origin not in it · "
+                  + (said_ if ": " in said_ else f"{said_}: {_BM_ASSERT}") + f" (saw {saw_})", ok_)
+        rm_git(part_); rm_git(root_)
+
+# where git is older than 2.44 — a stub that says 2.43 and, as such a git, does not know the switch, everything else the real git's — in a blobless clone
+_BW_STUB = ('#!/bin/sh\n# a git that says it is 2.43.0 and, as such a git, does not know the switch that keeps a read from fetching: the rest is the real git\'s\n'
+            'if [ "$1" = "version" ] || [ "$1" = "--version" ]; then echo "git version 2.43.0"; exit 0; fi\nunset GIT_NO_LAZY_FETCH\nexec "{git}" "$@"\n')
+if os.name == "nt":
+    _skipped("FM-045 · where git is older than 2.44, a stub in its place", 4, "a stub `git` is a shell script, which Windows does not start as `git` — the check in process below runs here")
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, answers=True); part_ = _bw_partial(base_, root_, "blob:none"); _BW_HAND.pop(base_, None)
+        stub_ = base_ / "stub"; stub_.mkdir(); (stub_ / "git").write_text(_BW_STUB.replace("{git}", shutil.which("git")), encoding="utf-8"); (stub_ / "git").chmod(0o755)
+        path_ = f"{stub_}{os.pathsep}{os.environ.get('PATH', '')}"
+        log_ = _bw_wrap(base_, part_, stub=stub_); _h, common_ = _bw_paths(part_); board_ = _bm_board(part_)
+        code_, said_ = _bm_fire(part_, base_ / "trace-old.json", "switch", "-q", "side")
+        w_, hooks_ = _bw_watch(base_ / "trace-old.json", log_), _bm_trace(base_ / "trace-old.json")
+        line_ = [l_ for l_ in said_.splitlines() if l_.startswith("board: not refreshed — this is a partial clone")]
+        check(f"FM-045 · where git is older than 2.44 — a stub that says 2.43 and, as such a git, does not know the switch — in a blobless clone that lacks what "
+              f"the board reads: `git switch` succeeds and its checkout hook exits 0; the board says in one line that it is not refreshed here, and why — a partial "
+              f"clone, and a git that cannot keep a read from fetching —, leaves the board as it was, and reads nothing that could fetch: {_BW_ASSERT} (saw exit "
+              f"{code_}, hooks {hooks_}, {line_[:1]}, board unchanged {_bm_board(part_) == board_}, {_bw_saw(w_)}, commands {w_['commands']})",
+              code_ == 0 and hooks_.get("post-checkout") == [0] and len(line_) == 1 and "git 2.43 " in line_[0] and _bm_board(part_) == board_ and _bw_ok(w_)
+              and set(w_["commands"]) <= {"rev-parse", "config"} and "Traceback" not in said_)
+        said2_ = {}
+        for a_ in ("--owner", "--standup"):
+            c2_, o2_, e2_, w2_ = _bw_program(base_, part_, a_.strip("-"), a_, path=path_)
+            said2_[a_] = (c2_, [l_ for l_ in (o2_ + e2_).splitlines() if l_.strip()], w2_)
+        check(f"FM-045 · where git is older than 2.44, in the same clone: `--owner` and `--standup` say the same, in one line — nothing read here, and why —, exit "
+              f"0, no traceback, and read nothing that could fetch: {_BW_ASSERT} (saw {[(a_, c_, ls_[:2], _bw_saw(w_)) for a_, (c_, ls_, w_) in said2_.items()]})",
+              all(c_ == 0 and len(ls_) == 1 and ls_[0].startswith(f"{a_}: nothing read — this is a partial clone") and "git 2.43 " in ls_[0] and _bw_ok(w_)
+                  and set(w_["commands"]) <= {"rev-parse", "config"} for a_, (c_, ls_, w_) in said2_.items()))
+        b3_ = _bw_state(common_)
+        subprocess.run([str(stub_ / "git"), "-C", str(part_), "cat-file", "-e", "refs/remotes/origin/cold:cold.txt"], capture_output=True,
+                       env=dict(_ENV, GIT_NO_LAZY_FETCH="1"))
+        ch3_ = _bw_changed(b3_, _bw_state(common_))
+        check(f"FM-045 · the stub's control: with the switch set, a read through it fetches what the clone lacks, as a git older than 2.44 does — so that the "
+              f"board and the digests read nothing above is the tool's own doing (saw .git changed {ch3_[:3]})", any(c_.endswith(" added") for c_ in ch3_))
+        c6_, o6_, e6_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_BM_ENV, PATH=path_))
+        check(f"FM-045 · where git is older than 2.44 in a clone that is not partial, the board's run refreshes the board as ever — no read of it can fetch (saw "
+              f"exit {c6_}, {(o6_ + e6_).strip()[:200]!r})", c6_ == 0 and o6_.startswith("board: file:") and "not refreshed" not in e6_)
+        rm_git(part_); rm_git(root_)
+fm.configure(HERE)
+
+# …and the same in process, on every system: git's version read as 2.43 where the board reads it
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, answers=True); part_ = _bw_partial(base_, root_, "blob:none"); _BW_HAND.pop(base_, None)
+    board_, real_, got_ = _bm_board(part_), getattr(fm, "git_version", None), {}
+    fm.git_version = lambda: (2, 43)
+    try:
+        for a_ in ("--html-only", "--owner", "--standup"):
+            box_ = []
+            started_ = argv_of(lambda: box_.append(run(part_, a_)))
+            got_[a_] = (box_[0][0], [l_ for l_ in (box_[0][1] + box_[0][2]).splitlines() if l_.strip()], sorted({_git_command(s_) for s_ in started_} - {""}))
+    finally:
+        if real_ is not None:
+            fm.git_version = real_
+        else:
+            del fm.git_version
+    lead_ = {"--html-only": "board: not refreshed — this is a partial clone", "--owner": "--owner: nothing read — this is a partial clone",
+             "--standup": "--standup: nothing read — this is a partial clone"}
+    check(f"FM-045 · where git is older than 2.44 — its version read as 2.43, in process, on every system — in a blobless clone: the board's run, `--owner` and "
+          f"`--standup` each say in one line that they read nothing here, and why, exit 0, leave the board as it was, and start no git but the reads of the "
+          f"clone's own place and configuration (saw {got_})",
+          all(c_ == 0 and len(ls_) == 1 and ls_[0].startswith(lead_[a_]) and "git 2.43 " in ls_[0] and set(cmds_) <= {"rev-parse", "config"}
+              for a_, (c_, ls_, cmds_) in got_.items()) and _bm_board(part_) == board_)
+    rm_git(part_); rm_git(root_)
+fm.configure(HERE)
+
+# the board's reads run with the settings that start a program fixed: each such setting, configured as a repository configures it, points at a marker program —
+# a script that writes its name to a log —, in a clone of the matrix's origin that holds what each one acts on: an OpenPGP- and an X.509-signed answer on
+# origin, an attribute naming a diff driver for every tracker, SSH-signed commits. The board's run as a program, `--owner`, and a checkout firing the hooks'
+# copy start no marker, and no git of theirs starts anything but the SSH signature check (`_bw_ok`), where a read with git's own default in the same clone does.
+_BW_MARKER = '#!/bin/sh\n# a marker program: it writes its name and its arguments to the log, and {does}\nprintf "%s %s\\n" "{name}" "$*" >> "{log}"\n{tail}'
+
+
+def _bw_signed_by_hand(root, tid, head):
+    """`answer/<tid>` on origin, cut from `main`: one commit that writes `done:` into `tid`'s tracker, carrying a signature header `head` — an OpenPGP or an
+    X.509 one, made by hand, which no key made: git starts that format's program to read it."""
+    git(root, "switch", "-q", "-c", f"answer/{tid.lower()}", "main")
+    t_ = next(root.glob(f"docs/work-tracker/{tid}-*.md"))
+    t_.write_text(t_.read_text(encoding="utf-8").replace('hook: "h of', 'done: "it is done · here"\nhook: "h of'), encoding="utf-8")
+    git(root, "add", "-A")
+    tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    parent_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    body_ = (f"tree {tree_}\nparent {parent_}\nauthor owner <o@x> 1700000000 +0000\ncommitter owner <o@x> 1700000000 +0000\ngpgsig {head}\n\n{tid}: done\n")
+    sha_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=body_, capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "update-ref", f"refs/heads/answer/{tid.lower()}", sha_); git(root, "push", "-q", "origin", f"answer/{tid.lower()}")
+    git(root, "switch", "-q", "-f", "main")
+    return sha_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree", answers=True); _BW_HAND.pop(base_, None)
+    (root_ / ".gitattributes").write_text("*.md diff=probe\n", encoding="utf-8")
+    git(root_, "add", "-A"); git(root_, "commit", "-qm", "an attribute names a diff driver for every tracker", "-S", "--author=owner <o@x>"); git(root_, "push", "-q", "origin", "main")
+    pgp_ = _bw_signed_by_hand(root_, "AP-502", "-----BEGIN PGP SIGNATURE-----\n \n iQ==\n -----END PGP SIGNATURE-----")
+    x509_ = _bw_signed_by_hand(root_, "AP-503", "-----BEGIN SIGNED MESSAGE-----\n MA==\n -----END SIGNED MESSAGE-----")
+    git(root_, "fetch", "-q", "origin"); _tool_run(HERE / "shoalmark.py", root_, "--install-hook")
+    log_, wrap_ = base_ / "markers.log", _bw_wrap(base_, root_)
+    def marker_(name_, does_, tail_):
+        p_ = base_ / f"marker-{name_}"
+        p_.write_text(_BW_MARKER.format(does=does_, name=name_, log=log_.as_posix(), tail=tail_), encoding="utf-8"); p_.chmod(0o755)
+        return p_.as_posix()
+    rel_ = "docs/work-tracker/AP-501-x.md"
+    shapes_ = {         # each setting: (what it is, the setting as the repository configures it, the read with git's own default that starts it, what it starts)
+        "gpg": ("`gpg.program`, the OpenPGP signature program", [("gpg.program", marker_("gpg", "fails, as no key verifies", "exit 1\n"))],
+                    ["log", "-1", "--format=%G?", "refs/remotes/origin/answer/ap-502"], "gpg"),
+        "gpgsm": ("`gpg.x509.program`, the X.509 signature program", [("gpg.x509.program", marker_("gpgsm", "fails, as no key verifies", "exit 1\n"))],
+                    ["log", "-1", "--format=%G?", "refs/remotes/origin/answer/ap-503"], "gpgsm"),
+        "showSignature": ("`log.showSignature`, which makes every `git log` verify what it shows", [("log.showSignature", "true")],
+                    ["log", "-1", "--format=%an", "main"], "ssh-keygen"),
+        "textconv": ("a diff driver's `textconv`, which the tree's attribute names for every tracker", [("diff.probe.textconv", marker_("textconv", "prints the file", 'cat "$1"\n'))],
+                    ["log", "-1", "--format=%h", "-G", "^next:", "--", rel_], "textconv"),
+        "fsmonitor": ("`core.fsmonitor`, a file-system monitor hook", [("core.fsmonitor", marker_("fsmonitor", "names no path", "exit 1\n"))],
+                    ["ls-files", "-z", "--", rel_], "fsmonitor"),
+    }
+    for tag_, (what_, sets_, plain_, starts_) in shapes_.items():
+        for k_, v_ in sets_:
+            git(root_, "config", k_, v_)
+        log_.write_text("", encoding="utf-8")
+        t0_ = base_ / f"trace-plain-{tag_}.json"
+        subprocess.run(["git", "-C", str(root_), *plain_], capture_output=True, env=dict(_ENV, GIT_TRACE2_EVENT=str(t0_)))
+        plain_marks_ = [l_ for l_ in log_.read_text(encoding="utf-8").splitlines() if l_.strip()]
+        plain_kids_ = [Path((json.loads(l_).get("argv") or ["?"])[0]).name for l_ in t0_.read_text(encoding="utf-8").splitlines()
+                       if l_.strip() and json.loads(l_).get("event") == "child_start"] if t0_.is_file() else []
+        live_ = (starts_ in plain_kids_) if starts_ == "ssh-keygen" else bool(plain_marks_)
+        log_.write_text("", encoding="utf-8")
+        c1_, o1_, e1_, w1_ = _bw_program(base_, root_, f"{tag_}-board", "--html-only")
+        c2_, o2_, e2_, w2_ = _bw_program(base_, root_, f"{tag_}-owner", "--owner")
+        marks_ = [l_ for l_ in log_.read_text(encoding="utf-8").splitlines() if l_.strip()]      # the two runs as programs: all their processes are theirs
+        c3_, said3_ = _bm_fire(root_, base_ / f"trace-{tag_}-switch.json", "switch", "-q", "side")     # the checkout's own git is the person's: its hook's run
+        w3_ = _bw_watch(base_ / f"trace-{tag_}-switch.json", wrap_)                                     # is judged by git's trace alone
+        git(root_, "switch", "-q", "main")
+        check(f"FM-045 · the board's reads run with {what_} fixed: set to a marker program as a repository sets it, it is started by none of the board's "
+              f"run and `--owner`, nor by the board's run a checkout's hook starts — {_BW_ASSERT}; a read with git's own default in the same clone starts it, so the shape is live (saw the "
+              f"plain read start {plain_marks_[:1] or plain_kids_[:3]}; exits {c1_}, {c2_}, {c3_}; the marker's log {marks_[:2]}; {_bw_saw(w1_)}; {_bw_saw(w2_)}; "
+              f"{_bw_saw(w3_)})",
+              live_ and c1_ == 0 and c2_ == 0 and c3_ == 0 and not marks_ and _bw_ok(w1_) and _bw_ok(w2_) and _bw_ok(w3_))
+        for k_, _v in sets_:
+            git(root_, "config", "--unset", k_)
+    page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+    read_ = {tid_: re.search(r'\["done", "answer/' + tid_ + r'", "[0-9a-f]+", "[0-9a-f]+", "[^"]*", "([A-Z])", "([^"]*)"', page_) for tid_ in ("ap-502", "ap-503")}
+    check(f"FM-045 · with the signature programs fixed, the board reads an OpenPGP- and an X.509-signed answer as it always has: no good signature (`N`), and "
+          f"waiting on a signature with SSH (saw {[(t_, m_.groups() if m_ else None) for t_, m_ in read_.items()]})",
+          all(m_ and m_.group(1) == "N" and m_.group(2).startswith("wait: sign with SSH") for m_ in read_.values()))
+    rm_git(root_)
+fm.configure(HERE)
+
+# the tool's pathspecs mean what it wrote, whatever the environment says a pathspec means: a page of the board git tracks, and a case variant of a tracker in
+# the history, read with the four pathspec variables inherited
+def _bw_case_variant(root, rel, who):
+    """A case variant of the tracker at `rel` — the same name in lower case, its text byte for byte — added and then removed by `who`, through the index and
+    `commit-tree` only, so the working tree, on a file system that folds case or not, never holds it; both commits pushed to origin's `main`."""
+    low_ = rel.rsplit("/", 1)[0] + "/" + rel.rsplit("/", 1)[1].lower()
+    blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--", rel], capture_output=True, text=True, env=_ENV).stdout.strip()
+    as_ = dict(_ENV, GIT_AUTHOR_NAME=who, GIT_AUTHOR_EMAIL=f"{who}@else", GIT_COMMITTER_NAME=who, GIT_COMMITTER_EMAIL=f"{who}@else")
+    for step_ in ("add", "remove"):
+        git(root, "update-index", *(["--add", "--cacheinfo", f"100644,{blob_},{low_}"] if step_ == "add" else ["--force-remove", low_]))
+        tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        c_ = subprocess.run(["git", "-C", str(root), "commit-tree", tree_, "-p", "HEAD", "-m", f"a case variant of {rel}: {step_}"], capture_output=True, text=True, env=as_).stdout.strip()
+        git(root, "update-ref", "HEAD", c_)
+    git(root, "push", "-q", "origin", "main")
+    return low_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    rel_ = "docs/work-tracker/AP-501-x.md"
+    first_ = subprocess.run(["git", "-C", str(root_), "log", "-1", "--format=%H", "--", rel_], capture_output=True, text=True, env=_ENV).stdout.strip()
+    _bw_case_variant(root_, rel_, "variant-writer")
+    every_ = {"GIT_LITERAL_PATHSPECS": "1", "GIT_ICASE_PATHSPECS": "1", "GIT_GLOB_PATHSPECS": "1", "GIT_NOGLOB_PATHSPECS": "1"}
+    saved_ = {k_: os.environ.get(k_) for k_ in every_}
+    os.environ["GIT_ICASE_PATHSPECS"] = "1"                 # in this interpreter: what the gate's own line_author reads with
+    try:
+        fm.configure(root_)
+        who_ = fm.line_author(root_ / rel_, "next: owner")
+    finally:
+        for k_, v_ in saved_.items():
+            os.environ.pop(k_, None) if v_ is None else os.environ.__setitem__(k_, v_)
+        fm.configure(HERE)
+    c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_BM_ENV, GIT_ICASE_PATHSPECS="1"))
+    c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root_, "--owner", env=dict(_BM_ENV, GIT_ICASE_PATHSPECS="1"))
+    c3_, o3_, e3_ = _tool_run(HERE / "shoalmark.py", root_, "--check", env=dict(_BM_ENV, **every_))
+    page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+    check(f"FM-045 · with `GIT_ICASE_PATHSPECS` inherited, `line_author` — the gate's reader of who set a line, and the board's — names the commit that wrote the "
+          f"tracker's `next: owner`, not a case variant's in the history: the board's run, `--owner` and the gate read the Owner's ask as the Owner's (saw "
+          f"{who_[:2]} {who_[3][:7] if who_[3] else ''}, the first commit {first_[:7]}; exits {c1_}, {c2_}, {c3_}; `variant-writer` named by the page "
+          f"{'variant-writer' in page_}, by `--owner` {'variant-writer' in o2_ + e2_}, by the gate {'variant-writer' in o3_ + e3_}; `--owner` lists AP-501 {'AP-501' in o2_})",
+          who_[:2] == ("owner", "o@x") and who_[3] == first_ and c1_ == 0 and c2_ == 0 and "variant-writer" not in page_ and "variant-writer" not in o2_ + e2_
+          and "variant-writer" not in o3_ + e3_ and "AP-501" in o2_)
+    page_path_ = root_ / "docs/work-tracker/index.html"
+    page_path_.write_text("a page git tracks\n", encoding="utf-8"); git(root_, "add", "-f", "docs/work-tracker/index.html"); git(root_, "commit", "-qm", "the page, tracked")
+    c4_, o4_, e4_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_BM_ENV, GIT_LITERAL_PATHSPECS="1"))
+    status_ = subprocess.run(["git", "-C", str(root_), "status", "--porcelain", "--", "docs/work-tracker/index.html"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    check(f"FM-045 · with `GIT_LITERAL_PATHSPECS` inherited, the board's run still sees the page of the board git tracks — `:(literal)` is the tool's own "
+          f"magic — and leaves it as committed, saying so in place of the link: `git status` is clean (saw exit {c4_}, status {status_!r}, "
+          f"{(e4_.strip().splitlines() or [''])[0][:120]!r})",
+          c4_ == 0 and status_ == "" and page_path_.read_text(encoding="utf-8") == "a page git tracks\n" and "git tracks" in e4_)
+    rm_git(root_)
+fm.configure(HERE)
+
+# a branch's own attribute that calls every tracker binary, or not to be diffed: the board's reads still name the commit that wrote each ask, and the gate's
+# reads, which keep git's default, refuse each line they name no commit for — closed, as every line no commit is named for is
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    tracker(root_, "AP-508", extra=f'next: owner\nask: "Does the archive ship first?"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n', title="an ask")
+    run(root_); fm.configure(HERE)
+    git(root_, "add", "-A"); git(root_, "commit", "-qm", "a second ask", "-S", "--author=owner <o@x>"); git(root_, "push", "-q", "origin", "main")
+    seen_ = {}
+    for attr_ in ("*.md binary", "*.md -diff"):
+        (root_ / ".gitattributes").write_text(attr_ + "\n", encoding="utf-8")
+        git(root_, "add", ".gitattributes"); git(root_, "commit", "-qm", f"every tracker: {attr_}"); git(root_, "push", "-q", "origin", "main")
+        c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only")
+        page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+        c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root_, "--owner")
+        c3_, o3_, e3_ = _tool_run(HERE / "shoalmark.py", root_, "--check")
+        gate_ = o3_ + e3_
+        seen_[attr_] = dict(board=(c1_, page_.count("version control names no commit for this line")), queue=(re.findall(r"^(\d+) NEED THE OWNER", o2_, re.M) or ["none"])[0],
+                            asks=[t_ for t_ in ("AP-501", "AP-508") if re.search(rf"^{t_}\b", o2_, re.M)],
+                            gate=(c3_, [t_ for t_ in ("AP-501", "AP-508") if f"{t_}: `next: owner` — version control names no commit for this line" in gate_]))
+    check(f"FM-045 · a branch's own `.gitattributes` that calls every tracker `binary`, and then `-diff`: the board's reads still name the commit that wrote each "
+          f"ask — none is refused on the board, and each stays in `--owner`'s queue —, and the gate, whose reads keep git's default, refuses each line it names no "
+          f"commit for, exit 4: it fails closed (saw {seen_})",
+          all(g_["board"] == (0, 0) and g_["queue"] == "2" and g_["asks"] == ["AP-501", "AP-508"] and g_["gate"] == (fm.EXIT_LINT, ["AP-501", "AP-508"])
+              for g_ in seen_.values()) and len(seen_) == 2)
+    rm_git(root_)
+fm.configure(HERE)
+
+# a commit shaped as the tool's own refusal record, in the Owner's name and unsigned, below their signed answer, that carries one more change — each kind git
+# prints no `+++` line for: `--queue` (`gh` stubbed, origin a local bare repository) and the board's run read the branch as waiting on it; the record alone,
+# as the tool writes it, still reads as theirs to merge
+_BW_NO_PLUS = {     # what each carries beside the record's line: (add a path with mode and content | remove a path | the same content at mode 100755)
+    "a binary file, added": [("add", "100644", b"\x00payload\x00" * 8, "payload.bin")],
+    "a binary file, changed": [("add", "100644", b"\x00other\x00" * 8, "old.bin")],
+    "a binary file, deleted": [("rm", None, None, "old.bin")],
+    "an empty file, added": [("add", "100644", b"", "new-empty.txt")],
+    "an empty file, deleted": [("rm", None, None, "empty.txt")],
+    "an empty file, renamed": [("rm", None, None, "empty.txt"), ("add", "100644", b"", "renamed-empty.txt")],
+    "another file's mode alone": [("x", None, None, "plain.txt")],
+    "the tracker's own mode, beside the line": [("x", None, None, "docs/work-tracker/AP-501-x.md")],
+}
+
+
+def _bw_refusal_shaped(root, rel, ops):
+    """`answer/ap-501` on origin: a commit shaped as the tool's refusal record on `rel` — the Owner's name, unsigned, one refusal line under `## Acts`, the
+    refusal's subject — that also makes the changes `ops`, then their signed answer on top; made with a separate index and `commit-tree` alone, so no file
+    system holds a payload; its head also as a pull request's (`refs/pull/1/head`). The head."""
+    idx_ = dict(_ENV, GIT_INDEX_FILE=str(root.parent / "rv-index"))
+    g_ = lambda *a, inp=None, env=None: subprocess.run(["git", "-C", str(root), *a], input=inp, capture_output=True, env=env or idx_).stdout.decode("utf-8", "replace").strip()
+    blob_ = lambda data: g_("hash-object", "-w", "--stdin", inp=data)
+    text_ = g_("show", f"main:{rel}")
+    record_ = text_.rstrip("\n") + "\n\n## Acts\n\n**2026-10-09 12:00** · shoalmark --answer AP-501 accept refused — the push was refused\n"
+    answer_ = record_.replace("next: owner\n", f'next: build\nanswer: "accepted"\nanswered: {datetime.date.today().isoformat()}\nanswered-by: owner\n')
+    g_("read-tree", "main"); g_("update-index", "--add", "--cacheinfo", f"100644,{blob_(record_.encode('utf-8'))},{rel}")
+    for op_, mode_, data_, path_ in ops:
+        if op_ == "add":
+            g_("update-index", "--add", "--cacheinfo", f"{mode_},{blob_(data_)},{path_}")
+        elif op_ == "rm":
+            g_("update-index", "--force-remove", path_)
+        else:
+            g_("update-index", "--cacheinfo", f"100755,{g_('ls-files', '-s', '--', path_).split()[1]},{path_}")
+    owner_ = dict(_ENV, GIT_AUTHOR_NAME="owner", GIT_AUTHOR_EMAIL="o@x", GIT_COMMITTER_NAME="owner", GIT_COMMITTER_EMAIL="o@x")
+    record_c_ = g_("commit-tree", g_("write-tree"), "-p", "main", "-m", "AP-501: --answer refused — the push was refused", env=dict(owner_, GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"]))
+    mode_now_ = g_("ls-files", "-s", "--", rel).split()[0]
+    g_("update-index", "--cacheinfo", f"{mode_now_},{blob_(answer_.encode('utf-8'))},{rel}")
+    head_ = g_("commit-tree", "-S", g_("write-tree"), "-p", record_c_, "-m", "AP-501: answered", env=dict(owner_, GIT_INDEX_FILE=idx_["GIT_INDEX_FILE"]))
+    git(root, "push", "-q", "-f", "origin", f"{head_}:refs/heads/answer/ap-501", f"{head_}:refs/pull/1/head")
+    git(root, "fetch", "-q", "origin")
+    return head_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    rel_ = "docs/work-tracker/AP-501-x.md"
+    for name_, data_ in (("old.bin", b"\x00old\x00" * 8), ("empty.txt", b""), ("plain.txt", b"plain\n")):
+        (root_ / name_).write_bytes(data_)
+    git(root_, "add", "-A"); git(root_, "commit", "-qm", "what the shapes change"); git(root_, "push", "-q", "origin", "main")
+    bare_, real_run_, real_which_, real_forge_ = base_ / "origin.git", subprocess.run, fm.shutil.which, fm.github_remote
+
+    def queue_(head):
+        """`--queue` as the Owner runs it, `gh` answering with one open pull request — `answer/ap-501` at `head` — and nothing merged or closed."""
+        pr_ = [{"number": 1, "title": "AP-501: answered", "headRefName": "answer/ap-501", "headRefOid": head, "baseRefName": "main", "mergeable": "MERGEABLE",
+                "mergeStateStatus": "CLEAN", "createdAt": "2026-10-09T10:00:00Z", "isCrossRepository": False}]
+        def stub_(*a, **k):
+            if a and list(a[0])[:1] == ["gh-stub"]:
+                state_ = list(a[0])[list(a[0]).index("--state") + 1]
+                return subprocess.CompletedProcess(a[0], 0, json.dumps(pr_ if state_ == "open" else []), "")
+            return real_run_(*a, **k)
+        subprocess.run, fm.shutil.which = stub_, (lambda name, *a, **k: "gh-stub" if name == "gh" else real_which_(name, *a, **k))
+        fm.github_remote = lambda url: url.strip() == str(bare_) or real_forge_(url)
+        try:
+            c_, o_, e_ = run_safe(root_, "--queue")
+        finally:
+            subprocess.run, fm.shutil.which, fm.github_remote = real_run_, real_which_, real_forge_
+        return next((re.split(r" {2,}", l_)[1] for l_ in o_.splitlines() if l_.startswith("PR 1  ")), f"no line for PR 1 (exit {c_}: {(e_ or o_).strip()[-120:]!r})")
+
+    def board_():
+        """The board's run as a hook starts it: what it reads of `answer/ap-501` — its reading, and the wait the queue's reading names, or ""."""
+        _tool_run(HERE / "shoalmark.py", root_, "--html-only")
+        page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+        at_ = page_.find('["answer", "answer/ap-501"')
+        w_ = json.JSONDecoder().raw_decode(page_[at_:])[0] if at_ >= 0 else None
+        return (w_[6], w_[14]) if w_ else ("not shown", "")
+
+    head_ = _bw_refusal_shaped(root_, rel_, [])
+    q0_, b0_ = queue_(head_), board_()
+    check(f"FM-045 · a refusal record as the tool writes it — the Owner's name, unsigned, one line under `## Acts` — below their signed answer still reads as "
+          f"theirs: `--queue` and the board both read `merge: your answer` (saw `--queue` {q0_!r}, the board {b0_})",
+          q0_ == "merge: your answer" and b0_ == ("merge: your answer", ""))
+    for shape_, ops_ in _BW_NO_PLUS.items():
+        head_ = _bw_refusal_shaped(root_, rel_, ops_)
+        q_, b_ = queue_(head_), board_()
+        below_ = subprocess.run(["git", "-C", str(root_), "rev-parse", head_ + "~1"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        want_ = f"wait: an unverified commit in your name on your answer branch ({below_[:7]})"
+        check(f"FM-045 · a commit shaped as the tool's refusal record, in the Owner's name and unsigned, below their signed answer, that also carries {shape_} — a "
+              f"change git prints no `+++` line for —: `--queue` and the board read the branch as waiting on it, `{want_[:51]}…` (saw `--queue` {q_!r}, the board {b_})",
+              q_ == want_ and b_[1] == want_)
+    rm_git(root_)
+fm.configure(HERE)
+
+
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")
     for said_, ok_, saw_ in _bm_done("signers", t0_, _bm_events(base_, root_, "main")):

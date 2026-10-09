@@ -433,8 +433,13 @@ def board_write(path, text, changed_only=False):
 
 _PATH_SEP = re.compile(r"[\\/]")
 READ_ONLY_GIT = frozenset({"rev-parse", "log", "show", "cat-file", "diff", "var", "for-each-ref", "symbolic-ref", "ls-files", "ls-tree", "rev-list",
-                           "merge-base", "show-ref", "worktree", "config", "branch"})
+                           "merge-base", "show-ref", "worktree", "config", "branch", "version"})
 READ_ONLY_GIT_C = ("core.quotePath=", "gpg.ssh.allowedSignersFile=")        # the only `-c` the tool hands git: how it prints a path, and the signers it verifies against
+# THE PARTIAL CLONE, told from configuration alone: git fetches an object a read meets missing from `extensions.partialClone`'s remote, from every remote whose
+# `remote.<name>.promisor` is true, and from every remote with a `remote.<name>.partialclonefilter`. ONE read sees every one of them, in every scope and
+# include git reads: `git config -z --get-regexp` with this pattern (`promisor_remotes`).
+PROMISOR_KEYS = r"^(extensions\.partialclone|remote\..*\.(promisor|partialclonefilter))$"
+LAZY_FETCH_SINCE = (2, 44)          # the first git that honours `GIT_NO_LAZY_FETCH`, its switch that keeps a read from fetching what a partial clone lacks
 # EVERY OTHER GIT COMMAND THE TOOL STARTS, and why the board's run never starts it (FM-045). With READ_ONLY_GIT it classifies every git command this file
 # can start: the suite reads the file's source and fails on a command in neither, and on one of these that a board's run of its own starts.
 NEVER_IN_BOARD_RUN = {
@@ -457,7 +462,7 @@ NEVER_IN_BOARD_RUN = {
 
 def read_only_git(argv):
     """Whether `argv` is a call of git that changes nothing: one of the subcommands above, none of their forms that write (`config` only to read,
-    `branch` only `--show-current`, `worktree` only `list`, no `--output`), and no `-c` but the two the tool uses."""
+    `branch` only `--show-current`, `worktree` only `list`, `version` with nothing after it, no `--output`), and no `-c` but the two the tool uses."""
     if not isinstance(argv, (list, tuple)) or len(argv) < 2 or _PATH_SEP.split(str(argv[0]))[-1].lower() not in ("git", "git.exe"):
         return False
     rest, i = [str(a) for a in argv[1:]], 0
@@ -475,7 +480,11 @@ def read_only_git(argv):
     if sub == "worktree":
         return tail[:1] == ["list"]
     if sub == "config":
-        return "--get" in tail or tail == ["user.name"]
+        # A WIDENING of the read-only list: beside `--get` and `user.name`, ONE `--get-regexp` — `-z`, the promisor keys, exactly as `promisor_remotes`
+        # sends it, to tell a partial clone by its configuration alone. No other pattern, no `--get-all`, no `--list`
+        return "--get" in tail or tail == ["user.name"] or tail == ["-z", "--get-regexp", PROMISOR_KEYS]
+    if sub == "version":
+        return tail == []                                   # how the board learns git's version (`git_version`), in a partial clone only
     if sub == "symbolic-ref":
         return len([a for a in tail if not a.startswith("-")]) == 1
     return True
@@ -689,6 +698,9 @@ def configure(root=None):
     _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
     global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
+    global LAZY_OFF, _PARTIAL
+    LAZY_OFF, _PARTIAL = False, None                    # git's own default for every read, until a run whose reads fetch nothing says otherwise (`lazy_fetch_off`)
+    BOARD_UNREAD.clear()
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -999,11 +1011,185 @@ def nested_git_env():
     `git -C <submodule>`, they override `-C` and make the tag query inspect the
     parent instead. The generator then silently rewrites every derived live tag
     to `—` during commit even though a direct `--check` is green.
+
+    Every git the tool starts takes its environment from here. The four variables that change what every pathspec means (`PATHSPEC_VARIABLES`) are dropped
+    for each, whoever set them: the tool's pathspecs mean what git's default makes them mean.
+
+    And while this run's reads are the board's (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks, and the settings
+    the board's reads run with (`BOARD_SETTINGS`), after every other.
     """
     env = os.environ.copy()
-    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"):
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", *PATHSPEC_VARIABLES):
         env.pop(key, None)
+    if LAZY_OFF:
+        env[LAZY_FETCH_SWITCH] = "1"
+        env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), board_settings()) if p)
     return env
+
+
+# THE PATHSPECS MEAN WHAT THE TOOL WROTE. An inherited `GIT_LITERAL_PATHSPECS` reads its `:(literal)`, `:(top)` and `:/` as names — git then tracks no page
+# of the board, and the board's run writes over the one it tracks; `GIT_ICASE_PATHSPECS` matches a tracker's case variant, and `line_author` names a commit
+# that never wrote the tracker's line; `GIT_GLOB_PATHSPECS` and `GIT_NOGLOB_PATHSPECS` change a path that holds a wildcard. The tool's own pathspecs are each
+# a path the repository holds, or that magic, and need none of the four: they are dropped for every git the tool starts (`nested_git_env`).
+PATHSPEC_VARIABLES = ("GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS")
+
+
+# THE SETTINGS THE BOARD'S READS RUN WITH, fixed in the same place as the switch, whatever the repository, the user or the environment configures: no read of
+# the board's starts a program a configuration names, but the SSH signature check its `%G?` asks for (`gpg.ssh.program`). Git reads `GIT_CONFIG_PARAMETERS` —
+# the scope `git -c` writes — after every configuration file and after `GIT_CONFIG_COUNT`, and the last value of a key there wins: these are appended to what
+# the run inherited. The `-c` the tool hands git on a command line (`READ_ONLY_GIT_C`) comes after them, and names none of these keys.
+# - `log.showSignature` false: a `git log` verifies no signature it was not asked for;
+# - `core.fsmonitor` false: `git ls-files` asks no file-system monitor, neither a hook nor git's own daemon;
+# - `gpg.program`, `gpg.openpgp.program` and `gpg.x509.program`: the board trusts SSH signatures only, and git starts the program of a signature's own
+#   format for `%G?`. Each names `NO_SIGNATURE_PROGRAM`, a path inside the tool's own file, which no file system can hold: git's start of it fails before
+#   anything runs, and `%G?` reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
+# Textconv is the one setting git takes from no configuration and no environment: a diff driver's `textconv`, which an attribute in the tree names, runs in
+# `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — the board's six such reads carry it
+# (`board_diff_args`), and every other run's do not. Beside it, `--text`: an attribute in the tree that calls a tracker `binary`, or `-diff`, makes `-G`
+# pass over its every change and `-p` print none of it, and the board would read no commit for a line a commit wrote. The gate's reads keep git's default:
+# where they name no commit, the gate refuses the line.
+NO_SIGNATURE_PROGRAM = str(pathlib.Path(__file__).resolve() / "no-signature-program")
+BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("gpg.program", NO_SIGNATURE_PROGRAM),
+                  ("gpg.openpgp.program", NO_SIGNATURE_PROGRAM), ("gpg.x509.program", NO_SIGNATURE_PROGRAM))
+
+
+def board_settings():
+    """`BOARD_SETTINGS` as `GIT_CONFIG_PARAMETERS` holds them: each `'key=value'`, quoted as git quotes it."""
+    return " ".join("'" + f"{k}={v}".replace("'", "'\\''") + "'" for k, v in BOARD_SETTINGS)
+
+
+def board_diff_args():
+    """`--no-textconv` and `--text` while this run's reads are the board's (`LAZY_OFF`), for each of its reads that diffs or searches a diff — else nothing."""
+    return ["--no-textconv", "--text"] if LAZY_OFF else []
+
+
+# THE BOARD'S READS FETCH NOTHING. In a partial clone a git read that meets an object the clone lacks fetches it from the remote that promised it, by itself:
+# a fetch, a transport, a pack written into `.git` — children of the read, which the tripwire, watching this interpreter's own starts, never sees. Git's own
+# switch keeps a read from it: `GIT_NO_LAZY_FETCH=1` (git 2.44 and later), handed to every git the tool starts (`nested_git_env`) while `LAZY_OFF` is on —
+# for the board's run, whoever starts it (`board_run`: a hook, from the hooks' copy; a hand; an act's own rebuild), and for `--owner`'s and `--standup`'s
+# reads, from their trackers to the end of their digest (`main`). Never tool-wide: an act's switch to its branch and its commit, `--queue`'s fetch and
+# merge-tree — the queue `--owner` and `--standup` end with — and the gate may need objects from the remote, and keep git's own default. Where git is older
+# and the repository is a partial clone, none of those reads is made (`lazy_fetch_problem`). With the switch, a read meets a missing object as a failure:
+# in a partial clone that failure is no answer (`Unread`) — what rests on it is not said, and one line names it (`unread_line`).
+LAZY_FETCH_SWITCH = "GIT_NO_LAZY_FETCH"
+LAZY_OFF = False            # whether this run's reads fetch nothing: `configure` turns it off, `lazy_fetch_off` on
+_PARTIAL = None             # this run's promisor remotes (`promisor_remotes`): [] none — the clone holds what it names —, None not read, or unreadable
+BOARD_UNREAD = []           # what this run's reads met missing and did not read, each named once (`unread_line`)
+
+
+class Unread(Exception):
+    """A git read of a run whose reads fetch nothing, in a partial clone, met an object the clone does not hold: its failure is no answer. The reader that
+    can go on without it catches it, names what it did not read (`note_unread`), and says nothing that rests on it."""
+
+
+def lazy_fetch_off():
+    """Turn the switch on for this run's reads (`nested_git_env`), from now until `lazy_fetch_back` or the next `configure`; what an earlier run read of the
+    clone and did not read is forgotten."""
+    global LAZY_OFF, _PARTIAL
+    LAZY_OFF, _PARTIAL = True, None
+    BOARD_UNREAD.clear()
+
+
+def lazy_fetch_back():
+    """Git's own default again for every git the tool starts from now on — an act's, the queue's, the gate's."""
+    global LAZY_OFF
+    LAZY_OFF = False
+
+
+def promisor_remotes():
+    """The remotes this clone fetches a missing object from — a partial clone's promisor remotes, by name — read from git's configuration alone, with ONE
+    read-only call (`PROMISOR_KEYS`, in every scope and include git reads): [] for none; None where the configuration cannot be read, which is taken for a
+    partial clone. A `promisor` that is false names none; an `extensions.partialClone` or a `partialclonefilter` names its remote, whatever it says."""
+    if vcs() != "git":
+        return []
+    r = subprocess.run(["git", "config", "-z", "--get-regexp", PROMISOR_KEYS], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=nested_git_env())
+    if r.returncode == 1 and not r.stdout:
+        return []                                       # none of the keys is set
+    if r.returncode != 0:
+        return None
+    names = []
+    for entry in (e for e in r.stdout.split("\x00") if e):
+        key, nl, value = entry.partition("\n")          # `-z`: the key, a line break and the value; a key set with no `=` has neither, and is true
+        low = key.lower()
+        if low.endswith(".promisor") and nl and value.strip().lower() in ("", "false", "no", "off", "0"):
+            continue                                    # this remote promises nothing
+        name = (value.strip() or "?") if low == "extensions.partialclone" else key[len("remote."):key.rfind(".")]
+        if name not in names:
+            names.append(name)
+    return names
+
+
+def git_version():
+    """The git this run starts, as (major, minor) — one read-only call, `git version` — or None where its answer names no version."""
+    r = subprocess.run(["git", "version"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    m = re.search(r"(\d+)\.(\d+)", r.stdout) if r.returncode == 0 else None
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def lazy_fetch_problem():
+    """Why this run's reads cannot be kept from fetching here, as the end of its one line — or "": the repository is no partial clone, so no read of it can
+    fetch; or its git honours the switch. Read once a run, after `lazy_fetch_off` and before any read of an object: the configuration (`promisor_remotes`)
+    and, in a partial clone alone, git's version (`git_version`)."""
+    global _PARTIAL
+    _PARTIAL = promisor_remotes()
+    if _PARTIAL == []:
+        return ""
+    have = git_version()
+    if have is not None and have >= LAZY_FETCH_SINCE:
+        return ""
+    clone = (f"this is a partial clone ({', '.join(_PARTIAL)} {'promises' if len(_PARTIAL) == 1 else 'promise'} what it lacks)" if _PARTIAL
+             else "git's configuration cannot be read here, so this may be a partial clone")
+    return (f"{clone}, and git {'%d.%d' % have if have else 'here, whose version it does not say,'} cannot keep a read from fetching from it, as "
+            f"{LAZY_FETCH_SINCE[0]}.{LAZY_FETCH_SINCE[1]} and later can: nothing is read here, so nothing is fetched; upgrade git")
+
+
+def unread_here():
+    """Whether a git read of this run that fails met an object the clone does not hold, so that its failure is no answer: this run's reads fetch nothing, in a
+    partial clone — or in one whose configuration was not read."""
+    return LAZY_OFF and _PARTIAL != []
+
+
+def note_unread(what):
+    """Name `what` among what this run's reads did not read (`BOARD_UNREAD`), once."""
+    if what not in BOARD_UNREAD:
+        BOARD_UNREAD.append(what)
+
+
+def read_out(r):
+    """A git read's output, stripped — or `Unread` where the read failed and `unread_here`: a walk that met an object the partial clone lacks."""
+    if r.returncode != 0 and unread_here():
+        raise Unread
+    return r.stdout.strip()
+
+
+def specs_unread(specs):
+    """Of `<rev>:<path>` specs git answered nothing for, those whose objects this clone does not hold — `git ls-tree` names the path at `rev`, or cannot
+    read a tree on the way to it — as against a path `rev` does not have. One `git ls-tree` a revision, which reads trees and no file; [] where
+    `unread_here` is not so: there, nothing answered is nothing there."""
+    if not unread_here():
+        return []
+    by_rev = {}
+    for spec in specs:
+        rev, _, path = spec.partition(":")
+        by_rev.setdefault(rev, []).append(path)
+    out = []
+    for rev, paths in by_rev.items():
+        r = subprocess.run(["git", "ls-tree", "-z", "--full-tree", rev, "--", *paths], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", env=nested_git_env())
+        held = {row.partition("\t")[2] for row in r.stdout.split("\x00") if row} if r.returncode == 0 else None
+        out += [f"{rev}:{p}" for p in paths if held is None or p in held]
+    return out
+
+
+def unread_line(who="board", reads="the board's reads"):
+    """The one line that says what this run's reads did not read, and how to get it — "" where they read everything."""
+    if not BOARD_UNREAD:
+        return ""
+    it = "it" if len(BOARD_UNREAD) == 1 else "them"
+    shown = ", ".join(BOARD_UNREAD[:3]) + (f" and {len(BOARD_UNREAD) - 3} more" if len(BOARD_UNREAD) > 3 else "")
+    return (f"{who}: not read — {shown}: git's objects for {it} are not in this partial clone, and {reads} fetch nothing; `{CMD}` reads {it}, "
+            "fetching what the clone lacks")
 
 
 def strip_md(s):
@@ -1502,8 +1688,12 @@ def recover_from_log(need):
     # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
     # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `git show <sha>:./<path>` reads them;
     # `-U0`: only the lines that changed
-    log = git("log", "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+    log = git("log", *board_diff_args(), "--full-history", "--no-renames", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
               "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
+    if log.returncode != 0 and unread_here():           # the walk met an object the partial clone lacks: the relations stay as they read, not computable
+        for rel in need:
+            note_unread(f"the history of {rel}")
+        return
     found = {rel: {a: [] for _q, a in t["asks_recovered_all"]} for rel, t in need.items()}      # per answer text, newest first
     for chunk in log.stdout.split("\x00")[1:]:
         head, _, diff = chunk.partition("\n")
@@ -1620,43 +1810,49 @@ def on_their_way(trackers):
         if t and tip:
             heads.append((branch, tip, t["id"], (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()))
     blobs = cat_blobs([spec for _b, tip, _i, rel in heads for spec in (f"{tip}:{rel}", f"{trunk}:{rel}")])
+    lost = set(specs_unread([s_ for s_, text in blobs.items() if text is None]))     # reads that fetch nothing, in a partial clone: not held, as against not there
     out = {}
     for branch, tip, tid, rel in heads:
-        there, here = blobs.get(f"{tip}:{rel}"), blobs.get(f"{trunk}:{rel}")
-        if there is None:
-            continue
-        at, was = extract(ROOT / rel, there), (extract(ROOT / rel, here) if here is not None else {})
-        answered = bool(at.get("answer")) and at["answer"] != was.get("answer")
-        word = ANSWER_WORD_RE.fullmatch(answer_norm(at.get("answer")))
-        due = at.get("due", "") if at.get("due") and at.get("due") != was.get("due") else ""
-        newest = lambda key: git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?%x00%s", "-G", line_regex(key), tip, "^" + trunk, "--", rel).stdout.strip()
-        log = ""
-        if at.get("done") and at["done"] != was.get("done"):
-            kind, key = "done", "done:"
-        elif answered:
-            kind, key = ("revoked" if word and word.group(1).lower() == "revoked" else "answer"), "answer:"
-        elif was.get("done") and not at.get("done") and (log := newest("done:")).split("\x00")[-1].startswith(REVOKE_DONE_SUBJECT.format(tid)):
-            kind, key = "undone", "done:"                   # `--revoke` dropped it: its own commit says so, not a line gone
-        elif due or (was.get("done") and not at.get("done") and at.get("due")):
-            kind, key, log, due = "due", "due:", "", at.get("due", "")   # `--due`, and `--due` after a done act: a new time, never *done revoked*
-        else:
-            continue
-        log = log or newest(key)
-        if not log:                                         # the line came in through a merge on the branch: its head speaks
-            log = git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?", tip).stdout.strip()
-        commit, when, sig = (log.split("\x00") + ["", "", ""])[:3]
-        if kind in ("done", "undone", "due"):               # the act's line, and its question, as they read while it was owed
-            act = act_of({**at, "done": ""})
-            what, asked = (act[0], act[5]) if act else (at.get("title") or tid, "")
-        elif kind == "revoked":                             # the question they take their answer back from; the reason follows the label (RV-734)
-            what, asked = at.get("ask") or at.get("title") or tid, ""
-        else:
-            what, asked = promise_of(at) or at["answer"], at.get("ask", "")
-        value = {"undone": was.get("done", ""), "done": at.get("done", ""), "due": due}.get(kind, at.get("answer", ""))
-        note = value.partition(" · ")[2] if kind == "done" else (word.group(2) or "").strip() if kind == "revoked" and word else ""
-        said, queue = answer_reading(commit or tip)[1], answer_branch_reading(tip, trunk)[1]     # the act's commit, and `--queue`'s line (RV-714)
-        out[tid] = {"kind": kind, "answered": answered, "owed": act_of(at) is not None and not due, "branch": branch, "tip": tip, "commit": commit or tip, "time": when, "sig": sig or "N",
-                    "said": said, "held": queue if queue.startswith("wait") and queue != said else "", "what": what, "asked": asked if asked != what else "", "value": value, "due": due, "note": note}
+        try:                                                # a read of this branch's met an object the partial clone lacks: nothing of it is said, and it is named
+            if f"{tip}:{rel}" in lost or f"{trunk}:{rel}" in lost:
+                raise Unread
+            there, here = blobs.get(f"{tip}:{rel}"), blobs.get(f"{trunk}:{rel}")
+            if there is None:
+                continue
+            at, was = extract(ROOT / rel, there), (extract(ROOT / rel, here) if here is not None else {})
+            answered = bool(at.get("answer")) and at["answer"] != was.get("answer")
+            word = ANSWER_WORD_RE.fullmatch(answer_norm(at.get("answer")))
+            due = at.get("due", "") if at.get("due") and at.get("due") != was.get("due") else ""
+            newest = lambda key: read_out(git(*signers_args(), "log", *board_diff_args(), "-1", "--format=%H%x00%cI%x00%G?%x00%s", "-G", line_regex(key), tip, "^" + trunk, "--", rel))
+            log = ""
+            if at.get("done") and at["done"] != was.get("done"):
+                kind, key = "done", "done:"
+            elif answered:
+                kind, key = ("revoked" if word and word.group(1).lower() == "revoked" else "answer"), "answer:"
+            elif was.get("done") and not at.get("done") and (log := newest("done:")).split("\x00")[-1].startswith(REVOKE_DONE_SUBJECT.format(tid)):
+                kind, key = "undone", "done:"                   # `--revoke` dropped it: its own commit says so, not a line gone
+            elif due or (was.get("done") and not at.get("done") and at.get("due")):
+                kind, key, log, due = "due", "due:", "", at.get("due", "")   # `--due`, and `--due` after a done act: a new time, never *done revoked*
+            else:
+                continue
+            log = log or newest(key)
+            if not log:                                         # the line came in through a merge on the branch: its head speaks
+                log = git(*signers_args(), "log", "-1", "--format=%H%x00%cI%x00%G?", tip).stdout.strip()
+            commit, when, sig = (log.split("\x00") + ["", "", ""])[:3]
+            if kind in ("done", "undone", "due"):               # the act's line, and its question, as they read while it was owed
+                act = act_of({**at, "done": ""})
+                what, asked = (act[0], act[5]) if act else (at.get("title") or tid, "")
+            elif kind == "revoked":                             # the question they take their answer back from; the reason follows the label (RV-734)
+                what, asked = at.get("ask") or at.get("title") or tid, ""
+            else:
+                what, asked = promise_of(at) or at["answer"], at.get("ask", "")
+            value = {"undone": was.get("done", ""), "done": at.get("done", ""), "due": due}.get(kind, at.get("answer", ""))
+            note = value.partition(" · ")[2] if kind == "done" else (word.group(2) or "").strip() if kind == "revoked" and word else ""
+            said, queue = answer_reading(commit or tip)[1], answer_branch_reading(tip, trunk)[1]     # the act's commit, and `--queue`'s line (RV-714)
+            out[tid] = {"kind": kind, "answered": answered, "owed": act_of(at) is not None and not due, "branch": branch, "tip": tip, "commit": commit or tip, "time": when, "sig": sig or "N",
+                        "said": said, "held": queue if queue.startswith("wait") and queue != said else "", "what": what, "asked": asked if asked != what else "", "value": value, "due": due, "note": note}
+        except Unread:
+            note_unread(f"what is on its way on origin/{branch}")
     return out
 
 
@@ -1765,6 +1961,21 @@ def standup(trackers, invite=None):
         print(f"\n{WAY_TITLE}\n" + "\n".join(ways))
     sent_back(trackers)
     return EXIT_OK
+
+
+def digest_read(read, trackers, who):
+    """`--owner`'s or `--standup`'s digest, `read(trackers)`, its reads fetching nothing as `main` set them (`lazy_fetch_off`): what they did not read, in one
+    line; then git's own default again, for the queue the digest ends with (`queue_section`), whose fetch may need objects from the remote."""
+    try:
+        code = read(trackers)
+    except Unread:                                          # each reader that can meet a missing object catches it; one that did not ends the digest here
+        note_unread("the rest of the digest")
+        code = EXIT_OK
+    line = unread_line(who, f"{who}'s reads")
+    lazy_fetch_back()
+    if line:
+        print(line, file=sys.stderr)
+    return code
 
 
 # a ship-log row `--answer … revoke` or `--supersede` writes: `| <date> | Answer of <answered> superseded: *"<answer>"* (<sha>) — …`
@@ -1903,6 +2114,8 @@ def addenda_between(r, h, v=None):
     ok = review_addendum()
     out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", f"{r}..{h}"],
                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if out.returncode != 0 and unread_here():
+        raise Unread                                        # its walk met a tree the partial clone lacks: no answer
     for chunk in out.stdout.split("\x00")[1:]:
         shas, *paths = chunk.strip("\n").split("\n")
         sha, *parents = shas.split()
@@ -1917,7 +2130,8 @@ REFUSAL_LINE_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\*\* · .+ refu
 
 def refusal_record(commit):
     """The tool's own refusal record (FM-030, `record_refusal`), unsigned by design: one parent, the subject `<ID>: --<act>
-    refused — …`, ONE file changed — that tracker's —, and a diff that adds the one `**<date> <time>** · … refused — …`
+    refused — …`, ONE file changed — that tracker's, its text and not its mode, as git's own list of the commit's changes names
+    them —, and a diff that adds the one `**<date> <time>** · … refused — …`
     line and nothing else but the `## Acts` heading it may make and blank lines, and removes blank lines only: no
     front-matter key, no act. And, from the tracker's text at the parent and at the commit (RV-715, the Owner's cold
     re-check of `af5a9e2`, P1: a refusal-shaped line typed into *What is true now* passed the diff alone): the front
@@ -1925,11 +2139,13 @@ def refusal_record(commit):
     under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
     `--queue` admits it below their act as it admits a review file's commit (RV-712) — a forged one in their name carries in
     one line under `## Acts` that rules nothing, and nothing outside it."""
-    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
+    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff", commit],
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     head, _, diff = r.stdout.partition("\n")
     parents, _, subject = head.partition("\x00")
     tid = REFUSAL_SUBJECT_RE.match(subject)
+    if r.returncode != 0 and unread_here():
+        raise Unread                                        # its diff met an object the partial clone lacks: no answer
     if r.returncode != 0 or len(parents.split()) != 1 or not tid:
         return False
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
@@ -1948,6 +2164,15 @@ def refusal_record(commit):
             and all(not x.strip() or ACTS_HEAD_RE.match(x) or REFUSAL_LINE_RE.match(x) for x in added)
             and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1):
         return False
+    # ONE file changed, as git's own list of the commit's changes names them — not as its `+++` lines do: git prints none for a change with no text to
+    # show, a binary or an empty file added, changed or deleted, or a mode alone. The record changes its tracker's text and nothing else, not its mode
+    listed = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", commit], cwd=ROOT,
+                            capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if listed.returncode != 0 and unread_here():
+        raise Unread                                        # its trees are not in the partial clone: no answer
+    changes = listed.stdout.split("\x00")[:-1]              # `:<mode> <mode> <id> <id> <status>`, then the path, for each change
+    if listed.returncode != 0 or len(changes) != 2 or changes[1] != files[0] or not re.fullmatch(r":(100644|100755) \1 [0-9a-f]+ [0-9a-f]+ M", changes[0]):
+        return False
     return refusal_record_in_place(parents.strip(), commit, files[0])
 
 
@@ -1963,6 +2188,8 @@ def refusal_record_in_place(parent, commit, path):
     def text_at(ref):
         r = subprocess.run(["git", "-c", "core.quotePath=false", "show", f"{ref}:{path}"], cwd=ROOT, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=nested_git_env())
+        if r.returncode != 0 and specs_unread([f"{ref}:{path}"]):
+            raise Unread                                    # not in the partial clone, as against not there
         return r.stdout if r.returncode == 0 else None
     def parts(text):
         body = parse_frontmatter(text)[1]
@@ -2010,6 +2237,8 @@ def stray_below(commit, base, skip=True):
     full = (git_out("rev-parse", "--verify", "--quiet", commit + "^{commit}") or "").strip()
     out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", commit, "^" + base],
                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if out.returncode != 0 and full and unread_here() and git_out("rev-parse", "--verify", "--quiet", base + "^{commit}"):
+        raise Unread                                        # the base is here, and the walk met a tree the partial clone lacks: no answer
     if out.returncode != 0 or not full:
         return None
     for chunk in out.stdout.split("\x00")[1:]:
@@ -2041,7 +2270,10 @@ def answer_branch_reading(head, base):
     widening; RV-735, the same below their `answer:` since 0.18.4) — and where `base` is not here, a wait that says so: a
     reader that cannot see below their act never says merge (RV-711)."""
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    at = (git_out("log", "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel) or "").strip()
+    found = git_out("log", *board_diff_args(), "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel)
+    if found is None and unread_here():
+        raise Unread                                        # its walk met an object the partial clone lacks: no answer
+    at = (found or "").strip()
     at = at if at and (at == head or addenda_between(at, head)) else head
     action = answer_reading(at)
     if action[0] != "merge":
@@ -5008,7 +5240,8 @@ def line_author(path, needle):
     file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
     is not committed yet (the working copy or the index carries it, no commit does), (None, None, "unattributed", "")
     where it names no commit for a line a commit carries, and on Subversion (None, None, "merged", <revision>) for a line older
-    than a merge that put the tracker's path here (`svn_blame`). Git's author is a string anyone can type,
+    than a merge that put the tracker's path here (`svn_blame`) — and (None, None, "unread", "") where a run whose reads fetch nothing meets an object
+    of its history this partial clone does not hold (`unread_here`): not read, which judges nothing. Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
     has no email. ONE reader for both the answer line and the `next: owner` line — a second would drift from this one.
 
@@ -5061,21 +5294,28 @@ def line_author(path, needle):
         n = guarded_line(raw, key)
         line = raw.split("\n")[n - 1].rstrip("\r") if n is not None else None
         if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys
-            _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for rev in tips for l in subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True,
-                                                                                                     env=nested_git_env()).stdout.decode("utf-8", errors="replace").split("\n")]
-        if line is None:
+            shown = [(rev, subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, env=nested_git_env())) for rev in tips]
+            _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for _rev, s in shown for l in s.stdout.decode("utf-8", errors="replace").split("\n")]
+            _LINE_AUTHOR[("unread", rel)] = bool(specs_unread([f"{rev}:{rel}" for rev, s in shown if s.returncode != 0]))     # a tip's copy the partial clone lacks
+        if _LINE_AUTHOR[("unread", rel)]:
+            out = (None, None, "unread", "")            # who set it is not read here — never "unattributed", which refuses it
+        elif line is None:
             out = (None, None, "unattributed", "")
         elif line in _LINE_AUTHOR[("tips", rel)]:
             try:
-                log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
+                log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
                                      text=True, encoding="utf-8", errors="replace", env=nested_git_env())
             except ValueError:                          # a NUL in the line: no argument can carry it
                 log = None
             if log is not None and log.returncode == 0 and log.stdout.strip():
                 commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
                 out = (name, email, "git", commit)
+            elif log is not None and log.returncode != 0 and unread_here():
+                out = (None, None, "unread", "")        # the walk met an object the partial clone lacks: who set it is not read here
             else:
                 out = (None, None, "unattributed", "")
+        if out[2] == "unread":
+            note_unread(f"the history of {rel}")
     _LINE_AUTHOR[(rel, key)] = out
     return out
 
@@ -5177,6 +5417,11 @@ def trusted_signers():
     trunk = default_trunk(git) if top is not None else None
     rel = signers_rel(top, below, str(path), trunk) if top is not None else None
     blob = cat_blobs([f"{trunk}:{rel}"]).get(f"{trunk}:{rel}") if trunk else None
+    if blob is None and trunk and specs_unread([f"{trunk}:{rel}"]):      # the board's reads, in a partial clone that lacks it: never "not on the default branch"
+        note_unread(f"the signers file on {ref_name(trunk)}")
+        _SIGNERS = {"file": None, "why": f"`{rel}` on {ref_name(trunk)} is not in this partial clone, and the board's reads fetch nothing — `{CMD}` reads it",
+                    "rel": rel, "trunk": trunk}
+        return _SIGNERS
     if blob is not None:
         fd, tmp = tempfile.mkstemp(prefix="shoalmark-signers-")
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
@@ -5517,6 +5762,8 @@ def seat_problems(t):
         name, email, how, commit = line_author(TRACKER_DIR / t["file"], "next: owner")
     except SvnUnreadable as e:
         return blame_refusal(t, e)
+    if how == "unread":                                 # the board's reads, in a partial clone: who asked is not read here — the ask is not shown as one, and not refused
+        return ["who set `next: owner` is not read here — git's objects for the tracker's history are not in this partial clone, and the board's reads fetch none"]
     if how not in ("git", "svn"):
         if how == "uncommitted" and vcs() == "git" and COMMITTING:
             name, email, commit = (*pending_author(), "")    # the pre-commit run: the author git is about to write is who is asking
@@ -7965,7 +8212,10 @@ def acted_on(trackers):
         if t.get("ask") or not t.get("asks_block"):
             continue
         rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        log = subprocess.run(["git", "log", "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        if log.returncode != 0 and unread_here():
+            note_unread(f"the history of {rel}")         # the walk met an object the partial clone lacks: not read here
+            continue
         short, _, when = log.stdout.strip().partition(" ")
         if short and when.isdigit() and int(when) >= since:
             out.append((t, short))
@@ -9306,7 +9556,9 @@ def board_run(root):
     - it starts no deriver and no program but read-only git — `board_tripwire` refuses anything else where Python does it;
     - it reads the tree only as regular files inside the repository, through no symlink: the trackers, the configuration, the brand's files;
     - the tracker folder must resolve inside the repository, and the board is written only there, never through a symlink and never over a file git tracks;
-    - it imports nothing from the repository, and writes no bytecode.
+    - it imports nothing from the repository, and writes no bytecode;
+    - it fetches nothing: every git it starts runs with lazy fetching switched off (`nested_git_env`); where git is too old to switch it off and the repository
+      is a partial clone, it reads nothing, says so in one line, and exits 0; what a read met missing it does not say, and names in one line (`unread_line`).
     What it leaves alone it names, in one line — and where that is the page itself, it prints that line and no link; a tracker folder it refuses, in one line, exit 4."""
     global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED
     saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"), SAFE_WRITES)
@@ -9316,12 +9568,17 @@ def board_run(root):
     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
     try:
         configure(root)
+        lazy_fetch_off()                                            # before its first git: every read of this run fetches nothing
         sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
         refused = tracker_folder_problem()
         if refused:
             print(refused, file=sys.stderr)
             return EXIT_LINT
         arm_tripwire()
+        why = lazy_fetch_problem()                                  # a partial clone whose git cannot keep a read from fetching: no read is made at all
+        if why:
+            print(f"board: not refreshed — {why}", file=sys.stderr)
+            return EXIT_OK
         trackers = load_trackers()
         no_derived(trackers)                                        # no deriver: no derived column, file, note or key
         if TRACKER_DIR.is_dir():
@@ -9342,6 +9599,9 @@ def board_run(root):
     except ReadOnlyRun as e:
         print(f"the board's run was stopped: {e} — it starts nothing but read-only git and writes only the board", file=sys.stderr)
         return EXIT_LINT
+    except Unread:                                                  # each reader that can meet a missing object catches it; one that did not leaves the board as it was
+        print("board: not refreshed — a read met an object this partial clone does not hold", file=sys.stderr)
+        return EXIT_OK
     finally:
         _TRIPWIRE = SAFE_READS = False
         SAFE_WRITES = saved[3]
@@ -9350,9 +9610,13 @@ def board_run(root):
             os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
         else:
             os.environ["NoDefaultCurrentDirectoryInExePath"] = saved[2]
+        unread = unread_line()
+        lazy_fetch_back()
         if BOARD_LEFT:
             shown = ", ".join(f"{rel} ({why})" for rel, why in BOARD_LEFT[:4]) + (f" and {len(BOARD_LEFT) - 4} more" if len(BOARD_LEFT) > 4 else "")
             print(f"board: left alone — {shown}", file=sys.stderr)
+        if unread:
+            print(unread, file=sys.stderr)
 
 
 _AUDIT_HOOKED = [False]
@@ -9439,6 +9703,14 @@ def main(argv=None):
     for words, verb in ((args.done, "recording"), (args.due, "rescheduling"), (args.revoke, "revoking")):
         if words:
             answer_step(words[0].upper(), 1, "reading the trackers", verb)
+    digest = "--owner" if args.owner else "--standup" if args.standup == "" and not (args.answered or args.answer or args.done or args.due or args.revoke or args.clear_ask) else ""
+    if digest and not (args.schema or args.new or args.invite or args.notify):     # the Owner's digest reads what the board reads: it fetches nothing, up to its queue
+        lazy_fetch_off()
+        why = lazy_fetch_problem()
+        if why:
+            print(f"{digest}: nothing read — {why}", file=sys.stderr)
+            lazy_fetch_back()
+            return EXIT_OK
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
@@ -9459,7 +9731,7 @@ def main(argv=None):
     if args.notify:
         return notify_cmd(trackers)
     if args.owner:
-        code = owner_digest(trackers)
+        code = digest_read(owner_digest, trackers, "--owner")
         queue_section()
         return code
     if args.answered:
@@ -9475,9 +9747,10 @@ def main(argv=None):
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
     if args.standup is not None:
-        code = standup(trackers, args.standup)
-        if not args.standup:                                # the agenda, not the calendar invite
-            queue_section()
+        if args.standup:                                    # the calendar invite, not the agenda
+            return standup(trackers, args.standup)
+        code = digest_read(standup, trackers, "--standup")
+        queue_section()
         return code
     if args.next:
         return next_up(trackers)
