@@ -5,7 +5,7 @@ Run it before every site build — in docs.yml, in a local build and in the suit
     python3 scripts/landing_facts.py && zensical build --clean
 
 It writes `overrides/partials/landing/facts.html`, which is generated and never committed (`.gitignore`); the landing reads every
-figure from it: `release`, `hiscore`, `hiscore_last`, `read`, `pins` and `wrecks_json`. It removes the file it wrote last before
+figure from it: `release`, `hiscore`, `hiscore_last`, `read`, `excerpt`, `pins` and `wrecks_json`. It removes the file it wrote last before
 it reads anything, and writes the new one only when every reading holds: whatever it cannot read stops the build with one line
 and exit 1, and a build without the file stops at the template's import, so no page is built with an empty or a stale figure.
 
@@ -20,6 +20,9 @@ and exit 1, and a build without the file stops at the template's import, so no p
   opened. The pull requests come from GitHub's API — with docs.yml's own token where `LANDING_FACTS_TOKEN` holds it, without one
   in a local build — or from a recorded response (`--pulls`); their commits come from git, so the history must be whole.
 - **read**: the build's day (Europe/Berlin; `SOURCE_DATE_EPOCH` where it is set) and the commit.
+- **excerpt**: what `shoalmark.py --owner` prints at the commit — the commit's own tool, run in a throwaway clone checked out
+  there, with no branch but the commit's history: how many questions wait for the Owner, how many acts they owe, and the first
+  act's id and line as it prints them, HTML-escaped.
 - **wrecks_json**: every tracker tagged `bug` or `security`, read through shoalmark.py's own reader, with the fields and the
   report's sentences as `work-tracker/evidence/FM-006/landing/start-page/facts.mjs` reads them. Open means In Progress or
   Proposed; any status but In Progress, Proposed, Shipped and Closed stops the build. A wreck keeps the position the chart's
@@ -40,14 +43,18 @@ from __future__ import annotations
 import argparse
 import datetime
 import hashlib
+import html
 import importlib.util
 import io
 import json
 import math
 import os
 import re
+import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 import zipfile
@@ -430,6 +437,71 @@ def read_wrecks(git, commit, url):
              **{k: wrecks[i][k] for k in ("title", "report", "url")}} for i in order]
 
 
+# --- the board's excerpt -----------------------------------------------------------------------------------------------------
+
+def _rmtree(path):
+    """A throwaway clone removed, on Windows too, where git leaves files read-only."""
+    shutil.rmtree(path, onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
+
+
+def read_excerpt(git, commit):
+    """{waiting, acts, act}: what `shoalmark.py --owner` prints at `commit`, run by the commit's own tool in a throwaway clone of
+    this history, checked out there, its hooks off, with no remote and no branch — so only the commit and its history count."""
+    d = Path(tempfile.mkdtemp(prefix="landing-facts-"))
+    try:
+        at = d / "at"
+        q = ["-c", "core.hooksPath=" + os.devnull, "-c", "advice.detachedHead=false"]
+        steps = (["clone", "--quiet", "--shared", "--no-checkout", str(git.repo), str(at)], ["-C", str(at), "checkout", "--quiet", "--detach", commit],
+                 ["-C", str(at), "remote", "remove", "origin"])
+        for step in steps:
+            if subprocess.run(["git", *q, *step], capture_output=True, env=git.env).returncode:
+                stop(f"the board's excerpt: a throwaway clone at {commit[:7]} could not be made (git {step[0] if step[0] != '-C' else step[2]})")
+        heads = subprocess.run(["git", "-C", str(at), "for-each-ref", "--format=delete %(refname)", "refs/heads"], capture_output=True, env=git.env).stdout
+        subprocess.run(["git", "-C", str(at), "update-ref", "--stdin"], input=heads, capture_output=True, env=git.env, check=False)
+        tool = at / "shoalmark.py"
+        if not tool.is_file():
+            stop(f"no shoalmark.py at {commit[:7]}: the board's excerpt is what it prints")
+        title = re.search(r'^ACTS_TITLE = "([^"\n]+)"$', tool.read_text(encoding="utf-8"), re.M)
+        if not title:
+            stop(f"shoalmark.py at {commit[:7]} names no ACTS_TITLE: the acts are read under it")
+        try:
+            r = subprocess.run([sys.executable, str(tool), "--root", str(at), "--owner"], cwd=str(at), capture_output=True, env=git.env, timeout=600)
+        except subprocess.TimeoutExpired:
+            stop(f"shoalmark.py --owner did not finish within 600 s at {commit[:7]}")
+    finally:
+        _rmtree(d)
+    out = r.stdout.decode("utf-8", errors="replace").splitlines()
+    if r.returncode or not out:
+        stop(f"shoalmark.py --owner exited {r.returncode} at {commit[:7]}, printing {len(out)} line(s): the board's excerpt is what it prints")
+    return excerpt_of(out, title.group(1), commit)
+
+
+def excerpt_of(out, acts_title, commit=""):
+    """The excerpt from `--owner`'s lines: its first line's count of questions, and the acts listed under `acts_title`."""
+    head = out[0]
+    m = re.match(r"^(\d+) NEED THE OWNER( · |$)", head)
+    if m:
+        waiting = int(m.group(1))
+    elif head.startswith("NO QUESTION FOR THE OWNER") or head == "NOTHING NEEDS THE OWNER.":
+        waiting = 0
+    else:
+        stop(f"shoalmark.py --owner's first line at {commit[:7]} reads {head[:60]!r}: neither questions counted nor none")
+    acts = []
+    if acts_title in out:
+        for line in out[out.index(acts_title) + 1:]:
+            if not line.strip():
+                break
+            a = re.match(r"^  ([A-Z][A-Z0-9]*-\d+) — (\S.*)$", line)
+            if a:
+                acts.append(a.groups())
+            elif not line.startswith("       "):
+                stop(f"shoalmark.py --owner lists an act at {commit[:7]} as {line[:60]!r}, not `  <id> — <its line>`")
+    owed = re.search(r" · (\d+) ACT\(S\) OWED", head)
+    if owed and int(owed.group(1)) != len(acts):
+        stop(f"shoalmark.py --owner's first line at {commit[:7]} counts {owed.group(1)} act(s), and it lists {len(acts)}")
+    return {"waiting": waiting, "acts": len(acts), "act": {"id": acts[0][0], "line": html.escape(acts[0][1])} if acts else None}
+
+
 # --- the probe prompt's pins -------------------------------------------------------------------------------------------------
 
 NOTES = {"ADOPT.md": "The pin: ", "ADOPT.de.md": "Die Festlegung: "}
@@ -560,7 +632,22 @@ def js_value(v):
     return js_string(v) if isinstance(v, str) else json.dumps(v)
 
 
-def facts_html(commit, release, hiscore, last, read, pins, wrecks):
+def jinja_value(v):
+    """A Jinja literal of any text, numbers, `none` and dicts: every character that could end the string, open a tag or break a line
+    written as \\uXXXX, which the template engine reads back as the character itself."""
+    if v is None:
+        return "none"
+    if isinstance(v, bool) or isinstance(v, (int, float)):
+        return json.dumps(v)
+    if isinstance(v, dict):
+        return "{" + ", ".join(f"{json.dumps(k)}: {jinja_value(x)}" for k, x in v.items()) + "}"
+    if not isinstance(v, str):
+        stop(f"a figure reads {v!r}, which facts.html does not carry")
+    bad = lambda ch: ch in "\"\\{}%#<>&`'" or ord(ch) < 0x20 or 0x7f <= ord(ch) <= 0x9f or ch in "\u2028\u2029"
+    return '"' + "".join(f"\\u{ord(ch):04x}" if bad(ch) else ch for ch in v) + '"'
+
+
+def facts_html(commit, release, hiscore, last, read, pins, wrecks, excerpt):
     obj = lambda d: "{" + ", ".join(f"{json.dumps(k)}: {lit(v)}" for k, v in d.items()) + "}"
     wrecks_json = "[" + ", ".join("{" + ", ".join(f"{json.dumps(k)}: {js_value(v)}" for k, v in w.items()) + "}" for w in wrecks) + "]"
     return (f"{{#- Generated by scripts/landing_facts.py from {commit} on {read['date']}; never committed, never edited by hand. The landing reads\n"
@@ -570,10 +657,11 @@ def facts_html(commit, release, hiscore, last, read, pins, wrecks):
             f"{{% set hiscore_last = {lit(last)} %}}\n"
             f"{{% set pins = {obj(pins)} %}}\n"
             f"{{% set read = {obj(read)} %}}\n"
+            f"{{% set excerpt = {jinja_value(excerpt)} %}}\n"
             f"{{% set wrecks_json %}}{wrecks_json}{{% endset %}}\n")
 
 
-def check_shapes(release, hiscore, last, read, pins, commit):
+def check_shapes(release, hiscore, last, read, pins, commit, excerpt):
     shapes = ((release["tag"], r"v\d+\.\d+\.\d+"), (release["date_en"], r"\d{1,2} [A-Z][a-z]+ \d{4}"), (release["date_de"], r"\d{1,2}\. [A-ZÄÖÜ][a-zä]+ \d{4}"),
               (hiscore, r"\d+/\d+"), (read["date"], r"\d{4}-\d{2}-\d{2}"), (read["sha"], r"[0-9a-f]{7,40}"), (pins["ADOPT_COMMIT"], r"[0-9a-f]{40}"),
               (pins["TAG"], r"v\d+\.\d+\.\d+"), (pins["ARCHIVE_URL"], r"https://github\.com/[\w./-]+|\[ARCHIVE URL — filled at build\]"),
@@ -583,6 +671,10 @@ def check_shapes(release, hiscore, last, read, pins, commit):
             stop(f"a figure reads {value!r}, not the shape facts.html carries")
     if not isinstance(last, int) or pins["ADOPT_COMMIT"] != commit:
         stop("the high score's last pull request or the prompt's commit is not what was read")
+    act = excerpt["act"]
+    if not all(isinstance(excerpt[k], int) and excerpt[k] >= 0 for k in ("waiting", "acts")) or (act is None) != (excerpt["acts"] == 0) \
+            or act is not None and not (re.fullmatch(r"[A-Z][A-Z0-9]*-\d+", act["id"]) and act["line"]):
+        stop(f"the board's excerpt reads {excerpt!r}, not the shape facts.html carries")
 
 
 def build(args):
@@ -599,20 +691,21 @@ def build(args):
     deploy = args.event in ("push", "workflow_dispatch")
     pins = read_pins(git, commit, release, slug, switch, deploy, args.main, args.archive)
     wrecks = read_wrecks(git, commit, url)
+    excerpt = read_excerpt(git, commit)
     (counted, of, last), _before = score(git, read_pulls(args.pulls, slug, os.environ.get("LANDING_FACTS_TOKEN") or None))
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     now = datetime.datetime.fromtimestamp(int(epoch), berlin()) if epoch and epoch.isdigit() else datetime.datetime.now(berlin())
     read = {"date": now.strftime("%Y-%m-%d"), "date_en": day_en(now.date()), "date_de": day_de(now.date()), "sha": commit[:7]}
     hiscore = f"{counted}/{of}"
-    check_shapes(release, hiscore, last, read, pins, commit)
-    text = facts_html(commit, release, hiscore, last, read, pins, wrecks)
+    check_shapes(release, hiscore, last, read, pins, commit, excerpt)
+    text = facts_html(commit, release, hiscore, last, read, pins, wrecks, excerpt)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".tmp")
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     tmp.replace(out)
     print(f"landing facts: {release['tag']} · hi-score {hiscore} to #{last} · {len(wrecks)} wrecks, "
-          f"{sum(w['status'] in ('In Progress', 'Proposed') for w in wrecks)} open · pins {'checked' if switch else 'stand-ins, the probe switch off'} · "
+          f"{sum(w['status'] in ('In Progress', 'Proposed') for w in wrecks)} open · the board {excerpt['waiting']} waiting, {excerpt['acts']} act(s) · pins {'checked' if switch else 'stand-ins, the probe switch off'} · "
           f"{commit[:7]} on {read['date']} → {out}")
 
 

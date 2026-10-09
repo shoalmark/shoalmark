@@ -12161,7 +12161,7 @@ def _lf_run(*argv):
 def _lf_read(path):
     """facts.html as the template reads it: each `set` as its value, wrecks_json parsed."""
     text = Path(path).read_text(encoding="utf-8")
-    out = {k: json.loads(v) for k, v in re.findall(r"^\{% set (\w+) = (.*) %\}$", text, re.M)}
+    out = {k: json.loads(re.sub(r": none(?=[,}])", ": null", v)) for k, v in re.findall(r"^\{% set (\w+) = (.*) %\}$", text, re.M)}
     out["wrecks"] = json.loads(re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text, re.S).group(1))
     return out
 
@@ -12186,7 +12186,7 @@ _lf_why = ("this clone is shallow" if _shallow32 != "false" else f"this clone do
            else "this clone does not hold ffa63b8, the Owner's answer the high scores are split at" if not _held("ffa63b8")
            else "no tz database for Europe/Berlin here (the filing days and the build's day are Berlin days)" if not _zone_ok else "")
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 7, _lf_why)
+    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 8, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -12222,6 +12222,9 @@ else:
             at_[i_] = drawing_[i_]
         check(f"FM-006 · B1 · the drawing's rule places FM-038, FM-039 and FM-040 where the drawing has them, each against the wrecks drawn before it "
               f"and the chart's names (saw {placed_})", placed_ == [(i, drawing_[i]) for i in ("FM-038", "FM-039", "FM-040")])
+        check(f"FM-006 · B1 · the board's excerpt is what `shoalmark.py --owner` prints at {_LF_TAG}: one question waits for the Owner, one act is owed, "
+              f"and the first is FM-007's line as it prints it (saw {f_.get('excerpt')})",
+              f_.get("excerpt") == {"waiting": 1, "acts": 1, "act": {"id": "FM-007", "line": "after the scoring, once the key is delivered. · no date yet · promised 2026-09-25"}})
         under_ = lambda box: [w["id"] for w in f_.get("wrecks", []) if not (chart_.x(w["lon"]) + lf_.WRECK[2] <= box[0] or chart_.x(w["lon"]) + lf_.WRECK[0] >= box[2]
                                                                      or chart_.y(w["lat"]) + lf_.WRECK[3] <= box[1] or chart_.y(w["lat"]) + lf_.WRECK[1] >= box[3])]
         clear_, grown_ = under_(lf_.TITLE), under_((lf_.TITLE[0], lf_.TITLE[1], lf_.TITLE[2] + 12, lf_.TITLE[3] + 12))
@@ -12321,6 +12324,47 @@ else:
         named_ = _lf_ev("--event", "pull_request_target", at=_LF_TAG)
         check(f"FM-006 · B1 · an event the build does not know stops it (saw {named_})", _lf_stops(named_, facts_, "--event 'pull_request_target'"))
 
+if _lf_why:
+    _skipped("FM-006 · B1 · the board's excerpt, read and refused", 4, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        clone_, facts_, off_ = _lf_clone(base_), base_ / "facts.html", base_ / "off.toml"
+        off_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
+
+        def _lf_owner(change):
+            git(clone_, "checkout", "-q", "--detach", _LF_TAG)
+            change(clone_)
+            git(clone_, "commit", "-q", "-a", "-m", "a control")
+            facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
+            return _lf_run("--repo", str(clone_), "--out", str(facts_), "--config", str(off_), "--pulls", str(_LF_PULLS))
+
+        def _lf_marked(root):
+            p28_, p7_ = next(root.glob("work-tracker/FM-028-*.md")), next(root.glob("work-tracker/FM-007-*.md"))
+            t28_ = p28_.read_text(encoding="utf-8").replace("\nstatus: Proposed\n", "\nstatus: Proposed\ndue: 2026-10-20 10:00\n", 1)
+            p28_.write_text(re.sub(r"(?m)^# FM-028 — .*$", '# FM-028 — After midnight <b>the suite</b> refuses & "every" commit', t28_, count=1), encoding="utf-8")
+            p7_.write_text(p7_.read_text(encoding="utf-8").replace("\nanswered: 2026-09-25\n", '\nanswered: 2026-09-25\ndone: "the key is set up"\n', 1), encoding="utf-8")
+
+        def _lf_stub(first, title=True):
+            """The commit's tool, its `--owner` printing `first` and nothing more; without ACTS_TITLE where `title` is false."""
+            return lambda root: (root / "shoalmark.py").write_text(f"import sys\nif __name__ == '__main__' and '--owner' in sys.argv:\n    print({first!r}); sys.exit(0)\n"
+                + (root / "shoalmark.py").read_text(encoding="utf-8").replace('ACTS_TITLE = "ACTS — yours, with their time"',
+                                                                              'ACTS_TITLE = "ACTS — yours, with their time"' if title else 'ACTS_TITLE_ = "gone"', 1), encoding="utf-8")
+        marked_ = _lf_owner(_lf_marked)
+        excerpt_ = _lf_read(facts_).get("excerpt") if marked_[0] == 0 else None
+        text_ = facts_.read_text(encoding="utf-8") if marked_[0] == 0 else ""
+        check(f"FM-006 · B1 · the excerpt follows the trackers: FM-007's act done, it leaves; an act owed on FM-028 takes its place, its line HTML-escaped "
+              f"and written so no character of it ends the string or opens a tag (saw {marked_[0]}, {excerpt_})",
+              excerpt_ == {"waiting": 1, "acts": 1, "act": {"id": "FM-028", "line": "After midnight &lt;b&gt;the suite&lt;/b&gt; refuses &amp; &quot;every&quot; commit · no date yet"}}
+              and '\\u0026lt;b\\u0026gt;the suite' in text_ and "<b>" not in text_.split("{% set excerpt")[1].split("\n")[0])
+        odd_ = _lf_owner(_lf_stub("SOMETHING ELSE ENTIRELY"))
+        check(f"FM-006 · B1 · an `--owner` whose first line counts no questions, nor says there are none, stops the build (saw {odd_})",
+              _lf_stops(odd_, facts_, "shoalmark.py --owner's first line at"))
+        miscount_ = _lf_owner(_lf_stub("NO QUESTION FOR THE OWNER · 2 ACT(S) OWED, WITH THEIR TIME"))
+        check(f"FM-006 · B1 · an `--owner` that counts acts it does not list stops the build (saw {miscount_})", _lf_stops(miscount_, facts_, "counts 2 act(s), and it lists 0"))
+        untitled_ = _lf_owner(_lf_stub("NOTHING NEEDS THE OWNER.", title=False))
+        check(f"FM-006 · B1 · a tool at the commit that names no ACTS_TITLE stops the build, rather than read no acts (saw {untitled_})",
+              _lf_stops(untitled_, facts_, "names no ACTS_TITLE"))
 
 if _lf_why:
     _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 12, _lf_why)
