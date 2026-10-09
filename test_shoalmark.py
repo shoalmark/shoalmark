@@ -2308,7 +2308,11 @@ def _git_starts(src):
         if (isinstance(n, ast.List) and n.elts and isinstance(n.elts[0], ast.Constant) and isinstance(n.elts[0].value, str)
                 and (git_name(n.elts[0].value) or base_name(n.elts[0].value) in _WRAPPERS | _SHELLS) and n not in reached):
             unread.append((n.lineno, "an argv no start the reading follows is handed"))
-    return {k: sorted(v) for k, v in found.items()}, sorted(set(unread + fixed)), sorted(set(others)), {site: len(v) for site, v in excepted.items()}
+    result = {k: sorted(v) for k, v in found.items()}, sorted(set(unread + fixed)), sorted(set(others)), {site: len(v) for site, v in excepted.items()}
+    for held in (every, parent, defs, bound, loads, kept_, reached, starts, starters, handed, found, unread, others, fixed, excepted):
+        held.clear()                        # the parsed tree and the per-call tables, released as the reading returns: its inner functions hold them in a cycle
+    tree = None
+    return result
 
 
 def _git_command(argv):
@@ -2329,6 +2333,25 @@ def _not_git_itself(argvs):
 def _started_never(argvs, never):
     """The commands of `never` one of `argvs` starts — what the classification's runtime half finds; [] where none is."""
     return sorted({_git_command(a) for a in argvs} & set(never))
+
+
+_HELD_PY = ("import ast, collections, gc, re, sys\n"
+            "g = {'ast': ast, 'collections': collections, 're': re}\n"
+            "for n in ast.parse(open(sys.argv[1], encoding='utf-8').read()).body:\n"
+            "    bound = {t.id for t in getattr(n, 'targets', []) if isinstance(t, ast.Name)} | ({n.name} if isinstance(n, ast.FunctionDef) else set())\n"
+            "    if bound & {'_WRAPPERS', '_PYTHONS', '_SHELLS', '_CODE_FLAGS', '_NAMES_GIT', '_PROCESS_APIS', '_EXCEPTION', '_DERIVER', '_NOTICE_ARGV', '_git_starts'}:\n"
+            "        exec(compile(ast.Module(body=[n], type_ignores=[]), sys.argv[1], 'exec'), g)\n"
+            "src = open(sys.argv[2], encoding='utf-8').read()\n"
+            "gc.collect(); gc.disable(); before = len(gc.get_objects())\n"
+            "g['_git_starts'](src)\n"
+            "print(len(gc.get_objects()) - before)\n")
+
+
+def _held_by(tests):
+    """How many tracked objects one reading of the tool leaves held — by the `_git_starts` of the suite at `tests`, in a process of its own, the collector
+    paused from just before the reading to just after it. None where that reading did not run."""
+    r_ = subprocess.run([sys.executable, "-c", _HELD_PY, str(tests), fm.__file__], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+    return int(r_.stdout.strip()) if r_.returncode == 0 and r_.stdout.strip().isdigit() else None
 
 
 with tempfile.TemporaryDirectory() as d:
@@ -2544,6 +2567,19 @@ with tempfile.TemporaryDirectory() as d:
           f"or through a helper, a forwarding one too, another program's code inside it, a second branch handing code to osascript, Python code that defines its own "
           f"`notify_argv`, the deriver's form outside `run_deriver`, directly or through a helper, a third start inside it, its form a second time and a forwarding helper "
           f"inside it invoked twice each fail the check; that helper invoked once is admitted (saw {ends45_}; once {once45_})", len(fixed45_) == 2 and all(ends45_.values()) and once45_)
+    held45_ = _held_by(HERE / "test_shoalmark.py")
+    check(f"FM-045 · Check A releases what it holds as its reading returns: one reading of the tool leaves under 5,000 tracked objects behind, the collector paused — its "
+          f"parsed tree and per-call tables are gone (saw {held45_})", held45_ is not None and held45_ < 5_000)
+    if _has_rev("ceb21b8"):
+        (Path(d) / "tests-ceb21b8.py").write_text(subprocess.run(["git", "-C", str(HERE), "show", "ceb21b8:test_shoalmark.py"], capture_output=True, text=True, encoding="utf-8",
+                                                                  env=_ENV).stdout, encoding="utf-8")
+        held45_ = _held_by(Path(d) / "tests-ceb21b8.py")
+        check(f"FM-045 · Check A releases what it holds · …the control: ceb21b8's reading leaves its parsed tree held, over 50,000 tracked objects (saw {held45_})",
+              held45_ is not None and held45_ > 50_000)
+    else:
+        _skipped("FM-045 · Check A releases what it holds · the control", 1, "this clone does not hold ceb21b8")
+    del (src_, never_, unclassified_, as_named_, notice45_, injected_, caught_, program_, read_, closed45_, shut45_, fixed45_, ns45_, der45_, run45_, helper45_, copies45_,
+         ends45_, once45_, held45_, found_, unread_, others_, excepted_, what_, copy_, ind45_, tail45_, text_, f_, u_, _o, x_, code_, want_, _x)     # released as the block ends
 
 
 def _signers_repo(base):
