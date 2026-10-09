@@ -1398,8 +1398,9 @@ with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as h:
               CANARY.split()[0] not in seen_all and "evil" not in seen_all and cw[0] == 0 and cw[1].splitlines()[0] == f"From: 1111aaaa principal ({wt}) · claude-opus-4-8 · high")
         # the newest turn that carries them, from the end of a log of several megabytes — never a whole-file read
         big = home.log(f".claude/projects/-Users-x-big/{PARENT[:-1]}1.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(30)] + [_turn("claude-sonnet-5-5", "max")])
-        cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.monotonic(); bw = run_safe(root, "--whoami"); took = time.monotonic() - t0
-        check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log (saw {bw[1].splitlines()[:1]}, {took:.1f} s)",
+        cfg("seat.harness", PARENT[:-1] + "1"); t0 = time.thread_time(); bw = run_safe(root, "--whoami"); took = time.thread_time() - t0     # the run is in this process: its CPU time, not the wall clock other work on the machine stretches
+        check(f"FM-024 (0.19.0) · the reader takes the newest turn's model and effort from the end of a {big.stat().st_size // 1_000_000} MB log, in under 20 s of this thread's CPU time "
+              f"(saw {bw[1].splitlines()[:1]}, {took:.1f} s)",
               bw[1].splitlines()[0].endswith("claude-sonnet-5-5 · max") and took < 20)
         # a log that names nothing within the newest 8 MiB (or only one of the two) reads `—` and says why — never silence
         old = home.log(f".claude/projects/-Users-x-old/{PARENT[:-1]}2.jsonl", [_turn("claude-opus-4-8", "low")] + [_turn(content="x" * 100_000, kind="user") for _ in range(90)])
@@ -5136,8 +5137,8 @@ with tempfile.TemporaryDirectory() as d:
                  ("a width of 20,000 digits and a `!`", _W('<rect width="' + "1" * 20000 + '!"/>'), 0.05),
                  ("800 paths drawn by 10,000 <use>s, 179 kB — refused by the count as it goes", _W('<defs><g id="a">' + '<path d="M0 0h1v1h-1Z"/>' * 800 + '</g></defs>' + '<use href="#a"/>' * 10000), 1.0))
         for case, svg, limit in _slow:
-            _t0 = _time.perf_counter(); _why = fm.inline_svg(svg)[1]; _ms = (_time.perf_counter() - _t0) * 1000
-            check(f"0.18.2 · R8/R9 · {case} ({len(svg):,} bytes) is refused in under {limit * 1000:.0f} ms (took {_ms:.1f} ms): {_why}", _why and _ms < limit * 1000)
+            _t0 = _time.thread_time(); _why = fm.inline_svg(svg)[1]; _ms = (_time.thread_time() - _t0) * 1000     # this thread's CPU time, not the wall clock other work on the machine stretches
+            check(f"0.18.2 · R8/R9 · {case} ({len(svg):,} bytes) is refused in under {limit * 1000:.0f} ms of this thread's CPU time (took {_ms:.1f} ms): {_why}", _why and _ms < limit * 1000)
         _, x_page, _, x_err, x_code = board_with(repo_wordmark_svg=_W('<text x="' + "111 " * 30 + '!">a</text>').decode(), repo_logo_svg=_SVG)
         check("0.18.2 · R8 · the Reviewer's 246-byte wordmark that hung the build is a warning: the build and --print-written exit 0",
               x_code == 0 and "wordmark.svg is not shown: its x=" in x_err and "<b>repo</b>" in x_page and run(root, "--print-written")[0] == 0)
