@@ -85,7 +85,7 @@ a{color:var(--blue)}
 .hud nav{margin-left:auto;display:flex;gap:6px}
 .hud nav a{font:400 11px/1 var(--pix);color:var(--bandink);text-decoration:none;padding:8px 10px;border:1px solid transparent}
 .hud nav a:hover{border-color:var(--drying);color:var(--watt)}
-.hud nav a i{font-style:normal;color:var(--watt)}
+.hud nav a i{font-style:normal;color:var(--watt)}{# round 6: the header's two buttons. Docs is the secondary button's sand, sized to the bar (the anchors' height); the language switch is the same small button in outline; each has a one-colour pixel icon in its ink (a 7 × 7 grid at 2 CSS px a unit, like the copy icon), hidden from screen readers. A short pixel bar separates the links within the page, on its left, from the one link that leaves it #}.hud nav .sep{flex:none;align-self:center;width:2px;height:16px;margin-inline:6px;background:var(--field)}.hud .bi{flex:none;display:block;width:14px;height:14px;margin-block:-2px;fill:currentColor}.hud nav a.docs{display:inline-flex;align-items:center;gap:7px;font-weight:700;color:var(--landink);background:var(--land);border-color:var(--land)}.hud nav a.docs:hover{background:var(--watt);border-color:var(--watt);color:var(--landink)}
 
 /* THE PLAYFIELD — the chart, pixel for pixel; k CSS pixels to a chart pixel, a whole number where it can be */
 .hero{position:relative;background:var(--deep);border-bottom:1px solid var(--contour)}
@@ -307,8 +307,8 @@ section.band{padding-block:72px 40px}
 .score a.rel:hover{color:var(--bandink);outline:1px solid var(--drying);outline-offset:6px}
 .score a.rel:hover b{color:var(--land);text-shadow:0 0 8px rgba(232,212,160,.45)}
 .hud .langsw{display:block}
-.hud .lang{display:block;font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--bandink);text-decoration:none;padding:8px 10px;border:1px solid var(--field);white-space:nowrap}
-.hud .lang:hover{border-color:var(--drying);color:var(--watt)}
+.hud .lang{display:flex;align-items:center;gap:7px;font:700 11px/1 var(--pix);text-transform:uppercase;color:var(--land);text-decoration:none;padding:8px 10px;border:1px solid var(--land);white-space:nowrap}
+.hud .lang:hover{background:var(--land);color:var(--landink)}
 .hud .lang .s{display:none}
 
 /* B1 — the line under the chart: what a wreck is, in the register's word */
@@ -397,11 +397,11 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 }{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the actions carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, each action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (max-width:400px){.hud .wrap{gap:12px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
 /* B1 — top bar, by width: the switch and the release link take their room from the bar's own stats, as it already yields them */
-@media (max-width:1195px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer. With the switch and all five anchors the bar needs 1160px in German and 1093px in English at today's hi-score, 76/91 with v0.19.2 in the label, and 1188px and 1123px with the widest three-digit hi-score, 888/888 (measured; the hi-score is read on every deploy and grows a digit with the counted range). The anchors show from 1196px, so that even that figure keeps them in one row; the browser check sets 888/888 and finds that they stand in one row where they first show #}
-@media (max-width:1129px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1130px in English (1196px in German), not 981px — the switch needs the room; the bar needs 992px without it #}
+@media (max-width:1272px){html:lang(de) .hud nav a:not(.docs),html:lang(de) .hud nav .sep{display:none}}{# German labels are longer. With the switch (its globe), the separator, Docs (its arrow) and all five anchors the bar needs 1265px in German and 1200px in English with the widest three-digit hi-score, 888/888 (measured at every whole width; the hi-score is read on every deploy and grows a digit with the counted range). The anchors show from 1273px (1208px in English), so that even that figure keeps them in one row; the browser check sets 888/888 and finds that they stand in one row where they first show #}
+@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}{# B1: the anchors, and the separator that goes with them, yield below 1208px in English (1273px in German); round 6's globe, separator and Docs button moved them up from 1130px and 1196px #}
 @media (max-width:699px){.hud .lang .l{display:none}.hud .lang .s{display:inline}.hud .lang{padding:8px 8px}}
 @media (max-width:700px){.hud .langsw{margin-left:-8px}}{# B1: with the score's own 14px gap, the switch reads as the list's last item #}
-@media (max-width:469px){.score .hot{display:none}}
+@media (max-width:469px){.score .hot{display:none}}@media (max-width:525px){.hud .brand .wd{display:none}}{# round 6: on a phone the bar gives the mark's word before it gives a control or the release label its room; the mark stays, named by its aria-label #}
 @media (max-width:400px){.hud .langsw{margin-left:2px}}{# the bar's gaps are 12px there, the score's 14px #}{# B1: below 470px the open count yields to the switch (the bar has 0 px to spare at 360) #}
 @media (max-width:700px) and (max-height:800px){.title .claim{margin-bottom:15px}.lede{margin-bottom:12px}.title{padding-block:22px 20px}}{# B1: short phones (360×780, 375×667): the second action costs 49px; the title's own spaces give 34px of it back, so the chart's top edge still shows #}
 @media (max-width:700px){
@@ -435,17 +435,17 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 
 <header class="hud">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="{{ w.hud_brand_aria }}"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="#d9e4ec"/></svg>shoalmark</a>
+    <a class="brand" href="#top" aria-label="{{ w.hud_brand_aria }}"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="#d9e4ec"/></svg><span class="wd">shoalmark</span></a>
     <div class="score" role="list" aria-label="{{ w.hud_score_aria }}">
       <div role="listitem"><a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{{ F.release.tag }}" aria-label="{{ T(w.hud_release_aria) }}">{{ w.hud_release }}<b>{{ F.release.tag }}</b></a></div>{# B1 §3.3: the label links to its release, the address the footer uses; its tag is the label's own value (facts.html) #}
       <div role="listitem" class="opt">{{ w.hud_hiscore }}<b>{{ F.hiscore }}</b></div>
       <div role="listitem" class="mid">{{ w.hud_wrecks }}<b id="hud-w">{{ F.counts.wrecks }}</b></div>
       <div role="listitem" class="hot">{{ w.hud_open }}<b id="hud-o">{{ F.counts.open }}</b></div>{# The top bar: the release label, its link, the high score and the two counts, wrecks and open, are facts.html's (`release`, `hiscore`, `counts`); the script below sets the same two counts from the one list that draws the chart (`wrecks_json`), which the build holds them to #}
     </div>
-    <div class="langsw" role="group" aria-label="{{ w.switch_group }}"><a class="lang" href="{{ urls.switch_rel }}" hreflang="{{ w.switch_lang }}" lang="{{ w.switch_lang }}" aria-label="{{ w.switch_aria }}" title="{{ w.switch_aria }}"><span class="l">{{ w.switch_long }}</span><span class="s">{{ w.switch_short }}</span></a></div>{# B1: the language switch — the other language's own name, its code on a phone; hreflang and lang say what it leads to #}
+    <div class="langsw" role="group" aria-label="{{ w.switch_group }}"><a class="lang" href="{{ urls.switch_rel }}" hreflang="{{ w.switch_lang }}" lang="{{ w.switch_lang }}" aria-label="{{ w.switch_aria }}" title="{{ w.switch_aria }}"><svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M2 0h3v1h-3ZM1 1h2v1h-2ZM4 1h2v1h-2ZM0 2h1v1h-1ZM2 2h1v1h-1ZM4 2h1v1h-1ZM6 2h1v1h-1ZM0 3h7v1h-7ZM0 4h1v1h-1ZM2 4h1v1h-1ZM4 4h1v1h-1ZM6 4h1v1h-1ZM1 5h2v1h-2ZM4 5h2v1h-2ZM2 6h3v1h-3Z"/></svg><span class="l">{{ w.switch_long }}</span><span class="s">{{ w.switch_short }}</span></a></div>{# B1: the language switch — the other language's own name, its code on a phone; hreflang and lang say what it leads to #}
     <nav aria-label="{{ w.nav_aria }}">
-      <a href="#agents">{{ w.nav_agents }}</a><a href="#people">{{ w.nav_people }}</a><a href="#scores">{{ w.nav_scores }}</a><a href="#register">{{ w.nav_wrecks }}</a><a href="#start">{{ w.nav_start }}</a>
-    <a class="docs" href="{{ urls.docs }}">{{ w.nav_docs }}</a>
+      <a href="#agents">{{ w.nav_agents }}</a><a href="#people">{{ w.nav_people }}</a><a href="#scores">{{ w.nav_scores }}</a><a href="#register">{{ w.nav_wrecks }}</a><a href="#start">{{ w.nav_start }}</a><span class="sep" aria-hidden="true"></span>
+    <a class="docs" href="{{ urls.docs }}">{{ w.nav_docs }}<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M4 0h3v1h-3ZM5 1h2v1h-2ZM0 2h3v1h-3ZM4 2h1v1h-1ZM6 2h1v1h-1ZM0 3h1v1h-1ZM3 3h1v1h-1ZM0 4h1v1h-1ZM2 4h1v1h-1ZM5 4h1v1h-1ZM0 5h1v1h-1ZM5 5h1v1h-1ZM0 6h6v1h-6Z"/></svg></a>
     </nav>
   </div>
 </header>

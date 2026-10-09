@@ -4798,6 +4798,75 @@ check("FM-006 · B1 · the cue's check is not blind: each of the cue in the inte
       f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 14)
 
 
+# --- FM-006 · B1 · the header: Docs past a separator as the sand button, the language switch as an outline button with a globe ------------------------------------
+# The bar's links within the page (1P agents … start) are parted by a short pixel bar from the one link that leaves it, Docs (Doku), the secondary button's sand with an arrow
+# out of a box; the language switch is the same small button in outline with a globe. Both icons are one colour in the button's ink and hidden from screen readers; the names
+# and the switch's hreflang, lang and aria-label are as they were. The anchors and the separator yield together below 1208 px (English) and 1273 px (German), and below 526 px
+# the word beside the mark yields, never the mark or its aria-label.
+_HEADER_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
+
+
+def _header_problems(src):
+    """What is wrong with the landing's header, one line each; none where it is as round 6 builds it."""
+    bad, tpl = [], src["overrides/landing.html"]
+    code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)
+    words, more = _landing_words(src)
+    bad += more
+    nav = re.search(r"<nav aria-label=\"\{\{ w\.nav_aria \}\}\">(.*?)</nav>", code, re.S)
+    nav = nav.group(1) if nav else ""
+    if '<a href="#start">{{ w.nav_start }}</a><span class="sep" aria-hidden="true"></span>' not in nav or nav.find('class="sep"') > nav.find('class="docs"') or nav.count('class="sep"') != 1:
+        bad.append("the separator is not, hidden from screen readers, between the start anchor and Docs")
+    docs = re.search(r'<a class="docs" href="\{\{ urls\.docs \}\}">\{\{ w\.nav_docs \}\}(<svg[^>]*>.*?</svg>)</a>', nav, re.S)
+    switch = re.search(r'<a class="lang" href="\{\{ urls\.switch_rel \}\}" hreflang="\{\{ w\.switch_lang \}\}" lang="\{\{ w\.switch_lang \}\}" aria-label="\{\{ w\.switch_aria \}\}" title="\{\{ w\.switch_aria \}\}">(<svg[^>]*>.*?</svg>)', code, re.S)
+    for what, found in (("Docs", docs), ("the language switch", switch)):
+        if not found or 'class="bi"' not in found.group(1) or 'aria-hidden="true"' not in found.group(1) or 'focusable="false"' not in found.group(1):
+            bad.append(f"{what} does not carry its icon, hidden from screen readers and not focusable, with its names and attributes as they were")
+    if switch and docs and (switch.group(1).count("<path") != 1 or docs.group(1).count("<path") != 1 or re.search(r'\sfill="|\sstroke="|\sstyle="', switch.group(1) + docs.group(1))):
+        bad.append("the two header icons are not each one path, one colour in the button's ink")
+    if ".hud .bi{" not in code or "fill:currentColor" not in code.split(".hud .bi{")[1].split("}")[0]:
+        bad.append("the header icons are not drawn in the button's ink (fill: currentColor)")
+    if not re.search(r"\.hud nav a\.docs\{[^}]*background:var\(--land\)[^}]*\}", code) or not re.search(r"\.hud \.lang\{[^}]*border:1px solid var\(--land\)[^}]*\}", code):
+        bad.append("Docs is not the sand button and the switch not the same button in outline")
+    if (words["en"].get("nav_docs"), words["de"].get("nav_docs")) != ("Docs", "Doku"):
+        bad.append("Docs and Doku are not the names they were")
+    # the anchors yield together with the separator, at the breakpoints
+    en_rule = "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}"
+    de_rule = "@media (max-width:1272px){html:lang(de) .hud nav a:not(.docs),html:lang(de) .hud nav .sep{display:none}}"
+    if en_rule not in code or de_rule not in code:
+        bad.append("the anchors and the separator do not yield together below 1208 px in English and 1273 px in German")
+    # the word beside the mark yields below 526 px, and nothing else of the mark does
+    word = re.search(r'<a class="brand" href="#top" aria-label="\{\{ w\.hud_brand_aria \}\}"><svg[^>]*><use href="#pricke" fill="#d9e4ec"/></svg><span class="wd">shoalmark</span></a>', code)
+    rule = re.findall(r"@media \(max-width:(\d+)px\)\{\.hud \.brand ([^}]*)\}\}?", code)
+    if not word or rule != [("525", ".wd{display:none")] and rule != [("525", ".wd{display:none}")]:
+        bad.append("the word beside the mark does not yield alone below 526 px, with the mark and its aria-label staying")
+    return bad
+
+
+_hs = _sources(_HEADER_FILES)
+_hp = _header_problems(_hs)
+check("FM-006 · B1 · the header: the separator stands between the start anchor and Docs and goes with the anchors, Docs (Doku) is the sand button and the language switch the same button in "
+      "outline, each with a one-colour icon hidden from screen readers and the switch's attributes as they were, and below 526 px only the word beside the mark yields "
+      f"(problems found: {_hp})", _hp == [])
+_hctl = {"no separator": _with(_hs, "overrides/landing.html", '<span class="sep" aria-hidden="true"></span>', ""),
+         "a separator that screen readers read": _with(_hs, "overrides/landing.html", '<span class="sep" aria-hidden="true"></span>', '<span class="sep"></span>'),
+         "the separator after Docs": _with(_with(_hs, "overrides/landing.html", '<span class="sep" aria-hidden="true"></span>', ""), "overrides/landing.html", "</svg></a>\n    </nav>", "</svg></a><span class=\"sep\" aria-hidden=\"true\"></span>\n    </nav>"),
+         "Docs without its icon": _with(_hs, "overrides/landing.html", '{{ w.nav_docs }}<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false">', '{{ w.nav_docs }}<svg class="bi" viewBox="0 0 7 7" focusable="false">'),
+         "the switch's icon read by screen readers": _with(_hs, "overrides/landing.html", '<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M2 0h3v1h-3Z', '<svg class="bi" viewBox="0 0 7 7" focusable="false"><path shape-rendering="crispEdges" d="M2 0h3v1h-3Z'),
+         "the switch without its hreflang": _with(_hs, "overrides/landing.html", ' hreflang="{{ w.switch_lang }}" lang="{{ w.switch_lang }}" aria-label="{{ w.switch_aria }}"', ' lang="{{ w.switch_lang }}" aria-label="{{ w.switch_aria }}"'),
+         "the switch without its aria-label": _with(_hs, "overrides/landing.html", ' aria-label="{{ w.switch_aria }}" title=', " title="),
+         "an icon in two colours": _with(_hs, "overrides/landing.html", '<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M4 0h3v1h-3Z', '<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path fill="#fff" shape-rendering="crispEdges" d="M4 0h3v1h-3Z'),
+         "Docs renamed": _with(_hs, "overrides/partials/landing/de.html", '"nav_docs": "Doku"', '"nav_docs": "Dokumentation"'),
+         "the anchors yield alone": _with(_hs, "overrides/landing.html", "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "@media (max-width:1207px){.hud nav a:not(.docs){display:none}}"),
+         "the German breakpoint as it was": _with(_hs, "overrides/landing.html", "@media (max-width:1272px)", "@media (max-width:1195px)"),
+         "the mark yielding with its word": _with(_hs, "overrides/landing.html", "@media (max-width:525px){.hud .brand .wd{display:none}}", "@media (max-width:525px){.hud .brand{display:none}}"),
+         "the word yielding below 700 px": _with(_hs, "overrides/landing.html", "@media (max-width:525px){.hud .brand .wd{display:none}}", "@media (max-width:699px){.hud .brand .wd{display:none}}"),
+         "the word outside its span": _with(_hs, "overrides/landing.html", '<span class="wd">shoalmark</span></a>', "shoalmark</a>")}
+_hctl_saw = {name: len(_header_problems(src)) for name, src in _hctl.items()}
+check("FM-006 · B1 · the header's check is not blind: each of no separator, one that screen readers read, one after Docs, Docs' icon or the switch's read by screen readers, the switch without "
+      "its hreflang or its aria-label, an icon in two colours, Docs renamed, the anchors yielding without the separator, the German breakpoint as it was, the mark yielding with its word or the "
+      f"word yielding below 700 px, and the word outside its span leaves a problem (problems found: {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 14)
+
+
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
@@ -12583,54 +12652,20 @@ else:
                             "with its folds closed, nothing in the dialog scrolls inside itself"),
                 "unfolds": ("a fold that keyboard does not open", _mutate("unfolds", "index.html", "</body>", '<script>document.addEventListener("click", e => { if (e.target.closest("summary")) e.preventDefault() })</script></body>'),
                             "fold 1 opens and closes by keyboard"),
-                "wraps": ("a top bar whose anchors show a width too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1129px){.hud nav a:not(.docs){display:none}}", "@media (max-width:1099px){.hud nav a:not(.docs){display:none}}", "bar"),
-                          "the top bar's anchors stand in one row, clear of the switch, where they first show"),
-                "box-aria": ("a prompt box whose button does not say aria-expanded", _mutate("box-aria", "index.html", 'more.setAttribute("aria-expanded", on);', "", "390x844"),
-                             "the button opens the box by Enter and folds it back by Space"),
-                "box-shut": ("a prompt box that never opens whole", _mutate("box-shut", "index.html", 'if (on) fit(); else ta.style.height = "";', 'ta.style.height = "";', "390x844"),
-                             "the button opens the box by Enter and folds it back by Space"),
-                "box-failed": ("a failed copy that leaves the box closed", _mutate("box-failed", "index.html", 'say("fail", W.fail); done.textContent = ""; show(true); ta.focus();', 'say("fail", W.fail); done.textContent = ""; ta.focus();', "390x844"),
-                               "where the copy is refused, the dialog says so, the box opens, and its whole text is selected and focused, so that Ctrl+C copies it all"),
-                "box-fade": ("a fade that takes the pointer", _mutate("box-fade", "index.html", "</head>", "<style>.probe-fade{pointer-events:auto!important}</style></head>", "390x844"),
-                             "the fade is decorative: it takes no pointer events and never covers the button"),
-                "box-later": ("a later success that folds the box", _mutate("box-later", "index.html", 'const good = again_ => { say("ok", W.ok);', 'const good = again_ => { say("ok", W.ok); show(false);', "390x844"),
-                              "a later successful copy returns step 1 to the clipboard line and leaves the box as it is"),
-                "box-unlimited": ("an opened box that never yields to the window", _mutate("box-unlimited", "index.html", 'ta.style.height = (over > 0 ? Math.max(floor, whole - over) : whole) + "px";', 'ta.style.height = whole + "px";', "390x844"),
-                                  "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)"),
-                "box-fixed": ("an opened box of a fixed size", _mutate("box-fixed", "index.html", 'ta.style.height = (over > 0 ? Math.max(floor, whole - over) : whole) + "px";', 'ta.style.height = "172px";', "1440x900"),
-                              "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)"),
-                "box-blank": ("an opened box that ends in an empty line", _mutate("box-blank", "index.html", 'ta.value = FULL.replace(/\\n$/, "");', "", "390x844"),
-                              "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)"),
-                "box-copy": ("a copy that loses the last line ending", _mutate("box-copy", "index.html", "navigator.clipboard.writeText(FULL)", "navigator.clipboard.writeText(ta.value)", "390x844"),
-                             "the prompt copied is the prompt of the page, byte for byte, its line ending included"),
-                "box-resize": ("an opened box that does not follow the window", _mutate("box-resize", "index.html", 'addEventListener("resize", () => { if (box.dataset.open === "true") fit(); });', "", "1440x900"),
-                               "the opened box follows a resize: smaller in a lower window, as large again when the window is"),
-                "addr-short": ("a second step whose link shows only probe.txt", _mutate("addr-short", "index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>", ">probe.txt</a>", "360x780"),
-                               "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
-                "addr-wide": ("a second step whose address is wider than the dialog and does not wrap", _mutate("addr-wide", "index.html", ">shoalmark.github.io/<wbr>shoalmark/<wbr>probe.txt</a>", '><span style="white-space:nowrap;font-size:24px">shoalmark.github.io/shoalmark/probe.txt</span></a>', "360x780"),
-                              "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll"),
-                "ticker": ("a ticker that does not clip its band", _mutate("ticker", "index.html", "</head>", "<style>.ticker{overflow:visible!important}</style></head>", "360x780"),
-                           "the ticker clips its own band and takes no room of the page"),
-                "cue-wide": ("a cue wider than the primary button", _mutate("cue-wide", "index.html", "</head>", "<style>.cue{min-width:130%!important}</style></head>", "cue"),
-                             "the cue is as wide as the primary button and centred on it, above it"),
-                "cue-aside": ("a cue off the button's centre", _mutate("cue-aside", "index.html", "</head>", "<style>.cue{position:relative;left:14px}</style></head>", "cue"),
-                              "the cue is as wide as the primary button and centred on it, above it"),
-                "cue-chart": ("a cue that touches the chart's labels", _mutate("cue-chart", "index.html", "</head>", "<style>#names .name{left:15%!important;top:48%!important}</style></head>", "cue"),
-                              "the cue stands clear of every chart label, by at least 2 px"),
-                "cue-motion": ("a cue that blinks under reduced motion", _mutate("cue-motion", "index.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}", "1440x900"),
-                               "under reduced motion nothing animates: the document has no animation"),
-                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}", "cue"),
-                                "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
-                "cue-rules": ("a cue whose rules blink too", _mutate("cue-rules", "index.html", "</head>", "<style>.cue{animation:blink 1s steps(1) 4}</style></head>", "cue"),
-                              "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
-                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 4 forwards}", "cue"),
-                             "after the blink the cue is at rest and lit"),
+                "wraps": ("a top bar whose anchors show 30 px too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "@media (max-width:1177px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "bar"),
+                          "the top bar's anchors, and the separator with them, first show at 1208 px"),
+                "bar-docs": ("a Docs button wider than the bar has room for", _mutate("bar-docs", "index.html", "</head>", "<style>.hud nav a.docs{padding-inline:40px!important}</style></head>", "bar"),
+                             "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
+                "bar-word": ("a bar that keeps the mark's word on a phone", _mutate("bar-word", "index.html", "@media (max-width:525px){.hud .brand .wd{display:none}}", "@media (max-width:100px){.hud .brand .wd{display:none}}", "bar"),
+                             "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
+                "bar-ring": ("header buttons without their focus ring", _mutate("bar-ring", "index.html", "</head>", "<style>.hud a:focus-visible{outline:none!important}</style></head>", "bar"),
+                             "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone and header buttons without their focus ring makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element

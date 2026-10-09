@@ -2,8 +2,9 @@
 // SITE is a built site, STATE is `interim` or `probe` (the launch state it was built in). The site is served from 127.0.0.1 and every other host is
 // unresolvable, so a page that asks for the outside fails and is logged. For each landing and How it works page at 360, 375 and 390 px (and 1440):
 //   no sideways scroll, no script error, no failed request, no request to any other host.
-// On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show, with the widest three-digit
-// hi-score (888/888) set in it.
+// On each landing, with the widest three-digit hi-score (888/888) set in the top bar, at every whole width from 360 to 1920 px: the bar's items stand in one row, overlap none another,
+// wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1208 px (English) and 1273 px (German); both header buttons show the
+// focus ring when the keyboard reaches them.
 // In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
 // clear of every chart label; with motion allowed only its icon and words blink, 5 s at most, then lit; under reduced motion the document has no animation.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
@@ -204,16 +205,64 @@ if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("
   verdict(page, 1440, 900, "after the blink the cue is at rest and lit", after.n == 0 && after.op == "1" && after.rules == "1", JSON.stringify(after));
   await t.close();
 }
-// the top bar's five anchors, wherever the page first shows them (stepping the window up from 1000 px): one row each, and clear of the language switch
+// the top bar, with the widest three-digit hi-score (888/888) set in it, at every whole width from 360 to 1920 px: its items (the mark, each score figure, the switch, each anchor shown, the
+// separator, Docs) stand in one row inside the bar's padding, overlap none another, wrap nowhere and are cut nowhere, and neither the bar nor the page scrolls sideways; the anchors and the
+// separator with them first show at 1208 px in English and 1273 px in German; both buttons show the focus ring when the keyboard reaches them
+const BARM = `(() => {
+  const wrap = document.querySelector(".hud .wrap"), cs = getComputedStyle(wrap), pl = parseFloat(cs.paddingLeft), pr = parseFloat(cs.paddingRight), W = innerWidth, vis = e => e.getClientRects().length > 0 && getComputedStyle(e).display != "none" && getComputedStyle(e).visibility != "hidden";
+  const R = e => { const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height} };
+  const items = []; const add = (name, e) => { if (e && vis(e)) items.push({name, ...R(e), el: e}) };
+  add("brand", document.querySelector(".hud .brand"));
+  [...document.querySelectorAll(".hud .score > div")].forEach((e, i) => add("score" + i, e));
+  add("switch", document.querySelector(".hud .lang"));
+  [...document.querySelectorAll(".hud nav a:not(.docs)")].forEach((e, i) => add("anchor" + i, e));
+  add("sep", document.querySelector(".hud nav .sep"));
+  add("docs", document.querySelector(".hud nav a.docs"));
+  items.sort((a, b) => a.l - b.l);
+  const bad = [];
+  for (let i = 1; i < items.length; i++) if (items[i].l - items[i - 1].r < -0.01) bad.push("overlap " + items[i - 1].name + "|" + items[i].name);
+  const bar = document.querySelector(".hud").getBoundingClientRect();
+  for (const i of items) {
+    if (i.l < pl - 0.5 || i.r > W - pr + 0.5) bad.push("outside " + i.name);
+    if (i.t < bar.top - 0.5 || i.b > bar.bottom + 0.5) bad.push("off the row " + i.name);
+    if (/^(anchor|docs|switch)/.test(i.name) && i.h >= 36) bad.push("tall " + i.name);
+    if (/^(anchor|docs|switch|brand)/.test(i.name)) { const r = document.createRange(); r.selectNodeContents(i.el); if (new Set([...r.getClientRects()].filter(x => x.width > 0 && x.height > 4 && x.height < 30).map(x => Math.round(x.top / 4))).size > 1) bad.push("wraps " + i.name) }
+  }
+  const hud = document.querySelector(".hud");
+  if (wrap.scrollWidth > wrap.clientWidth || hud.scrollWidth > hud.clientWidth) bad.push("the bar scrolls");
+  if (document.documentElement.scrollWidth > innerWidth) bad.push("the page scrolls sideways");
+  const a = document.querySelector(".hud nav a:not(.docs)"), s = document.querySelector(".hud nav .sep");
+  return {bad, anchors: !!a && vis(a), sep: !!s && vis(s)} })()`;
+const RING = `(() => { const e = document.activeElement, cs = getComputedStyle(e), r = e.getBoundingClientRect(), ow = parseFloat(cs.outlineWidth), oo = parseFloat(cs.outlineOffset), g = ow + oo, bar = document.querySelector(".hud").getBoundingClientRect();
+  return {el: e.className || e.tagName, style: cs.outlineStyle, width: ow, offset: oo, color: cs.outlineColor, inside: r.left - g >= 0 && r.right + g <= innerWidth && r.top - g >= bar.top && r.bottom + g <= bar.bottom} })()`;
 if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.startsWith("how"))) {
+  const lang = page.startsWith("de/") ? "de" : "en", want = lang == "de" ? 1273 : 1208;
   const t = await open(page, {w: 1000, h: 900});
   await t.js(`document.querySelector(".score .opt b").textContent = "888/888"`);   // the widest three-digit hi-score: the breakpoint must leave room for it
-  const shows = () => t.js(`getComputedStyle(document.querySelector(".hud nav a:not(.docs)")).display != "none"`);
-  let first = null;
-  for (let w = 1000; w <= 1400 && first === null; w++) { await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false}); if (await shows()) first = w }
-  const bar = first === null ? null : await t.js(`(() => ({rows: [...document.querySelectorAll(".hud nav a")].filter(a => getComputedStyle(a).display != "none").map(a => Math.round(a.getBoundingClientRect().height)), gap: Math.round((document.querySelector(".hud nav").getBoundingClientRect().left - document.querySelector(".hud .langsw").getBoundingClientRect().right) * 10) / 10}))()`);
-  verdict(page, first ?? 0, 900, "the top bar's anchors stand in one row, clear of the switch, where they first show", bar !== null && Math.max(...bar.rows) < 36 && bar.gap >= 0, `first shown at ${first} px: ${JSON.stringify(bar)}`);
+  const failing = [];
+  let first = null, firstSep = null;
+  for (let w = 360; w <= 1920; w++) {
+    await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false});
+    const m = await t.js(BARM);
+    if (m.bad.length) failing.push(w + ": " + m.bad.slice(0, 2).join(", "));
+    if (m.anchors && first === null) first = w;
+    if (m.sep && firstSep === null) firstSep = w;
+    if (m.anchors !== m.sep) failing.push(w + ": the anchors and the separator do not go together");
+  }
+  verdict(page, 0, 900, "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways", failing.length == 0, `${failing.length} widths: ${failing.slice(0, 4).join(" | ")}`);
+  verdict(page, first ?? 0, 900, `the top bar's anchors, and the separator with them, first show at ${want} px`, first === want && firstSep === want, `anchors first at ${first}, separator at ${firstSep}`);
   info.push({page, w: first, state: "the width where the top bar's anchors first show"});
+  for (const [w, h] of [[360, 780], [390, 844], [1440, 900]]) {   // the keyboard reaches both buttons and the ring shows, whole inside the window and the bar
+    await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: h, deviceScaleFactor: 1, mobile: false});
+    const rings = {};
+    for (const [name, sel] of [["Docs", ".hud nav a.docs"], ["the switch", ".hud .lang"]]) {
+      await t.js(`document.activeElement.blur(); window.scrollTo(0, 0)`);
+      await t.press("Tab");   // the keyboard is what last acted, so that focus on the button is focus-visible, as when Tab reaches it
+      await t.js(`document.querySelector(${JSON.stringify(sel)}).focus()`);
+      rings[name] = await t.js(`(() => { const e = document.activeElement; return {here: e.matches(${JSON.stringify(sel)}), visible: e.matches(":focus-visible"), ...(${RING})} })()`);
+    }
+    verdict(page, w, h, "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar", Object.values(rings).every(r => r.here && r.visible && r.style == "solid" && r.width >= 2 && r.inside), JSON.stringify(rings));
+  }
   await t.close();
 }
 // a refused copy: the dialog says so, the box opens as far as the window allows and its whole text is selected and focused, so that Ctrl+C copies it all
