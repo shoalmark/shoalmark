@@ -31,6 +31,11 @@ nav = [
   ] },
 ]
 
+# The launch state. `probe = false`: the primary button hands the agents the note (ADOPT.md) and no probe prompt is built. `probe = true`: the button copies
+# the probe prompt and opens its dialog, and probe.txt and de/probe.txt are written.
+[project.extra]
+probe = false
+
 [project.theme]
 font = false
 language = "en"

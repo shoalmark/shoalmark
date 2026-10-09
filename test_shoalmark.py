@@ -4413,13 +4413,106 @@ _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
 _NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
                   "`svn update`: run `--html-only` to rebuild it.")
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
-      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (9 October 2026, 0.19.2's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
       "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
-      and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
-      and 'v0.19.2, released 9 October 2026 — a fix for the board\'s refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
-      and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html")
-      and f'release<b>v{fm.__version__}</b>' in _rd("overrides/landing.html") and f'releases/tag/v{fm.__version__}" style="color:#b4c3d1">v{fm.__version__}</a>' in _rd("overrides/landing.html"))
+      and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md"))
+# --- FM-006 · B1: the landing is one template with its words per language -------------------------------------------------------------
+# overrides/landing.html reads every word from overrides/partials/landing/en.html or de.html (the page's language is its path) and every figure
+# from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:
+# a copy of the sources with one thing changed, which must be refused.
+_LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
+_FOOT_EN = ("{tag}, released {date} — a fix for the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, "
+            "then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come from the repository and were read when the site was "
+            "built: {read_date}, at {read_sha}.")
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – eine Korrektur für den Neuaufbau der Tafel, der in 0.19.1 in manchen Repositories abbrach: aktualisieren, <code>--install-hook</code> "
+            "auf dem Standard-Branch erneut ausführen, danach einmal <code>--check</code>. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus der Tafel stammen aus "
+            "dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
+_CHART_NOTE = ("Every wreck is a defect in shoalmark itself: a bug or a security finding, filed in its own tracker.",
+               "Jedes Wrack ist ein Fehler in shoalmark selbst: ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Tracker.")
+
+
+def _sources(files, root=None):
+    """{path: text} of the named files, read from the tree at `root` (this repository where none is given)."""
+    root = Path(root) if root else HERE
+    return {rel: (root / rel).read_text(encoding="utf-8") for rel in files}
+
+
+def _landing_words(src):
+    """{language: the words dict `w`} of the two words files — the Jinja `{% set w = {…} %}` is JSON — and the problems met reading them."""
+    words, bad = {}, []
+    for lang in ("en", "de"):
+        found = re.search(r"\{% set w = (\{.*?\n\}) %\}", src[f"overrides/partials/landing/{lang}.html"], re.S)
+        try:
+            words[lang] = json.loads(found.group(1))
+        except (AttributeError, ValueError):
+            bad.append(f"{lang}.html holds no words dict")
+            words[lang] = {}
+    return words, bad
+
+
+def _landing_problems(src):
+    """What is wrong with the landing's sources, one line each, none where it is as B1 builds it: one template, the same words in two languages, every
+    figure from facts.html and none typed, the Owner's line and the footer's sentence as ruled, and the sections in order."""
+    tpl = src["overrides/landing.html"]
+    code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)                        # the template without its comments
+    words, bad = _landing_words(src)
+    en, de = words["en"], words["de"]
+    apart = sorted(set(en) ^ set(de)) + sorted(set(en.get("js", {})) ^ set(de.get("js", {})))
+    if apart:
+        bad.append("the two languages hold different keys: " + ", ".join(apart))
+    used = set(re.findall(r"\bw\.(\w+)", " ".join(re.findall(r"\{\{.*?\}\}|\{%.*?%\}", code, re.S))))
+    if used - set(en):
+        bad.append("the template reads words nobody wrote: " + ", ".join(sorted(used - set(en))))
+    if set(en) - used:
+        bad.append("words nobody reads: " + ", ".join(sorted(set(en) - used)))
+    if (en.get("lang"), de.get("lang")) != ("en", "de") or en.get("title") == de.get("title") or en.get("description") == de.get("description"):
+        bad.append("a language's lang, title or description is not its own")
+    if 'import "partials/landing/" ~ ("de" if de else "en") ~ ".html" as L' not in code or 'import "partials/landing/facts.html" as F' not in code:
+        bad.append("the template does not choose its words by the page's path, or does not read facts.html")
+    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(words, ensure_ascii=False)):
+        bad.append("a release is typed where the build's figures give it")
+    if code.count("releases/tag/{{ F.release.tag }}") != 2 or code.count("<b>{{ F.release.tag }}</b>") != 1:
+        bad.append("the top bar's label and link and the footer's link do not all read F.release.tag")
+    if (en.get("foot_fine"), de.get("foot_fine")) != (_FOOT_EN, _FOOT_DE):
+        bad.append("the footer's sentence is not the Owner's words for this release (English) and go-to-market's (German)")
+    if (en.get("chart_note"), de.get("chart_note")) != _CHART_NOTE or code.count("{{ w.chart_note }}") != 1:
+        bad.append("the line under the chart is not the Owner's words, once")
+    if any(gone in tpl + src["zensical.toml"] + json.dumps(words) for gone in ("register_up", "chart_gloss", "chart_note_gloss")):
+        bad.append("a switch the Owner's answers removed is still there")
+    order = [tpl.find(f'id="{section}"') for section in ("agents", "seats", "scores", "register", "start")]
+    if min(order) < 0 or order != sorted(order):
+        bad.append("the sections are not in order: two players, the fleet, the high scores, the register, the start")
+    for page in ("docs/index.md", "docs/de/index.md"):
+        if not src[page].startswith("---\ntemplate: landing.html\n"):
+            bad.append(f"{page} does not select the landing's template")
+    if (en.get("switch_lang"), de.get("switch_lang")) != ("de", "en") or [code.count(f'hreflang="{h}"') for h in ("en", "de", "x-default")] != [1, 1, 1]:
+        bad.append("the landings do not name each other: the switch's hreflang, and the alternate links with English the default")
+    return bad
+
+
+def _with(src, rel, old, new):
+    assert old in src[rel], (rel, old)
+    return {**src, rel: src[rel].replace(old, new, 1)}
+
+
+_ls = _sources(_LANDING_FILES)
+_lp = _landing_problems(_ls)
+check("FM-006 · B1 · the landing is one template with its words per language: the German page takes de.html by its path, both words files hold the same keys and every key the template reads, "
+      "no release is typed (the top bar's label and link and the footer's link read the one figure), the footer is the Owner's words and go-to-market's German for this release, the line "
+      f"under the chart is the Owner's, and the register stays after the scores (problems found: {_lp})", _lp == [])
+_ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.html", '  "key_stamp": "nicht zur Navigation",\n', ""),
+        "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
+        "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
+        "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
+        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "a fix for the board's refresh", "a security release"),
+        "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
+        "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", "")}
+_ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
+check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
+      f"the footer's sentence changed, the facts file not read and the German page off the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 7)
+
+
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")

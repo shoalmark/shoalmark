@@ -5,9 +5,20 @@
     (c) R3 the chart's texts above the CRT overlay, (d) the font loading. -#}
 {#- FM-006 v0.19.0 first screen: the Owner's ruling filed in FM-006 (What a stranger meets first) — A1's lead and its one action,
     the link previews, C the fleet, E's two lines, the phone's first screen. Each edit is marked where it stands, as above. -#}
-{#- The landing's English words are in partials/landing/en.html (`w`, read as {{ w.key }}); the rest of the page is here. -#}
-{%- import "partials/landing/en.html" as L -%}
+{#- One template, its words per language. `partials/landing/en.html` and `de.html` hold every word (`{{ w.key }}`), `partials/landing/facts.html`
+    every figure (the release, the high score, the wrecks, the pins, the build's date and commit), and the page's language is chosen from its
+    path, as overrides/main.html does for the docs pages: the pages under de/ are German. One switch, `probe` under [project.extra] in
+    zensical.toml, off: it makes the primary button copy the probe prompt and open its dialog; off, the button hands the agents the note.
+    Edits of B1 are marked where they stand with a comment like this one, which the build drops. -#}
+{%- set de = page and page.url and page.url[:3] == "de/" -%}
+{%- import "partials/landing/" ~ ("de" if de else "en") ~ ".html" as L -%}
+{%- import "partials/landing/facts.html" as F -%}
 {%- set w = L.w -%}
+{%- set urls = L.urls -%}
+{%- set probe = config.extra and config.extra.probe -%}
+{%- set rdate = F.release.date_de if de else F.release.date_en -%}
+{#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
+{%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{hiscore_last}", F.hiscore_last | string) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
 <!doctype html>
 <html lang="{{ w.lang }}">
 <head>
@@ -16,19 +27,24 @@
 <title>{{ w.title }}</title>{# FM-006 v0.19.0 first screen: A1, the title #}
 <meta name="description" content="{{ w.description }}">{# FM-006 v0.19.0 first screen: A1, the one description #}
 {# FM-006 v0.19.0 first screen: the link previews, in the landing's own head — the image is docs/assets/preview.png, a render of this page's chart with its wordmark #}
-<link rel="canonical" href="https://shoalmark.github.io/shoalmark/">
+{# B1: one link preview per language — its own title, description and image (docs/assets/preview.png, preview-de.png); each page names its twin with hreflang, the English page is the default #}
+<link rel="canonical" href="{{ urls.self }}">
+<link rel="alternate" hreflang="en" href="https://shoalmark.github.io/shoalmark/">
+<link rel="alternate" hreflang="de" href="https://shoalmark.github.io/shoalmark/de/">
+<link rel="alternate" hreflang="x-default" href="https://shoalmark.github.io/shoalmark/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="shoalmark">
 <meta property="og:locale" content="{{ w.locale }}">
-<meta property="og:url" content="https://shoalmark.github.io/shoalmark/">
+<meta property="og:locale:alternate" content="{{ "en_GB" if de else "de_DE" }}">
+<meta property="og:url" content="{{ urls.self }}">
 <meta property="og:title" content="{{ w.og_title }}">
 <meta property="og:description" content="{{ w.description }}">
-<meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">
+<meta property="og:image" content="{{ urls.preview }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{{ w.og_image_alt }}">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="alternate" type="text/plain" title="llms.txt — for agents" href="https://shoalmark.github.io/shoalmark/llms.txt">
+<link rel="alternate" type="text/plain" title="{{ w.llms_title }}" href="{{ urls.llms }}">
 <link rel="icon" href="{{ 'assets/favicon.svg' | url }}">{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the site's Pricke as the landing's icon — the file the theme names (zensical.toml favicon), so the browser asks for no /favicon.ico #}
 {# FM-006: same faces and weights, served from this site; no external font requests. #}
 <link rel="stylesheet" href="{{ 'stylesheets/fonts.css' | url }}">
@@ -110,13 +126,13 @@ a{color:var(--blue)}
 @keyframes f2{0%{visibility:hidden}50%{visibility:visible}}
 .wreck.raised{color:var(--raised)}.wreck.closed{color:var(--closed)}
 .wreck.raised svg,.wreck.closed svg{opacity:.85}
-.wreck span{font:400 8px/1 var(--pix);letter-spacing:.04em;color:inherit;background:rgba(5,11,18,.72);padding:2px 3px}
+.wreck .lbl{font:400 8px/1 var(--pix);letter-spacing:.04em;color:inherit;background:rgba(5,11,18,.72);padding:2px 3px}
 .wreck:hover,.wreck[aria-pressed="true"]{color:#fff}
-.wreck[aria-pressed="true"] span{background:var(--magenta);color:var(--landink)}
+.wreck[aria-pressed="true"] .lbl{background:var(--magenta);color:var(--landink)}
 .wreck[aria-pressed="true"]::before{content:"";position:absolute;inset:-6px -8px;border:1px dashed var(--magenta);animation:blink 1s steps(1) infinite}
 
-/* the title — over the open sea, north-west of Juist */
-.title{position:absolute;z-index:8;left:calc(var(--k) * 14px);top:calc(var(--k) * 9px);width:calc(var(--k) * 150px);
+/* the title — over the open sea, north-west of Juist; placed from the chart's own left edge, so its text stands 82px inside the frame at every width from 1280px up */
+.title{position:absolute;z-index:8;left:calc((100% - var(--k) * 320px) / 2 + var(--k) * 14px);top:calc(var(--k) * 9px);width:calc(var(--k) * 150px);
   padding:22px 26px 24px;background:radial-gradient(ellipse at 30% 40%,rgba(7,17,27,.94),rgba(7,17,27,.6) 70%,transparent 100%)}
 .wm{display:block;width:min(100%,560px);height:auto;color:var(--ink);overflow:visible;
   filter:drop-shadow(4px 4px 0 var(--band)) drop-shadow(4px 4px 0 #0a1622)}
@@ -128,6 +144,8 @@ h1{margin:0;font:700 clamp(20px,1.9vw,24px)/1.2 var(--pix);letter-spacing:.01em;
 .cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .btn{display:inline-flex;align-items:center;gap:10px;padding:12px 16px;font:700 13px/1 var(--pix);text-transform:uppercase;
   color:var(--landink);background:var(--watt);text-decoration:none;border:0;box-shadow:4px 4px 0 var(--band)}
+.btn.alt{background:var(--land)}{# B1: the secondary action, as 32780e5 drew it #}
+.btn .ic{flex:none;display:block;width:14px;height:16px;margin-block:-2px;fill:currentColor}{# B1: the copy icon — a 7 × 8 grid at 2 CSS px a unit, crisp, in the label's colour; its margins keep the button's height #}
 .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--band)}
 .btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--band)}{# FM-006 v0.19.0 first screen: one action — .btn i, .btn.alt and .press went with the three anchors #}
 @keyframes blink{50%{opacity:0}}
@@ -250,8 +268,8 @@ section.band{padding-block:72px 40px}
 /* insert coin */
 .stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;counter-reset:s;margin:0;padding:0;list-style:none}
 .stages li{counter-increment:s;padding:22px 18px 18px;border:1px solid var(--contour);background:var(--panel);font-size:14px;color:var(--dim)}
-.stages li::before{content:"STAGE " counter(s);display:block;margin-bottom:12px;font:700 13px/1 var(--pix);color:var(--watt)}
-.stages li.you{border-color:var(--land)}.stages li.you::before{content:"STAGE " counter(s) " — YOU";color:var(--land)}
+.stages li::before{content:var(--stage) " " counter(s);display:block;margin-bottom:12px;font:700 13px/1 var(--pix);color:var(--watt)}
+.stages li.you{border-color:var(--land)}.stages li.you::before{content:var(--stage) " " counter(s) var(--sep) var(--you);color:var(--land)}
 .stages code{color:var(--land)}
 .costs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:28px}
 .cost{padding:18px;border-left:3px solid var(--land);background:var(--panel2);font-size:14px;color:var(--dim)}
@@ -279,20 +297,66 @@ section.band{padding-block:72px 40px}
 .foot-band .mk svg{width:16px;height:16px}
 .foot-band .fine{flex-basis:100%;font-size:11px;color:#8ea3b6}
 
+/* B1 — THE TOP BAR: the release label is a link (its hover is an outline, so it takes no room), the language switch sits after the
+   score in the room the bar has; nothing else in the bar changes */
+.score a.rel{display:block;color:inherit;text-decoration:none}
+.score a.rel:hover{color:var(--bandink);outline:1px solid var(--drying);outline-offset:6px}
+.score a.rel:hover b{color:var(--land);text-shadow:0 0 8px rgba(232,212,160,.45)}
+.hud .langsw{display:block}
+.hud .lang{display:block;font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--bandink);text-decoration:none;padding:8px 10px;border:1px solid var(--field);white-space:nowrap}
+.hud .lang:hover{border-color:var(--drying);color:var(--watt)}
+.hud .lang .s{display:none}
+
+/* B1 — the line under the chart: what a wreck is, in the register's word */
+.chart-wrap{padding-top:30px}
+.chart-note{margin:0;display:flex;align-items:flex-start;gap:18px;font:500 clamp(17px,1.6vw,24px)/1.4 var(--mono);color:var(--ink)}{# B1: the line under the chart is the size of a lede, set in the ink, its wreck at the key's size (3 CSS px to a grid unit) #}
+.chart-note span{max-width:62ch;text-wrap:balance}
+.chart-note svg{flex:none;width:27px;height:18px;margin-top:calc((1.4em - 18px) / 2);fill:var(--magenta);shape-rendering:crispEdges}
+.chart-wrap + .console{padding-top:26px}
+
+/* B1 — the probe dialog: a real modal (<dialog>, showModal): labelled, focus moves in and back out, Escape closes it, the page behind is inert */
+html.modal{overflow:hidden}
+dialog.probe{padding:0;border:0;background:none;color:var(--ink);width:min(800px,calc(100vw - 24px));max-width:none;max-height:none;overflow:visible;font:15px/1.6 var(--mono)}
+dialog.probe::backdrop{background:rgba(5,11,18,.86)}
+.probe-box{position:relative;border:1px solid var(--watt);background:var(--panel);box-shadow:6px 6px 0 var(--band);padding:0}
+.probe-box>.t{background:var(--watt);color:var(--landink)}.probe-box>.t::before{color:inherit}
+.probe-bar{display:flex;justify-content:flex-end;padding:8px 10px;border-bottom:1px dashed var(--contour)}
+.probe-x{font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--field);padding:8px 10px;cursor:pointer}
+.probe-x:hover{border-color:var(--drying);color:var(--watt)}
+.probe-scroll{max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow:auto;padding:20px 26px 24px;display:grid;gap:16px}
+.probe-col{display:grid;gap:16px;align-content:start;min-width:0}
+@media (min-width:960px){dialog.probe{width:min(1060px,calc(100vw - 48px))}.probe-scroll{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:30px;align-items:start}.probe-scroll>.probe-col:first-child{grid-row:span 2}.probe-ap{grid-column:2}}
+@media (min-width:1240px){dialog.probe{width:min(1320px,calc(100vw - 48px))}.probe-scroll{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr)}.probe-scroll>.probe-col:first-child{grid-row:auto}.probe-ap{grid-column:auto}}{# B1: on a desktop the dialog is two columns — the prompt and its status on the left, what it is on the right — so it fits a 900px window without scrolling #}
+.probe-status{margin:0;padding:10px 14px;min-height:3.6em;display:flex;align-items:center;border-left:3px solid var(--contour);background:var(--panel2);color:var(--ink);font-weight:600}
+.probe-status:empty{visibility:hidden}
+.probe-status[data-state=ok]{border-color:var(--watt)}.probe-status[data-state=ok]::before{content:"✓";content:"✓" / "";margin-right:10px;color:var(--watt)}
+.probe-status[data-state=fail]{border-color:var(--coral)}.probe-status[data-state=fail]::before{content:"!";content:"!" / "";margin-right:10px;color:var(--coral);font-family:var(--pix);align-self:flex-start;margin-top:.3em}
+.probe-paste{margin:0;font-size:16px;color:var(--ink)}
+.probe-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 6px;font:400 11px/1.4 var(--pix);text-transform:uppercase;color:var(--mute)}
+.probe-ph{font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:4px 7px}
+.probe-ta{display:block;width:100%;height:calc(14 * 1.6em + 26px);max-height:calc(30 * 1.6em + 26px);margin:0;padding:12px 14px;resize:vertical;overflow-wrap:anywhere;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap;overflow:auto}
+.probe-ta::selection{background:var(--blue);color:var(--landink)}
+.probe-pv{margin:6px 0 0;font:700 10px/1.4 var(--pix);text-transform:uppercase;color:var(--coral)}
+.probe-what{margin:0;color:var(--dim)}
+.probe-lead{margin:0;color:var(--ink)}
+.probe-apps{margin:0;padding-left:22px;display:grid;gap:6px;font-size:13px;line-height:1.5;color:var(--dim)}.probe-apps li::marker{color:var(--watt);font-family:var(--pix);font-size:11px}.probe-apps li.cond{border-left:2px dashed var(--land);padding-left:8px;margin-left:-10px;color:var(--mute)}.probe-apps li.cond::marker{color:var(--land)}
+.probe-list{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--dim)}.probe-list li::marker{color:var(--land)}
+.probe-short{margin:0;font-size:13px;color:var(--mute);overflow-wrap:anywhere}
+
 /* narrower screens: the title leaves the sea and stands above the chart */
 @media (max-width:1279px){
   .title{position:static;width:auto;background:none;padding:28px 20px 26px;max-width:720px}
   .hero{display:flex;flex-direction:column-reverse}
 }
 @media (max-width:980px){
-  .score .opt{display:none}.hud nav a:not(.docs){display:none}
+  .score .opt{display:none}
   .console,.players,.scores{grid-template-columns:1fr}
   .stages,.seats{grid-template-columns:1fr 1fr}.costs,.coins{grid-template-columns:1fr}{# FM-006 v0.19.0 first screen: C, the fleet's tiles two to a row at 980px and less #}
   .name.water:not(.big),.name.land{display:none}
 }
 @media (max-width:700px){
   .stage{width:100%;height:auto;aspect-ratio:320/205}
-  .wreck span,.fig,.name{display:none}
+  .wreck .lbl,.fig,.name{display:none}
   .wreck svg{width:14px;height:10px}
   .stages,.seats{grid-template-columns:1fr}
   .seat{grid-template-columns:80px minmax(0,1fr);column-gap:16px}.seat>svg{grid-row:span 2}.seat.spec{grid-template-columns:1fr}.seat .four{height:auto}
@@ -303,9 +367,23 @@ section.band{padding-block:72px 40px}
   .title .claim{margin-bottom:36px}
   h1{font-size:24px}
   .lede{margin-bottom:30px;font-size:16px}
-  .cta .btn{flex:1;justify-content:center;padding:16px 18px}
+  .cta{flex-direction:column;align-items:stretch;gap:10px}.cta .btn{flex:none;justify-content:center;text-align:center;padding:16px 18px}.cta .btn.alt{padding:12px 18px}{# B1: two actions, one to a row on a phone: the primary as the one action was (45px), the secondary a row of 37px #}
 }{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the one action carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, the action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (max-width:400px){.hud .wrap{gap:12px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
+/* B1 — top bar, by width: the switch and the release link take their room from the bar's own stats, as it already yields them */
+@media (max-width:1157px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer: the bar needs 1158px with the switch and all five anchors (1092px in English; 992px, and 1062px in German, without the switch) #}
+@media (max-width:1091px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1092px, not 981px — the switch needs the room (measured: the bar needs 1092px with the switch and all five anchors, 992px without it) #}
+@media (max-width:699px){.hud .lang .l{display:none}.hud .lang .s{display:inline}.hud .lang{padding:8px 8px}}
+@media (max-width:700px){.hud .langsw{margin-left:-8px}}{# B1: with the score's own 14px gap, the switch reads as the list's last item #}
+@media (max-width:469px){.score .hot{display:none}}
+@media (max-width:400px){.hud .langsw{margin-left:2px}}{# the bar's gaps are 12px there, the score's 14px #}{# B1: below 470px the open count yields to the switch (the bar has 0 px to spare at 360) #}
+@media (max-width:700px) and (max-height:800px){.title .claim{margin-bottom:26px}.lede{margin-bottom:22px}.title{padding-block:22px 20px}}{# B1: short phones (360×780, 375×667): the second action costs 49px; the title's own spaces give 34px of it back, so the chart's top edge still shows #}
+@media (max-width:700px){
+  .chart-note{gap:14px}
+  dialog.probe{width:calc(100vw - 16px)}
+  .probe-scroll{padding:16px 16px 20px;max-height:calc(100vh - 100px);max-height:calc(100dvh - 100px)}
+  .probe-ta{height:calc(8 * 1.6em + 26px);font-size:12px}
+}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
@@ -326,14 +404,15 @@ section.band{padding-block:72px 40px}
   <div class="wrap">
     <a class="brand" href="#top" aria-label="{{ w.hud_brand_aria }}"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="#d9e4ec"/></svg>shoalmark</a>
     <div class="score" role="list" aria-label="{{ w.hud_score_aria }}">
-      <div role="listitem">release<b>v0.19.2</b></div>
-      <div role="listitem" class="opt">hi-score<b>71/82</b></div>
+      <div role="listitem"><a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{{ F.release.tag }}" aria-label="{{ T(w.hud_release_aria) }}">{{ w.hud_release }}<b>{{ F.release.tag }}</b></a></div>{# B1 §3.3: the label links to its release, the address the footer uses; its tag is the label's own value (facts.html) #}
+      <div role="listitem" class="opt">{{ w.hud_hiscore }}<b>{{ F.hiscore }}</b></div>
       <div role="listitem" class="mid">{{ w.hud_wrecks }}<b id="hud-w">27</b></div>
-      <div role="listitem" class="hot">open<b id="hud-o">10</b></div>{# FM-006 v0.19.0 player stats: the top bar, the board excerpt, the high scores, the wrecks and the footer as the Auditor read them at the cut c830470, 1 October 2026, 12:47–12:55 CEST (FM-006, the landing's player stats at the v0.19.0 cut) #}
+      <div role="listitem" class="hot">{{ w.hud_open }}<b id="hud-o">10</b></div>{# The top bar: the release label, its link and the high score are facts.html's (`release`, `hiscore`); the two counts, wrecks and open, are counted by the script below from the one list that draws the chart (`wrecks_json`) #}
     </div>
+    <div class="langsw" role="group" aria-label="{{ w.switch_group }}"><a class="lang" href="{{ urls.switch_rel }}" hreflang="{{ w.switch_lang }}" lang="{{ w.switch_lang }}" aria-label="{{ w.switch_aria }}" title="{{ w.switch_aria }}"><span class="l">{{ w.switch_long }}</span><span class="s">{{ w.switch_short }}</span></a></div>{# B1: the language switch — the other language's own name, its code on a phone; hreflang and lang say what it leads to #}
     <nav aria-label="{{ w.nav_aria }}">
       <a href="#agents">{{ w.nav_agents }}</a><a href="#people">{{ w.nav_people }}</a><a href="#scores">{{ w.nav_scores }}</a><a href="#register">{{ w.nav_wrecks }}</a><a href="#start">{{ w.nav_start }}</a>
-    <a class="docs" href="https://shoalmark.github.io/shoalmark/setup.html">Docs</a>
+    <a class="docs" href="{{ urls.docs }}">{{ w.nav_docs }}</a>
     </nav>
   </div>
 </header>
@@ -355,10 +434,17 @@ section.band{padding-block:72px 40px}
     <h1>{{ w.h1 }}</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
     <p class="lede">{{ w.lede }}</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
     <div class="cta">
-      <a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>
-    </div>{# FM-006 v0.19.0 first screen: A1, the one action, to the English note; the three anchors (1P for agents, 2P for people, press start) left the page — the HUD's nav keeps their destinations where it shows them #}
+      {%- if probe %}
+      <a class="btn" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}</a>{# B1: the probe state — copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
+      {%- else %}
+      <a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>{# B1: the interim state — today's action, to the note in the page's language #}
+      {%- endif %}
+      <a class="btn alt" href="{{ urls.how }}">{{ w.btn_how }}</a>{# B1: the secondary action, always — the new page that explains shoalmark to a person #}
+    </div>
   </div>
 </section>
+
+<div class="wrap chart-wrap"><p class="chart-note"><svg viewBox="0 0 9 6" aria-hidden="true"><use href="#wa"/></svg><span>{{ w.chart_note }}</span></p></div>{# B1 §3.2: one plain line under the chart, in the register's word; ruling 7's words #}
 
 <div class="wrap console">
   <article class="box inc" id="inc" aria-live="polite">
@@ -373,8 +459,8 @@ section.band{padding-block:72px 40px}
         <div><dt>{{ w.inc_position }}</dt><dd id="i-pos"></dd></div>
       </dl>
     </div>
-    <h3 id="i-title"></h3>
-    <p id="i-rep"></p>
+    <h3 id="i-title"{% if de %} lang="en"{% endif %}></h3>{# B1: a wreck's title and report stay as filed, in English #}
+    <p id="i-rep"{% if de %} lang="en"{% endif %}></p>
     <div class="foot"><span id="i-mode">{{ w.inc_mode_attract }}</span><a id="i-link" href="#">{{ w.inc_link }}</a></div>
   </article>
   <aside class="box key" aria-label="{{ w.key_aria }}">
@@ -391,27 +477,9 @@ section.band{padding-block:72px 40px}
   </aside>
 </div>
 
-{# FM-006 v0.19.0 first screen: C, the fleet — a section of its own, early: the first after the chart and its console. Its first line the ruled definition; four tiles as ruled — badge, name, character, the one line; where a clause is needed, README §Seats's own words: the four rights the gate sees (RV-2186) and a seat's charter, beside D1's ruled phrase for the tool's three seats. Each badge inlined from brand/seats/<seat>.svg, its drawing verbatim (the built site carries no brand/), its title left out: decorative, and the four specialists unnamed #}
-<section class="band wrap fleet" id="seats" aria-labelledby="h-fleet">
-  <div class="sec-h"><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
-  <p class="fleet-def">{{ w.fleet_def }}</p>
-  <p class="fleet-rights">{{ w.fleet_rights }}</p>
-  <ul class="seats">
-    <li class="box seat"><h3 class="t">Planner</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><path fill="#5b83a3" d="M6 6h8v1h-8Z"/><path fill="#f1d47a" d="M9 6h2v1h-2Z"/><path fill="#07111b" d="M6 7h8v1h-8Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
-      <p class="ch">{{ w.seat_planner_ch }}</p><p>{{ w.seat_planner }}</p></li>
-    <li class="box seat"><h3 class="t">Builder</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#bccd8f" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#f1d47a" d="M8 4h4v1h-4ZM7 5h6v1h-6ZM6 6h8v1h-8ZM5 7h10v1h-10Z"/><path fill="#e8d4a0" d="M9 4h2v3h-2Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
-      <p class="ch">{{ w.seat_builder_ch }}</p><p>{{ w.seat_builder }}</p></li>
-    <li class="box seat"><h3 class="t">Reviewer</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8fb9f3" d="M6 6h8v1h-8ZM5 7h10v6h-10ZM6 13h8v1h-8Z"/><path fill="#d9e4ec" d="M11 7h4v1h-4ZM10 8h1v4h-1ZM15 8h1v4h-1ZM11 12h4v1h-4ZM15 13h1v2h-1Z"/><path fill="#15293d" d="M12 9h2v2h-2Z"/><path fill="#15293d" d="M6 10h2v1h-2Z"/><path fill="#f38a80" d="M6 12h1v1h-1Z"/></svg>
-      <p class="ch">{{ w.seat_reviewer_ch }}</p><p>{{ w.seat_reviewer }}</p></li>
-    <li class="box seat spec"><h3 class="t">{{ w.seat_spec_h }}</h3><div class="four" aria-hidden="true"><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><path fill="#f38a80" d="M13 12h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><path fill="#f1d47a" d="M9 11h2v2h-2Z"/></svg></div>
-      <p class="ch">{{ w.seat_spec_ch }}</p><p>{{ w.seat_spec }}</p></li>
-  </ul>
-  <div class="fleet-foot">
-    <p>{{ w.fleet_foot }}</p>
-    <a href="https://shoalmark.github.io/shoalmark/seats/">All seats <span aria-hidden="true">→</span></a>
-  </div>
-</section>
 
+
+{# B1 §3.1: The fleet follows Two players, one record #}
 <section class="band wrap" id="agents" aria-labelledby="h-players">
   <div class="sec-h"><span class="n">{{ w.players_n }}</span><h2 id="h-players">{{ w.players_h }}</h2></div>{# FM-006 v0.19.0 first screen: A1 — the subtitle that said the H1 went #}
   <div class="players">
@@ -434,7 +502,7 @@ section.band{padding-block:72px 40px}
       </ol>
       <pre class="hs"><span class="c">{{ w.hs_comment }}</span>
 <span class="p">$</span> python3 tools/shoalmark/shoalmark.py --next</pre>
-      <p class="small">Agent, sent here by your Owner? Read <a href="https://shoalmark.github.io/shoalmark/agents/index.html">the contract</a>; <a href="https://shoalmark.github.io/shoalmark/llms.txt">llms.txt</a> is at the site's root.</p>
+      <p class="small">{{ T(w.p1_small) }}</p>
     </article>
     <article class="box player p2" id="people" aria-labelledby="h-p2">
       <h3 class="t">{{ w.p2_tag }}</h3>
@@ -444,18 +512,39 @@ section.band{padding-block:72px 40px}
         <div><dt>{{ w.p2_board_dt }}</dt><dd>{{ w.p2_board }}</dd></div>
         <div><dt>--standup</dt><dd>{{ w.p2_standup }}</dd></div>
         <div><dt>--answer AP-007 accept</dt><dd>{{ w.p2_answer }}</dd></div>
-        <div><dt>your signature</dt><dd>Only your signed word counts. A click, a merge or a line in chat is not an answer — four tiers, from a key anything on your account can use to one that needs your touch.</dd></div>
+        <div><dt>{{ w.p2_sig_dt }}</dt><dd>{{ w.p2_sig }}</dd></div>
       </dl>
       <figure class="peek" aria-label="{{ w.peek_aria }}">
-        <div class="peek-box"><span class="peek-t">owed to the owner</span>
+        <div class="peek-box"{% if de %} lang="en"{% endif %}><span class="peek-t">{{ w.peek_t }}</span>
           <p><i>##</i> <b class="hot">{{ w.peek_1 }}</b></p>
           <p><i>##</i> <b>{{ w.peek_2 }}</b></p>
           <p><span class="id">FM-007</span> {{ w.peek_3 }} <span class="chip">{{ w.peek_chip_done }}</span><span class="chip">{{ w.peek_chip_resched }}</span></p>
         </div>
-        <figcaption>shoalmark's own board, 1 October 2026 — what waits for its Owner comes first.</figcaption>
+        <figcaption>{{ T(w.peek_cap) }}</figcaption>
       </figure>
       <p class="loses"><b>{{ w.p2_loses_b }}</b>{{ w.p2_loses }}</p>
     </article>
+  </div>
+</section>
+
+{# FM-006 v0.19.0 first screen: C, the fleet — a section of its own, early: the first after the chart and its console. Its first line the ruled definition; four tiles as ruled — badge, name, character, the one line; where a clause is needed, README §Seats's own words: the four rights the gate sees (RV-2186) and a seat's charter, beside D1's ruled phrase for the tool's three seats. Each badge inlined from brand/seats/<seat>.svg, its drawing verbatim (the built site carries no brand/), its title left out: decorative, and the four specialists unnamed #}
+<section class="band wrap fleet" id="seats" aria-labelledby="h-fleet">
+  <div class="sec-h"><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
+  <p class="fleet-def">{{ w.fleet_def }}</p>
+  <p class="fleet-rights">{{ w.fleet_rights }}</p>
+  <ul class="seats">
+    <li class="box seat"><h3 class="t">Planner</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><path fill="#5b83a3" d="M6 6h8v1h-8Z"/><path fill="#f1d47a" d="M9 6h2v1h-2Z"/><path fill="#07111b" d="M6 7h8v1h-8Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
+      <p class="ch">{{ w.seat_planner_ch }}</p><p>{{ w.seat_planner }}</p></li>
+    <li class="box seat"><h3 class="t">Builder</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#bccd8f" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><path fill="#f1d47a" d="M8 4h4v1h-4ZM7 5h6v1h-6ZM6 6h8v1h-8ZM5 7h10v1h-10Z"/><path fill="#e8d4a0" d="M9 4h2v3h-2Z"/><path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/></svg>
+      <p class="ch">{{ w.seat_builder_ch }}</p><p>{{ w.seat_builder }}</p></li>
+    <li class="box seat"><h3 class="t">Reviewer</h3><svg viewBox="0 0 20 20" shape-rendering="crispEdges" aria-hidden="true"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8fb9f3" d="M6 6h8v1h-8ZM5 7h10v6h-10ZM6 13h8v1h-8Z"/><path fill="#d9e4ec" d="M11 7h4v1h-4ZM10 8h1v4h-1ZM15 8h1v4h-1ZM11 12h4v1h-4ZM15 13h1v2h-1Z"/><path fill="#15293d" d="M12 9h2v2h-2Z"/><path fill="#15293d" d="M6 10h2v1h-2Z"/><path fill="#f38a80" d="M6 12h1v1h-1Z"/></svg>
+      <p class="ch">{{ w.seat_reviewer_ch }}</p><p>{{ w.seat_reviewer }}</p></li>
+    <li class="box seat spec"><h3 class="t">{{ w.seat_spec_h }}</h3><div class="four" aria-hidden="true"><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><path fill="#f38a80" d="M13 12h1v1h-1Z"/></svg><svg viewBox="0 0 20 20" shape-rendering="crispEdges"><rect width="20" height="20" fill="#15293d"/><path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><path fill="#bccd8f" d="M9 14h2v6h-2Z"/><path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><path fill="#f1d47a" d="M9 11h2v2h-2Z"/></svg></div>
+      <p class="ch">{{ w.seat_spec_ch }}</p><p>{{ w.seat_spec }}</p></li>
+  </ul>
+  <div class="fleet-foot">
+    <p>{{ w.fleet_foot }}</p>
+    <a href="{{ urls.seats }}">{{ w.fleet_all }} <span aria-hidden="true">→</span></a>
   </div>
 </section>
 
@@ -467,11 +556,11 @@ section.band{padding-block:72px 40px}
       <table>
         <thead><tr><th>{{ w.th_rank }}</th><th>{{ w.th_score }}</th><th>{{ w.th_period }}</th></tr></thead>
         <tbody>
-          <tr><td class="rk">1st</td><td class="sc">71/82</td><td class="pd"><b>after the rule</b>pull requests 47–144, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to 1 October 2026</td></tr>
+          <tr><td class="rk">{{ w.rk_1 }}</td><td class="sc">{{ F.hiscore }}</td><td class="pd"><b>{{ w.pd_1_b }}</b>{{ T(w.pd_1) }}</td></tr>
           <tr class="lo"><td class="rk">{{ w.rk_2 }}</td><td class="sc">10/37</td><td class="pd"><b>{{ w.pd_2_b }}</b>{{ w.pd_2 }}</td></tr>{# FM-006 v0.19.0 first screen: E, the Owner named #}
         </tbody>
       </table>
-      <p class="small" style="margin-top:16px">Counted on 1 October 2026 with <code>gh</code> from pull requests 1–144 of shoalmark/shoalmark: merged ones only, without the Owner's own answer branches. One counts when a commit adding or changing a file under <code>work-tracker/evidence/reviews/</code>, merge commits excluded, is dated before the pull request was opened.</p>
+      <p class="small" style="margin-top:16px">{{ T(w.board_small) }}</p>
     </article>
     <article class="box over" aria-labelledby="h-over">
       <h3 class="t" id="h-over">{{ w.over_t }}</h3>
@@ -483,11 +572,12 @@ section.band{padding-block:72px 40px}
 </section>
 
 <section class="band wrap" id="register" aria-labelledby="h-reg">
-  <div class="sec-h"><span class="n">— the wreck register —</span><h2 id="h-reg">Every defect, on the chart</h2><p id="reg-sum"></p></div>
+  <div class="sec-h"><span class="n">{{ w.reg_n }}</span><h2 id="h-reg">{{ w.reg_h }}</h2><p id="reg-sum"></p></div>
   <div class="regwrap"><table class="reg">
     <thead><tr><th>{{ w.reg_th_tracker }}</th><th>{{ w.reg_th_incident }}</th><th>{{ w.reg_th_filed }}</th><th>{{ w.reg_th_status }}</th><th>{{ w.reg_th_report }}</th><th><span class="sr">{{ w.reg_th_chart }}</span></th></tr></thead>
     <tbody id="reg"></tbody>
   </table></div>
+  <p class="small reg-note">{{ w.reg_note }}</p>
 </section>
 
 <section class="band wrap" id="start" aria-labelledby="h-start">
@@ -496,9 +586,9 @@ section.band{padding-block:72px 40px}
     <li>{{ w.beta_1 }}</li>
     <li>{{ w.beta_2 }}</li>
     <li>{{ w.beta_3 }}</li>
-    <li>Made and tested on <code>git</code> with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need <code>git</code>, and the pull-request queue <code>git</code> and GitHub.</li>{# FM-006 v0.19.0, In this beta: the fourth line, the Owner's ruling filed in FM-006's release section (d7712b5), word for word #}
+    <li>{{ w.beta_4 }}</li>{# FM-006 v0.19.0, In this beta: the fourth line, the Owner's ruling filed in FM-006's release section (d7712b5), word for word #}
   </ul></div>{# FM-006 v0.19.0, In this beta: the Owner's ruling filed in FM-006's release section — In this beta: and its three English lines, word for word, in place of the line that called FM-026's path coming (FM-026 is Parked) #}
-  <ol class="stages">
+  <ol class="stages" style="--stage:'{{ w.stage_word }}';--you:'{{ w.stage_you }}';--sep:'{{ w.stage_sep }}'">
     <li>{{ w.stage_1 }}</li>
     <li>{{ w.stage_2 }}</li>
     <li>{{ w.stage_3 }}</li>
@@ -510,13 +600,13 @@ section.band{padding-block:72px 40px}
     <p class="cost"><b>{{ w.cost_3_b }}</b>{{ w.cost_3 }}</p>
   </div>
   <div class="coins">
-    <div class="coin"><span class="go">▶ 2P</span><b>You, the Owner</b><span><a href="https://shoalmark.github.io/shoalmark/setup.html">Set up in ten minutes</a> · <a href="https://shoalmark.github.io/shoalmark/signing.html">Your answer is your commit</a> · <a href="https://shoalmark.github.io/shoalmark/standup.html">The standup</a></span></div>
-    <div class="coin"><span class="go">▶ 1P</span><b>Your project's agents</b><span>The <a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">note for trying it</a> (<a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md">Deutsch</a>): a measurement, not an instruction. They report to you at the end, and you decide.</span></div>{# FM-006 v0.19.0 first screen: B4, the English note, the German beside it #}
-    <div class="coin"><span class="go">▶ 1P</span><b>An agent at work</b><span>The contract is <code>tools/shoalmark/README.md</code> in your repository, <a href="https://shoalmark.github.io/shoalmark/agents/index.html">rendered here</a>. <code>llms.txt</code> is at the site's root.</span></div>
+    <div class="coin"><span class="go">{{ w.coin_1_go }}</span><b>{{ w.coin_1_b }}</b><span>{{ T(w.coin_1) }}</span></div>
+    <div class="coin"><span class="go">{{ w.coin_2_go }}</span><b>{{ w.coin_2_b }}</b><span>{{ T(w.coin_2) }}</span></div>{# FM-006 v0.19.0 first screen: B4, the English note, the German beside it #}
+    <div class="coin"><span class="go">{{ w.coin_3_go }}</span><b>{{ w.coin_3_b }}</b><span>{{ T(w.coin_3) }}</span></div>
   </div>
 </section>
 
-<div class="ticker" aria-label="What it is not"><div>
+<div class="ticker" aria-label="{{ w.ticker_aria }}"><div>
   <span>{{ w.ticker }}</span>
   <span aria-hidden="true">{{ w.ticker }}</span>
 </div></div>
@@ -525,19 +615,66 @@ section.band{padding-block:72px 40px}
 <footer class="foot-band">
   <div class="wrap">
     <p class="claim">{{ w.foot_claim }}</p>
-    <span class="mk"><a href="https://github.com/shoalmark/shoalmark"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="currentColor"/></svg>shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2</a></span>
-    <p class="fine">v0.19.2, released 9 October 2026 — a fix for the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt: read on 1 October 2026, 12:47 CEST.</p>{# FM-006 slice L, edit (a): the facts dated — the high scores, the wrecks and the board's excerpt, read at the v0.19.0 cut c830470 on 1 October 2026, 12:47 CEST, the Auditor's reading; the wrecks and the headline from evidence/FM-006/landing/start-page/facts.mjs, unchanged, at c830470 #}{# FM-006 slice L, edit (a), the release re-read for 0.19.2 (FM-045): VERSION names 0.19.2 and the CHANGELOG's heading is ## 0.19.2 — 2026-10-09. Here, in the HUD and in the foot's link, the release VERSION names, as the setup pages' clone tag does; the date is the CHANGELOG heading's (The release day), and it moves with the heading if the tag moves; then a dash and CHANGELOG.md's bold headline word for word, its Markdown as HTML (the Owner's ruling filed at 5ae97b7); for 0.19.2 the line's first sentence is the Owner's own words for v0.19.2, ruled on 8 October 2026, not the CHANGELOG's headline. The licence and the readings sentence stand as in v0.19.1's line: the line carries no read-at-its-cut sentence for the release #}
+    <span class="mk"><a href="https://github.com/shoalmark/shoalmark"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="currentColor"/></svg>shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}</a></span>
+    <p class="fine">{{ T(w.foot_fine) }}</p>
   </div>
 </footer>
+{# The footer: the release's tag is facts.html's (`release`), the same value as the top bar's label and link; the sentence after its day is set by hand for each release in the words files (`foot_fine`); the date and the commit the figures were read at are facts.html's (`read`) #}
+
+
+{%- if probe %}
+{# B1 §1: the probe dialog — a real modal. Its prompt is a PLACEHOLDER until the probe lane's first hand-over, marked in the render itself; never published. #}
+<dialog class="probe" id="probe" aria-labelledby="probe-h">
+  <div class="box probe-box">
+    <h2 class="t" id="probe-h">{{ w.dlg_h }}</h2>
+    <div class="probe-bar"><button type="button" class="probe-x" id="probe-x" aria-label="{{ w.dlg_close_aria }}">{{ w.dlg_close }} <span aria-hidden="true">✕</span></button></div>
+    <div class="probe-scroll">
+      <div class="probe-col">
+        <p class="probe-status" id="probe-status" role="status"></p>
+        <p class="probe-paste">{{ w.dlg_paste }}</p>
+        <div>
+          <label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label>
+          <textarea class="probe-ta" id="probe-text" readonly autofocus spellcheck="false" rows="14">{{ L.probe_prompt | e }}</textarea>
+          <p class="probe-pv">ADOPT_COMMIT, TAG: today's values · ARCHIVE_URL, ARCHIVE_SHA256: stand-ins, no archive exists yet</p>{# B1 preview annotation, not a product word: the commit and the tag are today's values, the two archive pins are marked stand-ins; the build fills all four. Remove at build. #}
+        </div>
+      </div>
+      <div class="probe-col">
+        <p class="probe-what">{{ w.dlg_what }}</p>
+        <ul class="probe-list">
+          <li>{{ w.dlg_does }}</li>
+          <li>{{ w.dlg_fit }}</li>
+          <li>{{ w.dlg_machine }}</li>
+          <li>{{ w.dlg_time }}</li>
+        </ul>
+        <p class="probe-short">{{ w.dlg_short }} <a href="{{ urls.probe_abs }}">{{ w.short_addr }}</a></p>
+      </div>
+      <div class="probe-col probe-ap">
+        <p class="probe-lead">{{ w.dlg_appr_lead }}</p>
+        <ol class="probe-apps">
+          <li>{{ w.dlg_ap_1 }}</li>
+          <li>{{ w.dlg_ap_2 }}</li>
+          <li>{{ w.dlg_ap_3 }}</li>
+          <li>{{ w.dlg_ap_4 }}</li>
+          <li class="cond">{{ w.dlg_ap_5 }}</li>
+          <li class="cond">{{ w.dlg_ap_6 }}</li>
+          <li class="cond">{{ w.dlg_ap_7 }}</li>
+          <li class="cond">{{ w.dlg_ap_8 }}</li>
+        </ol>
+        <p class="probe-lead">{{ w.dlg_appr_close }}</p>
+      </div>
+    </div>
+  </div>
+</dialog>
+{%- endif %}
 
 <script>
-{# FM-006 slice L, edit (b) R4: every report is its tracker's hook at the v0.19.0 cut c830470, cut to its first sentence or two (as many as the mock's report carried; one for a wreck the mock did not draw), verbatim, code spans kept — read by evidence/FM-006/landing/start-page/facts.mjs with the mock, as its README runs it -#}
-{# FM-006 slice L, edit (a): the wrecks as the v0.19.0 cut c830470 holds them — status, incident, filing day, title, each link written shoalmark/shoalmark; FM-038 (filed 2026-09-26 13:35) and FM-039, FM-040 and FM-041 (new at the cut): each position a drawing, the flat pixel farthest from every other wreck and every name, at least 12 chart pixels inside the border, outside the title, its 7 × 5 footprint all flat or sand -#}
-const WRECKS = [{"id": "FM-041", "inc": "3a640a1", "filed": "2026-09-28", "status": "In Progress", "lon": 8.223, "lat": 53.623, "title": "the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order", "report": "the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md"}, {"id": "FM-040", "inc": "bbe192c", "filed": "2026-09-28", "status": "Shipped", "lon": 6.981, "lat": 53.593, "title": "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it", "report": "the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md"}, {"id": "FM-039", "inc": "84bc65d", "filed": "2026-09-26", "status": "In Progress", "lon": 8.639, "lat": 53.979, "title": "FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27", "report": "FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md"}, {"id": "FM-038", "inc": "5558b1a", "filed": "2026-09-26", "status": "Proposed", "lon": 7.077, "lat": 53.54, "title": "the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time", "report": "the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md"}, {"id": "FM-037", "inc": "8b0877f", "filed": "2026-09-25", "status": "In Progress", "lon": 8.38, "lat": 53.845, "title": "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through", "report": "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md"}, {"id": "FM-036", "inc": "069651d", "filed": "2026-09-25", "status": "Shipped", "lon": 8.25, "lat": 53.735, "title": "A worksheet with two filled rows for one tracker applies both in order, so every run flips the rank", "report": "On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-day re-judgement's `keep P1 #1 build` on a raise — and `apply_worksheet` applied both in order on every run: the rank read 1, then 3, then 1, each run printing *Applied 1*.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md"}, {"id": "FM-035", "inc": "840dabe", "filed": "2026-09-25", "status": "Shipped", "lon": 8.52, "lat": 54.018, "title": "CI is red on the v0.18.3 release tag: two suites fail on Windows and one traceback on macOS while Ubuntu is green", "report": "The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 and 3.12 fail two checks of test_shoalmark.py — the wordmark past the size cap, and RV-479's merged answer branch cut fresh; macos 3.12 dies in a traceback at test_shoalmark.py:1529 in the answer-dialog checks — headless Chrome past 60 s, TimeoutExpired. A red release tag on two of three platforms, found the day the tag was cut.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md"}, {"id": "FM-034", "inc": "d1618dc", "filed": "2026-09-24", "status": "Shipped", "lon": 7.52, "lat": 53.716, "title": "A fresh clone's `--check` says the INDEX is stale: the header carries the clone's own finding", "report": "A fresh clone without the Owner's allowedSignersFile runs --check and reads two findings where there is one: the missing signers file, and `INDEX.md is STALE`.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-034-a-fresh-clone-s-check-says-the-index-is-stale-the-header.md"}, {"id": "FM-033", "inc": "35c7664", "filed": "2026-09-24", "status": "In Progress", "lon": 8.45, "lat": 53.905, "title": "Work is built on trackers no pass has judged, and the board shows the person that work as waiting for triage", "report": "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md"}, {"id": "FM-030", "inc": "137d9ba", "filed": "2026-09-24", "status": "In Progress", "lon": 7.26, "lat": 53.706, "title": "An accepted action ask leaves the person's list before the act is done", "report": "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md"}, {"id": "FM-029", "inc": "137d9ba", "filed": "2026-09-24", "status": "In Progress", "lon": 7.92, "lat": 53.762, "title": "The answer says accepted when the person picked an option other than the proposal", "report": "The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third option>`.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-029-the-answer-says-accepted-when-the-person-picked-another.md"}, {"id": "FM-028", "inc": "f9a7e49", "filed": "2026-09-24", "status": "Proposed", "lon": 8.17, "lat": 53.69, "title": "After midnight the suite refuses every commit: the board and the tool count days by different clocks", "report": "Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC. The board counts an ask's age from UTC midnight while the suite and --standup count it by the local calendar, so for the hours the two dates differ they disagree by a day.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md"}, {"id": "FM-018", "inc": "3b46cdf", "filed": "2026-09-23", "status": "Proposed", "lon": 6.84, "lat": 53.585, "title": "The answer flow must be convenient and fail-safe for a normal user", "report": "Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on the wrong branch, leftovers from a failed run, a silent minute, a board that offers an answered ask again and a dialog ending in abort.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md"}, {"id": "FM-007", "inc": "f937b21", "filed": "2026-09-22", "status": "In Progress", "lon": 8.75, "lat": 54.02, "title": "A signature proves the key, not the hand — an agent running as the Owner on his machine signs as him", "report": "The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not which hand: an agent running as the Owner on his machine, with his key loaded, signs as him — and with commit.gpgsign true set, every agent commit did, until it was caught.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md"}, {"id": "FM-009", "inc": "a705c31", "filed": "2026-09-22", "status": "Shipped", "lon": 6.97, "lat": 53.716, "title": "`__version__` has drifted from `VERSION`, and `--vendor` suppresses the changelog because of it", "report": "`__version__` in `shoalmark.py` says 0.17.0; `VERSION` and the CHANGELOG say 0.17.2. Two tags shipped that way.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-009-version-has-drifted-from-version-and-vendor-suppresses-the.md"}, {"id": "FM-010", "inc": "c550e6d", "filed": "2026-09-22", "status": "Shipped", "lon": 7.03, "lat": 53.664, "title": "The `answerers` deprecation warning never reaches the repositories still on `answerers` alone", "report": "The note that tells a repository `answerers` is going away is guarded by `if ANSWERERS and SEATS:` — it fires only where both keys are present. A repository still wholly on `answerers`, which is the entire population the deprecation is aimed at, is never told.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-010-the-answerers-deprecation-warning-never-reaches-the.md"}, {"id": "FM-011", "inc": "15d537c", "filed": "2026-09-22", "status": "Shipped", "lon": 7.4, "lat": 53.712, "title": "Vendoring from an incomplete source copies what it finds and pins only that, instead of refusing", "report": "`vendor()` skips a source file that is not there — `if not src.exists(): continue` — so vendoring from an incomplete source copies what it finds, pins only that, and reports success.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-011-vendoring-from-an-incomplete-source-copies-what-it-finds-and.md"}, {"id": "FM-012", "inc": "dfc98d7", "filed": "2026-09-23", "status": "Shipped", "lon": 7.66, "lat": 53.736, "title": "A load spawns git once per tracker, and --answer is silent for a minute", "report": "Reading the trackers spawns `git config user.name` once for every tracker that has no `answered-by:` — nearly all of them. On a 505-tracker corpus that is 504 subprocesses and 15.2 s of a 16.8 s load.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-012-a-load-spawns-git-once-per-tracker-and-answer-is-silent-for.md"}, {"id": "FM-013", "inc": "dfc98d7", "filed": "2026-09-23", "status": "Shipped", "lon": 7.8, "lat": 53.745, "title": "After OK the answer dialog leaves only abort, and says nothing about signing", "report": "In the board's answer dialog, OK copies the command, prints one line of instruction above it and disables itself — the one button left is abort, which reads as undoing what was just decided.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-013-after-ok-the-answer-dialog-leaves-only-abort-and-says.md"}, {"id": "FM-014", "inc": "dfc98d7", "filed": "2026-09-23", "status": "Shipped", "lon": 7.13, "lat": 53.654, "title": "The seat cannot record that it acted on an answer: clearing is refused as an answer change", "report": "`--clear-ask` moves an answered exchange into the body and removes `answer:` `answered:` `answered-by:` from the front matter. The rights gate reads any change to those three lines as the `answer` transition, which only the owner seat holds — so the seat that holds `ask`, the one whose job clearing is, is refused.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-014-the-seat-cannot-record-that-it-acted-on-an-answer-clearing.md"}, {"id": "FM-015", "inc": "dfc98d7", "filed": "2026-09-23", "status": "Shipped", "lon": 8.02, "lat": 53.735, "title": "[seats] silently drops a signature that answerers asked for", "report": "From 0.17.1 who may answer is read from `[seats]` alone wherever `[seats]` exists. A repository with `answerers = ['alice signed']` and `[seats] owner = 'alice'` now accepts Alice's unsigned answer, `--answer` stops signing, and the deprecation note tells that repository `answerers` still works — it is not read there at all.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-015-seats-silently-drops-a-signature-that-answerers-asked-for.md"}, {"id": "FM-016", "inc": "dfc98d7", "filed": "2026-09-23", "status": "Closed", "lon": 8.375, "lat": 53.948, "title": "An answered ask still shows as unanswered on the branch the Owner returns to", "report": "After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept and reject: the answer lives on `answer/<id>` and on the ask's branch until a merge brings it to main.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-016-an-answered-ask-still-shows-as-unanswered-on-the-branch-the.md"}, {"id": "FM-017", "inc": "8c562f0", "filed": "2026-09-23", "status": "Shipped", "lon": 8.33, "lat": 53.652, "title": "A failed --answer leaves its writes behind, and the next --answer cannot say why it refuses", "report": "When the pre-commit gate refuses the commit, `--answer` returns and leaves everything it wrote: the tracker staged with the Owner's answer, the INDEX.md the hook rewrote, and a new `answer/<id>` with no commit of its own, checked out.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-017-a-failed-answer-leaves-its-writes-behind-and-the-next-answer.md"}, {"id": "FM-019", "inc": "e9a3414", "filed": "2026-09-23", "status": "Shipped", "lon": 8.47, "lat": 53.8, "title": "A merge commit is judged as the merger's own change, and main's --check goes red on every merge", "report": "On a clean tree the rights gate judges HEAD against HEAD~1. For a merge commit that is everything the pull request carried — every answer, close and verdict in it — attributed to whoever merged.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-019-a-merge-commit-is-judged-as-the-merger-s-own-change-and-main-s.md"}, {"id": "FM-020", "inc": "0231287", "filed": "2026-09-23", "status": "Shipped", "lon": 8.57, "lat": 53.878, "title": "Searching the board for a whole id shows every tracker that links to it", "report": "The Owner typed one tracker's id into the board's search and got a long list back, not the one tracker he asked for.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-020-searching-the-board-for-a-whole-id-shows-every-tracker-that.md"}, {"id": "FM-021", "inc": "0231287", "filed": "2026-09-23", "status": "Shipped", "lon": 8.78, "lat": 54.075, "title": "The progress section is empty beside work in progress and does not say why", "report": "The board says 13 trackers are in progress, and its progress section beside that reads 0. Nothing on the line says that the section stays empty until a first triage pass has run.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-021-the-progress-section-is-empty-beside-work-in-progress-and.md"}, {"id": "FM-022", "inc": "7bc780d", "filed": "2026-09-23", "status": "Shipped", "lon": 6.72, "lat": 53.522, "title": "A person finds the three intent lines hard to start — no beginning, no example", "report": "A person finds the three intent lines hard to start: there is no beginning, and no example.", "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md"}];
+const T = {{ w.js | tojson }};{# B1: the script's own words, per language #}
+{# The wrecks: facts.html's `wrecks_json`, one entry for every tracker tagged bug or security (its id, incident, filing day, status, position on the chart, title, report and link). The top bar's counts, the register and its sentence are counted from this one list -#}
+const WRECKS = {{ F.wrecks_json }};
 const R = {lon0: 6.62, lon1: 9.00, lat0: 53.45, lat1: 54.35}, W = 320, H = 205;
 const X = lon => (lon - R.lon0) / (R.lon1 - R.lon0) * W, Y = lat => (R.lat1 - lat) / (R.lat1 - R.lat0) * H;
 const P = pts => pts.map(([lo, la]) => [X(lo), Y(la)]);
-const STATUS = {"In Progress": ["open", "salvage under way"], "Proposed": ["open", "on the chart"], "Shipped": ["raised", "raised"], "Closed": ["closed", "closed"]};
+const STATUS = {"In Progress": ["open", T.status_progress], "Proposed": ["open", T.status_proposed], "Shipped": ["raised", T.status_raised], "Closed": ["closed", T.status_closed]};
 
 /* ── THE GEOGRAPHY — lon, lat; a drawing of the German Wadden coast, not a survey ── */
 const LAND = [
@@ -710,10 +847,10 @@ const dm = (v, hemi, w) => { const d = Math.floor(v), m = (v - d) * 60; return `
 function figures() {
   const f = [];
   for (let mm = 3210; mm <= 3260; mm += 10) { const y = Y(mm / 60) / H * 100; if (y < 3 || y > 97) continue;
-    const s = `${Math.floor(mm / 60)}°${String(mm % 60).padStart(2, "0")}'N`;
+    const s = `${Math.floor(mm / 60)}°${String(mm % 60).padStart(2, "0")}'${T.dir_n}`;
     f.push(`<span class="fig lat l" style="top:${y}%">${s}</span><span class="fig lat r" style="top:${y}%">${s}</span>`); }
   for (let mm = 400; mm <= 540; mm += 20) { const x = X(mm / 60) / W * 100; if (x < 3 || x > 97) continue;
-    const s = `${Math.floor(mm / 60)}°${String(mm % 60).padStart(2, "0")}'E`;
+    const s = `${Math.floor(mm / 60)}°${String(mm % 60).padStart(2, "0")}'${T.dir_e}`;
     f.push(`<span class="fig lon t" style="left:${x}%">${s}</span><span class="fig lon b" style="left:${x}%">${s}</span>`); }
   document.getElementById("figs").innerHTML = f.join("");
   document.getElementById("names").innerHTML = NAMES.map(([c, s, lo, la]) => { const [x, y] = pct(lo, la); return `<span class="name ${c}" style="left:${x}%;top:${y}%">${s}</span>`; }).join("");
@@ -723,6 +860,7 @@ function figures() {
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const code = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 const ORDER = {"In Progress": 0, "Proposed": 1, "Shipped": 2, "Closed": 3};
+const LE = document.documentElement.lang === "en" ? "" : ' lang="en"';   // a wreck's title stays as filed, in English
 let sel = null, attract = true, timer = null;
 function show(w, user) {
   sel = w; const [cls, word] = STATUS[w.status];
@@ -732,33 +870,56 @@ function show(w, user) {
   document.getElementById("i-inc").textContent = w.inc;
   document.getElementById("i-day").textContent = w.filed;
   document.getElementById("i-st").textContent = word;
-  document.getElementById("i-pos").textContent = `${dm(w.lat, "N", 2)} ${dm(w.lon, "E", 3)}`;
+  document.getElementById("i-pos").textContent = `${dm(w.lat, T.dir_n, 2)} ${dm(w.lon, T.dir_e, 3)}`;
   document.getElementById("i-title").innerHTML = code(w.title);
   document.getElementById("i-rep").innerHTML = code(w.report);
-  const a = document.getElementById("i-link"); a.href = w.url; a.textContent = `read ${w.id} →`;
-  if (user) { attract = false; clearInterval(timer); document.getElementById("i-mode").textContent = "you picked this wreck — the chart holds it"; }
+  const a = document.getElementById("i-link"); a.href = w.url; a.textContent = T.read_id.replace("{id}", w.id);
+  if (user) { attract = false; clearInterval(timer); document.getElementById("i-mode").textContent = T.picked; }
 }
 function wrecks() {
   const box = document.getElementById("wrecks");
   box.innerHTML = WRECKS.map(w => { const [x, y] = pct(w.lon, w.lat), [cls, word] = STATUS[w.status];
-    return `<button type="button" class="wreck ${cls}" data-id="${w.id}" style="left:${x}%;top:${y}%" aria-pressed="false" aria-label="${w.id}, ${word}: ${esc(w.title.replace(/`/g, ""))}">`
-      + `<svg class="f1" viewBox="0 0 9 6" aria-hidden="true"><use href="#wa"/></svg><svg class="f2" viewBox="0 0 9 6" aria-hidden="true"><use href="#wb"/></svg><span>${w.id}</span></button>`; }).join("");
+    return `<button type="button" class="wreck ${cls}" data-id="${w.id}" style="left:${x}%;top:${y}%" aria-pressed="false">`
+      + `<svg class="f1" viewBox="0 0 9 6" aria-hidden="true"><use href="#wa"/></svg><svg class="f2" viewBox="0 0 9 6" aria-hidden="true"><use href="#wb"/></svg><span class="lbl" aria-hidden="true">${w.id}</span><span class="sr">${w.id}, ${word}: <span${LE}>${esc(w.title.replace(/`/g, ""))}</span></span></button>`; }).join("");   // B1: the name is built from content, so the English title can carry lang="en"
   box.addEventListener("click", e => { const b = e.target.closest(".wreck"); if (b) show(WRECKS.find(w => w.id === b.dataset.id), true); });
   const sorted = [...WRECKS].sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.filed.localeCompare(a.filed) || b.id.localeCompare(a.id));
   const open = sorted.filter(w => STATUS[w.status][0] === "open"), raised = WRECKS.filter(w => w.status === "Shipped").length, closed = WRECKS.filter(w => w.status === "Closed").length;
   document.getElementById("hud-w").textContent = WRECKS.length; document.getElementById("hud-o").textContent = open.length;
-  document.getElementById("reg-sum").textContent = `${WRECKS.length} defects filed in shoalmark's own tracker, 22–28 September 2026: ${open.length} open, ${raised} raised, ${closed} closed. Every one is a Markdown file with its record.`;
+  const days = WRECKS.map(w => w.filed).sort(), at = d => new Date(d + "T12:00:00Z");   // the filing days, first to last: counted, not typed
+  const range = new Intl.DateTimeFormat(T.date_locale, {day: "numeric", month: "long", year: "numeric", timeZone: "UTC"}).formatRange(at(days[0]), at(days[days.length - 1])).replace(/\s*–\s*/, "–");
+  document.getElementById("reg-sum").textContent = T.reg_sum.replace("{n}", WRECKS.length).replace("{range}", range).replace("{open}", open.length).replace("{raised}", raised).replace("{closed}", closed);
   document.getElementById("reg").innerHTML = sorted.map(w => { const [cls, word] = STATUS[w.status];
-    return `<tr class="${cls}"><td class="id"><a href="${w.url}">${w.id}</a></td><td class="inc">${w.inc}</td><td class="day">${w.filed}</td><td class="st">${word}</td><td class="ti">${code(w.title)}</td><td><button type="button" data-id="${w.id}">on the chart</button></td></tr>`; }).join("");
+    return `<tr class="${cls}"><td class="id"><a href="${w.url}">${w.id}</a></td><td class="inc">${w.inc}</td><td class="day">${w.filed}</td><td class="st">${word}</td><td class="ti"${LE}>${code(w.title)}</td><td><button type="button" data-id="${w.id}">${T.reg_btn}</button></td></tr>`; }).join("");
   document.getElementById("reg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return;
     show(WRECKS.find(w => w.id === b.dataset.id), true); document.getElementById("stage").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center"}); });
   let i = 0; show(open[0], false);
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) timer = setInterval(() => { if (!attract) return; i = (i + 1) % open.length; show(open[i], false); }, 6000);
-  else document.getElementById("i-mode").textContent = "pick a wreck on the chart, or in the register";
+  else document.getElementById("i-mode").textContent = T.pick_hint;
 }
 
 scale(); figures(); const CH = drawChart(); fleet(CH); wrecks();
 addEventListener("resize", scale);
+{%- if probe %}
+/* ── THE PROBE DIALOG (B1) — the primary button copies the prompt and opens a real modal ── */
+(function () {
+  const open = document.getElementById("probe-open"), dlg = document.getElementById("probe");
+  if (!open || !dlg || typeof dlg.showModal !== "function") return;   // no dialog, no script: the link reads the same text at its short address
+  const ta = document.getElementById("probe-text"), st = document.getElementById("probe-status"), x = document.getElementById("probe-x");
+  const W = {{ {"copied": w.dlg_copied, "failed": w.dlg_failed} | tojson }};
+  const say = (state, text) => { st.dataset.state = state; st.textContent = text; };
+  const fit = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, innerHeight * .6) + "px"; };   // the prompt shows whole, up to 60% of the window
+  const done = ok => { if (ok) say("ok", W.copied); else { say("fail", W.failed); ta.focus(); ta.select(); } };
+  open.addEventListener("click", e => {
+    e.preventDefault();
+    let p; try { p = navigator.clipboard.writeText(ta.value); } catch (err) { p = Promise.reject(err); }   // asked inside the click, while the page holds the user's gesture
+    say("", ""); dlg.showModal(); document.documentElement.classList.add("modal"); fit();
+    p.then(() => done(true), () => { ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} done(ok); });
+  });
+  x.addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });   // a click on the backdrop
+  dlg.addEventListener("close", () => { document.documentElement.classList.remove("modal"); open.focus(); });
+})();
+{%- endif %}
 </script>
 </body>
 </html>

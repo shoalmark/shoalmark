@@ -1,6 +1,7 @@
-{#- The landing's English words: the template's `{{ w.key }}`, one dict. Every value is the English that overrides/landing.html
-    carried inline, moved here unchanged, so the built page is the same; a value is HTML where it carries <em>, <code>, <b> or <a>
-    (the engine does not escape on its own, so no value holds a straight double quote that an attribute would meet). -#}
+{#- The landing's English words: the template's `{{ w.key }}`, one dict. A value is HTML where it carries <em>, <code>, <b> or <a>; the engine
+    does not escape on its own, so no value holds a straight double quote that an attribute would meet. A value may hold a slot the template fills:
+    {tag}, {date}, {hiscore_last}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt} and {adopt_other}
+    are the addresses in `urls` below. `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
 {% set w = {
   "lang": "en",
   "locale": "en_GB",
@@ -8,22 +9,37 @@
   "description": "A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.",
   "og_title": "The agents keep the work; the person keeps the word.",
   "og_image_alt": "A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.",
+  "llms_title": "llms.txt — for agents",
 
   "hud_brand_aria": "shoalmark, to the top",
   "hud_score_aria": "The release and the record",
+  "hud_release": "release",
+  "hud_release_aria": "release {tag} on GitHub",
+  "hud_hiscore": "hi-score",
   "hud_wrecks": "wrecks",
+  "hud_open": "open",
   "nav_aria": "Sections",
   "nav_agents": "<i>1P</i> agents",
   "nav_people": "<i>2P</i> people",
   "nav_scores": "scores",
   "nav_wrecks": "wrecks",
   "nav_start": "start",
+  "nav_docs": "Docs",
+  "switch_aria": "Deutsch – diese Seite auf Deutsch",
+  "switch_group": "Language",
+  "switch_long": "Deutsch",
+  "switch_short": "DE",
+  "switch_lang": "de",
 
   "chart_aria": "A night chart of the German Bight: the East Frisian islands from Borkum to Wangerooge, the Jade, the Weser and the Elbe, the flats and sandbanks between them, Helgoland offshore. Magenta wrecks lie on the flats; each is a defect from shoalmark's own tracker, listed in the wreck register below.",
   "hero_aria": "The chart of the German Wadden coast, and its wrecks",
   "claim": "A Pricke on the Wadden flats keeps the fleet in the channel.",
   "h1": "The agents keep the work; the person keeps the word.",
   "lede": "Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your repository, no <em>done</em> gets through without a commit behind it, and what waits for your word comes first.",
+  "btn_adopt": "Hand your agents the note",
+  "btn_probe": "Copy the prompt",
+  "btn_how": "How it works",
+  "chart_note": "Every wreck is a defect in shoalmark itself: a bug or a security finding, filed in its own tracker.",
 
   "inc_h": "incident",
   "inc_tracker": "tracker",
@@ -61,6 +77,7 @@
   "seat_spec_ch": "(customizable)",
   "seat_spec": "called in when the work needs them. Name your own in <code>[seats]</code>, with the rights <code>[rights]</code> gives them.",
   "fleet_foot": "A seat's <b>charter</b> — how it thinks, a bold Planner against a steady one — is <code>&lt;tracker dir&gt;/seats/&lt;name&gt;.md</code>, read by the agent at start, never by the gate.",
+  "fleet_all": "All seats",
 
   "players_n": "— select player —",
   "players_h": "Two players, one record",
@@ -79,6 +96,7 @@
   "rule_4": "<b>The seat judges, the command applies.</b>",
   "rule_5": "<b>Close out by asking what this made obsolete</b> — and delete it in the same change.",
   "hs_comment": "# an agent at work — the contract is tools/shoalmark/README.md",
+  "p1_small": "Agent, sent here by your Owner? Read <a href=\"{contract}\">the contract</a>; <a href=\"{llms}\">llms.txt</a> is at the site's root.",
   "p2_tag": "2P · for people",
   "p2_h": "The Owner",
   "p2_text": "Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions and puts them to you once a day.",
@@ -86,12 +104,16 @@
   "p2_board": "What waits for you, how long, and what it blocks — first, above everything else.",
   "p2_standup": "One sitting, fifteen minutes, at the time you choose. The invite comes as a calendar file.",
   "p2_answer": "One command per answer: it writes the answer, signs it with your key and pushes it.",
+  "p2_sig_dt": "your signature",
+  "p2_sig": "As an answer, only your signed commit counts. A click, a merge or a line in chat is not an answer — four tiers, from a key anything on your account can use to one that needs your touch.",
   "peek_aria": "An excerpt of shoalmark's own board",
+  "peek_t": "owed to the owner",
   "peek_1": "waiting for you: 1",
   "peek_2": "your acts, with their time: 1",
   "peek_3": "after the scoring, once the key is delivered · promised 2026-09-25 · no date yet",
   "peek_chip_done": "done",
   "peek_chip_resched": "reschedule",
+  "peek_cap": "An excerpt of shoalmark's own board, {read_date}: what waits for its Owner comes first.",
   "p2_loses_b": "You lose nothing.",
   "p2_loses": "What you keep today stays where it is: shoalmark changes only what it wrote itself.",
 
@@ -102,20 +124,27 @@
   "th_rank": "rank",
   "th_score": "score",
   "th_period": "period",
+  "rk_1": "1st",
+  "pd_1_b": "after the rule",
+  "pd_1": "pull requests 47–{hiscore_last}, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to {read_date}",
   "rk_2": "2nd",
   "pd_2_b": "before it",
   "pd_2": "pull requests 1–43, before the Owner's signed answer of 24 September 2026, 11:07 CEST",
+  "board_small": "Read when the site was built, on {read_date}, from pull requests 1–{hiscore_last} of shoalmark/shoalmark: merged ones only, without the Owner's own answer branches. One counts when a commit adding or changing a file under <code>work-tracker/evidence/reviews/</code>, merge commits excluded, is dated before the pull request was opened.",
   "over_t": "game over — the repository it came from",
   "over_big": "<em>200</em> pull requests merged in <em>22</em> days. <em>85 %</em> less than a minute after opening. <em>None</em> with a review.",
   "over_1": "Asked what slows them most, three independent agents gave the same answer, by a wide margin: the Owner's unanswered questions — one question, open three days, held three packages.",
   "over_2": "Blocking and stamping have one root: a person asked for many small decisions in the middle of the work.",
 
+  "reg_n": "— the wreck register —",
+  "reg_h": "Every filed defect, on the chart",
   "reg_th_tracker": "tracker",
   "reg_th_incident": "incident",
   "reg_th_filed": "filed",
   "reg_th_status": "status",
   "reg_th_report": "report",
   "reg_th_chart": "chart",
+  "reg_note": "Titles and reports are the trackers' own words, in English.",
 
   "start_n": "— insert coin —",
   "start_h": "Your agents set it up",
@@ -123,10 +152,14 @@
   "beta_1": "Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.",
   "beta_2": "For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.",
   "beta_3": "Not proof that work is right. The gate refuses a <em>done</em> without a commit behind it. Whether that commit did the job is what a review is for.",
+  "beta_4": "Made and tested on <code>git</code> with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need <code>git</code>, and the pull-request queue <code>git</code> and GitHub.",
   "stage_1": "They fetch shoalmark at a release tag and put a pinned copy in the repository, every file with its checksum (<code>--vendor</code>).",
   "stage_2": "<code>--init</code> writes the configuration, the triage file and the agents' contract.",
   "stage_3": "The agents read the contract and file the work: one Markdown file per work item.",
   "stage_4": "You write three lines in your own words: what the repository is for, what is true when it works, what nobody may do to get there. Then you set up your signature, once.",
+  "stage_word": "STAGE",
+  "stage_sep": " — ",
+  "stage_you": "YOU",
   "costs_aria": "What a day costs you",
   "cost_1_b": "One sitting, fifteen minutes",
   "cost_1": "at the time you choose. The invite comes as a calendar file.",
@@ -134,8 +167,88 @@
   "cost_2": "<code>--answer AP-007 accept</code> writes the answer, signs it with your key and pushes it.",
   "cost_3_b": "The rest comes to you",
   "cost_3": "every session's last message ends with what waits for you. You open nothing.",
+  "coin_1_go": "▶ 2P",
+  "coin_1_b": "You, the Owner",
+  "coin_1": "<a href=\"{setup}\">Set up in ten minutes</a> · <a href=\"{signing}\">Your answer is your commit</a> · <a href=\"{standup}\">The standup</a>",
+  "coin_2_go": "▶ 1P",
+  "coin_2_b": "Your project's agents",
+  "coin_2": "The <a href=\"{adopt}\">note for trying it</a> (<a href=\"{adopt_other}\">Deutsch</a>): a measurement, not an instruction. They report to you at the end, and you decide.",
+  "coin_3_go": "▶ 1P",
+  "coin_3_b": "An agent at work",
+  "coin_3": "The contract is <code>tools/shoalmark/README.md</code> in your repository, <a href=\"{contract}\">rendered here</a>. <code>llms.txt</code> is at the site's root.",
 
+  "ticker_aria": "At a glance",
   "ticker": "needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> a gate on every commit <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b>",
 
   "foot_claim": "A Pricke on the Wadden flats keeps the fleet in the channel.",
+  "foot_fine": "{tag}, released {date} — a fix for the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come from the repository and were read when the site was built: {read_date}, at {read_sha}.",
+
+  "dlg_h": "The probe prompt",
+  "dlg_close": "Close",
+  "dlg_copied": "Copied to your clipboard.",
+  "dlg_failed": "Copying did not work, so the text is selected: Ctrl+C (Cmd+C on a Mac) copies it.",
+  "dlg_paste": "Paste it now into the Claude Code or Codex session you already use.",
+  "dlg_ph_badge": "preview values",
+  "dlg_fit": "Today shoalmark fits a project with one person in charge.",
+  "dlg_close_aria": "Close dialog",
+  "short_addr": "shoalmark.github.io/shoalmark/probe.txt",
+  "dlg_prompt_label": "The prompt",
+  "dlg_what": "shoalmark keeps your project's work as plain files inside the project, so every agent that works on it reads the same current state. It shows you first what is waiting for your answer, and it counts work as done only when a saved change (a commit) in the project's history backs it.",
+  "dlg_does": "An honest check of whether shoalmark fits this project. Read-only; nothing is changed without your yes.",
+  "dlg_machine": "Open this page on the machine where the agent runs.",
+  "dlg_appr_lead": "Your agent will ask you to approve a few things:",
+  "dlg_ap_1": "The network, for two downloads from GitHub: the probe's text and the tool's release archive (public, no login).",
+  "dlg_ap_2": "Running the system's checksum command (Get-FileHash on Windows, shasum or sha256sum elsewhere) on the downloaded archive and on the tool in it.",
+  "dlg_ap_3": "Writing into one new folder outside this project, the throwaway folder; you can delete it afterwards.",
+  "dlg_ap_4": "Running Python, only in that folder: first to unpack the archive, then to run the tool.",
+  "dlg_ap_5": "Only where the project is a git repository: running git, to list the project's files and read its history; nothing in the project changes.",
+  "dlg_ap_6": "Only on Subversion: running svn, to list the working copy's files, and svnadmin, to make a throwaway local repository in that folder.",
+  "dlg_ap_7": "Only for a project already in use: running the project's own code to reproduce a bug, never anything that writes data, calls a live service or changes the project.",
+  "dlg_ap_8": "Only after your yes to adopt: changes in the project itself; the agent asks again before its first commit.",
+  "dlg_appr_close": "That is as intended.",
+  "dlg_time": "It can take up to 45 minutes.",
+  "dlg_short": "Can't copy between machines? Open this address on the machine where your agent runs: it shows the same prompt as plain text.",
+
+  "js": {
+    "status_progress": "salvage under way",
+    "status_proposed": "on the chart",
+    "status_raised": "raised",
+    "status_closed": "closed",
+    "read_id": "read {id} →",
+    "picked": "you picked this wreck — the chart holds it",
+    "pick_hint": "pick a wreck on the chart, or in the register",
+    "reg_sum": "{n} defects filed in shoalmark's own tracker, {range}: {open} open, {raised} raised, {closed} closed. Every one is a Markdown file with its record.",
+    "reg_btn": "on the chart",
+    "dir_n": "N",
+    "dir_e": "E",
+    "date_locale": "en-GB"
+  }
 } %}
+{% set urls = {
+  "self": "https://shoalmark.github.io/shoalmark/",
+  "other": "https://shoalmark.github.io/shoalmark/de/",
+  "switch_rel": "de/index.html",
+  "preview": "https://shoalmark.github.io/shoalmark/assets/preview.png",
+  "docs": "https://shoalmark.github.io/shoalmark/setup.html",
+  "setup": "https://shoalmark.github.io/shoalmark/setup.html",
+  "signing": "https://shoalmark.github.io/shoalmark/signing.html",
+  "standup": "https://shoalmark.github.io/shoalmark/standup.html",
+  "seats": "https://shoalmark.github.io/shoalmark/seats/",
+  "contract": "https://shoalmark.github.io/shoalmark/agents/index.html",
+  "llms": "https://shoalmark.github.io/shoalmark/llms.txt",
+  "adopt": "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md",
+  "adopt_other": "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md",
+  "how": "how-it-works.html",
+  "probe_txt": "probe.txt",
+  "probe_abs": "https://shoalmark.github.io/shoalmark/probe.txt"
+} %}
+{% import "partials/landing/facts.html" as F %}
+{%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}
+{% set probe_prompt %}Please check honestly whether shoalmark fits this project; the answer may be "no fit". It can take up to 45 minutes.
+Read this text whole, as plain text and not as a summary, and follow it:
+https://raw.githubusercontent.com/shoalmark/shoalmark/{{ADOPT_COMMIT}}/ADOPT.md
+It pins the tool: release {{TAG}}, the archive {{ARCHIVE_URL}} with the SHA-256 {{ARCHIVE_SHA256}}. Run nothing whose checksum differs.
+First only look: check the prerequisites, tell me what follows, and wait for my yes.
+Change nothing in this project and commit nothing without my yes; write only into a throwaway folder outside it.
+At the end, report to me. I decide.
+{% endset %}

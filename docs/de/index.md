@@ -1,4 +1,5 @@
 ---
+template: landing.html
 title: Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort
 description: "Ein Arbeits-Tracker in Ihrem Repository, für Ihre Agenten: Nichts geht ohne Commit dahinter als „fertig“ durch, und was auf Ihr Wort wartet, steht ganz oben."
 ---
@@ -6,8 +7,6 @@ description: "Ein Arbeits-Tracker in Ihrem Repository, für Ihre Agenten: Nichts
 # shoalmark
 
 *Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.*
-
-**Die Startseite, auf Englisch:** [eine Seekarte des Wattenmeers](../index.md), auf der jeder Fehler aus shoalmarks eigenem Tracker als Wrack liegt.
 
 ## Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.
 
