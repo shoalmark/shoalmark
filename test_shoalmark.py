@@ -8752,6 +8752,59 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# the tool's pathspecs mean what it wrote, whatever the environment says a pathspec means: a page of the board git tracks, and a case variant of a tracker in
+# the history, read with the four pathspec variables inherited
+def _bw_case_variant(root, rel, who):
+    """A case variant of the tracker at `rel` — the same name in lower case, its text byte for byte — added and then removed by `who`, through the index and
+    `commit-tree` only, so the working tree, on a file system that folds case or not, never holds it; both commits pushed to origin's `main`."""
+    low_ = rel.rsplit("/", 1)[0] + "/" + rel.rsplit("/", 1)[1].lower()
+    blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--", rel], capture_output=True, text=True, env=_ENV).stdout.strip()
+    as_ = dict(_ENV, GIT_AUTHOR_NAME=who, GIT_AUTHOR_EMAIL=f"{who}@else", GIT_COMMITTER_NAME=who, GIT_COMMITTER_EMAIL=f"{who}@else")
+    for step_ in ("add", "remove"):
+        git(root, "update-index", *(["--add", "--cacheinfo", f"100644,{blob_},{low_}"] if step_ == "add" else ["--force-remove", low_]))
+        tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        c_ = subprocess.run(["git", "-C", str(root), "commit-tree", tree_, "-p", "HEAD", "-m", f"a case variant of {rel}: {step_}"], capture_output=True, text=True, env=as_).stdout.strip()
+        git(root, "update-ref", "HEAD", c_)
+    git(root, "push", "-q", "origin", "main")
+    return low_
+
+
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree"); _BW_HAND.pop(base_, None)
+    rel_ = "docs/work-tracker/AP-501-x.md"
+    first_ = subprocess.run(["git", "-C", str(root_), "log", "-1", "--format=%H", "--", rel_], capture_output=True, text=True, env=_ENV).stdout.strip()
+    _bw_case_variant(root_, rel_, "variant-writer")
+    every_ = {"GIT_LITERAL_PATHSPECS": "1", "GIT_ICASE_PATHSPECS": "1", "GIT_GLOB_PATHSPECS": "1", "GIT_NOGLOB_PATHSPECS": "1"}
+    saved_ = {k_: os.environ.get(k_) for k_ in every_}
+    os.environ["GIT_ICASE_PATHSPECS"] = "1"                 # in this interpreter: what the gate's own line_author reads with
+    try:
+        fm.configure(root_)
+        who_ = fm.line_author(root_ / rel_, "next: owner")
+    finally:
+        for k_, v_ in saved_.items():
+            os.environ.pop(k_, None) if v_ is None else os.environ.__setitem__(k_, v_)
+        fm.configure(HERE)
+    c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_BM_ENV, GIT_ICASE_PATHSPECS="1"))
+    c2_, o2_, e2_ = _tool_run(HERE / "shoalmark.py", root_, "--owner", env=dict(_BM_ENV, GIT_ICASE_PATHSPECS="1"))
+    c3_, o3_, e3_ = _tool_run(HERE / "shoalmark.py", root_, "--check", env=dict(_BM_ENV, **every_))
+    page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
+    check(f"FM-045 · with `GIT_ICASE_PATHSPECS` inherited, `line_author` — the gate's reader of who set a line, and the board's — names the commit that wrote the "
+          f"tracker's `next: owner`, not a case variant's in the history: the board's run, `--owner` and the gate read the Owner's ask as the Owner's (saw "
+          f"{who_[:2]} {who_[3][:7] if who_[3] else ''}, the first commit {first_[:7]}; exits {c1_}, {c2_}, {c3_}; `variant-writer` named by the page "
+          f"{'variant-writer' in page_}, by `--owner` {'variant-writer' in o2_ + e2_}, by the gate {'variant-writer' in o3_ + e3_}; `--owner` lists AP-501 {'AP-501' in o2_})",
+          who_[:2] == ("owner", "o@x") and who_[3] == first_ and c1_ == 0 and c2_ == 0 and "variant-writer" not in page_ and "variant-writer" not in o2_ + e2_
+          and "variant-writer" not in o3_ + e3_ and "AP-501" in o2_)
+    page_path_ = root_ / "docs/work-tracker/index.html"
+    page_path_.write_text("a page git tracks\n", encoding="utf-8"); git(root_, "add", "-f", "docs/work-tracker/index.html"); git(root_, "commit", "-qm", "the page, tracked")
+    c4_, o4_, e4_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_BM_ENV, GIT_LITERAL_PATHSPECS="1"))
+    status_ = subprocess.run(["git", "-C", str(root_), "status", "--porcelain", "--", "docs/work-tracker/index.html"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    check(f"FM-045 · with `GIT_LITERAL_PATHSPECS` inherited, the board's run still sees the page of the board git tracks — `:(literal)` is the tool's own "
+          f"magic — and leaves it as committed, saying so in place of the link: `git status` is clean (saw exit {c4_}, status {status_!r}, "
+          f"{(e4_.strip().splitlines() or [''])[0][:120]!r})",
+          c4_ == 0 and status_ == "" and page_path_.read_text(encoding="utf-8") == "a page git tracks\n" and "git tracks" in e4_)
+    rm_git(root_)
+fm.configure(HERE)
+
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")

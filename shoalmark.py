@@ -1012,16 +1012,26 @@ def nested_git_env():
     parent instead. The generator then silently rewrites every derived live tag
     to `—` during commit even though a direct `--check` is green.
 
+    Every git the tool starts takes its environment from here. The four variables that change what every pathspec means (`PATHSPEC_VARIABLES`) are dropped
+    for each, whoever set them: the tool's pathspecs mean what git's default makes them mean.
+
     And while this run's reads are the board's (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks, and the settings
     the board's reads run with (`BOARD_SETTINGS`), after every other.
     """
     env = os.environ.copy()
-    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX"):
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", *PATHSPEC_VARIABLES):
         env.pop(key, None)
     if LAZY_OFF:
         env[LAZY_FETCH_SWITCH] = "1"
         env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), board_settings()) if p)
     return env
+
+
+# THE PATHSPECS MEAN WHAT THE TOOL WROTE. An inherited `GIT_LITERAL_PATHSPECS` reads its `:(literal)`, `:(top)` and `:/` as names — git then tracks no page
+# of the board, and the board's run writes over the one it tracks; `GIT_ICASE_PATHSPECS` matches a tracker's case variant, and `line_author` names a commit
+# that never wrote the tracker's line; `GIT_GLOB_PATHSPECS` and `GIT_NOGLOB_PATHSPECS` change a path that holds a wildcard. The tool's own pathspecs are each
+# a path the repository holds, or that magic, and need none of the four: they are dropped for every git the tool starts (`nested_git_env`).
+PATHSPEC_VARIABLES = ("GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS")
 
 
 # THE SETTINGS THE BOARD'S READS RUN WITH, fixed in the same place as the switch, whatever the repository, the user or the environment configures: no read of
