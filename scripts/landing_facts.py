@@ -57,6 +57,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -404,7 +405,7 @@ def read_wrecks(git, commit, url):
         stop(f"{MOCK} holds no `const WRECKS = [...];` line: each report's sentences are counted from the mock's")
     counts = {w["id"]: len(sentences(w["report"])) for w in json.loads(m.group(1))}
     wrecks = {}
-    for path in git("ls-tree", "--name-only", commit, "work-tracker/").splitlines():
+    for path in git("ls-tree", "-z", "--name-only", commit, "work-tracker/").split("\0"):      # -z: a name as it is, never quoted
         m = re.match(r"^work-tracker/(FM-(\d+))-.*\.md$", path)
         if not m:
             continue
@@ -430,7 +431,7 @@ def read_wrecks(git, commit, url):
             stop(f"no commit before {commit[:7]} added {path}: the wreck's incident and filing day are read from it")
         inc, at = added[-1].split()
         wrecks[wid] = {"id": wid, "inc": inc, "filed": datetime.datetime.fromtimestamp(int(at), zone).strftime("%Y-%m-%d"),
-                       "status": t["status"], "title": title.group(1)[len(wid) + 3:], "report": report, "url": f"{url}/blob/main/{path}"}
+                       "status": t["status"], "title": title.group(1)[len(wid) + 3:], "report": report, "url": f"{url}/blob/main/{urllib.parse.quote(path)}"}
     drawn = [(i, lon, lat) for i, lon, lat in DRAWN if i in wrecks]
     new = sorted(set(wrecks) - {i for i, _, _ in DRAWN}, key=lambda i: int(i.split("-")[1]))
     at = {i: (lon, lat) for i, lon, lat in drawn}

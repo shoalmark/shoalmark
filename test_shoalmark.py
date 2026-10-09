@@ -12282,6 +12282,29 @@ check(f"FM-006 · B1 · RV-2881: a title and a report holding `</script>`, `</SC
       _lf_esc_ok and not _lf_esc_ctl and {"</", "<!--", "{{", "{%", "a brace in a string"} <= set(_lf_esc_ctl_found))
 
 if _lf_why:
+    _skipped("FM-006 · B1 · RV-2882: trackers whose names git quotes", 1, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        clone_ = _lf_clone(Path(d).resolve())
+        for name_, title_ in (("FM-096-über.md", "Über a name git quotes"), ('FM-097-a"b.md', 'A name with a " in it')):
+            text_ = (f'---\nid: {name_[:6]}\nstatus: Proposed\ntags: security\nhook: "{title_.replace(chr(34), chr(39))}, filed for a probe."\n---\n\n'
+                     f"# {name_[:6]} — {title_}\n\n## What is true now\n\nA probe.\n")
+            blob_ = subprocess.run(["git", "-C", str(clone_), "hash-object", "-w", "--stdin"], input=text_.encode("utf-8"), capture_output=True, check=True, env=_ENV).stdout.decode().strip()
+            git(clone_, "update-index", "--add", "--cacheinfo", f"100644,{blob_},work-tracker/{name_}")      # never on disk: Windows refuses `"` in a name
+        git(clone_, "commit", "-q", "-m", "two trackers whose names git quotes")
+        lf_ = _lf_module()
+        g_ = lf_.Git(clone_)
+        read_ = {w["id"]: w["url"] for w in lf_.read_wrecks(g_, g_("rev-parse", "HEAD").strip(), "https://github.com/shoalmark/shoalmark")}
+        quoted_ = [ln for ln in subprocess.run(["git", "-C", str(clone_), "-c", "core.quotePath=true", "ls-tree", "--name-only", "HEAD", "work-tracker/"],
+                                               capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.splitlines() if re.match(r"^work-tracker/(FM-(\d+))-.*\.md$", ln)]
+        check(f"FM-006 · B1 · RV-2882: trackers named FM-096-über.md and FM-097-a\"b.md, both tagged security, are read as wrecks, each linked by its name "
+              f"percent-encoded; its control, the listing without -z that git quotes, misses both (saw {len(read_)} wrecks, {read_.get('FM-096')}, {read_.get('FM-097')}; "
+              f"the listing without -z finds {sum('FM-09' in q for q in quoted_)} of them)",
+              read_.get("FM-096") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-096-%C3%BCber.md"
+              and read_.get("FM-097") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-097-a%22b.md"
+              and len(read_) == 30 and not any("FM-096" in q or "FM-097" in q for q in quoted_))
+
+if _lf_why:
     _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
