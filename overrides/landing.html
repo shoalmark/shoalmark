@@ -540,7 +540,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
           <p><i>##</i> <b>{{ w.peek_2 }}</b></p>
           <p><span class="id">FM-007</span> {{ w.peek_3 }} <span class="chip">{{ w.peek_chip_done }}</span><span class="chip">{{ w.peek_chip_resched }}</span></p>
         </div>
-        <figcaption>{{ T(w.peek_cap) }}</figcaption>
+        <figcaption>{{ T(w.peek_cap) }}</figcaption>{# the board's excerpt above is typed, not read at build, and its caption names the day it was read, as the page's did #}
       </figure>
       <p class="loses"><b>{{ w.p2_loses_b }}</b>{{ w.p2_loses }}</p>
     </article>
