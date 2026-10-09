@@ -1,4 +1,4 @@
-# Verified with the organization migration site build.
+# Verified by building the site both ways with docs.yml's steps: work-tracker/evidence/reviews/review-pr148-zensical-0.0.67-fd38f85.md.
 zensical==0.0.67
 # CSS parser for the published font-source check; retains Python 3.9 support.
 tinycss2==1.4.0
