@@ -424,8 +424,8 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <div class="score" role="list" aria-label="{{ w.hud_score_aria }}">
       <div role="listitem"><a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{{ F.release.tag }}" aria-label="{{ T(w.hud_release_aria) }}">{{ w.hud_release }}<b>{{ F.release.tag }}</b></a></div>{# B1 §3.3: the label links to its release, the address the footer uses; its tag is the label's own value (facts.html) #}
       <div role="listitem" class="opt">{{ w.hud_hiscore }}<b>{{ F.hiscore }}</b></div>
-      <div role="listitem" class="mid">{{ w.hud_wrecks }}<b id="hud-w">27</b></div>
-      <div role="listitem" class="hot">{{ w.hud_open }}<b id="hud-o">10</b></div>{# The top bar: the release label, its link and the high score are facts.html's (`release`, `hiscore`); the two counts, wrecks and open, are counted by the script below from the one list that draws the chart (`wrecks_json`) #}
+      <div role="listitem" class="mid">{{ w.hud_wrecks }}<b id="hud-w">{{ F.counts.wrecks }}</b></div>
+      <div role="listitem" class="hot">{{ w.hud_open }}<b id="hud-o">{{ F.counts.open }}</b></div>{# The top bar: the release label, its link, the high score and the two counts, wrecks and open, are facts.html's (`release`, `hiscore`, `counts`); the script below sets the same two counts from the one list that draws the chart (`wrecks_json`), which the build holds them to #}
     </div>
     <div class="langsw" role="group" aria-label="{{ w.switch_group }}"><a class="lang" href="{{ urls.switch_rel }}" hreflang="{{ w.switch_lang }}" lang="{{ w.switch_lang }}" aria-label="{{ w.switch_aria }}" title="{{ w.switch_aria }}"><span class="l">{{ w.switch_long }}</span><span class="s">{{ w.switch_short }}</span></a></div>{# B1: the language switch — the other language's own name, its code on a phone; hreflang and lang say what it leads to #}
     <nav aria-label="{{ w.nav_aria }}">

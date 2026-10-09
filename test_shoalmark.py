@@ -4472,6 +4472,8 @@ def _landing_problems(src):
         bad.append("the template does not choose its words by the page's path, or does not read facts.html")
     if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(words, ensure_ascii=False)):
         bad.append("a release is typed where the build's figures give it")
+    if code.count('<b id="hud-w">{{ F.counts.wrecks }}</b>') != 1 or code.count('<b id="hud-o">{{ F.counts.open }}</b>') != 1 or re.search(r'id="hud-[wo]">\d', code):
+        bad.append("the top bar's wrecks and open counts are not facts.html's `counts`, or a count is typed in the HTML")
     if code.count("releases/tag/{{ F.release.tag }}") != 2 or code.count("<b>{{ F.release.tag }}</b>") != 1:
         bad.append("the top bar's label and link and the footer's link do not all read F.release.tag")
     if (en.get("foot_fine"), de.get("foot_fine")) != (_FOOT_EN, _FOOT_DE):
@@ -4517,11 +4519,12 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
         "the act's line escaped a second time": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}"),
         "the act's line printed twice": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }} <span", "{{ F.excerpt.act.line }} {{ F.excerpt.act.line }} <span"),
+        "a top bar count typed": _with(_ls, "overrides/landing.html", '<b id="hud-w">{{ F.counts.wrecks }}</b>', '<b id="hud-w">27</b>'),
         "the act typed again": _with(_ls, "overrides/landing.html", '<span class="id">{{ F.excerpt.act.id }}</span>', '<span class="id">FM-007</span>'),
         "the caption's day typed": _with(_ls, "overrides/partials/landing/en.html", "board, {read_date}:", "board, 1 October 2026:")}
 _ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
 check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
-      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again and the caption's day typed leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 11)
+      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed and a top bar count typed leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 12)
 
 
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
