@@ -4,6 +4,8 @@ Every check builds what it needs in a throwaway repository; nothing here reads a
 in-process with an argv list, so a non-zero exit is observable without a subprocess.
 """
 
+import ast
+import collections
 import hashlib
 import importlib.util
 import io
@@ -60,17 +62,36 @@ def rm_git(root):
     shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
 
 
+# FM-045: every git argv started by a board's run the suite watches — each `--html-only` in process (`run`) and each `--html-only` of this tool's own file as a
+# program in the suite's own environment (`_tool_run`), by an audit hook; every board's run of the board matrix, through git's trace (`_bm_record`) — is recorded,
+# for the classification's runtime half at the suite's end: none of the commands the tool names as never started there is started
+_BOARD_GIT, _BOARD_RUNS, _WATCHING = [], {"in process": 0, "a program": 0, "through git's trace": 0}, [False]
+
+
+def _watch_git(event, args):
+    """The audit hook: while a board's run is on in process, each program it starts, as its argv — a Windows command line read back to its list."""
+    if _WATCHING[0] and event == "subprocess.Popen":
+        _BOARD_GIT.append(fm.split_cmdline(args[1]) if isinstance(args[1], str) else [str(a_) for a_ in args[1]] if isinstance(args[1], (list, tuple)) else [str(args[1])])
+
+
+sys.addaudithook(_watch_git)
+
+
 def run(root, *argv, git_env=None):
     """The tool, in process. The ambient `GIT_*` variables are stripped for the call — git exports them into every hook,
     so the suite run by the pre-commit hook would otherwise answer for the repository being committed to, not for the
-    scratch one it just built (`_ENV` strips them for the same reason). `git_env` puts chosen ones back, on purpose."""
+    scratch one it just built (`_ENV` strips them for the same reason). `git_env` puts chosen ones back, on purpose.
+    A board's run (`--html-only`) is watched: each git argv it starts is recorded (`_BOARD_GIT`)."""
     out, err = io.StringIO(), io.StringIO()
     saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
     os.environ.update(git_env or {})
+    _WATCHING[0] = "--html-only" in argv
+    _BOARD_RUNS["in process"] += _WATCHING[0]
     try:
         with redirect_stdout(out), redirect_stderr(err):
             code = fm.main(["--root", str(root), *argv])
     finally:
+        _WATCHING[0] = False
         for k in git_env or {}:
             os.environ.pop(k, None)
         os.environ.update(saved)
@@ -1627,9 +1648,28 @@ def _old_tool(into, rev="ae3c9e9"):
         shutil.copy(f_, into / "vendor" / f_.name)
     shutil.copy(HERE / "VERSION", into / "VERSION")
     return into / "shoalmark.py"
+_WATCH_PY = ("import json, os, sys\n"
+             "_log = open(os.environ['SHOALMARK_SUITE_GIT_LOG'], 'a', encoding='utf-8')\n"
+             "def _watch(event, args):\n"
+             "    if event == 'subprocess.Popen':\n"
+             "        _log.write(json.dumps(args[1] if isinstance(args[1], str) else [str(a) for a in args[1]]) + '\\n'); _log.flush()\n"
+             "sys.addaudithook(_watch)\n")
 def _tool_run(tool, root, *a, env=None):
-    """The tool as a program — what a hook starts, with the import-time configuration read and all."""
-    r_ = subprocess.run([sys.executable, str(tool), "--root", str(root), *a], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+    """The tool as a program — what a hook starts, with the import-time configuration read and all. FM-045: this tool's board's run, in the suite's own
+    environment, is watched from inside the process — a `sitecustomize` on its PYTHONPATH, whose audit hook writes each argv it starts to a log opened before
+    the run begins — and each git argv is recorded (`_BOARD_GIT`)."""
+    watch_ = "--html-only" in a and env is None and Path(tool).resolve() == (HERE / "shoalmark.py").resolve()
+    with tempfile.TemporaryDirectory() as w_:
+        log_ = Path(w_) / "started.jsonl"
+        if watch_:
+            (Path(w_) / "sitecustomize.py").write_text(_WATCH_PY, encoding="utf-8")
+            env = dict(_ENV, PYTHONPATH=w_, SHOALMARK_SUITE_GIT_LOG=str(log_))
+        r_ = subprocess.run([sys.executable, str(tool), "--root", str(root), *a], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+        if watch_:
+            _BOARD_RUNS["a program"] += 1
+            for l_ in (log_.read_text(encoding="utf-8").splitlines() if log_.exists() else []):
+                v_ = json.loads(l_)
+                _BOARD_GIT.append(fm.split_cmdline(v_) if isinstance(v_, str) else v_)
     return r_.returncode, r_.stdout, r_.stderr
 def _tree(root, skip=()):
     """Every path of a tree outside `.git` and `skip`: what it is, and its content or its link — a listing to compare before and after."""
@@ -1681,6 +1721,840 @@ _CMDS_ = [["git", "log", "-1", "--format=%H%n%an"], ["git", "-C", "C:\\a b\\c", 
 check("FM-006 · a private security report · the board's run starts read-only git and nothing else: the calls it makes pass, and `fetch`, `gh`, `svn`, a write form of `config`, `branch` or `symbolic-ref`, "
       "`--output`, a `-c` other than the two the tool uses, a shell and a bare string do not; a Windows command line is read back to its list, as `subprocess` writes it",
       all(fm.read_only_git(a_) for a_ in _RO_) and not any(fm.read_only_git(a_) for a_ in _NOT_) and all(fm.split_cmdline(subprocess.list2cmdline(a_)) == a_ for a_ in _CMDS_))
+# FM-045: `ls-tree` is on the read-only list, READ_ONLY_GIT — the tree listings the tool makes, as it sends them, are read-only git; bent, they are not
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); git(root, "init", "-q"); (root / "a").mkdir(); (root / "a" / "b.txt").write_text("b\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "a tree"); fm.configure(root)
+    lists_ = argv_of(lambda: (fm.tree_paths("HEAD"), fm.path_mode("HEAD", "a/b.txt")))
+    bent_ = [[*l_[:1], "-c", "core.fsmonitor=x", *l_[1:]] for l_ in lists_] + [[*l_[:2], "--output=x", *l_[2:]] for l_ in lists_]
+    check(f"FM-045 · `git ls-tree` is read-only git: the tree listings the tool makes pass as it sends them; with `--output`, or a `-c` other than the two the tool uses, they do not (saw {lists_})",
+          len(lists_) == 2 and all(l_[1] == "ls-tree" and fm.read_only_git(l_) for l_ in lists_) and not any(fm.read_only_git(l_) for l_ in bent_))
+    rm_git(root)
+fm.configure(HERE)
+
+# --- FM-045: every git command the tool can start is classified — on READ_ONLY_GIT, or named as never started in the board's run, with its reason
+#     (`NEVER_IN_BOARD_RUN`). Read from the tool's own source with `ast`: a command in neither fails here, and so does a start in a form the reading does not
+#     follow. Its control is a copy of the source with one start injected, in each form. The runtime half is at the suite's end
+# the programs a start may not name: the command wrappers, which start the program a later word of their argv names, and the shells and interpreters, which
+# run code or a script they are handed. A start of one is not read, but at the exceptions below and Python on the tool's own file; matched by name, any path,
+# any case, `.exe` or not
+_WRAPPERS = frozenset({"env", "nice", "nohup", "timeout", "stdbuf", "setsid", "time", "command", "exec", "builtin", "sudo", "doas", "xargs", "caffeinate", "ionice",
+                      "chrt", "taskset", "flock", "arch", "unbuffer", "wsl", "start"})
+_PYTHONS = frozenset({"python", "python3", "py", "pythonw"})
+_SHELLS = _PYTHONS | frozenset({"sh", "bash", "zsh", "dash", "ksh", "mksh", "ash", "fish", "csh", "tcsh", "busybox", "cmd", "powershell", "pwsh", "perl", "ruby", "node",
+                                "osascript", "cscript", "wscript"})
+_CODE_FLAGS = ("-c", "-e", "/c", "/k", "/r", "-command", "-encodedcommand", "-ec")
+_NAMES_GIT = re.compile(r"(?i)(?:^|[\s/\\\"'`;&|(=])git(?:\.exe)?(?=$|[\s\"'`;&|)])")
+# every API that starts a process, by module, and how its arguments name the program: "argv" (`subprocess`'s and `pty.spawn`: the argv, and `executable` and
+# `shell` by keyword, by position or by a `**` expansion), "exec" (`create_subprocess_exec`: the program, its words, `executable=`), "v0"/"l0"/"v1"/"l1"
+# (`os.exec*`, `os.spawn*`, `os.posix_spawn*`: the program by its path, then the argv apart or its words; "e" its environment last), "shell" (code handed to a
+# shell), or "unread" (a program the system chooses, or a private API)
+_PROCESS_APIS = {
+    "subprocess": {"run": "argv", "Popen": "argv", "call": "argv", "check_call": "argv", "check_output": "argv", "getoutput": "shell", "getstatusoutput": "shell"},
+    "os": {"system": "shell", "popen": "shell", "startfile": "unread", "posix_spawn": "v0", "posix_spawnp": "v0",
+           **{f"exec{s}": ("v0" if s.startswith("v") else "l0e" if s.endswith("e") else "l0") for s in ("v", "ve", "vp", "vpe", "l", "le", "lp", "lpe")},
+           **{f"spawn{s}": ("v1" if s.startswith("v") else "l1e" if s.endswith("e") else "l1") for s in ("v", "ve", "vp", "vpe", "l", "le", "lp", "lpe")}},
+    "asyncio": {"create_subprocess_exec": "exec", "create_subprocess_shell": "shell"},
+    "asyncio.subprocess": {"create_subprocess_exec": "exec", "create_subprocess_shell": "shell"},
+    "pty": {"spawn": "argv"},
+    "webbrowser": {"open": "unread", "open_new": "unread", "open_new_tab": "unread", "get": "unread"},
+    "_winapi": {"CreateProcess": "unread"},
+    "_posixsubprocess": {"fork_exec": "unread"},
+}
+# THE FIRST EXCEPTION (the Owner's ruling of 2026-10-08): `notify_argv` hands code with parts that are not literal to osascript (`-e`) and to PowerShell (`-Command`). These two sites alone are admitted, each by the function, the program its branch starts and the flag, and each met once. The exception ends when that code is made literal: an entry no code meets fails the check until it is deleted
+_EXCEPTION = frozenset({("notify_argv", "osascript", "-e"), ("notify_argv", "powershell", "-command")})
+# THE DERIVER'S EXCEPTION, permanent (the Owner's ruling of 2026-10-08): `run_deriver` starts the repository's own program, `derive` in the tracker folder —
+# directly, and on Windows as `[sys.executable, derive]` — by design, on an explicit run only: never in a hook's run (the Owner's ruling *No deriver in hooks*,
+# filed in FM-006) and never in the board's run. These two forms alone are admitted, each by the function and the start's shape, and each met once
+_DERIVER = frozenset({("run_deriver", "derive"), ("run_deriver", "python", "derive")})
+
+
+def _git_starts(src):
+    """Every git command a source can start, read with `ast` (FM-045): ({command: [line, …]}, [(line, what is not read)], [(line, program)] of each start that
+    starts no git, {site: how many starts it admitted} of `_EXCEPTION` and `_DERIVER`). It accepts a start only in the form the product writes: a process API
+    (`_PROCESS_APIS`) called by its plain name — the module's attribute, or the name it is imported by, called directly — with its argument list resolved in
+    full, and every argument that can choose the program or a shell resolved too: `executable` and `shell`, by keyword, by position and through a `**`
+    expansion. Any other reference to a process API or a process module, in whatever access form, is not read and named in the second list; so is a start
+    of a shell, an interpreter or a command wrapper, but at the two exceptions, matched by their sites, and Python run on the tool's own file (`__file__`).
+    Followed: a literal `["git", …]` argv, and one bound to a name apart from its call (`args = [...] if … else [...]`, `for cmd in ([...], …)`), kept as it
+    was bound; every callable that hands its own `*a` to git where the command goes — `git_out`, a local `git = lambda *a: …`, a lambda or a name handed to
+    a function whose parameter then starts git (`default_trunk(git)`) — and every call of one; each call of a forwarding helper read as its own start, with that caller's own keywords; git's own options before
+    the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
+    any case. A word of any other program that names git is not read."""
+    tree = ast.parse(src)
+    every = list(ast.walk(tree))           # every node, walked once
+    parent = {c: n for n in every for c in ast.iter_child_nodes(n)}
+    defs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    scopes, comps = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda), (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+    bound = {}
+
+    def scope_of(node):
+        while node in parent:
+            node = parent[node]
+            if isinstance(node, scopes):
+                return node
+        return tree
+
+    def names_bound(scope):
+        """{name: [binding]} of one scope, its nested scopes left out: ("vararg", scope) · ("param", scope, name) · ("value", expr) · ("each", iterable) ·
+        ("def", FunctionDef) · ("module", a process module) · ("api", module, name) · ("opaque", node), bound in a way the reading does not follow."""
+        if scope not in bound:
+            out = collections.defaultdict(list)
+            if not isinstance(scope, ast.Module):
+                a = scope.args
+                if a.vararg:
+                    out[a.vararg.arg].append(("vararg", scope))
+                for arg in a.posonlyargs + a.args + a.kwonlyargs + ([a.kwarg] if a.kwarg else []):
+                    out[arg.arg].append(("param", scope, arg.arg))
+            todo = list(scope.body) if isinstance(scope.body, list) else [scope.body]
+            while todo:
+                n = todo.pop()
+                if isinstance(n, ast.Assign):
+                    for t in n.targets:
+                        for x in ast.walk(t):
+                            if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Store):      # `x[i] = v` binds no name: it changes `x`
+                                out[x.id].append(("value", n.value) if t is x else ("opaque", n))
+                elif isinstance(n, (ast.AugAssign, ast.AnnAssign)) and isinstance(n.target, ast.Name):
+                    out[n.target.id].append(("value", n.value) if isinstance(n, ast.AnnAssign) and n.value is not None else ("opaque", n))
+                elif isinstance(n, ast.NamedExpr):
+                    out[n.target.id].append(("value", n.value))
+                elif isinstance(n, ast.Delete):
+                    for x in (x for t in n.targets for x in ast.walk(t) if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Del)):
+                        out[x.id].append(("opaque", n))
+                elif isinstance(n, ast.Import):
+                    for al in n.names:
+                        top = al.name.split(".")[0]
+                        mod = al.name if al.asname else top          # `import a.b` binds `a`; `import a.b as x` binds `x` to `a.b`
+                        out[al.asname or top].append(("module", mod) if mod in _PROCESS_APIS else ("opaque", n))
+                elif isinstance(n, ast.ImportFrom):
+                    for al in n.names:
+                        if f"{n.module}.{al.name}" in _PROCESS_APIS:
+                            out[al.asname or al.name].append(("module", f"{n.module}.{al.name}"))
+                        elif n.module in _PROCESS_APIS:
+                            out[al.asname or al.name].append(("api", n.module, al.name))
+                        else:
+                            out[al.asname or al.name].append(("opaque", n))
+                elif isinstance(n, (ast.For, ast.AsyncFor, ast.With, ast.AsyncWith, ast.ExceptHandler, ast.Global, ast.Nonlocal)):
+                    targets = ([n.target] if isinstance(n, (ast.For, ast.AsyncFor)) else [i.optional_vars for i in n.items if i.optional_vars] if isinstance(n, (ast.With, ast.AsyncWith))
+                               else [])
+                    for t in targets:
+                        for x in ast.walk(t):
+                            if isinstance(x, ast.Name):
+                                out[x.id].append(("each", n.iter) if isinstance(n, (ast.For, ast.AsyncFor)) and t is x else ("opaque", n))
+                    if isinstance(n, ast.ExceptHandler) and n.name:
+                        out[n.name].append(("opaque", n))
+                    if isinstance(n, (ast.Global, ast.Nonlocal)):
+                        for nm in n.names:
+                            out[nm].append(("opaque", n))
+                elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    out[n.name].append(("def", n) if isinstance(n, ast.FunctionDef) else ("opaque", n))
+                if not isinstance(n, (*scopes, ast.ClassDef)):
+                    todo.extend(ast.iter_child_nodes(n))
+                elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    todo.extend(n.decorator_list + ([] if isinstance(n, ast.ClassDef) else n.args.defaults + [d for d in n.args.kw_defaults if d]))
+            for d in ast.walk(scope):               # a nested scope's `global` or `nonlocal` rebinds a name of this one
+                if d is not scope and (isinstance(d, ast.Global) and isinstance(scope, ast.Module) or isinstance(d, ast.Nonlocal) and not isinstance(scope, ast.Module)):
+                    for nm in d.names:
+                        if isinstance(d, ast.Global) or nm in out:
+                            out[nm].append(("opaque", d))
+            bound[scope] = out
+        return bound[scope]
+
+    def bindings(name_node):
+        """Where a name used at `name_node` is bound: the nearest comprehension or scope that binds it, its every binding there; [] where none does."""
+        name, node = name_node.id, name_node
+        while node in parent:
+            node = parent[node]
+            if isinstance(node, comps):
+                hits = [("each", g.iter) for g in node.generators if isinstance(g.target, ast.Name) and g.target.id == name]
+                hits += [("opaque", g) for g in node.generators if not isinstance(g.target, ast.Name) and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(g.target))]
+                if hits:
+                    return hits
+            if isinstance(node, (*scopes, ast.Module)):
+                got = names_bound(node).get(name)
+                if got:
+                    return got
+        return []
+
+    def options_only(fn):
+        """Whether every list a function returns holds git's `-c <value>` pairs alone, either side of an `if … else` (`signers_args`)."""
+        def lists(e):
+            return [e] if isinstance(e, ast.List) else lists(e.body) + lists(e.orelse) if isinstance(e, ast.IfExp) else [None]
+        rets = [x for n in ast.walk(fn) if isinstance(n, ast.Return) for x in lists(n.value)]
+        return bool(rets) and all(r is not None and len(r.elts) % 2 == 0 and all(isinstance(e, ast.Constant) and e.value == "-c" for e in r.elts[::2]) for r in rets)
+
+    reached = set()
+
+    def alternatives(binding):
+        """The lists of argv words a name bound apart can hold: a value that is a list, or either side of `x if … else y`; a loop's, each list it walks
+        (`for cmd in ([...], [...])`). None: not read."""
+        kind, expr = binding[0], binding[1]
+        if kind == "each":
+            if not (isinstance(expr, (ast.Tuple, ast.List)) and expr.elts and all(isinstance(e, (ast.List, ast.Tuple)) for e in expr.elts)):
+                return None
+            reached.update(expr.elts)
+            return [e.elts for e in expr.elts]
+        if kind != "value":
+            return None
+        if isinstance(expr, ast.IfExp):
+            a, b = alternatives(("value", expr.body)), alternatives(("value", expr.orelse))
+            return None if a is None or b is None else a + b
+        return [expr.elts] if isinstance(expr, (ast.List, ast.Tuple)) else None
+
+    loads, kept_ = collections.defaultdict(list), {}
+    for n in every:
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load):
+            loads[n.id].append(n)
+
+    def kept(name_node):
+        """Whether a name bound to argv words, or to a start's keywords, is used only where the reading follows it — handed whole to a start, spread into a
+        list or a call, returned, or tested for truth — and so holds what it was bound to: one changed in place, aliased or handed on is not read."""
+        bs = bindings(name_node)
+        key = (name_node.id, tuple(id(x) for b in bs for x in b if isinstance(x, ast.AST)))
+        if key not in kept_:
+            kept_[key] = all((isinstance(p, ast.Call) and p.args[:1] == [n] and any(p is c for c, _k in starts)) or isinstance(p, ast.Starred)
+                             or (isinstance(p, ast.keyword) and p.arg is None and any(parent.get(p) is c for c, _k in starts))
+                             or (isinstance(p, ast.Return) and scope_of(p) is not tree and all(scope_of(b[1]) is scope_of(p) for b in bs if isinstance(b[1], ast.AST)))
+                             or (isinstance(p, ast.BoolOp) and isinstance(parent.get(p), (ast.If, ast.IfExp, ast.While)) and parent.get(p).test is p)
+                             or (isinstance(p, ast.UnaryOp) and isinstance(p.op, ast.Not)) or (isinstance(p, (ast.If, ast.IfExp, ast.While)) and p.test is n)
+                             for n, p in ((n, parent.get(n)) for n in loads[name_node.id] if bindings(n) == bs))
+        return kept_[key]
+
+    def argv_lists(expr, seen=()):
+        """The argv lists a start can be handed: a list or tuple; a name bound to one and kept as it is (`kept`); a sum of them, either side `x if … else y`;
+        what a module function returns (`notify_argv`). None: not read."""
+        if isinstance(expr, (ast.List, ast.Tuple)):
+            reached.add(expr)
+            return [expr.elts]
+        if isinstance(expr, ast.IfExp):
+            a, b = argv_lists(expr.body, seen), argv_lists(expr.orelse, seen)
+            return None if a is None or b is None else a + b
+        if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
+            a, b = argv_lists(expr.left, seen), argv_lists(expr.right, seen)
+            return None if a is None or b is None else [x + y for x in a for y in b]
+        if isinstance(expr, ast.Name):
+            bs = bindings(expr)
+            parts = [argv_lists(b[1], seen) if b[0] == "value" else alternatives(b) for b in bs]
+            return None if not bs or None in parts or not kept(expr) else [x for p in parts for x in p]
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name) and expr.func.id in defs and expr.func.id not in seen and any(b[0] == "def" for b in bindings(expr.func)):
+            fn = defs[expr.func.id]
+            rets = [r.value for r in ast.walk(fn) if isinstance(r, ast.Return) and r.value is not None and not (isinstance(r.value, ast.Constant) and r.value.value is None)]
+            parts = [argv_lists(r, seen + (fn.name,)) for r in rets]
+            return None if not rets or None in parts else [x for p in parts for x in p]
+        return None
+
+    THIS_TOOL = "<the tool's own file>"
+
+    def program(expr):
+        """The programs an argv word names, resolved in full as the source says: a constant; `sys.executable`; `shutil.which("x")`; `__file__`, the tool's own
+        file, through `str()`, `Path()` and `.resolve()`; a name bound to one. None: not resolved in full."""
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return {expr.value}
+        if isinstance(expr, ast.JoinedStr) and all(isinstance(v, ast.Constant) for v in expr.values):
+            return {"".join(v.value for v in expr.values)}
+        if isinstance(expr, ast.Attribute) and ast.unparse(expr) == "sys.executable":
+            return {"python"}
+        if isinstance(expr, ast.Name) and expr.id == "__file__" and not bindings(expr):
+            return {THIS_TOOL}
+        if isinstance(expr, ast.Call) and ast.unparse(expr.func) == "shutil.which" and len(expr.args) == 1 and isinstance(expr.args[0], ast.Constant) and not expr.keywords:
+            return {expr.args[0].value}
+        if isinstance(expr, ast.Call) and ast.unparse(expr.func) in ("str", "pathlib.Path") and len(expr.args) == 1 and not expr.keywords:
+            got = program(expr.args[0])
+            return got if ast.unparse(expr.func) == "str" or got == {THIS_TOOL} else None
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Attribute) and expr.func.attr == "resolve" and not expr.args and not expr.keywords:
+            got = program(expr.func.value)
+            return got if got == {THIS_TOOL} else None
+        if isinstance(expr, ast.BoolOp):
+            parts = [program(v) for v in expr.values]
+            return None if None in parts else set().union(*parts)
+        if isinstance(expr, ast.Name):
+            bs = bindings(expr)
+            parts = [program(b[1]) if b[0] == "value" else None for b in bs]
+            return None if not bs or None in parts else set().union(*parts)
+        return None
+
+    def git_name(name):
+        """Whether a program's name is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`, any case."""
+        return re.split(r"[\\/]", name)[-1].lower() in ("git", "git.exe")
+
+    def base_name(name):
+        return re.split(r"[\\/]", name)[-1].lower().removesuffix(".exe")
+
+    def literal(expr):
+        """The text of an argv word the source spells out — a constant, the constant parts of an f-string or of a sum of strings, a space between parts."""
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return expr.value
+        if isinstance(expr, ast.JoinedStr):
+            return " ".join(v.value for v in expr.values if isinstance(v, ast.Constant) and isinstance(v.value, str))
+        if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
+            return literal(expr.left) + " " + literal(expr.right)
+        return ""
+
+    def whole(expr):
+        """The text of a word that is literal in full, else None."""
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return expr.value
+        if isinstance(expr, ast.JoinedStr) and all(isinstance(v, ast.Constant) for v in expr.values):
+            return "".join(v.value for v in expr.values)
+        return None
+
+    def top_function(node):
+        while node in parent and not (isinstance(parent[node], ast.Module) and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))):
+            node = parent[node]
+        return node.name if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) else ""
+
+    def the_deriver(expr):
+        """Whether a word is `str(x)`, `x` bound once in its function to `TRACKER_DIR / "derive"` — the deriver's own path, as `run_deriver` writes it."""
+        if not (isinstance(expr, ast.Call) and ast.unparse(expr.func) == "str" and len(expr.args) == 1 and isinstance(expr.args[0], ast.Name) and not expr.keywords):
+            return False
+        bs = bindings(expr.args[0])
+        return (len(bs) == 1 and bs[0][0] == "value" and isinstance(bs[0][1], ast.BinOp) and isinstance(bs[0][1].op, ast.Div)
+                and ast.unparse(bs[0][1].left) == "TRACKER_DIR" and isinstance(bs[0][1].right, ast.Constant) and bs[0][1].right.value == "derive")
+
+    def read_start(prog_expr, words, call, scope):
+        """One start, by its program and the words after it: git — its command classified; a command wrapper, a shell or an interpreter — not read, but at the
+        two exceptions and Python on the tool's own file; any other program — git named in its words is not read."""
+        line = call.lineno
+        if top_function(call) == "run_deriver":            # the deriver's exception: its two forms, by their shape
+            site = (("run_deriver", "derive") if not words and the_deriver(prog_expr) else
+                    ("run_deriver", "python", "derive") if ast.unparse(prog_expr) == "sys.executable" and len(words) == 1 and the_deriver(words[0]) else None)
+            if site:
+                excepted[site].add(id(call))
+                return others.append((line, f"{' '.join(site[1:])}: the repository's deriver, the deriver's exception"))
+        prog = program(prog_expr) if prog_expr is not None and not isinstance(prog_expr, ast.Starred) else None
+        if prog is None:
+            return unread.append((line, f"a process whose program the reading does not resolve in full: {ast.unparse(prog_expr) if prog_expr is not None else '(none)'}"))
+        if any(git_name(p) for p in prog):
+            return command(list(words), line, scope)
+        names = {base_name(p) for p in prog}
+        who = "/".join(sorted(names))
+        if names & _WRAPPERS:
+            return unread.append((line, f"a start through a wrapper, {who}"))
+        if names & _SHELLS:
+            i = 0
+            while i < len(words) and (whole(words[i]) or "").startswith("-") and whole(words[i]).lower() not in _CODE_FLAGS:
+                i += 1
+            if i + 2 == len(words) and (whole(words[i]) or "").lower() in _CODE_FLAGS and len(names) == 1 and whole(words[i + 1]) is None:
+                site = (top_function(words[i + 1]), who, whole(words[i]).lower())
+                if site in _EXCEPTION:
+                    excepted[site].add(id(words[i + 1]))
+                    return others.append((line, f"{who}: {site[0]}'s code, the first exception"))
+            if names <= _PYTHONS and words and not isinstance(words[0], ast.Starred) and program(words[0]) == {THIS_TOOL}:
+                return others.append((line, f"{who}: the tool's own file"))
+            return unread.append((line, f"a start of {who}, a shell or an interpreter: {ast.unparse(call)[:80]}"))
+        for w in words:                       # any other program: git named in its words is not read
+            if _NAMES_GIT.search(literal(w)):
+                return unread.append((line, f"git named in the argv of {who}: {ast.unparse(w)}"))
+        return others.append((line, who))
+
+    def dict_of(node):
+        """{keyword: value} of a dict literal whose every key is a literal string, else None."""
+        if isinstance(node, ast.Dict) and all(isinstance(key, ast.Constant) and isinstance(key.value, str) for key in node.keys):
+            return {key.value: val for key, val in zip(node.keys, node.values)}
+        return None
+
+    def calls_of(call):
+        """Each call a start stands for, as its own keywords — the start's own, each `**` expansion resolved: a dict literal, a name bound to one and kept,
+        or a callable's own `**k`, filled by one call of that callable at a time. Each call of a forwarding helper is read as its own start, with that
+        caller's own arguments. A list of {keyword: value}, or of why one call's keywords cannot be resolved; None where the start's own cannot be: a `**k`
+        of a callable called other than directly, or used in it other than as a process start's own `**` expansion."""
+        out = [{k.arg: k.value for k in call.keywords if k.arg}]
+        for k in (k for k in call.keywords if not k.arg):
+            v, alts = k.value, None
+            if isinstance(v, ast.Name):
+                bs = bindings(v)
+                if len(bs) == 1 and bs[0][0] == "value" and dict_of(bs[0][1]) is not None and kept(v):
+                    alts = [dict_of(bs[0][1])]
+                elif len(bs) == 1 and bs[0][0] == "param" and bs[0][1].args.kwarg is not None and bs[0][1].args.kwarg.arg == v.id:
+                    fn = bs[0][1]
+                    refs = [n for n in every if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and fn in target(n)]
+                    if not refs or any(not (isinstance(parent.get(n), ast.Call) and parent[n].func is n) for n in refs):
+                        return None
+                    if any(not (isinstance(parent.get(n), ast.keyword) and parent[n].arg is None and parent[n].value is n
+                                and any(parent.get(parent[n]) is c for c, _k in starts)) for n in loads[v.id] if bindings(n) == bs):
+                        return None             # `**k` changed, read or handed on in the callable: its content is not established
+                    alts = [{kk.arg: kk.value for kk in parent[n].keywords} if all(kk.arg for kk in parent[n].keywords)
+                            else f"a call at line {n.lineno} whose keywords the reading cannot see: {ast.unparse(parent[n])[:80]}" for n in refs]
+            elif dict_of(v) is not None:
+                alts = [dict_of(v)]
+            if alts is None:
+                return None
+            out = [base if isinstance(base, str) else alt if isinstance(alt, str) else f"a keyword given twice: {sorted(set(base) & set(alt))}"
+                   if set(base) & set(alt) else {**base, **alt} for base in out for alt in alts]
+        return out
+
+    def read_call(call, kind):
+        """One start, by its API's kind: for each call it stands for (`calls_of`), its program — its `executable` where one is given, else its argv[0] —
+        every other argument that can choose the program or a shell, and its words. What cannot be resolved for one call is not read, for that call."""
+        scope, args = scope_of(call), call.args
+        if kind == "unread":
+            return unread.append((call.lineno, f"a start whose program the system chooses, or a private API: {ast.unparse(call.func)}"))
+        if kind == "shell":
+            return unread.append((call.lineno, f"code handed to a shell: {ast.unparse(call)[:80]}"))
+        each = calls_of(call)
+        if each is None:
+            return unread.append((call.lineno, f"a `**` expansion the reading does not resolve in full: {ast.unparse(call)[:80]}"))
+        if any(isinstance(a, ast.Starred) for a in (args if kind in ("argv", "exec") else args[:int(kind[1]) + 2])):
+            return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
+        for kw in each:
+            if isinstance(kw, str):
+                unread.append((call.lineno, kw))
+            else:
+                read_one(call, kind, kw, scope, args)
+
+    def read_one(call, kind, kw, scope, args):
+        """One call of a start, with its own keywords `kw`."""
+        none = lambda v: isinstance(v, ast.Constant) and v.value is None
+        shells = ([kw["shell"]] if "shell" in kw else []) + (args[8:9] if kind == "argv" else [])
+        if any(not (isinstance(v, ast.Constant) and v.value in (False, None, 0)) for v in shells):
+            return unread.append((call.lineno, f"a start with `shell` set, or set by a word the reading does not resolve: {ast.unparse(call)[:80]}"))
+        exes = ([kw["executable"]] if "executable" in kw else []) + (args[2:3] if kind == "argv" else [])
+        if len(exes) > 1:
+            return unread.append((call.lineno, f"a start given its `executable` twice: {ast.unparse(call)[:80]}"))
+        exe = exes[0] if exes and not none(exes[0]) else None
+        if kind in ("argv", "exec"):
+            if kind == "argv":
+                argvs = args[:1] + [kw[k] for k in ("args", "argv") if k in kw]
+                if len(argvs) != 1:
+                    return unread.append((call.lineno, f"a start given {'no argv' if not argvs else 'its argv twice'}: {ast.unparse(call)[:80]}"))
+                a = argvs[0]
+                lists = [[a]] if whole(a) is not None and not re.search(r"\s", whole(a)) else argv_lists(a)
+            else:
+                lists = [list(args)] if args and "program" not in kw else None
+            if not lists:
+                return unread.append((call.lineno, f"a process started with an argv the reading does not resolve in full: {ast.unparse(call)[:80]}"))
+            for elts in lists:
+                if not elts:
+                    unread.append((call.lineno, "a process started with an empty argv"))
+                else:
+                    read_start(exe if exe is not None else elts[0], list(elts[1:]), call, scope)
+            return
+        at = int(kind[1])
+        if len(args) <= at + (1 if kind[0] == "v" else 0):
+            return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
+        if kind[0] == "v":
+            lists = argv_lists(args[at + 1])
+            if lists is None:
+                return unread.append((call.lineno, f"a process started with an argv the reading does not resolve in full: {ast.unparse(call)[:80]}"))
+            for elts in lists:
+                read_start(args[at], list(elts[1:]), call, scope)
+            return
+        words = list(args[at + 2:len(args) - 1 if kind.endswith("e") else len(args)])
+        if any(isinstance(a, ast.Starred) for a in words):
+            return unread.append((call.lineno, f"a start whose arguments the reading cannot see: {ast.unparse(call)[:80]}"))
+        return read_start(args[at], words, call, scope)
+
+    starters, handed = set(), set()         # callables that hand their own `*a` to git as its command; (function, parameter) a caller hands one
+
+    def target(name_node):
+        """What a name names, where it can name a callable that starts git: a FunctionDef or a Lambda it is bound to, or (function, parameter); several
+        bindings, every one of them."""
+        out = []
+        for b in bindings(name_node):
+            if b[0] == "def":
+                out.append(b[1])
+            elif b[0] == "value" and isinstance(b[1], ast.Lambda):
+                out.append(b[1])
+            elif b[0] == "param":
+                out.append((b[1], b[2]))
+        return out
+
+    def starts_git(t):
+        return t in starters or t in handed
+
+    found, unread, others, fixed, excepted = collections.defaultdict(set), [], [], [], collections.defaultdict(set)
+
+    def command(elts, line, scope):
+        """The command of git's argv words after `git` (or of a call of a starter): git's own options skipped; a constant names it; the scope's own `*a`
+        there makes the scope a starter; a name bound apart is read through; anything else is not read."""
+        i = 0
+        while i < len(elts):
+            e = elts[i]
+            if isinstance(e, ast.Constant) and e.value in ("-c", "-C"):
+                i += 2
+            elif isinstance(e, ast.Constant) and isinstance(e.value, str) and e.value.startswith("--git-dir="):
+                i += 1
+            elif isinstance(e, ast.JoinedStr) and e.values and isinstance(e.values[0], ast.Constant) and str(e.values[0].value).startswith("--git-dir="):
+                i += 1
+            elif (isinstance(e, ast.Starred) and isinstance(e.value, ast.Call) and isinstance(e.value.func, ast.Name) and not e.value.args
+                  and any(b[0] == "def" for b in bindings(e.value.func)) and e.value.func.id in defs and options_only(defs[e.value.func.id])):
+                i += 1
+            else:
+                break
+        if i >= len(elts):
+            unread.append((line, "git started with no command"))
+            return
+        e = elts[i]
+        if isinstance(e, ast.Constant) and isinstance(e.value, str):
+            found[e.value].add(line)
+            return
+        if isinstance(e, ast.Starred) and isinstance(e.value, ast.Name):
+            bs = bindings(e.value)
+            if bs and all(b[0] == "vararg" and b[1] is scope for b in bs):
+                starters.add(scope)
+                return
+            alts = [alternatives(b) for b in bs]
+            if bs and None not in alts and kept(e.value):
+                for alt in (x for a in alts for x in a):
+                    command(list(alt) + elts[i + 1:], line, scope)
+                return
+        unread.append((line, f"git started with {ast.unparse(e)} where its command goes"))
+
+    def module_of(expr):
+        """The process module an expression names — a name an import binds to one, or a module's submodule (`asyncio.subprocess`) — else None."""
+        if isinstance(expr, ast.Name):
+            mods = {b[1] for b in bindings(expr) if b[0] == "module"}
+            return next(iter(mods)) if len(mods) == 1 and len(bindings(expr)) == 1 else ("?" if mods else None)
+        if isinstance(expr, ast.Attribute):
+            m = module_of(expr.value)
+            return f"{m}.{expr.attr}" if m and m != "?" and f"{m}.{expr.attr}" in _PROCESS_APIS else None
+        return None
+
+    starts = []                             # every start of a process: (call, its API's kind)
+    for n in every:                         # code, a module or a name the reading cannot see
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in ("eval", "exec", "compile", "__import__") and not bindings(n.func):
+            fixed.append((n.lineno, f"`{n.func.id}`: code the reading cannot see"))
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in ("importlib", "runpy") or (
+                isinstance(n, ast.Attribute) and ast.unparse(n) == "sys.modules"):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: a module or code the reading cannot see"))
+        if isinstance(n, ast.ImportFrom) and (n.module in ("importlib", "runpy") or (n.module in _PROCESS_APIS and any(al.name == "*" for al in n.names))):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: names the reading cannot see"))
+        if (isinstance(n, ast.Subscript) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name) and n.value.func.id in ("globals", "locals", "vars")
+                and not n.value.args):
+            fixed.append((n.lineno, f"`{ast.unparse(n)}`: a name the reading cannot see"))
+        if isinstance(n, ast.Attribute) and n.attr in ("subprocess_exec", "subprocess_shell"):
+            fixed.append((n.lineno, f"an event loop's process API, a method: {ast.unparse(n)[:80]}"))
+        p = parent.get(n)
+        if isinstance(n, ast.Attribute) and isinstance(n.ctx, ast.Load):
+            m = module_of(n.value)
+            if m == "?":
+                fixed.append((n.lineno, f"a name bound to a process module and to something else: {ast.unparse(n)[:80]}"))
+            elif m and n.attr in _PROCESS_APIS[m]:
+                if isinstance(p, ast.Call) and p.func is n:
+                    starts.append((p, _PROCESS_APIS[m][n.attr]))
+                else:
+                    fixed.append((n.lineno, f"a process API reached other than by a call of its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
+            elif m and (n.attr.startswith("__") or f"{m}.{n.attr}" in _PROCESS_APIS and not (isinstance(p, ast.Attribute) and p.value is n)):
+                fixed.append((n.lineno, f"a process module reached other than by its plain name: {ast.unparse(n)[:80]}"))
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load):
+            bs = bindings(n)
+            apis = [b for b in bs if b[0] == "api" and b[2] in _PROCESS_APIS[b[1]]]
+            mods = [b for b in bs if b[0] == "module"]
+            if apis:
+                if len(bs) == 1 and isinstance(p, ast.Call) and p.func is n:
+                    starts.append((p, _PROCESS_APIS[apis[0][1]][apis[0][2]]))
+                else:
+                    fixed.append((n.lineno, f"a process API reached other than by a call of its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
+            elif any(b[0] == "api" and b[2].startswith("__") for b in bs):
+                fixed.append((n.lineno, f"a process module reached other than by its plain name: {n.id}"))
+            elif mods:
+                name = whole(p.args[1]) if (isinstance(p, ast.Call) and isinstance(p.func, ast.Name) and p.func.id == "getattr" and not bindings(p.func)
+                                            and p.args[:1] == [n] and len(p.args) > 1) else None
+                if isinstance(p, ast.Attribute) and p.value is n:
+                    pass                    # `module.name`: judged as itself
+                elif name is not None and not name.startswith("__") and not any(name in _PROCESS_APIS.get(b[1], {}) or f"{b[1]}.{name}" in _PROCESS_APIS for b in mods):
+                    pass                    # `getattr(module, "NAME", …)` of a name that starts nothing: as `module.NAME`
+                else:
+                    fixed.append((n.lineno, f"a process module reached other than by its plain name: {ast.unparse(p if p is not None else n)[:80]}"))
+
+    for _ in range(50):                     # to a fixed point: a starter found makes its callers' calls starts of git, and a parameter handed one a starter
+        size = (len(starters), len(handed))
+        found.clear(), others.clear(), unread.clear(), excepted.clear()
+        for call, kind in starts:
+            read_call(call, kind)
+        for n in every:
+            if not isinstance(n, ast.Call):
+                continue
+            if isinstance(n.func, ast.Name) and any(starts_git(t) for t in target(n.func)):
+                command(list(n.args), n.lineno, scope_of(n))
+            if isinstance(n.func, ast.Name) and n.func.id in defs and any(b[0] == "def" for b in bindings(n.func)):
+                params = [a.arg for a in defs[n.func.id].args.posonlyargs + defs[n.func.id].args.args]
+                for pname, a in [(params[i], a) for i, a in enumerate(n.args) if i < len(params) and not isinstance(a, ast.Starred)] + [(k.arg, k.value) for k in n.keywords if k.arg]:
+                    ts = [a] if isinstance(a, ast.Lambda) else target(a) if isinstance(a, ast.Name) else []
+                    if any(starts_git(t) for t in ts):
+                        handed.add((defs[n.func.id], pname))
+        if (len(starters), len(handed)) == size:
+            break
+
+    for s in starters:                      # a starter is called by a name the reading follows, or handed to a module function — or it is named here
+        p = parent.get(s)
+        if isinstance(s, ast.Lambda) and not ((isinstance(p, ast.Assign) and len(p.targets) == 1 and isinstance(p.targets[0], ast.Name))
+                                              or (isinstance(p, ast.Call) and s in p.args + [k.value for k in p.keywords] and isinstance(p.func, ast.Name) and p.func.id in defs)):
+            unread.append((s.lineno, "a lambda that starts git, kept where the reading does not follow it"))
+        if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef)) and isinstance(p, ast.ClassDef):
+            unread.append((s.lineno, f"a method that starts git, {s.name}, called where the reading does not follow it"))
+    for n in every:                         # …and a name of one is called, or handed to a module function, and nothing else
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and any(starts_git(t) for t in target(n)):
+            p = parent.get(n)
+            if not (isinstance(p, ast.Call) and (p.func is n or (n in p.args + [k.value for k in p.keywords] and isinstance(p.func, ast.Name) and p.func.id in defs))):
+                unread.append((n.lineno, f"{n.id}, which starts git, used where the reading does not follow it"))
+    for n in every:                         # …and a git argv is one a start is handed
+        if (isinstance(n, ast.List) and n.elts and isinstance(n.elts[0], ast.Constant) and isinstance(n.elts[0].value, str)
+                and (git_name(n.elts[0].value) or base_name(n.elts[0].value) in _WRAPPERS | _SHELLS) and n not in reached):
+            unread.append((n.lineno, "an argv no start the reading follows is handed"))
+    return {k: sorted(v) for k, v in found.items()}, sorted(set(unread + fixed)), sorted(set(others)), {site: len(v) for site, v in excepted.items()}
+
+
+def _git_command(argv):
+    """The git command an argv starts, after git's own options (`-c <v>`, `-C <dir>`, `--git-dir=…`) — "" where it starts no git."""
+    if not argv or re.split(r"[\\/]", str(argv[0]))[-1].lower() not in ("git", "git.exe"):
+        return ""
+    rest, i = [str(a) for a in argv[1:]], 0
+    while i < len(rest) and (rest[i] in ("-c", "-C") or rest[i].startswith("--git-dir=")):
+        i += 1 if rest[i].startswith("--git-dir=") else 2
+    return rest[i] if i < len(rest) else ""
+
+
+def _not_git_itself(argvs):
+    """The programs among `argvs` that are not git as `read_only_git` reads argv[0] — any path, `git` or `git.exe`, any case: a wrapper's, or anything else's."""
+    return sorted({str(a[0]) if a else "" for a in argvs if not a or re.split(r"[\\/]", str(a[0]))[-1].lower() not in ("git", "git.exe")})
+
+
+def _started_never(argvs, never):
+    """The commands of `never` one of `argvs` starts — what the classification's runtime half finds; [] where none is."""
+    return sorted({_git_command(a) for a in argvs} & set(never))
+
+
+with tempfile.TemporaryDirectory() as d:
+    src_ = Path(fm.__file__).read_text(encoding="utf-8"); found_, unread_, others_, excepted_ = _git_starts(src_)
+    never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
+    unclassified_ = lambda found: sorted(set(found) - set(fm.READ_ONLY_GIT) - set(never_))
+    as_named_ = lambda excepted: set(excepted) == set(_EXCEPTION) | set(_DERIVER) and all(v_ == 1 for v_ in excepted.values())     # each exception's sites, each met once
+    check(f"FM-045 · every git command the tool can start is classified — on READ_ONLY_GIT, or named as never started in the board's run with its reason in one line, `ls-remote` among "
+          f"them; none in both, none named that the tool never starts; Check A accepts a start only in the form the product writes — a process API called by its plain name, "
+          f"its argument list and every argument that can choose the program or a shell resolved in full — and reads any other as not read, but at the Owner's two exceptions, "
+          f"each matched by its site and met once: `notify_argv`'s code handed to osascript and to PowerShell, which ends when that code is made literal, and the repository's "
+          f"deriver that `run_deriver` starts, which is permanent (saw {len(found_)} commands, {len(never_)} never started; unclassified {unclassified_(found_)}; not read "
+          f"{unread_}; the exceptions {excepted_}; programs not git {sorted({p_ for _l, p_ in others_})})",
+          len(found_) > 1 and not unclassified_(found_) and not unread_ and as_named_(excepted_) and "ls-remote" in never_ and not set(never_) & set(fm.READ_ONLY_GIT)
+          and set(never_) <= set(found_) and all(isinstance(w_, str) and w_.strip() and "\n" not in w_ for w_ in never_.values()))
+    injected_ = {       # each form the reading follows, starting a command the table does not hold; then those it does not follow, each named
+        'a literal argv': ('def _injected():\n    return subprocess.run(["git", "gc"], capture_output=True)\n', 'gc'),
+        '`git_out`': ('def _injected():\n    return git_out("prune")\n', 'prune'),
+        'after `*signers_args()`': ('def _injected():\n    return git_out(*signers_args(), "notes", "show")\n', 'notes'),
+        'a local wrapper': ('def _injected():\n    git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a])\n    return git("repack")\n', 'repack'),
+        'a wrapper handed to a function': ('def _injected(run_git):\n    return run_git("fsck")\n\n\ndef _injected_caller():\n    return _injected(lambda *a: subprocess.run(["git", *a]))\n', 'fsck'),
+        'an argv built apart': ('def _injected(x):\n    args = ["count-objects"] if x else ["log"]\n    return subprocess.run(["git", *args])\n', 'count-objects'),
+        'an argv built in a loop': ('def _injected():\n    return [subprocess.run(["git", "-C", "x", *c]) for c in (["maintenance", "run"], ["log"])]\n', 'maintenance'),
+        'a whole argv bound to a name': ('def _injected():\n    cmd = ["git", "update-ref", "-d", "x"]\n    return subprocess.run(cmd)\n', 'update-ref'),
+        'a program named by `executable=`': ('def _injected():\n    return subprocess.run(["x", "gc"], executable="git")\n', 'gc'),
+        'not followed: an argv handed in': ('def _injected(cmd):\n    return subprocess.run(cmd)\n', None),
+        'not followed: code handed to a shell': ('def _injected():\n    return os.system("git gc")\n', None),
+        'not followed: a wrapper kept in a dict': ('def _injected():\n    g = lambda *a: subprocess.run(["git", *a])\n    return {"g": g}\n', None),
+    }
+    caught_ = {}
+    for what_, (code_, want_) in injected_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        caught_[what_] = unclassified_(f_) == [want_] if want_ else len(u_) > len(unread_)
+    check(f"FM-045 · the classification's control: a source line starting a git command the table does not hold fails it, in each form the reading follows — a literal argv, "
+          f"`git_out`, after `*signers_args()`, a local wrapper, a wrapper handed to a function, an argv built apart, in a loop or bound whole to a name, a program named by "
+          f"`executable=` — and a start in a form it does not follow is named (saw {caught_})", all(caught_.values()))
+    program_ = {        # the program as `read_only_git` reads it; a start through a wrapper; what the reading cannot resolve
+        'git by its absolute path': ('def _injected():\n    return subprocess.run(["/usr/bin/git", "gc"])\n', ('unclassified', 'gc')),
+        'git as `git.exe`': ('def _injected():\n    return subprocess.run(["git.exe", "prune"])\n', ('unclassified', 'prune')),
+        'git in mixed case, by a Windows path': ('def _injected():\n    return subprocess.run(["C:\\\\Program Files\\\\Git\\\\cmd\\\\Git.EXE", "repack"])\n', ('unclassified', 'repack')),
+        'not read: a start through `env`': ('def _injected():\n    return subprocess.run(["env", "git", "fsck"])\n', None),
+        'not read: a start through `env -i`': ('def _injected():\n    return subprocess.run(["env", "-i", "PATH=/usr/bin", "git", "count-objects"])\n', None),
+        'not read: a start through `nice` around `timeout`': ('def _injected():\n    return subprocess.run(["nice", "-n", "5", "timeout", "10", "/usr/local/bin/git", "maintenance"])\n', None),
+        'not read: `env` before a command the read-only list holds': ('def _injected():\n    return subprocess.run(["env", "GIT_PAGER=cat", "git", "log"])\n', None),
+        'not read: a local wrapper that starts `env git`': ('def _injected():\n    g = lambda *a: subprocess.run(["env", "git", *a])\n    return g("show")\n', None),
+        'not read: an argv[0] from a name the reading cannot see': ('def _injected(prog):\n    return subprocess.run([prog, "gc"])\n', None),
+        'not read: a word of `env` the reading cannot see': ('def _injected(extra):\n    return subprocess.run(["env", extra, "git", "gc"])\n', None),
+        'not read: git inside a word of `env -S`': ('def _injected():\n    return subprocess.run(["env", "-S", "git gc"])\n', None),
+        "not read: a shell's literal code": ('def _injected():\n    return subprocess.run(["sh", "-c", "git gc --auto"])\n', None),
+        "not read: a shell's code the reading cannot see": ('def _injected(code):\n    return subprocess.run(["bash", "-c", code])\n', None),
+        'not read: git in the words of a wrapper the reading does not know': ('def _injected():\n    return subprocess.run(["mywrap", "--", "git", "gc"])\n', None),
+        'not read: an argv changed in place': ('def _injected():\n    cmd = ["git", "log"]\n    cmd.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv reversed in place': ('def _injected():\n    cmd = ["gc", "git"]\n    cmd.reverse()\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv a helper changes and returns': ('def _injected_argv():\n    cmd = ["git", "log"]\n    cmd.insert(1, "gc")\n    return cmd\n\n\ndef _injected():\n    return subprocess.run(_injected_argv())\n', None),
+        "not read: a module's argv changed in place": ('_INJECTED = ["git", "log"]\n_INJECTED.insert(1, "gc")\n\n\ndef _injected():\n    return subprocess.run(_INJECTED)\n', None),
+        'not read: an argv changed through an alias': ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv aliased through `or`': ('def _injected():\n    cmd = ["git", "log"]\n    also = cmd or []\n    also.insert(1, "gc")\n    return subprocess.run(cmd)\n', None),
+        "not read: a module's argv a getter hands out": ('_INJECTED_G = ["git", "log"]\n\n\ndef _injected_get():\n    return _INJECTED_G\n\n\ndef _injected():\n    _injected_get().insert(1, "gc")\n    return subprocess.run(_INJECTED_G)\n', None),
+    }
+    read_ = {}
+    for what_, (code_, want_) in program_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        read_[what_] = unclassified_(f_) == [want_[1]] if want_ else len(u_) > len(unread_)
+    check(f"FM-045 · the classification's control for the program: git by any path, as `git.exe` and in any case fails it as unclassified; a start through `env`, `env -i` or "
+          f"nested wrappers, a shell's code, an argv[0] or a wrapper's word the reading cannot see, git in an unknown wrapper's words, and an argv changed in place — through a "
+          f"helper, at module level, by an alias, through `or` or a getter — are each named as not read (saw {read_})", all(read_.values()))
+    closed45_ = {       # a process API called by its plain name, its arguments resolved in full, is read; every other form is named as not read
+        '`import subprocess as sp`': ('import subprocess as sp\n\n\ndef _injected():\n    return sp.run(["git", "count-objects"])\n', ('unclassified', 'count-objects')),
+        '`from subprocess import run as r`': ('from subprocess import run as r\n\n\ndef _injected():\n    return r(["git", "maintenance"])\n', ('unclassified', 'maintenance')),
+        '`os.execvp`': ('def _injected():\n    os.execvp("git", ["git", "prune"])\n', ('unclassified', 'prune')),
+        '`os.spawnlp`': ('def _injected():\n    return os.spawnlp(os.P_WAIT, "git", "git", "repack")\n', ('unclassified', 'repack')),
+        '`os.posix_spawnp`': ('def _injected():\n    return os.posix_spawnp("git", ["git", "fsck"], os.environ)\n', ('unclassified', 'fsck')),
+        '`asyncio.create_subprocess_exec`': ('import asyncio\n\n\nasync def _injected():\n    return await asyncio.create_subprocess_exec("git", "count-objects")\n', ('unclassified', 'count-objects')),
+        '`import asyncio.subprocess`, its `create_subprocess_exec`': ('import asyncio.subprocess\n\n\nasync def _injected():\n    return await asyncio.subprocess.create_subprocess_exec("git", "prune")\n', ('unclassified', 'prune')),
+        '`from asyncio import subprocess as asp`, its `create_subprocess_exec`': ('from asyncio import subprocess as asp\n\n\nasync def _injected():\n    return await asp.create_subprocess_exec("git", "repack")\n', ('unclassified', 'repack')),
+        '`pty.spawn`': ('import pty\n\n\ndef _injected():\n    return pty.spawn(["git", "notes"])\n', ('unclassified', 'notes')),
+        '`executable` by a `**` expansion of a dict it resolves': ('def _injected():\n    options = {"executable": "git"}\n    return subprocess.run(["echo", "count-objects"], capture_output=True, **options)\n', ('unclassified', 'count-objects')),
+        "`Popen`'s positional `executable`": ('def _injected():\n    return subprocess.Popen(["echo", "count-objects"], -1, "git", stdout=subprocess.PIPE).communicate()\n', ('unclassified', 'count-objects')),
+        "`asyncio`'s `executable=`": ('import asyncio\n\n\nasync def _injected():\n    return await asyncio.create_subprocess_exec("echo", "count-objects", executable="git", stdout=asyncio.subprocess.PIPE)\n', ('unclassified', 'count-objects')),
+        'not read: a `**` expansion it cannot resolve': ('def _injected(options):\n    return subprocess.run(["echo", "count-objects"], capture_output=True, **options)\n', None),
+        'not read: `sh -c` code with a part that is not literal': ('def _injected(program):\n    return subprocess.run(["sh", "-c", f"{program} count-objects"])\n', None),
+        'not read: a `shell=True` f-string': ('def _injected(sub):\n    return subprocess.run(f"git {sub}", shell=True)\n', None),
+        'not read: `shell=True`, literal': ('def _injected():\n    return subprocess.run("git gc", shell=True)\n', None),
+        'not read: `os.system` with a part that is not literal': ('def _injected(sub):\n    return os.system("git " + sub)\n', None),
+        'not read: `create_subprocess_shell` with a part that is not literal': ('import asyncio\n\n\nasync def _injected(sub):\n    return await asyncio.create_subprocess_shell(f"git {sub}")\n', None),
+        'not read: `subprocess.getoutput`': ('def _injected():\n    return subprocess.getoutput("git rerere")\n', None),
+        'not read: `import os.path` in a function, then `os.system`': ('def _injected():\n    import os.path\n    return os.system("git gc")\n', None),
+        'not read: a wrapper handed an expansion in shell code': ('def _injected():\n    return os.system("exec $GIT gc")\n', None),
+        'not read: a substitution in shell code': ('def _injected():\n    return os.system("echo $(git gc)")\n', None),
+        'not read: a backslash-newline in shell code': ('def _injected():\n    return subprocess.run(["sh", "-c", "g\\\\\\nit count-objects"])\n', None),
+        'not read: `sh -xc`': ('def _injected():\n    return subprocess.run(["sh", "-xc", "g\'\'it count-objects"])\n', None),
+        'not read: the words a shell gets from a name': ('def _injected(words):\n    return subprocess.run(["bash", *words])\n', None),
+        'not read: the words an interpreter gets from a name': ('def _injected(script):\n    return subprocess.run([sys.executable, script])\n', None),
+        "not read: Python's literal code": ('def _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess; subprocess.run([\'git\', \'fsck\'])"])\n', None),
+        "not read: Python's `-m`": ('def _injected():\n    return subprocess.run([sys.executable, "-m", "pip", "list"])\n', None),
+        "not read: Perl's literal code": ('def _injected():\n    return subprocess.run(["perl", "-e", \'system("git","count-objects")\'])\n', None),
+        "not read: cmd's literal code": ('def _injected():\n    return subprocess.run(["cmd", "/c", "g^it gc"])\n', None),
+        "not read: PowerShell's literal code": ('def _injected():\n    return subprocess.run(["powershell", "-Command", "& (\'g\'+\'it\') gc"])\n', None),
+        "not read: osascript's literal code": ('def _injected():\n    return subprocess.run(["osascript", "-e", \'do shell script "g" & "it gc"\'])\n', None),
+        'not read: `shell=` it cannot resolve': ('def _injected(flag):\n    return subprocess.run("git gc", shell=flag)\n', None),
+        'not read: `getattr(subprocess, "run")`': ('def _injected():\n    return getattr(subprocess, "run")(["git", "notes"])\n', None),
+        'not read: a call target from `getattr` with a name that is not literal': ('def _injected(name):\n    return getattr(subprocess, name)(["git", "gc"])\n', None),
+        'not read: `os.system.__call__`': ('def _injected():\n    return os.system.__call__("git gc")\n', None),
+        'not read: `subprocess.run.__call__`': ('def _injected():\n    return subprocess.run.__call__(("git", "count-objects"), capture_output=True)\n', None),
+        'not read: `subprocess.__dict__["run"]`': ('def _injected():\n    return subprocess.__dict__["run"](("git", "count-objects"), capture_output=True)\n', None),
+        'not read: `getattr(subprocess.run, "__call__")`': ('def _injected():\n    return getattr(subprocess.run, "__call__")(("git", "count-objects"), capture_output=True)\n', None),
+        'not read: `import_module("subprocess")`': ('from importlib import import_module\n\n\ndef _injected():\n    mod = import_module("subprocess")\n    return mod.run(("git", "count-objects"), capture_output=True)\n', None),
+        'not read: an API bound to a name': ('def _injected():\n    start = subprocess.Popen\n    return start(["git", "rerere"])\n', None),
+        'not read: an API handed to a function': ('def _injected(start):\n    return start(["git", "gc"])\n\n\ndef _injected_caller():\n    return _injected(subprocess.check_output)\n', None),
+        'not read: a callable handed in': ('import threading\n\n\ndef _injected():\n    return threading.Thread(target=subprocess.run, args=(["git", "gc"],)).start()\n', None),
+        'not read: an API kept in a dict': ('def _injected():\n    return {"run": subprocess.run}\n', None),
+        'not read: a process module handed on': ('def _injected():\n    return [subprocess]\n', None),
+        "not read: an event loop's `subprocess_exec`": ('async def _injected(loop, factory):\n    return await loop.subprocess_exec(factory, "git", "maintenance")\n', None),
+        'not read: `os.startfile`': ('def _injected():\n    return os.startfile("x.txt")\n', None),
+        'not read: `webbrowser.open`': ('import webbrowser\n\n\ndef _injected():\n    return webbrowser.open("x")\n', None),
+        'not read: `from subprocess import *`': ('from subprocess import *\n\n\ndef _injected():\n    return run(["git", "gc"])\n', None),
+        'not read: `exec`': ('def _injected():\n    exec("import subprocess")\n', None),
+        'not read: `__import__`': ('def _injected():\n    return __import__("subprocess").run(["git", "gc"])\n', None),
+        "a helper's forwarded argv, a list, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["echo", "hello"])\n    return _injected_helper(args=["git", "gc"])\n', ('unclassified', 'gc')),
+        "a helper's forwarded argv, a list, read from every call — git's call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"])\n    return _injected_helper(args=["echo", "hello"])\n', ('unclassified', 'gc')),
+        "a helper's forwarded argv, a tuple, read from every call — a harmless call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("echo", "hello"))\n    return _injected_helper(args=("git", "gc"))\n', ('unclassified', 'gc')),
+        "a helper's forwarded argv, a tuple, read from every call — git's call first": ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"))\n    return _injected_helper(args=("echo", "hello"))\n', ('unclassified', 'gc')),
+        "a helper's forwarded `executable`, read from every call": ('def _injected_helper(**k):\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    _injected_helper(capture_output=True)\n    return _injected_helper(executable="git")\n', ('unclassified', 'count-objects')),
+        'an executable given by one call and omitted by another, a list, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["git", "gc"])\n', ('unclassified', 'gc')),
+        'an executable given by one call and omitted by another, a list, the omitted first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"])\n    return _injected_helper(args=["true"], executable="/bin/true")\n', ('unclassified', 'gc')),
+        'an executable given by one call and omitted by another, a tuple, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("true",), executable="/bin/true")\n    return _injected_helper(args=("git", "gc"))\n', ('unclassified', 'gc')),
+        'an executable given by one call and omitted by another, a tuple, the omitted first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"))\n    return _injected_helper(args=("true",), executable="/bin/true")\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a list, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["git", "gc"], executable=None)\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a list, the `None` first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=["git", "gc"], executable=None)\n    return _injected_helper(args=["true"], executable="/bin/true")\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a tuple, the given first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("true",), executable="/bin/true")\n    return _injected_helper(args=("git", "gc"), executable=None)\n', ('unclassified', 'gc')),
+        'an executable given by one call and `None` from another, a tuple, the `None` first': ('def _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected():\n    _injected_helper(args=("git", "gc"), executable=None)\n    return _injected_helper(args=("true",), executable="/bin/true")\n', ('unclassified', 'gc')),
+        "not read: a helper's forwarded options, a default set in it first": ('def _injected_helper(**k):\n    k.setdefault("executable", "git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
+        "not read: a helper's forwarded options, updated in it first": ('def _injected_helper(**k):\n    k.update(executable="git")\n    return subprocess.run(["echo", "count-objects"], **k)\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
+        "not read: a helper's forwarded options, written in it first": ('def _injected_helper(**k):\n    k["args"] = ["git", "gc"]\n    return subprocess.run(**k)\n\n\ndef _injected():\n    return _injected_helper(args=["echo", "hello"])\n', None),
+        "not read: a helper's forwarded options, merged in it into another": ('def _injected_helper(**k):\n    return subprocess.run(["echo", "count-objects"], **{**k, "executable": "git"})\n\n\ndef _injected():\n    return _injected_helper(capture_output=True)\n', None),
+        "not read: a module's options changed in another function": ('_INJECTED_KW = {"cwd": "."}\n\n\ndef _injected_setup():\n    _INJECTED_KW["executable"] = "git"\n\n\ndef _injected():\n    return subprocess.run(["echo", "count-objects"], **_INJECTED_KW)\n', None),
+        "not read: a module's argv changed in another function": ('_INJECTED_AV = ["git", "log"]\n\n\ndef _injected_setup():\n    _INJECTED_AV[1] = "gc"\n\n\ndef _injected():\n    return subprocess.run(_INJECTED_AV)\n', None),
+        "not read: a module's options rebound by `global`": ('_INJECTED_KW2 = {"cwd": "."}\n\n\ndef _injected_setup():\n    global _INJECTED_KW2\n    _INJECTED_KW2 = {"executable": "git"}\n\n\ndef _injected():\n    return subprocess.run(["echo", "count-objects"], **_INJECTED_KW2)\n', None),
+        'not read: options changed in an inner function': ('def _injected():\n    o = {"cwd": "."}\n    def s():\n        o["executable"] = "git"\n    s()\n    return subprocess.run(["echo", "count-objects"], **o)\n', None),
+        'not read: a program name rebound by `global`': ('_INJECTED_P = "git"\n\n\ndef _injected_setup():\n    global _INJECTED_P\n    _INJECTED_P = "/bin/sh"\n\n\ndef _injected():\n    return subprocess.run([_INJECTED_P, "log"])\n', None),
+        "not read: a module's argv cut by `del` in another function": ('_INJECTED_AV2 = ["git", "log", "gc"]\n\n\ndef _injected_setup():\n    del _INJECTED_AV2[1]\n\n\ndef _injected():\n    return subprocess.run(_INJECTED_AV2)\n', None),
+        'not read: an argv changed in an inner function': ('def _injected():\n    cmd = ["git", "log"]\n    def s():\n        cmd[1] = "gc"\n    s()\n    return subprocess.run(cmd)\n', None),
+        'not read: an argv rebound by `nonlocal`': ('def _injected():\n    cmd = ["git", "log"]\n    def s():\n        nonlocal cmd\n        cmd = ["git", "gc"]\n    s()\n    return subprocess.run(cmd)\n', None),
+    }
+    shut45_ = {}
+    for what_, (code_, want_) in closed45_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        shut45_[what_] = unclassified_(f_) == [want_[1]] if want_ else len(u_) > len(unread_)
+    check(f"FM-045 · Check A accepts a start only in the form the product writes: a process API called by its plain name, imported by any name — `subprocess`'s, `os.exec*`, "
+          f"`os.spawn*`, `os.posix_spawn*`, `asyncio`'s and `asyncio.subprocess`'s `create_subprocess_exec`, `pty.spawn` — with its argument list and every argument that can "
+          f"choose the program or a shell resolved in full, by keyword, by position or through `**` — each call of a forwarding helper read as its own start, with that caller's own "
+          f"arguments, in any order, list or tuple — is read and its git classified; forwarded options changed in the helper, any other reference to a process API or a "
+          f"process module, code handed to any shell or interpreter, a start through a wrapper, a program the system chooses, and an argument it cannot resolve in full are each "
+          f"named as not read (saw {shut45_})", all(shut45_.values()))
+    osa45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["osascript", "-e", f"'))
+    ns45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["notify-send", '))
+    der45_ = next(l_ for l_ in src_.splitlines() if l_.strip().startswith("run = subprocess.run(([sys.executable]"))
+    ind45_, tail45_ = der45_[:len(der45_) - len(der45_.lstrip())], "    return None\n\n\ndef post_notice"
+    copies45_ = {       # each exception admits its own sites and nothing else; the first ends when that code is made literal: each copy fails the check
+        "the osascript form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["osascript", "-e", f"return {value}"])\n',
+        "the PowerShell form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["powershell", "-NoProfile", "-Command", f"Write-Output {value}"])\n',
+        "the osascript form through `__call__` outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("osascript", "-e", f"return {value}"), capture_output=True)\n',
+        "the PowerShell form through `__call__` outside `notify_argv`": src_ + ('\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("powershell", "-Command", f"Write-Output {value}"), '
+                                                                               'capture_output=True)\n'),
+        "another program's code inside `notify_argv`": src_.replace(ns45_, 'return ["sh", "-c", f"echo {platform}"]', 1),
+        "a second branch handing code to osascript inside `notify_argv`": src_.replace(tail45_, '    if platform == "x":\n        return ["osascript", "-e", f"return {platform}"]\n' + tail45_, 1),
+        "Python code defining its own `notify_argv`": src_ + ('\n\ndef _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess\\ndef notify_argv(t):\\n'
+                                                           '    return subprocess.run([\'osascript\', \'-e\', f\'return {t}\'])\\n"])\n'),
+        "`notify_argv`'s osascript code made literal, the first exception still named": src_.replace(osa45_, 'return ["osascript", "-e", "return 1"]', 1),
+        "the deriver's form outside `run_deriver`": src_ + ('\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n'
+                                                         '    return subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)])\n'),
+        "a third form inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run(["sh", str(exe)])\n' + der45_, 1),
+        "the deriver's form a second time inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run([str(exe)])\n' + der45_, 1),
+        'the osascript form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
+        'the PowerShell form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
+        "the deriver's form through a helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
+        'the osascript form through a forwarding helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
+        'the PowerShell form through a forwarding helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
+        "the deriver's form through a forwarding helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
+    }
+    ends45_ = {}
+    for what_, text_ in copies45_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(text_, encoding="utf-8")
+        f_, u_, _o, x_ = _git_starts(copy_.read_text(encoding="utf-8"))
+        ends45_[what_] = text_ != src_ and not (not unclassified_(f_) and not u_ and as_named_(x_))
+    check(f"FM-045 · Check A's two exceptions, the Owner's, each matched by its site and met once, admit nothing else: the osascript or PowerShell form outside `notify_argv`, "
+          f"directly, through `__call__` or through a helper, a forwarding one too, another program's code inside it, a second such branch, Python code that defines its own `notify_argv`, the "
+          f"deriver's form outside `run_deriver`, directly or through a helper, a third start inside it and its form a second time each fail the check; the first ends when `notify_argv`'s code is made literal, and the check then "
+          f"fails while the first exception still names it (saw {ends45_})", all(ends45_.values()))
+
+
+def _signers_repo(base):
+    """FM-045's shape, synthetic: a clone of a bare `origin` whose Owner is `signed` at the top of its configuration and whose `gpg.ssh.allowedSignersFile`
+    names a file in its own working tree, kept on `main`; `origin/HEAD` names `origin/main`, and an unmerged `origin/answer/ap-001` sets `answer: yes` on
+    AP-001's ask. No key signs anything: the board reads the signers file's path all the same."""
+    root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", str(base / "origin.git")], check=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, env=_ENV)
+    signers = root / "docs/work-tracker/allowed_signers"
+    for k, v in (("user.name", "Owner"), ("user.email", "owner@example.org"), ("gpg.ssh.allowedSignersFile", str(signers))):
+        git(root, "config", k, v)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('owner = "owner@example.org signed"\nname = "w"\n\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    (root / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
+    since = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask = tracker(root, "AP-001", extra=f'next: owner\nask: "Does the importer ship first?"\nask-kind: ruling\nask-since: {since}\nask-proposal: "yes"\n', title="a ruling asked")
+    signers.write_text("owner@example.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHN5bnRoZXRpYy1rZXktZm9yLWEtdGVzdC1vbmx5LTAwMDAw\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-q", "-m", "the ask, and the Owner's signers file"); git(root, "push", "-q", "-u", "origin", "HEAD:main")
+    git(root, "remote", "set-head", "origin", "main")
+    git(root, "switch", "-q", "-c", "answer/ap-001")
+    ask.write_text(ask.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: yes\nanswered: {datetime.date.today().isoformat()}\nanswered-by: Owner\n'), encoding="utf-8")
+    git(root, "commit", "-q", "-am", "AP-001: yes"); git(root, "push", "-q", "origin", "answer/ap-001")
+    git(root, "switch", "-q", "main"); git(root, "branch", "-q", "-D", "answer/ap-001")
+    return root
+
+
+# --- FM-045's shape: the signers file in the working tree, origin's default branch known, an answer on its way on origin. The board's run, in process and as a
+#     program — what a hook starts —, with origin/HEAD set and unset: exit 0, the board written, no "stopped" line, the answer shown on its way, and none of the
+#     commands named as never started in the board's run started
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _signers_repo(base); page_ = root / "docs/work-tracker/index.html"
+    tip_ = subprocess.run(["git", "-C", str(root), "rev-parse", "origin/answer/ap-001"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    saw_, ok_ = {}, []
+    for head_ in ("set", "unset"):
+        if head_ == "unset":
+            git(root, "remote", "set-head", "origin", "--delete")
+        for how_, go_ in (("in process", lambda: run(root, "--html-only")), ("as a program", lambda: _tool_run(HERE / "shoalmark.py", root, "--html-only"))):
+            page_.unlink(missing_ok=True); from_ = len(_BOARD_GIT)
+            code_, out_, err_ = go_(); shown_ = page_.read_text(encoding="utf-8") if page_.is_file() else ""
+            saw_[f"origin/HEAD {head_}, {how_}"] = (code_, err_.strip()[-200:])
+            ok_.append(code_ == 0 and out_.startswith("board: file:") and "stopped" not in out_ + err_ and f'["answer", "answer/ap-001", "{tip_}", ' in shown_
+                       and not _started_never(_BOARD_GIT[from_:], getattr(fm, "NEVER_IN_BOARD_RUN", {})))
+    check(f"FM-045 · the board's refresh where the signers file lies in the working tree, origin's default branch is known and an answer is on its way on origin: `--html-only`, "
+          f"in process and as a program, with origin/HEAD set and unset, exits 0, writes the board, says no \"stopped\" line and shows the answer on its way (saw {saw_})",
+          len(ok_) == 4 and all(ok_))
+    rm_git(root)
+fm.configure(HERE)
+
+
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); _board_repo(root); run(root, "--html-only"); fm.configure(root)
     saw_ = {}
@@ -3539,12 +4413,13 @@ _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
 _NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
                   "`svn update`: run `--html-only` to rebuild it.")
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
-      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (8 October 2026, 0.19.1's), and the player stats keep theirs",
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (9 October 2026, 0.19.2's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
       "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
       and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
-      and 'v0.19.1, released 8 October 2026 — a security release: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
-      and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html"))
+      and 'v0.19.2, released 9 October 2026 — a fix for the board\'s refresh, which 0.19.1 stopped in some repositories: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html")
+      and f'release<b>v{fm.__version__}</b>' in _rd("overrides/landing.html") and f'releases/tag/v{fm.__version__}" style="color:#b4c3d1">v{fm.__version__}</a>' in _rd("overrides/landing.html"))
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
@@ -7116,6 +7991,410 @@ else:
         check(f"FM-006 · v0.19.1 · on Subversion a `considered:` a seat without `triage` changed after the filing, on its branch, is refused on trunk under that seat once the "
               f"file is copied there — by the planner, or by the seat itself (saw {byP_[0]}, {byB_[0]})", refusedK_(byP_, "C9-220") and refusedK_(byB_, "C9-221"))
     fm.configure(HERE)
+
+
+# --- FM-045 · the board matrix — the Owner's rule of 2026-10-08: a failed board refresh is a product failure, so the checks cover the class, not this case alone ------------
+# Real merges, checkouts and rebases fire the real hooks `--install-hook` writes (`post-merge`, `post-checkout`, `post-rewrite`), and an `--answer` its rebuild right after
+# the act (`board_after_act`), in each shape the Owner named; on Subversion, which has no checkout or merge hook, `svn update` and `svn switch` are followed by the board's
+# run itself, `--html-only`, as the README says. Each event asserts: the board's file changed and shows what the event brought — what the board before it could not show —;
+# git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes —; every git its board's runs start is a read
+# `read_only_git` admits; no line says "stopped" or "not refreshed"; no traceback. Synthetic data only: every repository, its origin and its signing key are made here.
+# Nothing here is POSIX-only: Git for Windows runs every hook, the runner's too, through its own `sh`. The signers shape fails beside v0.19.1 (211ce0b), whose board's
+# run stops on `git ls-tree`. Each shape prints its seconds, and the matrix its total after the last, with the git starts it watched.
+# THE WATCH — every board's run of the matrix, through git's own trace: `GIT_TRACE2_EVENT`, set in the environment the event's git or command starts with, is
+# inherited by everything under it — a hook's `sh`, the runner's, the hooks' copy run with `-I` (which drops only Python's own variables), `--answer` and its rebuild
+# — and every git started anywhere below writes its own `start` event, its argv as started. Git also exports its session id (`GIT_TRACE2_PARENT_SID`) to all it
+# starts, so a git started by a hook's run carries, one level down, the id of the git that started the hook, and that git's `child_start` and `child_exit` for the
+# hook bound its run in time (`_bm_watch`). What it reads is recorded where the classification's runtime half reads it (`_BOARD_GIT`, `_bm_record`).
+_BM_SECONDS, _BM_PLAIN, _BM_STARTS = {}, {}, {}
+_BM_ENV = {k_: v_ for k_, v_ in _ENV.items() if not k_.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_"))}      # the clone's own `user.name` — the Owner's, as `--answer` asks
+_BM_SAID = {"answer": "`--answer`, the board rebuilt right after the act by the checkout hook (`board_after_act`)", "switch": "`git switch`, which fires `post-checkout`",
+            "merge": "`git merge --no-ff`, which fires `post-merge`", "rebase": "`git rebase`, which fires `post-checkout` before its replay and `post-rewrite` after",
+            "svn update": "`svn update`, then `--html-only`", "svn switch": "`svn switch`, then `--html-only`",
+            "by hand": "the board's run by hand before the events, `--html-only`"}
+_BM_ASSERT = ('the board changed and shows what it brought, git and every hook exit 0, every git its board\'s runs start is a read `read_only_git` admits, '
+              'no "stopped" or "not refreshed" line, no traceback')
+_BM_HAND = 'exit 0, the board written, every git it starts is a read `read_only_git` admits, no "stopped" line, no traceback'
+_BM_HOOKS = ("post-checkout", "post-merge", "post-rewrite")           # the hooks whose run is the board's
+_BM_OWN = (["rev-parse", "--show-toplevel"], ["rev-parse", "--git-common-dir"])      # a hook's own two reads, which find the copy before it starts it
+_BM_LINE = re.compile(r"^(.+) exists and is not shoalmark's — left alone\. Add to it: `(.+)`$")      # what `--install-hook` names for a hook that is not its own
+_BM_RUNNER = ("#!/bin/sh\n# a hook runner in lefthook's style: this hook runs each command its configuration names for it, and fails where one fails\n"
+              'hook=$(basename "$0")\nstatus=0\n'
+              'while IFS= read -r line <&3; do\n  case "$line" in\n    "$hook: "*) sh -c "${line#"$hook: "}" "$hook" "$@" || status=$? ;;\n  esac\ndone 3< "$(dirname "$0")/commands"\n'
+              "exit $status\n")
+
+
+def _bm_trace(path):
+    """{hook name: [its exit codes]} — every hook git started and how it ended, read from the trace2 events git wrote to `path` (`GIT_TRACE2_EVENT`)."""
+    started_, out_ = {}, {}
+    for line_ in (path.read_text(encoding="utf-8").splitlines() if path.is_file() else []):
+        try:
+            e_ = json.loads(line_)
+        except ValueError:
+            continue
+        k_ = (e_.get("sid"), e_.get("child_id"))
+        if e_.get("event") == "child_start" and e_.get("child_class") == "hook":
+            started_[k_] = e_.get("hook_name", "")
+        elif e_.get("event") == "child_exit" and k_ in started_:
+            out_.setdefault(started_[k_], []).append(e_.get("code"))
+    return out_
+
+
+def _bm_watch(path, kind="hooks"):
+    """[(which run, [each git argv it started, in order])] — every board's run the trace2 events at `path` show. A hook's (`post-checkout`, `post-merge`,
+    `post-rewrite`): each git one level below the git that started it, started between that git's `child_start` and `child_exit` for it, but the hook's own two
+    reads that find the copy (`_BM_OWN`). `kind` "act" — an `--answer`: its hooks' runs, and `board_after_act`'s own reads and run, the gits it starts at the top
+    after its last `git switch` ended; "plain" — one `--html-only` started with the trace set: every git at the top."""
+    evs_ = []
+    for line_ in (path.read_text(encoding="utf-8").splitlines() if path.is_file() else []):
+        try:
+            evs_.append(json.loads(line_))
+        except ValueError:
+            continue
+    starts_ = sorted((e_["time"], e_["sid"], e_["argv"]) for e_ in evs_ if e_.get("event") == "start" and "time" in e_ and "argv" in e_)
+    tops_ = [(t_, s_, a_) for t_, s_, a_ in starts_ if "/" not in s_]
+    runs_, opened_ = [], {}
+    for e_ in evs_:
+        k_ = (e_.get("sid"), e_.get("child_id"))
+        if e_.get("event") == "child_start" and e_.get("child_class") == "hook" and e_.get("hook_name") in _BM_HOOKS:
+            opened_[k_] = e_
+        elif e_.get("event") == "child_exit" and k_ in opened_:
+            o_ = opened_.pop(k_)
+            argvs_ = [a_ for t_, s_, a_ in starts_ if s_.rpartition("/")[0] == o_["sid"] and o_["time"] < t_ < e_["time"]]
+            for own_ in _BM_OWN:
+                i_ = next((i_ for i_, a_ in enumerate(argvs_) if a_[1:] == own_), None)
+                if i_ is not None:
+                    del argvs_[i_]
+            runs_.append((("--answer · " if kind == "act" else "") + o_["hook_name"], argvs_))
+    if kind == "act":
+        back_ = [s_ for _t, s_, a_ in tops_ if _git_command(a_) == "switch"][-1:]
+        end_ = max((e_["time"] for e_ in evs_ if back_ and e_.get("sid") == back_[0] and e_.get("event") in ("exit", "atexit") and "time" in e_), default=None)
+        after_ = [a_ for t_, _s, a_ in tops_ if end_ and t_ > end_]
+        if after_:
+            runs_.append(("--answer · board_after_act", after_))
+    if kind == "plain":
+        runs_.append(("--html-only", [a_ for _t, _s, a_ in tops_]))
+    return runs_
+
+
+def _bm_record(runs):
+    """Each watched run into the suite's record — `_BOARD_GIT`, which the classification's runtime half reads, and the matrix's own counts — and back."""
+    for kind_, argvs_ in runs:
+        _BOARD_GIT.extend(argvs_)
+        _BOARD_RUNS["through git's trace"] = _BOARD_RUNS.get("through git's trace", 0) + 1
+        k_ = kind_.split(" · ")[0]
+        _BM_STARTS[k_] = _BM_STARTS.get(k_, 0) + len(argvs_)
+        _BM_STARTS["ls-tree"] = _BM_STARTS.get("ls-tree", 0) + sum(_git_command(a_) == "ls-tree" for a_ in argvs_)
+    return runs
+
+
+def _bm_watched(runs, hook):
+    """What the watch saw of an event: its runs, every git they started, whether its own hook's run was seen starting git (`hook` None: whether any run was;
+    "" — nothing asked), the starts `read_only_git` refuses, and how many list a tree (`ls-tree`)."""
+    starts_ = [a_ for _k, argvs_ in runs for a_ in argvs_]
+    seen_ = True if hook == "" else any(argvs_ for k_, argvs_ in runs if hook is None or k_.endswith(hook))
+    return dict(runs=runs, starts=starts_, seen=seen_, refused=[a_ for a_ in starts_ if not fm.read_only_git(a_)], listings=sum(_git_command(a_) == "ls-tree" for a_ in starts_))
+
+
+def _bm_board(at):
+    """The board's file of the checkout at `at`, in the tracker folder its own `shoalmark.toml` names — its bytes, or None where there is none."""
+    cfg_ = (at / "shoalmark.toml").read_text(encoding="utf-8") if (at / "shoalmark.toml").is_file() else ""
+    m_ = re.search(r'^tracker_dir = "([^"]*)"', cfg_, re.M)
+    p_ = at / (m_.group(1) if m_ else "docs/work-tracker") / "index.html"
+    return p_.read_bytes() if p_.is_file() else None
+
+
+def _bm_row(tid, status):
+    """(what it is, what the board's page holds for it): tracker `tid`'s row at `status`."""
+    return f"{tid} {status}", r'\["' + tid + r'", "[^"]*", "' + status + r'", '
+
+
+def _bm_way(at, tid):
+    """(what it is, what the board's page holds for it): `tid`'s answer on its way — its row of `on_their_way`, with `origin/answer/<tid>`'s tip."""
+    tip_ = subprocess.run(["git", "-C", str(at), "rev-parse", "-q", "--verify", f"refs/remotes/origin/answer/{tid.lower()}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    return f"{tid}'s answer on its way", re.escape(f'["answer", "answer/{tid.lower()}", "{tip_ or "no such branch"}", ')
+
+
+def _bm_fire(at, trace, *a):
+    """git with the hooks running, as a person's own command runs them, its trace2 events written to `trace`: (its exit, what it and its hooks said)."""
+    r_ = subprocess.run(["git", "-C", str(at), *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace)))
+    return r_.returncode, r_.stdout + r_.stderr
+
+
+def _bm_refresh(at):
+    """The board refreshed by hand, as a hook refreshes it — the copy of the tool in the git directory, `--html-only` — and watched through git's trace: what it
+    saw is kept for the events fired at `at` (`_BM_PLAIN`), which judge it first."""
+    common_ = Path(subprocess.run(["git", "-C", str(at), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip())
+    trace_ = at.parent / f"trace-by-hand-{at.name}.json"; trace_.unlink(missing_ok=True)
+    r_ = subprocess.run([sys.executable, "-I", str((common_ if common_.is_absolute() else at / common_) / fm.COPY_DIR / "shoalmark.py"), "--root", str(at), "--html-only"],
+                        cwd=str(at), capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_)))
+    _BM_PLAIN[str(at)] = dict(code=r_.returncode, said=r_.stdout + r_.stderr, hooks={}, hook=None, changed=_bm_board(at) is not None,
+                              missing=[] if "board: file:" in r_.stdout else ["said 'board: file:'"], **_bm_watched(_bm_record(_bm_watch(trace_, "plain")), None))
+
+
+def _bm_answered(root, tid, since):
+    """`answer/<tid>` cut from the branch `root` stands on, carrying the Owner's answer to `tid`'s ask, signed with their key — the lines `--answer` writes — and back."""
+    git(root, "switch", "-q", "-c", f"answer/{tid.lower()}")
+    t_ = next(root.glob(f"docs/work-tracker/{tid}-*.md"))
+    t_.write_text(t_.read_text(encoding="utf-8").replace("next: owner\n", f'next: build\nanswer: "accepted"\nanswered: {since}\nanswered-by: owner\n'), encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid}: answered", "-S", "--author=owner <o@x>"); git(root, "switch", "-q", "-")
+
+
+def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=False, answers=False, refresh=True):
+    """A clone of a bare `origin` whose `main` carries an ask (AP-501) and three trackers in progress (AP-502 … AP-504), the Owner's seat `signed` with an SSH key
+    made here, pushed; the hooks installed from the tool under test, and three branches, each bringing the board what the board before it cannot show: `side`
+    AP-502 Proposed (the checkout), `feature` AP-503 Proposed (the merge), `work` AP-504 Proposed (the rebase, onto `main` once the merge moved it).
+    `signers`: "tree" — the signers file in the working tree, committed on `main`; "beside" — beside the repository. `more`: that many trackers more.
+    `head`: `origin/HEAD` set, else unset with `origin/main` there. `runner`: `core.hooksPath` names a hook runner in lefthook's style beside the repository,
+    wired as an adopter wires it: under each hook, the line `--install-hook` names for it (`HOOK_LINES`). `moved`: this clone's `main` moves the tracker
+    folder, and its TRIAGE.md home with it, off `origin/main`'s. `answers`: answer branches before the events, each the Owner's signed answer — AP-505's
+    merged, here and on origin; AP-506's on this clone only; AP-507's on origin only. `refresh`: the board's run by hand after it all
+    (`_bm_refresh`). (the clone, what `--install-hook` said)"""
+    root = base / "wc"; root.mkdir()
+    subprocess.run(["git", "init", "-q", "--bare", "--initial-branch=main", str(base / "origin.git")], check=True, capture_output=True, env=_ENV)
+    subprocess.run(["git", "init", "-q", "--initial-branch=main", str(root)], check=True, capture_output=True, env=_ENV)
+    run(root, "--init", "--key", "ap")
+    key_ = base / "key"; subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_)], check=True, capture_output=True)
+    signers_ = root / "docs/work-tracker/allowed_signers" if signers == "tree" else base / "allowed_signers"
+    signers_.write_text("o@x " + key_.with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+    for k_, v_ in (("user.name", "owner"), ("user.email", "o@x"), ("gpg.format", "ssh"), ("user.signingkey", str(key_)),
+                   ("gpg.ssh.allowedSignersFile", str(signers_)), ("commit.gpgsign", "false")):
+        git(root, "config", k_, v_)
+    git(root, "remote", "add", "origin", str(base / "origin.git"))
+    (root / "shoalmark.toml").write_text('name = "m"\ntracker_dir = "docs/work-tracker"\n[kinds]\nAP = "Work"\n[seats]\nowner = "o@x signed"\nreviewer = "reviewer@seat"\n', encoding="utf-8")
+    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    ask_ = lambda q_: f'next: owner\nask: "{q_}"\nask-kind: ruling\nask-since: {since_}\nask-proposal: "yes"\n'
+    tracker(root, "AP-501", extra=ask_("Does the importer ship first?"), title="an ask")
+    for tid_ in ("AP-502", "AP-503", "AP-504"):
+        tracker(root, tid_, title="in progress")
+    for n_ in range(more):
+        tracker(root, f"AP-{1000 + n_}", title=f"one of {more} more")
+    for tid_, q_ in (("AP-505", "Does the exporter ship first?"), ("AP-506", "Does the loader ship first?"), ("AP-507", "Does the report ship first?")) if answers else ():
+        tracker(root, tid_, extra=ask_(q_), title="an ask")
+    run(root); fm.configure(HERE)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trackers", "-S", "--author=owner <o@x>"); git(root, "push", "-q", "-u", "origin", "main")
+    if head:
+        git(root, "remote", "set-head", "origin", "main")
+    if answers:
+        for tid_ in ("AP-505", "AP-506", "AP-507"):
+            _bm_answered(root, tid_, since_)
+        git(root, "merge", "-q", "--no-ff", "--no-edit", "answer/ap-505"); git(root, "push", "-q", "origin", "main", "answer/ap-505", "answer/ap-507")
+        git(root, "branch", "-q", "-D", "answer/ap-507")
+    if moved:                                               # the tracker folder and its TRIAGE.md home, moved on this clone's `main` only
+        git(root, "mv", "docs/work-tracker", "work")
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace('"docs/work-tracker"', '"work"'), encoding="utf-8")
+        (root / ".gitignore").write_text("work/index.html\nwork/view/\n", encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", "the tracker folder moves", "-S", "--author=owner <o@x>")
+    tdir_ = root / ("work" if moved else "docs/work-tracker")
+    for branch_, tid_ in (("side", "AP-502"), ("feature", "AP-503"), ("work", "AP-504")):
+        git(root, "switch", "-q", "-c", branch_, "main")
+        t_ = tdir_ / f"{tid_}-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("status: In Progress", "status: Proposed"), encoding="utf-8")
+        git(root, "add", "-A"); git(root, "commit", "-qm", f"{tid_}: proposed")
+    git(root, "switch", "-q", "main")
+    if runner:                                              # the runner's own hook for each hook `--install-hook` writes: it leaves each alone and names the line to add
+        hooks_ = base / "runner"; hooks_.mkdir()
+        for name_ in fm.HOOK_LINES:
+            (hooks_ / name_).write_bytes(_BM_RUNNER.encode("utf-8")); (hooks_ / name_).chmod(0o755)
+        (hooks_ / "commands").write_bytes(b"")
+        git(root, "config", "core.hooksPath", hooks_.as_posix())
+    inst_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
+    if runner:
+        lines_ = [m_.groups() for m_ in map(_BM_LINE.match, (inst_[1] + inst_[2]).splitlines()) if m_]
+        (base / "runner/commands").write_bytes("".join(f"{Path(p_).name}: {l_}\n" for p_, l_ in lines_).encode("utf-8"))
+    if refresh:
+        _bm_refresh(root)
+    return root, inst_
+
+
+def _bm_events(base, at, home, also=(), drop=False, only=("answer", "switch", "merge", "rebase")):
+    """The events, fired at the checkout `at`, which stands on `home`: an `--answer` on AP-501, `git switch side`, `git merge --no-ff feature` back on `home`,
+    and `git rebase <home>` from `work` — those of `only`. Between them the checkout moves with no hook (`git`), so the board before each is the one the event
+    before it left, and each brings what that board cannot show; after the answer, every board still shows it on its way, and the answers of `also` throughout.
+    Every board's run is watched (`_bm_watch`); the run by hand before them (`_bm_refresh`) is judged first, as `by hand`. `drop`: the control — no answer and
+    no run by hand, and each event's own board hook taken out of the hooks folder while it fires, then put back. {event: what it saw}"""
+    hand_ = _BM_PLAIN.pop(str(at), None)
+    seen_, way_ = ({"by hand": hand_} if hand_ and not drop else {}), []
+    def one_(name_, hook_, fire_, shows_, says_=("board: file:",)):
+        trace_, held_ = base / f"trace-{name_}.json", at / ".git/hooks" / hook_
+        trace_.unlink(missing_ok=True); kept_ = held_.read_bytes() if drop else None
+        if drop:
+            held_.unlink()
+        before_ = _bm_board(at); code_, said_ = fire_(trace_); after_ = _bm_board(at)
+        if drop:
+            held_.write_bytes(kept_); held_.chmod(0o755)
+        page_ = (after_ or b"").decode("utf-8", "replace")
+        seen_[name_] = dict(code=code_, said=said_, hooks=_bm_trace(trace_), hook=hook_, changed=after_ is not None and after_ != before_,
+                            missing=[w_ for w_, rx_ in shows_() + way_ + [_bm_way(at, t_) for t_ in also] if not re.search(rx_, page_)]
+                            + [f"said {s_!r}" for s_ in says_ if s_ not in said_], **_bm_watched(_bm_record(_bm_watch(trace_, "act" if name_ == "answer" else "hooks")), hook_))
+    if "answer" in only and not drop:
+        def answer_(trace_):
+            c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, "--answer", "AP-501", "accept", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_)))
+            return c_, o_ + e_
+        one_("answer", "post-checkout", answer_, lambda: [_bm_way(at, "AP-501")], ("the board was rebuilt by the checkout hook",))
+        way_ = [_bm_way(at, "AP-501")]
+    if "switch" in only:
+        one_("switch", "post-checkout", lambda t_: _bm_fire(at, t_, "switch", "-q", "side"), lambda: [_bm_row("AP-502", "Proposed")])
+    if "merge" in only:
+        git(at, "switch", "-q", home)
+        one_("merge", "post-merge", lambda t_: _bm_fire(at, t_, "merge", "-q", "--no-ff", "--no-edit", "feature"), lambda: [_bm_row("AP-503", "Proposed"), _bm_row("AP-502", "In Progress")])
+    if "rebase" in only:
+        git(at, "switch", "-q", "work")
+        one_("rebase", "post-rewrite", lambda t_: _bm_fire(at, t_, "rebase", "-q", home), lambda: [_bm_row("AP-504", "Proposed"), _bm_row("AP-503", "Proposed")])
+    return seen_
+
+
+def _bm_bad(said):
+    """The lines that say the refresh failed: "stopped", "not refreshed", "NOT rebuilt" — and a traceback."""
+    return [l_.strip() for l_ in said.splitlines() if "stopped" in l_ or "not refreshed" in l_ or "NOT rebuilt" in l_ or "Traceback" in l_]
+
+
+def _bm_ok(g):
+    """The matrix's one judgement of an event: git (or the run) exits 0, every hook it started exits 0 and the event's own is among them, the board's file changed
+    and shows what the event brought, the watch saw the event's own board's run start git and every git it started is a read `read_only_git` admits, and no line
+    says the refresh failed (`_bm_bad`)."""
+    return (g["code"] == 0 and (g["hook"] is None or g["hook"] in g["hooks"]) and all(c_ == 0 for cs_ in g["hooks"].values() for c_ in cs_)
+            and g["changed"] and not g["missing"] and g["seen"] and not g["refused"] and not _bm_bad(g["said"]))
+
+
+def _bm_saw(g):
+    bad_ = _bm_bad(g["said"])
+    return (f"exit {g['code']}, hooks {g['hooks']}, board changed {g['changed']}" + (f", not shown {g['missing']}" if g["missing"] else "")
+            + f", its board's runs started {len(g['starts'])} git ({g['listings']} ls-tree)" + ("" if g["seen"] else ", its own board's run not seen")
+            + (f", refused {g['refused'][:3]}" if g["refused"] else "") + (f", said {bad_[0][:240]!r}" if bad_ else ""))
+
+
+def _bm_done(shape, t0, seen):
+    """Each event as its check reads it — (what it is and what is asserted, the judgement, what it saw) — and the shape's seconds, printed."""
+    _BM_SECONDS[shape] = time.monotonic() - t0
+    print(f"  time  FM-045 · the board matrix · {shape}: {_BM_SECONDS[shape]:.1f} s")
+    fm.configure(HERE)
+    return [(f"{_BM_SAID[ev_]}: {_BM_HAND if ev_ == 'by hand' else _BM_ASSERT}", _bm_ok(g_), _bm_saw(g_)) for ev_, g_ in seen.items()]
+
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")
+    for said_, ok_, saw_ in _bm_done("signers", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · a signers file in the tree, with signed answers · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, answers=True)
+    for said_, ok_, saw_ in _bm_done("answer branches", t0_, _bm_events(base_, root_, "main", also=("AP-507",))):
+        check(f"FM-045 · the board matrix · answer branches, local and on origin — AP-507's on origin only on its way throughout · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, refresh=False)
+    linked_ = base_ / "linked"; git(root_, "worktree", "add", "-q", "-b", "lw", str(linked_), "main"); _bm_refresh(linked_)
+    for said_, ok_, saw_ in _bm_done("linked worktree", t0_, _bm_events(base_, linked_, "lw")):
+        check(f"FM-045 · the board matrix · a linked worktree, every event fired in it · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, moved=True)
+    for said_, ok_, saw_ in _bm_done("moved tracker folder", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · a moved tracker folder, its TRIAGE.md home with it, off origin's default branch · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, head=True)
+    for said_, ok_, saw_ in _bm_done("origin/HEAD set", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · origin/HEAD set · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, head=False)
+    for said_, ok_, saw_ in _bm_done("origin/HEAD unset", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · origin/HEAD unset, origin/main there · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, more=300)
+    for said_, ok_, saw_ in _bm_done("304 trackers", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · several hundred trackers (304), each hook's run within the board's bound · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+with tempfile.TemporaryDirectory() as d:
+    t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, runner=True)
+    wired_ = (base_ / "runner/commands").read_text(encoding="utf-8")
+    check(f"FM-045 · the board matrix · a foreign hook runner in lefthook's style · `--install-hook` leaves each of the runner's six hooks alone and names the line to add to each, "
+          f"exit 4, and writes the copy those lines run (saw exit {inst_[0]}, {len(wired_.splitlines())} line(s) wired)",
+          inst_[0] == fm.EXIT_LINT and sorted(l_.split(":", 1)[0] for l_ in wired_.splitlines()) == sorted(fm.HOOK_LINES)
+          and all(f"{n_}: {fm.PY} -I {fm.COPY_AT} {a_}" in wired_.splitlines() for n_, a_ in fm.HOOK_LINES.items()) and (root_ / ".git" / fm.COPY_DIR / "shoalmark.py").is_file())
+    for said_, ok_, saw_ in _bm_done("foreign hook runner", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · a foreign hook runner in lefthook's style · {said_} (saw {saw_})", ok_)
+    rm_git(root_)
+
+if not _SVN:
+    _skipped("FM-045 · the board matrix · Subversion", 2, "Subversion is not installed here — these run in CI")
+else:
+    with tempfile.TemporaryDirectory() as d:
+        t0_ = time.monotonic(); base_ = Path(d).resolve()
+        svn_ = lambda *a, cwd=None: subprocess.run(["svn", *a], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        subprocess.run(["svnadmin", "create", str(base_ / "repo")], check=True); url_ = (base_ / "repo").as_uri()
+        svn_("mkdir", "-m", "layout", url_ + "/trunk", url_ + "/branches"); svn_("checkout", url_ + "/trunk", str(base_ / "wc")); root_ = base_ / "wc"
+        run(root_, "--init", "--key", "ap")
+        for tid_ in ("AP-502", "AP-503"):
+            tracker(root_, tid_, title="in progress")
+        run(root_); fm.configure(HERE); svn_("add", "--force", ".", cwd=root_); svn_("commit", "-m", "the trackers", cwd=root_)
+        svn_("copy", "-m", "a branch", url_ + "/trunk", url_ + "/branches/side")
+        other_ = base_ / "other"; svn_("checkout", url_ + "/trunk", str(other_))          # another working copy: AP-503 proposed on trunk, then AP-502 on the branch
+        for tid_, to_ in (("AP-503", None), ("AP-502", url_ + "/branches/side")):
+            if to_:
+                svn_("switch", to_, cwd=other_)
+            t_ = other_ / f"docs/work-tracker/{tid_}-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("status: In Progress", "status: Proposed"), encoding="utf-8")
+            svn_("commit", "-m", f"{tid_}: proposed", cwd=other_)
+        trace_ = lambda ev_: base_ / f"trace-{ev_.replace(' ', '-')}.json"         # each board's run watched through git's trace, as the matrix's are
+        c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_("by hand"))))
+        seen_ = {"by hand": dict(code=c_, said=o_ + e_, hooks={}, hook=None, changed=_bm_board(root_) is not None, missing=[] if "board: file:" in o_ else ["said 'board: file:'"],
+                                 **_bm_watched(_bm_record(_bm_watch(trace_("by hand"), "plain")), ""))}
+        for ev_, argv_, shows_ in (("svn update", ["update"], [_bm_row("AP-503", "Proposed")]),
+                                   ("svn switch", ["switch", url_ + "/branches/side"], [_bm_row("AP-502", "Proposed"), _bm_row("AP-503", "In Progress")])):
+            before_ = _bm_board(root_); s_ = svn_(*argv_, cwd=root_)
+            c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only", env=dict(_ENV, GIT_TRACE2_EVENT=str(trace_(ev_)))); after_ = _bm_board(root_)
+            page_ = (after_ or b"").decode("utf-8", "replace")
+            seen_[ev_] = dict(code=s_.returncode or c_, said=s_.stdout + s_.stderr + o_ + e_, hooks={}, hook=None, changed=after_ is not None and after_ != before_,
+                              missing=[w_ for w_, rx_ in shows_ if not re.search(rx_, page_)] + ([] if "board: file:" in o_ else ["said 'board: file:'"]),
+                              **_bm_watched(_bm_record(_bm_watch(trace_(ev_), "plain")), ""))
+        for said_, ok_, saw_ in _bm_done("Subversion", t0_, seen_):
+            check(f"FM-045 · the board matrix · Subversion, which has no checkout or merge hook — the board's run after it, as the README says · {said_} (saw {saw_})", ok_)
+
+fm.configure(HERE)
+if _BM_SECONDS:                                             # the matrix's total where its shapes ran — not where one check of it is run alone
+    print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes · git starts watched through git's trace, by run: "
+          + ", ".join(f"{k_} {v_}" for k_, v_ in _BM_STARTS.items() if k_ != "ls-tree") + f" — {_BM_STARTS.get('ls-tree', 0)} of them `ls-tree`")
+
+# …its control: the board's own hook taken out while each event fires — the matrix's judgement must fail, so its "the board changed" is no check that always passes
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    for ev_, g_ in _bm_events(base_, root_, "main", drop=True).items():
+        check(f"FM-045 · the board matrix · the control · {_BM_SAID[ev_]}, with `{g_['hook']}` taken out of the hooks folder: it does not fire, and the matrix's judgement FAILS — "
+              f"what the event brought is not shown, and where no other hook writes the board, the board did not change (saw {_bm_saw(g_)})",
+              not _bm_ok(g_) and g_["hook"] not in g_["hooks"] and bool(g_["missing"]) and (ev_ == "rebase" or not g_["changed"]))
+    rm_git(root_)
+fm.configure(HERE)
+
+# …the watch's own control: a hook-started board's run is seen — `git switch`'s `post-checkout` and `--answer`'s, each a named list of git starts — and a watch
+# that recorded nothing fails the same judgement: the switch judged as if nothing were recorded, and the switch back with `GIT_TRACE2_EVENT` unset, which records none
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
+    seen_ = _bm_events(base_, root_, "main", only=("answer", "switch"))
+    named_ = {ev_: sorted({_git_command(a_) for a_ in seen_[ev_]["starts"]}) for ev_ in ("answer", "switch")}
+    runs_ = {ev_: [(k_, len(a_)) for k_, a_ in seen_[ev_]["runs"]] for ev_ in ("answer", "switch")}
+    check(f"FM-045 · the board matrix · the watch's control · a hook-started board's run is seen: `git switch`'s `post-checkout` run and `--answer`'s each start a non-zero, "
+          f"named list of git — `for-each-ref` on origin's answer branches among them — every one a read `read_only_git` admits (saw runs {runs_}; named {named_})",
+          all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and "for-each-ref" in named_[ev_] for ev_ in ("answer", "switch"))
+          and any(k_ == "--answer · post-checkout" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "post-checkout" and n_ for k_, n_ in runs_["switch"]))
+    nothing_ = {**seen_["switch"], **_bm_watched([], "post-checkout")}
+    before_ = _bm_board(root_)
+    back_ = subprocess.run(["git", "-C", str(root_), "switch", "-q", "main"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_BM_ENV)
+    blind_ = _bm_watch(base_ / "trace-blind.json")
+    check(f"FM-045 · the board matrix · the watch's control · a watch that recorded nothing fails: the same switch judged with no git start recorded FAILS, and the switch "
+          f"back with `GIT_TRACE2_EVENT` unset — its hook still run, the board rewritten — records none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
+          f"board rewritten {_bm_board(root_) != before_}, recorded {blind_})",
+          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and _bm_board(root_) != before_ and blind_ == [])
+    rm_git(root_)
+fm.configure(HERE)
 
 
 # --- the rename: what the tool wrote under its old name is still its own ---------------------------------------
@@ -10851,6 +12130,36 @@ _clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in
 check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
+
+# --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
+#     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
+#     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
+#     hooks' copy that `post-checkout`, `post-merge` and `post-rewrite` start, the lefthook-style runner's, `--answer`'s, and its runs by hand. This block adds
+#     its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its control names `ls-tree`, which FM-045's shape
+#     starts, as never started — and the same reading finds it
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve(); root = _signers_repo(base)
+    for head_ in (True, False):
+        if not head_:
+            git(root, "remote", "set-head", "origin", "--delete")
+        run(root, "--html-only"); _tool_run(HERE / "shoalmark.py", root, "--html-only")
+    plain_ = base / "plain"; plain_.mkdir(); _board_repo(plain_)
+    run(plain_, "--html-only"); _tool_run(HERE / "shoalmark.py", plain_, "--html-only")
+    never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
+    hit_, moved_ = _started_never(_BOARD_GIT, never_), _started_never(_BOARD_GIT, {**never_, "ls-tree": "the control"})
+    other_, wrapped_ctl_ = _not_git_itself(_BOARD_GIT), _not_git_itself(_BOARD_GIT + [["env", "git", "log"], ["/usr/bin/GIT.EXE", "log"]])
+    traced_ = _BOARD_RUNS["through git's trace"]
+    check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — watched: each `--html-only` "
+          f"the suite runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of the board matrix through git's trace "
+          f"(the hooks' copy, the runner's, `--answer`'s, by hand), FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs "
+          f"in process, {_BOARD_RUNS['a program']} as a program and {traced_} through git's trace, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
+          "ls-remote" in never_ and _BOARD_RUNS["in process"] >= 3 and _BOARD_RUNS["a program"] >= 3 and not hit_ and moved_ == ["ls-tree"])
+    check(f"FM-045 · the classification's runtime half: every program recorded as started by a board's run it watches is git itself, as `read_only_git` reads argv[0] — "
+          f"never through `env` or another wrapper; its control, `env git log` among them, is found, and git by a path in another case is not (saw {len(_BOARD_GIT)} starts; not git "
+          f"itself {other_}; the control found {wrapped_ctl_})",
+          len(_BOARD_GIT) > 0 and not other_ and wrapped_ctl_ == ["env"])
+    rm_git(root); rm_git(plain_)
+fm.configure(HERE)
 
 print()
 print(skipped_line())
