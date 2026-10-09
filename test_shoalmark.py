@@ -12697,7 +12697,7 @@ def _docs_wf_properties(text):
     return [
         ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
         ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, the launch states' words, templates, configuration, the README, "
-         "the scripts the build runs and docs.yml — and never on one that changes trackers alone",
+         "the scripts in scripts/ that the build runs and docs.yml — and never on one that changes trackers alone",
          isinstance(on, dict) and set(on) == {"push", "workflow_dispatch", "pull_request"} and on.get("push") == {"tags": ["v*"]} and isinstance(pr, dict)
          and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
         ("the deploy job runs after the build, only in the public repository, and never for a pull request",
@@ -12706,9 +12706,10 @@ def _docs_wf_properties(text):
          "and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy"}
          and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in str(s.get("run") or "") for s in steps)),
-        ("the build checks out the whole history with its tags, writes the landing's figures before `zensical build` and checks the release after it, each "
-         "told the event and the ref as GitHub names them",
-         (checkout.get("with") or {}).get("fetch-depth") == 0 and None not in (facts, zensical, release) and facts < zensical < release),
+        ("the build checks out the whole history with its tags, without keeping the token in the checkout, writes the landing's figures before "
+         "`zensical build` and checks the release after it, each told the event and the ref as GitHub names them",
+         (checkout.get("with") or {}).get("fetch-depth") == 0 and (checkout.get("with") or {}).get("persist-credentials") is False
+         and None not in (facts, zensical, release) and facts < zensical < release),
         ("only the deploy job is in a concurrency group: a pull request's build neither waits for a deployment nor cancels one",
          "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}),
     ]
@@ -12733,6 +12734,7 @@ def _docs_wf_regressions(text):
         ("an expression inside a `run:`", lambda t: t.replace('--event "$GITHUB_EVENT_NAME"', "--event ${{ github.event_name }}", 1)),
         ("an expression inside a `run: |` block", lambda t: t.replace("      - run: zensical build --clean\n", "      - run: |\n          echo ${{ github.head_ref }}\n          zensical build --clean\n", 1)),
         ("the checkout's history cut to one commit", lambda t: t.replace("{fetch-depth: 0, persist-credentials: false}", "{persist-credentials: false}", 1)),
+        ("the checkout keeps its token", lambda t: t.replace(", persist-credentials: false}", "}", 1)),
         ("the figures written after `zensical build`", facts_after_build),
         ("the figures read as a pull request's whatever the event", lambda t: t.replace('landing_facts.py --event "$GITHUB_EVENT_NAME"', "landing_facts.py --event pull_request", 1)),
         ("the release check told no event", lambda t: t.replace('--check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"', "--check site", 1)),
