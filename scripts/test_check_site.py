@@ -213,5 +213,85 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("how-it-works.html", "<body>", '<body><iframe src="http://example.org/"></iframe>'), "(iframe), from outside the site")
 
 
+LLMS = Path(__file__).with_name("llms_txt.py")
+FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>\n'
+          '<pre lang="en">next: owner\nask: "x"</pre></div>\n<p class="week-arrow" aria-hidden="true">↓</p>\n'
+          '<div class="week-card board"><h3 class="t">board</h3>\n<div class="wk-board" lang="en"><p><i>##</i> <b class="hot">waiting for you: 3</b></p>\n'
+          '<p><span class="id">FM-024</span> a question · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>\n'
+          '<p class="week-arrow" aria-hidden="true">↓</p>\n<div class="week-card"><h3 class="t">4127dba</h3><p class="src">git commit</p>\n'
+          '<pre lang="en"><span class="del">-next: owner</span>\n<span class="add">+next: build</span></pre></div>\n'
+          '<figcaption>One question, a signed commit that sets <code>next</code> to <code>build</code>.</figcaption>\n</figure>')
+
+
+class Twins(unittest.TestCase):
+    """llms_txt.py writes each page's Markdown twin as the page reads: includes expanded, the picture as Markdown, links to twins, probe.txt only while the switch is on."""
+
+    def written(self, probe, landing_has_prompt=True, how=None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        files = {"docs/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n[Set up](setup.md)\n",
+                 "docs/de/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n[Einrichtung](setup.md), [Vertrag](../agents/README.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n",
+                 "docs/how-it-works.md": how or "# How it works\n\n" + FIGURE + "\n\n## Try it\n\n--8<-- \"how-it-works.en.md\"\n\n[Set up](setup.md)\n",
+                 "docs/de/how-it-works.md": "# So funktioniert's\n\n--8<-- \"how-it-works.de.md\"\n\n[Einrichtung](setup.md)\n",
+                 "docs/setup.md": "# Set up\n", "docs/de/setup.md": "# Einrichtung\n", "docs/agents/README.md": '--8<-- "README.md"\n', "README.md": "# README\n",
+                 "launch/%s/how-it-works.en.md" % ("probe" if probe else "interim"): "The button \"Copy the prompt\" copies it.\n" if probe else "The button leads to the note.\n",
+                 "launch/%s/how-it-works.de.md" % ("probe" if probe else "interim"): "Der Knopf kopiert.\n" if probe else "Der Knopf führt zur Notiz.\n",
+                 "zensical.toml": '[project]\n[project.extra]\nprobe = %s\n[project.markdown_extensions]\npymdownx.snippets.base_path = [".", "launch/%s"]\n' % ("true" if probe else "false", "probe" if probe else "interim"),
+                 "site/index.html": '<textarea id="probe-text">Say &quot;no fit&quot;.\nI decide.\n</textarea>' if landing_has_prompt else "<p>no prompt</p>",
+                 "site/de/index.html": '<textarea id="probe-text">Sagen Sie „passt nicht“.\n</textarea>' if landing_has_prompt else "<p>no prompt</p>"}
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text(text, encoding="utf-8", newline="")
+        result = subprocess.run([sys.executable, str(LLMS), "site"], cwd=str(root), capture_output=True, text=True)
+        return root / "site", result
+
+    def test_a_twin_reads_as_its_page_does(self):
+        site, result = self.written(probe=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        twin = (site / "how-it-works/index.md").read_text(encoding="utf-8")
+        self.assertIn("The button leads to the note.", twin)
+        self.assertNotIn("--8<--", twin)
+        self.assertNotRegex(twin, r"</?[a-zA-Z][a-zA-Z0-9]*[\s/>]")
+        for wanted in ("**FM-024** · work-tracker/FM-024-….md · 2026-09-28", "```\nnext: owner\nask: \"x\"\n```", "↓", "a ruling [accept] [reject]", "**4127dba** · git commit",
+                       "-next: owner\n+next: build", "*One question, a signed commit that sets `next` to `build`.*"):
+            self.assertIn(wanted, twin)
+        self.assertIn("](../setup/index.md)", twin)
+        self.assertIn("](setup/index.md)", (site / "de/index.md").read_text(encoding="utf-8"))
+        self.assertIn("](../agents/README/index.md)", (site / "de/index.md").read_text(encoding="utf-8"))
+        self.assertIn("https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md", (site / "de/index.md").read_text(encoding="utf-8"))
+        self.assertIn("](de/how-it-works/index.md)", (site / "llms.txt").read_text(encoding="utf-8"))
+
+    def test_only_the_launch_states_words_are_in_a_twin(self):
+        for probe, kept, other in ((False, "leads to the note", "copies it"), (True, "copies it", "leads to the note")):
+            with self.subTest(probe=probe):
+                site, result = self.written(probe)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(kept, (site / "how-it-works/index.md").read_text(encoding="utf-8"))
+                self.assertNotIn(other, (site / "how-it-works/index.md").read_text(encoding="utf-8"))
+
+    def test_probe_txt_is_the_prompt_the_dialog_shows_and_only_while_the_switch_is_on(self):
+        site, result = self.written(probe=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((site / "probe.txt").exists() or (site / "de/probe.txt").exists())
+        site, result = self.written(probe=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((site / "probe.txt").read_bytes(), 'Say "no fit".\nI decide.\n'.encode("utf-8"))
+        self.assertEqual((site / "de/probe.txt").read_bytes(), "Sagen Sie „passt nicht“.\n".encode("utf-8"))
+        site, result = self.written(probe=True, landing_has_prompt=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("shows no prompt", result.stderr)
+
+    def test_the_controls_see_what_they_refuse(self):
+        """The twin's check would pass a twin that still carried the picture's HTML, an include or a state fence if the twin could: here it does."""
+        site, result = self.written(probe=False, how="# How it works\n\n<figure class=\"week-x\"><pre>next</pre></figure>\n\n--8<-- \"how-it-works.en.md\"\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        twin = (site / "how-it-works/index.md").read_text(encoding="utf-8")
+        self.assertRegex(twin, r"</?[a-zA-Z][a-zA-Z0-9]*[\s/>]")
+        site, result = self.written(probe=False, how='# How it works\n\n--8<-- "missing.md"\n')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("none of the snippet base paths", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
