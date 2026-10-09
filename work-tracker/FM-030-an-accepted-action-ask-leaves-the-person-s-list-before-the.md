@@ -31,8 +31,8 @@ its morning sitting. The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `ma
 an earlier chain of this branch, which was replaced before its merge to keep unredacted detail out of the record; it
 found R1–R16, and this text closes R1–R10.
 
-**The notice's code is literal, and its text travels as data, on every platform** — built for 0.19.3 on
-`fm/030-the-notice-carries-its-text-as-data`, not merged. `--notify` hands macOS `osascript` and Windows PowerShell fixed
+**The notice's code is literal, and its text travels as data, on every platform** — built for 0.19.3 and merged into
+`release/v0.19.3` at `268ae13`; not yet released. `--notify` hands macOS `osascript` and Windows PowerShell fixed
 code, the same on every run, which reads the notice's title and body from the environment; on Linux they are
 `notify-send`'s own arguments, after `--`.
 
