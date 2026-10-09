@@ -12186,7 +12186,7 @@ _lf_why = ("this clone is shallow" if _shallow32 != "false" else f"this clone do
            else "this clone does not hold ffa63b8, the Owner's answer the high scores are split at" if not _held("ffa63b8")
            else "no tz database for Europe/Berlin here (the filing days and the build's day are Berlin days)" if not _zone_ok else "")
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 8, _lf_why)
+    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 9, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -12213,6 +12213,10 @@ else:
         check(f"FM-006 · B1 · the wrecks: every tracker tagged `bug` or `security` at {_LF_TAG} — the 27 the landing's WRECKS drew there, field for field and "
               f"in their order, and FM-045, filed since, first, placed by the drawing's rule (saw {len(f_.get('wrecks', []))} wrecks; the first "
               f"{(f_.get('wrecks') or [None])[0]})", f_.get("wrecks") == [new_] + drawn_)
+        opened_ = sum(w["status"] in ("In Progress", "Proposed") for w in f_.get("wrecks", []))
+        check(f"FM-006 · B1 · the top bar's counts are the wrecks_json's own: 28 wrecks at {_LF_TAG}, 11 open — In Progress or Proposed, FM-045 among them "
+              f"before it shipped (saw {f_.get('counts')}; the list holds {len(f_.get('wrecks', []))}, {opened_} open)",
+              f_.get("counts") == {"wrecks": 28, "open": 11} == {"wrecks": len(f_.get("wrecks", [])), "open": opened_})
         check("FM-006 · B1 · the same trackers give the same file: a second reading writes the same bytes",
               rerun_[0] == 0 and out_.exists() and again_.exists() and out_.read_bytes() == again_.read_bytes())
         chart_, at_ = lf_.Chart(template_), {i: (lo, la) for i, lo, la in lf_.DRAWN if i not in ("FM-038", "FM-039", "FM-040", "FM-041")}
@@ -12429,7 +12433,7 @@ else:
             check(f"FM-006 · B1 · the probe switch on: {what_} stops the build — {says_.split(':')[0]} (saw {got_!r})", isinstance(got_, str) and got_.startswith(says_))
 
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing names the release the build reads (RV-2750)", 12, _lf_why)
+    _skipped("FM-006 · B1 · the landing names the release the build reads (RV-2750)", 15, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -12437,9 +12441,12 @@ else:
         sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", _LF_TAG + "^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
         old_sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", "v0.19.1^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
-        def _lf_facts(tag="v0.19.2", sha=None):
+        def _lf_facts(tag="v0.19.2", sha=None, counts='{"wrecks": 2, "open": 1}'):
+            """A facts.html as the script writes it, in the lines `--check` reads: two wrecks, one of them open."""
             return ("{% set release = {\"tag\": \"" + tag + "\", \"version\": \"" + tag[1:] + "\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\"} %}\n"
-                    "{% set read = {\"date\": \"2026-10-09\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\", \"sha\": \"" + (sha or sha_)[:7] + "\"} %}\n")
+                    "{% set read = {\"date\": \"2026-10-09\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\", \"sha\": \"" + (sha or sha_)[:7] + "\"} %}\n"
+                    + ("" if counts is None else "{% set counts = " + counts + " %}\n")
+                    + '{% set wrecks_json %}[{"id": "FM-041", "status": "In Progress"}, {"id": "FM-040", "status": "Shipped"}]{% endset %}\n')
 
         def _lf_landing(label="v0.19.2", link="v0.19.2", aria="v0.19.2", foot="v0.19.2", text="v0.19.2", word="release", today=False):
             """A landing's top bar and footer as the B1 template writes them (`today`: as v0.19.2's page has the label, not yet a link)."""
@@ -12472,7 +12479,12 @@ else:
                 ("the German landing's label names another release", lambda: _lf_site(_lf_landing(), _lf_landing(word="Release", label="v0.19.1")), "de/index.html names v0.19.1"),
                 ("facts.html names another release", lambda: _lf_site(_lf_landing(), facts=_lf_facts(tag="v0.19.1")), "names v0.19.1 read at"),
                 ("facts.html was read at another commit", lambda: _lf_site(_lf_landing(), facts=_lf_facts(sha=old_sha_)), f"read at {old_sha_[:7]}"),
-                ("the landing carries no release label", lambda: _lf_site(_lf_landing().replace("release<b>v0.19.2</b>", "")), "carries no release label")):
+                ("the landing carries no release label", lambda: _lf_site(_lf_landing().replace("release<b>v0.19.2</b>", "")), "carries no release label"),
+                ("facts.html counts a wreck more than its wrecks_json holds", lambda: _lf_site(_lf_landing(), facts=_lf_facts(counts='{"wrecks": 3, "open": 1}')),
+                 "counts {'wrecks': 3, 'open': 1}, and its wrecks_json holds {'wrecks': 2, 'open': 1}"),
+                ("facts.html counts a Shipped wreck as open", lambda: _lf_site(_lf_landing(), facts=_lf_facts(counts='{"wrecks": 2, "open": 2}')),
+                 "counts {'wrecks': 2, 'open': 2}, and its wrecks_json holds {'wrecks': 2, 'open': 1}"),
+                ("facts.html carries no counts", lambda: _lf_site(_lf_landing(), facts=_lf_facts(counts=None)), "counts None")):
             got_ = case_()
             check(f"FM-006 · B1 · RV-2750: where {what_}, the check fails — exit 1, one line (saw {got_})",
                   got_[0] == 1 and len(got_[2].strip().splitlines()) == 1 and says_ in got_[2])
