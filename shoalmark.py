@@ -8273,7 +8273,7 @@ def deriver_env():
     return {k: v for k, v in os.environ.items() if k in keep or k.startswith("LC_")}
 
 
-DERIVE_TIMEOUT = 60           # seconds — a deriver runs on every commit; one that hangs must not hang the gate
+DERIVE_TIMEOUT = 60           # seconds — a deriver runs on each explicit run that reads the trackers, never in a hook's run or the board's; one that hangs must not hang that run
 # NO DERIVER IN HOOKS (the Owner's ruling filed in FM-006, *No deriver in hooks*): a hook's run of the copy starts no deriver — a deriver is the tree's own
 # program. Where the repository has one, the commit's hook leaves INDEX.md and the derived files as they are staged, never rewritten without the derived
 # columns, and says so in this line; explicit runs run the deriver, and CI's `--check` holds what it derives.
@@ -8319,7 +8319,7 @@ def run_deriver(trackers, mode="write", flags=()):
         run = subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)], input=ask, capture_output=True, text=True, encoding="utf-8",
                              cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)
     except subprocess.TimeoutExpired:
-        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on every commit; make it fast, or make it fail"]
+        return EXIT_LINT, [f"{exe.relative_to(ROOT).as_posix()} did not answer within {DERIVE_TIMEOUT} s — a deriver runs on each explicit run that reads the trackers, never in a hook's run or the board's; make it fast, or make it fail"]
     if run.returncode:
         print(run.stderr.rstrip() or f"{exe.relative_to(ROOT).as_posix()} exited {run.returncode}", file=sys.stderr)
         return run.returncode, []

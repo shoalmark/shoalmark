@@ -4714,6 +4714,12 @@ with tempfile.TemporaryDirectory() as d:
     finally:
         fm.DERIVE_TIMEOUT = _t
     check("a deriver that hangs does not hang the gate: it is refused after a bounded wait, and says what ran long", code == fm.EXIT_LINT and "did not answer within 1 s" in err)
+    claims_ = [l_.strip()[:90] for l_ in Path(fm.__file__).read_text(encoding="utf-8").splitlines() if re.search(r"(?i)\bderiver\b.*\bevery commit\b", l_)]
+    check(f"FM-045 · the deriver's timeout refusal says when a deriver runs — on each explicit run that reads the trackers, never in a hook's run or the board's — "
+          f"names the deriver and its timeout, keeps *make it fast, or make it fail* and exits 4; no text of the tool says a deriver runs on every commit "
+          f"(saw {err.strip().splitlines()[:1]}; {claims_})",
+          code == fm.EXIT_LINT and not claims_ and "  docs/work-tracker/derive did not answer within 1 s — a deriver runs on each explicit run that reads the trackers, "
+                                                    "never in a hook's run or the board's; make it fast, or make it fail\n" in err)
     exe.unlink()
     broken = root / "docs/work-tracker/MSR-002-x.md"; broken.write_text('---\nid: MSR-002\nstatus: Proposed\nnope: 1\nhook: "h"\n---\n\n# MSR-002 — t\n')
     code, out, _ = run(root, "--print-written")
