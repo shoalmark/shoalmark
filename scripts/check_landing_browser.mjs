@@ -2,7 +2,8 @@
 // SITE is a built site, STATE is `interim` or `probe` (the launch state it was built in). The site is served from 127.0.0.1 and every other host is
 // unresolvable, so a page that asks for the outside fails and is logged. For each landing and How it works page at 360, 375 and 390 px (and 1440):
 //   no sideways scroll, no script error, no failed request, no request to any other host.
-// On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show.
+// On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show, with the widest hi-score
+// the bar can print (888/888) set in it.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
 // names; focus is inside it; Tab and Shift+Tab never reach the page behind; its folds open and close by keyboard; Escape closes it and focus is back on the
 // button; it fits the window and the page does not scroll sideways under it; and, with the folds closed, nothing inside it scrolls at 360×780, 375×667 and
@@ -129,6 +130,7 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
 // the top bar's five anchors, wherever the page first shows them (stepping the window up from 1000 px): one row each, and clear of the language switch
 if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.startsWith("how"))) {
   const t = await open(page, {w: 1000, h: 900});
+  await t.js(`document.querySelector(".score .opt b").textContent = "888/888"`);   // the widest hi-score the bar can print: the breakpoint must leave room for it
   const shows = () => t.js(`getComputedStyle(document.querySelector(".hud nav a:not(.docs)")).display != "none"`);
   let first = null;
   for (let w = 1000; w <= 1400 && first === null; w++) { await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false}); if (await shows()) first = w }

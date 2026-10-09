@@ -12360,14 +12360,14 @@ else:
                             "with its folds closed, nothing in the dialog scrolls inside itself"),
                 "unfolds": ("a fold that keyboard does not open", _mutate("unfolds", "index.html", "</body>", '<script>document.addEventListener("click", e => { if (e.target.closest("summary")) e.preventDefault() })</script></body>'),
                             "fold 1 opens and closes by keyboard"),
-                "wraps": ("a top bar whose anchors show a width too early", _mutate("wraps", "index.html", "@media (max-width:1099px){.hud nav a:not(.docs){display:none}}", "@media (max-width:1091px){.hud nav a:not(.docs){display:none}}", "bar"),
+                "wraps": ("a top bar whose anchors show a width too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1129px){.hud nav a:not(.docs){display:none}}", "@media (max-width:1099px){.hud nav a:not(.docs){display:none}}", "bar"),
                           "the top bar's anchors stand in one row, clear of the switch, where they first show"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a dialog that does not give focus back and a top bar whose anchors show a width too early makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element

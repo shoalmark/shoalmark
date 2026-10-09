@@ -4,9 +4,9 @@
     facts dated, the reports cut, the chart's texts above the CRT overlay, the font loading), then the v0.19.0 first screen (the Owner's
     ruling filed in FM-006, What a stranger meets first: the lead, the link previews, the fleet, two lines, the phone's first screen), then B1. -#}
 {#- One template, its words per language. `partials/landing/en.html` and `de.html` hold every word (`{{ w.key }}`), `partials/landing/facts.html`
-    every figure (the release, the high score, the wrecks, the pins, the build's date and commit), and the page's language is chosen from its
+    every figure the build reads (the release, the high score, the wrecks, the board's excerpt, the pins, the build's date and commit), and the page's language is chosen from its
     path, as overrides/main.html does for the docs pages: the pages under de/ are German. One switch, `probe` under [project.extra] in
-    zensical.toml, off: it makes the primary button copy the probe prompt and open its dialog; off, the button hands the agents the note.
+    zensical.toml, off by default: on, the primary button copies the probe prompt and opens its dialog; off, it hands the agents the note.
     Edits of B1 are marked where they stand with a comment like this one, which the build drops. -#}
 {%- set de = page and page.url and page.url[:3] == "de/" -%}
 {%- import "partials/landing/" ~ ("de" if de else "en") ~ ".html" as L -%}
@@ -387,8 +387,8 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 }{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the actions carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, each action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (max-width:400px){.hud .wrap{gap:12px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
 /* B1 — top bar, by width: the switch and the release link take their room from the bar's own stats, as it already yields them */
-@media (max-width:1167px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer: with the switch and all five anchors the bar needs 1160px in German and 1093px in English, with v0.19.2 in the label; the anchors show from 1168px (1100px in English), so that a wider label still fits, and the browser check finds the width where they first show and that they stand in one row there #}
-@media (max-width:1099px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1100px, not 981px — the switch needs the room (the bar needs 992px without it) #}
+@media (max-width:1195px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer. With the switch and all five anchors the bar needs 1160px in German and 1093px in English at today's hi-score, 76/91 with v0.19.2 in the label, and 1188px and 1123px with the widest figure the bar can print, 888/888 (measured; the hi-score is read on every deploy and grows a digit with the counted range). The anchors show from 1196px, so that even that figure keeps them in one row; the browser check sets 888/888 and finds that they stand in one row where they first show #}
+@media (max-width:1129px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1130px in English (1196px in German), not 981px — the switch needs the room; the bar needs 992px without it #}
 @media (max-width:699px){.hud .lang .l{display:none}.hud .lang .s{display:inline}.hud .lang{padding:8px 8px}}
 @media (max-width:700px){.hud .langsw{margin-left:-8px}}{# B1: with the score's own 14px gap, the switch reads as the list's last item #}
 @media (max-width:469px){.score .hot{display:none}}
