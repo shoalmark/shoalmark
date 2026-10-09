@@ -1,6 +1,6 @@
 # Set up in ten minutes
 
-*For the person who owns the repository. Python 3.9 or newer is the only requirement.*
+*For the person who owns the repository. It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.*
 
 ## 1. Put the tool in the repository
 

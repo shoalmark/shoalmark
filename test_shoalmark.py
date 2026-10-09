@@ -4622,6 +4622,74 @@ check("FM-006 · B1 · the launch check is not blind: each of the switch on with
       f"the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 7)
 
 
+# --- FM-006 · B1 · what the tool needs today, in the Owner's words: git installed, on Subversion too ------------------------------------
+# The same fact, in every place that says what shoalmark needs, in the Owner's words of 2026-10-09: README.md, the English and the German start page and
+# the landing's beta list say it as one sentence among the beta lines; the two setup pages and the two How it works pages say it in their own; the README's
+# sentence on what it needs beside Python says it once more. The opening sentence the withdrawn ruling gave the landing ("on every machine") stays out.
+_GIT_FILES = ("README.md", "docs/index.md", "docs/de/index.md", "docs/setup.md", "docs/de/setup.md", "docs/how-it-works.md", "docs/de/how-it-works.md",
+              "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
+_GIT_EN = ("Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. "
+           "Today the tool needs `git` installed, on Subversion too. Signed answers need a `git` repository, and the pull-request queue a `git` repository "
+           "on GitHub and GitHub's command line, `gh`.")
+_GIT_DE = ("Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. "
+           "Heute braucht das Werkzeug ein installiertes `git`, auch unter Subversion. Signierte Antworten brauchen ein `git`-Repository, die Pull-Request-Warteschlange "
+           "ein `git`-Repository auf GitHub und GitHubs Kommandozeile, `gh`.")
+_GIT_SETUP = ("*For the person who owns the repository. It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.*",
+              "*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.*")
+_GIT_HOW = ("- It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.\n  It needs no server or account of its own.\n",
+            "- Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.\n  Es braucht keinen eigenen Server und kein eigenes Konto.\n")
+_GIT_README = "It needs no server or database of its own; besides Python 3.9 or newer, it needs `git` installed, today."
+
+
+def _git_problems(src):
+    """What is wrong with the sentences that say what the tool needs: each of the eight places holds the Owner's words, in step in English and German, and
+    none holds the withdrawn opening sentence or the older claims."""
+    bad, html = [], lambda s: re.sub(r"`([^`]*)`", r"<code>\1</code>", s)
+    words, more = _landing_words(src)
+    bad += more
+    for path, want in (("README.md", _GIT_EN), ("docs/index.md", _GIT_EN), ("docs/de/index.md", _GIT_DE)):
+        if "\n- " + want + "\n" not in src[path]:
+            bad.append(f"{path} does not hold the Owner's sentence on what the tool needs, in its beta list")
+    for lang, want in (("en", _GIT_EN), ("de", _GIT_DE)):
+        if words[lang].get("beta_4") != html(want):
+            bad.append(f"the landing's words ({lang}) do not hold the Owner's sentence on what the tool needs, as beta_4")
+    for path, want in zip(("docs/setup.md", "docs/de/setup.md"), _GIT_SETUP):
+        if want not in src[path] or "only requirement" in src[path] or "einzige Voraussetzung" in src[path]:
+            bad.append(f"{path} does not say what the tool needs in the Owner's words, or still calls Python the only requirement")
+    for path, want in zip(("docs/how-it-works.md", "docs/de/how-it-works.md"), _GIT_HOW):
+        if want not in src[path]:
+            bad.append(f"{path} does not hold the git sentence and the sentence on the server in the Owner's words, each on a line of its own")
+    if _GIT_README not in src["README.md"] or "no dependency beyond" in src["README.md"]:
+        bad.append("README.md's sentence on what it needs is not the Owner's, or still says no dependency")
+    for path in ("README.md", "docs/index.md", "docs/de/index.md", "docs/how-it-works.md", "docs/de/how-it-works.md"):
+        if "on every machine" in src[path] or "auf jedem Rechner" in src[path]:
+            bad.append(f"{path} holds the opening sentence of the withdrawn ruling, on every machine")
+    for lang, beta in (("en", words["en"].get("beta_4", "")), ("de", words["de"].get("beta_4", ""))):
+        if "every machine" in beta or "jedem Rechner" in beta:
+            bad.append(f"the landing's beta list ({lang}) holds the opening sentence of the withdrawn ruling")
+    return bad
+
+
+_gs = _sources(_GIT_FILES)
+_gp = _git_problems(_gs)
+check("FM-006 · B1 · what the tool needs, in the Owner's words: git installed, on Subversion too, and the queue's `gh` — the README, both start pages, the landing's two lists, both setup pages and "
+      f"both How it works pages say it in step in English and German, the opening sentence of the withdrawn ruling stays out (problems found: {_gp})", _gp == [])
+_gctl = {"README's sentence as it was": _with(_gs, "README.md", "Today the tool needs `git` installed, on Subversion too. ", ""),
+         "the English start page without gh": _with(_gs, "docs/index.md", " and GitHub's command line, `gh`.", "."),
+         "the German start page's gh clause changed": _with(_gs, "docs/de/index.md", "GitHubs Kommandozeile, `gh`", "die GitHub-CLI"),
+         "the landing's English list with the withdrawn opening": _with(_gs, "overrides/partials/landing/en.html", '"beta_4": "Made', '"beta_4": "Needs <code>git</code> on every machine, Subversion included. Made'),
+         "the German landing list as it was": _with(_gs, "overrides/partials/landing/de.html", "Heute braucht das Werkzeug ein installiertes <code>git</code>, auch unter Subversion. ", ""),
+         "the English setup page as it was": _with(_gs, "docs/setup.md", "It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.", "Python 3.9 or newer is the only requirement."),
+         "the German setup page as it was": _with(_gs, "docs/de/setup.md", "Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.", "Python 3.9 oder neuer ist die einzige Voraussetzung."),
+         "How it works with the withdrawn opening": _with(_gs, "docs/how-it-works.md", "- It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.", "- It needs `git` on every machine, Subversion included, and Python 3.9 or newer."),
+         "How it works' second sentence as it was": _with(_gs, "docs/de/how-it-works.md", "Es braucht keinen eigenen Server und kein eigenes Konto.", "Es braucht keinen Server und kein Konto."),
+         "the README's other sentence as it was": _with(_gs, "README.md", _GIT_README, "It needs no server, no database and no dependency beyond Python 3.9.")}
+_gctl_saw = {name: len(_git_problems(src)) for name, src in _gctl.items()}
+check("FM-006 · B1 · the git wording's check is not blind: each of the README's sentence as it was, the English start page without gh, the German one's gh clause changed, the landing's English "
+      "list with the withdrawn opening, the German one as it was, either setup page as it was, How it works with the withdrawn opening or its second sentence as it was, and the README's other "
+      f"sentence as it was leaves a problem (problems found: {_gctl_saw})", all(_gctl_saw.values()) and len(_gctl_saw) == 10)
+
+
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
       and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")

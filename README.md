@@ -26,7 +26,7 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
 - Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Today the tool needs `git` installed, on Subversion too. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
 
 **A convention, Stage 0:** a [`requirements/`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) folder holds one line per requirement — id, *shall*,
 source, acceptance criterion — one text for developer and tester; a tracker cites the id. shoalmark has the
@@ -37,7 +37,7 @@ convention only: checks and traceability are later.
 ---
 
 A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads
-them all, a gate on every commit. It needs no server, no database and no dependency beyond Python 3.9.
+them all, a gate on every commit. It needs no server or database of its own; besides Python 3.9 or newer, it needs `git` installed, today.
 **This page is written for the agent that has to use it.** Find your situation, do what it says.
 
 | You are… | Go to |

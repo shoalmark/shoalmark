@@ -53,8 +53,8 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 - It does not prove that work is right. The gate refuses a *done* with no commit behind it; whether that commit did the job is what a review is for.
 - It is not a migration tool: it imports no ticket system and starts from your repository's own work.
 - Today it fits a project with one person in charge. Several people in charge are not tested in this beta.
-- It needs `git` on every machine, Subversion included, and Python 3.9 or newer.
-  It needs no server and no account.
+- It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.
+  It needs no server or account of its own.
 
 ## Try it
 

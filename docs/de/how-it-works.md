@@ -53,8 +53,8 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 - Es beweist nicht, dass Arbeit richtig ist. Das Gate lehnt ein „fertig“ ohne Commit dahinter ab; ob dieser Commit seinen Zweck erfüllt, klärt ein Review.
 - Es ist kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys.
 - Es passt heute zu Projekten, in denen eine Person das Sagen hat. Mehrere Menschen, die das Sagen haben, sind in dieser Beta nicht getestet.
-- Es braucht `git` auf jedem Rechner, auch unter Subversion, und Python 3.9 oder neuer.
-  Es braucht keinen Server und kein Konto.
+- Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.
+  Es braucht keinen eigenen Server und kein eigenes Konto.
 
 ## Ausprobieren
 
