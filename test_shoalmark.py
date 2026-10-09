@@ -12213,7 +12213,13 @@ else:
         with tarfile.open(fileobj=io.BytesIO(tar)) as tf:
             tf.extractall(into, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
 
-    def _build(stage):
+    def _build(stage, commit):
+        """`zensical build` in a stage of `commit`, as docs.yml builds it: a tree that holds scripts/landing_facts.py writes the landing's figures
+        first, read from this history at that commit (the pull requests from the recorded response)."""
+        facts = stage / "scripts/landing_facts.py"
+        if facts.is_file():
+            subprocess.run([sys.executable, str(facts), "--repo", str(HERE), "--commit", commit, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-144.json")],
+                           cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
         subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
 
     def _checks_mjs(script, stage_dir, out, *extra):
@@ -12232,7 +12238,7 @@ else:
         for name, block, chart_only, mock in (("the start page's checks.json", _b6["checks.json"], False, mock_html),
                                               ("checks-r3-before.json", _b6["checks-r3-before.json"], True, None)):
             stage = work / block["tested"]
-            _stage(block["tested"], stage); _build(stage)
+            _stage(block["tested"], stage); _build(stage, block["tested"])
             got = _checks_mjs(_FM6_DIR + "/checks.mjs", stage / "site", work / (block["tested"] + ".json"), *([mock] if mock else []))
             _same(name, got, block, _derive_landing(got, chart_only) if got else None)
         if not _npm:
@@ -12252,7 +12258,7 @@ else:
                     for rel in ("work-tracker/brand/theme.css", "docs/stylesheets/shoalmark.css"):
                         (src / rel).write_bytes(subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
                     subprocess.run([sys.executable, "shoalmark.py", "--html-only"], cwd=str(src), check=True, capture_output=True, env=_ENV)
-                    _build(src)
+                    _build(src, "361336a")
                     (stages / step).mkdir(parents=True)
                     shutil.copy(src / "work-tracker/index.html", stages / step / "board.html")
                     for rel in ("work-tracker/brand", "work-tracker/view", "site"):
@@ -12353,6 +12359,540 @@ _clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in
 check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
+
+# --- FM-006, B1: the landing's figures and the probe prompt's pins, written before every site build by scripts/landing_facts.py and never
+#     committed — read here at the release v0.19.2, offline: the pull requests from the response recorded in the repository, cut at #144
+_LF_PATH, _LF_PULLS, _LF_TAG = HERE / "scripts/landing_facts.py", HERE / "scripts/landing_facts.pulls-1-144.json", "v0.19.2"
+_LF_EPOCH = "1791540000"                                  # 2026-10-09, 12:00 in Berlin: the build's day, held still
+
+
+def _lf_module():
+    """scripts/landing_facts.py imported as a module, its readers called one at a time."""
+    spec = importlib.util.spec_from_file_location("landing_facts", _LF_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _lf_run(*argv):
+    """The script as a build runs it: (exit, stdout, stderr)."""
+    r = subprocess.run([sys.executable, str(_LF_PATH), *argv], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=dict(_ENV, SOURCE_DATE_EPOCH=_LF_EPOCH), timeout=900)
+    return r.returncode, r.stdout, r.stderr
+
+
+def _lf_read(path):
+    """facts.html as the template reads it: each `set` as its value, wrecks_json parsed."""
+    text = Path(path).read_text(encoding="utf-8")
+    out = {k: json.loads(re.sub(r": none(?=[,}])", ": null", v)) for k, v in re.findall(r"^\{% set (\w+) = (.*) %\}$", text, re.M)}
+    out["wrecks"] = json.loads(re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text, re.S).group(1))
+    return out
+
+
+def _lf_stops(run_, facts, says):
+    """A reading that stops the build: exit 1, one line that names it, nothing on stdout, and no facts.html left behind."""
+    code, out, err = run_
+    lines = err.strip().splitlines()
+    return code == 1 and not out and len(lines) == 1 and lines[0].startswith("landing facts: ") and says in lines[0] and not Path(facts).exists()
+
+
+def _lf_clone(base):
+    """A clone of this repository sharing its objects, at v0.19.2 — commits made in it reach nothing here."""
+    clone = base / "clone"
+    subprocess.run(["git", "clone", "--quiet", "--shared", "--no-checkout", str(HERE), str(clone)], check=True, capture_output=True, env=_ENV)
+    git(clone, "checkout", "-q", "--detach", _LF_TAG)
+    return clone
+
+
+_lf_why = ("this clone is shallow" if _shallow32 != "false" else f"this clone does not hold {_LF_TAG}" if not _held(_LF_TAG)
+           else "this clone does not hold v0.19.1, the release before it" if not _held("v0.19.1")
+           else "this clone does not hold ffa63b8, the Owner's answer the high scores are split at" if not _held("ffa63b8")
+           else "no tz database for Europe/Berlin here (the filing days and the build's day are Berlin days)" if not _zone_ok else "")
+if _lf_why:
+    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 8, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        out_, again_, cfg_ = base_ / "facts.html", base_ / "again.html", base_ / "zensical.toml"
+        cfg_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")       # the probe switch off, whatever this tree's own says
+        args_ = ("--commit", _LF_TAG, "--repo", str(HERE), "--config", str(cfg_), "--pulls", str(_LF_PULLS))
+        run_, rerun_ = _lf_run(*args_, "--out", str(out_)), _lf_run(*args_, "--out", str(again_))
+        f_ = _lf_read(out_) if run_[0] == 0 else {}
+        lf_ = _lf_module()
+        tagged_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", _LF_TAG + "^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        template_ = subprocess.run(["git", "-C", str(HERE), "show", f"{_LF_TAG}:overrides/landing.html"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
+        drawn_ = json.loads(re.search(r"^const WRECKS = (\[.*\]);$", template_, re.M).group(1))
+        new_ = {"id": "FM-045", "inc": "5b56de3", "filed": "2026-10-08", "status": "In Progress", "lon": 8.23, "lat": 53.505,     # Shipped after the tag
+                "title": "The board's refresh stops on git ls-tree, which its read-only list does not hold",
+                "report": "Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and the board goes stale.",
+                "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-045-the-board-s-refresh-stops-on-git-ls-tree-which-its-read-only.md"}
+        check(f"FM-006 · B1 · landing_facts.py at {_LF_TAG}: the release is the tag VERSION names, and its day the CHANGELOG heading's, in English and "
+              f"German (saw exit {run_[0]} {run_[2].strip()[:200]!r}, {f_.get('release')})",
+              run_[0] == 0 and f_.get("release") == {"tag": "v0.19.2", "version": "0.19.2", "date_en": "9 October 2026", "date_de": "9. Oktober 2026"})
+        score_ = lf_.score(lf_.Git(HERE), json.loads(_LF_PULLS.read_text(encoding="utf-8"))["pulls"])
+        check(f"FM-006 · B1 · the high scores, offline from the recorded response: 71/82 for the pull requests opened after the Owner's signed answer "
+              f"(ffa63b8), to #144, and 10/37 before it — the Auditor's numbers (saw {score_}; facts.html {f_.get('hiscore')!r} to #{f_.get('hiscore_last')})",
+              score_ == ((71, 82, 144), (10, 37)) and f_.get("hiscore") == "71/82" and f_.get("hiscore_last") == 144)
+        check(f"FM-006 · B1 · the wrecks: every tracker tagged `bug` or `security` at {_LF_TAG} — the 27 the landing's WRECKS drew there, field for field and "
+              f"in their order, and FM-045, filed since, first, placed by the drawing's rule (saw {len(f_.get('wrecks', []))} wrecks; the first "
+              f"{(f_.get('wrecks') or [None])[0]})", f_.get("wrecks") == [new_] + drawn_)
+        check("FM-006 · B1 · the same trackers give the same file: a second reading writes the same bytes",
+              rerun_[0] == 0 and out_.exists() and again_.exists() and out_.read_bytes() == again_.read_bytes())
+        chart_, at_ = lf_.Chart(template_), {i: (lo, la) for i, lo, la in lf_.DRAWN if i not in ("FM-038", "FM-039", "FM-040", "FM-041")}
+        placed_, drawing_ = [], {i: (lo, la) for i, lo, la in lf_.DRAWN}
+        for i_ in ("FM-038", "FM-039", "FM-040"):
+            placed_.append((i_, chart_.place([(chart_.x(lo), chart_.y(la)) for lo, la in at_.values()])))
+            at_[i_] = drawing_[i_]
+        check(f"FM-006 · B1 · the drawing's rule places FM-038, FM-039 and FM-040 where the drawing has them, each against the wrecks drawn before it "
+              f"and the chart's names (saw {placed_})", placed_ == [(i, drawing_[i]) for i in ("FM-038", "FM-039", "FM-040")])
+        check(f"FM-006 · B1 · the board's excerpt is what `shoalmark.py --owner` prints at {_LF_TAG}: one question waits for the Owner, one act is owed, "
+              f"and the first is FM-007's line as it prints it (saw {f_.get('excerpt')})",
+              f_.get("excerpt") == {"waiting": 1, "acts": 1, "act": {"id": "FM-007", "line": "after the scoring, once the key is delivered. · no date yet · promised 2026-09-25"}})
+        under_ = lambda box: [w["id"] for w in f_.get("wrecks", []) if not (chart_.x(w["lon"]) + lf_.WRECK[2] <= box[0] or chart_.x(w["lon"]) + lf_.WRECK[0] >= box[2]
+                                                                     or chart_.y(w["lat"]) + lf_.WRECK[3] <= box[1] or chart_.y(w["lat"]) + lf_.WRECK[1] >= box[3])]
+        clear_, grown_ = under_(lf_.TITLE), under_((lf_.TITLE[0], lf_.TITLE[1], lf_.TITLE[2] + 12, lf_.TITLE[3] + 12))
+        check(f"FM-006 · B1 · no wreck's button falls under the hero's text: each of the {len(f_.get('wrecks', []))} at {_LF_TAG} is clear of the title's box, "
+              f"{lf_.TITLE}, as the B1 template draws it; its control, the box 12 chart pixels wider and taller, has FM-013 and FM-029 under it (under it: "
+              f"{clear_}; the control's {grown_})", bool(f_.get("wrecks")) and not clear_ and grown_ == ["FM-029", "FM-013"])
+        check(f"FM-006 · B1 · the probe switch off: the pins are the commit, the release's tag and the two marked stand-ins; `read` is the build's Berlin day, "
+              f"as ISO and in English and German, and the commit (saw {f_.get('pins')}, {f_.get('read')})",
+              f_.get("pins") == {"ADOPT_COMMIT": tagged_, "TAG": "v0.19.2", "ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}
+              and f_.get("read") == {"date": "2026-10-09", "date_en": "9 October 2026", "date_de": "9. Oktober 2026", "sha": tagged_[:7]})
+
+if _lf_why:
+    _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        clone_, facts_, off_, on_, pulls_ = _lf_clone(base_), base_ / "facts.html", base_ / "off.toml", base_ / "on.toml", base_ / "pulls.json"
+        off_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
+        on_.write_text('[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\n', encoding="utf-8")
+        recorded_ = json.loads(_LF_PULLS.read_text(encoding="utf-8"))
+        recorded_["pulls"][46]["head"]["sha"] = "0" * 40                              # #47, the first after the rule: a head no history holds
+        pulls_.write_text(json.dumps(recorded_), encoding="utf-8")
+
+        def _lf_case(change, config=off_, pulls=_LF_PULLS):
+            git(clone_, "checkout", "-q", "--detach", _LF_TAG)
+            change(clone_)
+            git(clone_, "commit", "-q", "-a", "--allow-empty", "-m", "a control")
+            facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
+            return _lf_run("--repo", str(clone_), "--out", str(facts_), "--config", str(config), "--pulls", str(pulls))
+
+        def _lf_status(root):
+            p_ = next(root.glob("work-tracker/FM-045-*.md"))
+            p_.write_text(re.sub(r"(?m)^status: .*$", "status: Parked", p_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
+        version_ = _lf_case(lambda root: (root / "VERSION").write_text("0.19.3\n", encoding="utf-8"))
+        status_ = _lf_case(_lf_status)
+        switch_ = _lf_case(lambda root: None, config=on_)
+        history_ = _lf_case(lambda root: None, pulls=pulls_)
+        check(f"FM-006 · B1 · VERSION other than the newest release tag the commit holds stops the build: exit 1, one line, and the facts.html an earlier "
+              f"build left is gone (saw {version_})", _lf_stops(version_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        check(f"FM-006 · B1 · a wreck whose status is none of In Progress, Proposed, Shipped and Closed stops the build, rather than be guessed (saw {status_})",
+              _lf_stops(status_, facts_, "FM-045's status reads as Parked"))
+        check(f"FM-006 · B1 · the probe switch on, and a pin still a stand-in — here no ADOPT pin to read at all — stops the build (saw {switch_})",
+              _lf_stops(switch_, facts_, "pins check 1: ADOPT.svn.md is missing"))
+        check(f"FM-006 · B1 · a pull request whose commits this history does not hold stops the build, rather than count it as unreviewed (saw {history_})",
+              _lf_stops(history_, facts_, "does not hold pull request #47's head 0000000"))
+
+if _lf_why:
+    _skipped("FM-006 · B1 · the release a build names, by its event", 9, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        clone_, facts_, off_, site_ = _lf_clone(base_), base_ / "facts.html", base_ / "off.toml", base_ / "site"
+        off_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
+        log_ = (clone_ / "CHANGELOG.md").read_text(encoding="utf-8")
+        (clone_ / "VERSION").write_text("0.19.3\n", encoding="utf-8")
+        (clone_ / "CHANGELOG.md").write_text(log_.replace("## 0.19.2 — 2026-10-09\n", "## 0.19.3 — 2026-10-10\n\nThe next release.\n\n## 0.19.2 — 2026-10-09\n", 1), encoding="utf-8")
+        git(clone_, "commit", "-q", "-a", "-m", "a release's own pull request: VERSION one release ahead")
+        ahead_ = subprocess.run(["git", "-C", str(clone_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+
+        def _lf_ev(*argv, at=ahead_):
+            facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
+            return _lf_run("--repo", str(clone_), "--commit", at, "--out", str(facts_), "--config", str(off_), "--pulls", str(_LF_PULLS), *argv)
+        pr_ = _lf_ev("--event", "pull_request")
+        pr_f_ = _lf_read(facts_) if pr_[0] == 0 else {}
+        shutil.rmtree(site_, ignore_errors=True); (site_ / "de").mkdir(parents=True)
+        (site_ / "index.html").write_text('<div role="listitem">release<b>v0.19.3</b></div><a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.19.3">v0.19.3</a>', encoding="utf-8")
+        checked_ = [_lf_run("--repo", str(clone_), "--commit", ahead_, "--out", str(facts_), "--check", str(site_), *ev) for ev in (("--event", "pull_request"), ("--event", "workflow_dispatch"))] \
+            if pr_[0] == 0 else []
+        check(f"FM-006 · B1 · a pull request's build of a release's own pull request — VERSION 0.19.3, one release ahead of the newest tag — names the release "
+              f"VERSION names, with its CHANGELOG heading's day, and its release check passes (saw {pr_[0]} {pr_[2].strip()[:160]!r}, {pr_f_.get('release')}, "
+              f"the check {[c[0] for c in checked_]})",
+              pr_[0] == 0 and pr_f_.get("release") == {"tag": "v0.19.3", "version": "0.19.3", "date_en": "10 October 2026", "date_de": "10. Oktober 2026"}
+              and pr_f_.get("pins", {}).get("TAG") == "v0.19.3" and [c[0] for c in checked_] == [0, 1])
+        dispatch_, unnamed_ = _lf_ev("--event", "workflow_dispatch"), _lf_ev()
+        check(f"FM-006 · B1 · the same tree as a build by hand stops it: it deploys, and VERSION is ahead of the newest tag (saw {dispatch_})",
+              _lf_stops(dispatch_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        check(f"FM-006 · B1 · …and as a local build, which names no event (saw {unnamed_})", _lf_stops(unnamed_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        untagged_ = _lf_ev("--event", "push", "--ref", "v0.19.3")
+        check(f"FM-006 · B1 · a tag's build of a commit the tag does not hold stops it (saw {untagged_})", _lf_stops(untagged_, facts_, "the newest release tag"))
+        git(clone_, "tag", "v0.19.4", ahead_)
+        other_ = _lf_ev("--event", "push", "--ref", "v0.19.4")
+        check(f"FM-006 · B1 · a tag's build where the tag, v0.19.4, differs from VERSION, 0.19.3, stops it (saw {other_})",
+              _lf_stops(other_, facts_, "VERSION says 0.19.3, and the newest release tag"))
+        git(clone_, "tag", "-d", "v0.19.4"); git(clone_, "tag", "v0.19.3", ahead_)
+        tagged_ = _lf_ev("--event", "push", "--ref", "v0.19.3")
+        check(f"FM-006 · B1 · …and where the tag pushed is the one VERSION names, it passes (saw {tagged_[0]} {tagged_[2].strip()[:160]!r})",
+              tagged_[0] == 0 and _lf_read(facts_).get("release", {}).get("tag") == "v0.19.3")
+        pushed_ = _lf_ev("--event", "push", "--ref", "v0.19.1")
+        check(f"FM-006 · B1 · a tag's build that names another tag than the one VERSION names stops it (saw {pushed_})",
+              _lf_stops(pushed_, facts_, "a tag's build of v0.19.1, and VERSION says 0.19.3"))
+        git(clone_, "checkout", "-q", "--detach", _LF_TAG)
+        (clone_ / "VERSION").write_text("0.19.1\n", encoding="utf-8")
+        git(clone_, "commit", "-q", "-a", "-m", "VERSION behind the newest tag")
+        behind_ = _lf_ev("--event", "pull_request", at="HEAD")
+        check(f"FM-006 · B1 · a pull request's build with VERSION behind the newest tag the commit holds stops it (saw {behind_})",
+              _lf_stops(behind_, facts_, "VERSION says 0.19.1, behind the release tag v0.19.2"))
+        named_ = _lf_ev("--event", "pull_request_target", at=_LF_TAG)
+        check(f"FM-006 · B1 · an event the build does not know stops it (saw {named_})", _lf_stops(named_, facts_, "--event 'pull_request_target'"))
+
+if _lf_why:
+    _skipped("FM-006 · B1 · the board's excerpt, read and refused", 4, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        clone_, facts_, off_ = _lf_clone(base_), base_ / "facts.html", base_ / "off.toml"
+        off_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
+
+        def _lf_owner(change):
+            git(clone_, "checkout", "-q", "--detach", _LF_TAG)
+            change(clone_)
+            git(clone_, "commit", "-q", "-a", "-m", "a control")
+            facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
+            return _lf_run("--repo", str(clone_), "--out", str(facts_), "--config", str(off_), "--pulls", str(_LF_PULLS))
+
+        def _lf_marked(root):
+            p28_, p7_ = next(root.glob("work-tracker/FM-028-*.md")), next(root.glob("work-tracker/FM-007-*.md"))
+            t28_ = p28_.read_text(encoding="utf-8").replace("\nstatus: Proposed\n", "\nstatus: Proposed\ndue: 2026-10-20 10:00\n", 1)
+            p28_.write_text(re.sub(r"(?m)^# FM-028 — .*$", '# FM-028 — After midnight <b>the suite</b> refuses & "every" commit', t28_, count=1), encoding="utf-8")
+            p7_.write_text(p7_.read_text(encoding="utf-8").replace("\nanswered: 2026-09-25\n", '\nanswered: 2026-09-25\ndone: "the key is set up"\n', 1), encoding="utf-8")
+
+        def _lf_stub(first, title=True):
+            """The commit's tool, its `--owner` printing `first` and nothing more; without ACTS_TITLE where `title` is false."""
+            return lambda root: (root / "shoalmark.py").write_text(f"import sys\nif __name__ == '__main__' and '--owner' in sys.argv:\n    print({first!r}); sys.exit(0)\n"
+                + (root / "shoalmark.py").read_text(encoding="utf-8").replace('ACTS_TITLE = "ACTS — yours, with their time"',
+                                                                              'ACTS_TITLE = "ACTS — yours, with their time"' if title else 'ACTS_TITLE_ = "gone"', 1), encoding="utf-8")
+        marked_ = _lf_owner(_lf_marked)
+        excerpt_ = _lf_read(facts_).get("excerpt") if marked_[0] == 0 else None
+        text_ = facts_.read_text(encoding="utf-8") if marked_[0] == 0 else ""
+        check(f"FM-006 · B1 · the excerpt follows the trackers: FM-007's act done, it leaves; an act owed on FM-028 takes its place, its line HTML-escaped "
+              f"and written so no character of it ends the string or opens a tag (saw {marked_[0]}, {excerpt_})",
+              excerpt_ == {"waiting": 1, "acts": 1, "act": {"id": "FM-028", "line": "After midnight &lt;b&gt;the suite&lt;/b&gt; refuses &amp; &quot;every&quot; commit · no date yet"}}
+              and '\\u0026lt;b\\u0026gt;the suite' in text_ and "<b>" not in text_.split("{% set excerpt")[1].split("\n")[0])
+        odd_ = _lf_owner(_lf_stub("SOMETHING ELSE ENTIRELY"))
+        check(f"FM-006 · B1 · an `--owner` whose first line counts no questions, nor says there are none, stops the build (saw {odd_})",
+              _lf_stops(odd_, facts_, "shoalmark.py --owner's first line at"))
+        miscount_ = _lf_owner(_lf_stub("NO QUESTION FOR THE OWNER · 2 ACT(S) OWED, WITH THEIR TIME"))
+        check(f"FM-006 · B1 · an `--owner` that counts acts it does not list stops the build (saw {miscount_})", _lf_stops(miscount_, facts_, "counts 2 act(s), and it lists 0"))
+        untitled_ = _lf_owner(_lf_stub("NOTHING NEEDS THE OWNER.", title=False))
+        check(f"FM-006 · B1 · a tool at the commit that names no ACTS_TITLE stops the build, rather than read no acts (saw {untitled_})",
+              _lf_stops(untitled_, facts_, "names no ACTS_TITLE"))
+
+if _lf_why:
+    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 12, _lf_why)
+else:
+    import zipfile
+    lf_ = _lf_module()
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        clone_, zip_, other_ = _lf_clone(base_), base_ / "shoalmark-0.19.2.zip", base_ / "other.zip"
+        tool_ = subprocess.run(["git", "-C", str(HERE), "show", f"{_LF_TAG}:shoalmark.py"], capture_output=True, check=True, env=_ENV).stdout
+        old_ = subprocess.run(["git", "-C", str(HERE), "show", "v0.19.1:shoalmark.py"], capture_output=True, env=_ENV).stdout
+        with zipfile.ZipFile(zip_, "w") as z_:
+            z_.writestr("shoalmark.py", tool_)
+        with zipfile.ZipFile(other_, "w") as z_:
+            z_.writestr("shoalmark.py", tool_ + b"\n")
+        asum_, tsum_, osum_ = (hashlib.sha256(b).hexdigest() for b in (zip_.read_bytes(), tool_, old_))
+        url_ = "https://github.com/shoalmark/shoalmark/releases/download/{}/shoalmark-{}.zip"
+
+        def _lf_notes(tag="v0.19.2", asum=asum_, tsum=tsum_, de_url=None, svn=""):
+            """The four ADOPT notes as the probe lane's pins.md lays out the pin: one line in each, five fields, the Subversion notes without."""
+            url = url_.format(tag, tag[1:])
+            return {"ADOPT.md": f"# Adopt shoalmark\n\nThe pin: release `{tag}`; the archive `{url}`, SHA-256 `{asum}`; in it, `shoalmark.py`, SHA-256 `{tsum}`.\n",
+                    "ADOPT.de.md": f"# shoalmark übernehmen\n\nDie Festlegung: Release `{tag}`; das Archiv `{de_url or url}`, SHA-256 `{asum}`; darin `shoalmark.py`, "
+                                   f"SHA-256 `{tsum}`.\n",
+                    "ADOPT.svn.md": f"# Adopt shoalmark on Subversion\n\nIt uses the tool ADOPT's step 3 fetched and checked.{svn}\n",
+                    "ADOPT.svn.de.md": "# shoalmark unter Subversion\n\nEs nutzt das Werkzeug, das Schritt 3 der ADOPT geholt und geprüft hat.\n"}
+
+        def _lf_pins(notes, deploy=False, main="scratch-main", archive=zip_, drop=()):
+            git(clone_, "checkout", "-q", "--detach", _LF_TAG)
+            for name_, text_ in notes.items():
+                (clone_ / name_).write_text(text_, encoding="utf-8")
+            for name_ in drop:
+                (clone_ / name_).unlink()
+            git(clone_, "add", "-A")
+            git(clone_, "commit", "-q", "-m", "the pins")
+            g_ = lf_.Git(clone_)
+            c_ = g_("rev-parse", "HEAD").strip()
+            git(clone_, "branch", "-f", "scratch-main", c_)
+            try:
+                return lf_.read_pins(g_, c_, {"tag": _LF_TAG}, "shoalmark/shoalmark", True, deploy, main, str(archive)), c_
+            except lf_.Stop as e:
+                return str(e), c_
+        good_, c1_ = _lf_pins(_lf_notes())
+        deployed_, c2_ = _lf_pins(_lf_notes(), deploy=True)
+        check(f"FM-006 · B1 · the probe switch on, a pull request's build: pins.md's checks 1–5 and 7 pass, and the prompt pins the commit and ADOPT's release, "
+              f"archive and its SHA-256 (saw {good_})", good_ == {"ADOPT_COMMIT": c1_, "TAG": "v0.19.2", "ARCHIVE_URL": url_.format("v0.19.2", "0.19.2"), "ARCHIVE_SHA256": asum_})
+        check(f"FM-006 · B1 · the probe switch on, a deploy build: checks 6 and 9 pass too — the commit on main, the archive as pinned, its shoalmark.py "
+              f"the tool's SHA-256 (saw {deployed_})", deployed_ == {"ADOPT_COMMIT": c2_, "TAG": "v0.19.2", "ARCHIVE_URL": url_.format("v0.19.2", "0.19.2"), "ARCHIVE_SHA256": asum_})
+        for what_, case_, says_ in (
+                ("a Subversion note missing", lambda: _lf_pins(_lf_notes(), drop=("ADOPT.svn.de.md",)), "pins check 1: ADOPT.svn.de.md is missing"),
+                ("the German note pinning another address", lambda: _lf_pins(_lf_notes(de_url=url_.format("v0.19.2", "x"))), "pins check 2: the two notes pin different things"),
+                ("a Subversion note carrying a SHA-256", lambda: _lf_pins(_lf_notes(svn=f" `{tsum_}`")), "pins check 2: ADOPT.svn.md carries a pin"),
+                ("a pin line still holding its placeholders", lambda: _lf_pins({**_lf_notes(), "ADOPT.md": "The pin: release `{{TAG}}`; the archive `{{ARCHIVE_URL}}`, SHA-256 "
+                                                                                 "`{{ARCHIVE_SHA256}}`; in it, `shoalmark.py`, SHA-256 `{{TOOL_SHA256}}`.\n"}), "pins check 2: the two notes pin different things"),
+                ("`{{FEEDBACK_ADDRESS}}` left in a Subversion note", lambda: _lf_pins(_lf_notes(svn=" Write to {{FEEDBACK_ADDRESS}}.")), "pins check 7: ADOPT.svn.md still holds a placeholder"),
+                ("a release tag that does not exist", lambda: _lf_pins(_lf_notes(tag="v9.9.9")), "pins check 3: v9.9.9 does not exist"),
+                ("ADOPT's pin other than the tool's SHA-256 at the tag", lambda: _lf_pins(_lf_notes(tsum=osum_)), f"pins check 4: v0.19.2:shoalmark.py is {tsum_}, ADOPT names {osum_}"),
+                ("ADOPT naming the release before the newest", lambda: _lf_pins(_lf_notes(tag="v0.19.1", tsum=osum_)), "pins check 5: ADOPT names v0.19.1, the newest release this commit holds is v0.19.2"),
+                ("a deploy build of a commit not on main", lambda: _lf_pins(_lf_notes(), deploy=True, main=_LF_TAG), "pins check 6: "),
+                ("a deploy build whose archive is another file", lambda: _lf_pins(_lf_notes(), deploy=True, archive=other_), f"pins check 9: the archive's SHA-256 is not {asum_}")):
+            got_, _c = case_()
+            check(f"FM-006 · B1 · the probe switch on: {what_} stops the build — {says_.split(':')[0]} (saw {got_!r})", isinstance(got_, str) and got_.startswith(says_))
+
+if _lf_why:
+    _skipped("FM-006 · B1 · the landing names the release the build reads (RV-2750)", 12, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        site_, facts_ = base_ / "site", base_ / "facts.html"
+        sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", _LF_TAG + "^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        old_sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", "v0.19.1^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
+
+        def _lf_facts(tag="v0.19.2", sha=None):
+            return ("{% set release = {\"tag\": \"" + tag + "\", \"version\": \"" + tag[1:] + "\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\"} %}\n"
+                    "{% set read = {\"date\": \"2026-10-09\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\", \"sha\": \"" + (sha or sha_)[:7] + "\"} %}\n")
+
+        def _lf_landing(label="v0.19.2", link="v0.19.2", aria="v0.19.2", foot="v0.19.2", text="v0.19.2", word="release", today=False):
+            """A landing's top bar and footer as the B1 template writes them (`today`: as v0.19.2's page has the label, not yet a link)."""
+            bar = (f'<div role="listitem">{word}<b>{label}</b></div>' if today else
+                   f'<div role="listitem"><a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{link}" aria-label="{word} {aria}, its notes on GitHub">'
+                   f'{word}<b>{label}</b></a></div>')
+            return (f'<nav class="hud">{bar}<div role="listitem">wrecks<b id="hud-w">28</b></div></nav><main>…</main><footer><span class="mk">'
+                    f'<a href="https://github.com/shoalmark/shoalmark">shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/{foot}" '
+                    f'style="color:#b4c3d1">{text}</a></span></footer>')
+
+        def _lf_site(en, de=None, facts=None):
+            shutil.rmtree(site_, ignore_errors=True)
+            (site_ / "de").mkdir(parents=True)
+            (site_ / "index.html").write_text(en, encoding="utf-8")
+            (site_ / "de/index.html").write_text(de if de is not None else "<p>Eine Seite der Dokumentation.</p>", encoding="utf-8")
+            facts_.write_text(facts or _lf_facts(), encoding="utf-8")
+            return _lf_run("--commit", _LF_TAG, "--repo", str(HERE), "--out", str(facts_), "--check", str(site_))
+        for what_, case_ in (("the B1 landing, in English", lambda: _lf_site(_lf_landing())),
+                             ("the B1 landing in English and German", lambda: _lf_site(_lf_landing(), _lf_landing(word="Release"))),
+                             ("v0.19.2's landing, whose label is no link yet", lambda: _lf_site(_lf_landing(today=True)))):
+            got_ = case_()
+            check(f"FM-006 · B1 · RV-2750: {what_} — the top bar's release label, its link and the footer's link name the release the build reads, as "
+                  f"facts.html does (saw {got_})", got_[0] == 0 and "name v0.19.2" in got_[1])
+        for what_, case_, says_ in (
+                ("the top bar's label names another release", lambda: _lf_site(_lf_landing(label="v0.19.1")), "names v0.19.1"),
+                ("the top bar's link leads to another release", lambda: _lf_site(_lf_landing(link="v0.19.1")), "names v0.19.1"),
+                ("the top bar link's accessible name says another release", lambda: _lf_site(_lf_landing(aria="v0.19.1")), "names v0.19.1"),
+                ("the footer's link leads to another release", lambda: _lf_site(_lf_landing(foot="v0.19.1")), "names v0.19.1"),
+                ("the footer's link reads another release", lambda: _lf_site(_lf_landing(text="v0.19.1")), "names v0.19.1"),
+                ("the German landing's label names another release", lambda: _lf_site(_lf_landing(), _lf_landing(word="Release", label="v0.19.1")), "de/index.html names v0.19.1"),
+                ("facts.html names another release", lambda: _lf_site(_lf_landing(), facts=_lf_facts(tag="v0.19.1")), "names v0.19.1 read at"),
+                ("facts.html was read at another commit", lambda: _lf_site(_lf_landing(), facts=_lf_facts(sha=old_sha_)), f"read at {old_sha_[:7]}"),
+                ("the landing carries no release label", lambda: _lf_site(_lf_landing().replace("release<b>v0.19.2</b>", "")), "carries no release label")):
+            got_ = case_()
+            check(f"FM-006 · B1 · RV-2750: where {what_}, the check fails — exit 1, one line (saw {got_})",
+                  got_[0] == 1 and len(got_[2].strip().splitlines()) == 1 and says_ in got_[2])
+
+
+def _docs_yaml(text):
+    """docs.yml read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and sequences of
+    plain or quoted scalars, `|` and `>` blocks, `#` comments. Anything else raises ValueError, and every property below fails."""
+    lines = text.replace("\r\n", "\n").split("\n")
+
+    def bare(s):
+        quote = None
+        for i, ch in enumerate(s):
+            if quote:
+                quote = None if ch == quote else quote
+            elif ch in "\"'":
+                quote = ch
+            elif ch == "#" and (i == 0 or s[i - 1] in " \t"):
+                return s[:i].rstrip()
+        return s.rstrip()
+
+    def scalar(s):
+        s = s.strip()
+        if s[:1] in ("{", "["):
+            value, end = flow(s, 0)
+            if s[end:].strip():
+                raise ValueError(f"after a flow collection: {s[end:]!r}")
+            return value
+        if len(s) > 1 and s[0] == s[-1] and s[0] in "\"'":
+            return s[1:-1]
+        return {"": None, "~": None, "null": None, "true": True, "false": False}.get(s, int(s) if re.fullmatch(r"-?\d+", s) else s)
+
+    def flow(s, i):
+        close, out = {"{": "}", "[": "]"}[s[i]], {} if s[i] == "{" else []
+        i += 1
+        while True:
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == close:
+                return out, i + 1
+            if isinstance(out, dict):
+                m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[^:,{}\[\]]+):\s*", s[i:])
+                if not m:
+                    raise ValueError(f"a flow mapping's key at {s[i:]!r}")
+                key, i = scalar(m.group(1)), i + m.end()
+            if i < len(s) and s[i] in "{[":
+                value, i = flow(s, i)
+            else:
+                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^,{}\[\]]*)", s[i:])
+                value, i = scalar(m.group(1)), i + m.end()
+            out.__setitem__(key, value) if isinstance(out, dict) else out.append(value)
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == ",":
+                i += 1
+            elif i >= len(s) or s[i] != close:
+                raise ValueError(f"an unclosed flow collection: {s!r}")
+
+    def skip(i):
+        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+        return i
+
+    def node(i, ind):
+        i = skip(i)
+        if i >= len(lines) or len(lines[i]) - len(lines[i].lstrip(" ")) < ind:
+            return None, i
+        ind = len(lines[i]) - len(lines[i].lstrip(" "))
+        if lines[i].lstrip().startswith("- ") or lines[i].strip() == "-":
+            out = []
+            while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind and lines[i].lstrip().startswith("-"):
+                rest = lines[i].lstrip()[1:]
+                if re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(\s|$)", rest):
+                    lines[i] = " " * (ind + 2) + rest.lstrip()      # `- key: value`: a mapping, its first key on the dash's line
+                    value, i = node(i, ind + 2)
+                else:
+                    value, i = scalar(bare(rest)), i + 1
+                out.append(value)
+                i = skip(i)
+            return out, i
+        out = {}
+        while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind:
+            m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(?:\s+(.*))?$", lines[i])
+            if not m:
+                raise ValueError(f"line {i + 1}: {lines[i].strip()!r}")
+            key, rest = scalar(m.group(1)), bare(m.group(2) or "")
+            if key in out:
+                raise ValueError(f"line {i + 1}: {key!r} twice")
+            if rest in ("|", ">", "|-", ">-"):
+                j, block = i + 1, []
+                while j < len(lines) and (not lines[j].strip() or len(lines[j]) - len(lines[j].lstrip(" ")) > ind):
+                    block.append(lines[j].strip())
+                    j += 1
+                out[key], i = "\n".join(block).strip() + "\n", j
+            elif rest:
+                out[key], i = scalar(rest), i + 1
+            else:
+                out[key], i = node(i + 1, ind + 1)
+            i = skip(i)
+        if i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) > ind:
+            raise ValueError(f"line {i + 1} is indented under nothing: {lines[i].strip()!r}")
+        return out, i
+    value, end = node(0, 0)
+    if skip(end) < len(lines):
+        raise ValueError(f"line {skip(end) + 1}: {lines[skip(end)].strip()!r}")
+    return value
+
+
+_DOCS_SOURCES = ("docs/index.md", "docs/de/setup.md", "docs/stylesheets/shoalmark.css", "overrides/landing.html", "overrides/partials/landing/en.html",
+                 "launch/interim/how-it-works.en.md", "launch/probe/how-it-works.de.md",
+                 "zensical.toml", "requirements-docs.txt", "README.md", "scripts/landing_facts.py", "scripts/llms_txt.py", "scripts/check_site.py",
+                 "scripts/test_check_site.py", ".github/workflows/docs.yml")
+_DOCS_NOT = ("work-tracker/FM-006-shoalmark-has-one-document.md", "work-tracker/INDEX.md", "work-tracker/TRIAGE.md", "work-tracker/evidence/reviews/review.md")
+
+
+def _docs_path_hit(pattern, path):
+    """A pull request's `paths` filter as GitHub matches a path: `**` any run of characters, `*` and `?` within one folder."""
+    rx = "".join(".*" if t == "**" else "[^/]*" if t == "*" else "[^/]" if t == "?" else re.escape(t) for t in re.findall(r"\*\*|\*|\?|[^*?]+", pattern))
+    return re.fullmatch(rx, path) is not None
+
+
+def _docs_wf_properties(text):
+    """FM-006, B1, ruling 9: the site is built on pull requests that change it, checks only — [(what is asserted, whether it holds)]."""
+    try:
+        wf, refused = _docs_yaml(text) or {}, ""
+    except ValueError as e:
+        wf, refused = {}, f" — the file is refused: {e}"
+    on, jobs = wf.get("on") or {}, wf.get("jobs") or {}
+    build, deploy = jobs.get("build") or {}, jobs.get("deploy") or {}
+    pr = on.get("pull_request") if isinstance(on, dict) else None
+    paths = pr.get("paths") or [] if isinstance(pr, dict) else []
+    starts = lambda path: any(_docs_path_hit(p, path) for p in paths)
+    steps = [s for j in jobs.values() for s in (j.get("steps") or []) if isinstance(s, dict)]
+    built = [s for s in build.get("steps") or [] if isinstance(s, dict)]
+    at = lambda pred: next((i for i, s in enumerate(built) if pred(str(s.get("run") or ""))), None)
+    facts, zensical, release = at(lambda r: r == 'python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"'), \
+        at(lambda r: r.startswith("zensical build")), at(lambda r: r == 'python3 scripts/landing_facts.py --check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"')
+    checkout = next((s for s in built if str(s.get("uses") or "").startswith("actions/checkout@")), {})
+    return [
+        ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
+        ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, the launch states' words, templates, configuration, the README, "
+         "the scripts the build runs and docs.yml — and never on one that changes trackers alone",
+         isinstance(on, dict) and set(on) == {"push", "workflow_dispatch", "pull_request"} and on.get("push") == {"tags": ["v*"]} and isinstance(pr, dict)
+         and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
+        ("the deploy job runs after the build, only in the public repository, and never for a pull request",
+         deploy.get("if") == "github.event.repository.private == false && github.event_name != 'pull_request'" and deploy.get("needs") == "build"),
+        ("each job holds its own least permissions — the build `contents: read` and `pull-requests: read`, the deploy `pages: write` and `id-token: write` — "
+         "and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy"}
+         and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}),
+        ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in str(s.get("run") or "") for s in steps)),
+        ("the build checks out the whole history with its tags, writes the landing's figures before `zensical build` and checks the release after it, each "
+         "told the event and the ref as GitHub names them",
+         (checkout.get("with") or {}).get("fetch-depth") == 0 and None not in (facts, zensical, release) and facts < zensical < release),
+        ("only the deploy job is in a concurrency group: a pull request's build neither waits for a deployment nor cancels one",
+         "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}),
+    ]
+
+
+def _docs_wf_regressions(text):
+    """Each change that undoes one property above, and fails: the controls of the check that reads docs.yml."""
+    def facts_after_build(t):
+        step = re.search(r"(?m)^      - name: the landing's figures[^\n]*\n        run: [^\n]*\n        env: [^\n]*\n", t)
+        return t if not step else t.replace(step.group(0), "", 1).replace("      - run: zensical build --clean\n", "      - run: zensical build --clean\n" + step.group(0), 1)
+    rows = (
+        ("a `pull_request_target` trigger beside `pull_request`", lambda t: t.replace("  pull_request:\n", "  pull_request_target:\n    branches: [main]\n  pull_request:\n", 1)),
+        ("a pull request starts it whatever it changes: its `paths` gone", lambda t: re.sub(r"(?m)^    paths:\n(      - .*\n)+", "", t, count=1)),
+        ("the trackers are among the paths", lambda t: t.replace('      - "docs/**"\n', '      - "docs/**"\n      - "work-tracker/**"\n', 1)),
+        ("the launch states' words are not among the paths", lambda t: t.replace('      - "launch/**"\n', "", 1)),
+        ("a pull request deploys: its guard gone", lambda t: t.replace(" && github.event_name != 'pull_request'", "", 1)),
+        ("a private fork deploys: its guard gone", lambda t: t.replace("github.event.repository.private == false && ", "", 1)),
+        ("the build may write the repository", lambda t: t.replace("{contents: read, pull-requests: read}", "{contents: write, pull-requests: read}", 1)),
+        ("the build holds the deploy's rights too", lambda t: t.replace("{contents: read, pull-requests: read}", "{contents: read, pull-requests: read, pages: write, id-token: write}", 1)),
+        ("the workflow grants rights of its own", lambda t: t.replace("permissions: {}\n", "permissions: {contents: read, pages: write, id-token: write}\n", 1)),
+        ("the deploy names no permissions of its own", lambda t: t.replace("    permissions: {pages: write, id-token: write}\n", "", 1)),
+        ("an expression inside a `run:`", lambda t: t.replace('--event "$GITHUB_EVENT_NAME"', "--event ${{ github.event_name }}", 1)),
+        ("an expression inside a `run: |` block", lambda t: t.replace("      - run: zensical build --clean\n", "      - run: |\n          echo ${{ github.head_ref }}\n          zensical build --clean\n", 1)),
+        ("the checkout's history cut to one commit", lambda t: t.replace("{fetch-depth: 0, persist-credentials: false}", "{persist-credentials: false}", 1)),
+        ("the figures written after `zensical build`", facts_after_build),
+        ("the figures read as a pull request's whatever the event", lambda t: t.replace('landing_facts.py --event "$GITHUB_EVENT_NAME"', "landing_facts.py --event pull_request", 1)),
+        ("the release check told no event", lambda t: t.replace('--check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"', "--check site", 1)),
+        ("the figures told no tag", lambda t: t.replace('--event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"\n        env:', '--event "$GITHUB_EVENT_NAME"\n        env:', 1)),
+        ("the whole workflow in the deployments' group again", lambda t: t.replace("# The image is pinned", "concurrency: {group: pages, cancel-in-progress: false}\n# The image is pinned", 1)),
+    )
+    out = []
+    for what, change in rows:
+        changed = change(text)
+        props = _docs_wf_properties(changed)
+        out.append((f"a docs.yml in which {what} fails one of the properties above" + (" — NOT JUDGED: the change finds no line to apply to" if changed == text else ""),
+                    changed != text and not all(ok for _, ok in props)))
+    for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
+        out.append((f"a docs.yml in which {what} passes every property above", all(ok for _, ok in _docs_wf_properties(change(text)))))
+    return out
+
+
+_docs_text = (HERE / ".github/workflows/docs.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/docs.yml").is_file() else ""
+for _what, _ok in _docs_wf_properties(_docs_text) + _docs_wf_regressions(_docs_text):
+    check(f"FM-006 · B1 · docs.yml: {_what}", _ok)
 
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
