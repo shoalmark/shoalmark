@@ -2,3 +2,5 @@
 zensical==0.0.67
 # CSS parser for the published font-source check; retains Python 3.9 support.
 tinycss2==1.4.0
+# The time-zone database Windows lacks: landing_facts.py reads the filing days and the build's day in Europe/Berlin.
+tzdata==2026.5; sys_platform == "win32"
