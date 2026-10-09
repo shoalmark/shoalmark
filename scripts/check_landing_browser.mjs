@@ -2,10 +2,11 @@
 // SITE is a built site, STATE is `interim` or `probe` (the launch state it was built in). The site is served from 127.0.0.1 and every other host is
 // unresolvable, so a page that asks for the outside fails and is logged. For each landing and How it works page at 360, 375 and 390 px (and 1440):
 //   no sideways scroll, no script error, no failed request, no request to any other host.
-// On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show, with the widest hi-score
-// the bar can print (888/888) set in it.
+// On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show, with the widest three-digit
+// hi-score (888/888) set in it.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
-// names; focus is inside it; Tab and Shift+Tab never reach the page behind; its folds open and close by keyboard; Escape closes it and focus is back on the
+// names; focus is inside it; Tab and Shift+Tab never reach the page behind; the prompt stands in step 1 as a box of two lines with a fade whose button opens it whole
+// and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
 // button; it fits the window and the page does not scroll sideways under it; and, with the folds closed, nothing inside it scrolls at 360×780, 375×667 and
 // 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
 // PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors) narrow the run to what is named; the whole run is every page at
@@ -111,6 +112,20 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
       await t.press("Space"); const again = await t.js(`document.querySelectorAll("#probe details")[${i}].open`);
       verdict(page, w, h, `fold ${i + 1} opens and closes by keyboard`, before !== after && again === before, `${before} ${after} ${again}`);
     }
+    // the prompt stands in step 1 as a box of two lines with a fade, under Copy again; a real button, in the Tab order, opens it whole in place and folds it back
+    const PB = `(() => { const ta = document.getElementById("probe-text"), b = document.getElementById("probe-more"), f = document.querySelector("#probe .probe-fade"), r = e => e.getBoundingClientRect(),
+      s1 = document.getElementById("probe-s1"), again = document.getElementById("probe-again"); if (!ta || !b) return {missing: true}; return {h: Math.round(r(ta).height), expanded: b.getAttribute("aria-expanded"), controls: b.getAttribute("aria-controls"), tag: b.tagName,
+      type: b.type, tab: b.tabIndex, inStep1: s1.contains(ta) && s1.contains(b), under: r(ta).top > r(again).bottom, fadePE: f ? getComputedStyle(f).pointerEvents : null, fadeClear: !f || getComputedStyle(f).display == "none" || r(f).bottom <= r(b).top,
+      whole: ta.scrollHeight <= ta.clientHeight + 1, lines: ta.value.split("\\n").length, inFold: !!ta.closest("details")} })()`;
+    const shut = await t.js(PB);
+    verdict(page, w, h, "the prompt box is in step 1 under Copy again, outside any fold, closed at two lines, its button a real one that controls the prompt", !shut.missing && shut.inStep1 && shut.under && !shut.inFold && shut.h < 90 && !shut.whole && shut.expanded == "false" && shut.controls == "probe-text" && shut.tag == "BUTTON" && shut.type == "button" && shut.tab >= 0 && shut.lines >= 5, JSON.stringify(shut));
+    verdict(page, w, h, "the fade is decorative: it takes no pointer events and never covers the button", shut.fadePE == "none" && shut.fadeClear, JSON.stringify(shut));
+    await t.js(`(document.getElementById("probe-more") || document.body).focus()`);
+    await t.press("Enter");
+    const opened = await t.js(PB);
+    await t.press("Space");
+    const folded = await t.js(PB);
+    verdict(page, w, h, "the button opens the prompt whole by Enter and folds it back by Space", opened.expanded == "true" && opened.whole && opened.h > shut.h && folded.expanded == "false" && folded.h == shut.h, JSON.stringify([shut.h, opened, folded.h, folded.expanded]));
     const box = await t.js(`(() => { const b = document.querySelector("#probe").getBoundingClientRect(); return {l: Math.round(b.left), r: Math.round(b.right), sw: document.documentElement.scrollWidth, iw: innerWidth} })()`);
     verdict(page, w, h, "the dialog fits the window, and the page does not scroll sideways under it", box.l >= 0 && box.r <= box.iw && box.sw <= box.iw, JSON.stringify(box));
     if (w < 500) {
@@ -130,7 +145,7 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
 // the top bar's five anchors, wherever the page first shows them (stepping the window up from 1000 px): one row each, and clear of the language switch
 if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.startsWith("how"))) {
   const t = await open(page, {w: 1000, h: 900});
-  await t.js(`document.querySelector(".score .opt b").textContent = "888/888"`);   // the widest hi-score the bar can print: the breakpoint must leave room for it
+  await t.js(`document.querySelector(".score .opt b").textContent = "888/888"`);   // the widest three-digit hi-score: the breakpoint must leave room for it
   const shows = () => t.js(`getComputedStyle(document.querySelector(".hud nav a:not(.docs)")).display != "none"`);
   let first = null;
   for (let w = 1000; w <= 1400 && first === null; w++) { await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false}); if (await shows()) first = w }
@@ -144,8 +159,12 @@ if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.sta
 if (state == "probe") for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844]]) {
   const t = await open(page, {w, h, clipboard: "refused"});
   await t.js(`document.getElementById("probe-open").click()`); await sleep(500);
-  const s = await t.js(`(() => { const a = document.getElementById("probe-text"), st = document.getElementById("probe-status"); return {state: st.dataset.state, text: st.textContent.trim(), selected: a.selectionStart == 0 && a.selectionEnd == a.value.length && a.value.length > 0} })()`);
-  verdict(page, w, h, "where the copy is refused, the dialog says so and selects the prompt", s.state == "fail" && s.text.length > 0 && s.selected, JSON.stringify(s));
+  const s = await t.js(`(() => { const a = document.getElementById("probe-text"), st = document.getElementById("probe-status"), b = document.getElementById("probe-more"); return {state: st.dataset.state, text: st.textContent.trim(), selected: a.selectionStart == 0 && a.selectionEnd == a.value.length && a.value.length > 0,
+    focused: document.activeElement === a, expanded: b ? b.getAttribute("aria-expanded") : null, whole: a.scrollHeight <= a.clientHeight + 1} })()`);
+  verdict(page, w, h, "where the copy is refused, the dialog says so, the box opens whole and its text is selected and focused, so that Ctrl+C copies it all", s.state == "fail" && s.text.length > 0 && s.selected && s.focused && s.expanded == "true" && s.whole, JSON.stringify(s));
+  await t.js(`navigator.clipboard.writeText = () => Promise.resolve()`); await t.js(`document.getElementById("probe-again").click()`); await sleep(400);
+  const later = await t.js(`({state: document.getElementById("probe-status").dataset.state, expanded: (document.getElementById("probe-more") || {getAttribute: () => null}).getAttribute("aria-expanded")})`);
+  verdict(page, w, h, "a later successful copy returns step 1 to the clipboard line and leaves the box as it is", later.state == "ok" && later.expanded == "true", JSON.stringify(later));
   info.push({page, w, h, state: "copy refused, the prompt open", scrollsInside: await t.js(SCROLLS)});
   await t.close();
 }

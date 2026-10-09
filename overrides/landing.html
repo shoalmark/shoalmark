@@ -313,7 +313,7 @@ section.band{padding-block:72px 40px}
 .chart-wrap + .console{padding-top:26px}
 
 /* B1 — the probe dialog: a real modal (<dialog>, showModal): labelled, focus moves in and back out, Escape closes it, Tab stays inside, the page behind is inert.
-   Three steps, the prompt and the approvals folded away (<details>: Enter and Space on the line open them) */
+   Three steps; the approvals folded away (<details>: Enter and Space on the line open it); the prompt in step 1 as a box of two lines that a button opens whole */
 html.modal{overflow:hidden}
 dialog.probe{padding:0;border:0;background:none;color:var(--ink);width:min(680px,calc(100vw - 24px));max-width:none;max-height:none;overflow:visible;font:15px/1.6 var(--mono)}
 dialog.probe::backdrop{background:rgba(5,11,18,.86)}
@@ -321,7 +321,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-box>.t{background:var(--watt);color:var(--landink)}.probe-box>.t::before{color:inherit}
 .probe-bar{display:flex;justify-content:flex-end;padding:8px 10px;border-bottom:1px dashed var(--contour)}
 .probe-x{font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--field);padding:8px 10px;cursor:pointer}
-.probe-x:hover,.probe-again:hover{border-color:var(--drying);color:var(--watt)}
+.probe-x:hover,.probe-again:hover,.probe-more:hover{border-color:var(--drying);color:var(--watt)}
 .probe-scroll{max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow:auto;padding:22px 26px 24px;display:grid;gap:18px}
 /* the steps: a number in the pixel face on a watt tile, a dashed rail between them */
 .probe-steps{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;gap:18px}
@@ -341,7 +341,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-done{font:700 11px/1 var(--pix);text-transform:uppercase;color:var(--watt)}
 /* the folds: one line each, a + that turns to a - */
 .probe-fold{border:1px solid var(--contour);background:var(--panel2)}
-.probe-prompt{position:relative;margin-top:12px}
+.probe-prompt{margin-top:12px}
 .probe-fold>summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none;font:600 13px/1.4 var(--mono);color:var(--ink)}
 .probe-fold>summary::-webkit-details-marker{display:none}
 .probe-fold>summary::before{content:"+";content:"+" / "";flex:none;width:12px;text-align:center;font:700 13px/1 var(--pix);color:var(--watt)}
@@ -350,14 +350,18 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-fold>summary:hover{color:var(--watt)}
 .probe-fold>:not(summary){margin:12px 14px}
 .probe-fold>:last-child{margin-bottom:14px}
-.probe-ph{position:absolute;top:-8px;right:12px;font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:3px 6px}{# the tag that marks the prompt as the placeholder it is: delete it, and `dlg_ph_badge`, when the probe lane's words are final #}
-.probe-ta{display:block;width:calc(100% - 28px);height:calc(9 * 1.6em + 26px);margin-inline:14px;padding:12px 14px;resize:vertical;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere}
-.probe-step[data-state=fail] .probe-ta{height:calc(5 * 1.6em + 26px)}
+.probe-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 6px;font:400 11px/1.4 var(--pix);text-transform:uppercase;color:var(--mute)}
+.probe-ph{font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:4px 7px}{# the tag that marks the prompt as the placeholder it is: delete it, and `dlg_ph_badge`, when the probe lane's words are final #}
+.probe-pbox{position:relative}
+.probe-ta{display:block;width:100%;height:calc(2 * 1.6em + 26px);margin:0;padding:12px 14px;resize:none;overflow:hidden;overflow-wrap:anywhere;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap}{# closed, two lines of the prompt; the whole text stays in the box, so that selecting it and assistive technology reach all of it #}
+.probe-prompt[data-open=true] .probe-ta{overflow:auto}
+.probe-fade{position:absolute;left:3px;right:1px;bottom:1px;height:26px;pointer-events:none;background:linear-gradient(to bottom,rgba(4,10,16,0),#040a10)}{# decorative: it takes no pointer events and the button is outside the box, below it #}
+.probe-prompt[data-open=true] .probe-fade{display:none}
+.probe-more{display:inline-flex;margin-top:8px;font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--field);padding:8px 10px;cursor:pointer}
 .probe-ta::selection{background:var(--blue);color:var(--landink)}
 .probe-apps{margin-bottom:0;padding-left:22px;display:grid;gap:6px;font-size:13px;line-height:1.5;color:var(--dim)}.probe-apps li::marker{color:var(--watt);font-family:var(--pix);font-size:11px}.probe-apps li.cond{border-left:2px dashed var(--land);padding-left:8px;margin-left:-10px;color:var(--mute)}.probe-apps li.cond::marker{color:var(--land)}
 .probe-lead{margin:0;color:var(--ink)}
 
-@media (max-height:720px){.probe-step[data-state=fail] .probe-prompt>summary{display:none}.probe-step[data-state=fail] .probe-prompt>:not(summary){margin-top:10px}}
 
 /* narrower screens: the title leaves the sea and stands above the chart */
 @media (max-width:1279px){
@@ -387,7 +391,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 }{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the actions carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, each action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (max-width:400px){.hud .wrap{gap:12px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
 /* B1 — top bar, by width: the switch and the release link take their room from the bar's own stats, as it already yields them */
-@media (max-width:1195px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer. With the switch and all five anchors the bar needs 1160px in German and 1093px in English at today's hi-score, 76/91 with v0.19.2 in the label, and 1188px and 1123px with the widest figure the bar can print, 888/888 (measured; the hi-score is read on every deploy and grows a digit with the counted range). The anchors show from 1196px, so that even that figure keeps them in one row; the browser check sets 888/888 and finds that they stand in one row where they first show #}
+@media (max-width:1195px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer. With the switch and all five anchors the bar needs 1160px in German and 1093px in English at today's hi-score, 76/91 with v0.19.2 in the label, and 1188px and 1123px with the widest three-digit hi-score, 888/888 (measured; the hi-score is read on every deploy and grows a digit with the counted range). The anchors show from 1196px, so that even that figure keeps them in one row; the browser check sets 888/888 and finds that they stand in one row where they first show #}
 @media (max-width:1129px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1130px in English (1196px in German), not 981px — the switch needs the room; the bar needs 992px without it #}
 @media (max-width:699px){.hud .lang .l{display:none}.hud .lang .s{display:inline}.hud .lang{padding:8px 8px}}
 @media (max-width:700px){.hud .langsw{margin-left:-8px}}{# B1: with the score's own 14px gap, the switch reads as the list's last item #}
@@ -400,8 +404,13 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   .probe-scroll{padding:14px 14px 16px;gap:12px;max-height:calc(100vh - 88px);max-height:calc(100dvh - 88px)}
   .probe-steps{gap:14px}.probe-step{grid-template-columns:28px minmax(0,1fr);gap:11px}.probe-step::before{width:28px;height:28px;font-size:13px;box-shadow:2px 2px 0 var(--band)}.probe-step:not(:last-child)::after{left:13px;top:34px;bottom:-12px}
   .probe-body{padding-top:2px;font-size:14px;line-height:1.5}.probe-fold>summary{padding:10px 12px;font-size:12.5px}.probe-fold>:not(summary){margin-inline:12px}
-  .probe-ta{height:calc(7 * 1.6em + 26px);font-size:12px}.probe-step[data-state=fail] .probe-ta{height:calc(3 * 1.6em + 26px)}
+  .probe-ta{font-size:12px}
 }
+@media (max-width:700px) and (max-height:700px){
+  .probe-scroll{padding:10px 12px 12px;gap:8px}
+  .probe-steps{gap:10px}.probe-step:not(:last-child)::after{bottom:-8px}
+  .probe-body{line-height:1.4}.probe-act{margin-top:8px}.probe-prompt{margin-top:8px}.probe-more{margin-top:6px}.probe-fold>summary{padding:8px 12px}
+}{# B1: short phones (375×667): the box of the prompt costs 85px in step 1 and the dialog stays within its window without scrolling inside itself: its spaces give 40px back #}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
@@ -654,10 +663,14 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
           <div class="probe-body">
             <p class="probe-line" id="probe-status" role="status"></p>
             <div class="probe-act"><button type="button" class="probe-again" id="probe-again" autofocus><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.dlg_again }}</button><span class="probe-done" id="probe-done" role="status"></span></div>
-            <details class="probe-fold probe-prompt" id="probe-prompt">
-              <summary><span>{{ w.dlg_fold_prompt }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></summary>
-              <textarea class="probe-ta" id="probe-text" readonly spellcheck="false" aria-label="{{ w.dlg_fold_prompt }}" rows="9">{{ L.probe_prompt | e }}</textarea>
-            </details>
+            <div class="probe-prompt" id="probe-prompt" data-open="false">
+              <label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label>
+              <div class="probe-pbox">
+                <textarea class="probe-ta" id="probe-text" readonly spellcheck="false" rows="9">{{ L.probe_prompt | e }}</textarea>
+                <span class="probe-fade" aria-hidden="true"></span>
+              </div>
+              <button type="button" class="probe-more" id="probe-more" aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}</button>
+            </div>
           </div>
         </li>
         <li class="probe-step"><div class="probe-body"><p>{{ T(w.dlg_s2) }}</p></div></li>
@@ -919,23 +932,25 @@ addEventListener("resize", scale);
 (function () {
   const open = document.getElementById("probe-open"), dlg = document.getElementById("probe");
   if (!open || !dlg || typeof dlg.showModal !== "function") return;   // no dialog, no script: the link reads the same text at its short address
-  const $ = id => document.getElementById(id), ta = $("probe-text"), line = $("probe-status"), s1 = $("probe-s1"), again = $("probe-again"), done = $("probe-done"), fold = $("probe-prompt"), x = $("probe-x");
-  const W = {{ {"ok": w.dlg_s1_ok, "fail": w.dlg_failed, "done": w.dlg_again_done} | tojson }};
+  const $ = id => document.getElementById(id), ta = $("probe-text"), line = $("probe-status"), s1 = $("probe-s1"), again = $("probe-again"), done = $("probe-done"), box = $("probe-prompt"), more = $("probe-more"), x = $("probe-x");
+  const W = {{ {"ok": w.dlg_s1_ok, "fail": w.dlg_failed, "done": w.dlg_again_done, "more": w.dlg_more, "less": w.dlg_less} | tojson }};
   let timer = null;
   const say = (state, text) => { line.dataset.state = state; s1.dataset.state = state; line.textContent = text; };
-  const fit = () => { if (s1.dataset.state === "fail") return; ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, innerHeight * .5) + "px"; };   // opened by hand, the prompt shows whole, up to half the window
+  const fit = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight + 2) + "px"; };   // open, the box shows the whole prompt: the dialog scrolls, not the box
+  const show = on => { box.dataset.open = on; more.setAttribute("aria-expanded", on); more.textContent = on ? W.less : W.more; if (on) fit(); else ta.style.height = ""; };
   const write = () => { try { return navigator.clipboard.writeText(ta.value).then(() => true, () => false); } catch (err) { return Promise.resolve(false); } };   // asked inside the click, while the page holds the user's gesture
-  const legacy = () => { const was = fold.open; fold.open = true; ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} if (ok) { fold.open = was; ta.blur(); } return ok; };
-  const good = again_ => { say("ok", W.ok); ta.style.height = ""; if (again_) { done.textContent = W.done; clearTimeout(timer); timer = setTimeout(() => { done.textContent = ""; }, 2600); } };
-  const bad = () => { say("fail", W.fail); done.textContent = ""; fold.open = true; ta.style.height = ""; ta.focus(); ta.select(); };   // step 1 says so, the text stands open and selected
+  const legacy = () => { ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} if (ok) ta.blur(); return ok; };
+  const good = again_ => { say("ok", W.ok); if (again_) { done.textContent = W.done; clearTimeout(timer); timer = setTimeout(() => { done.textContent = ""; }, 2600); } };   // the box stays as it is
+  const bad = () => { say("fail", W.fail); done.textContent = ""; show(true); ta.focus(); ta.select(); };   // step 1 says so, the box opens whole and its text is selected
   open.addEventListener("click", e => {
     e.preventDefault();
     const p = write();
-    say("", ""); done.textContent = ""; fold.open = false; ta.style.height = ""; dlg.showModal(); document.documentElement.classList.add("modal");
+    say("", ""); done.textContent = ""; show(false); dlg.showModal(); document.documentElement.classList.add("modal");
     p.then(ok => (ok || legacy()) ? good(false) : bad());
   });
   again.addEventListener("click", () => { write().then(ok => (ok || legacy()) ? good(true) : bad()); });
-  fold.addEventListener("toggle", () => { if (fold.open) fit(); });
+  more.addEventListener("click", () => show(box.dataset.open !== "true"));
+  addEventListener("resize", () => { if (box.dataset.open === "true") fit(); });
   x.addEventListener("click", () => dlg.close());
   dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });   // a click on the backdrop
   dlg.addEventListener("close", () => { document.documentElement.classList.remove("modal"); clearTimeout(timer); open.focus(); });

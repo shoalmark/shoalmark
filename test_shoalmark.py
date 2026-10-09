@@ -4487,6 +4487,20 @@ def _landing_problems(src):
         bad.append("the board's excerpt is typed where facts.html gives it")
     if not all("{read_date}" in w.get("peek_cap", "") for w in words.values()) or de.get("moves_aria") != "Spielzüge":
         bad.append("the excerpt's caption does not name the day the figures were read, or the German move lists are not named Spielzüge")
+    # the probe dialog's step 1: the prompt stands in it as a box of two lines, a real button opens it whole; the prompt has no fold of its own, the approvals keep theirs
+    step1 = re.search(r'<li class="probe-step" id="probe-s1">(.*?)</li>', code, re.S)
+    step1 = step1.group(1) if step1 else ""
+    box = ('id="probe-prompt"' in step1 and '<label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label>' in step1
+           and 'id="probe-text" readonly' in step1 and '<span class="probe-fade" aria-hidden="true"></span>' in step1)
+    button = '<button type="button" class="probe-more" id="probe-more" aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}</button>' in step1
+    if not box or not button or "<details" in step1 or step1.find('id="probe-again"') > step1.find('id="probe-prompt"') or step1.find('id="probe-again"') < 0:
+        bad.append("the probe dialog's step 1 does not hold, under Copy again and outside any fold, the prompt's box with its label, its tag and its fade and a button with aria-expanded and aria-controls")
+    if re.sub(r"/\*.*?\*/", "", code, flags=re.S).count("<details") != 1 or '<details class="probe-fold probe-approvals">' not in code or "{{ w.dlg_fold_appr }}" not in code:
+        bad.append("the probe dialog's folds are not the approvals' alone")
+    if "dlg_fold_prompt" in tpl + json.dumps(words) or '"less": w.dlg_less' not in code or '"more": w.dlg_more' not in code:
+        bad.append("the prompt's fold and its words are still there, or the box's two button words are not the script's")
+    if [(w.get("dlg_prompt_label"), w.get("dlg_more"), w.get("dlg_less")) for w in (en, de)] != [("The prompt", "Show all", "Show less"), ("Der Prompt", "Alles anzeigen", "Weniger anzeigen")]:
+        bad.append("the box's label and the button's two words are not the ones given, in both languages")
     if any(gone in tpl + src["zensical.toml"] + json.dumps(words) for gone in ("register_up", "chart_gloss", "chart_note_gloss")):
         bad.append("a switch the Owner's answers removed is still there")
     order = [tpl.find(f'id="{section}"') for section in ("agents", "seats", "scores", "register", "start")]
@@ -4517,6 +4531,15 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "a fix for the board's refresh", "a security release"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
+        "the prompt back in a fold": _with(_ls, "overrides/landing.html", '<div class="probe-prompt" id="probe-prompt" data-open="false">', '<details class="probe-fold probe-prompt" id="probe-prompt" data-open="false">'),
+        "the button without aria-expanded": _with(_ls, "overrides/landing.html", ' aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}', ' aria-controls="probe-text">{{ w.dlg_more }}'),
+        "the button without aria-controls": _with(_ls, "overrides/landing.html", ' aria-controls="probe-text">{{ w.dlg_more }}', '>{{ w.dlg_more }}'),
+        "the button a link": _with(_ls, "overrides/landing.html", '<button type="button" class="probe-more" id="probe-more"', '<a class="probe-more" id="probe-more"'),
+        "the box without its fade": _with(_ls, "overrides/landing.html", '<span class="probe-fade" aria-hidden="true"></span>', ""),
+        "the box above Copy again": _with(_ls, "overrides/landing.html", '<p class="probe-line" id="probe-status" role="status"></p>', '<div class="probe-prompt" id="probe-prompt"><label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label><textarea id="probe-text" readonly></textarea><span class="probe-fade" aria-hidden="true"></span><button type="button" class="probe-more" id="probe-more" aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}</button></div><p class="probe-line" id="probe-status" role="status"></p>'),
+        "the prompt's fold words back": _with(_ls, "overrides/partials/landing/de.html", '  "dlg_more": "Alles anzeigen",\n', '  "dlg_more": "Alles anzeigen",\n  "dlg_fold_prompt": "Der Prompt im Wortlaut",\n'),
+        "a German button word changed": _with(_ls, "overrides/partials/landing/de.html", '"dlg_less": "Weniger anzeigen"', '"dlg_less": "Zuklappen"'),
+        "the approvals' fold gone": _with(_ls, "overrides/landing.html", '<details class="probe-fold probe-approvals">', '<div class="probe-approvals-x">'),
         "the act's line escaped a second time": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}"),
         "the act's line printed twice": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }} <span", "{{ F.excerpt.act.line }} {{ F.excerpt.act.line }} <span"),
         "a top bar count typed": _with(_ls, "overrides/landing.html", '<b id="hud-w">{{ F.counts.wrecks }}</b>', '<b id="hud-w">27</b>'),
@@ -4524,7 +4547,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the caption's day typed": _with(_ls, "overrides/partials/landing/en.html", "board, {read_date}:", "board, 1 October 2026:")}
 _ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
 check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
-      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed and a top bar count typed leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 12)
+      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed and the approvals' fold gone leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 21)
 
 
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
@@ -12376,12 +12399,22 @@ else:
                             "fold 1 opens and closes by keyboard"),
                 "wraps": ("a top bar whose anchors show a width too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1129px){.hud nav a:not(.docs){display:none}}", "@media (max-width:1099px){.hud nav a:not(.docs){display:none}}", "bar"),
                           "the top bar's anchors stand in one row, clear of the switch, where they first show"),
+                "box-aria": ("a prompt box whose button does not say aria-expanded", _mutate("box-aria", "index.html", 'more.setAttribute("aria-expanded", on);', "", "390x844"),
+                             "the button opens the prompt whole by Enter and folds it back by Space"),
+                "box-shut": ("a prompt box that never opens whole", _mutate("box-shut", "index.html", 'if (on) fit(); else ta.style.height = "";', 'ta.style.height = "";', "390x844"),
+                             "the button opens the prompt whole by Enter and folds it back by Space"),
+                "box-failed": ("a failed copy that leaves the box closed", _mutate("box-failed", "index.html", 'say("fail", W.fail); done.textContent = ""; show(true); ta.focus();', 'say("fail", W.fail); done.textContent = ""; ta.focus();', "390x844"),
+                               "where the copy is refused, the dialog says so, the box opens whole and its text is selected and focused, so that Ctrl+C copies it all"),
+                "box-fade": ("a fade that takes the pointer", _mutate("box-fade", "index.html", "</head>", "<style>.probe-fade{pointer-events:auto!important}</style></head>", "390x844"),
+                             "the fade is decorative: it takes no pointer events and never covers the button"),
+                "box-later": ("a later success that folds the box", _mutate("box-later", "index.html", 'const good = again_ => { say("ok", W.ok);', 'const good = again_ => { say("ok", W.ok); show(false);', "390x844"),
+                              "a later successful copy returns step 1 to the clipboard line and leaves the box as it is"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens whole, a failed copy that leaves the box closed, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show a width too early for the widest hi-score makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
