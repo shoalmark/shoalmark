@@ -4632,8 +4632,8 @@ _GIT_EN = ("Made and tested on `git` with GitHub. Subversion passes the test sui
            "Today the tool needs `git` installed, on Subversion too. Signed answers need a `git` repository, and the pull-request queue a `git` repository "
            "on GitHub and GitHub's command line, `gh`.")
 _GIT_DE = ("Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. "
-           "Heute braucht das Werkzeug ein installiertes `git`, auch unter Subversion. Signierte Antworten brauchen ein `git`-Repository, die Pull-Request-Warteschlange "
-           "ein `git`-Repository auf GitHub und GitHubs Kommandozeile, `gh`.")
+           "Heute braucht das Werkzeug ein installiertes `git`, auch unter Subversion. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange "
+           "braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.")
 _GIT_SETUP = ("*For the person who owns the repository. It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.*",
               "*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.*")
 _GIT_HOW = ("- It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.\n  It needs no server or account of its own.\n",
@@ -4676,7 +4676,7 @@ check("FM-006 · B1 · what the tool needs, in the Owner's words: git installed,
       f"both How it works pages say it in step in English and German, the opening sentence of the withdrawn ruling stays out (problems found: {_gp})", _gp == [])
 _gctl = {"README's sentence as it was": _with(_gs, "README.md", "Today the tool needs `git` installed, on Subversion too. ", ""),
          "the English start page without gh": _with(_gs, "docs/index.md", " and GitHub's command line, `gh`.", "."),
-         "the German start page's gh clause changed": _with(_gs, "docs/de/index.md", "GitHubs Kommandozeile, `gh`", "die GitHub-CLI"),
+         "the German start page's gh clause changed": _with(_gs, "docs/de/index.md", "dazu `gh`, das Kommandozeilenwerkzeug von GitHub.", "dazu die GitHub-CLI."),
          "the landing's English list with the withdrawn opening": _with(_gs, "overrides/partials/landing/en.html", '"beta_4": "Made', '"beta_4": "Needs <code>git</code> on every machine, Subversion included. Made'),
          "the German landing list as it was": _with(_gs, "overrides/partials/landing/de.html", "Heute braucht das Werkzeug ein installiertes <code>git</code>, auch unter Subversion. ", ""),
          "the English setup page as it was": _with(_gs, "docs/setup.md", "It needs Python 3.9 or newer, and `git` installed — on Subversion too, today.", "Python 3.9 or newer is the only requirement."),
