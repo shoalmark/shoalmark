@@ -1,32 +1,58 @@
-# The documentation site: built from docs/ on release tags or manual dispatch, served by GitHub Pages.
+# The documentation site: built from docs/ on release tags, by hand, and on pull requests that change it; served by GitHub Pages.
 # The agents' document is README.md, rendered into the site by inclusion — never copied.
 name: docs
-# Runs on a release tag, or by hand: the site is built and deployed per release. A pull request does not build the site; `zensical build` locally does.
+# A release tag or a run by hand builds the site and deploys it. A pull request that changes the site's own sources — its pages,
+# templates, configuration, the README, the scripts the build runs, this file — builds it and runs its checks, and deploys nothing.
+# A change to the trackers alone does not start it.
 on:
   push: {tags: ["v*"]}
   workflow_dispatch:
-permissions: {contents: read, pages: write, id-token: write}
-concurrency: {group: pages, cancel-in-progress: false}
+  pull_request:
+    paths:
+      - "docs/**"
+      - "overrides/**"
+      - "zensical.toml"
+      - "requirements-docs.txt"
+      - "README.md"
+      - "scripts/landing_facts.py"
+      - "scripts/llms_txt.py"
+      - "scripts/check_site.py"
+      - "scripts/test_check_site.py"
+      - ".github/workflows/docs.yml"
+# Each job names the permissions it needs, and no more; the workflow grants none of its own.
+permissions: {}
+# The image is pinned until 0.19.3, as ci.yml's are.
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions: {contents: read, pull-requests: read}
     steps:
+      # the whole history and its tags: the release, the wrecks' filing days and the pull requests' own commits are read from it
       - uses: actions/checkout@v7
+        with: {fetch-depth: 0, persist-credentials: false}
       - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
       - run: pip install -q -r requirements-docs.txt
       - run: python3 scripts/test_check_site.py
+      - name: the landing's figures and the probe prompt's pins, read from the repository at this commit
+        run: python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME"
+        env: {LANDING_FACTS_TOKEN: "${{ github.token }}"}
       - run: zensical build --clean
       - name: llms.txt — the agents' index of the same source, and a Markdown twin of every page
         run: python3 scripts/llms_txt.py site
       - run: python3 scripts/check_site.py site
+      - name: the landing names the release this commit reads
+        run: python3 scripts/landing_facts.py --check site
       - uses: actions/upload-pages-artifact@v5
         with: {path: site}
   deploy:
-    # The public repository lives at shoalmark/shoalmark; keep private forks from deploying.
-    if: github.event.repository.private == false
+    # The public repository lives at shoalmark/shoalmark; keep private forks from deploying. A pull request never deploys.
+    if: github.event.repository.private == false && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
+    permissions: {pages: write, id-token: write}
+    # one deployment at a time; a pull request's build is in no group, so it neither waits for a deployment nor cancels one
+    concurrency: {group: pages, cancel-in-progress: false}
     environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
     steps:
       - id: deployment

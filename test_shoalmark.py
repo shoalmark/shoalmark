@@ -12373,6 +12373,194 @@ else:
             check(f"FM-006 · B1 · RV-2750: where {what_}, the check fails — exit 1, one line (saw {got_})",
                   got_[0] == 1 and len(got_[2].strip().splitlines()) == 1 and says_ in got_[2])
 
+
+def _docs_yaml(text):
+    """docs.yml read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and sequences of
+    plain or quoted scalars, `|` and `>` blocks, `#` comments. Anything else raises ValueError, and every property below fails."""
+    lines = text.replace("\r\n", "\n").split("\n")
+
+    def bare(s):
+        quote = None
+        for i, ch in enumerate(s):
+            if quote:
+                quote = None if ch == quote else quote
+            elif ch in "\"'":
+                quote = ch
+            elif ch == "#" and (i == 0 or s[i - 1] in " \t"):
+                return s[:i].rstrip()
+        return s.rstrip()
+
+    def scalar(s):
+        s = s.strip()
+        if s[:1] in ("{", "["):
+            value, end = flow(s, 0)
+            if s[end:].strip():
+                raise ValueError(f"after a flow collection: {s[end:]!r}")
+            return value
+        if len(s) > 1 and s[0] == s[-1] and s[0] in "\"'":
+            return s[1:-1]
+        return {"": None, "~": None, "null": None, "true": True, "false": False}.get(s, int(s) if re.fullmatch(r"-?\d+", s) else s)
+
+    def flow(s, i):
+        close, out = {"{": "}", "[": "]"}[s[i]], {} if s[i] == "{" else []
+        i += 1
+        while True:
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == close:
+                return out, i + 1
+            if isinstance(out, dict):
+                m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[^:,{}\[\]]+):\s*", s[i:])
+                if not m:
+                    raise ValueError(f"a flow mapping's key at {s[i:]!r}")
+                key, i = scalar(m.group(1)), i + m.end()
+            if i < len(s) and s[i] in "{[":
+                value, i = flow(s, i)
+            else:
+                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^,{}\[\]]*)", s[i:])
+                value, i = scalar(m.group(1)), i + m.end()
+            out.__setitem__(key, value) if isinstance(out, dict) else out.append(value)
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == ",":
+                i += 1
+            elif i >= len(s) or s[i] != close:
+                raise ValueError(f"an unclosed flow collection: {s!r}")
+
+    def skip(i):
+        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+        return i
+
+    def node(i, ind):
+        i = skip(i)
+        if i >= len(lines) or len(lines[i]) - len(lines[i].lstrip(" ")) < ind:
+            return None, i
+        ind = len(lines[i]) - len(lines[i].lstrip(" "))
+        if lines[i].lstrip().startswith("- ") or lines[i].strip() == "-":
+            out = []
+            while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind and lines[i].lstrip().startswith("-"):
+                rest = lines[i].lstrip()[1:]
+                if re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(\s|$)", rest):
+                    lines[i] = " " * (ind + 2) + rest.lstrip()      # `- key: value`: a mapping, its first key on the dash's line
+                    value, i = node(i, ind + 2)
+                else:
+                    value, i = scalar(bare(rest)), i + 1
+                out.append(value)
+                i = skip(i)
+            return out, i
+        out = {}
+        while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind:
+            m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(?:\s+(.*))?$", lines[i])
+            if not m:
+                raise ValueError(f"line {i + 1}: {lines[i].strip()!r}")
+            key, rest = scalar(m.group(1)), bare(m.group(2) or "")
+            if key in out:
+                raise ValueError(f"line {i + 1}: {key!r} twice")
+            if rest in ("|", ">", "|-", ">-"):
+                j, block = i + 1, []
+                while j < len(lines) and (not lines[j].strip() or len(lines[j]) - len(lines[j].lstrip(" ")) > ind):
+                    block.append(lines[j].strip())
+                    j += 1
+                out[key], i = "\n".join(block).strip() + "\n", j
+            elif rest:
+                out[key], i = scalar(rest), i + 1
+            else:
+                out[key], i = node(i + 1, ind + 1)
+            i = skip(i)
+        if i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) > ind:
+            raise ValueError(f"line {i + 1} is indented under nothing: {lines[i].strip()!r}")
+        return out, i
+    value, end = node(0, 0)
+    if skip(end) < len(lines):
+        raise ValueError(f"line {skip(end) + 1}: {lines[skip(end)].strip()!r}")
+    return value
+
+
+_DOCS_SOURCES = ("docs/index.md", "docs/de/setup.md", "docs/stylesheets/shoalmark.css", "overrides/landing.html", "overrides/partials/landing/en.html",
+                 "zensical.toml", "requirements-docs.txt", "README.md", "scripts/landing_facts.py", "scripts/llms_txt.py", "scripts/check_site.py",
+                 "scripts/test_check_site.py", ".github/workflows/docs.yml")
+_DOCS_NOT = ("work-tracker/FM-006-shoalmark-has-one-document.md", "work-tracker/INDEX.md", "work-tracker/TRIAGE.md", "work-tracker/evidence/reviews/review.md")
+
+
+def _docs_path_hit(pattern, path):
+    """A pull request's `paths` filter as GitHub matches a path: `**` any run of characters, `*` and `?` within one folder."""
+    rx = "".join(".*" if t == "**" else "[^/]*" if t == "*" else "[^/]" if t == "?" else re.escape(t) for t in re.findall(r"\*\*|\*|\?|[^*?]+", pattern))
+    return re.fullmatch(rx, path) is not None
+
+
+def _docs_wf_properties(text):
+    """FM-006, B1, ruling 9: the site is built on pull requests that change it, checks only — [(what is asserted, whether it holds)]."""
+    try:
+        wf, refused = _docs_yaml(text) or {}, ""
+    except ValueError as e:
+        wf, refused = {}, f" — the file is refused: {e}"
+    on, jobs = wf.get("on") or {}, wf.get("jobs") or {}
+    build, deploy = jobs.get("build") or {}, jobs.get("deploy") or {}
+    pr = on.get("pull_request") if isinstance(on, dict) else None
+    paths = pr.get("paths") or [] if isinstance(pr, dict) else []
+    starts = lambda path: any(_docs_path_hit(p, path) for p in paths)
+    steps = [s for j in jobs.values() for s in (j.get("steps") or []) if isinstance(s, dict)]
+    built = [s for s in build.get("steps") or [] if isinstance(s, dict)]
+    at = lambda pred: next((i for i, s in enumerate(built) if pred(str(s.get("run") or ""))), None)
+    facts, zensical, release = at(lambda r: r.startswith("python3 scripts/landing_facts.py --event")), at(lambda r: r.startswith("zensical build")), \
+        at(lambda r: r.startswith("python3 scripts/landing_facts.py --check"))
+    checkout = next((s for s in built if str(s.get("uses") or "").startswith("actions/checkout@")), {})
+    return [
+        ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
+        ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, templates, configuration, the README, "
+         "the scripts the build runs and docs.yml — and never on one that changes trackers alone",
+         isinstance(on, dict) and set(on) == {"push", "workflow_dispatch", "pull_request"} and on.get("push") == {"tags": ["v*"]} and isinstance(pr, dict)
+         and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
+        ("the deploy job runs after the build, only in the public repository, and never for a pull request",
+         deploy.get("if") == "github.event.repository.private == false && github.event_name != 'pull_request'" and deploy.get("needs") == "build"),
+        ("each job holds its own least permissions — the build `contents: read` and `pull-requests: read`, the deploy `pages: write` and `id-token: write` — "
+         "and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy"}
+         and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}),
+        ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in str(s.get("run") or "") for s in steps)),
+        ("the build checks out the whole history with its tags, writes the landing's figures before `zensical build`, and checks the release after it",
+         (checkout.get("with") or {}).get("fetch-depth") == 0 and None not in (facts, zensical, release) and facts < zensical < release),
+        ("only the deploy job is in a concurrency group: a pull request's build neither waits for a deployment nor cancels one",
+         "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}),
+    ]
+
+
+def _docs_wf_regressions(text):
+    """Each change that undoes one property above, and fails: the controls of the check that reads docs.yml."""
+    def facts_after_build(t):
+        step = re.search(r"(?m)^      - name: the landing's figures[^\n]*\n        run: [^\n]*\n        env: [^\n]*\n", t)
+        return t if not step else t.replace(step.group(0), "", 1).replace("      - run: zensical build --clean\n", "      - run: zensical build --clean\n" + step.group(0), 1)
+    rows = (
+        ("a `pull_request_target` trigger beside `pull_request`", lambda t: t.replace("  pull_request:\n", "  pull_request_target:\n    branches: [main]\n  pull_request:\n", 1)),
+        ("a pull request starts it whatever it changes: its `paths` gone", lambda t: re.sub(r"(?m)^    paths:\n(      - .*\n)+", "", t, count=1)),
+        ("the trackers are among the paths", lambda t: t.replace('      - "docs/**"\n', '      - "docs/**"\n      - "work-tracker/**"\n', 1)),
+        ("a pull request deploys: its guard gone", lambda t: t.replace(" && github.event_name != 'pull_request'", "", 1)),
+        ("a private fork deploys: its guard gone", lambda t: t.replace("github.event.repository.private == false && ", "", 1)),
+        ("the build may write the repository", lambda t: t.replace("{contents: read, pull-requests: read}", "{contents: write, pull-requests: read}", 1)),
+        ("the build holds the deploy's rights too", lambda t: t.replace("{contents: read, pull-requests: read}", "{contents: read, pull-requests: read, pages: write, id-token: write}", 1)),
+        ("the workflow grants rights of its own", lambda t: t.replace("permissions: {}\n", "permissions: {contents: read, pages: write, id-token: write}\n", 1)),
+        ("the deploy names no permissions of its own", lambda t: t.replace("    permissions: {pages: write, id-token: write}\n", "", 1)),
+        ("an expression inside a `run:`", lambda t: t.replace('--event "$GITHUB_EVENT_NAME"', "--event ${{ github.event_name }}", 1)),
+        ("an expression inside a `run: |` block", lambda t: t.replace("      - run: zensical build --clean\n", "      - run: |\n          echo ${{ github.head_ref }}\n          zensical build --clean\n", 1)),
+        ("the checkout's history cut to one commit", lambda t: t.replace("{fetch-depth: 0, persist-credentials: false}", "{persist-credentials: false}", 1)),
+        ("the figures written after `zensical build`", facts_after_build),
+        ("the whole workflow in the deployments' group again", lambda t: t.replace("# The image is pinned", "concurrency: {group: pages, cancel-in-progress: false}\n# The image is pinned", 1)),
+    )
+    out = []
+    for what, change in rows:
+        changed = change(text)
+        props = _docs_wf_properties(changed)
+        out.append((f"a docs.yml in which {what} fails one of the properties above" + (" — NOT JUDGED: the change finds no line to apply to" if changed == text else ""),
+                    changed != text and not all(ok for _, ok in props)))
+    for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
+        out.append((f"a docs.yml in which {what} passes every property above", all(ok for _, ok in _docs_wf_properties(change(text)))))
+    return out
+
+
+_docs_text = (HERE / ".github/workflows/docs.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/docs.yml").is_file() else ""
+for _what, _ok in _docs_wf_properties(_docs_text) + _docs_wf_regressions(_docs_text):
+    check(f"FM-006 · B1 · docs.yml: {_what}", _ok)
+
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
 #     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
