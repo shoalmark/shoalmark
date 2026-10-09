@@ -2827,7 +2827,8 @@ def notify_cmd(trackers):
             where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
         except OSError as e:
             where = f"NOT remembered — {path}: {e.strerror or e}; the next run posts again"
-    print(f"--notify: {len(lines) - failed} posted · {before} posted before · {later} not yet within {NOTIFY_AHEAD} minutes"
+    done = "printed" if sys.platform == "win32" else "posted"              # on Windows each notice is printed
+    print(f"--notify: {len(lines) - failed} {done} · {before} {done} before · {later} not yet within {NOTIFY_AHEAD} minutes"
           + (f" · {failed} NOT posted" if failed else "") + f" — {where}")
     for l in lines:
         print(l)

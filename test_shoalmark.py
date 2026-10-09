@@ -9956,8 +9956,9 @@ with tempfile.TemporaryDirectory() as tmp:
     sys.platform, _NOTICE_WATCH[:] = "win32", [seen_, posting_]
     try:
         code_w, out_w, err_w = run(win_, "--notify")
+        again_w = run(win_, "--notify")     # the second run: each notice printed before
     except Exception as e_:                 # a run that stops fails the checks below
-        code_w, out_w, err_w = None, "", f"{type(e_).__name__}: {e_}"
+        code_w, out_w, err_w, again_w = None, "", f"{type(e_).__name__}: {e_}", (None, "", "")
     finally:
         _NOTICE_WATCH[:] = []
         sys.platform, shutil.which, fm.post_notice = real_platform_, real_which_, real_post_
@@ -9971,6 +9972,12 @@ with tempfile.TemporaryDirectory() as tmp:
           code_w == 0 and not [x_ for x_ in seen_ if x_[1]] and all(x_[0] == "subprocess.Popen" and isinstance(x_[2], list) and fm.read_only_git(x_[2]) for x_ in seen_))
     check(f"FM-030 · on Windows `--notify` prints each act's notice, its line ending *printed — no notice is posted on Windows* (saw {out_w.splitlines()[1:]})",
           sorted(win_lines_) == ["AP-1", "AP-2", "AP-3"] and all(l_.endswith(" — printed — no notice is posted on Windows") for l_ in win_lines_.values()))
+    sums_w = [o_.splitlines()[0] if o_.strip() else "" for o_ in (out_w, again_w[1])]
+    check(f"FM-030 · on Windows the `--notify` summary counts what it printed — *3 printed · 0 printed before*, and on a second run *0 printed · 3 printed before* — "
+          f"and never says posted (saw {sums_w})",
+          sums_w[0].startswith("--notify: 3 printed · 0 printed before · 0 not yet within 30 minutes — remembered in ")
+          and sums_w[1].startswith("--notify: 0 printed · 3 printed before · 0 not yet within 30 minutes — remembered in ")
+          and again_w[0] == 0 and not any("posted" in x_ for x_ in sums_w))
     check(f"FM-030 · on Windows a run with one notice of hostile text — a NUL, quotes, code of each notifier's language — prints that notice and every other one, and "
           f"exits 0 (saw exit {code_w}, {win_lines_.get('AP-2', '')[-110:]!r})",
           code_w == 0 and "NOTICE-RAN" in win_lines_.get("AP-2", "") and all(win_lines_.get(t_, "").endswith(" — printed — no notice is posted on Windows")
