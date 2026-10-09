@@ -1,0 +1,15 @@
+{#- B1 (designer-112): the header's repository link, drawn as Zensical's own partials/source.html draws it (0.0.66 and 0.0.67 carry the same file,
+    byte for byte), without `data-md-component="source"`. That attribute is the only thing the theme's script looks for: it finds the element and,
+    for a github.com address, asks api.github.com for `/repos/<repo>/releases/latest` (the version) and `/repos/<repo>` (stars, forks) — and shows them
+    under the name. While this repository's releases are pre-releases the first answers 404, so every docs page made one failed request. With no
+    component to find, the script asks GitHub nothing. The link, its icon, its title and the repository's name stay; the facts line does not appear.
+    The partial is included twice per page — the header (partials/header.html:59) and the navigation drawer (partials/nav.html:19) — so one file serves both. -#}
+<a href="{{ config.repo_url }}" title="{{ lang.t('source') }}" class="md-source">
+  <div class="md-source__icon md-icon">
+    {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}
+    {% include ".icons/" ~ icon ~ ".svg" %}
+  </div>
+  <div class="md-source__repository">
+    {{ config.repo_name }}
+  </div>
+</a>
