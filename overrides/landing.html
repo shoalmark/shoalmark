@@ -1,10 +1,8 @@
-{#- FM-006 slice L — the landing page is the site's start page (docs/index.md selects this template).
-    The page is the GtM/Design seat's mock, work-tracker/evidence/FM-006/landing/index.html (9704140, PR 82), taken as-is on
-    the Owner's rule: full-bleed, no site chrome, nothing added. The only edits are the four his rule allows, each marked
-    where it stands with a comment like this one, which the build drops: (a) the facts dated, (b) R4 the reports cut,
-    (c) R3 the chart's texts above the CRT overlay, (d) the font loading. -#}
-{#- FM-006 v0.19.0 first screen: the Owner's ruling filed in FM-006 (What a stranger meets first) — A1's lead and its one action,
-    the link previews, C the fleet, E's two lines, the phone's first screen. Each edit is marked where it stands, as above. -#}
+{#- FM-006 slice L — the landing page is the site's start page (docs/index.md and docs/de/index.md select this template). It began as the
+    GtM/Design seat's mock, work-tracker/evidence/FM-006/landing/index.html (9704140, PR 82), taken as-is on the Owner's rule: full-bleed, no
+    site chrome. The edits since are each marked where they stand with a comment like this one, which the build drops: slice L's four (the
+    facts dated, the reports cut, the chart's texts above the CRT overlay, the font loading), then the v0.19.0 first screen (the Owner's
+    ruling filed in FM-006, What a stranger meets first: the lead, the link previews, the fleet, two lines, the phone's first screen), then B1. -#}
 {#- One template, its words per language. `partials/landing/en.html` and `de.html` hold every word (`{{ w.key }}`), `partials/landing/facts.html`
     every figure (the release, the high score, the wrecks, the pins, the build's date and commit), and the page's language is chosen from its
     path, as overrides/main.html does for the docs pages: the pages under de/ are German. One switch, `probe` under [project.extra] in
@@ -147,7 +145,7 @@ h1{margin:0;font:700 clamp(20px,1.9vw,24px)/1.2 var(--pix);letter-spacing:.01em;
 .btn.alt{background:var(--land)}{# B1: the secondary action, as 32780e5 drew it #}
 .btn .ic{flex:none;display:block;width:14px;height:16px;margin-block:-2px;fill:currentColor}{# B1: the copy icon — a 7 × 8 grid at 2 CSS px a unit, crisp, in the label's colour; its margins keep the button's height #}
 .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--band)}
-.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--band)}{# FM-006 v0.19.0 first screen: one action — .btn i, .btn.alt and .press went with the three anchors #}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--band)}{# FM-006 v0.19.0 first screen: .btn i and .press went with the three anchors of 32780e5; B1 brings .btn.alt back for the second action #}
 @keyframes blink{50%{opacity:0}}
 
 /* the console under the playfield: the selected incident, and the key */
@@ -386,11 +384,11 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   h1{font-size:24px}
   .lede{margin-bottom:30px;font-size:16px}
   .cta{flex-direction:column;align-items:stretch;gap:10px}.cta .btn{flex:none;justify-content:center;text-align:center;padding:16px 18px}.cta .btn.alt{padding:12px 18px}{# B1: two actions, one to a row on a phone: the primary as the one action was (45px), the secondary a row of 37px #}
-}{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the one action carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, the action the row's width; the fleet's tiles one to a row, each badge beside its words #}
+}{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the actions carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, each action the row's width; the fleet's tiles one to a row, each badge beside its words #}
 @media (max-width:400px){.hud .wrap{gap:12px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
 /* B1 — top bar, by width: the switch and the release link take their room from the bar's own stats, as it already yields them */
-@media (max-width:1157px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer: the bar needs 1158px with the switch and all five anchors (1092px in English; 992px, and 1062px in German, without the switch) #}
-@media (max-width:1091px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1092px, not 981px — the switch needs the room (measured: the bar needs 1092px with the switch and all five anchors, 992px without it) #}
+@media (max-width:1167px){html:lang(de) .hud nav a:not(.docs){display:none}}{# German labels are longer: with the switch and all five anchors the bar needs 1160px in German and 1093px in English, with v0.19.2 in the label; the anchors show from 1168px (1100px in English), so that a wider label still fits, and the browser check finds the width where they first show and that they stand in one row there #}
+@media (max-width:1099px){.hud nav a:not(.docs){display:none}}{# B1: the anchors yield below 1100px, not 981px — the switch needs the room (the bar needs 992px without it) #}
 @media (max-width:699px){.hud .lang .l{display:none}.hud .lang .s{display:inline}.hud .lang{padding:8px 8px}}
 @media (max-width:700px){.hud .langsw{margin-left:-8px}}{# B1: with the score's own 14px gap, the switch reads as the list's last item #}
 @media (max-width:469px){.score .hot{display:none}}

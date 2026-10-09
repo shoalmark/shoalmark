@@ -2,11 +2,13 @@
 // SITE is a built site, STATE is `interim` or `probe` (the launch state it was built in). The site is served from 127.0.0.1 and every other host is
 // unresolvable, so a page that asks for the outside fails and is logged. For each landing and How it works page at 360, 375 and 390 px (and 1440):
 //   no sideways scroll, no script error, no failed request, no request to any other host.
+// On each landing the top bar's five anchors stand in one row, clear of the language switch, at the width where they first show.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
 // names; focus is inside it; Tab and Shift+Tab never reach the page behind; its folds open and close by keyboard; Escape closes it and focus is back on the
-// button; it fits the window and the page does not scroll sideways under it; and, with the approvals folded, nothing inside it scrolls at 360×780, 375×667
-// and 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed. PAGES (a comma-separated list) and SIZES (360x780,…)
-// narrow the run to what is named; the whole run is every page at 360×780, 375×667, 390×844 and 1440×900.
+// button; it fits the window and the page does not scroll sideways under it; and, with the folds closed, nothing inside it scrolls at 360×780, 375×667 and
+// 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
+// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors) narrow the run to what is named; the whole run is every page at
+// 360×780, 375×667, 390×844 and 1440×900, and the bar.
 import {spawn} from "node:child_process";
 import {createServer} from "node:http";
 import {existsSync, mkdtempSync, readFileSync, statSync, writeFileSync} from "node:fs";
@@ -71,10 +73,11 @@ async function open(url, {w, h, clipboard = "ok"}) {
   return {js, call, press, close, log};
 }
 
-const rows = [];
+const rows = [], info = [];
 const verdict = (page, w, h, name, ok, detail = "") => rows.push({page, w, h, check: name, ok: !!ok, ...(ok ? {} : {detail})});
 const PAGES = only ? only.split(",") : ["index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html"];
-const SIZES = sizes ? sizes.split(",").map(s => s.split("x").map(Number)) : [[360, 780], [375, 667], [390, 844], [1440, 900]];
+const SIZES = sizes ? sizes.split(",").filter(s => s.includes("x")).map(s => s.split("x").map(Number)) : [[360, 780], [375, 667], [390, 844], [1440, 900]];
+const BAR = !sizes || sizes.split(",").includes("bar");   // the top bar's anchors, a run of their own
 const ACTIVE = `(() => { const e = document.activeElement; return e ? (e.id || e.className || e.tagName) : "none" })()`;
 const OUTSIDE = `(() => { const d = document.getElementById("probe"), e = document.activeElement; return !!e && e !== document.body && e !== document.documentElement && !d.contains(e) })()`;
 // an element inside the dialog that scrolls inside itself (the prompt's own box excepted)
@@ -123,9 +126,19 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
   verdict(page, w, h, "no request to any other host", [...t.log.hosts].every(x => x.startsWith("127.0.0.1")), [...t.log.hosts].filter(x => !x.startsWith("127.0.0.1")).join(" "));
   await t.close();
 }
+// the top bar's five anchors, wherever the page first shows them (stepping the window up from 1000 px): one row each, and clear of the language switch
+if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.startsWith("how"))) {
+  const t = await open(page, {w: 1000, h: 900});
+  const shows = () => t.js(`getComputedStyle(document.querySelector(".hud nav a:not(.docs)")).display != "none"`);
+  let first = null;
+  for (let w = 1000; w <= 1400 && first === null; w++) { await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false}); if (await shows()) first = w }
+  const bar = first === null ? null : await t.js(`(() => ({rows: [...document.querySelectorAll(".hud nav a")].filter(a => getComputedStyle(a).display != "none").map(a => Math.round(a.getBoundingClientRect().height)), gap: Math.round((document.querySelector(".hud nav").getBoundingClientRect().left - document.querySelector(".hud .langsw").getBoundingClientRect().right) * 10) / 10}))()`);
+  verdict(page, first ?? 0, 900, "the top bar's anchors stand in one row, clear of the switch, where they first show", bar !== null && Math.max(...bar.rows) < 36 && bar.gap >= 0, `first shown at ${first} px: ${JSON.stringify(bar)}`);
+  info.push({page, w: first, state: "the width where the top bar's anchors first show", scrollsInside: []});
+  await t.close();
+}
 // a refused copy: the dialog says so and selects the prompt, so that Ctrl+C copies it. The prompt stands open there by design, so how far the dialog then
 // scrolls inside itself is measured and printed, not judged.
-const info = [];
 if (state == "probe") for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844]]) {
   const t = await open(page, {w, h, clipboard: "refused"});
   await t.js(`document.getElementById("probe-open").click()`); await sleep(500);

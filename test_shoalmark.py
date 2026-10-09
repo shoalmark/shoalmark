@@ -12310,19 +12310,19 @@ else:
                 _site = _b1_site(_work, _state)
                 _saw[_state] = _b1_browser(_site, _state, _work / f"{_state}.json")
                 check(f"{_B1_NAME}, {_state} state: both landings and both How it works pages at 360, 375, 390 and 1440 px — no sideways scroll, no script error, no failed request, no request "
-                      f"to another host" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
+                      f"to another host, the top bar's anchors in one row where they first show" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
                                             "copy and, with its folds closed, does not scroll inside itself at 360×780, 375×667 and 390×844" if _state == "probe" else "")
                       + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
             # the controls: one thing changed in a copy of the probe site, and the browser finds exactly that
             _probe = _work / "probe" / "site"
 
-            def _mutate(name, rel, old, new):
+            def _mutate(name, rel, old, new, sizes="360x780"):
                 _copy = _work / ("control-" + name)
                 shutil.copytree(_probe, _copy)
                 _text = (_copy / rel).read_text(encoding="utf-8")
                 assert old in _text, (rel, old)
                 (_copy / rel).write_text(_text.replace(old, new, 1), encoding="utf-8")
-                return _b1_browser(_copy, "probe", _work / (name + ".json"), rel if rel.endswith("index.html") else "index.html", "360x780")
+                return _b1_browser(_copy, "probe", _work / (name + ".json"), rel if rel.endswith("index.html") else "index.html", sizes)
             _controls = {
                 "no-label": ("an unlabelled dialog", _mutate("no-label", "index.html", ' aria-labelledby="probe-h"', ""), "the dialog is labelled"),
                 "sideways": ("a page wider than the window", _mutate("sideways", "de/index.html", "</head>", "<style>body{min-width:520px}</style></head>"), "no sideways scroll"),
@@ -12333,12 +12333,14 @@ else:
                             "with its folds closed, nothing in the dialog scrolls inside itself"),
                 "unfolds": ("a fold that keyboard does not open", _mutate("unfolds", "index.html", "</body>", '<script>document.addEventListener("click", e => { if (e.target.closest("summary")) e.preventDefault() })</script></body>'),
                             "fold 1 opens and closes by keyboard"),
+                "wraps": ("a top bar whose anchors show a width too early", _mutate("wraps", "index.html", "@media (max-width:1099px){.hud nav a:not(.docs){display:none}}", "@media (max-width:1091px){.hud nav a:not(.docs){display:none}}", "bar"),
+                          "the top bar's anchors stand in one row, clear of the switch, where they first show"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open and a dialog that does not give focus back makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a dialog that does not give focus back and a top bar whose anchors show a width too early makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
