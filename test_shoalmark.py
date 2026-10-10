@@ -9193,6 +9193,63 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# …and the pending change, beside a submodule whose `.gitmodules` says `ignore = all`, `dirty`, `untracked` or `none`: a staged pointer, alone and beside a
+# visible edit, is the change `--check` judges — the pending one, the pointer among its files — and refuses for its seat's missing Session; once committed,
+# the commit lists the pointer and the edit
+def _bw_pending_paths(root):
+    """What `read_changes` judges in `root`, read in this interpreter with the hook's `GIT_*` out of the way: (the change it judges last — its files, and
+    whether it is the pending one —, the walk it says)."""
+    saved_ = {k_: os.environ.pop(k_) for k_ in [k_ for k_ in os.environ if k_.startswith("GIT_")]}
+    try:
+        fm.configure(root)
+        last_ = fm.read_changes()[-1]
+        return sorted(last_[1]), last_[4] == "" and last_[5] is None, fm._WALK
+    finally:
+        os.environ.update(saved_)
+        fm.configure(HERE)
+
+
+with tempfile.TemporaryDirectory() as d:
+    seen_ = {}
+    for ignore_ in ("all", "dirty", "untracked", "none"):
+        root_ = Path(d).resolve() / f"pending-{ignore_}"; root_.mkdir()
+        git(root_, "init", "-q", "--initial-branch=main"); git(root_, "config", "user.name", "builder"); git(root_, "config", "user.email", "builder@seat")
+        (root_ / "shoalmark.toml").write_text('name = "p"\n[kinds]\nXY = "Work"\n[seats]\nbuilder = "builder@seat"\n', encoding="utf-8")
+        (root_ / ".gitmodules").write_text(f'[submodule "subproject"]\n\tpath = subproject\n\turl = ../unused\n\tignore = {ignore_}\n', encoding="utf-8")
+        (root_ / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
+        (root_ / "README.md").write_text("base\n", encoding="utf-8"); (root_ / "subproject").mkdir(); (root_ / "docs/work-tracker").mkdir(parents=True)
+        run(root_); fm.configure(HERE)
+        git(root_, "add", "-A"); git(root_, "commit", "-qm", "base\n\nSession: 1234abcd")
+        first_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root_, "update-index", "--add", "--cacheinfo", f"160000,{first_},subproject"); git(root_, "commit", "-qm", "the submodule\n\nSession: 1234abcd")
+        (root_ / "README.md").write_text("at HEAD\n", encoding="utf-8"); git(root_, "add", "README.md"); git(root_, "commit", "-qm", "a note\n\nSession: 1234abcd")
+        second_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        git(root_, "update-index", "--cacheinfo", f"160000,{second_},subproject")                       # the pointer moved, staged
+        for shape_ in ("the pointer alone", "the pointer beside a visible edit"):
+            if shape_ != "the pointer alone":
+                (root_ / "README.md").write_text("changed\n", encoding="utf-8")
+            files_, pending_, walk_ = _bw_pending_paths(root_)
+            c_, o_, e_ = run_safe(root_, "--check"); fm.configure(HERE)
+            seen_[(ignore_, shape_)] = dict(files=files_, pending=pending_, walk=walk_, exit=c_, refused="this commit by builder@seat carries no Session: trailer" in e_,
+                                            said="the tree has uncommitted edits" in o_ + e_)
+        git(root_, "add", "README.md"); git(root_, "commit", "-qm", "the pointer and a note\n\nSession: 1234abcd")
+        seen_[(ignore_, "committed")] = dict(files=_bw_pending_paths(root_)[0])
+    for ignore_ in ("all", "dirty", "untracked", "none"):
+        for shape_, want_ in (("the pointer alone", ["subproject"]), ("the pointer beside a visible edit", ["README.md", "subproject"])):
+            g_ = seen_[(ignore_, shape_)]
+            check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, {shape_}, staged and not committed: `--check` judges the pending "
+                  f"change, the pointer among its files, and refuses it for its seat's missing Session, exit 4 (saw {g_})",
+                  g_["files"] == want_ and g_["pending"] and g_["walk"] == "uncommitted" and g_["exit"] == fm.EXIT_LINT and g_["refused"] and g_["said"])
+        check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, the same pointer and edit once committed: the commit's files are both "
+              f"(saw {seen_[(ignore_, 'committed')]})", seen_[(ignore_, "committed")]["files"] == ["README.md", "subproject"])
+    (Path(d).resolve() / "hooked").mkdir()
+    hooked_root_, _i = _bm_repo(Path(d).resolve() / "hooked")                 # a throwaway repository: what `--install-hook` writes
+    written_ = [l_.strip() for l_ in (hooked_root_ / ".git/hooks/pre-commit").read_text(encoding="utf-8").splitlines() if "diff --cached" in l_]
+    check(f"FM-045 · the pre-commit hook `--install-hook` writes reads the staged names with every submodule's pointer, whatever `.gitmodules` says "
+          f"(saw {written_})", len(written_) == 1 and "diff --cached --name-only --ignore-submodules=none" in written_[0])
+    rm_git(hooked_root_)
+fm.configure(HERE)
+
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, signers="tree")

@@ -6004,7 +6004,7 @@ def read_changes():
 
     heads = merge_heads()
     if COMMITTING or worktree_edited(git):
-        files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "HEAD"))
+        files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"))
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for h in heads:
@@ -6041,8 +6041,8 @@ def staged_absent(rels):
 def worktree_edited(git):
     """Whether the working tree holds an edit against HEAD (`git diff --name-only HEAD`) — the one reading `read_changes` and `main`
     share: a diff git cannot make reads as no edit in both, so a run that walks the branch's commits asks origin as it walks
-    (v0.19.1)."""
-    return bool(git("diff", "--name-only", "--relative", "HEAD").stdout.strip())
+    (v0.19.1). A submodule's pointer is an edit, whatever `.gitmodules` says (`--ignore-submodules=none`)."""
+    return bool(git("diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD").stdout.strip())
 
 
 def walk_problems():
@@ -9039,7 +9039,7 @@ _COPY_GONE = ('if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: t
 HOOKS = {
     "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
                   + '{py} -I "$copy" --root "$root" --session-check || exit $?\n'
-                  "if git -c core.quotePath=false diff --cached --name-only | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
+                  "if git -c core.quotePath=false diff --cached --name-only --ignore-submodules=none | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
                   '  written=$({py} -I "$copy" --root "$root" --print-written) || exit $?\n'
                   "  [ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
