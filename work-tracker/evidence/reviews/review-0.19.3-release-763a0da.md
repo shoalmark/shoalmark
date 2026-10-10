@@ -15,7 +15,7 @@ Reviewed: 763a0da89904ada688c573867ad744a0755b5fd5. Scope: `84d2ab8..763a0da`: t
 
 - **The merge** brings the guard's change exactly: its patch-id equals 6828dba..3a0757c's. `shoalmark.py` is 84d2ab8's with the guard alone.
   - On Windows `--notify` starts no program, prints each notice with its status, and counts what it printed.
-  - macOS and Linux are as at 84d2ab8, and the reads RV-2960, RV-2980 and RV-2981 changed are untouched.
+  - macOS and Linux are as at 84d2ab8, and the reads 44bb573, 82edbf5 and 84d2ab8 changed are untouched.
   - Check A reads the tool clean.
 - **The headline** is the Owner's version B, word for word, and each Security and Hardening bullet says what the code at the head does.
   - The board's reads: no fetch, no program a configuration names but the SSH signature check, no fsmonitor, no textconv, and `--text` on its six history reads.
