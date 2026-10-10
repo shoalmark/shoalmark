@@ -2743,6 +2743,9 @@ def state_dir():
     return pathlib.Path(base) / "shoalmark"
 
 
+NOTICE_ON_WINDOWS = "printed — no notice is posted on Windows"      # a notice's line on Windows, where `--notify` starts no program
+
+
 def notice_text(text):
     """A notice's title or body as the data it travels as: a NUL, which no argv and no environment can hold, as U+FFFD."""
     return text.replace("\0", "\ufffd")
@@ -2767,9 +2770,6 @@ def notify_argv(title, body, platform=None, which=None):
     if platform.startswith("linux") and which("notify-send"):
         return ["notify-send", "--app-name=shoalmark", "--", notice_text(title), notice_text(body)]
     return None
-
-
-NOTICE_ON_WINDOWS = "printed — no notice is posted on Windows"      # a notice's line on Windows, where `--notify` starts no program
 
 
 def post_notice(title, body):
