@@ -2769,12 +2769,15 @@ def notify_argv(title, body, platform=None, which=None):
     return None
 
 
+NOTICE_ON_WINDOWS = "printed — no notice is posted on Windows"      # a notice's line on Windows, where `--notify` starts no program
+
+
 def post_notice(title, body):
     """Post one notification: `posted`; `printed` where this system has no notifier, and on Windows — the printed line is
     the notice; or `NOT posted — why`, which is not remembered, so the next run tries again."""
     argv = notify_argv(title, body)
     if not argv:
-        return "printed — no notice is posted on Windows" if sys.platform == "win32" else "printed — no notifier here"
+        return NOTICE_ON_WINDOWS if sys.platform == "win32" else "printed — no notifier here"
     try:
         r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, env=notify_env(title, body))
     except (OSError, ValueError, subprocess.TimeoutExpired) as e:        # a notice that cannot be started is that notice's failure alone
@@ -2813,7 +2816,8 @@ def notify_cmd(trackers):
             before += 1
             continue
         said = f"due in {max(1, math.ceil((when - now).total_seconds() / 60))} min" if state == "due" else state
-        how = post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}" + (f"\n{LABELS['acts.asked'].format(act[5])}" if act[5] else ""))
+        how = NOTICE_ON_WINDOWS if sys.platform == "win32" else post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}"
+                                                                            + (f"\n{LABELS['acts.asked'].format(act[5])}" if act[5] else ""))
         lines.append(f"  {t['id']} — {said} · {act[0]} · {act_words(act, now)} — {how}")
         if how.startswith("NOT"):
             failed += 1

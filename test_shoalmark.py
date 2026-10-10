@@ -10011,6 +10011,9 @@ with tempfile.TemporaryDirectory() as tmp:
     posted_, real_post_, state_was_ = [], fm.post_notice, os.environ.get("XDG_STATE_HOME")
     fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
     os.environ["XDG_STATE_HOME"] = str(base / "state")
+    windows_ = sys.platform == "win32"             # Windows: each notice is printed, and nothing is posted — the notice's path is never taken
+    on_win_ = lambda out: bool([l_ for l_ in out.splitlines()[1:] if l_.startswith("  AP-")]) and all(l_.endswith(" — printed — no notice is posted on Windows")
+                                                                                                    for l_ in out.splitlines()[1:] if l_.startswith("  AP-"))
     try:
         code_1, out_1, _e = run(root, "--notify")
         first_ = [t_ for t_, _b in posted_]
@@ -10018,15 +10021,22 @@ with tempfile.TemporaryDirectory() as tmp:
         code_2, out_2, _e = run(root, "--notify")
         second_ = len(posted_)
         clean_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", "docs/work-tracker/*.md", "shoalmark.toml"], capture_output=True, text=True, env=_ENV).stdout
-        check(f"FM-030 · D · `--notify` posts one notification for each act due within 30 minutes, overdue or missed — not a later one, not one with no date, not a done one — and says what it posted and where it remembers it (saw {out_1.strip()!r} · {first_})",
+        check(f"FM-030 · D · `--notify` posts one notification for each act due within 30 minutes, overdue or missed — not a later one, not one with no date, not a done one — and says what it posted and where it remembers it"
+              f"{' — on Windows each is printed, and nothing is posted' if windows_ else ''} (saw {out_1.strip()!r} · {first_})",
+              (code_1 == 0 and not posted_ and on_win_(out_1) and [l_.split(" — ")[0].strip() for l_ in out_1.splitlines()[1:]] == ["AP-430", "AP-431", "AP-432"]
+               and out_1.startswith(f"--notify: 3 printed · 0 printed before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}")
+               and "  AP-431 — overdue · overdue · overdue — due " in out_1
+               and sorted(stored_[str(root)]) == sorted([f"AP-430 {at_(10)} due", f"AP-431 {at_(-10)} overdue", f"AP-432 {at_(-120)} missed"])) if windows_ else
               code_1 == 0 and [t_.split(" — ")[0] for t_ in first_] == ["d · AP-430", "d · AP-431", "d · AP-432"]
               and first_[0].startswith("d · AP-430 — due in ") and first_[1] == "d · AP-431 — overdue" and first_[2] == "d · AP-432 — missed"
               and posted_[2][1] == f"missed · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result"
               and out_1.startswith(f"--notify: 3 posted · 0 posted before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}")
               and "  AP-431 — overdue · overdue · overdue — due " in out_1 and sorted(stored_[str(root)]) == sorted([f"AP-430 {at_(10)} due", f"AP-431 {at_(-10)} overdue", f"AP-432 {at_(-120)} missed"]))
-        check(f"FM-030 · D · …and ONE per act per state: a second run posts nothing, and nothing in the repository is written — the memory is the tool's own, outside it (saw {out_2.strip()!r})",
-              code_2 == 0 and second_ == 3 and out_2.strip() == f"--notify: 0 posted · 3 posted before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}"
-              and clean_ == "" and not (root / ".shoalmark").exists())
+        check(f"FM-030 · D · …and ONE per act per state: a second run posts nothing, and nothing in the repository is written — the memory is the tool's own, outside it"
+              f"{' — on Windows it prints nothing again' if windows_ else ''} (saw {out_2.strip()!r})",
+              code_2 == 0 and second_ == (0 if windows_ else 3) and clean_ == "" and not (root / ".shoalmark").exists()
+              and out_2.strip() == f"--notify: 0 {'printed' if windows_ else 'posted'} · 3 {'printed' if windows_ else 'posted'} before · 1 not yet within 30 minutes — remembered in "
+                                   f"{base / 'state/shoalmark/notified.json'}")
         t431_ = root / "docs/work-tracker/AP-431-x.md"
         t431_.write_text(t431_.read_text(encoding="utf-8").replace(f"due: {at_(-10)}", f"due: {at_(20)}"), encoding="utf-8")
         tracker(root, "AP-436", extra=f"next: run\ndue: {at_(-5)}\n", title="a notifier that fails")
@@ -10034,14 +10044,21 @@ with tempfile.TemporaryDirectory() as tmp:
         code_3, out_3, _e = run(root, "--notify")
         fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
         code_4, out_4, _e = run(root, "--notify")
-        check(f"FM-030 · D · an act moved by a new `due:` is a new notification; one that could not be posted is not remembered, and the next run posts it (saw {out_3.strip()!r} · {out_4.strip()!r})",
+        check(f"FM-030 · D · an act moved by a new `due:` is a new notification; one that could not be posted is not remembered, and the next run posts it"
+              f"{' — on Windows nothing is posted, so each is printed and remembered' if windows_ else ''} (saw {out_3.strip()!r} · {out_4.strip()!r})",
+              (code_3 == code_4 == 0 and not posted_ and on_win_(out_3) and "2 printed · 2 printed before · 1 not yet within 30 minutes — remembered in " in out_3
+               and "  AP-431 — due in 20 min · " in out_3 and "  AP-436 — overdue · a notifier that fails · " in out_3
+               and "0 printed · 4 printed before · 1 not yet within 30 minutes — remembered in " in out_4) if windows_ else
               code_3 == 1 and code_4 == 0 and [t_ for t_, _b in posted_[3:5]] == ["d · AP-431 — due in 20 min", "d · AP-436 — overdue"]
               and "1 posted · 2 posted before · 1 not yet within 30 minutes · 1 NOT posted" in out_3 and "AP-436 — overdue · a notifier that fails" in out_3 and out_3.rstrip().endswith("NOT posted — no display")
               and [t_ for t_, _b in posted_[5:]] == ["d · AP-436 — overdue"] and "1 posted · 3 posted before" in out_4)
         os.environ["XDG_STATE_HOME"] = str(base / "state-none")
         fm.post_notice = lambda title, body: "NOT posted — no display"
         code_5, out_5, _e = run(root, "--notify")
-        check(f"FM-030 · D · R6 · a notifier that posts nothing: `--notify` exits 1 and says nothing is remembered — a schedule's log shows the failure (saw {out_5.splitlines()[0]!r})",
+        check(f"FM-030 · D · R6 · a notifier that posts nothing: `--notify` exits 1 and says nothing is remembered — a schedule's log shows the failure"
+              f"{' — on Windows no notifier is started: each notice is printed and remembered, exit 0' if windows_ else ''} (saw {out_5.splitlines()[0]!r})",
+              (code_5 == 0 and not posted_ and on_win_(out_5) and out_5.startswith("--notify: 4 printed · 0 printed before · 1 not yet within 30 minutes — remembered in ")
+               and len(json.loads((base / "state-none/shoalmark/notified.json").read_text(encoding="utf-8")).get(str(root), [])) == 4) if windows_ else
               code_5 == 1 and out_5.startswith("--notify: 0 posted · 0 posted before · 1 not yet within 30 minutes · 4 NOT posted — nothing remembered — ")
               and json.loads((base / "state-none/shoalmark/notified.json").read_text(encoding="utf-8")) == {})
     finally:
@@ -10071,7 +10088,8 @@ _NOTICE_WATCH = []          # while a check watches a `--notify` run in this pro
 def _watch_notice(event, args):
     """The audit hook of the notice's checks: each process start a watched run asks for — its kind, whether a notice was being posted, its argv."""
     if _NOTICE_WATCH and event in ("subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile"):
-        argv_ = [str(a_) for a_ in args[1]] if event == "subprocess.Popen" and isinstance(args[1], (list, tuple)) else repr(args[:2])
+        argv_ = ([str(a_) for a_ in args[1]] if event == "subprocess.Popen" and isinstance(args[1], (list, tuple))       # an argv, as POSIX reports it
+                 else fm.split_cmdline(args[1]) if event == "subprocess.Popen" and isinstance(args[1], str) else repr(args[:2]))     # Windows: (None, its command line)
         _NOTICE_WATCH[0].append((event, _NOTICE_WATCH[1][0], argv_))
 
 
@@ -10174,7 +10192,10 @@ with tempfile.TemporaryDirectory() as tmp:
             os.environ["XDG_STATE_HOME"] = state_was_
     lines_ = {l_.split(" — ")[0].strip(): l_ for l_ in out_n.splitlines()[1:]}
     check(f"FM-030 · a notice whose command cannot be started is NOT posted, and its line says why; `--notify` goes on with every other act's notice and exits 1 — one tracker "
-          f"never stops another's notice (saw exit {code_n}, {out_n.splitlines()[:1]} · {err_n[-120:]!r})",
+          f"never stops another's notice{' — on Windows no command is started: each notice is printed, exit 0' if sys.platform == 'win32' else ''} "
+          f"(saw exit {code_n}, {out_n.splitlines()[:1]} · {err_n[-120:]!r})",
+          (code_n == 0 and not posted_ and out_n.startswith("--notify: 3 printed · 0 printed before · 0 not yet within 30 minutes — remembered in ")
+           and all(lines_.get(t_, "").endswith(" — printed — no notice is posted on Windows") for t_ in ("AP-1", "AP-2", "AP-3"))) if sys.platform == "win32" else
           code_n == 1 and len(posted_) == 3 and out_n.startswith("--notify: 2 posted · 0 posted before · 0 not yet within 30 minutes · 1 NOT posted — remembered in ")
           and lines_.get("AP-2", "").endswith(" — NOT posted — ValueError") and lines_.get("AP-1", "").endswith(" — posted") and lines_.get("AP-3", "").endswith(" — posted"))
     # on Windows, run here with `sys.platform` set to win32 and a PowerShell found where one is looked for: three acts due, one whose text is hostile
@@ -10184,11 +10205,11 @@ with tempfile.TemporaryDirectory() as tmp:
     for tid_, title_ in (("AP-1", "the act of AP-1"), ("AP-2", 'a notice \u2019; Write-Output NOTICE-RAN; \u2018 " & (do shell script "echo NOTICE-RAN") & " \\ \0 $(echo NOTICE-RAN)'),
                          ("AP-3", "the act of AP-3")):
         tracker(win_, tid_, extra=f"next: run\ndue: {past_}\n", title=title_)
-    state_was_, seen_, posting_ = os.environ.get("XDG_STATE_HOME"), [], [False]
+    state_was_, seen_, posting_ = os.environ.get("XDG_STATE_HOME"), [], [False, 0]          # [a notice is being posted, how many were]
     real_post_, real_which_, real_platform_ = fm.post_notice, shutil.which, sys.platform
 
     def watched_post_(title, body):
-        posting_[0] = True
+        posting_[0], posting_[1] = True, posting_[1] + 1
         try:
             return real_post_(title, body)
         finally:
@@ -10210,9 +10231,11 @@ with tempfile.TemporaryDirectory() as tmp:
         else:
             os.environ["XDG_STATE_HOME"] = state_was_
     win_lines_ = {l_.split(" — ")[0].strip(): l_ for l_ in out_w.splitlines()[1:]}
-    check(f"FM-030 · on Windows `--notify` starts no program for a notice — none while each is posted, a PowerShell found where looked for — and every program its run "
-          f"starts is read-only git (saw exit {code_w}; {[x_[2][:3] if isinstance(x_[2], list) else x_[2] for x_ in seen_][:4]} · {err_w[-100:]!r})",
-          code_w == 0 and not [x_ for x_ in seen_ if x_[1]] and all(x_[0] == "subprocess.Popen" and isinstance(x_[2], list) and fm.read_only_git(x_[2]) for x_ in seen_))
+    check(f"FM-030 · on Windows `--notify` starts no program for a notice — it posts none, a PowerShell found where looked for — and the only program its run starts "
+          f"is `git rev-parse`, read from each start as POSIX reports it, an argv, or as Windows does, a command line (saw exit {code_w}, {posting_[1]} posted; "
+          f"{[x_[2][:3] if isinstance(x_[2], list) else x_[2] for x_ in seen_][:4]} · {err_w[-100:]!r})",
+          code_w == 0 and posting_[1] == 0 and not [x_ for x_ in seen_ if x_[1]]
+          and all(x_[0] == "subprocess.Popen" and isinstance(x_[2], list) and _git_command(x_[2]) == "rev-parse" and fm.read_only_git(x_[2]) for x_ in seen_))
     check(f"FM-030 · on Windows `--notify` prints each act's notice, its line ending *printed — no notice is posted on Windows* (saw {out_w.splitlines()[1:]})",
           sorted(win_lines_) == ["AP-1", "AP-2", "AP-3"] and all(l_.endswith(" — printed — no notice is posted on Windows") for l_ in win_lines_.values()))
     sums_w = [o_.splitlines()[0] if o_.strip() else "" for o_ in (out_w, again_w[1])]
@@ -10352,7 +10375,11 @@ with tempfile.TemporaryDirectory() as tmp:
             os.environ.pop("XDG_STATE_HOME", None)
         else:
             os.environ["XDG_STATE_HOME"] = state_was_
-    check(f"FM-030 · 0.18.6 · `--notify` posts the promise and its time, the question below it (saw {posted_})",
+    check(f"FM-030 · 0.18.6 · `--notify` posts the promise and its time, the question below it"
+          f"{' — on Windows it prints the promise and its time, and posts nothing' if sys.platform == 'win32' else ''} (saw {posted_} · {out_n.splitlines()[1:2]})",
+          (code_n == 0 and not posted_ and any(l_.startswith("  AP-451 — due in ") and f" · {promise_} · due {at_(10).replace('T', ' ')}" in l_
+                                               and l_.endswith(" — printed — no notice is posted on Windows") for l_ in out_n.splitlines()))
+          if sys.platform == "win32" else
           code_n == 0 and len(posted_) == 1 and posted_[0][0].startswith("p · AP-451 — due in ")
           and posted_[0][1] == f"{promise_} · due {at_(10).replace('T', ' ')}\nasked: {q451_}")
     if _browser("promise"):
