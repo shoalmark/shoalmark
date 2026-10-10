@@ -13424,6 +13424,319 @@ check(f"FM-006 · the setup pages clone the release they ship with — every `--
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
+# --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
+#     a pull request whose whole diff is tracker files alone runs the gate's --check in the five checks; anything else, and any doubt, the
+#     full suites; the two Ubuntu entries run both suites again under UTC+14 and UTC−11, reported and not yet required
+def _ci_yaml(text):
+    """A workflow read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and
+    sequences of plain or quoted scalars, `|` and `>` blocks (their lines kept, less the block's own indentation), `#` comments.
+    Anything else raises ValueError, and every property read from it fails."""
+    lines = text.replace("\r\n", "\n").split("\n")
+
+    def bare(s):
+        quote = None
+        for i, ch in enumerate(s):
+            if quote:
+                quote = None if ch == quote else quote
+            elif ch in "\"'":
+                quote = ch
+            elif ch == "#" and (i == 0 or s[i - 1] in " \t"):
+                return s[:i].rstrip()
+        return s.rstrip()
+
+    def scalar(s):
+        s = s.strip()
+        if s[:1] in ("{", "["):
+            value, end = flow(s, 0)
+            if s[end:].strip():
+                raise ValueError(f"after a flow collection: {s[end:]!r}")
+            return value
+        if len(s) > 1 and s[0] == s[-1] and s[0] in "\"'":
+            return s[1:-1]
+        return {"": None, "~": None, "null": None, "true": True, "false": False}.get(s, int(s) if re.fullmatch(r"-?\d+", s) else s)
+
+    def flow(s, i):
+        close, out = {"{": "}", "[": "]"}[s[i]], {} if s[i] == "{" else []
+        i += 1
+        while True:
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == close:
+                return out, i + 1
+            if isinstance(out, dict):
+                m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[^:,{}\[\]]+):\s*", s[i:])
+                if not m:
+                    raise ValueError(f"a flow mapping's key at {s[i:]!r}")
+                key, i = scalar(m.group(1)), i + m.end()
+            if i < len(s) and s[i] in "{[":
+                value, i = flow(s, i)
+            else:
+                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^,{}\[\]]*)", s[i:])
+                value, i = scalar(m.group(1)), i + m.end()
+            out.__setitem__(key, value) if isinstance(out, dict) else out.append(value)
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == ",":
+                i += 1
+            elif i >= len(s) or s[i] != close:
+                raise ValueError(f"an unclosed flow collection: {s!r}")
+
+    def skip(i):
+        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+        return i
+
+    def node(i, ind):
+        i = skip(i)
+        if i >= len(lines) or len(lines[i]) - len(lines[i].lstrip(" ")) < ind:
+            return None, i
+        ind = len(lines[i]) - len(lines[i].lstrip(" "))
+        if lines[i].lstrip().startswith("- ") or lines[i].strip() == "-":
+            out = []
+            while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind and lines[i].lstrip().startswith("-"):
+                rest = lines[i].lstrip()[1:]
+                if re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(\s|$)", rest):
+                    lines[i] = " " * (ind + 2) + rest.lstrip()      # `- key: value`: a mapping, its first key on the dash's line
+                    value, i = node(i, ind + 2)
+                else:
+                    value, i = scalar(bare(rest)), i + 1
+                out.append(value)
+                i = skip(i)
+            return out, i
+        out = {}
+        while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind:
+            m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(?:\s+(.*))?$", lines[i])
+            if not m:
+                raise ValueError(f"line {i + 1}: {lines[i].strip()!r}")
+            key, rest = scalar(m.group(1)), bare(m.group(2) or "")
+            if key in out:
+                raise ValueError(f"line {i + 1}: {key!r} twice")
+            if rest in ("|", ">", "|-", ">-"):
+                j, block = i + 1, []
+                while j < len(lines) and (not lines[j].strip() or len(lines[j]) - len(lines[j].lstrip(" ")) > ind):
+                    block.append(lines[j].rstrip())
+                    j += 1
+                cut = min((len(b) - len(b.lstrip(" ")) for b in block if b.strip()), default=0)
+                out[key], i = "\n".join(b[cut:] for b in block).strip("\n") + "\n", j
+            elif rest:
+                out[key], i = scalar(rest), i + 1
+            else:
+                out[key], i = node(i + 1, ind + 1)
+            i = skip(i)
+        if i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) > ind:
+            raise ValueError(f"line {i + 1} is indented under nothing: {lines[i].strip()!r}")
+        return out, i
+    value, end = node(0, 0)
+    if skip(end) < len(lines):
+        raise ValueError(f"line {skip(end) + 1}: {lines[skip(end)].strip()!r}")
+    return value
+
+
+def _ci_bash():
+    """The bash a workflow step's `shell: bash` runs — Git's own on Windows, as the runners have it — or None."""
+    if os.name == "nt":
+        found = shutil.which("git")
+        for up in ((Path(found).resolve().parents[1], Path(found).resolve().parents[2]) if found else ()):
+            for sub in ("bin", "usr/bin"):
+                if (up / sub / "bash.exe").is_file():
+                    return str(up / sub / "bash.exe")
+        return None
+    return shutil.which("bash")
+
+
+_CI_BASH = _ci_bash()
+
+
+def _ci_shapes(root):
+    """A repository holding a base and, for each shape of pull request, a head on it: {shape: (event, base, head, merge)}, the merge
+    the commit a pull request's checkout holds — its parents the base and the head, or a later head where the shape says so. Every
+    commit is made in git's own store, never on disk: a symlink, a mode and a submodule pointer are written as git records them."""
+    def g(*a, data=None):
+        return subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false", *a], input=data,
+                              capture_output=True, check=True, env=_ENV).stdout.decode().strip()
+    blob = lambda text: g("hash-object", "-w", "--stdin", data=text.encode())
+    index = root / ".git" / "shape-index"
+
+    def tree(entries):
+        index.unlink() if index.exists() else None
+        for path, (mode, sha) in entries.items():
+            subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"{mode},{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
+        return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
+    commit = lambda t, *parents: g("commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a shape")
+    g("init", "-q")
+    one, edited, script = blob("# FM-001 — one\n"), blob("# FM-001 — one, edited\n"), blob("print(1)\n")
+    modules = blob('[submodule "sub"]\n\tpath = sub\n\turl = https://example.invalid/sub.git\n\tignore = all\n')
+    pointer, pointer2 = commit(tree({"x": ("100644", script)})), commit(tree({"y": ("100644", script)}))
+    based = {"shoalmark.toml": ("100644", blob('tracker_dir = "work-tracker"       # the tracker\n')), "work-tracker/FM-001-one.md": ("100644", one),
+             "scripts/x.py": ("100644", script), ".gitmodules": ("100644", modules), "sub": ("160000", pointer)}
+    base, edit = commit(tree(based)), {"work-tracker/FM-001-one.md": ("100644", edited)}
+    without = lambda *paths: {k: v for k, v in based.items() if k not in paths}
+    trees = {"a tracker-only edit": {**based, **edit},
+             "a tracker added beside one deleted": {**without("work-tracker/FM-001-one.md"), "work-tracker/FM-002-two.md": ("100644", edited)},
+             "a tracker edit beside an ignored submodule pointer": {**based, **edit, "sub": ("160000", pointer2)},
+             "a tracker edit beside a mode change": {**based, "work-tracker/FM-001-one.md": ("100755", edited)},
+             "a mode change alone": {**based, "work-tracker/FM-001-one.md": ("100755", one)},
+             "a tracker edit beside a symlink in the folder": {**based, **edit, "work-tracker/link": ("120000", blob("../scripts/x.py"))},
+             "a tracker edit beside .github/ in the folder": {**based, **edit, "work-tracker/.github/workflows/x.yml": ("100644", script)},
+             "a tracker edit beside .gitmodules in the folder": {**based, **edit, "work-tracker/.gitmodules": ("100644", modules)},
+             "a tracker edit beside .github/": {**based, **edit, ".github/workflows/x.yml": ("100644", script)},
+             "a tracker edit beside a script": {**based, **edit, "scripts/x.py": ("100644", edited)},
+             "a script moved into the folder": {**without("scripts/x.py"), "work-tracker/x.py": ("100644", script)},
+             "an empty change": dict(based)}
+    out = {}
+    for shape, entries in trees.items():
+        head = commit(tree(entries), base)
+        out[shape] = ("pull_request", base, head, commit(tree(entries), base, head))
+    head = commit(tree({**based, **edit}), base)
+    merge = commit(tree({**based, **edit}), base, head)
+    later = commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), head)
+    out.update({"a tag's run of a tracker-only edit": ("push", base, head, merge), "a run by hand of a tracker-only edit": ("workflow_dispatch", base, head, merge),
+                "a pull request whose shas the event lacks": ("pull_request", "", "", merge),
+                "a checkout of a later head than the event names": ("pull_request", base, head, commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), base, later))})
+    return out
+
+
+_CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted")         # --check alone; every other shape, the full suites
+
+
+_CI_TIER_RAN = {}
+
+
+def _ci_tier(script, root, shapes):
+    """{shape: what the tier step's shell writes to `records`} — run as a `shell: bash` step runs it, in the shape's checkout; once per
+    script and repository, as the controls change other lines."""
+    if (script, str(root)) in _CI_TIER_RAN:
+        return dict(_CI_TIER_RAN[(script, str(root))])
+    out = _CI_TIER_RAN[(script, str(root))] = {}
+    for shape, (event, base, head, merge) in shapes.items():
+        subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
+        with tempfile.TemporaryDirectory() as d:
+            put, summary, step = Path(d) / "output", Path(d) / "summary", Path(d) / "tier.sh"
+            put.write_text(""); summary.write_text(""); step.write_text(script, encoding="utf-8")
+            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", str(step)], cwd=str(root), capture_output=True, timeout=120,
+                               env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head, RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
+            said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
+            out[shape] = said.get("records") if r.returncode == 0 else f"exit {r.returncode}"
+    return dict(out)
+
+
+def _ci_wf_properties(text, root, shapes):
+    """FM-032's CI tiers and time zones, as `.github/workflows/ci.yml` says them — [(what is asserted, whether it holds)]."""
+    try:
+        wf, refused = _ci_yaml(text) or {}, ""
+    except ValueError as e:
+        wf, refused = {}, f" — the file is refused: {e}"
+    jobs = wf.get("jobs") or {}
+    job = jobs.get("suites") or {}
+    include = ((job.get("strategy") or {}).get("matrix") or {}).get("include") or []
+    steps = [s for s in job.get("steps") or [] if isinstance(s, dict)]
+    run_of = lambda s: str(s.get("run") or "")
+    at = lambda pred: next((i for i, s in enumerate(steps) if pred(s)), None)
+    tier_at = at(lambda s: s.get("id") == "tier")
+    tier = steps[tier_at] if tier_at is not None else {}
+    records_at = at(lambda s: "python shoalmark.py --check" in run_of(s))
+    suite_at, core_at = at(lambda s: run_of(s) == "python -u test_shoalmark.py\n" or run_of(s) == "python -u test_shoalmark.py"), \
+        at(lambda s: run_of(s).strip() == "python -u test_core.py")
+    zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
+    zone = steps[zone_at] if zone_at is not None else {}
+    full = "steps.tier.outputs.records != 'true'"
+    runs = _ci_tier(run_of(tier), root, shapes) if tier and _CI_BASH else {}
+    want = {shape: "true" if shape in _CI_RECORDS else "false" for shape in shapes}
+    shown = lambda *names: {n: runs.get(n) for n in names}
+    return [
+        ("the five check names stand: one job, `suites`, named by `suites (${{ matrix.system }}, ${{ matrix.python }})`, over ubuntu 3.9 and 3.12, "
+         "macos 3.12, windows 3.9 and 3.12 on their pinned images" + refused,
+         set(jobs) == {"suites"} and job.get("name") == "suites (${{ matrix.system }}, ${{ matrix.python }})"
+         and [(e.get("system"), e.get("image"), e.get("python")) for e in include] == [("ubuntu", "ubuntu-24.04", "3.9"), ("ubuntu", "ubuntu-24.04", "3.12"),
+                                                                                       ("macos", "macos-26", "3.12"), ("windows", "windows-2025-vs2026", "3.9"), ("windows", "windows-2025-vs2026", "3.12")]),
+        ("it runs on a `v*` tag, on a pull request opened, pushed to, reopened or marked ready, and by hand",
+         wf.get("on") == {"push": {"tags": ["v*"]}, "pull_request": {"types": ["opened", "synchronize", "reopened", "ready_for_review"]}, "workflow_dispatch": None}),
+        ("the tier is decided first after the whole history is checked out, in bash, the event and the pull request's two shas given through env: alone",
+         tier_at == 1 and (steps[0].get("with") or {}).get("fetch-depth") == 0 and tier.get("shell") == "bash"
+         and tier.get("env") == {"EVENT": "${{ github.event_name }}", "BASE": "${{ github.event.pull_request.base.sha }}", "HEAD_SHA": "${{ github.event.pull_request.head.sha }}"}),
+        ("it lists the pull request's whole diff against its merge base with --raw -z --no-abbrev --no-renames --ignore-submodules=none",
+         'git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE...$HEAD_SHA" > ' in run_of(tier)),
+        ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
+        ("records only runs the gate's --check alone, the signers file named in the checkout for the tool to read as the default branch's",
+         records_at is not None and steps[records_at].get("if") == "steps.tier.outputs.records == 'true'"
+         and run_of(steps[records_at]) == 'git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"\npython shoalmark.py --check\n'
+         and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}"}),
+        ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
+         None not in (suite_at, core_at) and all(steps[i].get("if") == full for i in (suite_at, core_at))
+         and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
+        ("the Ubuntu 3.9 entry carries the zone Pacific/Kiritimati, UTC+14, the Ubuntu 3.12 entry Pacific/Pago_Pago, UTC−11, and no other entry a zone",
+         [e.get("tz") for e in include] == ["Pacific/Kiritimati", "Pacific/Pago_Pago", None, None, None]),
+        ("after the UTC suites, the entry's zone runs both suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
+         "and writes its result to the run's summary",
+         zone_at is not None and None not in (suite_at, core_at) and zone_at > max(suite_at, core_at) and zone.get("continue-on-error") is True
+         and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
+         and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
+         and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone) and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
+        (f"the tier step's own shell: a tracker-only edit, and a tracker added beside one deleted, give --check alone (saw {shown(*_CI_RECORDS)})",
+         bool(runs) and all(runs.get(n) == "true" for n in _CI_RECORDS)),
+        (f"…a tracker edit beside an ignored submodule pointer — .gitmodules with ignore = all — gives the full suites (saw {shown('a tracker edit beside an ignored submodule pointer')})",
+         runs.get("a tracker edit beside an ignored submodule pointer") == "false"),
+        (f"…a tracker edit beside a mode change, and a mode change alone, give the full suites (saw {shown('a tracker edit beside a mode change', 'a mode change alone')})",
+         runs.get("a tracker edit beside a mode change") == "false" and runs.get("a mode change alone") == "false"),
+        (f"…every other shape gives the full suites: a symlink, .github/ or .gitmodules in the folder, .github/ outside it, a script beside a tracker, "
+         f"a script moved in, an empty change, a tag, a run by hand, a pull request without its shas, a checkout of a later head (saw "
+         f"{ {n: r for n, r in runs.items() if r != want.get(n)} or 'each as it should'})", bool(runs) and runs == want),
+    ]
+
+
+def _ci_wf_regressions(text, root, shapes):
+    """Each change that undoes one property above, and fails: the controls of the check that reads ci.yml."""
+    rows = (
+        ("a sixth entry runs", lambda t: t.replace('          - {system: macos, image: macos-26, python: "3.12"}\n',
+                                                    '          - {system: macos, image: macos-26, python: "3.12"}\n          - {system: macos, image: macos-26, python: "3.9"}\n', 1)),
+        ("a check is named by its image", lambda t: t.replace("    name: suites (${{ matrix.system }}, ${{ matrix.python }})", "    name: suites (${{ matrix.image }}, ${{ matrix.python }})", 1)),
+        ("a sha goes into the shell as an expression", lambda t: t.replace('"$BASE...$HEAD_SHA"', '"${{ github.event.pull_request.base.sha }}...$HEAD_SHA"', 1)),
+        ("the shas are not given through env:", lambda t: t.replace(', HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}', "}", 1)),
+        ("the diff hides an ignored submodule pointer", lambda t: t.replace(" --ignore-submodules=none", "", 1)),
+        ("the diff detects renames", lambda t: t.replace(" --no-renames", "", 1)),
+        ("the diff is taken from the base, not the merge base", lambda t: t.replace('"$BASE...$HEAD_SHA"', '"$BASE..$HEAD_SHA"', 1)),
+        ("a mode change reads as an edit", lambda t: t.replace('":100644 100644 M" |', '":100644 100644 M" | ":100644 100755 M" | ":100755 100755 M" |', 1)),
+        ("a symlink added reads as a file", lambda t: t.replace('":000000 100644 A" |', '":000000 100644 A" | ":000000 120000 A" |', 1)),
+        (".github/ in the folder passes", lambda t: t.replace("*/.github/* | ", "", 1)),
+        (".gitmodules in the folder passes", lambda t: t.replace(" | */.gitmodules/*", "", 1)),
+        ("any path passes as the folder's", lambda t: t.replace('"$dir"/*) ;;', '*) ;;', 1)),
+        ("an empty list reads as records", lambda t: t.replace('[ "$entries" -eq 0 ] || ', "", 1)),
+        ("any event reads as a pull request", lambda t: t.replace('[ "$EVENT" = pull_request ] && ', "", 1)),
+        ("the checkout is not held to the event's head", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ] \\\n""", "", 1)),
+        ("records only also runs the suites", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", "      - run: python -u test_shoalmark.py\n", 1)),
+        ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
+                                                                        "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
+        ("records only runs --check with no signers file named", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"\n', "", 1)),
+        ("the zone's run turns the check red", lambda t: t.replace("        continue-on-error: true\n", "", 1)),
+        ("macOS runs a zone too", lambda t: t.replace('{system: macos, image: macos-26, python: "3.12"}', '{system: macos, image: macos-26, python: "3.12", tz: Pacific/Kiritimati}', 1)),
+        ("the zones change places", lambda t: t.replace("tz: Pacific/Kiritimati}", "tz: PLACE}", 1).replace("tz: Pacific/Pago_Pago}", "tz: Pacific/Kiritimati}", 1).replace("tz: PLACE}", "tz: Pacific/Pago_Pago}", 1)),
+        ("the zone's run says nothing in the summary", lambda t: t.replace('(reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"', '(reported, not yet required)."', 1)),
+        ("the zone's run comes before the UTC suites", lambda t: (lambda m: t if not m else t.replace(m.group(0), "", 1).replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n",
+                                                                  m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
+            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
+    )
+    out = []
+    for what, change in rows:
+        changed = change(text)
+        props = _ci_wf_properties(changed, root, shapes)
+        out.append((f"a ci.yml in which {what} fails one of the properties above" + (" — NOT JUDGED: the change finds no line to apply to" if changed == text else ""),
+                    changed != text and not all(ok for _, ok in props)))
+    for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
+        out.append((f"a ci.yml in which {what} passes every property above", all(ok for _, ok in _ci_wf_properties(change(text), root, shapes))))
+    return out
+
+
+if not _CI_BASH:
+    _skipped("FM-032 · ci.yml's tiers and time zones", 38, "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
+else:
+    with tempfile.TemporaryDirectory() as _ci_d:
+        _ci_root = Path(_ci_d).resolve()
+        _ci_shape = _ci_shapes(_ci_root)
+        _ci_text = (HERE / ".github/workflows/ci.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/ci.yml").is_file() else ""
+        for _what, _ok in _ci_wf_properties(_ci_text, _ci_root, _ci_shape) + _ci_wf_regressions(_ci_text, _ci_root, _ci_shape):
+            check(f"FM-032 · ci.yml: {_what}", _ok)
+        rm_git(_ci_root)
+
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
 #     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
