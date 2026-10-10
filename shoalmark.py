@@ -2750,15 +2750,15 @@ def notice_text(text):
 
 def notify_env(title, body, environ=None):
     """The environment a notice's command runs in: this process's (or `environ`), with the title as `SM_TITLE` and the body as
-    `SM_BODY` — the data the fixed code `notify_argv` hands macOS and Windows reads. Pure, so a test reads it."""
+    `SM_BODY` — the data the fixed code `notify_argv` hands macOS reads. Pure, so a test reads it."""
     return {**(os.environ if environ is None else environ), "SM_TITLE": notice_text(title), "SM_BODY": notice_text(body)}
 
 
 def notify_argv(title, body, platform=None, which=None):
     """The command that posts one system notification on `platform`, or None where none is present: macOS `osascript`,
-    Linux `notify-send`, Windows PowerShell's toast. Pure — what it WOULD run — so a test reads every platform's. macOS and
-    Windows are handed fixed code, the same on every run, which reads the title and body from the environment `notify_env`
-    builds; Linux's `notify-send` takes them as its own arguments, after `--`."""
+    Linux `notify-send`; on Windows None, always — there the notice is printed. Pure — what it WOULD run — so a test reads
+    every platform's. macOS is handed fixed code, the same on every run, which reads the title and body from the environment
+    `notify_env` builds; Linux's `notify-send` takes them as its own arguments, after `--`."""
     platform, which = platform or sys.platform, which or shutil.which
     if platform == "darwin" and which("osascript"):
         return ["osascript", "-e", 'use framework "Foundation"\nuse scripting additions\n'
@@ -2766,23 +2766,15 @@ def notify_argv(title, body, platform=None, which=None):
                                    """display notification ((e's objectForKey:"SM_BODY") as text) with title ((e's objectForKey:"SM_TITLE") as text)"""]
     if platform.startswith("linux") and which("notify-send"):
         return ["notify-send", "--app-name=shoalmark", "--", notice_text(title), notice_text(body)]
-    if platform == "win32" and which("powershell"):                 # the toast's AppUserModelID is PowerShell's own
-        return ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; "
-                "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
-                "$t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode($env:SM_TITLE)) > $null; "
-                "$t.Item(1).AppendChild($x.CreateTextNode($env:SM_BODY)) > $null; "
-                "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')"
-                ".Show([Windows.UI.Notifications.ToastNotification]::new($x))"]
     return None
 
 
 def post_notice(title, body):
-    """Post one notification: `posted`; `printed` where this system has no notifier — the printed line is the notice; or
-    `NOT posted — why`, which is not remembered, so the next run tries again."""
+    """Post one notification: `posted`; `printed` where this system has no notifier, and on Windows — the printed line is
+    the notice; or `NOT posted — why`, which is not remembered, so the next run tries again."""
     argv = notify_argv(title, body)
     if not argv:
-        return "printed — no notifier here"
+        return "printed — no notice is posted on Windows" if sys.platform == "win32" else "printed — no notifier here"
     try:
         r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, env=notify_env(title, body))
     except (OSError, ValueError, subprocess.TimeoutExpired) as e:        # a notice that cannot be started is that notice's failure alone
@@ -2839,7 +2831,8 @@ def notify_cmd(trackers):
             where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
         except OSError as e:
             where = f"NOT remembered — {path}: {e.strerror or e}; the next run posts again"
-    print(f"--notify: {len(lines) - failed} posted · {before} posted before · {later} not yet within {NOTIFY_AHEAD} minutes"
+    done = "printed" if sys.platform == "win32" else "posted"              # on Windows each notice is printed
+    print(f"--notify: {len(lines) - failed} {done} · {before} {done} before · {later} not yet within {NOTIFY_AHEAD} minutes"
           + (f" · {failed} NOT posted" if failed else "") + f" — {where}")
     for l in lines:
         print(l)
