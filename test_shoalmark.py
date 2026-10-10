@@ -8697,7 +8697,7 @@ if os.name == "nt":
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, answers=True); part_ = _bw_partial(base_, root_, "blob:none"); _BW_HAND.pop(base_, None)
-        stub_ = base_ / "stub"; stub_.mkdir(); (stub_ / "git").write_text(_BW_STUB.replace("{git}", shutil.which("git")), encoding="utf-8"); (stub_ / "git").chmod(0o755)
+        stub_ = base_ / "stub"; stub_.mkdir(); (stub_ / "git").write_bytes(_BW_STUB.replace("{git}", shutil.which("git")).encode("utf-8")); (stub_ / "git").chmod(0o755)
         path_ = f"{stub_}{os.pathsep}{os.environ.get('PATH', '')}"
         log_ = _bw_wrap(base_, part_, stub=stub_); _h, common_ = _bw_paths(part_); board_ = _bm_board(part_)
         code_, said_ = _bm_fire(part_, base_ / "trace-old.json", "switch", "-q", "side")
@@ -8771,7 +8771,8 @@ def _bw_signed_by_hand(root, tid, head):
     tree_ = subprocess.run(["git", "-C", str(root), "write-tree"], capture_output=True, text=True, env=_ENV).stdout.strip()
     parent_ = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
     body_ = (f"tree {tree_}\nparent {parent_}\nauthor owner <o@x> 1700000000 +0000\ncommitter owner <o@x> 1700000000 +0000\ngpgsig {head}\n\n{tid}: done\n")
-    sha_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=body_, capture_output=True, text=True, env=_ENV).stdout.strip()
+    sha_ = subprocess.run(["git", "-C", str(root), "hash-object", "-t", "commit", "-w", "--stdin"], input=body_.encode("utf-8"), capture_output=True,
+                          env=_ENV).stdout.decode("utf-8", "replace").strip()       # bytes: `\n` as written, on every system
     git(root, "update-ref", f"refs/heads/answer/{tid.lower()}", sha_); git(root, "push", "-q", "origin", f"answer/{tid.lower()}")
     git(root, "switch", "-q", "-f", "main")
     return sha_
@@ -8779,7 +8780,7 @@ def _bw_signed_by_hand(root, tid, head):
 
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, signers="tree", answers=True); _BW_HAND.pop(base_, None)
-    (root_ / ".gitattributes").write_text("*.md diff=probe\n", encoding="utf-8")
+    (root_ / ".gitattributes").write_bytes(b"*.md diff=probe\n")
     git(root_, "add", "-A"); git(root_, "commit", "-qm", "an attribute names a diff driver for every tracker", "-S", "--author=owner <o@x>"); git(root_, "push", "-q", "origin", "main")
     pgp_ = _bw_signed_by_hand(root_, "AP-502", "-----BEGIN PGP SIGNATURE-----\n \n iQ==\n -----END PGP SIGNATURE-----")
     x509_ = _bw_signed_by_hand(root_, "AP-503", "-----BEGIN SIGNED MESSAGE-----\n MA==\n -----END SIGNED MESSAGE-----")
@@ -8787,7 +8788,7 @@ with tempfile.TemporaryDirectory() as d:
     log_, wrap_ = base_ / "markers.log", _bw_wrap(base_, root_)
     def marker_(name_, does_, tail_):
         p_ = base_ / f"marker-{name_}"
-        p_.write_text(_BW_MARKER.format(does=does_, name=name_, log=log_.as_posix(), tail=tail_), encoding="utf-8"); p_.chmod(0o755)
+        p_.write_bytes(_BW_MARKER.format(does=does_, name=name_, log=log_.as_posix(), tail=tail_).encode("utf-8")); p_.chmod(0o755)
         return p_.as_posix()
     rel_ = "docs/work-tracker/AP-501-x.md"
     shapes_ = {         # each setting: (what it is, the setting as the repository configures it, the read with git's own default that starts it, what it starts)
@@ -8809,7 +8810,7 @@ with tempfile.TemporaryDirectory() as d:
         t0_ = base_ / f"trace-plain-{tag_}.json"
         subprocess.run(["git", "-C", str(root_), *plain_], capture_output=True, env=dict(_ENV, GIT_TRACE2_EVENT=str(t0_)))
         plain_marks_ = [l_ for l_ in log_.read_text(encoding="utf-8").splitlines() if l_.strip()]
-        plain_kids_ = [Path((json.loads(l_).get("argv") or ["?"])[0]).name for l_ in t0_.read_text(encoding="utf-8").splitlines()
+        plain_kids_ = [re.sub(r"\.exe$", "", Path((json.loads(l_).get("argv") or ["?"])[0]).name.lower()) for l_ in t0_.read_text(encoding="utf-8").splitlines()
                        if l_.strip() and json.loads(l_).get("event") == "child_start"] if t0_.is_file() else []
         live_ = (starts_ in plain_kids_) if starts_ == "ssh-keygen" else bool(plain_marks_)
         log_.write_text("", encoding="utf-8")
@@ -8897,7 +8898,7 @@ with tempfile.TemporaryDirectory() as d:
     git(root_, "add", "-A"); git(root_, "commit", "-qm", "a second ask", "-S", "--author=owner <o@x>"); git(root_, "push", "-q", "origin", "main")
     seen_ = {}
     for attr_ in ("*.md binary", "*.md -diff"):
-        (root_ / ".gitattributes").write_text(attr_ + "\n", encoding="utf-8")
+        (root_ / ".gitattributes").write_bytes((attr_ + "\n").encode("utf-8"))
         git(root_, "add", ".gitattributes"); git(root_, "commit", "-qm", f"every tracker: {attr_}"); git(root_, "push", "-q", "origin", "main")
         c1_, o1_, e1_ = _tool_run(HERE / "shoalmark.py", root_, "--html-only")
         page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
@@ -9084,7 +9085,7 @@ with tempfile.TemporaryDirectory() as d:
 
     below_ = lambda h_: subprocess.run(["git", "-C", str(root_), "rev-parse", h_ + "~1"], capture_output=True, text=True, env=_ENV).stdout.strip()[:7]
     for ignore_ in ("all", "dirty", "untracked", "none"):
-        (root_ / ".gitmodules").write_text(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n', encoding="utf-8")
+        (root_ / ".gitmodules").write_bytes(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n'.encode("utf-8"))
         git(root_, "add", ".gitmodules"); git(root_, "update-index", "--add", "--cacheinfo", f"160000,{pin_},vendor/lib")
         git(root_, "commit", "-qm", f"the trunk vendors a submodule, `ignore = {ignore_}`"); git(root_, "push", "-q", "origin", "main")
         head_ = _bw_below_answer(root_, rel_, []); q_, b_ = queue_(head_), board_()
@@ -9159,7 +9160,7 @@ with tempfile.TemporaryDirectory() as d:
         return next((re.split(r" {2,}", l_)[1] for l_ in o_.splitlines() if l_.startswith("PR 2  ")), f"no line for PR 2 (exit {c_}: {(e_ or o_).strip()[-120:]!r})")
 
     for ignore_ in ("all", "dirty", "untracked", "none"):
-        (root_ / ".gitmodules").write_text(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n', encoding="utf-8")
+        (root_ / ".gitmodules").write_bytes(f'[submodule "lib"]\n\tpath = vendor/lib\n\turl = https://example.invalid/lib.git\n\tignore = {ignore_}\n'.encode("utf-8"))
         git(root_, "add", ".gitmodules"); git(root_, "update-index", "--add", "--cacheinfo", f"160000,{pin_},vendor/lib")
         git(root_, "commit", "-qm", f"the trunk vendors a submodule, `ignore = {ignore_}`"); git(root_, "push", "-q", "origin", "main")
         main_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
@@ -9210,7 +9211,7 @@ with tempfile.TemporaryDirectory() as d:
         root_ = Path(d).resolve() / f"pending-{ignore_}"; root_.mkdir()
         git(root_, "init", "-q", "--initial-branch=main"); git(root_, "config", "user.name", "builder"); git(root_, "config", "user.email", "builder@seat")
         (root_ / "shoalmark.toml").write_text('name = "p"\n[kinds]\nXY = "Work"\n[seats]\nbuilder = "builder@seat"\n', encoding="utf-8")
-        (root_ / ".gitmodules").write_text(f'[submodule "subproject"]\n\tpath = subproject\n\turl = ../unused\n\tignore = {ignore_}\n', encoding="utf-8")
+        (root_ / ".gitmodules").write_bytes(f'[submodule "subproject"]\n\tpath = subproject\n\turl = ../unused\n\tignore = {ignore_}\n'.encode("utf-8"))
         (root_ / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
         (root_ / "README.md").write_text("base\n", encoding="utf-8"); (root_ / "subproject").mkdir(); (root_ / "docs/work-tracker").mkdir(parents=True)
         run(root_); fm.configure(HERE)
@@ -11998,7 +11999,8 @@ with tempfile.TemporaryDirectory() as tmp:
     # v0.19.1 · a path the guard watches, in another case or Unicode normalization: on a file system that ignores both — macOS's default, Windows's — it can be the file the tool reads
     def variant37_(branch, path):                       # a seat's commit, made with git's plumbing as on a file system that keeps case and normalization apart: `path` holds an intent of its own
         git(root, "switch", "-q", "-c", branch, "main")
-        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=filled_.replace("lose a loan", "lose a ledger"), capture_output=True, text=True, env=_ENV).stdout.strip()
+        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=filled_.replace("lose a loan", "lose a ledger").encode("utf-8"), capture_output=True,
+                               env=_ENV).stdout.decode("utf-8", "replace").strip()
         git(root, "-c", "core.precomposeunicode=false", "update-index", "--add", "--cacheinfo", f"100644,{blob_},{path}")
         git(root, "-c", "core.precomposeunicode=false", "commit", "-q", "-m", "AP-037: a note", SEAT_)
         c_, g_ = sha37_(), guard37_(); code_ = run(root, "--check")[0]
@@ -12025,7 +12027,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # v0.19.1 · where a commit moves the tracker's home, every path its tree holds that is that home in another case or normalization is refused
     seat_text37_ = filled_.replace("lose a loan", "lose a ledger")
     def staged37_(path_, text_):                        # one file staged with git's plumbing, as on a file system that keeps case apart — nothing checked out
-        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=text_, capture_output=True, text=True, env=_ENV).stdout.strip()
+        blob_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=text_.encode("utf-8"), capture_output=True, env=_ENV).stdout.decode("utf-8", "replace").strip()
         git(root, "-c", "core.precomposeunicode=false", "update-index", "--add", "--cacheinfo", f"100644,{blob_},{path_}")
     tracked37_ = [p_ for p_ in subprocess.run(["git", "-C", str(root), "ls-files", "docs/work-tracker"], capture_output=True, text=True, env=_ENV).stdout.split("\n") if p_]
     git(root, "switch", "-q", "-c", "ap/037-case-move", "main")
@@ -12073,7 +12075,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-006 · v0.19.1 · `--queue` waits on a branch whose tip `--check` refuses as a merge would bring it (saw {[r_[2] for r_ in q_tv_]!r})",
           [r_[2] for r_ in q_tv_] == [f"wait: no pull request — TRIAGE.md home in another case at the branch tip ({c_tv_[:7]})"])
     # v0.19.1 · a symlink at the default branch's configuration path is a configuration that cannot be read — never one naming no Owner
-    git(root, "switch", "-q", "main"); blob37_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input='name = "g"', capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(root, "switch", "-q", "main"); blob37_ = subprocess.run(["git", "-C", str(root), "hash-object", "-w", "--stdin"], input=b'name = "g"', capture_output=True, env=_ENV).stdout.decode("utf-8", "replace").strip()
     git(root, "update-index", "--cacheinfo", f"120000,{blob37_},shoalmark.toml"); git(root, "commit", "-q", "-m", "the configuration, a symlink"); git(root, "push", "-q", "origin", "main")
     (c_cl_,) = by_hand37_("ap/037-config-link", "main", ("AP-037: a better intent", lambda: ((root / "shoalmark.toml").write_text(cfg37_), text37_("lose a loan", "lose a book")()), SEAT_))
     g_cl_ = guard37_(); code_cl_ = run(root, "--check")[0]
@@ -12420,8 +12422,9 @@ else:
 # walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged
 # against the Owner main's `[seats]` names, verified with the repository's own signers file whatever this clone's setting
 _main37, _g37 = "0d60d552b3c6322cc463d5caf427a7df1fea9a00", ["45198d5", "c755d31", "8d14b6b", "7dd6ba6", "fe36cc0", "ad9bf67"]
-_have37 = subprocess.run(["git", "-C", str(HERE), "cat-file", "--batch-check"], input="".join(f"{c_}^{{commit}}\n" for c_ in [_main37, "ae1f05e", "a680fdf", *_g37]),
-                         capture_output=True, text=True, env=_ENV)
+_have37 = subprocess.run(["git", "-C", str(HERE), "cat-file", "--batch-check"], input="".join(f"{c_}^{{commit}}\n" for c_ in [_main37, "ae1f05e", "a680fdf", *_g37]).encode("utf-8"),
+                         capture_output=True, env=_ENV)
+_have37 = subprocess.CompletedProcess(_have37.args, _have37.returncode, _have37.stdout.decode("utf-8", "replace"), _have37.stderr.decode("utf-8", "replace"))
 if _have37.returncode != 0 or "missing" in _have37.stdout or not (HERE / "work-tracker/allowed_signers").is_file():
     SKIPS.append(("FM-037 · the real history", 1, "this clone does not hold main's history to 0d60d55 (a shallow or partial clone)"))
     print(f"  skip  FM-037 · the real history — this clone does not hold main's history to 0d60d55; 1 check(s) did not run")
