@@ -8,7 +8,7 @@ What a repository takes on when it vendors again. Newest first; `--vendor` print
 
 ### Security (GHSA-phwg-xghr-hfvg, GHSA-xfv6-2vf2-fm94)
 - **GHSA-phwg-xghr-hfvg, the board's refresh:**
-  - The board's git reads run with fixed settings: no fetch, no signature program but `ssh-keygen -Y`, no fsmonitor, no textconv, and text read as text on its six history reads.
+  - The board's git reads run with fixed settings: no fetch, no program a configuration names but the SSH signature check, no fsmonitor, no textconv, and text read as text on its six history reads.
   - The four pathspec variables are dropped for every git the tool starts.
   - Every read that lists what a commit or a pending change touches lists submodule pointers too, so a record, a review addendum and the gate see every change.
 - **GHSA-xfv6-2vf2-fm94, `--notify`:**
