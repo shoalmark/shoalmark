@@ -2,6 +2,25 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.19.3 — 2026-10-10
+
+**0.19.3 is a security release: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The board's refresh fetches nothing and starts no program a configuration names but its SSH signature check. `--notify` hands a notice's text over as data on macOS and Linux; on Windows, in this release, it prints the notice instead of posting it.
+
+### Security (GHSA-phwg-xghr-hfvg, GHSA-xfv6-2vf2-fm94)
+- **GHSA-phwg-xghr-hfvg, the board's refresh:**
+  - The board's git reads run with fixed settings: no fetch, no program a configuration names but the SSH signature check, no fsmonitor, no textconv, and text read as text on its six history reads.
+  - The four pathspec variables are dropped for every git the tool starts.
+  - Every read that lists what a commit or a pending change touches lists submodule pointers too, so a record, a review addendum and the gate see every change.
+- **GHSA-xfv6-2vf2-fm94, `--notify`:**
+  - On macOS the notice's code is fixed, and its title and body travel as data, a NUL replaced; Linux passes them after `--` as before.
+  - One notice that cannot be posted never stops the others, and the run exits 1.
+  - On Windows it prints each notice and starts no program.
+
+### Hardening
+- The board records what it was built from — the tracker folder, the configuration and the answer branches it reads — in `view/built.json`, and `--owner` and `--standup` say in one line when any of them has changed since.
+- The deriver's texts say when a deriver runs: on each run of the tool itself that reads the trackers, TortoiseSVN's commit hooks included; never in the copy git's hooks run, or in the board's run.
+- The classification of every program the tool starts reads the notice's code as the fixed code it is.
+
 ## 0.19.2 — 2026-10-09
 
 **0.19.2 fixes the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The hooks run the copy of the tool kept in the git directory, so the fix reaches the board's refresh only once `--install-hook` has copied it there.
