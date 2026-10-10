@@ -29,9 +29,9 @@ suite, but it has not been used in real work and comes without a guarantee: say 
 steps: (a) Where does work item 37 stand? (b) What is the next step, and whose? (c) What is waiting for the Owner right
 now? (d) What is blocked, and by what? (e) How can you tell that item 12 is done?
 
-**2. Check what you run.** Fetch the repository at the tag `v0.19.2` into a folder **outside** your working copy. The
+**2. Check what you run.** Fetch the repository at the tag `v0.19.3` into a folder **outside** your working copy. The
 file `shoalmark.py` has — with `\n` line endings — the SHA-256
-`5dfcbff1115b4aef67ddd4e280451dc17217d0ccd5b7403289082199c6660d2f`. It is one file; read it before you run it.
+`4a617ee4856413fbc29b1c71d5aee85a6f63d8b7fba6b470de4cf0b15cdab467`. It is one file; read it before you run it.
 
 **3. Set up.** In an empty throwaway folder `probe/` (`python` on Windows, otherwise `python3`):
 

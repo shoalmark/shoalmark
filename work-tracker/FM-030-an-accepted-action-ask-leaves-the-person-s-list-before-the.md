@@ -31,10 +31,10 @@ its morning sitting. The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `ma
 an earlier chain of this branch, which was replaced before its merge to keep unredacted detail out of the record; it
 found R1–R16, and this text closes R1–R10.
 
-**The notice's code is literal, and its text travels as data, on every platform** — built for 0.19.3 and merged into
-`release/v0.19.3` at `268ae13`; not yet released. `--notify` hands macOS `osascript` and Windows PowerShell fixed
-code, the same on every run, which reads the notice's title and body from the environment; on Linux they are
-`notify-send`'s own arguments, after `--`.
+**The notice's code is literal, and its text travels as data, on macOS and Linux** — merged into `release/v0.19.3` at
+`268ae13`, and ships in 0.19.3, dated 2026-10-10. `--notify` hands macOS `osascript` fixed code, the same on every run,
+which reads the notice's title and body from the environment; on Linux they are `notify-send`'s own arguments, after
+`--`; on Windows it starts no program and prints each notice.
 
 **Built for 0.18.6 on `fm/030-the-done-dialog-shows-the-question`, merged as PR 103, not released** — on the two raise lines
 of 2026-09-27 (the Owner's word at 13:38:30, the E0 counter's row 20): an act that is a promise reads as what he
@@ -196,3 +196,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-28 | RV-758 (the docs pass `992fb5d` on `3a417db`): the paste's closing line *File and rank them your way.* is the Auditor's, not the Owner's — the raise line of 12:43:02 corrected in place before the merge. |
 | 2026-09-30 | **Raised, the Owner, two lines under *Raised*** (08:26:03, 08:30:15): the board's owed section does not carry a seat's branch pushed without a pull request, which `--queue` does; the open tab does not reload after his act — the file is right, the tab stale. Two slices for 0.18.7, nothing built; filed on his word *"file it"* (08:31:39). |
 | 2026-10-09 | RV-2830: recorded privately |
+| 2026-10-10 | The notice's fix ships in 0.19.3, dated 2026-10-10: on macOS and Linux its code is literal and its text travels as data; on Windows `--notify` starts no program and prints each notice (`baa58cc`). |

@@ -13,7 +13,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
 
 ## What is true now
 
-**Shipped in v0.19.2, 2026-10-09: `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156), tagged `v0.19.2` on `ceb21b8`.**
+**Shipped in v0.19.2, 2026-10-09: `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156), tagged `v0.19.2` on `ceb21b8`. C's read-only half in v0.19.3, 2026-10-10.**
 - **What happened (v0.19.1):** `--html-only`, the board's run that the checkout, merge and rewrite hooks start, stopped
   with "the board's run was stopped: it would start git ls-tree -r -z — it starts nothing but read-only git and writes
   only the board", exit 4, nothing written. The hooks never blocked: each printed "the board is not refreshed (exit 4)"
@@ -33,10 +33,10 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   (`de05c9c`). It accepts a start only in the form the product writes (`42fbd86`): a process API called by its plain
   name, its argument list and every argument that can choose the program or a shell resolved in full. Any other
   reference to a process API or a process module, code handed to any shell or interpreter, and a start through a
-  command wrapper are not read and fail it. Two exceptions, the Owner's, each matched by its site and each site met
-  once: `notify_argv`'s code handed to osascript and to PowerShell, which ends when that code is made literal; and the
+  command wrapper are not read and fail it. One exception, the Owner's, matched by its site and met once: the
   repository's deriver, which `run_deriver` starts directly and on Windows by Python, a permanent one — started on an
-  explicit run only, never in a hook's run or the board's run. Its runtime half watches each `--html-only` the suite
+  explicit run only, never in a hook's run or the board's run. The notice's code is literal in 0.19.3, and its
+  exception is gone. Its runtime half watches each `--html-only` the suite
   runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of
   the board matrix through git's trace.
 - **The board matrix** (`bdda4ad`, `df63f68`, `7823a7d`): real merges, checkouts and rebases fire the real hooks, and an
@@ -53,7 +53,7 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   `--standup` say in one line when any of it has changed since; HEAD moving alone is never said, and on Subversion and in
   a plain folder nothing is recorded or said. The tripwire admits `view/built.json` by its exact path alone. Its
   CHANGELOG line and the ADOPT pins come with the release it joins.
-- **Left:** C's read-only half: its review, and the release it joins.
+- **Left:** C's read-only half: 0.19.3's critical verdict, the merge and the tag.
 
 ## Why
 
@@ -107,3 +107,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | Built by `b3bdb000/implementer-115`: `42fbd86` — Check A accepts a start only in the form the product writes: a process API called by its plain name, its argument list and every argument that can choose the program or a shell resolved in full; any other reference to a process API or module, code handed to any shell or interpreter and a start through a wrapper are not read. Two exceptions, each matched by its site and met once: `notify_argv`'s code handed to osascript and to PowerShell, ending when that code is made literal, and the repository's deriver, permanent. A control for each kind; the tool's own reading: 29 commands, nothing unread. |
 | 2026-10-08 | **C's read-only half — built** by `b3bdb000/implementer-117` on `fm/045-the-board-records-its-commit`: `1c50400` — a refactor: `answer_refs` holds what `on_their_way` reads of origin's answer branches; `1c611f4` — `view/built.json`, written last by every run that writes the board, the one line from `--owner` and `--standup`, and the tripwire admitting that path alone; `866988c` — the C checks run to their end beside v0.19.1. |
 | 2026-10-09 | **Shipped in v0.19.2:** `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156); tagged `v0.19.2` on `ceb21b8`. |
+| 2026-10-10 | **C's read-only half in v0.19.3:** merged into `release/v0.19.3` at `6828dba`; 0.19.3's release commit names it in the CHANGELOG, dated 2026-10-10. |
