@@ -13708,8 +13708,7 @@ def _suite_reads(sources, folder="work-tracker"):
     chain that starts at `HERE`, or at a name a module-level assignment binds to such a chain; a module-level string, or `+` join of
     strings, naming a path under the folder (a helper reads it from here); `_rd(<string>)`, the suite's reader of this repository; and
     `.glob()` or `.rglob()` on such a chain, its pattern appended. Only whole chains count: a chain inside a longer one, or a glob's base,
-    is no read of its own. A part that is no string reads as `*`. It cannot see a path built from data at run time, a path a helper
-    builds from a parameter, or what the tool, or a script the suite starts, reads when the suite runs it on this repository."""
+    is no read of its own. A part that is no string reads as `*`."""
     out = {}
     for name, text in sources.items():
         tree = ast.parse(text)
