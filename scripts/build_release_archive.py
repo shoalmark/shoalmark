@@ -5,8 +5,8 @@
 The one build: `.github/workflows/release.yml` runs it on a pushed tag and on its dry run, and the suite's check runs this same file.
 
 - **What it holds:** the files `--vendor` copies — `TOOL_FILES`, the brand's own files beside the tool and the themes it ships — read from the commit's git
-  objects, never from the working tree, at the zip's root with no folder around them (D7); and `RELEASE`, a manifest of the version, the tag, the commit
-  and each file's SHA-256. The manifest proves the set complete, not its origin: whoever changes the zip can rewrite it. The origin is the zip's own
+  objects, never from the working tree, at the zip's root with no folder around them (D7); beside them `ARCHIVE_FILES`, the files the probe reads, at
+  their repository paths; and `RELEASE`, a manifest of the version, the tag, the commit and every other file's SHA-256. The manifest proves the set complete, not its origin: whoever changes the zip can rewrite it. The origin is the zip's own
   SHA-256 against a pin published outside it.
 - **Reproducible:** entries sorted, stored and not deflated (its SHA-256 rests on no zlib version), one timestamp — the commit's committer time read in
   UTC — fixed modes, no extra field. Built again from the same commit, anywhere and in any time zone, it gives the same bytes.
@@ -93,7 +93,12 @@ def build(repo, ref):
             meta, _, path = entry.partition(b"\t")
             mode, kind, obj = meta.decode("ascii").split()
             tree[path.decode("utf-8")] = (mode, kind, obj)
-    names = vendored_set(set(tree), git(repo, "cat-file", "blob", f"{commit}:shoalmark.py").decode("utf-8"))
+    tool_source = git(repo, "cat-file", "blob", f"{commit}:shoalmark.py").decode("utf-8")
+    beside = literal(tool_source, "ARCHIVE_FILES", needed=False)       # the probe's files, at their repository paths
+    lacking = [rel for rel in beside if rel not in tree]
+    if lacking:
+        raise Refused(f"the commit lacks {', '.join(lacking)}, which the archive carries")
+    names = sorted(set(vendored_set(set(tree), tool_source)) | set(beside))
     odd = [n for n in names if tree[n][1] != "blob" or tree[n][0] not in ("100644", "100755")]
     if odd:
         raise Refused(f"{', '.join(odd)} at the commit is no regular file")

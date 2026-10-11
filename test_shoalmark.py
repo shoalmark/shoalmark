@@ -1536,6 +1536,7 @@ check("related skips German stop words as it skips English ones", "und" in fm._S
 #     reads a process start as an argv only — each runs a program and reads what it wrote and its exit.
 import zipfile
 _REL_SCRIPT = HERE / "scripts" / "build_release_archive.py"
+_REL_FIVE = ("examples/de/shoalmark.toml", "examples/de/TEMPLATE.md", "examples/de/TRIAGE.md", "examples/de/labels.yaml", "requirements/README.md")   # the Owner's word of 2026-10-11
 
 
 def _rel_yaml(text):
@@ -1806,7 +1807,7 @@ def _rel_build(repo, out, ref, tz=None):
 with tempfile.TemporaryDirectory() as d:
     base = Path(d).resolve(); ver = fm.__version__
     shipped_ = fm.vendor_files() if hasattr(fm, "vendor_files") else list(fm.TOOL_FILES)
-    src, commit_ = _rel_repo(base, shipped_, ver, {"scripts/not-shipped.py": b"print('no')\n", "brand/themes/.hidden": b"x\n", "test_shoalmark.py": b"# no\n"})
+    src, commit_ = _rel_repo(base, list(shipped_) + list(_REL_FIVE), ver, {"scripts/not-shipped.py": b"print('no')\n", "brand/themes/.hidden": b"x\n", "test_shoalmark.py": b"# no\n"})
     zipped, sums_ = base / f"out/shoalmark-{ver}.zip", base / f"out/shoalmark-{ver}.zip.sha256"
     b1_ = _rel_build(src, base / "out", f"v{ver}")
     z_ = zipfile.ZipFile(zipped) if zipped.is_file() else None
@@ -1816,11 +1817,14 @@ with tempfile.TemporaryDirectory() as d:
     rel_, wrong_ = fm.release_manifest(release_) if hasattr(fm, "release_manifest") else ({}, "no reader")
     stamp_ = time.gmtime(int(subprocess.run(["git", "-C", str(src), "show", "-s", "--format=%ct", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()))[:6]
     check(f"FM-004 · the archive, built by scripts/build_release_archive.py from a scratch tag: the files `--vendor` copies at its root, no folder around them, and RELEASE — none of the tree's other files (saw exit {b1_[0]}, {len(names_)} entries, {b1_[2].strip()[:120]!r})",
-          b1_[0] == 0 and sorted(names_) == names_ and set(names_) == set(shipped_) | {"RELEASE"} and len(names_) == len(set(names_))
+          b1_[0] == 0 and sorted(names_) == names_ and set(names_) == set(shipped_) | set(_REL_FIVE) | {"RELEASE"} and len(names_) == len(set(names_))
           and not any(n_.endswith("/") or n_.startswith(("src/", f"shoalmark-{ver}/")) for n_ in names_) and "scripts/not-shipped.py" not in names_ and "brand/themes/.hidden" not in names_)
-    check(f"FM-004 · its RELEASE names the version, the tag, the commit and each file's SHA-256, each equal to the file's in the zip (saw {wrong_ or 'read'}, {release_.splitlines()[:4]})",
+    check(f"FM-004 · the zip carries the probe's five files at their repository paths — examples/de/shoalmark.toml, TEMPLATE.md, TRIAGE.md, labels.yaml and requirements/README.md — each as the tag holds it, and the tool names the same five (saw {[n_ for n_ in names_ if '/' in n_ and not n_.startswith(('brand/', 'vendor/'))]})",
+          all(f_ in names_ and z_.read(f_) == (HERE / f_).read_bytes() for f_ in _REL_FIVE) and tuple(getattr(fm, "ARCHIVE_FILES", ())) == _REL_FIVE)
+    check(f"FM-004 · its RELEASE names the version, the tag, the commit and every other entry of the zip with its SHA-256, each equal to the entry's (saw {wrong_ or 'read'}, {release_.splitlines()[:4]})",
           not wrong_ and rel_.get("version") == ver and rel_.get("tag") == f"v{ver}" and rel_.get("commit") == commit_
-          and set(rel_.get("files", {})) == set(shipped_) and all(hashlib.sha256(z_.read(n_)).hexdigest() == h_ for n_, h_ in rel_.get("files", {}).items()))
+          and set(rel_.get("files", {})) == set(names_) - {"RELEASE"} == set(shipped_) | set(_REL_FIVE)
+          and all(hashlib.sha256(z_.read(n_)).hexdigest() == h_ for n_, h_ in rel_.get("files", {}).items()))
     check("FM-004 · it is stored, sorted, one timestamp — the commit's committer time read in UTC — fixed modes and no extra field",
           bool(infos_) and all(i_.compress_type == zipfile.ZIP_STORED and i_.date_time == stamp_ and i_.external_attr == 0o100644 << 16 and i_.extra == b"" and i_.create_system == 3 for i_ in infos_)
           and z_.comment == b"")
@@ -1872,7 +1876,7 @@ with tempfile.TemporaryDirectory() as d:
     said_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     check(f"FM-004 · `--vendor` from the unpacked zip copies every file it holds but RELEASE, and its PIN claims only what it checked — the tag and commit the manifest names, every file matched; the consumer's --check reads it (saw {v_[0]}, {pin_.splitlines()[:1]}, {said_.stdout.strip().splitlines()[-1:]})",
           v_[0] == 0 and pin_.startswith(f"# shoalmark {ver} · vendored from an archive whose manifest names v{ver}, commit {commit_}, every file matched · {today_}\n")
-          and pinned_ == sorted(set(names_) - {"RELEASE"}) and not (proj_ / "tools/shoalmark/RELEASE").exists()
+          and pinned_ == sorted(set(shipped_)) and not (proj_ / "tools/shoalmark/RELEASE").exists()
           and all((proj_ / "tools/shoalmark" / n_).read_bytes() == z_.read(n_) for n_ in pinned_)
           and said_.returncode == 0 and f"pinned {ver} from an archive whose manifest names v{ver} (commit {commit_[:10]}), every file matched, vendored {today_}, complete" in said_.stdout
           and "warning" not in said_.stdout)
@@ -1889,6 +1893,19 @@ with tempfile.TemporaryDirectory() as d:
         seen_[what_] = (r_[0], r_[2].strip(), not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
     check(f"FM-004 · from an unpacked zip, a changed byte, a missing file, an extra file in the set and another VERSION are each refused in one line naming it — exit 4, nothing written, `--partial` and `--allow-untagged` or not (saw {[(w_, s_[0], s_[1][-90:]) for w_, s_ in seen_.items()]})",
           len(seen_) == 4 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in seen_.values()))
+    five_ = {}
+    for n_, (what_, rel_, change_, says_) in enumerate((("a changed byte", "examples/de/TRIAGE.md", lambda f: f.write_bytes(f.read_bytes() + b"\n"), "changed: examples/de/TRIAGE.md"),
+                                                        ("a missing file", "requirements/README.md", lambda f: f.unlink(), "missing requirements/README.md"))):
+        u_ = _unpack(base / f"five-{n_}") if zipped.is_file() else base / f"five-{n_}"
+        held_ = (u_ / rel_).is_file()
+        if held_:
+            change_(u_ / rel_)
+        p_ = _project(f"five-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        five_[what_] = (held_, r_[0], r_[2].strip()[-90:], not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
+    check(f"FM-004 · among the probe's five, a changed byte and a missing file are each refused in one line naming it — exit 4, nothing written (saw {five_})",
+          len(five_) == 2 and all(held_ and c_ == fm.EXIT_LINT and none_ and named_ for held_, c_, _e, none_, named_ in five_.values()))
+    check(f"FM-004 · the unpacked zip holds the five, and `--vendor` writes none of them into the target — it copies the tool's set alone (saw {[f_ for f_ in _REL_FIVE if (proj_ / 'tools/shoalmark' / f_).exists()]})",
+          all((unpacked_ / f_).is_file() for f_ in _REL_FIVE) and not any((proj_ / "tools/shoalmark" / f_).exists() for f_ in _REL_FIVE) and v_[0] == 0)
     def _drop(u, rel):
         """A file of the unpacked zip gone, and its RELEASE line with it: the folder and the manifest agree, and the set is not whole."""
         (u / rel).unlink()

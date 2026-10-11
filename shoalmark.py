@@ -8740,6 +8740,9 @@ THEME_FILES = ("brand/themes/README.md",
                "brand/themes/monochrome/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/monochrome/fonts/LICENSE.txt", "brand/themes/monochrome/theme.css",
                "brand/themes/shoalmark/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/shoalmark/fonts/IBMPlexMono-Regular-Latin1.woff2",
                "brand/themes/shoalmark/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/shoalmark/fonts/LICENSE.txt", "brand/themes/shoalmark/theme.css")
+# What the release archive carries beside the tool's set, at their repository paths — the files the probe's draft 2 reads (the Owner's word of
+# 2026-10-11). `--vendor` checks them against the archive's RELEASE, and copies none of them (FM-004, `archive_check`).
+ARCHIVE_FILES = ("examples/de/shoalmark.toml", "examples/de/TEMPLATE.md", "examples/de/TRIAGE.md", "examples/de/labels.yaml", "requirements/README.md")
 
 
 def pin_problems():
@@ -8840,21 +8843,25 @@ def archive_source():
 
 def archive_check():
     """FM-004 — this copy as an unpacked release archive, judged against its `RELEASE`: ({file: its bytes}, the manifest, "") where the manifest is one, its
-    version is `VERSION`'s, the folder holds the whole vendored set (`TOOL_FILES` and `THEME_FILES`) and every file the manifest names, and every file
-    `--vendor` would copy (`vendor_files`) is one the manifest names, byte for byte; else ({}, {}, what is wrong, naming each file). The bytes judged are
-    the bytes copied."""
+    version is `VERSION`'s, it names every file the archive holds — the vendored set (`TOOL_FILES`, `THEME_FILES`, every file `vendor_files` finds) and
+    `ARCHIVE_FILES` — and no other, and every one is here, byte for byte; else ({}, {}, what is wrong, naming each file). Only the vendored set is copied:
+    the bytes judged are the bytes copied."""
     m, wrong = release_manifest((HERE / RELEASE_NAME).read_text(encoding="utf-8", errors="replace"))
     if wrong:
         return {}, {}, f"its {RELEASE_NAME} {wrong}"
     if m["version"] != __version__:
         return {}, {}, f"its {RELEASE_NAME} names {m['version']}, and its VERSION says {__version__}"
-    have = vendor_files()
-    data = {rel: (HERE / rel).read_bytes() for rel in have}
+    have, listed = vendor_files(), set(m["files"])
+    need = set(have) | set(TOOL_FILES) | set(THEME_FILES) | set(ARCHIVE_FILES)       # the archive whole, whatever the manifest names
+    held = {rel: (HERE / rel).read_bytes() for rel in sorted(need) if (HERE / rel).is_file()}
     named = lambda rels: ", ".join(rels[:4]) + (f" and {len(rels) - 4} more" if len(rels) > 4 else "")
-    gone = sorted((set(m["files"]) | set(TOOL_FILES) | set(THEME_FILES)) - set(have))      # the whole vendored set, whatever the manifest names
-    extra = sorted(set(have) - set(m["files"]))
-    changed = sorted(rel for rel in set(have) & set(m["files"]) if hashlib.sha256(data[rel]).hexdigest() != m["files"][rel])
-    said = ([f"missing {named(gone)}"] if gone else []) + ([f"not in its {RELEASE_NAME}: {named(extra)}"] if extra else []) + ([f"changed: {named(changed)}"] if changed else [])
+    gone = sorted(need - set(held))
+    extra = sorted(set(held) - listed)
+    stray = sorted(listed - need)                           # a name no release archive holds: not read
+    changed = sorted(rel for rel in set(held) & listed if hashlib.sha256(held[rel]).hexdigest() != m["files"][rel])
+    said = ([f"missing {named(gone)}"] if gone else []) + ([f"not in its {RELEASE_NAME}: {named(extra)}"] if extra else []) \
+        + ([f"its {RELEASE_NAME} names {named(stray)}, no file of a release archive"] if stray else []) + ([f"changed: {named(changed)}"] if changed else [])
+    data = {rel: held[rel] for rel in have}
     return ({}, {}, f"it is not what its {RELEASE_NAME} names — " + "; ".join(said)) if said else (data, m, "")
 
 
