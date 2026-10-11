@@ -1776,8 +1776,9 @@ for _what, _change, _needs_bash in _REL_CONTROLS:
     check(f"FM-004 · release.yml's control: with {_what}, a property above fails" + (" — NOT JUDGED: the change finds no line to apply to" if _changed == _REL_WF_TEXT else ""),
           _changed != _REL_WF_TEXT and not all(ok_ for _w, ok_ in _rel_wf_props(_changed, _REL_OTHERS, bash=_needs_bash)))
 _other_ = dict(_REL_OTHERS, **{"ci.yml": (_REL_OTHERS.get("ci.yml") or "").replace("permissions: {contents: read}", "permissions: {contents: write}", 1)})
-check("FM-004 · release.yml's control: with ci.yml granting contents: write, a property above fails" + ("" if _other_ != _REL_OTHERS else " — NOT JUDGED: ci.yml names no read right"),
-      _other_ != _REL_OTHERS and not all(ok_ for _w, ok_ in _rel_wf_props(_REL_WF_TEXT, _other_, bash=False)))
+check("FM-004 · release.yml's control: with ci.yml granting contents: write, a property above that held fails" + ("" if _other_ != _REL_OTHERS else " — NOT JUDGED: ci.yml names no read right"),
+      _other_ != _REL_OTHERS and all(ok_ for _w, ok_ in _rel_wf_props(_REL_WF_TEXT, _REL_OTHERS, bash=False))
+      and not all(ok_ for _w, ok_ in _rel_wf_props(_REL_WF_TEXT, _other_, bash=False)))
 
 
 def _rel_repo(base, files, version, extra=()):
