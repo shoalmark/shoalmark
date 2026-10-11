@@ -13423,31 +13423,56 @@ _clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in
 check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
 # FM-006, a P2 of v0.19.3: ADOPT's pins named the release commit's tool, while the tag shipped the tool as two later commits left it. On every run:
-# the release ADOPT.md and ADOPT.de.md name is VERSION's, and their one SHA-256 the head's shoalmark.py's, with `\n` line endings, as ADOPT says
+# both notes name one release, v<VERSION>, and one SHA-256 — that of the tag's shoalmark.py, git's blob, where the tag is in this clone; before
+# the tag exists, on a release's own head, that of the head's shoalmark.py with `\n` line endings. Between releases shoalmark.py moves on main
+# while ADOPT still pins the last tag, so the tag's tool is the one the pins answer to, never the head's alone
 
 
-def _adopt_pins(read):
-    """(whether ADOPT.md's and ADOPT.de.md's pinned release is v<VERSION> and their one SHA-256 that of shoalmark.py with `\n` line endings,
-    what was read) — `read(path)` gives a file's bytes at the revision judged."""
+def _tag_tool(tag, repo=None):
+    """`tag`'s shoalmark.py as git holds it — its blob's bytes — or None where this clone has no such tag."""
+    repo = str(repo or HERE)
+    if subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}^{{commit}}"], capture_output=True, env=_ENV).returncode:
+        return None
+    r = subprocess.run(["git", "-C", repo, "show", f"refs/tags/{tag}^{{commit}}:shoalmark.py"], capture_output=True, env=_ENV)
+    return r.stdout if r.returncode == 0 else None
+
+
+def _adopt_pins(read, tag_tool):
+    """(whether ADOPT.md and ADOPT.de.md each name the one release v<VERSION> and the one SHA-256 of its tool, what was read) — `read(path)`
+    gives a file's bytes at the revision judged; `tag_tool(tag)` the tag's shoalmark.py as git holds it, or None where the clone lacks the tag,
+    and the head's shoalmark.py, its line endings `\n`, counts instead."""
     version = read("VERSION").decode("utf-8").strip()
-    tool = hashlib.sha256(read("shoalmark.py").replace(b"\r\n", b"\n")).hexdigest()
+    held = tag_tool(f"v{version}")
+    tool = hashlib.sha256(held if held is not None else read("shoalmark.py").replace(b"\r\n", b"\n")).hexdigest()
     seen = {}
     for name in ("ADOPT.md", "ADOPT.de.md"):
         text = read(name).decode("utf-8").replace("\r\n", "\n")
         seen[name] = (re.findall(r"`(v\d+\.\d+\.\d+)`", text), re.findall(r"\b[0-9a-f]{64}\b", text))
     holds = all(tags == [f"v{version}"] and sums == [tool] for tags, sums in seen.values())
-    return holds, {"VERSION": version, "shoalmark.py": tool[:12], **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
+    return holds, {"VERSION": version, f"v{version}'s shoalmark.py" if held is not None else "the head's shoalmark.py (no such tag here)": tool[:12],
+                   **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
 
 
-_pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes())
-_pins_at = "3432566"                                     # v0.19.3 as tagged: its pins name 0bb1b3b's tool
-if _held(_pins_at):
-    _pins_ctl, _pins_ctl_saw = _adopt_pins(lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{_pins_at}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
-    check(f"FM-006 · ADOPT.md and ADOPT.de.md pin the release VERSION names and the SHA-256 of the head's shoalmark.py, with \\n line endings; its control, "
-          f"v0.19.3 as tagged at {_pins_at}, fails (saw {_pins_saw}; the control's {_pins_ctl_saw})", _pins_ok and not _pins_ctl)
+_at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
+_pins_tags = subprocess.run(["git", "-C", str(HERE), "tag", "--list", "v*"], capture_output=True, text=True, env=_ENV).stdout.split() if (HERE / ".git").exists() else []
+if not _pins_tags:
+    _skipped("FM-006 · ADOPT's pins answer to the tag they name", 7, "this clone holds no release tag: the pins answer to the tag's own shoalmark.py (CI's fetch-depth 0 brings the tags)")
 else:
-    check(f"FM-006 · ADOPT.md and ADOPT.de.md pin the release VERSION names and the SHA-256 of the head's shoalmark.py, with \\n line endings (saw {_pins_saw})", _pins_ok)
-    _skipped("FM-006 · ADOPT's pins · the control at v0.19.3 as tagged", 1, f"this clone does not hold {_pins_at}")
+    _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
+    check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
+          f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
+    _changed_tool = lambda rel: (HERE / rel).read_bytes() + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
+    _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
+                 ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
+                 *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
+                 ("a head that changes shoalmark.py alone after the tag", "HEAD", _changed_tool, _tag_tool, True)]
+    for _what, _rev, _read, _tags, _want in _pins_ctl:
+        if not _held(_rev):
+            _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
+            continue
+        _got, _seen = _adopt_pins(_read, _tags)
+        check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
