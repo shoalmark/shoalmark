@@ -27,9 +27,10 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 ADOPT.de.md at v0.19.3 pin `shoalmark.py` as `4a617ee4…b467`, the tool of the release commit `0bb1b3b`, while the tag ships
 `42ec6aa1…0b31`: `44bde64` and `7738037` changed `shoalmark.py` after the release commit. An agent that checks the tool
 against ADOPT's pin finds a mismatch and stops. The cause: a code change after the release commit, and no check of the
-pins after it. Fixed by `f7de965`: both pins name `42ec6aa1…0b31`, and a suite check holds ADOPT's pinned release to
-VERSION and its SHA-256 to the head's `shoalmark.py` on every run; its control fails at `3432566`. The tag and its
-release page stay as they are.
+pins after it. Fixed by `f7de965`: both pins name `42ec6aa1…0b31`. Since `c29cfee` a suite check holds, on every run,
+both notes to the one release VERSION names and one SHA-256: that of the tag's `shoalmark.py`, git's blob, where the tag
+is in the clone; the head's before the tag. Its six controls: `3432566` fails with its tag and without it; v0.19.0,
+v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. The tag and its release page stay as they are.
 
 **2026-10-07 — v0.19.1 is combined on `release/v0.19.1`, and the push waits for the Owner's sitting.** The branch holds:
 - each Queue A security fix, on its own branch, merged in with `--no-ff`:
@@ -904,6 +905,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-11 | **The pin check, as it holds since `c29cfee`:** on every run, ADOPT.md and ADOPT.de.md name the one release VERSION names and the SHA-256 of that tag's `shoalmark.py`, git's blob, where the tag is in the clone; the head's before the tag. Six controls: `3432566` fails with its tag and without it; v0.19.0, v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. This row holds over the next one's "the head's tool". |
 | 2026-10-11 | **P2 filed, public:** v0.19.3's ADOPT pins named the release commit's tool (`4a617ee4…b467`, `0bb1b3b`), not the one the tag ships (`42ec6aa1…0b31`); the cause, a code change after the release commit and no check of the pins after it. Fixed by `f7de965` on `fm/032-ci-tiers-and-time-zones`: both pins, and a suite check of the pins against VERSION and the head's tool on every run. |
 | 2026-10-07 | **v0.19.1 combined** by the Planner, on the Owner's rulings of 2026-10-03, 2026-10-04 and 2026-10-07: the four security branches merged into `release/v0.19.1` beside `--install-hook`'s configuration check, `--init` and the board's days, each READY on its own head. The push, the tag and the advisory wait for the Owner's sitting. |
 | 2026-09-30 | **What a stranger meets first in v0.19.0 — filed** by the Planner on the Owner's ruling of that day, as one slice of this tracker (*What a stranger meets first — v0.19.0*): the human lead on the landing and the German start page, the tagline where agents read, an English note beside the German one, the fleet as a section of its own, the Owner not a seat — D2 with the `[seats]` change of 2026-10-01 — and the last gendered pronouns on current pages. The two screens it follows are merged into the branch (`a410aef`, `87985b6`). |
