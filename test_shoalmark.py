@@ -13643,7 +13643,11 @@ def _ci_shapes(root):
              "a brand font edited": {**based, **edit, "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2": ("100644", edited)},
              "the landing mock edited": {**based, **edit, "work-tracker/evidence/FM-006/landing/index.html": ("100644", edited)},
              "a file in the folder outside its entries and evidence": {**based, **edit, "work-tracker/view/x.html": ("100644", edited)},
-             "a file at the folder's top that is no entry": {**based, **edit, "work-tracker/notes.txt": ("100644", edited)}}
+             "a file at the folder's top that is no entry": {**based, **edit, "work-tracker/notes.txt": ("100644", edited)},
+             "a case variant of the landing mock": {**based, **edit, "work-tracker/evidence/fm-006/Landing/index.html": ("100644", edited)},
+             "a case variant of FM-007's entry": {**based, **edit, "work-tracker/fm-007-x.md": ("100644", edited)},
+             "an evidence file whose name holds a ligature": {**based, **edit, "work-tracker/evidence/FM-099/\ufb01le.md": ("100644", edited)},
+             "a tracker whose name holds a combining accent": {**based, **edit, "work-tracker/FM-002-tw\u006f\u0301.md": ("100644", edited)}}
     out = {}
     for shape, entries in trees.items():
         head = commit(tree(entries), base)
@@ -13672,6 +13676,8 @@ def _ci_shapes(root):
 
 _CI_ALLOWLIST_SHAPES = ("INDEX.md and TRIAGE.md edited", "an evidence file no suite reads", "allowed_signers edited", "a brand font edited",
                         "the landing mock edited", "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry")
+_CI_ALIAS_SHAPES = ("a case variant of the landing mock", "a case variant of FM-007's entry", "an evidence file whose name holds a ligature",
+                    "a tracker whose name holds a combining accent")
 _CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted", "INDEX.md and TRIAGE.md edited",
                "an evidence file no suite reads")                                    # --check alone; every other shape, the full suites
 
@@ -13768,15 +13774,16 @@ def _suite_reads(sources, folder="work-tracker"):
 
 
 def _read_paths(reads):
-    """Each read as the paths a pull request would change: the path itself, `*` and `**` as `x`; and, where its last part names no file
-    (no dot), a file below it, as a folder read covers."""
+    """Each read as the paths a pull request would change: the path itself, `*` and `**` as `x`; where its last part names no file (no
+    dot), a file below it, as a folder read covers; and each of these with the case of every letter below the tracker folder swapped,
+    the same file where macOS and Windows hold it."""
     out = set()
     for read in reads:
         path = "/".join("x" if part in ("*", "**") else part.replace("*", "x") for part in read.split("/"))
         out.add(path)
         if "." not in path.rsplit("/", 1)[-1]:
             out.add(path + "/x.md")
-    return sorted(out)
+    return sorted(out | {p.split("/", 1)[0] + "/" + p.split("/", 1)[1].swapcase() for p in out if "/" in p})
 
 
 _CI_READ_SHAPES = {}
@@ -13903,7 +13910,10 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
                                                   "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
         (f"…every path under the tracker folder that test_shoalmark.py or test_core.py reads in this repository — found in their syntax — gives the "
-         f"full suites beside a tracker edit (saw {reads_saw[0]} reads, {reads_saw[1]} paths, these giving records: {reads_saw[2]})", reads_ok),
+         f"full suites beside a tracker edit, and so does each with the case of its letters swapped (saw {reads_saw[0]} reads, {reads_saw[1]} paths, "
+         f"these giving records: {reads_saw[2]})", reads_ok),
+        (f"…RV-2966: a case variant of a path the suites read, and a path holding a byte outside printable ASCII — a ligature, a combining accent — "
+         f"give the full suites (saw {shown(*_CI_ALIAS_SHAPES)})", all(runs.get(n) == "false" for n in _CI_ALIAS_SHAPES)),
         (f"…a tracker edit beside a mode change, and a mode change alone, give the full suites (saw {shown('a tracker edit beside a mode change', 'a mode change alone')})",
          runs.get("a tracker edit beside a mode change") == "false" and runs.get("a mode change alone") == "false"),
         (f"…every other shape gives the full suites: a symlink, .github/ or .gitmodules in the folder, .github/ outside it, a script beside a tracker, "
@@ -13945,7 +13955,10 @@ def _ci_wf_regressions(text, root, shapes):
                                                                   m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
             re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
     )
-    rows += (("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
+    rows += (("the step compares paths case-sensitively (RV-2966)", lambda t: t.replace("          shopt -s nocasematch\n", "", 1)),
+             ("a path holding a byte outside printable ASCII passes (RV-2966)", lambda t: t.replace(
+                 '              case "$path" in\n                *[![:print:]]*) records=false ;;\n              esac\n', "", 1)),
+             ("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
              ("anything under the folder counts as records", lambda t: t.replace('"$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;', '"$dir"/*/*) ;;', 1)),
              ("the landing mock is not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/landing/index.html) records=false ;;\n', "", 1)),
              ("the themes are not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;\n', "", 1)),

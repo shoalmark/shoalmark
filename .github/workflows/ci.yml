@@ -33,13 +33,15 @@ jobs:
       # entry of that merge's whole diff against the base is a plain file, added, changed or deleted, its mode 100644 throughout, that
       # is a record: an entry at the tracker folder's top (`*.md`: the trackers, INDEX.md, TRIAGE.md) or a file under its evidence/, but
       # none a suite reads (the last case below; test_shoalmark.py holds that list to the suites). A submodule pointer, a symlink, a
-      # mode change, `.gitmodules` or `.github/` anywhere, any other path, an empty list, a failed command, a tag, a run by hand: the
-      # full suites.
+      # mode change, `.gitmodules` or `.github/` anywhere, a path holding a byte outside printable ASCII, any other path, an empty list,
+      # a failed command, a tag, a run by hand: the full suites. Paths compare without regard to case, as macOS and Windows hold them.
       - name: the tier — records only, or the full suites
         id: tier
         shell: bash
         env: {EVENT: "${{ github.event_name }}", BASE: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
         run: |
+          export LC_ALL=C
+          shopt -s nocasematch
           records=false
           dir=""
           if [ "$EVENT" = pull_request ] && [ -n "$BASE" ] && [ -n "$HEAD_SHA" ] \
@@ -60,6 +62,9 @@ jobs:
               esac
               case "/$path/" in
                 */.github/* | */.gitmodules/*) records=false ;;
+              esac
+              case "$path" in
+                *[![:print:]]*) records=false ;;
               esac
               case "$path" in
                 "$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;
