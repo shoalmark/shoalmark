@@ -1886,6 +1886,23 @@ with tempfile.TemporaryDirectory() as d:
         seen_[what_] = (r_[0], r_[2].strip(), not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
     check(f"FM-004 · from an unpacked zip, a changed byte, a missing file, an extra file in the set and another VERSION are each refused in one line naming it — exit 4, nothing written, `--partial` and `--allow-untagged` or not (saw {[(w_, s_[0], s_[1][-90:]) for w_, s_ in seen_.items()]})",
           len(seen_) == 4 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in seen_.values()))
+    def _drop(u, rel):
+        """A file of the unpacked zip gone, and its RELEASE line with it: the folder and the manifest agree, and the set is not whole."""
+        (u / rel).unlink()
+        kept_ = [l_ for l_ in (u / "RELEASE").read_bytes().decode("utf-8").split("\n") if l_ and not l_.endswith("  " + rel)]
+        (u / "RELEASE").write_bytes(("\n".join(kept_) + "\n").encode("utf-8"))
+    renderer_ = next(r_ for r_ in fm.TOOL_FILES if r_.startswith("vendor/"))
+    whole_ = {}
+    for n_, rel_ in enumerate(("LICENSE-MIT", renderer_, "brand/themes/shoalmark/theme.css")):
+        u_ = _unpack(base / f"short-{n_}") if zipped.is_file() else base / f"short-{n_}"
+        if u_.is_dir():
+            _drop(u_, rel_)
+        p_ = _project(f"short-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        whole_[rel_] = (r_[0], r_[2].strip()[-110:], not (p_ / "tools").exists(), f"missing {rel_}" in r_[2] and len(r_[2].strip().splitlines()) == 1)
+    check(f"FM-004 · RV-3020 · from an unpacked zip, a file of the vendored set gone together with its RELEASE line — a licence, the renderer, a theme's file — is refused in one line naming it, exit 4, nothing written: the archive is vendored only whole (saw {whole_})",
+          len(whole_) == 3 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in whole_.values()))
+    check(f"FM-004 · RV-3020 · THEME_FILES names every file of the themes the tool ships, as brand/themes/ holds them, and no other (saw {len(getattr(fm, 'THEME_FILES', ()))} · {len(fm.theme_files())})",
+          tuple(sorted(getattr(fm, "THEME_FILES", ()))) == tuple(sorted(fm.theme_files())) and len(fm.theme_files()) > 0)
     inside_ = _project("host"); nested_ = _unpack(inside_ / "third_party/shoalmark-unpacked") if zipped.is_file() else inside_
     subprocess.run(["git", "-C", str(inside_), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "add", "-A"], capture_output=True, env=_ENV)
     subprocess.run(["git", "-C", str(inside_), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "an archive kept in the repository"], capture_output=True, env=_ENV)

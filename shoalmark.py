@@ -8733,6 +8733,13 @@ def load_trackers():
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
+# The themes the tool ships (FM-002), every file of them: with TOOL_FILES, the whole of what an unpacked release archive must hold and its RELEASE name
+# (FM-004, `archive_check`). The suite holds it equal to `brand/themes/` as it stands.
+THEME_FILES = ("brand/themes/README.md",
+               "brand/themes/monochrome/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2",
+               "brand/themes/monochrome/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/monochrome/fonts/LICENSE.txt", "brand/themes/monochrome/theme.css",
+               "brand/themes/shoalmark/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/shoalmark/fonts/IBMPlexMono-Regular-Latin1.woff2",
+               "brand/themes/shoalmark/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/shoalmark/fonts/LICENSE.txt", "brand/themes/shoalmark/theme.css")
 
 
 def pin_problems():
@@ -8833,8 +8840,9 @@ def archive_source():
 
 def archive_check():
     """FM-004 — this copy as an unpacked release archive, judged against its `RELEASE`: ({file: its bytes}, the manifest, "") where the manifest is one, its
-    version is `VERSION`'s, and every file `--vendor` would copy (`vendor_files`) is one the manifest names, byte for byte, and the manifest names no other;
-    else ({}, {}, what is wrong, naming each file). The bytes judged are the bytes copied."""
+    version is `VERSION`'s, the folder holds the whole vendored set (`TOOL_FILES` and `THEME_FILES`) and every file the manifest names, and every file
+    `--vendor` would copy (`vendor_files`) is one the manifest names, byte for byte; else ({}, {}, what is wrong, naming each file). The bytes judged are
+    the bytes copied."""
     m, wrong = release_manifest((HERE / RELEASE_NAME).read_text(encoding="utf-8", errors="replace"))
     if wrong:
         return {}, {}, f"its {RELEASE_NAME} {wrong}"
@@ -8843,7 +8851,8 @@ def archive_check():
     have = vendor_files()
     data = {rel: (HERE / rel).read_bytes() for rel in have}
     named = lambda rels: ", ".join(rels[:4]) + (f" and {len(rels) - 4} more" if len(rels) > 4 else "")
-    gone, extra = sorted(set(m["files"]) - set(have)), sorted(set(have) - set(m["files"]))
+    gone = sorted((set(m["files"]) | set(TOOL_FILES) | set(THEME_FILES)) - set(have))      # the whole vendored set, whatever the manifest names
+    extra = sorted(set(have) - set(m["files"]))
     changed = sorted(rel for rel in set(have) & set(m["files"]) if hashlib.sha256(data[rel]).hexdigest() != m["files"][rel])
     said = ([f"missing {named(gone)}"] if gone else []) + ([f"not in its {RELEASE_NAME}: {named(extra)}"] if extra else []) + ([f"changed: {named(changed)}"] if changed else [])
     return ({}, {}, f"it is not what its {RELEASE_NAME} names — " + "; ".join(said)) if said else (data, m, "")

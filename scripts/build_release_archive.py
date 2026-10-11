@@ -51,21 +51,24 @@ def git(repo, *args):
     return r.stdout
 
 
-def literal(source, name):
-    """The tuple of strings `name` is bound to at the top of the tool's source, read without running it."""
+def literal(source, name, needed=True):
+    """The tuple of strings `name` is bound to at the top of the tool's source, read without running it — () where it binds none and none is `needed`."""
     for node in ast.parse(source).body:
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
             value = ast.literal_eval(node.value)
             if isinstance(value, tuple) and all(isinstance(v, str) for v in value):
                 return value
-    raise Refused(f"shoalmark.py at the commit binds no tuple of names to {name}")
+    if needed:
+        raise Refused(f"shoalmark.py at the commit binds no tuple of names to {name}")
+    return ()
 
 
 def vendored_set(paths, tool_source):
     """What `--vendor` copies from a tool whose tree holds `paths`, as `vendor_files` in shoalmark.py reads it: `TOOL_FILES`, each required; the brand's
-    own files beside the tool there are; and every file under `brand/themes/` whose name has no part that starts with a dot."""
+    own files beside the tool there are; and every file under `brand/themes/` whose name has no part that starts with a dot — `THEME_FILES`, where the
+    tool binds it, each required too: an unpacked archive is vendored only whole (`archive_check`)."""
     tool_files, brand_files = literal(tool_source, "TOOL_FILES"), literal(tool_source, "BRAND_FILES")
-    missing = [rel for rel in tool_files if rel not in paths]
+    missing = [rel for rel in tool_files + literal(tool_source, "THEME_FILES", needed=False) if rel not in paths]
     if missing:
         raise Refused(f"the commit lacks {', '.join(missing)}: it is not the whole tool")
     brand = [f"brand/{n}" for n in brand_files if f"brand/{n}" in paths]
