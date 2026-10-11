@@ -13670,6 +13670,8 @@ def _ci_shapes(root):
     return out
 
 
+_CI_ALLOWLIST_SHAPES = ("INDEX.md and TRIAGE.md edited", "an evidence file no suite reads", "allowed_signers edited", "a brand font edited",
+                        "the landing mock edited", "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry")
 _CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted", "INDEX.md and TRIAGE.md edited",
                "an evidence file no suite reads")                                    # --check alone; every other shape, the full suites
 
@@ -13897,7 +13899,7 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          sum(n.startswith("a criss-cross") for n in shapes) == 2 and all(runs.get(n) == "false" for n in shapes if n.startswith("a criss-cross"))),
         (f"…the records are the entries at the folder's top, INDEX.md and TRIAGE.md, and evidence no suite reads: those give --check alone, while "
          f"allowed_signers, a brand font, the landing mock, a file in the folder outside its entries and evidence, and a file at its top that is no "
-         f"entry give the full suites (saw {shown('INDEX.md and TRIAGE.md edited', 'an evidence file no suite reads', 'allowed_signers edited', 'a brand font edited', 'the landing mock edited', 'a file in the folder outside its entries and evidence', 'a file at the folder\'s top that is no entry')})",
+         f"entry give the full suites (saw {shown(*_CI_ALLOWLIST_SHAPES)})",
          runs.get("INDEX.md and TRIAGE.md edited") == runs.get("an evidence file no suite reads") == "true"
          and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
                                                   "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
