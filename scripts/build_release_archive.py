@@ -30,7 +30,7 @@ import sys
 import time
 import zipfile
 
-REF_RE = re.compile(r"v\d+\.\d+\.\d+|[0-9a-f]{40}")
+REF_RE = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+|[0-9a-f]{40}")          # ASCII digits only: `\d` would take any script's digits
 RELEASE_NAME = "RELEASE"
 RELEASE_HEAD = "# shoalmark release manifest"          # the line `release_manifest` in shoalmark.py reads first
 THEMES = "brand/themes/"
@@ -85,7 +85,7 @@ def build(repo, ref):
     version = git(repo, "cat-file", "blob", f"{commit}:VERSION").decode("utf-8").strip()
     if ref.startswith("v") and version != ref[1:]:
         raise Refused(f"VERSION at {ref} is {version!r}, not {ref[1:]!r}: nothing is written")
-    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise Refused(f"VERSION at {commit[:12]} is {version!r}, no release version")
     tree = {}
     for entry in git(repo, "ls-tree", "-r", "-z", "--full-tree", commit).split(b"\0"):

@@ -1840,6 +1840,9 @@ with tempfile.TemporaryDirectory() as d:
     refused_ = {k_: _rel_build(src, base / f"refused-{n_}", k_) for n_, k_ in enumerate(("--upload-pack=x", "v1.2", "a" * 39, ""))}
     check(f"FM-004 · the input is checked before use: `--upload-pack=x`, `v1.2`, 39 hex digits and an empty value are each refused, exit 2, nothing written (saw {[(c_, e_.strip()[:60]) for c_, _o, e_ in refused_.values()]})",
           all(c_ == 2 and "is neither a tag v<x.y.z> nor a 40-hex commit" in e_ for c_, _o, e_ in refused_.values()) and not any((base / f"refused-{n_}").exists() for n_ in range(4)))
+    arabic_ = _rel_build(src, base / "refused-arabic", "v\u0661.\u0662.\u0663")
+    check(f"FM-004 · RV-3021 · a tag written in other digits than ASCII's — v١.٢.٣, Arabic-Indic — is refused before git, exit 2, nothing written (saw {arabic_[0]}, {arabic_[2].strip()[:70]!r})",
+          arabic_[0] == 2 and "is neither a tag v<x.y.z> nor a 40-hex commit" in arabic_[2] and not (base / "refused-arabic").exists())
     subprocess.run(["git", "-C", str(src), "-c", "tag.gpgsign=false", "tag", "v9.9.9"], check=True, capture_output=True, env=_ENV)
     other_ = _rel_build(src, base / "other-tag", "v9.9.9"); dry_ = _rel_build(src, base / "dry", commit_)
     dry_rel_ = fm.release_manifest(zipfile.ZipFile(base / f"dry/shoalmark-{ver}.zip").read("RELEASE").decode("utf-8"))[0] if hasattr(fm, "release_manifest") and (base / f"dry/shoalmark-{ver}.zip").is_file() else {}
