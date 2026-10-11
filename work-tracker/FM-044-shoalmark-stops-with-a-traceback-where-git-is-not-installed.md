@@ -4,18 +4,18 @@ status: Proposed
 considered: FM-003
 tags: bug
 next: wait
-hook: "A Subversion team without git cannot run the tool at all: every command but --session-check stops with a traceback before it writes anything."
+hook: "A Subversion team without git cannot run the tool at all: every command but --session-check and --queue stops with a traceback before it writes anything."
 ---
 
 # FM-044 — shoalmark stops with a traceback where git is not installed, on Subversion too
 
 ## What is true now
 
-**Filed 2026-10-08, for 0.19.2; nothing is built.** Where `git` is not installed, every command except `--session-check`
+**Filed 2026-10-08, for 0.19.2; nothing is built.** Where `git` is not installed, every command except `--session-check` and `--queue`, which refuses in one line,
 stops with a Python traceback (`FileNotFoundError`) before it writes anything. That holds in a folder with no version
 control and in a Subversion working copy alike. The first call to fail is `git_dirs()` (`shoalmark.py:273`), which a
 command reaches when it judges the tracker folder. The tool runs `git` directly in 53 places and through `git_out` in
-the rest, and none of them handles a missing `git`. CI installs `git` on every system, so no check runs without it.
+the rest; only `git fetch` and `git ls-remote` catch a missing `git`. Every CI runner carries `git`, so no check runs without it.
 
 ## Why
 
@@ -24,7 +24,8 @@ board and `--triage`. Its check builds that working copy on a machine where `git
 exactly where a Subversion team has no `git`.
 
 The Owner's ruling of 2026-10-08: Subversion and a plain folder are lanes of their own, and neither ever needs `git`.
-The fix is a version-control layer, designed before anything is built, and it comes before the probe's next version.
+The fix is a version-control abstraction layer, not one-line refusals, designed before anything is built, and it comes before the probe's next version.
+Ruling 1's "git required on every machine" is withdrawn everywhere.
 
 ## Done when
 
