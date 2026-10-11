@@ -13699,7 +13699,7 @@ def _ci_tier(script, root, shapes, stop_at=None):
         subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
         with tempfile.TemporaryDirectory() as d:
             put, summary, step = Path(d) / "output", Path(d) / "summary", Path(d) / "tier.sh"
-            put.write_text(""); summary.write_text(""); step.write_text(script, encoding="utf-8")
+            put.write_bytes(b""); summary.write_bytes(b""); step.write_bytes(script.encode("utf-8"))     # bytes, its lines \n: bash reads no \r
             r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", str(step)], cwd=str(root), capture_output=True, timeout=120,
                                env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head, RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
             said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
