@@ -47,13 +47,12 @@ hook: "Where an answer waits on an answer branch and the signers file lies in th
   `09d5b31` — VERSION, the CHANGELOG section, both ADOPT pins and the setup pages; RV-2780 merged at `e55a23d`, RV-2781
   at `1fcfdc7`, RV-2782 at `c9da264`: the landing names v0.19.2 in the Owner's words, and the CHANGELOG's section carries
   the Owner's headline (`f781491`), its Fixes line (`d76743a`), dated 2026-10-09 by `c458e4d`.
-- **C's read-only half — built** on `fm/045-the-board-records-its-commit`, not in v0.19.2 (`1c50400`,
-  `1c611f4`, `866988c`): every run that writes the board writes `view/built.json` last, through the board's own write —
+- **C's read-only half — shipped in v0.19.3,** 2026-10-10 (`1c50400`, `1c611f4`, `866988c`; merged to main as `3432566`,
+  #157, tagged `v0.19.3` on `3432566`): every run that writes the board writes `view/built.json` last, through the board's own write —
   what the board was built from: the tracker folder, the configuration and the answer branches it reads. `--owner` and
   `--standup` say in one line when any of it has changed since; HEAD moving alone is never said, and on Subversion and in
   a plain folder nothing is recorded or said. The tripwire admits `view/built.json` by its exact path alone. Its
-  CHANGELOG line and the ADOPT pins come with the release it joins.
-- **Left:** C's read-only half: 0.19.3's critical verdict, the merge and the tag.
+  CHANGELOG line is 0.19.3's.
 
 ## Why
 
@@ -108,3 +107,4 @@ case alone. It ships as 0.19.2, a patch release that holds this fix and the chec
 | 2026-10-08 | **C's read-only half — built** by `b3bdb000/implementer-117` on `fm/045-the-board-records-its-commit`: `1c50400` — a refactor: `answer_refs` holds what `on_their_way` reads of origin's answer branches; `1c611f4` — `view/built.json`, written last by every run that writes the board, the one line from `--owner` and `--standup`, and the tripwire admitting that path alone; `866988c` — the C checks run to their end beside v0.19.1. |
 | 2026-10-09 | **Shipped in v0.19.2:** `release/v0.19.2` at `598ac8e` merged to main as `ceb21b8` (#156); tagged `v0.19.2` on `ceb21b8`. |
 | 2026-10-10 | **C's read-only half in v0.19.3:** merged into `release/v0.19.3` at `6828dba`; 0.19.3's release commit names it in the CHANGELOG, dated 2026-10-10. |
+| 2026-10-10 | **C's read-only half shipped in v0.19.3:** `1c50400`, `1c611f4`, `866988c` — `release/v0.19.3` merged to main as `3432566` (#157); tagged `v0.19.3` on `3432566`. |

@@ -13422,7 +13422,576 @@ check("the version is the `VERSION` file and nothing else — one source of trut
 _clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in ("docs/setup.md", "docs/de/setup.md")}
 check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
+# FM-006, a P2 of v0.19.3: ADOPT's pins named the release commit's tool, while the tag shipped the tool as two later commits left it. On every run:
+# both notes name one release, v<VERSION>, and one SHA-256 — that of the tag's shoalmark.py, git's blob, where the tag is in this clone; before
+# the tag exists, on a release's own head, that of the head's shoalmark.py with `\n` line endings. Between releases shoalmark.py moves on main
+# while ADOPT still pins the last tag, so the tag's tool is the one the pins answer to, never the head's alone
+
+
+def _tag_tool(tag, repo=None):
+    """`tag`'s shoalmark.py as git holds it — its blob's bytes — or None where this clone has no such tag."""
+    repo = str(repo or HERE)
+    if subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}^{{commit}}"], capture_output=True, env=_ENV).returncode:
+        return None
+    r = subprocess.run(["git", "-C", repo, "show", f"refs/tags/{tag}^{{commit}}:shoalmark.py"], capture_output=True, env=_ENV)
+    return r.stdout if r.returncode == 0 else None
+
+
+def _adopt_pins(read, tag_tool):
+    """(whether ADOPT.md and ADOPT.de.md each name the one release v<VERSION> and the one SHA-256 of its tool, what was read) — `read(path)`
+    gives a file's bytes at the revision judged; `tag_tool(tag)` the tag's shoalmark.py as git holds it, or None where the clone lacks the tag,
+    and the head's shoalmark.py, its line endings `\n`, counts instead."""
+    version = read("VERSION").decode("utf-8").strip()
+    held = tag_tool(f"v{version}")
+    tool = hashlib.sha256(held if held is not None else read("shoalmark.py").replace(b"\r\n", b"\n")).hexdigest()
+    seen = {}
+    for name in ("ADOPT.md", "ADOPT.de.md"):
+        text = read(name).decode("utf-8").replace("\r\n", "\n")
+        seen[name] = (re.findall(r"`(v\d+\.\d+\.\d+)`", text), re.findall(r"\b[0-9a-f]{64}\b", text))
+    holds = all(tags == [f"v{version}"] and sums == [tool] for tags, sums in seen.values())
+    return holds, {"VERSION": version, f"v{version}'s shoalmark.py" if held is not None else "the head's shoalmark.py (no such tag here)": tool[:12],
+                   **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
+
+
+_at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
+_pins_tags = subprocess.run(["git", "-C", str(HERE), "tag", "--list", "v*"], capture_output=True, text=True, env=_ENV).stdout.split() if (HERE / ".git").exists() else []
+if not _pins_tags:
+    _skipped("FM-006 · ADOPT's pins answer to the tag they name", 7, "this clone holds no release tag: the pins answer to the tag's own shoalmark.py (CI's fetch-depth 0 brings the tags)")
+else:
+    _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
+    check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
+          f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
+    _changed_tool = lambda rel: (HERE / rel).read_bytes() + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
+    _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
+                 ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
+                 *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
+                 ("a head that changes shoalmark.py alone after the tag", "HEAD", _changed_tool, _tag_tool, True)]
+    for _what, _rev, _read, _tags, _want in _pins_ctl:
+        if not _held(_rev):
+            _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
+            continue
+        _got, _seen = _adopt_pins(_read, _tags)
+        check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
+
+# --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
+#     a pull request whose whole diff is tracker files alone runs the gate's --check in the five checks; anything else, and any doubt, the
+#     full suites; the two Ubuntu entries run both suites again under UTC+14 and UTC−11, reported and not yet required
+def _ci_yaml(text):
+    """A workflow read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and
+    sequences of plain or quoted scalars, `|` and `>` blocks (their lines kept, less the block's own indentation), `#` comments.
+    Anything else raises ValueError, and every property read from it fails."""
+    lines = text.replace("\r\n", "\n").split("\n")
+
+    def bare(s):
+        quote = None
+        for i, ch in enumerate(s):
+            if quote:
+                quote = None if ch == quote else quote
+            elif ch in "\"'":
+                quote = ch
+            elif ch == "#" and (i == 0 or s[i - 1] in " \t"):
+                return s[:i].rstrip()
+        return s.rstrip()
+
+    def scalar(s):
+        s = s.strip()
+        if s[:1] in ("{", "["):
+            value, end = flow(s, 0)
+            if s[end:].strip():
+                raise ValueError(f"after a flow collection: {s[end:]!r}")
+            return value
+        if len(s) > 1 and s[0] == s[-1] and s[0] in "\"'":
+            return s[1:-1]
+        return {"": None, "~": None, "null": None, "true": True, "false": False}.get(s, int(s) if re.fullmatch(r"-?\d+", s) else s)
+
+    def flow(s, i):
+        close, out = {"{": "}", "[": "]"}[s[i]], {} if s[i] == "{" else []
+        i += 1
+        while True:
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == close:
+                return out, i + 1
+            if isinstance(out, dict):
+                m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[^:,{}\[\]]+):\s*", s[i:])
+                if not m:
+                    raise ValueError(f"a flow mapping's key at {s[i:]!r}")
+                key, i = scalar(m.group(1)), i + m.end()
+            if i < len(s) and s[i] in "{[":
+                value, i = flow(s, i)
+            else:
+                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^,{}\[\]]*)", s[i:])
+                value, i = scalar(m.group(1)), i + m.end()
+            out.__setitem__(key, value) if isinstance(out, dict) else out.append(value)
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == ",":
+                i += 1
+            elif i >= len(s) or s[i] != close:
+                raise ValueError(f"an unclosed flow collection: {s!r}")
+
+    def skip(i):
+        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+        return i
+
+    def node(i, ind):
+        i = skip(i)
+        if i >= len(lines) or len(lines[i]) - len(lines[i].lstrip(" ")) < ind:
+            return None, i
+        ind = len(lines[i]) - len(lines[i].lstrip(" "))
+        if lines[i].lstrip().startswith("- ") or lines[i].strip() == "-":
+            out = []
+            while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind and lines[i].lstrip().startswith("-"):
+                rest = lines[i].lstrip()[1:]
+                if re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(\s|$)", rest):
+                    lines[i] = " " * (ind + 2) + rest.lstrip()      # `- key: value`: a mapping, its first key on the dash's line
+                    value, i = node(i, ind + 2)
+                else:
+                    value, i = scalar(bare(rest)), i + 1
+                out.append(value)
+                i = skip(i)
+            return out, i
+        out = {}
+        while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind:
+            m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(?:\s+(.*))?$", lines[i])
+            if not m:
+                raise ValueError(f"line {i + 1}: {lines[i].strip()!r}")
+            key, rest = scalar(m.group(1)), bare(m.group(2) or "")
+            if key in out:
+                raise ValueError(f"line {i + 1}: {key!r} twice")
+            if rest in ("|", ">", "|-", ">-"):
+                j, block = i + 1, []
+                while j < len(lines) and (not lines[j].strip() or len(lines[j]) - len(lines[j].lstrip(" ")) > ind):
+                    block.append(lines[j].rstrip())
+                    j += 1
+                cut = min((len(b) - len(b.lstrip(" ")) for b in block if b.strip()), default=0)
+                out[key], i = "\n".join(b[cut:] for b in block).strip("\n") + "\n", j
+            elif rest:
+                out[key], i = scalar(rest), i + 1
+            else:
+                out[key], i = node(i + 1, ind + 1)
+            i = skip(i)
+        if i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) > ind:
+            raise ValueError(f"line {i + 1} is indented under nothing: {lines[i].strip()!r}")
+        return out, i
+    value, end = node(0, 0)
+    if skip(end) < len(lines):
+        raise ValueError(f"line {skip(end) + 1}: {lines[skip(end)].strip()!r}")
+    return value
+
+
+def _ci_bash():
+    """The bash a workflow step's `shell: bash` runs — Git's own on Windows, as the runners have it — or None."""
+    if os.name == "nt":
+        found = shutil.which("git")
+        for up in ((Path(found).resolve().parents[1], Path(found).resolve().parents[2]) if found else ()):
+            for sub in ("bin", "usr/bin"):
+                if (up / sub / "bash.exe").is_file():
+                    return str(up / sub / "bash.exe")
+        return None
+    return shutil.which("bash")
+
+
+_CI_BASH = _ci_bash()
+
+
+def _ci_shapes(root):
+    """A repository holding a base and, for each shape of pull request, a head on it: {shape: (event, base, head, merge)}, the merge
+    the commit a pull request's checkout holds — its parents the base and the head, or a later head where the shape says so. Every
+    commit is made in git's own store, never on disk: a symlink, a mode and a submodule pointer are written as git records them."""
+    def g(*a, data=None):
+        return subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false", *a], input=data,
+                              capture_output=True, check=True, env=_ENV).stdout.decode().strip()
+    blob = lambda text: g("hash-object", "-w", "--stdin", data=text.encode())
+    index = root / ".git" / "shape-index"
+
+    def tree(entries):
+        index.unlink() if index.exists() else None
+        for path, (mode, sha) in entries.items():
+            subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"{mode},{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
+        return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
+    def commit(t, *parents, day=None):
+        env = dict(_ENV, **({"GIT_AUTHOR_DATE": day, "GIT_COMMITTER_DATE": day} if day else {}))
+        return subprocess.run(["git", "-C", str(root), "commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a shape"], capture_output=True,
+                              check=True, env=env).stdout.decode().strip()
+    g("init", "-q")
+    one, edited, script = blob("# FM-001 — one\n"), blob("# FM-001 — one, edited\n"), blob("print(1)\n")
+    modules = blob('[submodule "sub"]\n\tpath = sub\n\turl = https://example.invalid/sub.git\n\tignore = all\n')
+    pointer, pointer2 = commit(tree({"x": ("100644", script)})), commit(tree({"y": ("100644", script)}))
+    based = {"shoalmark.toml": ("100644", blob('tracker_dir = "work-tracker"       # the tracker\n')), "work-tracker/FM-001-one.md": ("100644", one),
+             "scripts/x.py": ("100644", script), ".gitmodules": ("100644", modules), "sub": ("160000", pointer)}
+    base, edit = commit(tree(based)), {"work-tracker/FM-001-one.md": ("100644", edited)}
+    without = lambda *paths: {k: v for k, v in based.items() if k not in paths}
+    trees = {"a tracker-only edit": {**based, **edit},
+             "a tracker added beside one deleted": {**without("work-tracker/FM-001-one.md"), "work-tracker/FM-002-two.md": ("100644", edited)},
+             "a tracker edit beside an ignored submodule pointer": {**based, **edit, "sub": ("160000", pointer2)},
+             "a tracker edit beside a mode change": {**based, "work-tracker/FM-001-one.md": ("100755", edited)},
+             "a mode change alone": {**based, "work-tracker/FM-001-one.md": ("100755", one)},
+             "a tracker edit beside a symlink in the folder": {**based, **edit, "work-tracker/link.md": ("120000", blob("../scripts/x.py"))},
+             "a tracker edit beside .github/ in the folder": {**based, **edit, "work-tracker/evidence/.github/x.md": ("100644", script)},
+             "a tracker edit beside .gitmodules in the folder": {**based, **edit, "work-tracker/evidence/.gitmodules": ("100644", modules)},
+             "a tracker edit beside .github/": {**based, **edit, ".github/workflows/x.yml": ("100644", script)},
+             "a tracker edit beside a script": {**based, **edit, "scripts/x.py": ("100644", edited)},
+             "a script moved into the folder": {**without("scripts/x.py"), "work-tracker/x.py": ("100644", script)},
+             "an empty change": dict(based),
+             "INDEX.md and TRIAGE.md edited": {**based, "work-tracker/INDEX.md": ("100644", edited), "work-tracker/TRIAGE.md": ("100644", edited)},
+             "an evidence file no suite reads": {**based, **edit, "work-tracker/evidence/FM-099/notes.md": ("100644", edited)},
+             "allowed_signers edited": {**based, **edit, "work-tracker/allowed_signers": ("100644", edited)},
+             "a brand font edited": {**based, **edit, "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2": ("100644", edited)},
+             "the landing mock edited": {**based, **edit, "work-tracker/evidence/FM-006/landing/index.html": ("100644", edited)},
+             "a file in the folder outside its entries and evidence": {**based, **edit, "work-tracker/view/x.html": ("100644", edited)},
+             "a file at the folder's top that is no entry": {**based, **edit, "work-tracker/notes.txt": ("100644", edited)},
+             "a case variant of the landing mock": {**based, **edit, "work-tracker/evidence/fm-006/Landing/index.html": ("100644", edited)},
+             "a case variant of FM-007's entry": {**based, **edit, "work-tracker/fm-007-x.md": ("100644", edited)},
+             "an evidence file whose name holds a ligature": {**based, **edit, "work-tracker/evidence/FM-099/\ufb01le.md": ("100644", edited)},
+             "a tracker whose name holds a combining accent": {**based, **edit, "work-tracker/FM-002-tw\u006f\u0301.md": ("100644", edited)},
+             "a Windows short name of the start page's folder": {**based, **edit, "work-tracker/evidence/FM-006/landing/START-~1/facts.mjs": ("100644", edited)},
+             "a Windows short name of the landing mock": {**based, **edit, "work-tracker/evidence/FM-006/landing/INDEX~1.HTM": ("100644", edited)}}
+    out = {}
+    for shape, entries in trees.items():
+        head = commit(tree(entries), base)
+        out[shape] = ("pull_request", base, head, commit(tree(entries), base, head))
+    head = commit(tree({**based, **edit}), base)
+    merge = commit(tree({**based, **edit}), base, head)
+    later = commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), head)
+    out.update({"a tag's run of a tracker-only edit": ("push", base, head, merge), "a run by hand of a tracker-only edit": ("workflow_dispatch", base, head, merge),
+                "a pull request whose shas the event lacks": ("pull_request", "", "", merge),
+                "a checkout of a later head than the event names": ("pull_request", base, head, commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), base, later)),
+                "a checkout whose first parent is not the event's base": ("pull_request", base, head, commit(tree({**based, **edit}), later, head))})
+    # RV-2965: a pull request whose history criss-crosses main's. Main merged M1 (a tracker edit) and M2 (a fix to scripts/x.py); the pull
+    # request merges the two the other way, drops the fix in its resolution, and edits a tracker. It has two merge bases with main, and a
+    # diff against "the" merge base takes one of them by date; the merge CI tests reverts the fix. Each order of the two dates.
+    fixed = blob("print(2)  # the fix\n")
+    for order, (d1, d2) in (("M1 newer", ("2026-10-02T12:00:00", "2026-10-01T12:00:00")), ("M2 newer", ("2026-10-01T12:00:00", "2026-10-02T12:00:00"))):
+        m1 = commit(tree({**based, **edit}), base, day=d1)
+        m2 = commit(tree({**based, "scripts/x.py": ("100644", fixed)}), base, day=d2)
+        main = commit(tree({**based, **edit, "scripts/x.py": ("100644", fixed)}), commit(tree({**based, **edit}), base, m1), m2)
+        crossed = commit(tree({**based, **edit}), m2, m1)                                     # the fix dropped in the resolution
+        pr = commit(tree({**based, **edit, "work-tracker/FM-002-two.md": ("100644", edited)}), crossed)
+        out[f"a criss-cross whose merge drops main's fix ({order})"] = ("pull_request", main, pr,
+                                                                       commit(tree({**based, **edit, "work-tracker/FM-002-two.md": ("100644", edited)}), main, pr))
+    return out
+
+
+_CI_ALLOWLIST_SHAPES = ("INDEX.md and TRIAGE.md edited", "an evidence file no suite reads", "allowed_signers edited", "a brand font edited",
+                        "the landing mock edited", "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry")
+_CI_ALIAS_SHAPES = ("a case variant of the landing mock", "a case variant of FM-007's entry", "an evidence file whose name holds a ligature",
+                    "a tracker whose name holds a combining accent", "a Windows short name of the start page's folder", "a Windows short name of the landing mock")
+_CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted", "INDEX.md and TRIAGE.md edited",
+               "an evidence file no suite reads")                                    # --check alone; every other shape, the full suites
+
+
+_CI_TIER_RAN = {}
+
+
+def _ci_tier(script, root, shapes, stop_at=None):
+    """{shape: what the tier step's shell writes to `records`} — run as a `shell: bash` step runs it, in the shape's checkout, each shape once
+    per script; with `stop_at`, what each shape should give, it stops at the first that gives anything else (a control needs one)."""
+    out = {}
+    for shape, (event, base, head, merge) in shapes.items():
+        key = (script, str(root), shape, event, base, head, merge)
+        if key in _CI_TIER_RAN:
+            out[shape] = _CI_TIER_RAN[key]
+            if stop_at is not None and out[shape] != stop_at.get(shape):
+                break
+            continue
+        subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
+        with tempfile.TemporaryDirectory() as d:
+            put, summary, step = Path(d) / "output", Path(d) / "summary", Path(d) / "tier.sh"
+            put.write_bytes(b""); summary.write_bytes(b""); step.write_bytes(script.encode("utf-8"))     # bytes, its lines \n: bash reads no \r
+            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", str(step)], cwd=str(root), capture_output=True, timeout=120,
+                               env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head, RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
+            said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
+            out[shape] = _CI_TIER_RAN[key] = said.get("records") if r.returncode == 0 else f"exit {r.returncode}"
+        if stop_at is not None and out[shape] != stop_at.get(shape):
+            break
+    return out
+
+
+def _suite_reads(sources, folder="work-tracker"):
+    """{pattern: [where, …]} — each path under the tracker folder of THIS repository that a suite names, found in the sources' syntax: a `/`
+    chain that starts at `HERE`, or at a name a module-level assignment binds to such a chain; a module-level string, or `+` join of
+    strings, naming a path under the folder (a helper reads it from here); `_rd(<string>)`, the suite's reader of this repository; and
+    `.glob()` or `.rglob()` on such a chain, its pattern appended. Only whole chains count: a chain inside a longer one, or a glob's base,
+    is no read of its own. A part that is no string reads as `*`."""
+    out = {}
+    for name, text in sources.items():
+        tree = ast.parse(text)
+        bound = {}
+
+        def parts(node):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+                return parts(node.left) + parts(node.right)
+            if isinstance(node, ast.Name):
+                return bound.get(node.id, ["HERE"] if node.id == "HERE" else [None])
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+                left, right = parts(node.left), parts(node.right)
+                return [left[0] + right[0]] if len(left) == len(right) == 1 and isinstance(left[0], str) and isinstance(right[0], str) else [None]
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                return [node.value]
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "str" and node.args:
+                return parts(node.args[0])
+            return [None]
+
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                pairs = []
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        pairs.append((t, node.value))
+                    elif isinstance(t, ast.Tuple) and isinstance(node.value, ast.Tuple) and len(t.elts) == len(node.value.elts):
+                        pairs += [(a, b) for a, b in zip(t.elts, node.value.elts) if isinstance(a, ast.Name)]
+                for t, v in pairs:
+                    p = parts(v)
+                    if p and p[0] == "HERE":
+                        bound[t.id] = p
+                    elif len(p) == 1 and isinstance(p[0], str) and (p[0] == folder or p[0].startswith(folder + "/")):
+                        bound[t.id] = p
+                        out.setdefault(p[0].rstrip("/"), []).append(f"{name}:{node.lineno}")
+
+        def put(p, where):
+            if p and p[0] == "HERE":
+                path = "/".join("*" if x is None else x for x in p[1:]).replace("//", "/").rstrip("/")
+                if path == folder or path.startswith(folder + "/"):
+                    out.setdefault(path, []).append(where)
+        inner = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and isinstance(node.left, ast.BinOp) and isinstance(node.left.op, ast.Div):
+                inner.add(id(node.left))
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("glob", "rglob"):
+                inner.add(id(node.func.value))
+        for node in ast.walk(tree):
+            where = f"{name}:{getattr(node, 'lineno', 0)}"
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and id(node) not in inner:
+                put(parts(node), where)
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_rd" and node.args:
+                put(["HERE"] + parts(node.args[0]), where)
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("glob", "rglob") and node.args:
+                arg = node.args[0].value if isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str) else "*"
+                put(parts(node.func.value) + (["**"] if node.func.attr == "rglob" else []) + [arg], where)
+    return out
+
+
+def _read_paths(reads):
+    """Each read as the paths a pull request would change: the path itself, `*` and `**` as `x`; where its last part names no file (no
+    dot), a file below it, as a folder read covers; and each of these with the case of every letter below the tracker folder swapped,
+    the same file where macOS and Windows hold it."""
+    out = set()
+    for read in reads:
+        path = "/".join("x" if part in ("*", "**") else part.replace("*", "x") for part in read.split("/"))
+        out.add(path)
+        if "." not in path.rsplit("/", 1)[-1]:
+            out.add(path + "/x.md")
+    return sorted(out | {p.split("/", 1)[0] + "/" + p.split("/", 1)[1].swapcase() for p in out if "/" in p})
+
+
+_CI_READ_SHAPES = {}
+
+
+def _ci_read_shapes(root, paths):
+    """{shape: (event, base, head, merge)}: for each path, a pull request of a tracker edit beside an edit of that path, in `root` — made
+    once per repository and set of paths."""
+    key = (str(root), tuple(paths))
+    if key not in _CI_READ_SHAPES:
+        _CI_READ_SHAPES[key] = _ci_read_shapes_made(root, paths)
+    return _CI_READ_SHAPES[key]
+
+
+def _ci_read_shapes_made(root, paths):
+    def g(*a, data=None):
+        return subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false", *a], input=data,
+                              capture_output=True, check=True, env=_ENV).stdout.decode().strip()
+    blob = lambda text: g("hash-object", "-w", "--stdin", data=text.encode())
+    index = root / ".git" / "read-index"
+
+    def tree(entries):
+        index.unlink() if index.exists() else None
+        for path, sha in entries.items():
+            subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"100644,{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
+        return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
+    commit = lambda t, *parents: g("commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a read")
+    based = {"shoalmark.toml": blob('tracker_dir = "work-tracker"\n'), "work-tracker/FM-001-one.md": blob("# FM-001 — one\n")}
+    base, out = commit(tree(based)), {}
+    for path in paths:
+        entries = {**based, "work-tracker/FM-001-one.md": blob("# FM-001 — one, edited\n"), path: blob("a change\n")}
+        head = commit(tree(entries), base)
+        out[f"a tracker edit beside {path}"] = ("pull_request", base, head, commit(tree(entries), base, head))
+    return out
+
+
+def _ci_reads_hold(tier_run, root, sources, lazy=False):
+    """(whether every path under the tracker folder a suite reads gives the full suites, as the tier step's shell decides; what was read) —
+    `lazy`, for a control: it stops at the first path that does not."""
+    reads = _suite_reads(sources)
+    shapes = _ci_read_shapes(root, _read_paths(reads))
+    runs = _ci_tier(tier_run, root, shapes, stop_at={n: "false" for n in shapes} if lazy else None) if tier_run and _CI_BASH else {}
+    records = sorted(n[len("a tracker edit beside "):] for n, r in runs.items() if r != "false")
+    return bool(reads) and len(runs) == len(shapes) and not records, (len(reads), len(shapes), records)
+
+
+_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py") if (HERE / n).is_file()}
+
+
+def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
+    """FM-032's CI tiers and time zones, as `.github/workflows/ci.yml` says them — [(what is asserted, whether it holds)]. `lazy`, for a
+    control: where a property of the file's text fails, the tier step's shell is not run; else it stops at its first shape that differs."""
+    try:
+        wf, refused = _ci_yaml(text) or {}, ""
+    except ValueError as e:
+        wf, refused = {}, f" — the file is refused: {e}"
+    jobs = wf.get("jobs") or {}
+    job = jobs.get("suites") or {}
+    include = ((job.get("strategy") or {}).get("matrix") or {}).get("include") or []
+    steps = [s for s in job.get("steps") or [] if isinstance(s, dict)]
+    run_of = lambda s: str(s.get("run") or "")
+    at = lambda pred: next((i for i, s in enumerate(steps) if pred(s)), None)
+    tier_at = at(lambda s: s.get("id") == "tier")
+    tier = steps[tier_at] if tier_at is not None else {}
+    records_at = at(lambda s: "python shoalmark.py --check" in run_of(s))
+    suite_at, core_at = at(lambda s: run_of(s) == "python -u test_shoalmark.py\n" or run_of(s) == "python -u test_shoalmark.py"), \
+        at(lambda s: run_of(s).strip() == "python -u test_core.py")
+    zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
+    zone = steps[zone_at] if zone_at is not None else {}
+    full = "steps.tier.outputs.records != 'true'"
+    want = {shape: "true" if shape in _CI_RECORDS else "false" for shape in shapes}
+    text_props = [
+        ("the five check names stand: one job, `suites`, named by `suites (${{ matrix.system }}, ${{ matrix.python }})`, over ubuntu 3.9 and 3.12, "
+         "macos 3.12, windows 3.9 and 3.12 on their pinned images" + refused,
+         set(jobs) == {"suites"} and job.get("name") == "suites (${{ matrix.system }}, ${{ matrix.python }})"
+         and [(e.get("system"), e.get("image"), e.get("python")) for e in include] == [("ubuntu", "ubuntu-24.04", "3.9"), ("ubuntu", "ubuntu-24.04", "3.12"),
+                                                                                       ("macos", "macos-26", "3.12"), ("windows", "windows-2025-vs2026", "3.9"), ("windows", "windows-2025-vs2026", "3.12")]),
+        ("it runs on a `v*` tag, on a pull request opened, pushed to, reopened or marked ready, and by hand",
+         wf.get("on") == {"push": {"tags": ["v*"]}, "pull_request": {"types": ["opened", "synchronize", "reopened", "ready_for_review"]}, "workflow_dispatch": None}),
+        ("the tier is decided first after the whole history is checked out, in bash, the event and the pull request's two shas given through env: alone",
+         tier_at == 1 and (steps[0].get("with") or {}).get("fetch-depth") == 0 and tier.get("shell") == "bash"
+         and tier.get("env") == {"EVENT": "${{ github.event_name }}", "BASE": "${{ github.event.pull_request.base.sha }}", "HEAD_SHA": "${{ github.event.pull_request.head.sha }}"}),
+        ("it reads the merge CI tests — its first parent the base, its second the head — and lists that merge's whole diff against the base "
+         "with --raw -z --no-abbrev --no-renames --ignore-submodules=none",
+         'git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE" HEAD > ' in run_of(tier)
+         and """[ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ]""" in run_of(tier)
+         and """[ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ]""" in run_of(tier)),
+        ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
+        ("records only runs the gate's --check alone, the signers file named in the checkout for the tool to read as the default branch's",
+         records_at is not None and steps[records_at].get("if") == "steps.tier.outputs.records == 'true'"
+         and run_of(steps[records_at]) == 'git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"\npython shoalmark.py --check\n'
+         and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}"}),
+        ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
+         None not in (suite_at, core_at) and all(steps[i].get("if") == full for i in (suite_at, core_at))
+         and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
+        ("the Ubuntu 3.9 entry carries the zone Pacific/Kiritimati, UTC+14, the Ubuntu 3.12 entry Pacific/Pago_Pago, UTC−11, and no other entry a zone",
+         [e.get("tz") for e in include] == ["Pacific/Kiritimati", "Pacific/Pago_Pago", None, None, None]),
+        ("after the UTC suites, the entry's zone runs both suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
+         "and writes its result to the run's summary",
+         zone_at is not None and None not in (suite_at, core_at) and zone_at > max(suite_at, core_at) and zone.get("continue-on-error") is True
+         and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
+         and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
+         and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone) and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
+    ]
+    if lazy and not all(ok for _, ok in text_props):
+        return text_props
+    runs = _ci_tier(run_of(tier), root, shapes, stop_at=want if lazy else None) if tier and _CI_BASH else {}
+    if lazy and runs != want:
+        return text_props + [(f"the tier step's own shell gives each shape what it should (saw {runs})", False)]
+    reads_ok, reads_saw = _ci_reads_hold(run_of(tier), root, sources or _CI_SOURCES, lazy=lazy)
+    shown = lambda *names: {n: runs.get(n) for n in names}
+    return text_props + [
+        (f"the tier step's own shell: a tracker-only edit, and a tracker added beside one deleted, give --check alone (saw {shown(*_CI_RECORDS)})",
+         bool(runs) and all(runs.get(n) == "true" for n in _CI_RECORDS)),
+        (f"…a tracker edit beside an ignored submodule pointer — .gitmodules with ignore = all — gives the full suites (saw {shown('a tracker edit beside an ignored submodule pointer')})",
+         runs.get("a tracker edit beside an ignored submodule pointer") == "false"),
+        (f"…RV-2965: a criss-cross whose merge drops main's fix gives the full suites, whichever of its two merge bases is newer (saw "
+         f"{shown(*[n for n in shapes if n.startswith('a criss-cross')])})",
+         sum(n.startswith("a criss-cross") for n in shapes) == 2 and all(runs.get(n) == "false" for n in shapes if n.startswith("a criss-cross"))),
+        (f"…the records are the entries at the folder's top, INDEX.md and TRIAGE.md, and evidence no suite reads: those give --check alone, while "
+         f"allowed_signers, a brand font, the landing mock, a file in the folder outside its entries and evidence, and a file at its top that is no "
+         f"entry give the full suites (saw {shown(*_CI_ALLOWLIST_SHAPES)})",
+         runs.get("INDEX.md and TRIAGE.md edited") == runs.get("an evidence file no suite reads") == "true"
+         and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
+                                                  "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
+        (f"…every path under the tracker folder that test_shoalmark.py or test_core.py reads in this repository — found in their syntax — gives the "
+         f"full suites beside a tracker edit, and so does each with the case of its letters swapped (saw {reads_saw[0]} reads, {reads_saw[1]} paths, "
+         f"these giving records: {reads_saw[2]})", reads_ok),
+        (f"…RV-2966 and RV-2968: a case variant of a path the suites read, a path holding a byte outside printable ASCII — a ligature, a combining "
+         f"accent — and a Windows short name, a part with `~` and a digit, give the full suites (saw {shown(*_CI_ALIAS_SHAPES)})",
+         all(runs.get(n) == "false" for n in _CI_ALIAS_SHAPES)),
+        (f"…a tracker edit beside a mode change, and a mode change alone, give the full suites (saw {shown('a tracker edit beside a mode change', 'a mode change alone')})",
+         runs.get("a tracker edit beside a mode change") == "false" and runs.get("a mode change alone") == "false"),
+        (f"…every other shape gives the full suites: a symlink, .github/ or .gitmodules in the folder, .github/ outside it, a script beside a tracker, "
+         f"a script moved in, an empty change, a tag, a run by hand, a pull request without its shas, a checkout of a later head, a checkout whose first "
+         f"parent is not the base (saw "
+         f"{ {n: r for n, r in runs.items() if r != want.get(n)} or 'each as it should'})", bool(runs) and runs == want),
+    ]
+
+
+def _ci_wf_regressions(text, root, shapes):
+    """Each change that undoes one property above, and fails: the controls of the check that reads ci.yml."""
+    rows = (
+        ("a sixth entry runs", lambda t: t.replace('          - {system: macos, image: macos-26, python: "3.12"}\n',
+                                                    '          - {system: macos, image: macos-26, python: "3.12"}\n          - {system: macos, image: macos-26, python: "3.9"}\n', 1)),
+        ("a check is named by its image", lambda t: t.replace("    name: suites (${{ matrix.system }}, ${{ matrix.python }})", "    name: suites (${{ matrix.image }}, ${{ matrix.python }})", 1)),
+        ("a sha goes into the shell as an expression", lambda t: t.replace('"$BASE" HEAD >', '"${{ github.event.pull_request.base.sha }}" HEAD >', 1)),
+        ("the shas are not given through env:", lambda t: t.replace(', HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}', "}", 1)),
+        ("the diff hides an ignored submodule pointer", lambda t: t.replace(" --ignore-submodules=none", "", 1)),
+        ("the diff detects renames", lambda t: t.replace(" --no-renames", "", 1)),
+        ("the diff is the head's against a merge base, as 2d5c7ff read it (RV-2965)", lambda t: t.replace('"$BASE" HEAD >', '"$BASE...$HEAD_SHA" >', 1)),
+        ("the checkout's first parent is not held to the base", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ] \\\n""", "", 1)),
+        ("a mode change reads as an edit", lambda t: t.replace('":100644 100644 M" |', '":100644 100644 M" | ":100644 100755 M" | ":100755 100755 M" |', 1)),
+        ("a symlink added reads as a file", lambda t: t.replace('":000000 100644 A" |', '":000000 100644 A" | ":000000 120000 A" |', 1)),
+        (".github/ in the folder passes", lambda t: t.replace("*/.github/* | ", "", 1)),
+        (".gitmodules in the folder passes", lambda t: t.replace(" | */.gitmodules/*", "", 1)),
+        ("any path passes as the folder's", lambda t: t.replace('                "$dir"/*.md) ;;\n                *) records=false ;;\n', '                "$dir"/*.md) ;;\n                *) ;;\n', 1)),
+        ("an empty list reads as records", lambda t: t.replace('[ "$entries" -eq 0 ] || ', "", 1)),
+        ("any event reads as a pull request", lambda t: t.replace('[ "$EVENT" = pull_request ] && ', "", 1)),
+        ("the checkout is not held to the event's head", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ] \\\n""", "", 1)),
+        ("records only also runs the suites", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", "      - run: python -u test_shoalmark.py\n", 1)),
+        ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
+                                                                        "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
+        ("records only runs --check with no signers file named", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"\n', "", 1)),
+        ("the zone's run turns the check red", lambda t: t.replace("        continue-on-error: true\n", "", 1)),
+        ("macOS runs a zone too", lambda t: t.replace('{system: macos, image: macos-26, python: "3.12"}', '{system: macos, image: macos-26, python: "3.12", tz: Pacific/Kiritimati}', 1)),
+        ("the zones change places", lambda t: t.replace("tz: Pacific/Kiritimati}", "tz: PLACE}", 1).replace("tz: Pacific/Pago_Pago}", "tz: Pacific/Kiritimati}", 1).replace("tz: PLACE}", "tz: Pacific/Pago_Pago}", 1)),
+        ("the zone's run says nothing in the summary", lambda t: t.replace('(reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"', '(reported, not yet required)."', 1)),
+        ("the zone's run comes before the UTC suites", lambda t: (lambda m: t if not m else t.replace(m.group(0), "", 1).replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n",
+                                                                  m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
+            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
+    )
+    rows += (("the step compares paths case-sensitively (RV-2966)", lambda t: t.replace("          shopt -s nocasematch\n", "", 1)),
+             ("a path holding a byte outside printable ASCII passes (RV-2966)", lambda t: t.replace(
+                 '              case "$path" in\n                *[![:print:]]*) records=false ;;\n              esac\n', "", 1)),
+             ("a Windows short name passes (RV-2968)", lambda t: t.replace(
+                 '              case "/$path/" in\n                */*~[0-9]*/*) records=false ;;\n              esac\n', "", 1)),
+             ("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
+             ("anything under the folder counts as records", lambda t: t.replace('"$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;', '"$dir"/*/*) ;;', 1)),
+             ("the landing mock is not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/landing/index.html) records=false ;;\n', "", 1)),
+             ("the themes are not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;\n', "", 1)),
+             ("FM-007's entry is not among what the suites read", lambda t: t.replace('                "$dir"/FM-007-*.md) records=false ;;\n', "", 1)))
+    out = []
+    for what, change in rows:
+        changed = change(text)
+        props = _ci_wf_properties(changed, root, shapes, lazy=True)
+        out.append((f"a ci.yml in which {what} fails one of the properties above" + (" — NOT JUDGED: the change finds no line to apply to" if changed == text else ""),
+                    changed != text and not all(ok for _, ok in props)))
+    added = {**_CI_SOURCES, "test_shoalmark.py": _CI_SOURCES.get("test_shoalmark.py", "") + '\n_x = (HERE / "work-tracker/evidence/FM-010/read-by-a-suite.md").read_text()\n'}
+    out.append(("a suite that reads a file of the allowlist — evidence/FM-010/read-by-a-suite.md, added to test_shoalmark.py — fails the reads property",
+                not _ci_reads_hold(next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier"), root, added)[0]))
+    for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
+        out.append((f"a ci.yml in which {what} passes every property above", all(ok for _, ok in _ci_wf_properties(change(text), root, shapes))))
+    return out
+
+
+if not _CI_BASH:
+    _skipped("FM-032 · ci.yml's tiers and time zones", 38, "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
+else:
+    with tempfile.TemporaryDirectory() as _ci_d:
+        _ci_root = Path(_ci_d).resolve()
+        _ci_shape = _ci_shapes(_ci_root)
+        _ci_text = (HERE / ".github/workflows/ci.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/ci.yml").is_file() else ""
+        for _what, _ok in _ci_wf_properties(_ci_text, _ci_root, _ci_shape) + _ci_wf_regressions(_ci_text, _ci_root, _ci_shape):
+            check(f"FM-032 · ci.yml: {_what}", _ok)
+        rm_git(_ci_root)
 
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
