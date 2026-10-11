@@ -30,9 +30,11 @@ jobs:
       - uses: actions/checkout@v7
         with: {fetch-depth: 0}
       # The tier: records only where the checkout is the merge CI tests — its first parent the base, its second the head — and every
-      # entry of that merge's whole diff against the base is a plain file under the tracker folder, added, changed or deleted, its mode
-      # 100644 throughout. A submodule pointer, a symlink, a mode change, `.gitmodules` or `.github/` anywhere, a path outside the
-      # folder, an empty list, a failed command, a tag, a run by hand: the full suites.
+      # entry of that merge's whole diff against the base is a plain file, added, changed or deleted, its mode 100644 throughout, that
+      # is a record: an entry at the tracker folder's top (`*.md`: the trackers, INDEX.md, TRIAGE.md) or a file under its evidence/, but
+      # none a suite reads (the last case below; test_shoalmark.py holds that list to the suites). A submodule pointer, a symlink, a
+      # mode change, `.gitmodules` or `.github/` anywhere, any other path, an empty list, a failed command, a tag, a run by hand: the
+      # full suites.
       - name: the tier — records only, or the full suites
         id: tier
         shell: bash
@@ -60,8 +62,16 @@ jobs:
                 */.github/* | */.gitmodules/*) records=false ;;
               esac
               case "$path" in
-                "$dir"/*) ;;
+                "$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;
+                "$dir"/*.md) ;;
                 *) records=false ;;
+              esac
+              case "$path" in
+                "$dir"/FM-007-*.md) records=false ;;
+                "$dir"/evidence/FM-002/slice-a | "$dir"/evidence/FM-002/slice-a/*) records=false ;;
+                "$dir"/evidence/FM-006/landing/index.html) records=false ;;
+                "$dir"/evidence/FM-006/landing/start-page | "$dir"/evidence/FM-006/landing/start-page/*) records=false ;;
+                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;
               esac
             done < "$RUNNER_TEMP/tier.raw"
             nul=$(tr -cd '\000' < "$RUNNER_TEMP/tier.raw" | wc -c)
@@ -72,7 +82,7 @@ jobs:
           echo "records=$records" >> "$GITHUB_OUTPUT"
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
           if [ "$records" = true ]; then
-            echo "The tier: every path the pull request changes is a tracker file under $dir/ — --check alone, not the suites." >> "$GITHUB_STEP_SUMMARY"
+            echo "The tier: every path the pull request changes is a record under $dir/ that no suite reads — --check alone, not the suites." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "The tier: the full suites." >> "$GITHUB_STEP_SUMMARY"
           fi

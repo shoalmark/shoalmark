@@ -13630,13 +13630,20 @@ def _ci_shapes(root):
              "a tracker edit beside an ignored submodule pointer": {**based, **edit, "sub": ("160000", pointer2)},
              "a tracker edit beside a mode change": {**based, "work-tracker/FM-001-one.md": ("100755", edited)},
              "a mode change alone": {**based, "work-tracker/FM-001-one.md": ("100755", one)},
-             "a tracker edit beside a symlink in the folder": {**based, **edit, "work-tracker/link": ("120000", blob("../scripts/x.py"))},
-             "a tracker edit beside .github/ in the folder": {**based, **edit, "work-tracker/.github/workflows/x.yml": ("100644", script)},
-             "a tracker edit beside .gitmodules in the folder": {**based, **edit, "work-tracker/.gitmodules": ("100644", modules)},
+             "a tracker edit beside a symlink in the folder": {**based, **edit, "work-tracker/link.md": ("120000", blob("../scripts/x.py"))},
+             "a tracker edit beside .github/ in the folder": {**based, **edit, "work-tracker/evidence/.github/x.md": ("100644", script)},
+             "a tracker edit beside .gitmodules in the folder": {**based, **edit, "work-tracker/evidence/.gitmodules": ("100644", modules)},
              "a tracker edit beside .github/": {**based, **edit, ".github/workflows/x.yml": ("100644", script)},
              "a tracker edit beside a script": {**based, **edit, "scripts/x.py": ("100644", edited)},
              "a script moved into the folder": {**without("scripts/x.py"), "work-tracker/x.py": ("100644", script)},
-             "an empty change": dict(based)}
+             "an empty change": dict(based),
+             "INDEX.md and TRIAGE.md edited": {**based, "work-tracker/INDEX.md": ("100644", edited), "work-tracker/TRIAGE.md": ("100644", edited)},
+             "an evidence file no suite reads": {**based, **edit, "work-tracker/evidence/FM-099/notes.md": ("100644", edited)},
+             "allowed_signers edited": {**based, **edit, "work-tracker/allowed_signers": ("100644", edited)},
+             "a brand font edited": {**based, **edit, "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2": ("100644", edited)},
+             "the landing mock edited": {**based, **edit, "work-tracker/evidence/FM-006/landing/index.html": ("100644", edited)},
+             "a file in the folder outside its entries and evidence": {**based, **edit, "work-tracker/view/x.html": ("100644", edited)},
+             "a file at the folder's top that is no entry": {**based, **edit, "work-tracker/notes.txt": ("100644", edited)}}
     out = {}
     for shape, entries in trees.items():
         head = commit(tree(entries), base)
@@ -13663,19 +13670,24 @@ def _ci_shapes(root):
     return out
 
 
-_CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted")         # --check alone; every other shape, the full suites
+_CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted", "INDEX.md and TRIAGE.md edited",
+               "an evidence file no suite reads")                                    # --check alone; every other shape, the full suites
 
 
 _CI_TIER_RAN = {}
 
 
-def _ci_tier(script, root, shapes):
-    """{shape: what the tier step's shell writes to `records`} — run as a `shell: bash` step runs it, in the shape's checkout; once per
-    script and repository, as the controls change other lines."""
-    if (script, str(root)) in _CI_TIER_RAN:
-        return dict(_CI_TIER_RAN[(script, str(root))])
-    out = _CI_TIER_RAN[(script, str(root))] = {}
+def _ci_tier(script, root, shapes, stop_at=None):
+    """{shape: what the tier step's shell writes to `records`} — run as a `shell: bash` step runs it, in the shape's checkout, each shape once
+    per script; with `stop_at`, what each shape should give, it stops at the first that gives anything else (a control needs one)."""
+    out = {}
     for shape, (event, base, head, merge) in shapes.items():
+        key = (script, str(root), shape, event, base, head, merge)
+        if key in _CI_TIER_RAN:
+            out[shape] = _CI_TIER_RAN[key]
+            if stop_at is not None and out[shape] != stop_at.get(shape):
+                break
+            continue
         subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
         with tempfile.TemporaryDirectory() as d:
             put, summary, step = Path(d) / "output", Path(d) / "summary", Path(d) / "tier.sh"
@@ -13683,12 +13695,139 @@ def _ci_tier(script, root, shapes):
             r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", str(step)], cwd=str(root), capture_output=True, timeout=120,
                                env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head, RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
             said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
-            out[shape] = said.get("records") if r.returncode == 0 else f"exit {r.returncode}"
-    return dict(out)
+            out[shape] = _CI_TIER_RAN[key] = said.get("records") if r.returncode == 0 else f"exit {r.returncode}"
+        if stop_at is not None and out[shape] != stop_at.get(shape):
+            break
+    return out
 
 
-def _ci_wf_properties(text, root, shapes):
-    """FM-032's CI tiers and time zones, as `.github/workflows/ci.yml` says them — [(what is asserted, whether it holds)]."""
+def _suite_reads(sources, folder="work-tracker"):
+    """{pattern: [where, …]} — each path under the tracker folder of THIS repository that a suite names, found in the sources' syntax: a `/`
+    chain that starts at `HERE`, or at a name a module-level assignment binds to such a chain; a module-level string, or `+` join of
+    strings, naming a path under the folder (a helper reads it from here); `_rd(<string>)`, the suite's reader of this repository; and
+    `.glob()` or `.rglob()` on such a chain, its pattern appended. Only whole chains count: a chain inside a longer one, or a glob's base,
+    is no read of its own. A part that is no string reads as `*`. It cannot see a path built from data at run time, a path a helper
+    builds from a parameter, or what the tool, or a script the suite starts, reads when the suite runs it on this repository."""
+    out = {}
+    for name, text in sources.items():
+        tree = ast.parse(text)
+        bound = {}
+
+        def parts(node):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+                return parts(node.left) + parts(node.right)
+            if isinstance(node, ast.Name):
+                return bound.get(node.id, ["HERE"] if node.id == "HERE" else [None])
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+                left, right = parts(node.left), parts(node.right)
+                return [left[0] + right[0]] if len(left) == len(right) == 1 and isinstance(left[0], str) and isinstance(right[0], str) else [None]
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                return [node.value]
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "str" and node.args:
+                return parts(node.args[0])
+            return [None]
+
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                pairs = []
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        pairs.append((t, node.value))
+                    elif isinstance(t, ast.Tuple) and isinstance(node.value, ast.Tuple) and len(t.elts) == len(node.value.elts):
+                        pairs += [(a, b) for a, b in zip(t.elts, node.value.elts) if isinstance(a, ast.Name)]
+                for t, v in pairs:
+                    p = parts(v)
+                    if p and p[0] == "HERE":
+                        bound[t.id] = p
+                    elif len(p) == 1 and isinstance(p[0], str) and (p[0] == folder or p[0].startswith(folder + "/")):
+                        bound[t.id] = p
+                        out.setdefault(p[0].rstrip("/"), []).append(f"{name}:{node.lineno}")
+
+        def put(p, where):
+            if p and p[0] == "HERE":
+                path = "/".join("*" if x is None else x for x in p[1:]).replace("//", "/").rstrip("/")
+                if path == folder or path.startswith(folder + "/"):
+                    out.setdefault(path, []).append(where)
+        inner = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and isinstance(node.left, ast.BinOp) and isinstance(node.left.op, ast.Div):
+                inner.add(id(node.left))
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("glob", "rglob"):
+                inner.add(id(node.func.value))
+        for node in ast.walk(tree):
+            where = f"{name}:{getattr(node, 'lineno', 0)}"
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and id(node) not in inner:
+                put(parts(node), where)
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_rd" and node.args:
+                put(["HERE"] + parts(node.args[0]), where)
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("glob", "rglob") and node.args:
+                arg = node.args[0].value if isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str) else "*"
+                put(parts(node.func.value) + (["**"] if node.func.attr == "rglob" else []) + [arg], where)
+    return out
+
+
+def _read_paths(reads):
+    """Each read as the paths a pull request would change: the path itself, `*` and `**` as `x`; and, where its last part names no file
+    (no dot), a file below it, as a folder read covers."""
+    out = set()
+    for read in reads:
+        path = "/".join("x" if part in ("*", "**") else part.replace("*", "x") for part in read.split("/"))
+        out.add(path)
+        if "." not in path.rsplit("/", 1)[-1]:
+            out.add(path + "/x.md")
+    return sorted(out)
+
+
+_CI_READ_SHAPES = {}
+
+
+def _ci_read_shapes(root, paths):
+    """{shape: (event, base, head, merge)}: for each path, a pull request of a tracker edit beside an edit of that path, in `root` — made
+    once per repository and set of paths."""
+    key = (str(root), tuple(paths))
+    if key not in _CI_READ_SHAPES:
+        _CI_READ_SHAPES[key] = _ci_read_shapes_made(root, paths)
+    return _CI_READ_SHAPES[key]
+
+
+def _ci_read_shapes_made(root, paths):
+    def g(*a, data=None):
+        return subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false", *a], input=data,
+                              capture_output=True, check=True, env=_ENV).stdout.decode().strip()
+    blob = lambda text: g("hash-object", "-w", "--stdin", data=text.encode())
+    index = root / ".git" / "read-index"
+
+    def tree(entries):
+        index.unlink() if index.exists() else None
+        for path, sha in entries.items():
+            subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"100644,{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
+        return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
+    commit = lambda t, *parents: g("commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a read")
+    based = {"shoalmark.toml": blob('tracker_dir = "work-tracker"\n'), "work-tracker/FM-001-one.md": blob("# FM-001 — one\n")}
+    base, out = commit(tree(based)), {}
+    for path in paths:
+        entries = {**based, "work-tracker/FM-001-one.md": blob("# FM-001 — one, edited\n"), path: blob("a change\n")}
+        head = commit(tree(entries), base)
+        out[f"a tracker edit beside {path}"] = ("pull_request", base, head, commit(tree(entries), base, head))
+    return out
+
+
+def _ci_reads_hold(tier_run, root, sources, lazy=False):
+    """(whether every path under the tracker folder a suite reads gives the full suites, as the tier step's shell decides; what was read) —
+    `lazy`, for a control: it stops at the first path that does not."""
+    reads = _suite_reads(sources)
+    shapes = _ci_read_shapes(root, _read_paths(reads))
+    runs = _ci_tier(tier_run, root, shapes, stop_at={n: "false" for n in shapes} if lazy else None) if tier_run and _CI_BASH else {}
+    records = sorted(n[len("a tracker edit beside "):] for n, r in runs.items() if r != "false")
+    return bool(reads) and len(runs) == len(shapes) and not records, (len(reads), len(shapes), records)
+
+
+_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py") if (HERE / n).is_file()}
+
+
+def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
+    """FM-032's CI tiers and time zones, as `.github/workflows/ci.yml` says them — [(what is asserted, whether it holds)]. `lazy`, for a
+    control: where a property of the file's text fails, the tier step's shell is not run; else it stops at its first shape that differs."""
     try:
         wf, refused = _ci_yaml(text) or {}, ""
     except ValueError as e:
@@ -13707,10 +13846,8 @@ def _ci_wf_properties(text, root, shapes):
     zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
     zone = steps[zone_at] if zone_at is not None else {}
     full = "steps.tier.outputs.records != 'true'"
-    runs = _ci_tier(run_of(tier), root, shapes) if tier and _CI_BASH else {}
     want = {shape: "true" if shape in _CI_RECORDS else "false" for shape in shapes}
-    shown = lambda *names: {n: runs.get(n) for n in names}
-    return [
+    text_props = [
         ("the five check names stand: one job, `suites`, named by `suites (${{ matrix.system }}, ${{ matrix.python }})`, over ubuntu 3.9 and 3.12, "
          "macos 3.12, windows 3.9 and 3.12 on their pinned images" + refused,
          set(jobs) == {"suites"} and job.get("name") == "suites (${{ matrix.system }}, ${{ matrix.python }})"
@@ -13742,6 +13879,15 @@ def _ci_wf_properties(text, root, shapes):
          and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
          and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
          and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone) and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
+    ]
+    if lazy and not all(ok for _, ok in text_props):
+        return text_props
+    runs = _ci_tier(run_of(tier), root, shapes, stop_at=want if lazy else None) if tier and _CI_BASH else {}
+    if lazy and runs != want:
+        return text_props + [(f"the tier step's own shell gives each shape what it should (saw {runs})", False)]
+    reads_ok, reads_saw = _ci_reads_hold(run_of(tier), root, sources or _CI_SOURCES, lazy=lazy)
+    shown = lambda *names: {n: runs.get(n) for n in names}
+    return text_props + [
         (f"the tier step's own shell: a tracker-only edit, and a tracker added beside one deleted, give --check alone (saw {shown(*_CI_RECORDS)})",
          bool(runs) and all(runs.get(n) == "true" for n in _CI_RECORDS)),
         (f"…a tracker edit beside an ignored submodule pointer — .gitmodules with ignore = all — gives the full suites (saw {shown('a tracker edit beside an ignored submodule pointer')})",
@@ -13749,6 +13895,14 @@ def _ci_wf_properties(text, root, shapes):
         (f"…RV-2965: a criss-cross whose merge drops main's fix gives the full suites, whichever of its two merge bases is newer (saw "
          f"{shown(*[n for n in shapes if n.startswith('a criss-cross')])})",
          sum(n.startswith("a criss-cross") for n in shapes) == 2 and all(runs.get(n) == "false" for n in shapes if n.startswith("a criss-cross"))),
+        (f"…the records are the entries at the folder's top, INDEX.md and TRIAGE.md, and evidence no suite reads: those give --check alone, while "
+         f"allowed_signers, a brand font, the landing mock, a file in the folder outside its entries and evidence, and a file at its top that is no "
+         f"entry give the full suites (saw {shown('INDEX.md and TRIAGE.md edited', 'an evidence file no suite reads', 'allowed_signers edited', 'a brand font edited', 'the landing mock edited', 'a file in the folder outside its entries and evidence', 'a file at the folder\'s top that is no entry')})",
+         runs.get("INDEX.md and TRIAGE.md edited") == runs.get("an evidence file no suite reads") == "true"
+         and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
+                                                  "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
+        (f"…every path under the tracker folder that test_shoalmark.py or test_core.py reads in this repository — found in their syntax — gives the "
+         f"full suites beside a tracker edit (saw {reads_saw[0]} reads, {reads_saw[1]} paths, these giving records: {reads_saw[2]})", reads_ok),
         (f"…a tracker edit beside a mode change, and a mode change alone, give the full suites (saw {shown('a tracker edit beside a mode change', 'a mode change alone')})",
          runs.get("a tracker edit beside a mode change") == "false" and runs.get("a mode change alone") == "false"),
         (f"…every other shape gives the full suites: a symlink, .github/ or .gitmodules in the folder, .github/ outside it, a script beside a tracker, "
@@ -13774,7 +13928,7 @@ def _ci_wf_regressions(text, root, shapes):
         ("a symlink added reads as a file", lambda t: t.replace('":000000 100644 A" |', '":000000 100644 A" | ":000000 120000 A" |', 1)),
         (".github/ in the folder passes", lambda t: t.replace("*/.github/* | ", "", 1)),
         (".gitmodules in the folder passes", lambda t: t.replace(" | */.gitmodules/*", "", 1)),
-        ("any path passes as the folder's", lambda t: t.replace('"$dir"/*) ;;', '*) ;;', 1)),
+        ("any path passes as the folder's", lambda t: t.replace('                "$dir"/*.md) ;;\n                *) records=false ;;\n', '                "$dir"/*.md) ;;\n                *) ;;\n', 1)),
         ("an empty list reads as records", lambda t: t.replace('[ "$entries" -eq 0 ] || ', "", 1)),
         ("any event reads as a pull request", lambda t: t.replace('[ "$EVENT" = pull_request ] && ', "", 1)),
         ("the checkout is not held to the event's head", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ] \\\n""", "", 1)),
@@ -13790,12 +13944,20 @@ def _ci_wf_regressions(text, root, shapes):
                                                                   m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
             re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
     )
+    rows += (("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
+             ("anything under the folder counts as records", lambda t: t.replace('"$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;', '"$dir"/*/*) ;;', 1)),
+             ("the landing mock is not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/landing/index.html) records=false ;;\n', "", 1)),
+             ("the themes are not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;\n', "", 1)),
+             ("FM-007's entry is not among what the suites read", lambda t: t.replace('                "$dir"/FM-007-*.md) records=false ;;\n', "", 1)))
     out = []
     for what, change in rows:
         changed = change(text)
-        props = _ci_wf_properties(changed, root, shapes)
+        props = _ci_wf_properties(changed, root, shapes, lazy=True)
         out.append((f"a ci.yml in which {what} fails one of the properties above" + (" — NOT JUDGED: the change finds no line to apply to" if changed == text else ""),
                     changed != text and not all(ok for _, ok in props)))
+    added = {**_CI_SOURCES, "test_shoalmark.py": _CI_SOURCES.get("test_shoalmark.py", "") + '\n_x = (HERE / "work-tracker/evidence/FM-010/read-by-a-suite.md").read_text()\n'}
+    out.append(("a suite that reads a file of the allowlist — evidence/FM-010/read-by-a-suite.md, added to test_shoalmark.py — fails the reads property",
+                not _ci_reads_hold(next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier"), root, added)[0]))
     for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
         out.append((f"a ci.yml in which {what} passes every property above", all(ok for _, ok in _ci_wf_properties(change(text), root, shapes))))
     return out
