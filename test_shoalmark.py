@@ -13422,6 +13422,32 @@ check("the version is the `VERSION` file and nothing else — one source of trut
 _clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in ("docs/setup.md", "docs/de/setup.md")}
 check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
+# FM-006, a P2 of v0.19.3: ADOPT's pins named the release commit's tool, while the tag shipped the tool as two later commits left it. On every run:
+# the release ADOPT.md and ADOPT.de.md name is VERSION's, and their one SHA-256 the head's shoalmark.py's, with `\n` line endings, as ADOPT says
+
+
+def _adopt_pins(read):
+    """(whether ADOPT.md's and ADOPT.de.md's pinned release is v<VERSION> and their one SHA-256 that of shoalmark.py with `\n` line endings,
+    what was read) — `read(path)` gives a file's bytes at the revision judged."""
+    version = read("VERSION").decode("utf-8").strip()
+    tool = hashlib.sha256(read("shoalmark.py").replace(b"\r\n", b"\n")).hexdigest()
+    seen = {}
+    for name in ("ADOPT.md", "ADOPT.de.md"):
+        text = read(name).decode("utf-8").replace("\r\n", "\n")
+        seen[name] = (re.findall(r"`(v\d+\.\d+\.\d+)`", text), re.findall(r"\b[0-9a-f]{64}\b", text))
+    holds = all(tags == [f"v{version}"] and sums == [tool] for tags, sums in seen.values())
+    return holds, {"VERSION": version, "shoalmark.py": tool[:12], **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
+
+
+_pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes())
+_pins_at = "3432566"                                     # v0.19.3 as tagged: its pins name 0bb1b3b's tool
+if _held(_pins_at):
+    _pins_ctl, _pins_ctl_saw = _adopt_pins(lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{_pins_at}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
+    check(f"FM-006 · ADOPT.md and ADOPT.de.md pin the release VERSION names and the SHA-256 of the head's shoalmark.py, with \\n line endings; its control, "
+          f"v0.19.3 as tagged at {_pins_at}, fails (saw {_pins_saw}; the control's {_pins_ctl_saw})", _pins_ok and not _pins_ctl)
+else:
+    check(f"FM-006 · ADOPT.md and ADOPT.de.md pin the release VERSION names and the SHA-256 of the head's shoalmark.py, with \\n line endings (saw {_pins_saw})", _pins_ok)
+    _skipped("FM-006 · ADOPT's pins · the control at v0.19.3 as tagged", 1, f"this clone does not hold {_pins_at}")
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
