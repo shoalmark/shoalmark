@@ -29,9 +29,10 @@ jobs:
       # the whole history: a check judges FM-033's five builds at their own parents in this repository's own record
       - uses: actions/checkout@v7
         with: {fetch-depth: 0}
-      # The tier: records only where every entry of the pull request's whole diff against its base is a plain file under the tracker
-      # folder, added, changed or deleted, its mode 100644 throughout. A submodule pointer, a symlink, a mode change, `.gitmodules` or
-      # `.github/` anywhere, a path outside the folder, an empty list, a failed command, a tag, a run by hand: the full suites.
+      # The tier: records only where the checkout is the merge CI tests — its first parent the base, its second the head — and every
+      # entry of that merge's whole diff against the base is a plain file under the tracker folder, added, changed or deleted, its mode
+      # 100644 throughout. A submodule pointer, a symlink, a mode change, `.gitmodules` or `.github/` anywhere, a path outside the
+      # folder, an empty list, a failed command, a tag, a run by hand: the full suites.
       - name: the tier — records only, or the full suites
         id: tier
         shell: bash
@@ -40,11 +41,12 @@ jobs:
           records=false
           dir=""
           if [ "$EVENT" = pull_request ] && [ -n "$BASE" ] && [ -n "$HEAD_SHA" ] \
+             && [ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ] \
              && [ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ] \
              && git show "$BASE:shoalmark.toml" > "$RUNNER_TEMP/tier.toml" \
              && dir=$(sed -n '/^tracker_dir *=/{s|^tracker_dir *= *"\([A-Za-z0-9_-][A-Za-z0-9_/-]*\)" *\(#.*\)\{0,1\}$|\1|p;q;}' "$RUNNER_TEMP/tier.toml") \
              && [ -n "$dir" ] \
-             && git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE...$HEAD_SHA" > "$RUNNER_TEMP/tier.raw"; then
+             && git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE" HEAD > "$RUNNER_TEMP/tier.raw"; then
             records=true
             entries=0
             while IFS= read -r -d '' head && IFS= read -r -d '' path; do

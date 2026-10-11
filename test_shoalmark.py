@@ -13613,7 +13613,10 @@ def _ci_shapes(root):
         for path, (mode, sha) in entries.items():
             subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"{mode},{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
         return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
-    commit = lambda t, *parents: g("commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a shape")
+    def commit(t, *parents, day=None):
+        env = dict(_ENV, **({"GIT_AUTHOR_DATE": day, "GIT_COMMITTER_DATE": day} if day else {}))
+        return subprocess.run(["git", "-C", str(root), "commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a shape"], capture_output=True,
+                              check=True, env=env).stdout.decode().strip()
     g("init", "-q")
     one, edited, script = blob("# FM-001 — one\n"), blob("# FM-001 — one, edited\n"), blob("print(1)\n")
     modules = blob('[submodule "sub"]\n\tpath = sub\n\turl = https://example.invalid/sub.git\n\tignore = all\n')
@@ -13643,7 +13646,20 @@ def _ci_shapes(root):
     later = commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), head)
     out.update({"a tag's run of a tracker-only edit": ("push", base, head, merge), "a run by hand of a tracker-only edit": ("workflow_dispatch", base, head, merge),
                 "a pull request whose shas the event lacks": ("pull_request", "", "", merge),
-                "a checkout of a later head than the event names": ("pull_request", base, head, commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), base, later))})
+                "a checkout of a later head than the event names": ("pull_request", base, head, commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), base, later)),
+                "a checkout whose first parent is not the event's base": ("pull_request", base, head, commit(tree({**based, **edit}), later, head))})
+    # RV-2965: a pull request whose history criss-crosses main's. Main merged M1 (a tracker edit) and M2 (a fix to scripts/x.py); the pull
+    # request merges the two the other way, drops the fix in its resolution, and edits a tracker. It has two merge bases with main, and a
+    # diff against "the" merge base takes one of them by date; the merge CI tests reverts the fix. Each order of the two dates.
+    fixed = blob("print(2)  # the fix\n")
+    for order, (d1, d2) in (("M1 newer", ("2026-10-02T12:00:00", "2026-10-01T12:00:00")), ("M2 newer", ("2026-10-01T12:00:00", "2026-10-02T12:00:00"))):
+        m1 = commit(tree({**based, **edit}), base, day=d1)
+        m2 = commit(tree({**based, "scripts/x.py": ("100644", fixed)}), base, day=d2)
+        main = commit(tree({**based, **edit, "scripts/x.py": ("100644", fixed)}), commit(tree({**based, **edit}), base, m1), m2)
+        crossed = commit(tree({**based, **edit}), m2, m1)                                     # the fix dropped in the resolution
+        pr = commit(tree({**based, **edit, "work-tracker/FM-002-two.md": ("100644", edited)}), crossed)
+        out[f"a criss-cross whose merge drops main's fix ({order})"] = ("pull_request", main, pr,
+                                                                       commit(tree({**based, **edit, "work-tracker/FM-002-two.md": ("100644", edited)}), main, pr))
     return out
 
 
@@ -13705,8 +13721,11 @@ def _ci_wf_properties(text, root, shapes):
         ("the tier is decided first after the whole history is checked out, in bash, the event and the pull request's two shas given through env: alone",
          tier_at == 1 and (steps[0].get("with") or {}).get("fetch-depth") == 0 and tier.get("shell") == "bash"
          and tier.get("env") == {"EVENT": "${{ github.event_name }}", "BASE": "${{ github.event.pull_request.base.sha }}", "HEAD_SHA": "${{ github.event.pull_request.head.sha }}"}),
-        ("it lists the pull request's whole diff against its merge base with --raw -z --no-abbrev --no-renames --ignore-submodules=none",
-         'git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE...$HEAD_SHA" > ' in run_of(tier)),
+        ("it reads the merge CI tests — its first parent the base, its second the head — and lists that merge's whole diff against the base "
+         "with --raw -z --no-abbrev --no-renames --ignore-submodules=none",
+         'git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE" HEAD > ' in run_of(tier)
+         and """[ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ]""" in run_of(tier)
+         and """[ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ]""" in run_of(tier)),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
         ("records only runs the gate's --check alone, the signers file named in the checkout for the tool to read as the default branch's",
          records_at is not None and steps[records_at].get("if") == "steps.tier.outputs.records == 'true'"
@@ -13727,10 +13746,14 @@ def _ci_wf_properties(text, root, shapes):
          bool(runs) and all(runs.get(n) == "true" for n in _CI_RECORDS)),
         (f"…a tracker edit beside an ignored submodule pointer — .gitmodules with ignore = all — gives the full suites (saw {shown('a tracker edit beside an ignored submodule pointer')})",
          runs.get("a tracker edit beside an ignored submodule pointer") == "false"),
+        (f"…RV-2965: a criss-cross whose merge drops main's fix gives the full suites, whichever of its two merge bases is newer (saw "
+         f"{shown(*[n for n in shapes if n.startswith('a criss-cross')])})",
+         sum(n.startswith("a criss-cross") for n in shapes) == 2 and all(runs.get(n) == "false" for n in shapes if n.startswith("a criss-cross"))),
         (f"…a tracker edit beside a mode change, and a mode change alone, give the full suites (saw {shown('a tracker edit beside a mode change', 'a mode change alone')})",
          runs.get("a tracker edit beside a mode change") == "false" and runs.get("a mode change alone") == "false"),
         (f"…every other shape gives the full suites: a symlink, .github/ or .gitmodules in the folder, .github/ outside it, a script beside a tracker, "
-         f"a script moved in, an empty change, a tag, a run by hand, a pull request without its shas, a checkout of a later head (saw "
+         f"a script moved in, an empty change, a tag, a run by hand, a pull request without its shas, a checkout of a later head, a checkout whose first "
+         f"parent is not the base (saw "
          f"{ {n: r for n, r in runs.items() if r != want.get(n)} or 'each as it should'})", bool(runs) and runs == want),
     ]
 
@@ -13741,11 +13764,12 @@ def _ci_wf_regressions(text, root, shapes):
         ("a sixth entry runs", lambda t: t.replace('          - {system: macos, image: macos-26, python: "3.12"}\n',
                                                     '          - {system: macos, image: macos-26, python: "3.12"}\n          - {system: macos, image: macos-26, python: "3.9"}\n', 1)),
         ("a check is named by its image", lambda t: t.replace("    name: suites (${{ matrix.system }}, ${{ matrix.python }})", "    name: suites (${{ matrix.image }}, ${{ matrix.python }})", 1)),
-        ("a sha goes into the shell as an expression", lambda t: t.replace('"$BASE...$HEAD_SHA"', '"${{ github.event.pull_request.base.sha }}...$HEAD_SHA"', 1)),
+        ("a sha goes into the shell as an expression", lambda t: t.replace('"$BASE" HEAD >', '"${{ github.event.pull_request.base.sha }}" HEAD >', 1)),
         ("the shas are not given through env:", lambda t: t.replace(', HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}', "}", 1)),
         ("the diff hides an ignored submodule pointer", lambda t: t.replace(" --ignore-submodules=none", "", 1)),
         ("the diff detects renames", lambda t: t.replace(" --no-renames", "", 1)),
-        ("the diff is taken from the base, not the merge base", lambda t: t.replace('"$BASE...$HEAD_SHA"', '"$BASE..$HEAD_SHA"', 1)),
+        ("the diff is the head's against a merge base, as 2d5c7ff read it (RV-2965)", lambda t: t.replace('"$BASE" HEAD >', '"$BASE...$HEAD_SHA" >', 1)),
+        ("the checkout's first parent is not held to the base", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ] \\\n""", "", 1)),
         ("a mode change reads as an edit", lambda t: t.replace('":100644 100644 M" |', '":100644 100644 M" | ":100644 100755 M" | ":100755 100755 M" |', 1)),
         ("a symlink added reads as a file", lambda t: t.replace('":000000 100644 A" |', '":000000 100644 A" | ":000000 120000 A" |', 1)),
         (".github/ in the folder passes", lambda t: t.replace("*/.github/* | ", "", 1)),
