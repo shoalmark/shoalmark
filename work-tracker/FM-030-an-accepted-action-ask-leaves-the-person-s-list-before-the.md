@@ -31,8 +31,8 @@ its morning sitting. The lines below are from 0.17.8 (`v0.17.8` = `62db9f8`; `ma
 an earlier chain of this branch, which was replaced before its merge to keep unredacted detail out of the record; it
 found R1–R16, and this text closes R1–R10.
 
-**The notice's code is literal, and its text travels as data, on macOS and Linux** — merged into `release/v0.19.3` at
-`268ae13`, and ships in 0.19.3, dated 2026-10-10. `--notify` hands macOS `osascript` fixed code, the same on every run,
+**The notice's code is literal, and its text travels as data, on macOS and Linux** — shipped in v0.19.3,
+2026-10-10: merged to main as `3432566` (#157), tagged `v0.19.3` on `3432566`. `--notify` hands macOS `osascript` fixed code, the same on every run,
 which reads the notice's title and body from the environment; on Linux they are `notify-send`'s own arguments, after
 `--`; on Windows it starts no program and prints each notice.
 
@@ -197,3 +197,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-09-30 | **Raised, the Owner, two lines under *Raised*** (08:26:03, 08:30:15): the board's owed section does not carry a seat's branch pushed without a pull request, which `--queue` does; the open tab does not reload after his act — the file is right, the tab stale. Two slices for 0.18.7, nothing built; filed on his word *"file it"* (08:31:39). |
 | 2026-10-09 | RV-2830: recorded privately |
 | 2026-10-10 | The notice's fix ships in 0.19.3, dated 2026-10-10: on macOS and Linux its code is literal and its text travels as data; on Windows `--notify` starts no program and prints each notice (`baa58cc`). |
+| 2026-10-10 | **Shipped in v0.19.3:** the notice's fix — `7b55f46`, `3a0757c` (RV-2942), `44bde64`, `7738037`; RV-2830, RV-2960, RV-2980 and RV-2981: recorded privately — `release/v0.19.3` merged to main as `3432566` (#157); tagged `v0.19.3` on `3432566`. |
