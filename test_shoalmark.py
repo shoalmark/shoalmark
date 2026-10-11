@@ -1672,8 +1672,8 @@ def _rel_draft_runs(run):
     with tempfile.TemporaryDirectory() as d_:
         w_ = Path(d_)
         (w_ / "dist").mkdir()
-        for n_ in ("shoalmark-9.9.9.zip", "shoalmark-9.9.9.zip.sha256"):
-            (w_ / "dist" / n_).write_bytes(b"x\n")
+        for n_ in ("shoalmark-9.9.9.zip", "shoalmark-9.9.9.zip.sha256", "shoalmark-9.9.8.zip", "shoalmark-9.9.8.zip.sha256"):
+            (w_ / "dist" / n_).write_bytes(b"x\n")              # a build for another version too: only the tag's own check stops the case that names it
         (w_ / "step.sh").write_bytes((stub + run).encode("utf-8"))
         for case_, found_ in list(_REL_CASES.items()) + [("a tag that is not v<VERSION>", None)]:
             (w_ / "gh.log").write_bytes(b"")
