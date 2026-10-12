@@ -220,6 +220,31 @@ class OwnerExemption(unittest.TestCase):
                     else:
                         self.assertNotIn("refused: Owner commit", r.stderr)
 
+    def test_owner_and_seat_executable_derivers(self):
+        """Owner and seat branches contain ordinary records and an executable deriver."""
+        for author, key in ((OWNER, None), (OWNER, "owner"), (SEAT, None)):
+            for code in (3, 4, 7):
+                with self.subTest(author=author, key=key, code=code):
+                    root = self.fixture()
+                    self.stage(root, "work-tracker/evidence/note.txt")
+                    self.commit(root, author, key, "AP-001: ordinary record", required=True)
+                    commit = self.git(root, "rev-parse", "HEAD", required=True).stdout.strip()
+                    self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
+                    derive = root / "work-tracker/derive"
+                    derive.write_text(
+                        '#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\n'
+                        f'print("synthetic deriver {code}", file=sys.stderr)\nsys.exit({code})\n', encoding="utf-8")
+                    derive.chmod(0o755)
+                    r = self.tool(root, "--check")
+                    self.assertIn(f"synthetic deriver {code}", r.stderr)
+                    self.assertIn("REFUSED by the deriver", r.stderr)
+                    if author == OWNER and key is None:
+                        self.assertIn("refused: Owner commit " + commit[:10], r.stderr)
+                        self.assertEqual(r.returncode, 4, r.stdout + r.stderr)
+                    else:
+                        self.assertNotIn("refused: Owner commit", r.stderr)
+                        self.assertEqual(r.returncode, code, r.stdout + r.stderr)
+
     def test_unsigned_answer_remedy(self):
         """An Owner's answer is committed unsigned through the installed hooks."""
         root = self.fixture()

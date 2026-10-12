@@ -9911,7 +9911,7 @@ def main(argv=None):
         for p in derived_problems:
             print(f"  {p}", file=sys.stderr)
         print("REFUSED by the deriver — nothing was written.", file=sys.stderr)
-        return refused
+        return EXIT_LINT if owner_refused else refused
     if args.new:
         return new_tracker(args.new, trackers, args.tags)
     if args.invite:
