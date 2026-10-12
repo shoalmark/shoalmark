@@ -7,9 +7,9 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 *The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
 
-- **for** a tool that improves the collaboration between people and their agent seats, through a shared record that holds: the single source of project truth, the current state of where seats are authorised to be working, the signed decisions, their strength stated, that authorised this work, open questions present for a person to answer, and rule sets that prevent agents from going rogue and against intention. All tracked, traceable and visible through the record to anybody with the rights to read, and writable only for those with the rights to do so.
-- **so that** work can be tracked, can be verified, can be proven as being done. For the owner: that their project goals can be reached and any release can be trusted, at the least of their time the evidence allows. For any agent seat: that there is a clear tasking, a mandate, a way forward and a way to communicate with others, to raise blockers and request help. For all: a look at the record gives you the intent, who authorised this, who worked on this, where we are with this, where the results are with evidence, and where the release is that is running this.
-- **never** a rogue tasking or unauthorised work; a seat able to block the Owner's signed word; nothing that is not in the record; a merge without a review by a party other than its author and verification against the record; a merge or release of something that is not done; an issue nobody tracks; a fix that is forgotten; a seat that is left without its answer; a tasking never able to finish; a question never raised; the authorised party never involved; the authority order not respected; the issue not escalated; a failed intent because a potential misunderstanding was never questioned; take up work that is not ready or cannot be delivered when due; leak sensitive data, unredacted, into the record 
+- **for** a trust layer for an Owner whose agents work in their repository
+- **so that** the agents move at full speed, only the Owner's signed word decides, and every decision and act can be read back from the repository
+- **never** an agent's word counted as the Owner's; a control an agent can switch off; a ruling recorded outside the repository; blocking the Owner's signed word; leak sensitive data unredacted into the records or the outside.
 
 ## The current path
 
