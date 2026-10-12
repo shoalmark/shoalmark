@@ -97,15 +97,18 @@ jobs:
           fi
       - uses: actions/setup-python@v7
         with: {python-version: "${{ matrix.python }}"}
-      # records only: the gate's --check; the signers file named in the checkout, relative to it, which the tool reads as the default
-      # branch's copy — never the pull request's
-      - name: records only — the gate's --check, not the suites
-        if: steps.tier.outputs.records == 'true'
+      # R14: the gate judges the PR head; the suites run on the merge checkout.
+      - name: the branch — the gate's --check
+        id: gate
         shell: bash
-        env: {TRACKER: "${{ steps.tier.outputs.dir }}"}
+        env: {TRACKER: "${{ steps.tier.outputs.dir }}", EVENT: "${{ github.event_name }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}", SHOALMARK_CMD: python3 shoalmark.py}
         run: |
-          git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"
+          git remote set-head origin "$DEFAULT_BRANCH"
+          checked=$(git rev-parse HEAD)
+          if [ "$EVENT" = pull_request ]; then git checkout --detach "$HEAD_SHA"; fi
+          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"
           python shoalmark.py --check
+          git checkout --detach "$checked"
       - name: Subversion (Linux)
         if: runner.os == 'Linux' && steps.tier.outputs.records != 'true'
         run: sudo apt-get update -q && sudo apt-get install -y -q subversion
