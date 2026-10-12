@@ -3,7 +3,7 @@ id: FM-018
 status: Proposed
 considered: FM-012, FM-013, FM-016, FM-017, FM-007, FM-005
 tags: bug
-next: owner
+next: build
 ask: "Your two dashboard requirements of 12:43 (evidence listed per tracker; a guided run-sheet dialog) are features. Your filing freeze (FM-032 S4) files only defects and sends the rest into an open tracker's body, or to wait. Which route for these two?"
 ask-kind: ruling
 ask-since: 2026-09-28
