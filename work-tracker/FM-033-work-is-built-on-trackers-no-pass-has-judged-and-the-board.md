@@ -21,6 +21,8 @@ hook: "On 2026-09-24 the board showed the day's release work under triage and fo
 
 ## What is true now
 
+**2026-10-12 — R14 is first and ships in v0.20.0.** The Owner reports that seat rules blocked their own commits twice today: the session rule, then judged-before-build for a change outside `work-tracker/`. Their update directs R14 to main as soon as ready, before R12, because the intent forbids blocking their signed word. The finalized critical Builder brief requires authorship exemption from the three seat rules and verified Owner signatures in CI, with actual hook/history checks; R16's agent-rule deletion remains held. The Owner reinstalls hooks after merge. Until R14 lands, commits outside `work-tracker/` name their tracker in the subject (`FM-N: ...`). **Confidence 99%:** this order follows the Owner's update and signed R14; incidents are reported, not reproduced here. The existing code already skips resolved Owner authors in its session check, so reproducing the actual pending-author failure remains necessary.
+
 **Written 2026-09-24 by the Auditor seat (session 8b91dba2), filed word for word by the Principal, on the Owner's word: *"This shall be tracked as a violation of the
 rules and as a new issue."* Nothing is built.** Every time and sha below is from git or GitHub. Times are CEST.
 

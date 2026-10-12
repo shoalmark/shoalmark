@@ -4,10 +4,14 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: review
+next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
+ask: "Do you accept the release allocation below: R14 first and in v0.20.0, then R12, the bounded stage-1/archive release, and the named follow-up releases?"
+ask-kind: ruling
+ask-since: 2026-10-12
+ask-proposal: "Accept the allocation below, with trial findings taking priority and every release conditional on its required acceptance"
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -16,6 +20,42 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-12 — release allocation for the Owner's sitting.** This proposal replaces the earlier dated release allocation; it adds no planning feature or process. The product proposal on this Parked tracker remains parked. R14's first priority and v0.20.0 inclusion come from the Owner's update, not from an unanswered Planner proposal. Signed scope is in [the rulings](evidence/rulings-2026-10-12.md); only the remaining allocations are offered for their decision. S/M are scope sizes. The known requirement is Subversion without git; no other trial scope is inferred.
+
+| Release / order | Work and replacement | Owner | Size | Dependencies | Confidence and reason |
+|---|---|---|---|---|---|
+| First; main as soon as ready; v0.20.0 | R14: Owner authorship exemption in hooks, verified Owner signature in CI; replaces application of seat rules to the Owner. | Critical Builder; independent Reviewer; Owner merges and reinstalls hooks | M | Signed R14; FM-033; staffing ask FM-031; trusted policy/signers; actual hook and CI checks | 99%: Owner reports two refusals; never blocking their signed word governs. |
+| Second; main as soon as ready, independently of stage 1 | R12: one Ubuntu/3.9 records gate, four truthful pass-through results; replaces five repeated records checks. | Critical Builder; independent Reviewer; Owner merges | S | Signed R12/R25; FM-032; preserve R14 enforcement if already merged | 97%: workflow read confirms repetition; Windows incident is reported, not reproduced. |
+| Before stage-1 build | Rebuild #152's records fix from 99050b9 without RV-3023's sentence; then merge and judge FM-044 In Progress through triage. | Records Builder; Reviewer; Owner merges; Planner triages | S | Process PR already ancestral to edfa73b; fresh records pass; no old local fix replay | 98%: FM-044 is absent from this main; stage-1 build gate needs it. |
+| v0.20.0 | Stage 1: Subversion with no git installed; backend dispatch replaces shared paths that assume git. | Builders 1–3; independent critical Reviewer | M | #152 and triage; skeleton then dependent branches; R23; D3/D4 boundaries; staffing | 98%: signed scope is explicit; no stage-1 build commit is supplied. |
+| v0.20.0 | RV-3000 (recorded privately), on its own branch. | Builder 3; independent Reviewer | S | Private addendum; merge after dispatched run; never push before candidate | 98%: explicit retained fix and separate-branch order. |
+| v0.20.0 | RV-3001 (recorded privately), on its own branch. | Builder 2; independent Reviewer | S | Private addendum; merge after dispatched run; never push before candidate | 98%: explicit retained fix; private verification remains owed. |
+| v0.20.0 | RV-3002: one printed-command quoting helper replaces inconsistent quoting. | Builder 3; independent Reviewer | S | PowerShell single quotes with doubled embedded quote; shlex.quote elsewhere | 98%: supplied Owner ruling resolves the shell choice. |
+| Before v0.20.0 release commit | RV-3003/RV-3004: release-before-tag pin controls and correct missing-bash skip count replace faulty checks. | Builder 3; independent Reviewer | S | fm/044-stage-1-ratchet; targeted controls in private addendum | 97%: fixes follow the supplied ruling; no acceptance run made here. |
+| v0.20.0 | Release archive: zip/checksum, RELEASE manifest and archive vendoring replace the git-only acquisition requirement. | Builder 4; separate critical Reviewer; Owner releases | M | Local 23e3f7a; scoped RV-3020/RV-3021 review, 6379acd..23e3f7a; stage-1 target integration; dry run; Owner release-script change | 98%: bundle verified; prior READY is reported, pending re-review stays open. |
+| Before v0.20.0 tag | R24: one privately chosen, independently verified credential minimum; replaces the expanded prerelease boundary programme. | Owner chooses/establishes; independent Auditor verifies | S | FM-037 ask; private evidence; retained authority checks | 99%: signed ruling makes this a bounded release condition. |
+| v0.20.0 qualification; planned tag 23 October | Candidate, final pins, relevant Mac checks and required CI; replaces repeated full local suites. | Release Builder; Reviewer; Owner dispatches/merges/tags | M | Accepted scope/reviews; first dispatch then separate fixes; final changed tree checked; archive dry run; R24 | 96%: R3 retains CI; any post-run fix invalidates coverage of the changed tree. |
+| Records when answered | #154 RV-2734: Owner-supplied replacement wording; replaces withdrawn git-on-every-machine wording. | Owner supplies text; Records Builder; Reviewer | S | FM-004 ask; one records pass | 98%: fix text remains the Owner's, not the Planner's ruling. |
+| Now, policy | R1/R18/R19 cancel replacement programme, server IDs and compulsory trial reporting; R2–R4 replace mandatory review files/local suites/answer transactions as policy. | Owner's signed rulings; Planner and seats apply | S | 2d62fa1; keep Owner-allocated IDs, full review evidence and signed answers | 98%: these decisions are signed; residual product code is not thereby deleted. |
+| Reported done on main; local clone predates it | R15 switch: #162 / 4685efa sets freeze_at=0; replaces the active intake limit in current main configuration. | Owner | S | Owner's update; object unavailable offline; this clone remains at 8 | 99% in following the update; implementation not verified in this clone. |
+| v0.20.1 | R15 removes freeze code; replaces obsolete intake refusals while retaining look-before-filing and prioritization. | Builder; Reviewer | S | Reported #162; relevant regressions; trial findings take priority | 95%: configuration switch already removes the operational limit. |
+| v0.20.1 | R13 removes ratio command/reporting; retain records classification used by Shipped. | Builder; Reviewer | S | Signed R13; inventory of Shipped consumers | 96%: classification has a surviving authority consumer. |
+| Optional earlier, v0.20.0 stage 1 | R13 command deletion only if it reduces stage 1's own routing/refusal work; replaces implementing that command's backend path. | Stage-1 Builder; independent Reviewer | S | FM-023 release-map answer; demonstrated smaller diff; retained Shipped classification; no schedule gate | 85%: --ratio appears in Builder 3's planned git-only refusal list. |
+| v0.20.1 | R17 removes partial/untagged trusted-vendor bypasses; replaces weaker source acceptance. | Critical Builder; independent Reviewer | S | Archive merged; verified-source/completeness acceptance; R26 history retained | 92%: archive source rules must settle before changing surviving vendor options. |
+| v0.20.1 | R21 removes generated date from committed INDEX and keeps deterministic content checking. | Builder; Reviewer | S | Signed R21; R12; preserve forge-readable index | 94%: source already normalizes the date during checking; Windows cause stays separate. |
+| v0.20.1, P2 | R22 repairs Windows drift and displays bounded published-content differences on STALE. | Builder; independent Reviewer where gate changes | M | R12 availability; R21 baseline; real Windows reproduction | 97% in priority/diagnostics; cause remains unverified. |
+| v0.20.1 | Ten follow-up findings, each recorded privately, retain their allocated follow-up release. | Assigned Builders; independent Reviewer | M | Private inputs; new trial findings first; never infer closure from stage-1 overlap | 95%: supplied allocation is explicit; fixes are not verified here. |
+| v0.21.0 | R5 removes executable producers from trusted core; validated data-only views replace core execution. | Critical Builder; independent Reviewer | M | Signed R5; surviving producer/view consumers inventoried | 94%: removes an authority-crossing surface; safe views still need acceptance. |
+| v0.21.0 | R9 removes invitation/notification channels and scheduler state; owed acts/due/completion/history remain. | Builder; Reviewer | S | Signed R9; retained act cases | 86%: prompting weakens, but visible owed work must survive. |
+| v0.21.0 | R10 removes runtime branding, fonts and theme copying; static mark, labels and semantic headings remain. | Builder; Reviewer | M | Signed R10; archive manifest/vendor adjustment; localized-heading checks | 91%: theme removal affects the archive's required file set. |
+| v0.21.0 | R11 removes global refresh hooks; explicit safe refresh, immediate act visibility and revision/freshness evidence replace triggers. | Critical Builder; independent Reviewer | M | Signed R11; retained act/refresh cases; stage-1 integration complete | 91%: implicit triggers cannot be removed without preserving visible committed results. |
+| v0.21.0 | R4 residual transaction-code removal; ordinary signed repository answers replace answer-branch choreography. | Critical Builder; independent Reviewer | M | R14; exact answer/act history and historical readers retained | 94%: signed canonical answers are already policy; code cleanup is separate. |
+| v0.21.0, after v0.20.0 | Broader R24 boundary work replaces the expanded release gate with follow-up scope. | Owner; independent Auditor; scoped Builders | M | Verified minimum; independently scoped execution/policy/review/stop controls | 99%: signed R24 explicitly defers this wider programme. |
+| v0.21.1, after deletions | R28: pytest modules, parallel workers and isolated template repositories replace surviving monolithic suite setup. | Builder; independent Reviewer | M | Deletions complete; independent expectations; five code jobs; measured comparison | 90%: gains remain unmeasured; test dependency only, no release gate. |
+| Held; review 20 October, no release assigned | D3 plain-folder scope; D4 where no-git proof runs; any additional Subversion work. | Owner decides from findings; Planner records | S | Actual trial findings; fresh signed scope; only known requirement is Subversion without git | 98%: R23 lifts stage 1/archive only and explicitly keeps these holds. |
+| Held; return 20 October, no automatic deletion | R6 sessions, R7 queue, R8 site, R16 sequencing, R20 configuration/history keys. | Owner and independent Reviewer | S | Attribution; usable queue substitute; arrival/guidance evidence; post-R14 sequencing comparison; bounded compatibility evidence | 98%: each held row has a named evidence condition and needs a fresh signed ruling. |
+| Retained through v0.20.0 | R25 five code jobs/names; R26 legacy interpretation; R27 name/mark/headline and truthful claims. | Builders and Reviewers | S | Signed R25–R27; surviving coverage and history | 98%: explicit retained scope prevents incidental deletion. |
 
 **Filed 2026-09-23; nothing is built.** A tracker today holds what and why, a `next:`, an ask and its answer, a ship log.
 It holds no plan: which seat does which step, how long each is expected to take, and when the person in charge is
