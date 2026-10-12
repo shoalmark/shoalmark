@@ -3,7 +3,7 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: owner
+next: build
 triaged: 2026-09-24
 tier: P2
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-10-12
 ask-proposal: "Authorize Codex for R14 and R12 until 14 October; keep independent critical review"
 ask-options: "Authorize Codex for R14 and R12 until 14 October; keep independent critical review | Wait until 14 October for Claude Opus Builders"
+answer: "accepted - with a change: Codex builds R14 and R12 to completion, under separate independent critical review; from 14 October critical builds go back to Claude Opus, and design and website work goes to Claude sessions"
+answered: 2026-10-12
+answered-by: holgo99
 ---
 
 # FM-031 — the streams run in parallel and only the Owner sees the whole queue

@@ -12,6 +12,9 @@ ask: "Do you accept the release allocation below: R14 first and in v0.20.0, then
 ask-kind: ruling
 ask-since: 2026-10-12
 ask-proposal: "Accept the allocation below, with trial findings taking priority and every release conditional on its required acceptance"
+answer: "accepted - with a change: B1, the landing, ships with v0.20.1, so that the probe starts from the published site; v0.20.1 carries B1, the probe's final prompt and what its first outside run needs; rows that put its date at risk move to v0.20.2"
+answered: 2026-10-12
+answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done

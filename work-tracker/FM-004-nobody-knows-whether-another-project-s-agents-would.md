@@ -11,6 +11,9 @@ ask: "What exact replacement text do you want for RV-2734 in #154, removing the 
 ask-kind: ruling
 ask-since: 2026-10-12
 ask-proposal: "Use: 'Target v0.20.0: shoalmark runs on Subversion with no git installed; this is not shipped yet.'"
+answer: "accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed)"
+answered: 2026-10-12
+answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool

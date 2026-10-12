@@ -12,6 +12,9 @@ ask-proposal: "lift for one pass: `freeze_at` 24, then back to 8 — any seat's 
 triaged: 2026-09-23
 tier: P1
 hook: "Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on the wrong branch, leftovers from a failed run, a silent minute, a board that offers an answered ask again and a dialog ending in abort. The Owner: *\"Normal\" users won't like this — we have to make this convenient and fail-safe.* The requirement: he answers from wherever he stands, and his checkout is never switched, dirtied or left behind."
+answer: "rejected - moot: the filing freeze is off since #162 (R15 of 12 Oct); the two requirements stay here until v0.20.0's deletions are done"
+answered: 2026-10-12
+answered-by: holgo99
 ---
 
 # FM-018 — The answer flow must be convenient and fail-safe for a normal user
