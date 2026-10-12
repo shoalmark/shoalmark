@@ -18,6 +18,11 @@ NOREPLY = "123456+synthetic-owner@users.noreply.github.com"
 SEAT = "builder@example.invalid"
 
 
+def write_text(path, text, encoding="utf-8"):
+    with path.open("w", encoding=encoding, newline="\n") as output:
+        return output.write(text)
+
+
 def ci_bash():
     if os.name == "nt":
         found = shutil.which("git")
@@ -39,7 +44,7 @@ class OwnerExemption(unittest.TestCase):
         programs = cls.area / "bin"
         programs.mkdir()
         python = programs / "python"
-        python.write_text("#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + ' "$@"\n', encoding="utf-8")
+        write_text(python, "#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + ' "$@"\n', encoding="utf-8")
         python.chmod(0o755)
         cls.env["PATH"] = str(programs) + os.pathsep + cls.env.get("PATH", "")
         cls.keys = cls.area / "keys"
@@ -54,7 +59,7 @@ class OwnerExemption(unittest.TestCase):
                            "seat.session": "1111aaaa", "seat.harness": "synthetic/harness"}.items():
             cls.git(cls.seed, "config", key, value, required=True)
         cls.tool(cls.seed, "--init", "--key", "AP", required=True)
-        (cls.seed / "shoalmark.toml").write_text(
+        write_text(cls.seed / "shoalmark.toml",
             f'name = "Synthetic R14"\nowner = ["{OWNER} signed", "{NOREPLY} signed"]\n'
             'tracker_dir = "work-tracker"\njudged_before_build = true\nfreeze_at = 8\n'
             '[kinds]\nAP = "Work"\n[tags]\nbug = "Defect"\nprocess = "Process"\n'
@@ -62,15 +67,15 @@ class OwnerExemption(unittest.TestCase):
         wt = cls.seed / "work-tracker"
         wt.mkdir()
         for n in range(1, 9):
-            (wt / f"AP-{n:03}-work.md").write_text(
+            write_text(wt / f"AP-{n:03}-work.md",
                 f'---\nid: AP-{n:03}\nstatus: In Progress\nconsidered: none\ntriaged: {datetime.date.today()}\n'
                 f'next: build\nhook: "Synthetic work {n}"\n---\n\n# AP-{n:03} — Work\n\n'
                 '## What is true now\n\nReady.\n\n## Done when\n\nComplete.\n', encoding="utf-8")
-        (wt / "allowed_signers").write_text("".join(
+        write_text(wt / "allowed_signers", "".join(
             f"{key}@example.invalid " + (cls.keys / (key + ".pub")).read_text(encoding="utf-8")
             for key in ("owner", "other", "forge")), encoding="utf-8")
         ignore = cls.seed / ".gitignore"
-        ignore.write_text(ignore.read_text(encoding="utf-8") + "\nwork-tracker/index.html\nwork-tracker/view/\n", encoding="utf-8")
+        write_text(ignore, ignore.read_text(encoding="utf-8") + "\nwork-tracker/index.html\nwork-tracker/view/\n", encoding="utf-8")
         shutil.copyfile(HERE / "shoalmark.py", cls.seed / "shoalmark.py")
         cls.tool(cls.seed)
         cls.git(cls.seed, "add", "-A", required=True)
@@ -125,7 +130,7 @@ class OwnerExemption(unittest.TestCase):
     def stage(self, root, path="app.py", text="synthetic content\n"):
         p = root / path
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding="utf-8")
+        write_text(p, text, encoding="utf-8")
         self.git(root, "add", path, required=True)
 
     def gate(self, root, expected, *args):
@@ -155,7 +160,7 @@ class OwnerExemption(unittest.TestCase):
                     with self.subTest(freeze=freeze, author=author, tag=tag):
                         root = self.fixture()
                         p = root / "shoalmark.toml"
-                        p.write_text(p.read_text(encoding="utf-8").replace("freeze_at = 8", f"freeze_at = {freeze}"), encoding="utf-8")
+                        write_text(p, p.read_text(encoding="utf-8").replace("freeze_at = 8", f"freeze_at = {freeze}"), encoding="utf-8")
                         r = self.tool(root, "--new", "AP", "Synthetic filing", "--tags", tag, author=author)
                         expected = 4 if freeze == 8 and author == SEAT and tag == "process" else 0
                         self.assertEqual(r.returncode, expected, r.stdout + r.stderr)
@@ -203,14 +208,14 @@ class OwnerExemption(unittest.TestCase):
                     commit = self.git(root, "rev-parse", "HEAD", required=True).stdout.strip()
                     tracker = root / "work-tracker/AP-001-work.md"
                     if finding == "index":
-                        (root / "work-tracker/INDEX.md").write_text("stale index\n", encoding="utf-8")
+                        write_text(root / "work-tracker/INDEX.md", "stale index\n", encoding="utf-8")
                         expected, message = (4 if author == OWNER and key is None else 3), "is STALE"
                     elif finding == "ledger":
-                        tracker.write_text(tracker.read_text(encoding="utf-8").replace(
+                        write_text(tracker, tracker.read_text(encoding="utf-8").replace(
                             "considered: none\n", "considered: none\nepic: AP-999\n"), encoding="utf-8")
                         expected, message = 4, "AP-999"
                     else:
-                        (root / "work-tracker/AP-001-duplicate.md").write_text(
+                        write_text(root / "work-tracker/AP-001-duplicate.md",
                             tracker.read_text(encoding="utf-8"), encoding="utf-8")
                         expected, message = 4, "tracker-identity violation"
                     r = self.gate(root, expected)
@@ -231,7 +236,7 @@ class OwnerExemption(unittest.TestCase):
                     commit = self.git(root, "rev-parse", "HEAD", required=True).stdout.strip()
                     self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
                     derive = root / "work-tracker/derive"
-                    derive.write_text(
+                    write_text(derive,
                         '#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\n'
                         f'print("synthetic deriver {code}", file=sys.stderr)\nsys.exit({code})\n', encoding="utf-8")
                     derive.chmod(0o755)
@@ -463,7 +468,7 @@ class OwnerExemption(unittest.TestCase):
         programs = self.area / "ci-python"
         programs.mkdir()
         launcher = programs / "launcher.py"
-        launcher.write_text(
+        write_text(launcher,
             "import importlib.util, os, sys\n"
             "if sys.argv[1] == '-I': del sys.argv[1]\n"
             "spec = importlib.util.spec_from_file_location('ci_tool', sys.argv[1])\n"
@@ -473,7 +478,7 @@ class OwnerExemption(unittest.TestCase):
             "tool.configure()\n"
             "raise SystemExit(tool.main(sys.argv[2:]))\n", encoding="utf-8")
         python = programs / "python"
-        python.write_text("#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + " "
+        write_text(python, "#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + " "
                           + shlex.quote(launcher.as_posix()) + ' "$@"\n', encoding="utf-8")
         python.chmod(0o755)
         for records in (True, False):
