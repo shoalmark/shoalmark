@@ -3,7 +3,7 @@ id: FM-033
 status: In Progress
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
-next: build
+next: review
 ask: "Does a sourced raise that names a signed rule it undermines trigger a same-day pass, as a now does?"
 ask-kind: ruling
 ask-since: 2026-09-24
@@ -21,7 +21,9 @@ hook: "On 2026-09-24 the board showed the day's release work under triage and fo
 
 ## What is true now
 
-**2026-10-12 — R14 is first and ships in v0.20.0.** The Owner reports that seat rules blocked their own commits twice today: the session rule, then judged-before-build for a change outside `work-tracker/`. Their update directs R14 to main as soon as ready, before R12, because the intent forbids blocking their signed word. The finalized critical Builder brief requires authorship exemption from the three seat rules and verified Owner signatures in CI, with actual hook/history checks; R16's agent-rule deletion remains held. The Owner reinstalls hooks after merge. Until R14 lands, commits outside `work-tracker/` name their tracker in the subject (`FM-N: ...`). **Confidence 99%:** this order follows the Owner's update and signed R14; incidents are reported, not reproduced here. The existing code already skips resolved Owner authors in its session check, so reproducing the actual pending-author failure remains necessary.
+**R14 is built for independent critical review, first for v0.20.0.** Configured Owner authors pass the session and judged-before-build hooks before signing, and may file any tag while the filing freeze holds. On a branch's own commits since the merge base, `--check` requires every signed Owner identity to verify as an Owner principal against the default branch's policy and signers. This includes the Owner's configured GitHub identity and commits carried by nested merges; main's history stays outside that range. The shared CI gate checks the PR head for both records and code, then restores the merge checkout for the suites. Seat authors retain their session, build, filing and rights rules. Local hook, signature, history, freeze and CI-path checks passed.
+
+**Next:** the Owner adds their signed GitHub identity to both matching `owner` lists in their own signed commit on this branch, then pushes it for separate critical review. Fixes follow that review, then the PR and CI, then merge. The Owner runs `python3 shoalmark.py --install-hook` in their own checkout after merge. R12 follows separately.
 
 **Written 2026-09-24 by the Auditor seat (session 8b91dba2), filed word for word by the Principal, on the Owner's word: *"This shall be tracked as a violation of the
 rules and as a new issue."* Nothing is built.** Every time and sha below is from git or GitHub. Times are CEST.
