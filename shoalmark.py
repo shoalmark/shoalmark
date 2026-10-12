@@ -7548,7 +7548,7 @@ def owners_at(rev, refused=None, owner_only=False):
     refuses every change to the two sections (v0.19.1) — a configuration whose tracker directory or `[headings]` the guard
     cannot read (`guard_config`) is refused the same way. `owner_only` selects the configured Owner identities."""
     if not rev:
-        return dict(SEATS.get("owner", [])) if owner_only else may_answer()
+        return {} if owner_only else may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
     spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
     text = cat_blobs([spec], types=types).get(spec)
@@ -7556,7 +7556,7 @@ def owners_at(rev, refused=None, owner_only=False):
     if kind == "blob" and path_mode(rev, prefix + CONFIG_NAME) == "120000":       # a symlink: its text is no configuration
         kind = "120000"
     if not kind:                                        # nothing at that path: no configuration — the adoption, as documented
-        return dict(SEATS.get("owner", [])) if owner_only else may_answer()
+        return {} if owner_only else may_answer()
     try:
         if kind != "blob":
             raise SystemExit(config_not_file(kind))

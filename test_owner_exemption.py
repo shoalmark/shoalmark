@@ -333,6 +333,53 @@ class OwnerExemption(unittest.TestCase):
         self.assertIn(side[:7], r.stderr)
         self.assertIn("names no tracker", r.stderr)
 
+    def test_rv_3027(self):
+        """A configuration-free default branch and a separately configured signed branch."""
+        root = self.fixture()
+        self.git(root, "switch", "-q", "main", required=True)
+        self.git(root, "rm", "shoalmark.toml", required=True)
+        self.commit(root, OWNER, "owner", "AP-001: default configuration", required=True)
+        self.git(root, "update-ref", "refs/remotes/origin/main", "HEAD", required=True)
+        self.git(root, "switch", "-q", "work", required=True)
+        config = root / "shoalmark.toml"
+        self.stage(root, "shoalmark.toml", config.read_text(encoding="utf-8").replace(
+            f'owner = ["{OWNER} signed", "{NOREPLY} signed"]', 'owner = "other@example.invalid signed"'))
+        self.stage(root)
+        read = (
+            "import importlib.util, sys\n"
+            "s = importlib.util.spec_from_file_location('fm', sys.argv[1])\n"
+            "fm = importlib.util.module_from_spec(s)\n"
+            "s.loader.exec_module(fm)\n"
+            "fm.configure(sys.argv[2])\n"
+            "print(fm.pending_owner())\n"
+            "print(fm.verified_owner('HEAD'))\n"
+            "print(fm.owners_at('refs/remotes/origin/main'))\n"
+            "print(fm.owners_at(None))\n"
+        )
+        pending = self.call(root, sys.executable, "-c", read, HERE / "shoalmark.py", root,
+                            author="other@example.invalid", required=True).stdout.splitlines()
+        with self.subTest(stage="pending"):
+            self.assertEqual(pending[0], "False")
+        r = self.commit(root, "other@example.invalid", "other", "Ordinary unjudged code")
+        with self.subTest(stage="hook"):
+            self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("names no tracker", r.stderr)
+        if r.returncode:
+            self.git(root, "branch", "-m", "ap/001-work", required=True)
+            self.commit(root, "other@example.invalid", "other", "Ordinary unjudged code", required=True)
+            self.git(root, "branch", "-m", "work", required=True)
+        self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
+        self.assertNotEqual(self.git(root, "cat-file", "-e", "origin/main:shoalmark.toml").returncode, 0)
+        self.assertEqual(self.git(root, "log", "-1", "--format=%G? %GS", required=True).stdout.strip(), "G other@example.invalid")
+        committed = self.call(root, sys.executable, "-c", read, HERE / "shoalmark.py", root,
+                              author="other@example.invalid", required=True).stdout.splitlines()
+        with self.subTest(stage="verified"):
+            self.assertEqual(committed[1], "False")
+        with self.subTest(stage="legacy"):
+            self.assertEqual(committed[2:], ["{'other@example.invalid': 'signed'}"] * 2)
+        with self.subTest(stage="gate"):
+            self.assertIn("names no tracker", self.gate(root, 4).stderr)
+
     def test_ci_gate_executes_on_pr_head(self):
         bash = ci_bash()
         if not bash:
