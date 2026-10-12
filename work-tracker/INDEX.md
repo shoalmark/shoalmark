@@ -43,7 +43,7 @@
 
 | ID | Act | Promised | Due | Window |
 |----|-----|----------|-----|--------|
-| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
+| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | 2026-10-15 18:00:00+02:00 | 60 min |
 
 
 ## Work

@@ -14,6 +14,7 @@ ask-proposal: "today, 2026-09-25, after the sitting"
 answer: "accepted - after the scoring, once the key is delivered."
 answered: 2026-09-25
 answered-by: holgo99
+due: 2026-10-15T18:00:00+02:00
 hook: "The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not which hand: an agent running as the Owner on his machine, with his key loaded, signs as him — and with commit.gpgsign true set, every agent commit did, until it was caught. Nothing in git, the forge or the tool can tell the difference. Named by the Owner: a doorway for any rogue agent."
 ---
 
