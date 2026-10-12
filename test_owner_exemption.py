@@ -4,6 +4,7 @@ import datetime
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -17,13 +18,30 @@ NOREPLY = "123456+synthetic-owner@users.noreply.github.com"
 SEAT = "builder@example.invalid"
 
 
+def ci_bash():
+    if os.name == "nt":
+        found = shutil.which("git")
+        for up in ((Path(found).resolve().parents[1], Path(found).resolve().parents[2]) if found else ()):
+            for sub in ("bin", "usr/bin"):
+                if (up / sub / "bash.exe").is_file():
+                    return str(up / sub / "bash.exe")
+        return None
+    return shutil.which("bash")
+
+
 class OwnerExemption(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory(prefix="shoalmark-r14-")
         cls.area = Path(cls.tmp.name).resolve()
         cls.env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SSH_")) and k != "CODEX_THREAD_ID"}
-        cls.env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0")
+        cls.env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0", SHOALMARK_CMD="python3 shoalmark.py")
+        programs = cls.area / "bin"
+        programs.mkdir()
+        python = programs / "python"
+        python.write_text("#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + ' "$@"\n', encoding="utf-8")
+        python.chmod(0o755)
+        cls.env["PATH"] = str(programs) + os.pathsep + cls.env.get("PATH", "")
         cls.keys = cls.area / "keys"
         cls.keys.mkdir()
         for key in ("owner", "other", "forge", "untrusted"):
@@ -51,7 +69,8 @@ class OwnerExemption(unittest.TestCase):
         (wt / "allowed_signers").write_text("".join(
             f"{key}@example.invalid " + (cls.keys / (key + ".pub")).read_text(encoding="utf-8")
             for key in ("owner", "other", "forge")), encoding="utf-8")
-        (cls.seed / ".gitignore").write_text("work-tracker/index.html\nwork-tracker/views/\nwork-tracker/board-built.json\n", encoding="utf-8")
+        ignore = cls.seed / ".gitignore"
+        ignore.write_text(ignore.read_text(encoding="utf-8") + "\nwork-tracker/index.html\nwork-tracker/view/\n", encoding="utf-8")
         shutil.copyfile(HERE / "shoalmark.py", cls.seed / "shoalmark.py")
         cls.tool(cls.seed)
         cls.git(cls.seed, "add", "-A", required=True)
@@ -198,9 +217,11 @@ class OwnerExemption(unittest.TestCase):
 
     def test_main_and_nested_merges(self):
         root = self.fixture()
-        self.git(root, "switch", "-q", "main", required=True)
+        self.git(root, "switch", "-q", "-c", "main-feature", "main", required=True)
         self.stage(root, "main.py")
-        self.commit(root, NOREPLY, "forge", "AP-001: main work", required=True)
+        self.commit(root, SEAT, None, "AP-001: main work", required=True)
+        self.git(root, "switch", "-q", "main", required=True)
+        self.git(root, "-c", "user.signingkey=" + str(self.keys / "forge"), "merge", "--no-ff", "-S", "-m", "Merge main work", "main-feature", author=NOREPLY, required=True)
         self.git(root, "update-ref", "refs/remotes/origin/main", "HEAD", required=True)
         self.git(root, "switch", "-q", "-c", "above-main", required=True)
         self.stage(root, "own.py")
@@ -220,7 +241,27 @@ class OwnerExemption(unittest.TestCase):
         self.git(root, "merge", "--no-ff", "-m", "AP-001: nested work", "above-main", author=SEAT, required=True)
         self.assertIn(update[:10], self.gate(root, 4).stderr)
 
+    def test_github_merge_commit(self):
+        for key in (None, "forge"):
+            with self.subTest(key=key):
+                root = self.fixture()
+                self.stage(root, "own.py")
+                self.commit(root, SEAT, None, "AP-001: own work", required=True)
+                self.git(root, "switch", "-q", "-c", "side", "main", required=True)
+                self.stage(root, "side.py")
+                self.commit(root, SEAT, None, "AP-001: side work", required=True)
+                self.git(root, "switch", "-q", "work", required=True)
+                options = ["-c", "user.signingkey=" + str(self.keys / key)] if key else []
+                self.git(root, *options, "merge", "--no-ff", "-S" if key else "--no-gpg-sign", "-m", "Merge pull request", "side", author=NOREPLY, required=True)
+                merge = self.git(root, "rev-parse", "HEAD").stdout.strip()
+                r = self.gate(root, 4)
+                self.assertIn(merge[:10], r.stderr)
+                self.assertEqual(len(r.stderr.strip().splitlines()), 1)
+
     def test_ci_gate_executes_on_pr_head(self):
+        bash = ci_bash()
+        if not bash:
+            self.skipTest("the CI shell requires Git Bash")
         text = (HERE / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         match = re.search(r"^        id: gate\n(?P<settings>.*?)^        run: \|\n(?P<script>(?:^          [^\n]*\n|^\n)+)", text, re.M | re.S)
         self.assertIsNotNone(match)
@@ -238,7 +279,7 @@ class OwnerExemption(unittest.TestCase):
                     self.git(root, "switch", "-q", "main", required=True)
                     self.git(root, "merge", "--no-ff", "-m", "CI merge", "work", author=NOREPLY, required=True)
                     merge = self.git(root, "rev-parse", "HEAD").stdout.strip()
-                    r = self.call(root, "bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script,
+                    r = self.call(root, bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script,
                                   extra={"EVENT": "pull_request", "HEAD_SHA": head, "DEFAULT_BRANCH": "main", "TRACKER": "work-tracker"})
                     self.assertEqual(r.returncode, 0 if key else 4, r.stdout + r.stderr)
                     if key:

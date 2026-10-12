@@ -685,6 +685,8 @@ def configure(root=None):
     _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
     global _GUARD, _SIGNERS
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    global _OWNER_POLICY, _OWNER_COMMITS
+    _OWNER_POLICY, _OWNER_COMMITS = None, {}
     _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
     _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
     _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
@@ -5100,7 +5102,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
     "freeze_at": ("a whole number; `0` = off (the default)",
                   "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
                   "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
-                  "open tracker's body, or waits. `--check` says when it holds"),
+                  "open tracker's body, or waits. The configured Owner may file any tag. `--check` says when it holds"),
     "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
                    "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
     "judged_before_build": ("`true` or `false` (the default)",
@@ -5108,7 +5110,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                             "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
                             "`In Progress`; else it is refused, and so is one that names none. The commit-msg hook (`--commit-msg`) judges the commit being made, with its subject, before it is made; "
                             "`--check` judges each commit of the branch since `origin`'s default branch, a merge by the commits it carries; on the default "
-                            "branch nothing is judged. `--check` says whether it is on"),
+                            "branch nothing is judged. Owner authors pass the pending hook; verified Owner commits pass the branch's judgement. `--check` says whether it is on"),
 }
 
 
@@ -5448,6 +5450,76 @@ def pending_author():
     out = subprocess.run(["git", "var", "GIT_AUTHOR_IDENT"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     name, _, rest = out.stdout.partition(" <")
     return (name.strip(), rest.partition(">")[0].strip()) if out.returncode == 0 else ("", "")
+
+
+_OWNER_POLICY, _OWNER_COMMITS = None, {}
+
+
+def owner_policy():
+    """The configured Owner identities from the default branch, read once per run."""
+    global _OWNER_POLICY
+    if _OWNER_POLICY is None:
+        git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        why = []
+        owners = owners_at(default_trunk(git), why, owner_only=True)
+        _OWNER_POLICY = owners, why
+    return _OWNER_POLICY
+
+
+def owner_author(name, email, owners):
+    """Whether an author matches a configured Owner address or legacy name."""
+    return any(who == (email if EMAIL_RE.fullmatch(who) else name) for who in owners)
+
+
+def pending_owner():
+    """The prospective git author's Owner identity, read before signing."""
+    return vcs() == "git" and owner_author(*pending_author(), owner_policy()[0])
+
+
+def verified_owner(commit):
+    """A commit authored by a configured Owner and verified as a signed Owner principal."""
+    if commit not in _OWNER_COMMITS:
+        owners, _why = owner_policy()
+        author = (git_out("log", "-1", "--format=%an%n%ae", commit) or "").splitlines()
+        _OWNER_COMMITS[commit] = bool(len(author) == 2 and owner_author(*author, owners)
+                                     and any(mode == "signed" and verified_as(commit, who) for who, mode in owners.items()))
+    return _OWNER_COMMITS[commit]
+
+
+def owner_signature_problems():
+    """R14: signed Owner identities in the branch's own committed history verify as an Owner principal."""
+    if vcs() != "git":
+        return []
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git, ask=True)
+    if not trunk:
+        return []
+    owners, _why = owner_policy()
+    signed = {who: mode for who, mode in owners.items() if mode == "signed"}
+    if not signed:
+        return []
+    base = git("merge-base", trunk, "HEAD")
+    if base.returncode or not base.stdout.strip():
+        return ["refused: the Owner commit range cannot be read — fetch the default branch's history, then run --check again"]
+    history = git("log", "--reverse", "--format=%H%x00%an%x00%ae", f"{base.stdout.strip()}..HEAD", "^" + trunk)
+    if history.returncode:
+        return ["refused: the Owner commit range cannot be read — fetch the branch's history, then run --check again"]
+    problems = []
+    for line in history.stdout.splitlines():
+        fields = line.split("\x00")
+        if len(fields) != 3:
+            return ["refused: the Owner commit authors cannot be read — repair the branch's history, then run --check again"]
+        commit, name, email = fields
+        if not owner_author(name, email, signed) or verified_owner(commit):
+            continue
+        if email.endswith("@users.noreply.github.com"):
+            why = ("was made on GitHub and carries no verified signature of the Owner's — redo it in the Owner's checkout, "
+                   "signed with their SSH key; merge main locally")
+        else:
+            why = ("carries no verified signature of the Owner's — "
+                   + unverified(commit, "redo it in the Owner's checkout, signed with their SSH key"))
+        problems.append(f"refused: Owner commit {commit[:10]} ({email}) {why}")
+    return problems
 
 
 # A SIGNED IDENTITY (FM-024; the Owner's ruling filed in FM-006, *The release bar*, on a private security report): a `signed` identity is an email address —
@@ -5977,7 +6049,7 @@ def read_changes():
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
-    def brought(tips, first, why="which the merge brings"):
+    def brought(tips, first, why="which the merge brings", exclude=()):
         """(1): every commit reachable from `tips` and not from `first`, oldest first, each with its files — an ordinary commit's
         against its parent; a merge's, its own change (2): `-c` lists only the files where its result differs from every parent,
         from its diff against each of them, and the merge is read against all its parents, as the merge at HEAD is."""
@@ -5985,7 +6057,7 @@ def read_changes():
             return []
         out = []
         log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", "--ignore-submodules=none", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
-                  *tips, "--not", first)                # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
+                  *tips, "--not", first, *exclude)      # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
         if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
             global _WALK_FAILED
             said = next((l.strip() for l in log.stderr.splitlines() if l.strip()), f"git log exited {log.returncode}")
@@ -6006,17 +6078,18 @@ def read_changes():
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for h in heads:
             files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", "--ignore-submodules=none", h))
-        return brought(heads, "HEAD") + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
+        trunk = default_trunk(git) if heads else None
+        return brought(heads, "HEAD", exclude=[trunk] if trunk else []) + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
     if not parents:
         return []                                        # a root commit has no parent to compare with
+    trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
     files = None
     for parent in parents:
         got = names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
-    merged = brought(parents[1:], parents[0]) if len(parents) > 1 else []
-    trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
+    merged = brought(parents[1:], parents[0], exclude=[trunk] if trunk else []) if len(parents) > 1 else []
     _WALK = trunk or ("untold" if _TRUNK_UNTOLD else "")      # none: the newest commit alone is judged, and `--check` says so — never the whole history
     seen = {c[4] for c in merged} | {commit}
     own = [c for c in brought(["HEAD"], trunk, f"on this branch since {ref_name(trunk)}") if c[4] not in seen] if trunk else []
@@ -6974,6 +7047,8 @@ def judge_commits(commits, branch):
     rel = TRACKER_DIR.resolve().relative_to(ROOT).as_posix().rstrip("/") + "/"
     work = []
     for commit, parent, files, subject in commits:
+        if (verified_owner(commit) if commit else pending_owner()):
+            continue
         outside = sorted(f for f in files if f and not f.startswith(rel))       # `staged_now` keeps git's last empty line
         if outside:
             work.append((commit, parent, outside, subject, named_trackers(subject, branch)))
@@ -7057,7 +7132,7 @@ def build_judgement(subject=None):
     commits = commit_list(f"{base}..HEAD") if base else []
     refused = judge_commits(commits, branch)
     _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
-                       + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker"))
+                       + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker or verified as the Owner's"))
     return _BUILD
 
 
@@ -7466,15 +7541,15 @@ def owners_of(cfg):
     return {w: m for w, m in out.items() if w}
 
 
-def owners_at(rev, refused=None):
+def owners_at(rev, refused=None, owner_only=False):
     """The Owner as `rev`'s `shoalmark.toml` names them — the default branch's, so a branch never names its own Owner — or
     this checkout's where `rev` is None or carries no configuration — nothing at its path (`path_mode`); a submodule or a
     folder there is a configuration this tool cannot read. Where this tool refuses that configuration, nobody —
     and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2), and
     refuses every change to the two sections (v0.19.1) — a configuration whose tracker directory or `[headings]` the guard
-    cannot read (`guard_config`) is refused the same way."""
+    cannot read (`guard_config`) is refused the same way. `owner_only` selects the configured Owner identities."""
     if not rev:
-        return may_answer()
+        return dict(SEATS.get("owner", [])) if owner_only else may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
     spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
     text = cat_blobs([spec], types=types).get(spec)
@@ -7482,12 +7557,14 @@ def owners_at(rev, refused=None):
     if kind == "blob" and path_mode(rev, prefix + CONFIG_NAME) == "120000":       # a symlink: its text is no configuration
         kind = "120000"
     if not kind:                                        # nothing at that path: no configuration — the adoption, as documented
-        return may_answer()
+        return dict(SEATS.get("owner", [])) if owner_only else may_answer()
     try:
         if kind != "blob":
             raise SystemExit(config_not_file(kind))
         guard_config(text)                              # where it puts the two sections, as the guard reads them
-        return owners_of(read_config(text))
+        cfg = read_config(text)
+        owners = owners_of(cfg)
+        return dict(seat_identities(seats_of(cfg).get("owner", []))) if owner_only else owners
     except SystemExit as e:
         if refused is not None:
             refused.append(str(e))
@@ -9633,7 +9710,7 @@ def new_tracker(words, trackers, tags_arg=None):
                    else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}")
             print(f"--new: --tags {tags_arg!r} — {why} — nothing was written", file=sys.stderr)
             return EXIT_LINT
-    if frozen and FREEZE_TAG.lower() not in {x.lower() for x in tags}:
+    if frozen and FREEZE_TAG.lower() not in {x.lower() for x in tags} and not pending_owner():
         print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
               f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `{FREEZE_TAG}` tag — "
               f"a product defect is filed with `--tags {FREEZE_TAG}`; nothing was written", file=sys.stderr)
@@ -9771,6 +9848,12 @@ def main(argv=None):
         args = parse_args(["--root", str(ROOT)] + ([] if args.tsvn_hook[0] == "start" else ["--check"]))
     if args.root:
         configure(args.root)
+    if args.check:
+        refused = owner_signature_problems()
+        if refused:
+            for problem in refused:
+                print(problem, file=sys.stderr)
+            return EXIT_LINT
     if HOOK_RUN:                                            # a hook's run of the copy writes only inside the repository, outside its git directory, through no symlink
         global SAFE_WRITES
         SAFE_WRITES = True

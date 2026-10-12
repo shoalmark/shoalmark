@@ -11535,7 +11535,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-033 · `--check` refuses a build commit under an unjudged tracker, a judged Parked one and a judged Proposed one — naming the commit, the tracker and what was missing — and passes it under a judged In Progress one (saw {r1_[0]!r})",
           len(r1_[0]) == 1 and r1_[0][0].startswith(f'refused: commit {c1_[:7]} "the importer" changes src.txt outside docs/work-tracker/ — AP-001: not judged, not In Progress (Proposed) — a pass judges before the first build commit (FM-033)')
           and len(r2_[0]) == 1 and "AP-002: Parked" in r2_[0][0] and len(r3_[0]) == 1 and "AP-003: not In Progress (Proposed)" in r3_[0][0]
-          and r4_[0] == [] and r4_[1] == "judged before build: on — 1 commit(s) on `ap/004-build` since origin/main, every build commit under a judged In Progress tracker")
+          and r4_[0] == [] and r4_[1] == "judged before build: on — 1 commit(s) on `ap/004-build` since origin/main, every build commit under a judged In Progress tracker or verified as the Owner's")
     git(root, "switch", "-q", "ap/001-build")
     code_, out_, err_ = run(root, "--check")
     check(f"FM-033 · end to end: `--check` exits 4 on the refusal and says the gate is on in one line (saw {err_.strip()[-200:]!r})",
@@ -12147,7 +12147,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-037 · AU-19 · a branch that appends its own key under the Owner's email to the repository's signers file, then signs as him with it, vouches for nothing: the path change it signs is refused, and so is the answer it signs — both verified against the default branch's signers file; the seat's change to the file is refused on its own (saw {g_v_[0]!r}, {err_v_.strip()[-300:]!r})",
           len(g_v_[0]) == 2 and g37_(c_v1_) == f'refused: commit {c_v1_[:7]} "AP-037: a key for the Owner" changes the signers file `docs/work-tracker/allowed_signers` — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY_KEYS}. The way through: {fm.GUARD_WAY}'
           and g37_(c_v2_).startswith(f'refused: commit {c_v2_[:7]} "AP-037: the path, signed as him" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — the Owner\'s email, and its signature does not verify (`%G?` ')
-          and code_v_ == fm.EXIT_LINT and "AP-050: the answer's commit" in err_v_ and "does not verify as `h@x`" in err_v_)
+          and code_v_ == fm.EXIT_LINT and f"Owner commit {sha37_()[:10]} (h@x)" in err_v_ and "carries no verified signature of the Owner's" in err_v_)
     add37_ = lambda: signers37_.write_text(signers37_.read_text() + "gtm@seat " + skey_.with_suffix(".pub").read_text())
     c_k_, g_k_ = made37_("ap/037-owner-keys", "AP-037: the Owner names a key", add37_, "-S", OWNER_)
     c_ko_, g_ko_ = made37_("ap/037-owner-path", "AP-037: his line, his key", text37_("2. Nothing merges unreviewed.", "2. Nothing merges unread."), "-S", OWNER_)
@@ -12316,7 +12316,7 @@ with tempfile.TemporaryDirectory() as tmp:
     held_r1_ = "it is signed, but not with a key `docs/work-tracker/allowed_signers` on origin/main holds for that identity — a new key verifies once it is there: the Owner's signed commit to that file, merged into origin/main first"
     check(f"FM-037 · the cold re-review's R1 · `--answer` verifies as the gate does, against the default branch's signers file: an answer signed with a key only his branch's copy holds is NOT pushed, and the command and the gate each say it is signed and name where the key must land — never *sign it* (saw {err_r1_.strip()[-260:]!r}, {err_r1c_.strip()[-200:]!r})",
           g_rot_[0] == [] and code_r1_ == fm.EXIT_LINT and not pushed_r1_ and "committed, but the signature does not verify as `holgo`" in err_r1_ and held_r1_ in err_r1_
-          and "NOT pushed" in err_r1_ and "pushed\n" not in out_r1_ and code_r1c_ == fm.EXIT_LINT and "AP-051: the answer's commit" in err_r1c_ and held_r1_ in err_r1c_
+          and "NOT pushed" in err_r1_ and "pushed\n" not in out_r1_ and code_r1c_ == fm.EXIT_LINT and f"Owner commit {sha37_()[:10]} (h@x)" in err_r1c_ and held_r1_ in err_r1c_
           and "sign it (`git commit -S`)" not in err_r1_ + err_r1c_)
     # the cold re-review's R2 · while the default branch carries no signers file, NOTHING verifies against the checkout's copy:
     # a checkout on a branch that writes one read another pull request's change, signed with the key it wrote, as clean
@@ -13874,10 +13874,15 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          and """[ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ]""" in run_of(tier)
          and """[ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ]""" in run_of(tier)),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
-        ("records only runs the gate's --check alone, the signers file named in the checkout for the tool to read as the default branch's",
-         records_at is not None and steps[records_at].get("if") == "steps.tier.outputs.records == 'true'"
-         and run_of(steps[records_at]) == 'git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"\npython shoalmark.py --check\n'
-         and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}"}),
+        ("every tier checks the PR head with the default branch's signers, then restores the merge checkout for the suites",
+         records_at is not None and steps[records_at].get("id") == "gate" and steps[records_at].get("if") is None
+         and steps[records_at].get("continue-on-error") is None and steps[records_at].get("shell") == "bash"
+         and run_of(steps[records_at]) == 'git remote set-head origin "$DEFAULT_BRANCH"\nchecked=$(git rev-parse HEAD)\n'
+             'if [ "$EVENT" = pull_request ]; then git checkout --detach "$HEAD_SHA"; fi\n'
+             'git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\npython shoalmark.py --check\n'
+             'git checkout --detach "$checked"\n'
+         and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}", "EVENT": "${{ github.event_name }}",
+             "HEAD_SHA": "${{ github.event.pull_request.head.sha }}", "DEFAULT_BRANCH": "${{ github.event.repository.default_branch }}"}),
         ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
          None not in (suite_at, core_at) and all(steps[i].get("if") == full for i in (suite_at, core_at))
          and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
@@ -13949,7 +13954,7 @@ def _ci_wf_regressions(text, root, shapes):
         ("records only also runs the suites", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", "      - run: python -u test_shoalmark.py\n", 1)),
         ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
                                                                         "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
-        ("records only runs --check with no signers file named", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "$TRACKER/allowed_signers"\n', "", 1)),
+        ("the signers setting is removed", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\n', "", 1)),
         ("the zone's run turns the check red", lambda t: t.replace("        continue-on-error: true\n", "", 1)),
         ("macOS runs a zone too", lambda t: t.replace('{system: macos, image: macos-26, python: "3.12"}', '{system: macos, image: macos-26, python: "3.12", tz: Pacific/Kiritimati}', 1)),
         ("the zones change places", lambda t: t.replace("tz: Pacific/Kiritimati}", "tz: PLACE}", 1).replace("tz: Pacific/Pago_Pago}", "tz: Pacific/Kiritimati}", 1).replace("tz: PLACE}", "tz: Pacific/Pago_Pago}", 1)),
