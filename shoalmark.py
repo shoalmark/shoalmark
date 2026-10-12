@@ -9847,12 +9847,9 @@ def main(argv=None):
         args = parse_args(["--root", str(ROOT)] + ([] if args.tsvn_hook[0] == "start" else ["--check"]))
     if args.root:
         configure(args.root)
-    if args.check:
-        refused = owner_signature_problems()
-        if refused:
-            for problem in refused:
-                print(problem, file=sys.stderr)
-            return EXIT_LINT
+    owner_refused = owner_signature_problems() if args.check else []
+    for problem in owner_refused:
+        print(problem, file=sys.stderr)
     if HOOK_RUN:                                            # a hook's run of the copy writes only inside the repository, outside its git directory, through no symlink
         global SAFE_WRITES
         SAFE_WRITES = True
@@ -10096,6 +10093,8 @@ def main(argv=None):
         return EXIT_LINT
     if problems:
         print("FAILED: this checkout's own finding — the ledger is sound; set the checkout up as the line says.", file=sys.stderr)
+        return EXIT_LINT
+    if owner_refused:
         return EXIT_LINT
     return EXIT_DRIFT if drifted else EXIT_OK
 

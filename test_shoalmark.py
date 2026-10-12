@@ -9179,13 +9179,21 @@ with tempfile.TemporaryDirectory() as d:
         gate_ = "\n".join(l_ for l_ in (o1_ + e1_).splitlines() if "chore: bump the library" in l_)
         git(root_, "switch", "-q", "-c", f"bump-again-{ignore_}", main_)
         git(root_, "update-index", "--add", "--cacheinfo", f"160000,{other_},vendor/lib")
-        c2_ = subprocess.run(["git", "-C", str(root_), "commit", "-q", "-m", "chore: bump the library"], capture_output=True, text=True, env=_BM_ENV)
+        c2_ = subprocess.run(["git", "-C", str(root_), "commit", "-q", "-m", "chore: bump the library"], capture_output=True, text=True,
+                             env=dict(_BM_ENV, GIT_AUTHOR_NAME="reviewer", GIT_AUTHOR_EMAIL="reviewer@seat"))
         made2_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip() != main_
-        git(root_, "reset", "-q", "--hard", main_); git(root_, "switch", "-q", "main")
         check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a commit that moves the submodule's pointer alone and names no "
               f"tracker is a build commit the gate judges (FM-033): `--check` on its branch refuses it, and so does its own commit hook (saw `--check` exit {c1_}, "
               f"{gate_[:160]!r}; the commit made {made2_}, the hook said {[l_ for l_ in (c2_.stdout + c2_.stderr).splitlines() if 'FM-033' in l_][:1]})",
               c1_ != 0 and "(FM-033)" in gate_ and c2_.returncode != 0 and not made2_ and "(FM-033)" in c2_.stdout + c2_.stderr)
+        owner_ = subprocess.run(["git", "-C", str(root_), "commit", "-q", "-m", "chore: bump the library"], capture_output=True, text=True, env=_BM_ENV)
+        owner_head_ = subprocess.run(["git", "-C", str(root_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        owner_check_, _, owner_error_ = run_safe(root_, "--check")
+        check(f"FM-033 R14 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, the Owner's own unsigned pointer change passes its commit "
+              f"hook and is refused by `--check` (saw hook exit {owner_.returncode}, commit made {owner_head_ != main_}, check exit {owner_check_})",
+              owner_.returncode == 0 and owner_head_ != main_ and owner_check_ == fm.EXIT_LINT
+              and f"refused: Owner commit {owner_head_[:10]} (o@x)" in owner_error_ and "signature" in owner_error_)
+        git(root_, "reset", "-q", "--hard", main_); git(root_, "switch", "-q", "main")
     rm_git(root_)
 fm.configure(HERE)
 

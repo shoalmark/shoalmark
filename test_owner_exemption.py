@@ -192,6 +192,48 @@ class OwnerExemption(unittest.TestCase):
             self.stage(root, "second.py")
             self.assertNotEqual(self.commit(root, SEAT, key, "AP-001: seat work").returncode, 0)
 
+    def test_owner_signature_and_existing_findings(self):
+        """Owner and seat branches carry an index, ledger or tracker-identity finding."""
+        for author, key in ((OWNER, None), (OWNER, "owner"), (SEAT, None)):
+            for finding in ("index", "ledger", "identity"):
+                with self.subTest(author=author, key=key, finding=finding):
+                    root = self.fixture()
+                    self.stage(root, "work-tracker/evidence/note.txt")
+                    self.commit(root, author, key, "AP-001: ordinary record", required=True)
+                    commit = self.git(root, "rev-parse", "HEAD", required=True).stdout.strip()
+                    tracker = root / "work-tracker/AP-001-work.md"
+                    if finding == "index":
+                        (root / "work-tracker/INDEX.md").write_text("stale index\n", encoding="utf-8")
+                        expected, message = (4 if author == OWNER and key is None else 3), "is STALE"
+                    elif finding == "ledger":
+                        tracker.write_text(tracker.read_text(encoding="utf-8").replace(
+                            "considered: none\n", "considered: none\nepic: AP-999\n"), encoding="utf-8")
+                        expected, message = 4, "AP-999"
+                    else:
+                        (root / "work-tracker/AP-001-duplicate.md").write_text(
+                            tracker.read_text(encoding="utf-8"), encoding="utf-8")
+                        expected, message = 4, "tracker-identity violation"
+                    r = self.gate(root, expected)
+                    self.assertIn(message, r.stderr)
+                    if author == OWNER and key is None:
+                        self.assertIn("refused: Owner commit " + commit[:10], r.stderr)
+                    else:
+                        self.assertNotIn("refused: Owner commit", r.stderr)
+
+    def test_unsigned_answer_remedy(self):
+        """An Owner's answer is committed unsigned through the installed hooks."""
+        root = self.fixture()
+        tracker = root / "work-tracker/AP-001-work.md"
+        self.stage(root, tracker.relative_to(root).as_posix(), tracker.read_text(encoding="utf-8").replace(
+            "next: build\n", f'next: build\nask: "Proceed?"\nask-kind: ruling\nask-since: {datetime.date.today()}\n'
+            f'ask-proposal: "yes"\nanswer: "accepted"\nanswered: {datetime.date.today()}\nanswered-by: Synthetic Author\n'))
+        self.commit(root, OWNER, None, "AP-001: answer", required=True)
+        self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
+        r = self.gate(root, 4)
+        self.assertIn("refused: Owner commit", r.stderr)
+        self.assertIn("sign it (`git commit -S`)", r.stderr)
+        self.assertNotIn("cannot verify", r.stderr)
+
     def test_trusted_policy_and_signers(self):
         for change in ("signer", "owner"):
             with self.subTest(change=change):
