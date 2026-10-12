@@ -265,6 +265,74 @@ class OwnerExemption(unittest.TestCase):
                 self.assertIn(merge[:10], r.stderr)
                 self.assertEqual(len(r.stderr.strip().splitlines()), 1)
 
+    def two_merge_bases(self, author, key):
+        root = self.fixture()
+        tips = []
+        for name in ("left", "right"):
+            self.git(root, "switch", "-q", "-c", name, "main", required=True)
+            self.stage(root, name + ".py")
+            self.commit(root, NOREPLY, "forge", "Main code " + name, required=True)
+            tips.append(self.git(root, "rev-parse", "HEAD", required=True).stdout.strip())
+        self.git(root, "switch", "-q", "main", required=True)
+        self.git(root, "merge", "--ff-only", "left", required=True)
+        self.git(root, "-c", "user.signingkey=" + str(self.keys / "owner"), "merge", "--no-ff", "-S",
+                 "-m", "Merge main siblings", "right", author=OWNER, required=True)
+        self.git(root, "update-ref", "refs/remotes/origin/main", "HEAD", required=True)
+        self.git(root, "switch", "-q", "work", required=True)
+        self.git(root, "merge", "--ff-only", "right", required=True)
+        options = ["-c", "user.signingkey=" + str(self.keys / key)] if key else []
+        self.git(root, *options, "merge", "--no-ff", "-S" if key else "--no-gpg-sign", "-m",
+                 "AP-001: merge branch siblings", "left", author=author, required=True)
+        self.assertEqual(set(self.git(root, "merge-base", "--all", "origin/main", "HEAD", required=True).stdout.split()), set(tips))
+        return root
+
+    def test_owner_two_merge_bases(self):
+        """Main and an Owner-signed branch independently merge sibling histories."""
+        root = self.two_merge_bases(OWNER, "owner")
+        self.stage(root)
+        self.commit(root, OWNER, "owner", "Ordinary Owner code", required=True)
+        self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
+        own = self.git(root, "log", "--format=%G? %GS", "HEAD", "^origin/main", required=True).stdout.splitlines()
+        self.assertTrue(own)
+        self.assertTrue(all(line == "G " + OWNER for line in own), own)
+        self.gate(root, 0)
+
+    def test_seat_two_merge_bases(self):
+        """Main and a seat branch independently merge sibling histories and carry seat work."""
+        for named in (True, False):
+            with self.subTest(named=named):
+                root = self.two_merge_bases(SEAT, None)
+                self.git(root, "branch", "-m", "ap/001-work", required=True)
+                self.stage(root)
+                self.commit(root, SEAT, None, "AP-001: seat code" if named else "Ordinary seat code", required=True)
+                code = self.git(root, "rev-parse", "HEAD", required=True).stdout.strip()
+                self.git(root, "branch", "-m", "work", required=True)
+                self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
+                r = self.gate(root, 0 if named else 4)
+                if not named:
+                    self.assertIn(code[:7], r.stderr)
+                    self.assertIn("names no tracker", r.stderr)
+                    self.assertNotIn("Main code", r.stderr)
+
+    def test_unmerged_branch_with_two_merge_bases(self):
+        """An Owner-signed branch with two merge bases also merges a separate seat branch."""
+        root = self.two_merge_bases(OWNER, "owner")
+        self.git(root, "switch", "-q", "-c", "ap/001-side", "left", required=True)
+        self.stage(root, "side.py")
+        self.commit(root, SEAT, None, "Separate seat code", required=True)
+        side = self.git(root, "rev-parse", "HEAD", required=True).stdout.strip()
+        self.git(root, "switch", "-q", "work", required=True)
+        self.git(root, "branch", "-m", "ap/001-work", required=True)
+        self.git(root, "-c", "user.signingkey=" + str(self.keys / "owner"), "merge", "--no-ff", "-S",
+                 "-m", "AP-001: merge separate work", "ap/001-side", author=OWNER, required=True)
+        self.git(root, "branch", "-m", "work", required=True)
+        self.assertEqual(self.git(root, "status", "--porcelain", required=True).stdout, "")
+        self.assertEqual(len(self.git(root, "merge-base", "--all", "origin/main", "HEAD", required=True).stdout.split()), 2)
+        self.assertIn(side, self.git(root, "rev-list", "HEAD", "^origin/main", required=True).stdout.split())
+        r = self.gate(root, 4)
+        self.assertIn(side[:7], r.stderr)
+        self.assertIn("names no tracker", r.stderr)
+
     def test_ci_gate_executes_on_pr_head(self):
         bash = ci_bash()
         if not bash:

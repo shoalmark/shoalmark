@@ -7104,8 +7104,8 @@ def build_judgement(subject=None):
     commit being made at HEAD exactly as the history is judged: the subject's ids, else the branch (a merge: each commit it
     brings, the trunk's aside, at its own parent by its own subject; its own change never). The pre-commit run, which has
     no message yet, judges nothing here: judged by its branch alone, `FM-007: …` on a branch named for FM-029 passed the
-    hook and failed `--check` (the cold review's R1). Any other run judges each commit of `merge-base(origin's default,
-    HEAD)..HEAD`, merges walked, not judged. On the default branch nothing is judged. Read once per run."""
+    hook and failed `--check` (the cold review's R1). Any other run judges each commit reachable from HEAD and not from
+    origin's default branch, merges walked, not judged. On the default branch nothing is judged. Read once per run."""
     global _BUILD
     if COMMITTING and not subject:
         return [], ""                                      # the commit-msg stage judges it, with its subject (`pending_judgement`)
@@ -7128,8 +7128,7 @@ def build_judgement(subject=None):
     if not trunk:
         _BUILD = ([], "judged before build: on — no `origin` default branch to measure from: nothing is judged")
         return _BUILD
-    base = git("merge-base", trunk, "HEAD").stdout.strip()
-    commits = commit_list(f"{base}..HEAD") if base else []
+    commits = commit_list("HEAD", "^" + trunk)
     refused = judge_commits(commits, branch)
     _BUILD = (refused, f"judged before build: on — {len(commits)} commit(s) on {f'`{branch}`' if branch else 'a detached HEAD'} since {ref_name(trunk)}, "
                        + (f"{len(refused)} refused" if refused else "every build commit under a judged In Progress tracker or verified as the Owner's"))
