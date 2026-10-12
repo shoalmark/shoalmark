@@ -9,7 +9,7 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 - **for** a trust layer for an Owner whose agents work in their repository
 - **so that** the agents move at full speed, only the Owner's signed word decides, and every decision and act can be read back from the repository
-- **never** an agent's word counted as the Owner's; a control an agent can switch off; a ruling recorded outside the repository; leak sensitive data unredacted into the records or the outside.
+- **never** an agent's word counted as the Owner's; a control an agent can switch off; a ruling recorded outside the repository; blocking the Owner's signed word; leak sensitive data unredacted into the records or the outside.
 
 ## The current path
 
