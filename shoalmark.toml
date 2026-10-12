@@ -2,7 +2,7 @@ name = "shoalmark"
 owner = "holgoijo@gmail.com signed"   # the Owner, not a seat (FM-024): they answer with their key; at the top, before any table
 tracker_dir = "work-tracker"       # the tracker; docs/ is the documentation site
 triage_days = 7
-freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`): at 8 open or more, only bug filings
+freeze_at = 0        # the filing freeze is off: the Owner's ruling R15 of 12 Oct; its code goes with the deletions
 judged_before_build = true   # FM-033, the Owner's rule: a pass judges before the first build commit — refused otherwise
 
 [seats]            # who sits where — a seat commits unsigned under an identity its list gives: the old address, or its GitHub App's bot address, whose icon the forge shows (README, *Seat icons on the forge*);
