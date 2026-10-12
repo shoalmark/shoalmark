@@ -390,7 +390,25 @@ class OwnerExemption(unittest.TestCase):
         settings = match["settings"]
         self.assertNotIn("continue-on-error", settings)
         self.assertNotRegex(settings, r"(?m)^        if:")
+        command = re.search(r"\bSHOALMARK_CMD:\s*([^,}\n]+)", settings)
+        command = command[1].strip().strip("\"'") if command else ""
         script = "\n".join(line[10:] for line in match["script"].splitlines())
+        programs = self.area / "ci-python"
+        programs.mkdir()
+        launcher = programs / "launcher.py"
+        launcher.write_text(
+            "import importlib.util, os, sys\n"
+            "if sys.argv[1] == '-I': del sys.argv[1]\n"
+            "spec = importlib.util.spec_from_file_location('ci_tool', sys.argv[1])\n"
+            "tool = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(tool)\n"
+            "tool.PY = os.environ['SHOALMARK_TEST_PY']\n"
+            "tool.configure()\n"
+            "raise SystemExit(tool.main(sys.argv[2:]))\n", encoding="utf-8")
+        python = programs / "python"
+        python.write_text("#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + " "
+                          + shlex.quote(launcher.as_posix()) + ' "$@"\n', encoding="utf-8")
+        python.chmod(0o755)
         for records in (True, False):
             for key in ("owner", None):
                 with self.subTest(records=records, key=key):
@@ -401,13 +419,19 @@ class OwnerExemption(unittest.TestCase):
                     self.git(root, "switch", "-q", "main", required=True)
                     self.git(root, "merge", "--no-ff", "-m", "CI merge", "work", author=NOREPLY, required=True)
                     merge = self.git(root, "rev-parse", "HEAD").stdout.strip()
-                    r = self.call(root, bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script,
-                                  extra={"EVENT": "pull_request", "HEAD_SHA": head, "DEFAULT_BRANCH": "main", "TRACKER": "work-tracker"})
-                    self.assertEqual(r.returncode, 0 if key else 4, r.stdout + r.stderr)
-                    if key:
-                        self.assertEqual(self.git(root, "rev-parse", "HEAD").stdout.strip(), merge)
-                    else:
-                        self.assertIn(head[:10], r.stderr)
+                    for naming in ("python3", "python"):
+                        with self.subTest(naming=naming):
+                            self.git(root, "checkout", "--detach", merge, required=True)
+                            r = self.call(root, bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script,
+                                          extra={"EVENT": "pull_request", "HEAD_SHA": head, "DEFAULT_BRANCH": "main",
+                                                 "TRACKER": "work-tracker", "SHOALMARK_CMD": command,
+                                                 "SHOALMARK_TEST_PY": naming,
+                                                 "PATH": str(programs) + os.pathsep + self.env["PATH"]})
+                            self.assertEqual(r.returncode, 0 if key else 4, r.stdout + r.stderr)
+                            if key:
+                                self.assertEqual(self.git(root, "rev-parse", "HEAD").stdout.strip(), merge)
+                            else:
+                                self.assertIn(head[:10], r.stderr)
 
 
 def run_checks():

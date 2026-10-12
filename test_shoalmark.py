@@ -13874,7 +13874,7 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          and """[ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ]""" in run_of(tier)
          and """[ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ]""" in run_of(tier)),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
-        ("every tier checks the PR head with the default branch's signers, then restores the merge checkout for the suites",
+        ("every tier checks the PR head with the default branch's signers and the committed command, then restores the merge checkout for the suites",
          records_at is not None and steps[records_at].get("id") == "gate" and steps[records_at].get("if") is None
          and steps[records_at].get("continue-on-error") is None and steps[records_at].get("shell") == "bash"
          and run_of(steps[records_at]) == 'git remote set-head origin "$DEFAULT_BRANCH"\nchecked=$(git rev-parse HEAD)\n'
@@ -13882,7 +13882,8 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
              'git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\npython shoalmark.py --check\n'
              'git checkout --detach "$checked"\n'
          and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}", "EVENT": "${{ github.event_name }}",
-             "HEAD_SHA": "${{ github.event.pull_request.head.sha }}", "DEFAULT_BRANCH": "${{ github.event.repository.default_branch }}"}),
+             "HEAD_SHA": "${{ github.event.pull_request.head.sha }}", "DEFAULT_BRANCH": "${{ github.event.repository.default_branch }}",
+             "SHOALMARK_CMD": "python3 shoalmark.py"}),
         ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
          None not in (suite_at, core_at) and all(steps[i].get("if") == full for i in (suite_at, core_at))
          and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
@@ -13955,6 +13956,7 @@ def _ci_wf_regressions(text, root, shapes):
         ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
                                                                         "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
         ("the signers setting is removed", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\n', "", 1)),
+        ("the gate command changes to the platform's default", lambda t: t.replace(', SHOALMARK_CMD: python3 shoalmark.py', "", 1)),
         ("the zone's run turns the check red", lambda t: t.replace("        continue-on-error: true\n", "", 1)),
         ("macOS runs a zone too", lambda t: t.replace('{system: macos, image: macos-26, python: "3.12"}', '{system: macos, image: macos-26, python: "3.12", tz: Pacific/Kiritimati}', 1)),
         ("the zones change places", lambda t: t.replace("tz: Pacific/Kiritimati}", "tz: PLACE}", 1).replace("tz: Pacific/Pago_Pago}", "tz: Pacific/Kiritimati}", 1).replace("tz: PLACE}", "tz: Pacific/Pago_Pago}", 1)),
