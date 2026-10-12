@@ -3,15 +3,25 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: wait
+next: build
 triaged: 2026-09-24
 tier: P2
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
+ask: "While Claude is unavailable until 14 October, do you authorize Codex Builders for R14 and R12 under a temporary tier-rule change, or keep the rule and wait?"
+ask-kind: ruling
+ask-since: 2026-10-12
+ask-proposal: "Authorize Codex for R14 and R12 until 14 October; keep independent critical review"
+ask-options: "Authorize Codex for R14 and R12 until 14 October; keep independent critical review | Wait until 14 October for Claude Opus Builders"
+answer: "accepted - with a change: Codex builds R14 and R12 to completion, under separate independent critical review; from 14 October critical builds go back to Claude Opus, and design and website work goes to Claude sessions"
+answered: 2026-10-12
+answered-by: holgo99
 ---
 
 # FM-031 — the streams run in parallel and only the Owner sees the whole queue
 
 ## What is true now
+
+**2026-10-12 — critical-Builder staffing awaits the Owner.** The usage limit until 14 October is reported. FM-024's 2 October tier rule still requires Claude Opus for critical work; this Planner has dispatched no Builder and assumes no exception. Proposal: authorize Codex for R14 and R12 until 14 October, preserving separate independent critical review and the two-round limit; other critical builds retain the standing rule. **Confidence 88%:** the Owner reports two blocked commits and has put R14 first; a narrow temporary exception addresses that urgency without claiming model equivalence. If they keep the rule, wait for Claude's reported return. This staffing choice replaces the unresolved wait/exception decision; it does not change the rule before their signed answer.
 
 **Filed 2026-09-24 08:24 CEST on the Owner's question; ruled by his signed answer at 11:08:24 (`d20bc89`): all three
 rules now, S1 then S2 — then the cap of 2 revoked by his own signed edit at 12:39:56 (`7c97c5b`, PR 46, merged

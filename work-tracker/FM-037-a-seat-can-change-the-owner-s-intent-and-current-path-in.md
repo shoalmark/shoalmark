@@ -5,14 +5,20 @@ considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
 rank: 1
-next: review
+next: owner
 tier: P1
 hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through"
+ask: "Have you chosen and set up R24's minimum privately, and has the independent Auditor verified it?"
+ask-kind: action
+ask-since: 2026-10-12
+ask-proposal: "Confirm completion and independent verification before the tag, without naming the private choice"
 ---
 
 # FM-037 — a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through
 
 ## What is true now
+
+**2026-10-12 — R24's bounded release condition.** The Owner's signed R24 requires one privately chosen credential-control minimum and private independent Auditor verification before v0.20.0. Completion and independent verification have not been confirmed here; the ask requests only their confirmation, with the choice kept private. **Confidence 99%:** signed R24 explicitly separates this minimum from broader boundary work after the release. This question sits with the Owner-authority protection already tracked here; FM-007's existing answered act remains intact. Only a sanitized completion reference belongs in public records. Existing signed-answer verification, protected Owner sections/policy, field rights and Shipped remain required.
 
 **Built on `fm/037-only-the-owner-changes-his-intent-and-his-path` for 0.18.4; in review — the Owner's cold session (the
 gate: critical under path line 3), then the Auditor seat against its plan sealed at 18:57:38.** On a branch, `--check`
