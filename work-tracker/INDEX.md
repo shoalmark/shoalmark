@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-12 · 43 trackers (43 work).
+> Generated 2026-10-12 · 44 trackers (44 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -50,6 +50,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-046](FM-046-a-committed-tracker-s-front-matter-is-parsed-only-for-lf.md) | P1 | A committed tracker's front matter is parsed only for LF line endings and not through one normalisation, so the same tr… | In Progress | progress | 2026-10-12 |
 | [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | P2 | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | In Progress | progress | 2026-09-30 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | P2 | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress | progress | 2026-09-27 |
