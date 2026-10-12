@@ -14023,6 +14023,9 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root); rm_git(plain_)
 fm.configure(HERE)
 
+import test_owner_exemption
+check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())
+
 print()
 print(skipped_line())
 if FAILS:
