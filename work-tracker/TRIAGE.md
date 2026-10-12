@@ -15,11 +15,11 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
-1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits for the trial's findings and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)).
+1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)).
 2. A pull request merges on a verdict that names what it covers: the reviewed commit, its base, the tier and the checks run, as a Reviewed: line in the commit. The review commit carries the findings, their evidence and dispositions, its limits and who reviewed; a separate file only where the evidence needs one. Critical work takes a Reviewer in a session of its own, never one the building session started, and at most two rounds per finding. Critical means: a release, the gate or hooks, signing and rights, auth, migrations, deploy and secrets tooling, run sheets for the Owner, TRIAGE.md or AGENTS.md rules changed by a seat, and rules and code under a P1 or security tracker. Other code takes one inline Reviewer pass; records take one pass; neither runs re-check rounds: findings are fixed forward and named in the commit. Relevant local checks run before a pull request; the complete suites run in CI, not locally before every pull request. A review of the Owner's own answers and TRIAGE lines reports and never blocks. The Owner merges on a ready line, or over any other verdict with a signed reason.
 3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what the trial needs: Subversion without git, and the release archive (R23); nothing else on Subversion is built. What the trial finds is filed as trackers and comes first; the held rulings are looked at again on 20 October.
 4. A seat's question for the Owner goes on the board as an ask, with its proposal, and the seat keeps working; the Owner answers in one sitting. A seat interrupts the Owner only to stop harm.
- 
+
 ## Passes
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
