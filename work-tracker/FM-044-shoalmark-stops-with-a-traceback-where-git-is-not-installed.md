@@ -18,59 +18,58 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-13 — bounded common/A/C accepted; final caller correction and local entry composition continue.**
-Current Owner main `80b60c8` includes R12 READY `246ccdf` and the Owner's #171 instructions. Its
-CI/test/records changes are integrated on this feature branch. The production baseline and configuration
-match cab89ed; AGENTS and signed TRIAGE incorporate the Owner's exact #171 changes through this ordinary merge.
-RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088. Dispatch
-records READY `84c8a6b` remains ancestry; RV-3057 P3 was fixed forward without a re-pass. Accepted common
-boundary/cache/source/history semantics, ceiling, digests and scanner remain frozen.
+**2026-10-13 — bounded common/A/C and callers accepted; P local entry assembled, critical review next.**
+Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
+AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
+RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;
+dispatch records READY `84c8a6b` remain ancestry. RV-3057 P3 was fixed forward without a re-pass.
 
-A1/A2 critical READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in their final round, BOUNDED
-BOARD/INIT/INSTALL ONLY. This ordinary seat merge incorporates its exact functions, shared controls and three
-allowlist removals, 63 to 60; the later C composition reduces that to 45. The prior combined A merge passed compile, unchanged core 302 in 65.602 s and 152 A
-controls in 42.777 s. This independent branch retains the same A product; its current-main checks are recorded
-here: changed Python compiles in 0.475 s, and unchanged core passes in 46.861 s. A's separate caller verdict `26606d3`, Reviewed `43b5600`, is NOT READY: RV-3096 P2 OPEN in its first
-round. Four new current-directory lookups fail before launch if that directory has been deleted. The Builder
-replaces those four expressions with explicit inherited dot and adds real immutable-before/after controls.
-The same independent ROOT Reviewer has one final verification left. This branch has not imported the caller
-product; RV-3097 is unused and no closed A finding is reopened.
+A1/A2 READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091, BOUNDED BOARD/INIT/INSTALL ONLY.
+A caller final READY `4ab9341`, Reviewed `7063dac`, closes RV-3096 P2 in its second/final round;
+RV-3097 is unused. Its four inherited-dot corrections pass 119 component controls, 303 core checks and
+22 independent actual-function observations. The ordinary local seat merge retains its exact fifteen
+caller functions and runtime controls. C final READY `f59a1c1`, Reviewed `05e02ac`, closes RV-3095,
+BOUNDED CLI/PRESENTATION/DOCUMENTATION ONLY. Closed component findings are not reopened.
 
-C critical READY `f59a1c1`, Reviewed `05e02ac`, closes RV-3095 in its final round, BOUNDED CLI/PRESENTATION/
-DOCUMENTATION ONLY. Its actual callbacks and retained quoting checks pass. This ordinary seat merge incorporates the exact C product and controls: compile 0.251 s, unchanged
-core 44.768 s, and all 16 C methods 3.162 s pass. Actual launch keys are 45, retaining both A and C reductions.
-B final NOT READY `99968f2`, Reviewed `eabbeef`, leaves RV-3092–RV-3094 P2 OPEN/HELD after their
-second/final rounds. Structural XML text/tails can become empty or credited blame, hide pending Shipped status,
-and pass malformed logs as product proof. The full inline verdict contains actual-read evidence and exact
-outstanding corrections; 232 scoped controls and 302 core passing cannot override those reproduced failures.
-B's readers and twenty-three migrations are excluded from this local branch. A structural validation proposal
-is complete outside production for Owner disposition: 50 proposed controls fail on exact eabbeef and all
-293 pass on the candidate; a separate 538-scenario actual-read probe measures zero write opens. Its five
-reader changes and pure validator preserve common/source/scanner/ceiling and all forty keys. These are
-Builder development results, not another verdict, a READY line or permission to apply the held repair. No third verification or replacement finding is opened.
+P now composes actual main/preflight/Tortoise binding and the once-per-invocation limitation:
+"Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+Local board/init/install/refusals run with Git absent and the server unavailable. Ordinary legacy-history
+index/check/triage controls explicitly use available file:// history; their untrusted account strings establish
+no authentication or adoption. Recursive applied triage prints the limitation once. Git retains its actual
+mixed-flag ordering, origin-selection probe, process options and cleaned foreign hook environment.
+
+Exact production source SHA-256 `cc1d561f2dc6196a6f55e3ce0d45c9b91b790444b3fd512ef5939c1a6160fb98`
+passes changed-Python compile (0.639 s), unchanged core 303/303 (43.334 s), and the assembled runtime group
+527/527 with zero skips (121.024 s). Development entry controls contrast 140/162 on immutable pre-entry source
+with 162/162 after; complementary Git controls contrast 120/122 before the ordered-preflight correction with
+122/122 after. The adapted nine legacy SVN controls pass, with five required failures before; their existing
+result predicates remain. These are local build checks, not an independent P verdict or native CI qualification.
+Component-only source assertions remain in their standalone accepted modules; the aggregate runs actual shared,
+caller, C and entry controls, and unchanged core retains the production/every-parent history ratchet.
+
+Composition preserves every parent's removal: 45 and 44 keys intersect to 29, and P's one migrated main call
+removes the final exact key to 28. Common boundary/cache/source/history semantics, scanner, fixed ceiling,
+digests and source-command options remain frozen. No held B reader or archive-source/check implementation is
+imported. P's separate critical exact-head review reserves RV-3098–RV-3099; local composition is not READY yet.
 RV-3003/RV-3004: recorded privately.
 
-Archive/common final NOT READY `eabee22`, Reviewed `284a4e8`, closes RV-3071 and leaves RV-3072 HELD with
-its second/final round exhausted. The archive integration stays separate from local-stage acceptance; its
-strict source-classification proposal is complete outside production for Owner disposition: 28/28 development
-expectations pass versus 14/28 before. Its only changed function preserves the frozen source command. Unknown
-and translated diagnostics refuse; native mount/layout qualification is pending. It is NOT ACCEPTED, with no third loop.
-Standalone accepted archive/common antecedents remain intact. The earlier combined branch `fm/044-stage-entry-integration` retains that held ancestry. This separate
-`fm/044-local-stage-current` starts at accepted A6fe35f5 and merges current main; it contains no archive_source
-or archive_check production implementation. Its local-stage composition remains unreviewed.
+B final NOT READY `99968f2`, Reviewed `eabbeef`, leaves RV-3092–RV-3094 P2 HELD after exhausted final rounds.
+Structural XML text/tails can corrupt blame, pending Shipped status and log proof. The outside structural
+validation proposal has 293/293 development checks versus 243/293 before, plus 538 real-read scenarios with
+zero write opens. Its five reader changes and pure validator preserve the frozen common contract and forty
+keys. The board asks for Owner disposition; no production repair, third verification or replacement finding.
 
-Owner confirms no SVN consumer has adopted shoalmark. Full protected acceptance remains held for authenticating
+Archive/common final NOT READY `eabee22`, Reviewed `284a4e8`, closes RV-3071 and leaves RV-3072 HELD after
+its final round. The outside strict-classification proposal has 28/28 development checks versus 14/28 before,
+changing only archive_source with the frozen command preserved. Unknown/translated diagnostics refuse;
+native layout qualification remains due. Archive activation awaits Owner disposition. The earlier combined
+`fm/044-stage-entry-integration` retains held archive ancestry and is not a local ready candidate.
+
+Owner confirms no SVN consumer adoption proof exists. Full protected acceptance waits for an authenticating
 consumer, recorded adoption and trial findings; held rulings return 20 October. Local CLI/board/init/install
-continues. P must make actual entry say its signature/author verification limit once per run and claim nothing
-more. Outside notice preview passes fourteen actual CLI cases. Tortoise preparation passes 58 expectations;
-fourteen retain an explicitly labelled downstream history hold, and no-seam evidence names its server request.
-Prepared helpers are neither production nor accepted complete entry behavior.
-
-P owns main/configure/lint, aggregate suites, canonical records and serial composition under `1b48e22`.
-Every parent allowlist reduction must survive composition. RV-3098–RV-3099 reserve P's independent critical
-integration scope. Protected-request selection/past-policy proof, native/full CI and actual release remain
-held or due; no policy baseline, authority substitute or changed rights is introduced. Codex covers today's
-critical builds; Claude tomorrow. Push DISABLED; Owner fetches and pushes.
+continues without a policy anchor, authority substitute, new rights or blanket ordinary-operation refusal.
+Native/full CI, protected-request/past-policy proof and actual release remain held or due. Codex covers today's
+critical builds; Claude tomorrow. Push DISABLED; Owner fetches, pushes and opens/merges PRs.
 
 ## Why
 
@@ -110,6 +109,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-13 21:30 CEST | A caller final READY `4ab9341` closes RV-3096; ordinary local composition retains its exact functions and all parent reductions, leaving 28 keys. Actual local runtime 527/527 and unchanged core 303/303 pass. P critical review remains next; exhausted B/archive and protected-consumer holds remain. |
 | 2026-10-13 20:36 CEST | B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD with final rounds exhausted; disposition ask proposes holding the readers and preparing structural validation outside. A caller `43b5600` is in its separate critical review; C is locally composed. Archive final hold remains separate; local entry/notice work continues. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 19:48 CEST | R12 merged on current main `3cac843`; local entry branch incorporates it with generated INDEX, compile/core and affected R14 gate passing. A1/A2 critical READY closes RV-3089–RV-3091; B and C corrections/final reviews and archive final review continue. P prepares actual preflight/once limitation/Tortoise entries; protected acceptance stays held under Owner clarification. |

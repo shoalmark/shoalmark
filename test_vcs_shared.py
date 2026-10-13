@@ -192,7 +192,7 @@ def run_board_local_controls(fm, check):
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
             cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
-            check("A1: direct production CLI succeeds with no Git and unavailable server", cli.returncode == 0 and "file://" in cli.stdout and not cli.stderr)
+            check("A1: direct production CLI succeeds with no Git and unavailable server", cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held.\n")
             for scenario in ("malformed_xml", "failed_status"):
                 got = measured(root, search, scenario)
                 check(f"A1: injected unreadable query refuses before writes ({scenario})", got["code"] == 4 and "metadata could not be read" in got["err"] and board_snapshot(folder) == before and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))

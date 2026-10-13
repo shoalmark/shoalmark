@@ -17,55 +17,53 @@ is designed or built.
 
 ## What is true now
 
-**2026-10-13 — R12 merged; bounded common/A1/A2 accepted; remaining local work continues.**
-Current main `80b60c8` includes R12 READY `246ccdf`; its native/full CI status is not inferred solely from ancestry.
-RV-3040: recorded privately. #167/#168/#170/#171 remain merged. Common READY `ef77527` closes RV-3085–RV-3088;
-A1/A2 READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in their final round. Neither accepts full Stage1.
-Archive standalone READY `b2e5195` remains unchanged. Its later common integration is NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD with its final round exhausted. B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD after their final rounds; structural validation is prepared outside for disposition. C final READY `f59a1c1` closes RV-3095. P's notice/Tortoise/entry composition continues separately from held archive activation.
+**2026-10-13 — R12 merged; bounded components accepted; assembled local work goes to critical review.**
+Owner main `80b60c8` includes #167/#168/#170/#171 and R12 READY `246ccdf`; native/full CI is not inferred
+from ancestry. RV-3040: recorded privately. Common READY `ef77527` closes RV-3085–RV-3088; A1/A2 READY
+`6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091. A caller final READY `4ab9341`, Reviewed `7063dac`,
+closes RV-3096; RV-3097 is unused. C final READY `f59a1c1` closes RV-3095. Their acceptance is bounded to
+the named common, board/init/install, caller and CLI component scopes, not full Stage 1.
 
-Owner confirms no SVN consumer adoption proof exists. Full protected acceptance remains held for authenticating
-consumer, recorded adoption and trial findings, with held rulings20Oct. Local CLI/board/init/install continue,
-with the actual entry required to state its verification limit once and claim no authenticated author/signature.
-The canonical [ownership/API record](evidence/stage-dependent-ownership-2026-10-13.md) and
-[Builder brief](evidence/stage-1-builder-brief-2026-10-13.md) remain the tasking; no new authority/platform scope.
-
-The Owner's dispatch in the coordinating session, quoted as dispatch rather than a new signed policy answer:
+The Owner's coordinating-session dispatch remains:
 "Push URL stays DISABLED. Tell me when a branch is ready; I fetch from your clone and push."
 "R12's brief keeps SHOALMARK_CMD on the gate step (068c9e6) and adds a timeout to the Subversion install step."
 "R12 is critical: its Reviewer gets a session of its own."
 "Codex covers critical builds today, as ruled on 12 Oct; Claude takes over from tomorrow."
-Review IDs allocated to this dispatch: RV-3040–RV-3099; RV-3035–RV-3039 remain with the Auditor.
-Reservations: R12 3040–3054; records 3055–3069; archive 3070–3084; stage3085–3099 (3085–3088 now CLOSED in their final common verification round).
+Review IDs RV-3040–RV-3099 are allocated here; RV-3035–RV-3039 stay with the Auditor.
+Reservations remain R12 3040–3054, records 3055–3069, archive 3070–3084 and stage 3085–3099.
+RV-3098–RV-3099 reserve P's separate critical exact-head review. No exhausted finding receives a third round.
 
-| Rank / step | Work and seat | Estimate | What can stop it / next movable work |
+| Rank / step | Work and seat | Estimate | What stops it / next movable work |
 |---|---|---|---|
-| 1 | R12 READY `246ccdf` merged on `3cac843`; Owner/native CI evidence | Owner/CI evidence time | Any actual remaining CI failure; local archive/stage work continues. |
-| 2 | Archive standalone READY `b2e5195`; common integration HELD RV-3072 after final NOT READY `eabee22` | outside strict-classification preparation 30–60 min; Owner disposition wait | Two-round limit prevents another verification; local A/B/C/P work continues. |
-| 3a | A1/A2 READY `6fe35f5`; caller NOT READY `26606d3`, RV-3096 first-round correction | 20–40 Builder min plus 30–60 final Reviewer min | One final pass remains; if it fails this caller scope is held. Other local work continues. |
-| 3b | B readers HELD under RV-3092–RV-3094, final NOT READY `99968f2`; outside structural proposal | 30–60 Builder min outside; Owner disposition wait | Two-round limit prevents another verification; local components continue. |
-| 3c | C bounded CLI READY `f59a1c1`, RV-3095 CLOSED; P composes entries | component complete; P serial allowance below | Actual entry/native qualification remains due. RV-3003/RV-3004: recorded privately. |
-| 4 | P serial integration/reconciliation and independent critical exact-head review |0.5–1 Builder h wiring plus archive allowance above;1–2 review h | Concrete integration findings, incomplete public-entry proof or required CI; preserve every parent allowlist reduction. |
-| 5 | B1 conflict inventory complete; Claude takes design/site next day | future2–4 Builder h plus review/dependencies | Claude next-day availability and stage/archive qualification; no site code today. |
+| 1 | R12 READY `246ccdf` merged; Owner/CI supplies qualification evidence | evidence wait | Actual remaining CI failure; local stage work continues. |
+| 2 | Archive standalone READY `b2e5195`; common integration HELD RV-3072 at final NOT READY `eabee22`; outside strict-classification proposal complete | Owner disposition wait | Exhausted rounds; no third verification or production repair. Local work continues. |
+| 3a | A1/A2 and callers READY `6fe35f5` / `4ab9341`; ordinary local composition complete | complete | Component scopes remain bounded; P entry review is next. |
+| 3b | B readers HELD RV-3092–RV-3094 at final NOT READY `99968f2`; outside structural proposal complete | Owner disposition wait | Exhausted rounds; local entry work continues. |
+| 3c | C bounded CLI READY `f59a1c1`; actual main/preflight/Tortoise wiring assembled by P | build complete | Independent P review and native qualification remain due. |
+| 4 | P commits local assembly, independent ROOT critical Reviewer judges the exact head, P fixes/verifies any new finding | 15–30 Planner min; 1–2 Reviewer h | New concrete integration findings or required CI; keep every parent reduction and all held scopes. |
+| 5 | B1 read-only conflict inventory complete; Claude takes design/site tomorrow | future 2–4 Builder h plus review | Next-day staffing and stage/archive dependencies; no site code today. |
 
-These are seat hours, excluding Owner waits/CI. The updated common/A/B/C/P allowance is10.25–16.75 Builder seat hours
-before archive/integrated review; completed preparation and later critical corrections are stated separately. No full-stage
-finish today is promised. The current A1/A2 plus C composition retains 45 transitional starts; caller and P reductions await serial integration.
-A/B/C each remove only their migrated exact allowlist keys in the same commit; C owns scanner behavior, fixed ceiling and
-accepted boundary stay frozen, and P serially retains every parent's removals. No two seats edit the same shared function.
+These are seat estimates excluding Owner/CI waits, not a full-stage finish promise. The assembled local source
+`cc1d561f…` passes compile 0.639 s, unchanged core 303/303 in 43.334 s and runtime 527/527 with zero skips
+in 121.024 s. Nine adapted legacy SVN controls pass; five fail before. Every parent's allowlist removal is
+retained, leaving 28 transitional starts. The production boundary/scanner/ceiling and source/history proof
+limits remain frozen. Component-only source assertions stay in their accepted standalone modules; aggregate
+runtime checks and unchanged core cover composition. These build results are not P READY or full CI.
+RV-3003/RV-3004: recorded privately. Original source `7356d6e` and full task/proof remain private.
 
-The [guard contract](evidence/svn-guard-contract-2026-10-13.md) preserves existing bare-account author/answer-right/legacy
-meanings. No adopted committed consumer policy baseline is supplied; required protected acceptance conservatively refuses.
-Source HERE/archive provenance never provides consumer authority. B's first result/refusal adapter changes no rights or
-signature meaning. Selected SVN Git-hook CLI entries refuse with exit4; normal SVN `--check` remains its separate proof route.
-P places C's pure ordered preflight after final consumer binding/Tortoise normalization and before proof/message/deriver/write
-side effects. D3/D4 remain held; native/full CI and actual release qualification remain owed.
+Owner confirms no SVN consumer has adopted shoalmark. Full protected acceptance waits for authenticating
+consumer proof, recorded adoption and trial findings; held rulings return 20 October. Local entry says its
+signature/author verification limit once. Ordinary legacy-history-dependent controls explicitly use file://
+history without treating supplied account strings as authenticated authority. No new policy baseline, rights,
+source-HERE authority or blanket ordinary-operation refusal is introduced.
 
-RV-3003/RV-3004: recorded privately. Owner supplied original texts/controls from immutable private commit `7356d6e`;
-the missing-source stop is removed. Full tasking and proof stay private. The [inventory](evidence/stage-1-inventory-2026-10-13.md)
-and [B1 handoff](evidence/b1-conflict-handoff-2026-10-13.md) remain supporting preparation, not runtime acceptance.
-All reports use actual harness identities. Earlier stale trailers remain unchanged. Push URL stays DISABLED; Owner fetches,
-pushes, opens/merges PRs and eventually tags/releases. This updates the operational dispatch on the parked planning tracker,
-not its proposed planning feature. A wait never stops another ranked movable item.
+Archive and B outside proposals are development evidence for existing board disposition asks, not verdicts
+or authority to apply the held repairs. The canonical [ownership/API record](evidence/stage-dependent-ownership-2026-10-13.md)
+and [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md) remain the tasking. Protected-request/past-policy
+proof, native/full CI and release qualification remain held or due. All reports use actual identities; old
+stale trailers remain unchanged. Owner fetches/pushes/opens/merges and eventually tags; a wait never stops
+another ranked item that can move. This records operational dispatch on the parked planning tracker, not its
+proposed planning feature.
 
 ## Why
 

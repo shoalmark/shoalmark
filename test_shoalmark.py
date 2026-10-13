@@ -7311,26 +7311,34 @@ else:
               and (root / "docs/work-tracker/index.html").exists())
         contract = (root / "AGENTS.md").read_text(encoding="utf-8")
         check("S3 · the contract says the true thing for Subversion: run the tool before `svn commit` — its command line has no hook", "before every `svn commit`" in contract and "gate on every\ncommit" not in contract)
+        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
         svn("update", cwd=root); code, out, _ = run(root, "--install-hook")
-        props = {p_: svn("propget", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
+        props = {p_: svn("propget", "--strict", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
         again = run(root, "--install-hook")[1]
-        check("S2 · --install-hook wires what Subversion has: the two TortoiseSVN properties, by repository URL, four-line form — says the command line runs no hook, and is idempotent",
-              code == 0 and all(v.startswith("python %REPOROOT%/trunk/") and f"--tsvn-hook {k}\ntrue\nhide" in v.replace("\r", "") for (p_, k), v in zip(fm.TSVN_HOOKS.items(), props.values()))
-              and "runs no hook" in out and "set tsvn" not in again)
+        check("S2 · --install-hook wires the actual installed tool in the two repository-relative TortoiseSVN properties, command/true/hide form — says the command line runs no hook, and is idempotent",
+              code == 0 and all(v.splitlines()[1:] == ["true", "hide"] and v.endswith("\n")
+                                and shlex.split(v.splitlines()[0]) == ["python", "%REPOROOT%/trunk/tools/shoalmark/shoalmark.py", "--tsvn-hook", k]
+                                for (p_, k), v in zip(fm.TSVN_HOOKS.items(), props.values()))
+              and (root / "tools/shoalmark/shoalmark.py").is_file() and "runs no hook" in out and "set tsvn" not in again)
         svn("propset", "tsvn:precommithook", "wscript theirs.js\ntrue\nhide\n", ".", cwd=root)
         code, _, err = run(root, "--install-hook")
         check("S2 · a TortoiseSVN hook that is not ours is left alone, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "theirs.js" in svn("propget", "tsvn:precommithook", ".", cwd=root).stdout)
-        hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
-        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
+        paths = base / "affected-paths.txt"; message = base / "commit-message.txt"
+        paths.write_text(str(made) + "\n", encoding="utf-8"); message.write_text("Keep this commit message — unchanged.\n", encoding="utf-8")
+        message_bytes = message.read_bytes()
+        hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths),
+                                            *(["3"] if kind == "pre" else []), str(message), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
         hook("start")                                           # the vendored copy names its own command in INDEX.md — it writes it first
         ok = hook("pre"); made.write_text(made.read_text(encoding="utf-8").replace("status: Proposed", "status: Bogus"), encoding="utf-8"); bad = hook("pre")
         made.write_text(made.read_text(encoding="utf-8").replace("status: Bogus", "status: In Progress"), encoding="utf-8"); start = hook("start")
         check("S2 · called as TortoiseSVN calls it — from anywhere, with its own arguments — `pre` refuses a violation and `start` writes the INDEX.md the dialog will list",
-              ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "status" in bad.stdout + bad.stderr and start.returncode == 0 and "INDEX.md" in svn("status", cwd=root).stdout)
+              ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "status" in bad.stdout + bad.stderr and start.returncode == 0 and "INDEX.md" in svn("status", cwd=root).stdout
+              and message.read_bytes() == message_bytes)
         svn("propdel", "tsvn:precommithook", ".", cwd=root); svn("commit", "-m", "in Arbeit", cwd=root); svn("update", cwd=root); fm._SVN_LOG = None
         check("S1 · a pass's *last worked on* comes from `svn log` — one call for the whole directory", fm.last_worked_on(made) == datetime.date.today().isoformat() or re.fullmatch(r"\d{4}-\d\d-\d\d", fm.last_worked_on(made)))
-        # FM-008 · S4 · seats under Subversion: no signature to give and no client hook to run — the identity is the
-        # SERVER'S, read from `svn blame`, and the layer that refuses is the server's own pre-commit hook
+        # FM-008 · S4 · legacy account-string predicates on a local file:// fixture. Its --username strings
+        # authenticate nobody; these controls supply no consumer adoption or protected SVN acceptance.
+        svn_limit_ = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
         wt_ = root / "docs/work-tracker"
         for id_, who_, q_ in (("C2-002", "stranger", "Soll der Starter zuerst?"), ("C2-003", "principal", "Soll der Import zuerst?")):
             (wt_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nnext: owner\nask: "{q_}"\n'
@@ -7340,17 +7348,19 @@ else:
         cfg = (root / "shoalmark.toml").read_text(encoding="utf-8")
         (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
         code, _, err = run(root)
-        check("S4 · under Subversion the seat is the server's account: the ask committed by an account that is no seat is refused, naming it — and the one from the seat that holds `ask` passes",
+        check("S4 · the local file:// fixture compares untrusted account strings: the non-seat ask is refused by the legacy predicate, naming its string — the configured seat string passes that predicate",
               code == fm.EXIT_LINT and "C2-002: `next: owner` puts a question in front of the Owner" in err and "`stranger` is not a seat" in err
               and "--worktree user.email" not in err and "C2-003" not in err)
         (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal@example.org signed"\n', encoding="utf-8")      # a signed identity is an email (FM-024)
-        code, _, err = run(root)
-        check("S4 · `signed` under Subversion is refused as meaningless — the server authenticated the commit; name the account alone",
-              code == fm.EXIT_LINT and "asks for a signature, and Subversion has none to give" in err and "Name the SVN account alone" in err)
+        code, out, err = run(root)
+        check("S4 · a signed seat policy under Subversion is held, with the local verification limit stated exactly once",
+              code == fm.EXIT_LINT and "asks for a signature, and its signed policy is held under Subversion" in err
+              and (out + err).count(svn_limit_) == 1)
         (root / "shoalmark.toml").write_text('owner = "holgo@example.org signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
-        code, _, err = run(root)
+        code, out, err = run(root)
         check(f"S4 · RV-2200 · the Owner named at the top with `signed` under Subversion is refused as `owner`, never under `[seats]` (saw {err.strip()[-200:]!r})",
-              code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and Subversion has none to give" in err)
+              code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and its signed policy is held under Subversion" in err
+              and (out + err).count(svn_limit_) == 1)
         (root / "shoalmark.toml").write_text(cfg, encoding="utf-8")
         for id_ in ("C2-002", "C2-003"):
             (wt_ / f"{id_}-x.md").unlink()
@@ -14384,6 +14394,55 @@ for _label, _ok, _detail in test_tracker_text.run_checks(fm):
 
 import test_owner_exemption
 check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())
+
+# FM-044 bounded local-stage runtime controls. Component-only AST assertions
+# remain with their immutable standalone reviews; core retains the unchanged
+# production/every-parent history ratchet for this composed tool.
+import unittest as _stage_unittest
+import test_vcs_shared as _stage_shared
+import test_vcs_shared_callers as _stage_callers
+import test_vcs_cli as _stage_cli
+import test_vcs_entry as _stage_entry
+import test_git_entry_differential as _stage_git_entry
+
+_stage_svn = bool(shutil.which("svn") and shutil.which("svnadmin"))
+if _stage_svn:
+    _stage_shared.run_shared_controls(fm, check)
+else:
+    _skipped("FM-044 local board/init/install", 152, "svn and svnadmin unavailable")
+_stage_old_path = _stage_callers.baseline_source()
+_stage_old = _stage_callers.load(_stage_old_path)
+_stage_callers.git_controls(fm, _stage_old, check)
+if _stage_svn:
+    _stage_callers.svn_controls(fm, _stage_old, check)
+else:
+    _skipped("FM-044 SVN caller runtime", 9, "svn and svnadmin unavailable")
+if os.name == "nt":
+    _skipped("RV-3096 inherited deleted-directory runtime", 22,
+             "Windows prevents deleting an in-use current directory")
+elif _stage_svn:
+    _stage_callers.inherited_cwd_controls(fm, check)
+else:
+    _skipped("RV-3096 inherited-directory runtime", 22, "svn and svnadmin unavailable")
+fm.configure(HERE)
+for _stage_case in _stage_unittest.defaultTestLoader.loadTestsFromTestCase(_stage_cli.CliControls):
+    _stage_result = _stage_unittest.TestResult()
+    _stage_case.run(_stage_result)
+    _stage_label = "FM-044 CLI: " + _stage_case.id()
+    if _stage_result.skipped:
+        _skipped(_stage_label, 1, _stage_result.skipped[0][1])
+    else:
+        check(_stage_label, _stage_result.testsRun == 1 and _stage_result.wasSuccessful())
+        for _stage_test, _stage_detail in _stage_result.errors + _stage_result.failures:
+            print(_stage_detail)
+if _stage_svn:
+    _stage_entry.run_entry_controls(fm, check)
+else:
+    _skipped("FM-044 actual local entry", 162, "svn and svnadmin unavailable")
+_stage_git_baseline = _stage_callers.baseline_source("615fb1d1f58c0936e7d5aa2037e2b3a655e0f107")
+_stage_git_entry.run_git_entry_differentials(fm.__file__, _stage_git_baseline,
+                                           payload=_stage_git_baseline.parent, check=check)
+fm.configure(HERE)
 
 print()
 print(skipped_line())

@@ -1284,8 +1284,7 @@ def promisor_remotes():
     partial clone. A `promisor` that is false names none; an `extensions.partialClone` or a `partialclonefilter` names its remote, whatever it says."""
     if vcs() != "git":
         return []
-    r = subprocess.run(["git", "config", "-z", "--get-regexp", PROMISOR_KEYS], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                       env=nested_git_env())
+    r = vcs_process("git", "config", "-z", "--get-regexp", PROMISOR_KEYS, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if r.returncode == 1 and not r.stdout:
         return []                                       # none of the keys is set
     if r.returncode != 0:
@@ -1304,7 +1303,9 @@ def promisor_remotes():
 
 def git_version():
     """The git this run starts, as (major, minor) — one read-only call, `git version` — or None where its answer names no version."""
-    r = subprocess.run(["git", "version"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if vcs() != "git":
+        return None
+    r = vcs_process("git", "version", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     m = re.search(r"(\d+)\.(\d+)", r.stdout) if r.returncode == 0 else None
     return (int(m.group(1)), int(m.group(2))) if m else None
 
@@ -1349,6 +1350,8 @@ def specs_unread(specs):
     """Of `<rev>:<path>` specs git answered nothing for, those whose objects this clone does not hold — `git ls-tree` names the path at `rev`, or cannot
     read a tree on the way to it — as against a path `rev` does not have. One `git ls-tree` a revision, which reads trees and no file; [] where
     `unread_here` is not so: there, nothing answered is nothing there."""
+    if vcs() != "git":
+        return []
     if not unread_here():
         return []
     by_rev = {}
@@ -1357,8 +1360,7 @@ def specs_unread(specs):
         by_rev.setdefault(rev, []).append(path)
     out = []
     for rev, paths in by_rev.items():
-        r = subprocess.run(["git", "ls-tree", "-z", "--full-tree", rev, "--", *paths], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", env=nested_git_env())
+        r = vcs_process("git", "ls-tree", "-z", "--full-tree", rev, "--", *paths, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         held = {row.partition("\t")[2] for row in r.stdout.split("\x00") if row} if r.returncode == 0 else None
         out += [f"{rev}:{p}" for p in paths if held is None or p in held]
     return out
@@ -1864,8 +1866,9 @@ def recover_relations(trackers):
 def recover_from_log(need):
     """`recover_relations`' git work: {path relative to ROOT: tracker} — one `git log` for all of them, one `cat_blobs`
     batch per tracker for the commits that wrote its wanted answers' text."""
-    git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                                    errors="replace", env=nested_git_env())
+    if vcs() != "git":
+        return
+    git = lambda *a: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     # `-G ^answer:` anchored as `line_regex` anchors it; `--full-history` as `acted_on` has it — an answer written on a
     # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
     # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `cat_blobs` reads them;
@@ -1954,7 +1957,9 @@ def answer_refs():
     """What `on_their_way` reads of origin's answer branches, in one place: (the default branch by its full ref — `default_trunk`, asking no
     server — or None, and its one `git for-each-ref --no-merged` of `refs/remotes/origin/answer/` as git prints it, a `<branch>\\0<tip>` line
     each — "" where git fails). The board's basis reads the same (`board_basis`, FM-045)."""
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if vcs() != "git":
+        return None, ""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git, ask=False)               # the board asks no server
     if not trunk:
         return None, ""
@@ -1993,7 +1998,7 @@ def on_their_way(trackers):
     looked up, and every reading says *your merge is next*."""
     if vcs() != "git" or not trackers:
         return {}
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, refs = answer_refs()
     if not trunk:
         return {}
@@ -4517,7 +4522,7 @@ def built_on():
     a detached HEAD, under Subversion, or with no version control, and the screen then says it without a name."""
     if vcs() != "git":
         return ""
-    out = subprocess.run(["git", "branch", "--show-current"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "branch", "--show-current", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
@@ -4533,7 +4538,7 @@ def head_commit():
     wording only."""
     if vcs() != "git":
         return ""
-    out = subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "rev-parse", "--verify", "-q", "HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     sha = out.stdout.strip()
     return sha if out.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) else ""
 
@@ -4849,14 +4854,12 @@ def last_worked_on(path):
     `[sweep]` (a repair run over a few trackers must not make them look worked on)."""
     if vcs() == "svn":
         return svn_last_worked_on(path)
-    log = subprocess.run(["git", "log", "--format=%H %cs %s", "--", str(path)], cwd=ROOT,
-                         capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.splitlines()
+    log = vcs_process("git", "log", "--format=%H %cs %s", "--", str(path), cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.splitlines()
     for line in log:
         commit, day, subject = (line.split(" ", 2) + [""])[:3]
         if "[sweep]" in subject:
             continue
-        names = subprocess.run(["git", "show", "--name-only", "--ignore-submodules=none", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT).as_posix())],
-                               cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.split()
+        names = vcs_process("git", "show", "--name-only", "--ignore-submodules=none", "--format=", commit, "--", str(TRACKER_DIR.relative_to(ROOT).as_posix()), cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()).stdout.split()
         if len([n for n in names if KIND_RE.match(n.rsplit("/", 1)[-1])]) <= 8:
             return day
     return log[-1].split()[1] if log else "—"
@@ -4871,7 +4874,7 @@ def svn_last_worked_on(path):
     global _SVN_LOG
     if _SVN_LOG is None:
         import xml.etree.ElementTree as ET
-        out = subprocess.run(["svn", "log", "-v", "--xml", str(TRACKER_DIR)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        out = vcs_process("svn", "log", "-v", "--xml", str(TRACKER_DIR), capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=".")
         try:
             _SVN_LOG = [((e.findtext("date") or "")[:10], e.findtext("msg") or "", [x.text or "" for x in e.iter("path")])
                         for e in ET.fromstring(out.stdout).iter("logentry")] if out.returncode == 0 and out.stdout.strip() else []
@@ -4889,6 +4892,8 @@ def repos_naming():
     from git alone. For the worksheet only: eight `git log`s are too slow for a commit hook. A submodule that
     is not checked out is skipped — `git -C` on its empty directory would answer from the parent — and so is one whose path resolves outside the
     repository, symlinks resolved: no git runs there."""
+    if vcs() != "git":
+        return {}
     modules, found = ROOT / ".gitmodules", {}
     top = os.path.normcase(os.path.realpath(ROOT))
     for sub in re.findall(r"^\s*path\s*=\s*(\S+)", board_text(modules) or "", re.M):      # the reading rule
@@ -4896,8 +4901,7 @@ def repos_naming():
             continue
         if not (ROOT / sub / ".git").exists():
             continue
-        said = "".join(subprocess.run(["git", "-C", str(ROOT / sub), *cmd], capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                      env=nested_git_env()).stdout for cmd in (["log", "--all", "--format=%s %D"], ["branch", "-r"]))
+        said = "".join(vcs_process("git", "-C", str(ROOT / sub), *cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=".").stdout for cmd in (["log", "--all", "--format=%s %D"], ["branch", "-r"]))
         for kind, num in re.findall(r"\b(%s)[-/](\d+)\b" % "|".join(KINDS), said, re.I):
             found.setdefault(f"{kind.upper()}-{int(num):03d}", set()).add(sub.rsplit("/", 1)[-1])
     return {k: sorted(v) for k, v in found.items()}
@@ -8655,7 +8659,7 @@ def lint(trackers, committing=False):
     ids = {t["id"] for t in trackers}
     if vcs() == "svn" and any(mode == "signed" for ids in SEATS.values() for _who, mode in ids):
         problems.append(f'{CONFIG_NAME}: {", ".join("`owner`" if at_top(s) else f"`[seats] {s}`" for s in sorted(s for s in SEATS if any(mode == "signed" for _who, mode in SEATS[s])))} asks for a signature, and '
-                        f'Subversion has none to give: its server authenticates the commit. Name the SVN account alone')
+                        f'its signed policy is held under Subversion')
     # Any repository carrying `answerers` hears this — NOT only one that also has `[seats]`. Guarding it on both was
     # backwards: it spoke to the repositories part-way through the migration and stayed silent for the ones wholly on
     # the old key, which is the entire population the deprecation is for (FM-010).
@@ -9578,7 +9582,9 @@ def copy_files():
 def default_branch():
     """The repository's default branch as this clone last fetched it (`origin/HEAD`, else `origin/main`, else `origin/master`), read-only and
     asking no server — or None where it cannot be told."""
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if vcs() != "git":
+        return None
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git, ask=False)
     return ref_name(trunk).split("/", 1)[1] if trunk else None
 
@@ -9589,7 +9595,9 @@ def install_copy():
     where there is no pin — the tool runs from the repository's root, or from outside it — from the working tree's tool, and the first line says so. It also says which
     commit and branch it was taken from, and warns, without refusing, where that is not the default branch: the PIN it was checked against comes from the same tree, so a
     copy installed from another branch carries that branch's tool. Beside it, `COPY` records the command it was run with, for the copy's messages."""
-    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-common-dir"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if vcs() != "git":
+        return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
+    out = vcs_process("git", "-C", str(ROOT), "rev-parse", "--git-common-dir", capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=".")
     if out.returncode:
         return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
     target = (ROOT / out.stdout.strip()).resolve() / COPY_DIR
@@ -9846,11 +9854,12 @@ def config_file_problem():
     (`worktree_git_dirs`) as git reads them there — its own configuration included (`config.worktree`, under `extensions.worktreeConfig`), with its include
     settings — as the hooks folder is judged in every one. Where the settings of a worktree cannot be read — a file of its own configuration is not a
     regular file git can read (`config_file_unreadable`), or `git config` fails — that is the one line, naming the worktree and why."""
+    if vcs() != "git":
+        return ""
     trees = {top: fs_chain(top)[:1] for top in (os.path.normcase(t) for t in worktree_tops())}
     for folder, gitdir, own in worktree_git_dirs():
         why = next((w for w in map(config_file_unreadable, own) if w), "")
-        out = None if why else subprocess.run(["git", f"--git-dir={gitdir}", "config", "--list", "--show-origin", "-z"], cwd=ROOT, capture_output=True,
-                                                text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        out = None if why else vcs_process("git", f"--git-dir={gitdir}", "config", "--list", "--show-origin", "-z", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if out is not None and out.returncode:
             why = "; ".join(dict.fromkeys(l.strip() for l in out.stderr.splitlines() if l.strip())) or f"`git config` exits {out.returncode}"
         if why:
@@ -9910,7 +9919,7 @@ def install_hook():
     ours is never overwritten: it is named, with the line to add to it."""
     if vcs() == "svn":
         return install_hook_svn()
-    out = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks", capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=".")
     if out.returncode:
         print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT
@@ -10222,7 +10231,146 @@ def board_watchdog(board=True):
     timer.start()
 
 
-def main(argv=None):
+def tsvn_arguments(words, explicit_root=None, source_file=None):
+    """Return ordinary root/generation-or-check argv after local binding.
+
+    PATH is a UTF-8 path-list file; MESSAGEFILE is validated but never read.
+    CWD comes from Tortoise, not the launching process. No process or write.
+    Existing source/consumer configuration ambiguity is a refusal, not a rule
+    choosing or adopting either policy.
+    """
+    import os
+    import pathlib
+    import stat
+
+    def refuse(reason):
+        raise ValueError(reason)
+
+    if not isinstance(words, (list, tuple)) or not words:
+        refuse("missing Tortoise hook arguments")
+    kind, *fields = words
+    if kind == "start" and len(fields) == 3:
+        paths_name, message_name, cwd_name = fields
+    elif kind in ("start", "pre") and len(fields) == 4:
+        paths_name, depth, message_name, cwd_name = fields
+        if depth not in ("-2", "-1", "0", "1", "2", "3"):
+            refuse("invalid Tortoise depth")
+    else:
+        refuse("start needs PATH MESSAGEFILE CWD; pre needs PATH DEPTH MESSAGEFILE CWD")
+
+    def local_path(raw, kind=None, missing=False):
+        if not isinstance(raw, (str, os.PathLike)):
+            refuse("a binding path is not local text")
+        text = os.fspath(raw)
+        if not isinstance(text, str) or not text or "://" in text or any(ord(c) < 32 for c in text):
+            refuse("a binding path is not a local absolute path")
+        path = pathlib.Path(text)
+        if not path.is_absolute() or ".." in path.parts:
+            refuse("a binding path is not an absolute path without parent traversal")
+        if any(part in (".git", ".svn") for part in path.parts):
+            refuse("an administrative path cannot bind the consumer")
+        absent = False
+        for part in reversed((path, *path.parents)):
+            try:
+                mode = os.lstat(part).st_mode
+            except FileNotFoundError:
+                if not missing:
+                    refuse("a binding path is missing")
+                absent = True
+                continue
+            if absent:
+                refuse("a binding path has an unusable ancestor")
+            if stat.S_ISLNK(mode):
+                refuse("a binding path passes through a symlink")
+            if part != path and not stat.S_ISDIR(mode):
+                refuse("a binding path passes through a non-directory")
+        if not absent:
+            mode = os.lstat(path).st_mode
+            if kind == "file" and not stat.S_ISREG(mode):
+                refuse("a binding input is not a regular file")
+            if kind == "dir" and not stat.S_ISDIR(mode):
+                refuse("the affected directory is not a regular directory")
+            if kind is None and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                refuse("an affected path is not a regular local file or directory")
+        return path
+
+    cwd = local_path(cwd_name, "dir")
+    paths = local_path(paths_name, "file")
+    local_path(message_name, "file")                 # metadata only, never message contents
+    source = local_path(source_file or __file__, "file")
+
+    def wc_home(path):
+        start = path if path.is_dir() else path.parent
+        for parent in (start, *start.parents):
+            for marker in (".git", ".svn"):
+                try:
+                    info = os.lstat(parent / marker)
+                except FileNotFoundError:
+                    continue
+                if marker != ".svn" or not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
+                    refuse("the binding belongs to another or unreadable working copy")
+                return parent
+        refuse("the binding is not in a Subversion working copy")
+
+    wc = wc_home(cwd)
+    if wc_home(source) != wc:
+        refuse("the installed source and affected directory belong to different working copies")
+
+    def configs(start):
+        found = []
+        for parent in (start, *start.parents):
+            config = parent / "shoalmark.toml"
+            try:
+                mode = os.lstat(config).st_mode
+            except FileNotFoundError:
+                pass
+            else:
+                if not stat.S_ISREG(mode) or stat.S_ISLNK(mode):
+                    refuse("a consumer configuration is not a regular local file")
+                found.append(parent)
+            if parent == wc:
+                break
+        return found
+
+    affected_configs = configs(cwd)
+    candidates = [root for root in affected_configs if source.is_relative_to(root)]
+    if not candidates:
+        refuse("no consumer configuration contains the installed source and affected directory")
+    root = candidates[0]
+    if affected_configs[0] != root:
+        refuse("the affected directory names a different configured consumer")
+    if root == source.parent and len(candidates) > 1:
+        refuse("source and outer consumer configurations are ambiguous without an installation association")
+    if explicit_root is not None:
+        named = local_path(explicit_root, "dir")
+        if wc_home(named) != wc or not named.is_relative_to(root) or not configs(named) or configs(named)[0] != root:
+            refuse("the explicit root disagrees with the Tortoise consumer")
+
+    # Read through an opened regular descriptor, without following a final symlink.
+    before = os.lstat(paths)
+    fd = os.open(paths, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(fd, "rb") as stream:
+        current = os.fstat(stream.fileno())
+        if not stat.S_ISREG(current.st_mode) or (before.st_dev, before.st_ino) != (current.st_dev, current.st_ino):
+            refuse("the path-list input changed while it was bound")
+        raw = stream.read(1024 * 1024 + 1)
+    if len(raw) > 1024 * 1024:
+        refuse("the path-list input is too large to bind")
+    text = raw.decode("utf-8-sig")
+    lines = text.splitlines()
+    if not lines or any(not line for line in lines):
+        refuse("the path-list input is empty or incomplete")
+    for line in lines:
+        path = local_path(line, missing=True)
+        if not path.is_relative_to(cwd) or not path.is_relative_to(root) or wc_home(path) != wc:
+            refuse("an affected path lies outside the consumer or affected directory")
+    return ["--root", str(root)] + (["--check"] if kind == "pre" else [])
+
+
+SVN_VERIFY_LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+
+
+def main(argv=None, *, _notice=True):
     for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
@@ -10238,15 +10386,32 @@ def main(argv=None):
         if others:
             print(f"--html-only is the board's read-only run and stands alone, with --root: {', '.join(others)} goes with another run", file=sys.stderr)
             return 2
-        return board_run(args.root)
-    if args.tsvn_hook:
-        # TortoiseSVN starts a hook wherever it likes and appends PATH DEPTH MESSAGEFILE CWD: the repository is the
-        # one this copy of the tool lives in. `start` runs before the commit dialog lists its files, so the INDEX.md
-        # it writes is on the list; `pre` refuses the commit on a violation, the message in TortoiseSVN's error box.
-        configure(HERE)
-        args = parse_args(["--root", str(ROOT)] + ([] if args.tsvn_hook[0] == "start" else ["--check"]))
+        code = board_run(args.root)
+        if _notice and vcs() == "svn":
+            print(SVN_VERIFY_LIMIT, file=sys.stderr)
+        return code
+    tortoise = bool(args.tsvn_hook)
+    if tortoise:
+        try:
+            args = parse_args(tsvn_arguments(args.tsvn_hook, args.root, __file__))
+        except (ValueError, OSError, UnicodeError) as error:
+            print(f"--tsvn-hook: {error} — nothing is written" + (" — " + SVN_VERIFY_LIMIT if _notice else ""), file=sys.stderr)
+            return EXIT_LINT
     if args.root:
         configure(args.root)
+    if tortoise:
+        try:
+            svn_local_directory(".")                      # A's validated local WC binding, never a server read
+        except (SvnUnreadable, OSError) as error:
+            print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written" + (" — " + SVN_VERIFY_LIMIT if _notice else ""), file=sys.stderr)
+            return EXIT_LINT
+    diagnostic, code = cli_preflight(args, vcs()) if vcs() == "svn" else (None, EXIT_OK)
+    limitation = SVN_VERIFY_LIMIT if _notice and vcs() == "svn" else ""
+    if diagnostic is not None:
+        print(diagnostic + (" — " + limitation if limitation else ""), file=sys.stderr)
+        return code
+    if limitation:
+        print(limitation, file=sys.stderr)
     owner_refused = owner_signature_problems() if args.check else []
     for problem in owner_refused:
         print(problem, file=sys.stderr)
@@ -10371,7 +10536,7 @@ def main(argv=None):
             print("\n".join(["Superseded on this sheet by the later row — left as it is, the record of the earlier judgement:"] + [f"  {l}" for l in superseded]))
         if errors:
             print("\n".join(["NOT applied — fix the Verdict cell and run again:"] + [f"  {e}" for e in errors]), file=sys.stderr)
-        refreshed = main(["--root", str(ROOT)]) if applied else EXIT_OK   # INDEX.md and the board print what was applied — refresh them
+        refreshed = main(["--root", str(ROOT)], _notice=False) if applied else EXIT_OK   # INDEX.md and the board print what was applied — refresh them
         return EXIT_LINT if errors else refreshed                        # a pass that leaves the ledger failing its gate does not exit 0
     if args.related:
         for score, t in related_trackers(trackers, args.related):
@@ -10390,7 +10555,7 @@ def main(argv=None):
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
     global _ASK_ORIGIN
     _ASK_ORIGIN = (mode in ("check", "write") and not args.print_written and vcs() == "git"       # `--check`, or the default run, on a clean tree: the
-                   and not worktree_edited(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                   and not worktree_edited(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                                                                      errors="replace", env=nested_git_env())))      # runs that walk the branch's commits — no hook's (v0.19.1)
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
@@ -10432,10 +10597,11 @@ def main(argv=None):
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
-        print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
-        if _WALK == "":                                     # v0.19.1: no default branch to read the branch's commits since
+        if vcs() == "git":
+            print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
+        if vcs() == "git" and _WALK == "":                                     # v0.19.1: no default branch to read the branch's commits since
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
-        elif _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
+        elif vcs() == "git" and _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
             print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
         frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
         if frozen:
