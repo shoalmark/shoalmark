@@ -47,6 +47,10 @@ its non-Git `git_dirs` integration is preserved semantically, and eventual `arch
 `source=True`. The [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md), D3/D4 holds and R14/R25/R26 remain
 retained. Dependent seats start only after independent critical skeleton review; this Builder supplies no verdict.
 
+Current-main records at `ab7ed3f` (#168) are integrated locally before the critical handoff. Every product/test/configuration
+blob remains identical to the tested dispatch `6f00764`; FM-004 retains its command-applied P1 #2 build judgement and
+main's exact signed Part B/exchange, with main's FM-043 records retained. No dependent product branch is integrated.
+
 **2026-10-13 — filing recovered; no stage-1 build was supplied by the recovery.** This replacement carries the filing
 reviewed at `99050b9`, with RV-2735–RV-2737 corrected. The signed 12 October R23 lifts the hold for stage 1:
 Subversion with no git installed, including the release archive and its pending scoped re-review. FM-023 allocates
@@ -105,3 +109,4 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 | 2026-10-13 | Filing recovered from `99050b9` on current main; RV-2735–RV-2737 fixed, acceptance bounded to signed R23 and FM-023, records review next. |
 | 2026-10-13 | FM-044 common-layer neutral refactor: only git_out/svn_run launch mechanics moved behind vcs_process. Immutable-parent/refactor wrapper contracts and real Git/SVN positive/refusal fixtures pass; compile and test_core pass; metadata dispatch, ratchet, independent critical review and dependent migrations remain due. |
 | 2026-10-13 | FM-044 bounded skeleton dispatch built after neutral refactor 4f1664d: cached ROOT selection, no-process SVN metadata, fail-closed administrative paths and constrained target/source process requests. Compile and 243 core checks pass; 63 retained direct starts and exact scanner/proof limits declared. Independent critical review next; dependent migrations, archive integration, CI and platform decisions remain due. |
+| 2026-10-13 | Integrated only immutable current-main #168 records at ab7ed3f by ordinary local merge before the critical handoff, retaining the exact 6f00764 product blobs, command-applied FM-004 judgement, main's signed records and FM-044 implementation evidence; INDEX regenerated. |
