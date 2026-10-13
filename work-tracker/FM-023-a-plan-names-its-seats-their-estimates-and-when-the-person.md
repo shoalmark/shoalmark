@@ -17,7 +17,7 @@ is designed or built.
 
 ## What is true now
 
-**2026-10-13 — R12 merged; bounded components accepted; assembled local work goes to critical review.**
+**2026-10-13 — R12 merged; bounded components accepted; P first review NOT READY; correction goes to final verification.**
 Owner main `80b60c8` includes #167/#168/#170/#171 and R12 READY `246ccdf`; native/full CI is not inferred
 from ancestry. RV-3040: recorded privately. Common READY `ef77527` closes RV-3085–RV-3088; A1/A2 READY
 `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091. A caller final READY `4ab9341`, Reviewed `7063dac`,
@@ -31,7 +31,10 @@ The Owner's coordinating-session dispatch remains:
 "Codex covers critical builds today, as ruled on 12 Oct; Claude takes over from tomorrow."
 Review IDs RV-3040–RV-3099 are allocated here; RV-3035–RV-3039 stay with the Auditor.
 Reservations remain R12 3040–3054, records 3055–3069, archive 3070–3084 and stage 3085–3099.
-RV-3098–RV-3099 reserve P's separate critical exact-head review. No exhausted finding receives a third round.
+P first critical verdict `62ecf9c`, Reviewed `de17860`, requires the RV-3098 consumer-binding correction.
+The correction is built; the same independent ROOT owes the one remaining final verification.
+RV-3099: recorded privately
+No exhausted finding receives a third round.
 
 | Rank / step | Work and seat | Estimate | What stops it / next movable work |
 |---|---|---|---|
@@ -40,16 +43,18 @@ RV-3098–RV-3099 reserve P's separate critical exact-head review. No exhausted 
 | 3a | A1/A2 and callers READY `6fe35f5` / `4ab9341`; ordinary local composition complete | complete | Component scopes remain bounded; P entry review is next. |
 | 3b | B readers HELD RV-3092–RV-3094 at final NOT READY `99968f2`; outside structural proposal complete | Owner disposition wait | Exhausted rounds; local entry work continues. |
 | 3c | C bounded CLI READY `f59a1c1`; actual main/preflight/Tortoise wiring assembled by P | build complete | Independent P review and native qualification remain due. |
-| 4 | P commits local assembly, independent ROOT critical Reviewer judges the exact head, P fixes/verifies any new finding | 15–30 Planner min; 1–2 Reviewer h | New concrete integration findings or required CI; keep every parent reduction and all held scopes. |
+| 4 | P commits the first-pass correction, then the same independent ROOT performs final verification | 10–20 Planner min; 30–60 Reviewer min | New concrete integration findings or required CI; keep every parent reduction and all held scopes. |
 | 5 | B1 read-only conflict inventory complete; Claude takes design/site tomorrow | future 2–4 Builder h plus review | Next-day staffing and stage/archive dependencies; no site code today. |
 
-These are seat estimates excluding Owner/CI waits, not a full-stage finish promise. The assembled local source
-`cc1d561f…` passes compile 0.639 s, unchanged core 303/303 in 43.334 s and runtime 527/527 with zero skips
-in 121.024 s. Nine adapted legacy SVN controls pass; five fail before. Every parent's allowlist removal is
-retained, leaving 28 transitional starts. The production boundary/scanner/ceiling and source/history proof
-limits remain frozen. Component-only source assertions stay in their accepted standalone modules; aggregate
-runtime checks and unchanged core cover composition. These build results are not P READY or full CI.
-RV-3003/RV-3004: recorded privately. Original source `7356d6e` and full task/proof remain private.
+These are seat estimates excluding Owner/CI waits, not a full-stage finish promise. The first P verdict
+is NOT READY. The corrected local source `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe` passes
+compile 0.782 s, unchanged core 303/303 in 52.394 s and the exact new aggregate wiring
+619/619 with zero skips in 151.345 s. Seven required source-binding refusal controls
+fail before the three-line correction and pass after; current wiring includes 92 binding controls.
+Every parent's allowlist removal remains, leaving 28 starts. Boundary/scanner/ceiling/source/history
+proof limits remain frozen; held B and archive implementations stay excluded. These build checks are
+neither final P READY nor full CI. Component verdicts and their limits remain unchanged.
+RV-3003/RV-3004: recorded privately
 
 Owner confirms no SVN consumer has adopted shoalmark. Full protected acceptance waits for authenticating
 consumer proof, recorded adoption and trial findings; held rulings return 20 October. Local entry says its
@@ -235,6 +240,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 19:48 CEST | Current-main fetch confirms R12 READY merged at `3cac843`; A1/A2 independently READY `6fe35f5`. B/C corrections and archive final verification continue; local P/Tortoise entry work proceeds through those waits. No adopted SVN consumer exists; protected acceptance/trial holds return20Oct. |
 | 2026-10-13 18:18 CEST | RV-3057 P3 fixed forward: archive records READY `b2e5195` replaces the stale running-review paragraph and rank-2 row; inherited common records READY `84c8a6b` needs no re-pass. Serial integration and CI/release holds remain. |

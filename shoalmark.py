@@ -10339,6 +10339,9 @@ def tsvn_arguments(words, explicit_root=None, source_file=None):
     root = candidates[0]
     if affected_configs[0] != root:
         refuse("the affected directory names a different configured consumer")
+    source_configs = configs(source.parent)
+    if not source_configs or source_configs[0] != root:
+        refuse("the installed source names a different configured consumer")
     if root == source.parent and len(candidates) > 1:
         refuse("source and outer consumer configurations are ambiguous without an installation association")
     if explicit_root is not None:

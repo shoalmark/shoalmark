@@ -13478,10 +13478,16 @@ def _adopt_pins(read, tag_tool):
                    **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
 
 
+def _adopt_pin_hint(ok, seen):
+    if not ok and "the head's shoalmark.py (no such tag here)" in seen:
+        return " — the named tag is not held here; run `git fetch --tags` and check again"
+    return ""
+
+
 _at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
 _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
 check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
-      f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
+      f"blob, where the tag is here; the head's before it (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw), _pins_ok)
 _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
 _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
              ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
@@ -13509,6 +13515,16 @@ for _number, _documents, _expected in (
         (4, {**_fixture_docs, "ADOPT.de.md": _fixture_docs["ADOPT.de.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False)):
     _result, _observed = _adopt_pins(_documents.__getitem__, lambda _tag: None)
     check("RV-3003/RV-3004: recorded privately", _result == _expected)
+
+_fixture_changed = {**_fixture_docs, "shoalmark.py": _fixture_tool + b"# another change\n"}
+for _documents, _tags, _expected, _hinted in (
+        (_fixture_changed, lambda tag: _fixture_tool if tag == "v0.19.2" else None, False, True),
+        (_fixture_docs, lambda tag: _fixture_tool if tag == "v0.19.2" else None, True, False),
+        ({**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)},
+         lambda tag: _fixture_tool, False, False)):
+    _result, _observed = _adopt_pins(_documents.__getitem__, _tags)
+    check("RV-3003/RV-3004: recorded privately", _result == _expected
+          and ("git fetch --tags" in _adopt_pin_hint(_result, _observed)) == _hinted)
 
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
@@ -14276,9 +14292,11 @@ def _ci_declared_checks(source, powershell=False):
             multiplicity = rows if isinstance(node.iter, ast.Name) and node.iter.id == "rows" else size(node.iter, {})
             if any(isinstance(part, (ast.If, ast.For, ast.While)) for part in node.body):
                 raise ValueError("the CI regression count is conditional")
-            count += multiplicity * sum(appends(part) for part in node.body)
+            if any(emits(part) for part in node.orelse):
+                raise ValueError("the CI regression count is conditional")
+            count += multiplicity * outputs(node.body, {})
         else:
-            count += int(appends(node))
+            count += outputs([node], {})
     return count + helper("_ci_install_failures") + helper("_ci_classifier_failures")
 
 
@@ -14336,9 +14354,39 @@ def _ci_declaration_controls(source):
     return results
 
 
+def _ci_regression_declaration_controls(source):
+    import ast
+    results = []
+    for shape in ("certain", "unknown", "loop-else", "nested-method"):
+        tree = ast.parse(source)
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_wf_regressions")
+        if shape in ("certain", "unknown"):
+            statement = ast.parse("if True:\n    out.append(('control', True))").body[0]
+            if shape == "unknown":
+                statement.test = ast.Name(id="unknown_condition", ctx=ast.Load())
+            function.body.insert(-1, statement)
+        else:
+            loop = next(node for node in function.body if isinstance(node, ast.For)
+                        and isinstance(node.iter, ast.Name) and node.iter.id == "rows")
+            if shape == "loop-else":
+                loop.orelse.append(ast.parse("out.append(('control', True))").body[0])
+            else:
+                loop.body.append(ast.parse("with context():\n    out.extend([('control', True)])").body[0])
+        try:
+            _ci_declared_checks(ast.unparse(ast.fix_missing_locations(tree)))
+        except ValueError:
+            results.append(True)
+        else:
+            results.append(False)
+    return results
+
+
 for _result in _ci_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
     check("RV-3003/RV-3004: recorded privately", _result)
 
+
+for _result in _ci_regression_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
+    check("RV-3099: recorded privately", _result)
 
 if not _CI_BASH:
     _skipped("FM-032 · ci.yml's tiers and time zones", _ci_declared_checks(_CI_SOURCES["test_shoalmark.py"], powershell=bool(shutil.which("pwsh"))), "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
@@ -14404,6 +14452,7 @@ import test_vcs_shared_callers as _stage_callers
 import test_vcs_cli as _stage_cli
 import test_vcs_entry as _stage_entry
 import test_git_entry_differential as _stage_git_entry
+import test_tsvn_source_binding as _stage_binding
 
 _stage_svn = bool(shutil.which("svn") and shutil.which("svnadmin"))
 if _stage_svn:
@@ -14442,6 +14491,10 @@ else:
 _stage_git_baseline = _stage_callers.baseline_source("615fb1d1f58c0936e7d5aa2037e2b3a655e0f107")
 _stage_git_entry.run_git_entry_differentials(fm.__file__, _stage_git_baseline,
                                            payload=_stage_git_baseline.parent, check=check)
+if all(shutil.which(_name) for _name in ("git", "svn", "svnadmin")):
+    _stage_binding.run_source_binding_controls(fm.__file__, check, payload=HERE)
+else:
+    _skipped("FM-044 Tortoise source binding", 92, "Git fixture setup or svn/svnadmin unavailable")
 fm.configure(HERE)
 
 print()

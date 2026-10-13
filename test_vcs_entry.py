@@ -32,6 +32,7 @@ def actual_entry(spec):
     """Observe product calls without replacing a handler or a process result."""
     tool = str(Path(spec["tool"]).resolve())
     events, phases, bindings, main_calls, returns, normalized = [], [], [], [], [], []
+    preflight_calls, binding_metadata = [], []
     active = [True]
     # Import descriptor helpers before the product can arm its import tripwire.
     if sys.platform == "darwin":
@@ -94,6 +95,10 @@ def actual_entry(spec):
             return
         name = frame.f_code.co_name
         if event == "call":
+            if name == "cli_preflight":
+                preflight_calls.append({"root": str(frame.f_globals.get("ROOT"))})
+            if name == "configs":
+                binding_metadata.append(str(frame.f_locals.get("start")))
             if name == "main":
                 main_calls.append({"argv": frame.f_locals.get("argv"), "notice": frame.f_locals.get("_notice")})
             if name in ("load_trackers", "run_deriver", "lint", "board_run", "svn_last_worked_on", "ship_problems"):
@@ -119,6 +124,7 @@ def actual_entry(spec):
         sys.setprofile(None); active[0] = False
         print(MARKER + json.dumps({"events": events, "phases": phases, "bindings": bindings,
               "main_calls": main_calls, "main_returns": returns, "normalized": normalized,
+              "preflight_calls": preflight_calls, "binding_metadata": binding_metadata,
               "exception": exception, "git_absent": shutil.which("git") is None}), file=sys.stderr)
     raise SystemExit(code)
 

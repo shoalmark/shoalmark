@@ -18,7 +18,7 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-13 — bounded common/A/C and callers accepted; P local entry assembled, critical review next.**
+**2026-10-13 — bounded common/A/C and callers accepted; P first review NOT READY; correction built, final verification next.**
 Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
 AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;
@@ -38,20 +38,28 @@ index/check/triage controls explicitly use available file:// history; their untr
 no authentication or adoption. Recursive applied triage prints the limitation once. Git retains its actual
 mixed-flag ordering, origin-selection probe, process options and cleaned foreign hook environment.
 
-Exact production source SHA-256 `cc1d561f2dc6196a6f55e3ce0d45c9b91b790444b3fd512ef5939c1a6160fb98`
-passes changed-Python compile (0.639 s), unchanged core 303/303 (43.334 s), and the assembled runtime group
-527/527 with zero skips (121.024 s). Development entry controls contrast 140/162 on immutable pre-entry source
-with 162/162 after; complementary Git controls contrast 120/122 before the ordered-preflight correction with
-122/122 after. The adapted nine legacy SVN controls pass, with five required failures before; their existing
-result predicates remain. These are local build checks, not an independent P verdict or native CI qualification.
+Independent first P critical NOT READY `62ecf9c`, Reviewed `de17860`, records RV-3098 P2.
+The installed tool now validates its complete configuration chain against the affected directory's
+consumer before metadata queries, PATH contents, tracker/proof reads or writes. Seven identical
+refusal controls fail on the reviewed source and pass with the three-line correction; six legitimate
+bindings retain START/PRE, explicit root/subroot and once-only notice behavior. The portable current
+binding group adds 92 controls. Its observer adds measurements, without replacing handlers or results.
+
+Exact corrected production SHA-256 `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe`
+passes changed-file compile (0.782 s), unchanged core 303/303 (52.394 s), and actual current
+aggregate runtime 619/619 with zero skips (151.345 s), including the new binding group.
+These are Planner build checks; the same independent ROOT owes the sole remaining final P verification.
+Earlier actual entry/Git/legacy evidence stays attached to its exact source and scope; no native/full CI
+qualification or independent P READY is inferred from this run.
 Component-only source assertions remain in their standalone accepted modules; the aggregate runs actual shared,
 caller, C and entry controls, and unchanged core retains the production/every-parent history ratchet.
 
 Composition preserves every parent's removal: 45 and 44 keys intersect to 29, and P's one migrated main call
 removes the final exact key to 28. Common boundary/cache/source/history semantics, scanner, fixed ceiling,
 digests and source-command options remain frozen. No held B reader or archive-source/check implementation is
-imported. P's separate critical exact-head review reserves RV-3098–RV-3099; local composition is not READY yet.
-RV-3003/RV-3004: recorded privately.
+imported. RV-3098 is corrected for final verification; local composition remains NOT READY until that verdict.
+RV-3099: recorded privately
+RV-3003/RV-3004: recorded privately
 
 B final NOT READY `99968f2`, Reviewed `eabbeef`, leaves RV-3092–RV-3094 P2 HELD after exhausted final rounds.
 Structural XML text/tails can corrupt blame, pending Shipped status and log proof. The outside structural
@@ -109,6 +117,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 21:30 CEST | A caller final READY `4ab9341` closes RV-3096; ordinary local composition retains its exact functions and all parent reductions, leaving 28 keys. Actual local runtime 527/527 and unchanged core 303/303 pass. P critical review remains next; exhausted B/archive and protected-consumer holds remain. |
 | 2026-10-13 20:36 CEST | B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD with final rounds exhausted; disposition ask proposes holding the readers and preparing structural validation outside. A caller `43b5600` is in its separate critical review; C is locally composed. Archive final hold remains separate; local entry/notice work continues. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
