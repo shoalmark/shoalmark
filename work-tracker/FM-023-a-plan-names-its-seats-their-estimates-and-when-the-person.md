@@ -4,17 +4,10 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: build
+next: wait
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you accept the release allocation below: R14 first and in v0.20.0, then R12, the bounded stage-1/archive release, and the named follow-up releases?"
-ask-kind: ruling
-ask-since: 2026-10-12
-ask-proposal: "Accept the allocation below, with trial findings taking priority and every release conditional on its required acceptance"
-answer: "accepted - with a change: B1, the landing, ships with v0.20.1, so that the probe starts from the published site; v0.20.1 carries B1, the probe's final prompt and what its first outside run needs; rows that put its date at risk move to v0.20.2"
-answered: 2026-10-12
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -23,6 +16,35 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-13 — the dispatched day's path.** v0.19.4 and its records close-out merged in #165/#166; R14 is shipped.
+The release-allocation answer of 12 October is applied to today's briefs: R12 first, bounded stage 1/archive next,
+and B1 with the final probe prompt and first outside-run needs in v0.20.1. This is an operational plan on the existing
+parked planning tracker, not a build of its proposed planning feature. Trial blockers take precedence when evidenced.
+
+The Owner's dispatch in the coordinating session, quoted as dispatch rather than a new signed policy answer:
+"Push URL stays DISABLED. Tell me when a branch is ready; I fetch from your clone and push."
+"R12's brief keeps SHOALMARK_CMD on the gate step (068c9e6) and adds a timeout to the Subversion install step."
+"R12 is critical: its Reviewer gets a session of its own."
+"Codex covers critical builds today, as ruled on 12 Oct; Claude takes over from tomorrow."
+Review IDs allocated to this dispatch: RV-3040–RV-3099; RV-3035–RV-3039 remain with the Auditor.
+Reservations: R12 3040–3054; records 3055–3069; archive 3070–3084; 3085–3099 reserve.
+
+| Order | Work | Seat | Initial estimate | Stop condition / next available move |
+|---|---|---|---|---|
+| 1 | Apply signed answers and reconcile today's judgement | Planner; one records Reviewer pass | 20–30 min | A contradiction needs an Owner ruling; independent records work continues. |
+| 2 | R12: Ubuntu/3.9 records gate, four truthful pass-throughs, retained command and bounded SVN installs | Codex Builder; separate root critical Reviewer | 1–2 h build; 30–45 min review | Unresolved critical findings or CI after the Owner pushes; advance the filing/archive meanwhile. |
+| 3 | FM-044: fresh-main bounded filing, then build judgement | Records Builder; Reviewer; Planner; Owner merges | 45–75 min | Owner replacement merge precedes implementation; analysis and archive preparation continue. |
+| 4 | Bounded SVN-without-git skeleton and dependent slices | Research/Planner brief; critical Builders; separate Reviewer | 45–60 min preparation; initial implementation estimate 4–8 h | Filing merge/judgement; no wider plain-folder or platform-proof scope inferred. |
+| 5 | Release archive: scoped source port, controls and dry run | Critical Builder; separate root Reviewer | 1–2 h | Integration/review findings or actual release qualification; no local release claim. |
+| 6 | Apply #154's signed RV-2734 wording and Part B allocation | Records Builder; Reviewer | 40–60 min | Records findings; signed wording is already supplied. |
+| 7 | Recover FM-043's historical upgrade filing | Records Builder; Reviewer | 35–55 min | Freshly verified adopter need determines any later implementation. |
+| 8 | B1 conflict inventory for v0.20.1 handoff | Planner/Research; Claude takes design/site implementation | 30–45 min preparation | Claude's next-day availability and stage/archive qualification; no site build today. |
+| 9 | Final heads, branch checks and local fetch-ready lines | Planner | 20–30 min | Pending checks/verdicts; only the Owner pushes and merges. |
+
+All estimates are seat time, excluding the Owner's merges and CI. No wait on an answer, verdict or merge stops another
+movable item. Every new session configures its actual harness identity before committing; the interruption's existing
+commits remain unchanged. Current local base: `e7ce074`; push URL remains `DISABLED`.
 
 **2026-10-12 — release allocation for the Owner's sitting.** This proposal replaces the earlier dated release allocation; it adds no planning feature or process. The product proposal on this Parked tracker remains parked. R14's first priority and v0.20.0 inclusion come from the Owner's update, not from an unanswered Planner proposal. Signed scope is in [the rulings](evidence/rulings-2026-10-12.md); only the remaining allocations are offered for their decision. S/M are scope sizes. The known requirement is Subversion without git; no other trial scope is inferred.
 
@@ -234,6 +256,13 @@ table is the readable copy, and the gate can check the two agree on the step key
 The Owner has ruled which candidate, if any; the chosen one prints *who is needed, when, for what* on the board and in
 the digest, from a plan written before the work, updated by each seat's report and closed with the actual; and one full
 arc has run on it with its estimate–actual gap in the record.
+
+## Asks
+
+**2026-10-12** · Do you accept the release allocation below: R14 first and in v0.20.0, then R12, the bounded stage-1/archive release, and the named follow-up releases?
+**answered** — accepted - with a change: B1, the landing, ships with v0.20.1, so that the probe starts from the published site; v0.20.1 carries B1, the probe's final prompt and what its first outside run needs; rows that put its date at risk move to v0.20.2 · holgo99
+**relation** — accepted with a change
+**signed** — adaec88 · G
 
 ## Ship log
 
