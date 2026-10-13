@@ -24,8 +24,9 @@ HERE = Path(__file__).resolve().parent
 STATUS = ["svn", "status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", "--xml"]
 
 
-def load_tool():
-    spec = importlib.util.spec_from_file_location("shared_tool", HERE / "shoalmark.py")
+def load_tool(source=None):
+    source = source or os.environ.get("SHOALMARK_SHARED_SOURCE") or HERE / "shoalmark.py"
+    spec = importlib.util.spec_from_file_location("shared_tool", source)
     tool = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(tool)
     return tool
@@ -50,6 +51,19 @@ def probe(root, scenario):
     fm = load_tool()
     tempfile.gettempdir()                           # fixture initializes stdlib's one-time temporary-directory probe before measurement
     operation = "--html-only"
+    correction = json.loads(scenario[len("corrective:"):]) if scenario.startswith("corrective:") else None
+    completed = []
+    if correction is not None:
+        original = fm.vcs_process
+        def corrected_query(program, *args, **options):
+            if program == "svn" and args == tuple(STATUS[1:]) and correction.get("cwd"):
+                options["cwd"] = correction["cwd"]
+            if program == "svn" and args[:1] == (correction.get("xml_command"),):
+                return subprocess.CompletedProcess([], 0, correction["xml"].encode(), b"")
+            result = original(program, *args, **options)
+            completed.append([program, list(args), str(options.get("cwd")), result.returncode])
+            return result
+        fm.vcs_process = corrected_query
     if scenario.startswith("setup:"):
         _, mode, *fault = scenario.split(":")
         operation = "--init" if mode == "init" else "--install-hook"
@@ -83,13 +97,25 @@ def probe(root, scenario):
     try:
         with redirect_stdout(out), redirect_stderr(err):
             try:
-                code = fm.main(["--root", str(root), operation])
+                if correction is not None and correction.get("mode") == "properties":
+                    fm.configure(root)
+                    fm.svn_local_properties(correction.get("rel", "."))
+                    code = 0
+                elif correction is not None and correction.get("mode") == "install":
+                    code = fm.main(["--root", str(root), "--install-hook"])
+                elif correction is not None:
+                    code = fm.board_run(root)
+                else:
+                    code = fm.main(["--root", str(root), operation])
+            except fm.SvnUnreadable as e:
+                code = 4
+                print(str(e), file=sys.stderr)
             except SystemExit as e:
                 code = e.code
     finally:
         active[0] = False
     print(json.dumps({"code": code, "out": out.getvalue(), "err": err.getvalue(), "events": events,
-                      "git_absent": shutil.which("git") is None, "svn_present": shutil.which("svn") is not None}))
+                      "git_absent": shutil.which("git") is None, "svn_present": shutil.which("svn") is not None, "completed": completed}))
 
 
 def command(root, *argv):
@@ -298,6 +324,7 @@ def run_board_local_controls(fm, check):
 def run_shared_controls(fm, check):
     run_board_local_controls(fm, check)
     run_svn_setup_controls(fm, check)
+    run_corrective_controls(fm, check)
 
 
 def run_svn_setup_controls(fm, check):
@@ -426,6 +453,116 @@ def run_svn_setup_controls(fm, check):
             check("A2: actual corrupt WC refuses init before the first scaffold byte", got["code"] == 4 and not (broken / "shoalmark.toml").exists() and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
     finally:
         fm.configure(previous)
+
+
+def run_corrective_controls(fm, check):
+    """RV-3089/3090/3091: malformed local evidence never grants permission to overwrite."""
+    print("\nFM-044 A corrections: actual armed board and property-mutation observations")
+    if not (shutil.which("svn") and shutil.which("svnadmin")):
+        print("  SKIP A corrective real SVN fixtures: svn and svnadmin required")
+        return
+    with tempfile.TemporaryDirectory() as temp:
+        base = Path(temp).resolve(); server = base / "server"; root = base / "wc"; foreign = base / "foreign"; search = base / "bin"
+        command(base, "svnadmin", "create", str(server))
+        command(base, "svn", "checkout", "-q", server.as_uri(), str(root))
+        folder = corpus(root); (folder / "view").mkdir()
+        (folder / "index.html").write_bytes(b"versioned page\n")
+        (folder / "view" / "WORK-001.js").write_bytes(b"versioned view\n")
+        command(root, "svn", "add", "shoalmark.toml", "work-tracker")
+        command(root, "svn", "commit", "-qm", "immutable board fixture")
+        command(base, "svn", "checkout", "-q", server.as_uri(), str(foreign))
+        command(foreign, "svn", "delete", "work-tracker")
+        command(foreign, "svn", "commit", "-qm", "foreign WC has no versioned board")
+        (foreign / "foreign-marker").write_bytes(b"foreign status marker\n")
+        (root / "a" / "b").mkdir(parents=True); (foreign / "x" / "y" / "z").mkdir(parents=True)
+        (root / "a" / "b" / "escape").symlink_to(foreign / "x" / "y" / "z", target_is_directory=True)
+        cwd = str(root / "a" / "b" / "escape") + "/../../.."
+        assert os.path.abspath(cwd) == str(root) and Path(cwd).resolve() == foreign
+        search.mkdir(); (search / "svn").symlink_to(shutil.which("svn"))
+        setup = base / "setup"; command(base, "svn", "checkout", "-q", server.as_uri(), str(setup))
+        source = setup / "tools" / "shoalmark" / "shoalmark.py"; source.parent.mkdir(parents=True); source.write_bytes((HERE / "shoalmark.py").read_bytes())
+        server.rename(base / "server-unavailable")
+        baseline = board_snapshot(folder)
+        def run(target=root, **fault):
+            return measured(target, search, "corrective:" + json.dumps(fault))
+        def restore():
+            for rel in set(board_snapshot(folder)) - set(baseline):
+                (folder / rel).unlink()
+            for rel, data in baseline.items():
+                (folder / rel).write_bytes(data)
+        got = run()
+        check("RV-3089: positive exact configured cwd preserves versioned board bytes", got["code"] == 0 and board_snapshot(folder) == baseline and len(got["completed"]) == 1 and got["completed"][0][2] == str(root) and got["git_absent"])
+        got = run(cwd=cwd)
+        check("RV-3089: symlink-parent cwd refuses before child completion and board writes", got["code"] == 4 and not got["completed"] and not any(e[0] == "open" for e in got["events"]) and board_snapshot(folder) == baseline)
+        restore()
+        template = '<status><target path="."><entry path="."><wc-status item="normal" props="none"/></entry>{}</target></status>'
+        node = '<entry path="work-tracker/index.html">{}</entry>'
+        status_cases = {
+            "contradictory singleton": template.format(node.format('<wc-status item="unversioned" props="none"/><wc-status item="normal" props="none"/>')),
+            "unknown props": template.format(node.format('<wc-status item="unversioned" props="malformed"/>')),
+            "unknown item": template.format(node.format('<wc-status item="future" props="none"/>')),
+            "unknown boolean": template.format(node.format('<wc-status item="unversioned" props="none" copied="maybe"/>')),
+            "unknown switched boolean": template.format(node.format('<wc-status item="unversioned" props="none" switched="maybe"/>')),
+            "unknown conflict boolean": template.format(node.format('<wc-status item="unversioned" props="none" tree-conflicted="maybe"/>')),
+            "status structural text": template.format(node.format('lost metadata<wc-status item="unversioned" props="none"/>')),
+            "nested status": template.format(node.format('<wrapper><wc-status item="unversioned" props="none"/></wrapper>')),
+            "unexpected target node": template.format('<wrapper>' + node.format('<wc-status item="unversioned" props="none"/>') + '</wrapper>'),
+            "status tail text": template.format(node.format('<wc-status item="unversioned" props="none"/>lost metadata')),
+        }
+        for label, xml in status_cases.items():
+            got = run(xml_command="status", xml=xml)
+            check(f"RV-3090: {label} refuses through board_run before writes", got["code"] == 4 and "metadata could not be read" in got["err"] and not any(e[0] == "open" for e in got["events"]) and board_snapshot(folder) == baseline)
+            restore()
+        # Healthy SVN groups changelist entries outside target; these still protect actual versioned bytes.
+        command(root, "svn", "changelist", "board", "work-tracker/index.html", "work-tracker/view/WORK-001.js")
+        got = run()
+        check("RV-3090: real changelist inventory preserves both versioned board files", got["code"] == 0 and board_snapshot(folder) == baseline and len(got["completed"]) == 1)
+        command(root, "svn", "changelist", "--remove", "work-tracker/index.html", "work-tracker/view/WORK-001.js")
+        info = ET.fromstring(command(setup, "svn", "info", "./.@", "--xml").stdout)
+        info_cases = {}
+        for label in ("duplicate wc-info", "duplicate root", "duplicate schedule", "binding text", "binding tail"):
+            bad = ET.fromstring(ET.tostring(info)); wc = bad.find("entry/wc-info")
+            if label == "duplicate wc-info":
+                bad.find("entry").append(ET.fromstring(ET.tostring(wc)))
+            elif label == "duplicate root":
+                ET.SubElement(wc, "wcroot-abspath").text = str(foreign)
+            elif label == "duplicate schedule":
+                ET.SubElement(wc, "schedule").text = "delete"
+            elif label == "binding text":
+                wc.text = "lost binding data"
+            else:
+                wc.find("schedule").tail = "lost binding data"
+            info_cases[label] = ET.tostring(bad).decode()
+        for label, xml in info_cases.items():
+            got = run(setup, mode="properties", xml_command="info", xml=xml)
+            check(f"RV-3091: {label} refuses before proplist or mutation", got["code"] == 4 and not got["completed"] and not any(e[0] == "open" for e in got["events"]))
+            for prop in fm.TSVN_HOOKS:
+                command(setup, "svn", "propdel", "--", prop, ".")
+            got = run(setup, mode="install", xml_command="info", xml=xml)
+            check(f"RV-3091: install rejects {label} before first actual mutation", got["code"] == 4 and not any(e[0] == "subprocess.Popen" and e[2][1:2] in (["propset"], ["add"], ["proplist"]) for e in got["events"]))
+        property_cases = {
+            "nonempty empty-container text": '<properties>lost property data</properties>',
+            "nonempty target text": '<properties><target path=".">lost property data</target></properties>',
+            "target tail text": '<properties><target path="."/>lost property data</properties>',
+            "property tail text": '<properties><target path="."><property name="x">raw value</property>lost property data</target></properties>',
+        }
+        for label, xml in property_cases.items():
+            got = run(setup, mode="properties", xml_command="proplist", xml=xml)
+            check(f"RV-3091: {label} refuses instead of declaring absence", got["code"] == 4 and not any(e[0] == "open" for e in got["events"]))
+            for prop in fm.TSVN_HOOKS:
+                command(setup, "svn", "propdel", "--", prop, ".")
+            got = run(setup, mode="install", xml_command="proplist", xml=xml)
+            check(f"RV-3091: install rejects {label} before property mutation", got["code"] == 4 and not any(e[0] == "subprocess.Popen" and e[2][1:2] in (["propset"], ["add"]) for e in got["events"]))
+        previous = fm.ROOT
+        try:
+            fm.configure(setup)
+            original = fm.svn_run
+            def formatted(*args, **kwargs):
+                return ET.fromstring('<properties>\n <target path=".">\n <property name="raw">  raw\n\nvalue  </property>\n </target>\n</properties>') if args[0] == "proplist" else original(*args, **kwargs)
+            with patch.object(fm, "svn_run", side_effect=formatted):
+                check("RV-3091: formatting whitespace preserves exact raw value text", fm.svn_local_properties(".") == {"raw": "  raw\n\nvalue  "})
+        finally:
+            fm.configure(previous)
 
 
 if __name__ == "__main__":

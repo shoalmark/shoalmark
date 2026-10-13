@@ -446,11 +446,24 @@ _TRACKED = None
 def svn_local_status():
     """One validated local status snapshot; no server, authority or empty-success fallback."""
     status = svn_run("status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", xml=True)
-    if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != ".":
+    def whitespace(element):
+        return not (element.text or "").strip() and all(not (child.tail or "").strip() for child in element)
+    if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != "." or not whitespace(status):
         raise SvnUnreadable("local status did not identify the working-copy target")
     versioned = {"normal", "modified", "added", "replaced", "deleted", "missing", "conflicted", "merged"}
+    items = versioned | {"none", "unversioned", "ignored", "obstructed", "external", "incomplete"}
+    groups, names = [], set()
+    for group in status:
+        if group.tag not in ("target", "changelist") or not whitespace(group) or any(child.tag != "entry" for child in group):
+            raise SvnUnreadable("local status printed an invalid working-copy structure")
+        if group.tag == "changelist":
+            name = group.get("name")
+            if not name or name in names:
+                raise SvnUnreadable("local status printed an ambiguous changelist")
+            names.add(name)
+        groups.extend(group)
     out, root_seen = {}, False
-    for entry in status.iter("entry"):
+    for entry in groups:
         rel = (entry.get("path") or "").replace("\\", "/")
         parts = pathlib.PurePosixPath(rel).parts
         if not rel or rel.startswith("/") or re.match(r"^[A-Za-z]:", rel) or ".." in parts:
@@ -458,9 +471,26 @@ def svn_local_status():
         rel = pathlib.PurePosixPath(rel).as_posix()
         if rel in out:
             raise SvnUnreadable("local status printed a duplicate working-copy path")
-        wc = entry.find("wc-status")
-        if wc is None or wc.get("item") is None or wc.get("props") is None:
+        if len(entry) != 1 or entry[0].tag != "wc-status" or not whitespace(entry):
+            raise SvnUnreadable("local status printed ambiguous working-copy metadata")
+        wc = entry[0]
+        if wc.get("item") not in items or wc.get("props") not in ("none", "normal", "modified", "conflicted") or not whitespace(wc):
             raise SvnUnreadable("local status printed incomplete working-copy metadata")
+        if wc.get("item") not in versioned and (wc.get("props") != "none" or wc.get("revision") is not None or any(wc.get(name) == "true" for name in ("copied", "switched", "tree-conflicted", "file-external"))):
+            raise SvnUnreadable("local status printed contradictory unversioned metadata")
+        if wc.get("revision") is not None and not re.fullmatch(r"-1|[0-9]+", wc.get("revision")):
+            raise SvnUnreadable("local status printed an invalid working-copy revision")
+        for name in ("copied", "switched", "tree-conflicted", "wc-locked", "file-external"):
+            if wc.get(name) is not None and wc.get(name) not in ("true", "false"):
+                raise SvnUnreadable("local status printed an invalid working-copy flag")
+        children = [child.tag for child in wc]
+        if any(tag not in ("commit", "lock") for tag in children) or len(children) != len(set(children)):
+            raise SvnUnreadable("local status printed an ambiguous status record")
+        for child in wc:
+            fields = {"author", "date"} if child.tag == "commit" else {"token", "owner", "comment", "created", "expires"}
+            tags = [value.tag for value in child]
+            if wc.get("item") not in versioned or not whitespace(child) or len(tags) != len(set(tags)) or any(value.tag not in fields or len(value) for value in child):
+                raise SvnUnreadable("local status printed an invalid status structure")
         item = wc.get("item")
         root_seen = root_seen or (rel == "." and item in versioned)
         out[rel] = wc
@@ -681,7 +711,8 @@ def board_judge(event, args):
     why = ""
     if event == "subprocess.Popen":
         argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
-        allowed = (read_only_svn(argv) and args[0] == "svn" and args[2] is not None and _norm(args[2]) == _norm(ROOT)) if vcs() == "svn" else read_only_git(argv)
+        # ROOT is configure's canonical consumer directory. Keep the original launch spelling: lexical parent cancellation can hide a foreign symlink cwd.
+        allowed = (read_only_svn(argv) and args[0] == "svn" and isinstance(args[2], (str, bytes, os.PathLike)) and os.fsdecode(args[2]) == os.fsdecode(ROOT)) if vcs() == "svn" else read_only_git(argv)
         if not allowed:
             why = f"it would start {' '.join(str(a) for a in argv[:4])}"
     elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):
@@ -9335,12 +9366,19 @@ def svn_local_directory(rel):
             raise SvnUnreadable("the property target is in another Subversion working copy")
     target = "./" + rel + "@"                          # literal option/peg-like names, including the root .@
     info = svn_run("info", target, xml=True)
-    entries = info.findall("entry") if info is not None and info.tag == "info" else []
-    if len(entries) != 1:
+    def structure(element):
+        tags = [child.tag for child in element]
+        return not (element.text or "").strip() and all(not (child.tail or "").strip() for child in element) and len(tags) == len(set(tags))
+    entries = list(info) if info is not None and info.tag == "info" and structure(info) else []
+    if len(entries) != 1 or entries[0].tag != "entry":
         raise SvnUnreadable("local info did not identify one directory")
     entry = entries[0]
+    if not structure(entry) or any(child.tag not in ("url", "relative-url", "repository", "wc-info", "commit", "lock") for child in entry) or len(entry.findall("wc-info")) != 1:
+        raise SvnUnreadable("local info printed an ambiguous directory binding")
     wc = entry.find("wc-info")
-    wcroot = wc.findtext("wcroot-abspath") if wc is not None else None
+    if not structure(wc) or len(wc.findall("wcroot-abspath")) != 1 or len(wc.findall("schedule")) != 1 or any(len(child) for child in wc):
+        raise SvnUnreadable("local info printed an ambiguous working-copy binding")
+    wcroot = wc.findtext("wcroot-abspath")
     try:
         same_wc = bool(wcroot) and pathlib.Path(wcroot).is_absolute() and pathlib.Path(wcroot).resolve(strict=True).samefile(_VCS[1])
     except (OSError, RuntimeError, TypeError, ValueError):
@@ -9355,17 +9393,17 @@ def svn_local_properties(rel):
     import base64
     entry, target = svn_local_directory(rel)
     properties = svn_run("proplist", "--verbose", target, xml=True)
-    if properties is None or properties.tag != "properties" or any(child.tag != "target" for child in properties):
+    if properties is None or properties.tag != "properties" or (properties.text or "").strip() or any(child.tag != "target" or (child.tail or "").strip() for child in properties):
         raise SvnUnreadable("local properties could not be read")
     targets = list(properties)
     if not targets:                                        # Subversion emits <properties/> for a directory with no properties
         return {}
-    if len(targets) != 1 or targets[0].get("path") != entry.get("path"):
+    if len(targets) != 1 or targets[0].get("path") != entry.get("path") or (targets[0].text or "").strip():
         raise SvnUnreadable("local properties identified a different directory")
     out = {}
     for prop in targets[0]:
         name = prop.get("name")
-        if prop.tag != "property" or not name or name in out or len(prop):
+        if prop.tag != "property" or not name or name in out or len(prop) or (prop.tail or "").strip():
             raise SvnUnreadable("local properties printed incomplete or duplicate values")
         value = prop.text or ""
         if prop.get("encoding") == "base64":
