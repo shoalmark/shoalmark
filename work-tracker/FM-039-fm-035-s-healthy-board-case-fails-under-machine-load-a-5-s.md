@@ -1,11 +1,10 @@
 ---
 id: FM-039
-status: In Progress
+status: Parked
 considered: FM-035, FM-038, FM-028, FM-012
 tags: bug
-triaged: 2026-09-27
-rank: 7
-next: review
+triaged: 2026-10-13
+next: wait
 tier: P2
 hook: "FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27"
 ---

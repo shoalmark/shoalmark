@@ -24,6 +24,13 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
+**2026-10-13 — today's bounded release work:** FM-032 **keep P1 #1 build** (R12 after R14 shipped); FM-004
+**keep P1 #2 build** (archive acquisition named by current path 1). Older ranks are removed by the command; open
+remainders stay open or parked with their restart conditions in the worksheet, without asserting they shipped.
+B1 retains its next-release allocation; its preparation is not dispatched as a website build. The signed staffing
+and release-allocation exchanges are acted on and recorded by `--clear-ask`. Worksheet:
+[triage-2026-10-13.md](evidence/triage/triage-2026-10-13.md). The Owner's intent/current-path text is unchanged.
+
 **2026-10-12 — FM-046, a partial pass at the Owner's request:** **keep P1 build**, unranked — consistent committed-tracker reads support current path 1's trust layer and the Subversion trial. The worksheet's three NOT considered matches were read; none owns shared line-ending normalisation. FM-046 moves from Proposed to In Progress; no implementation is built yet. One row applied by `python3 shoalmark.py --triage`, regenerating INDEX.md and the board; the other fifteen rows await judgement. Worksheet: [triage-2026-10-12.md](evidence/triage/triage-2026-10-12.md).
 
 **2026-10-08 — the build judged before its first commit, a partial pass** (Planner seat, on the Owner's ruling of 2026-10-08 for a patch release, 0.19.2; the worksheet `work-tracker/evidence/triage/triage-2026-10-08.md`, one row of sixteen filled and applied by the command): **FM-045 keep P0 build** — harm today: 0.19.1's board refresh stops on `git ls-tree`, and the board an answer leaves goes stale; unranked, the next full pass ranks it. The other fifteen rows wait for that pass.

@@ -3,9 +3,10 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: review
-triaged: 2026-09-23
-tier: P3
+next: build
+triaged: 2026-10-13
+tier: P1
+rank: 2
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
 ---
 

@@ -3,7 +3,7 @@ id: FM-033
 status: In Progress
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
-next: review
+next: wait
 ask: "Does a sourced raise that names a signed rule it undermines trigger a same-day pass, as a now does?"
 ask-kind: ruling
 ask-since: 2026-09-24
@@ -12,7 +12,7 @@ ask-proposal: "a raise naming a signed rule re-judges the tracker the same day; 
 answer: "accepted - a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
 answered: 2026-09-24
 answered-by: holgo99
-triaged: 2026-09-25
+triaged: 2026-10-13
 tier: P2
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
 ---
