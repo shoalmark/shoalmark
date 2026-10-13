@@ -28,6 +28,21 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 - Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
 - Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
 
+Git worktree identity and commit-trailer reports (`--whoami`, `--session-trailer`, `--sessions`), the merge ratio
+(`--ratio`), the forge queue (`--queue`) and signed answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`)
+require Git. Under Subversion, `--session new` generates an id without checking a Git commit registry. A server login
+can attribute an SVN revision; it provides no cryptographic commit signature, and a local working-copy label proves
+no author. Checks that need server history refuse when that history cannot be read.
+
+For archive acquisition, unpack the release ZIP and keep its complete inventory, including `RELEASE` and the probe
+files. Run the unpacked tool with `--root <project directory> --vendor <destination>`; `--vendor` names the destination
+and takes its source from the running tool's folder. It validates every exact source byte and required file before
+copying the 19 tool files. The manifest verifies the archive's internal bytes and completeness; obtain the release
+from the source you trust. The manifest and probe files remain acquisition inputs. A tag-none dry-run archive needs
+the existing `--allow-untagged`; neither that flag nor `--partial` permits an invalid or incomplete archive. Full SVN
+gate, board, history, protection and installed-entry qualification remains separate from archive acquisition; no
+complete operation without Git or new proof-platform result is promised here.
+
 **A convention, Stage 0:** a [`requirements/`](https://github.com/shoalmark/shoalmark/blob/main/requirements/README.md) folder holds one line per requirement — id, *shall*,
 source, acceptance criterion — one text for developer and tester; a tracker cites the id. shoalmark has the
 convention only: checks and traceability are later.
@@ -55,7 +70,9 @@ them all, a gate on every commit. It needs no server, no database and no depende
 
 `<cmd>` below is `python3 tools/shoalmark/shoalmark.py` in a repository that vendors it — or whatever command that
 repository's own messages name. Every command finds the repository by itself: the nearest `shoalmark.toml`, else the
-git toplevel.
+nearest Git or SVN working-copy root. `--root DIR` selects the consumer project when the tool lives in a different
+folder; the tool's own source does not supply that project's identity or authority. Printed retry commands for answers
+and acts use PowerShell argument spelling on Windows and POSIX shell spelling on macOS and Linux.
 
 ## The five rules
 

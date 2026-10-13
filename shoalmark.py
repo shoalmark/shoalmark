@@ -2220,7 +2220,7 @@ def forge_prs():
         return None, "--queue: `gh pr list` failed — " + ((r.stderr or "").strip().splitlines() or ["offline, or not logged in (`gh auth status`)"])[0]
     specs = (git_out("config", "--get-all", "remote.origin.fetch") or "").split() + [f"refs/pull/{p['number']}/head" for p in prs]
     try:
-        f = subprocess.run(["git", "fetch", "--quiet", "origin", *specs], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        f = vcs_process("git", "fetch", "--quiet", "origin", *specs, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=60, env=nested_git_env())
     except (OSError, subprocess.TimeoutExpired) as e:
         return None, f"--queue: `git fetch origin` did not answer — offline? ({type(e).__name__})"
@@ -2270,7 +2270,7 @@ def have_not(shas):
     """The commits of these that this clone does not have — one `git cat-file --batch-check` for all of them."""
     if not shas:
         return []
-    r = subprocess.run(["git", "cat-file", "--batch-check"], input="".join(f"{s_}^{{commit}}\n" for s_ in shas), cwd=ROOT,
+    r = vcs_process("git", "cat-file", "--batch-check", input="".join(f"{s_}^{{commit}}\n" for s_ in shas), cwd=ROOT,
                        capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return [s_ for s_, line in zip(shas, r.stdout.splitlines()) if line.endswith(" missing")]
 
@@ -2306,7 +2306,7 @@ def addenda_between(r, h, v=None):
     anywhere under evidence/ too, and with `v` None every commit its own — and none is a merge, which brings a line's
     files; False where git cannot read the range. A submodule's pointer counts as a change, whatever `.gitmodules` says (`--ignore-submodules=none`)"""
     ok = review_addendum()
-    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", f"{r}..{h}"],
+    out = vcs_process("git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", f"{r}..{h}",
                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode != 0 and unread_here():
         raise Unread                                        # its walk met a tree the partial clone lacks: no answer
@@ -2333,8 +2333,8 @@ def refusal_record(commit):
     under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
     `--queue` admits it below their act as it admits a review file's commit (RV-712) — a forged one in their name carries in
     one line under `## Acts` that rules nothing, and nothing outside it."""
-    r = subprocess.run(["git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff",
-                        "--ignore-submodules=none", commit],
+    r = vcs_process("git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff",
+                        "--ignore-submodules=none", commit,
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     head, _, diff = r.stdout.partition("\n")
     parents, _, subject = head.partition("\x00")
@@ -2363,7 +2363,7 @@ def refusal_record(commit):
     # show, a binary or an empty file added, changed or deleted, or a mode alone. The record changes its tracker's text and nothing else, not its mode.
     # `--ignore-submodules=none`, here and in the diff above: a `.gitmodules` that says `ignore = all` for a submodule leaves its pointer out of every
     # list git makes, but where the command line asks for it — the checkout's own configuration does not
-    listed = subprocess.run(["git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", "--ignore-submodules=none", commit], cwd=ROOT,
+    listed = vcs_process("git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", "--ignore-submodules=none", commit, cwd=ROOT,
                             capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if listed.returncode != 0 and unread_here():
         raise Unread                                        # its trees are not in the partial clone: no answer
@@ -2433,7 +2433,7 @@ def stray_below(commit, base, skip=True):
     (`--ignore-submodules=none`)."""
     ok = review_addendum()
     full = (git_out("rev-parse", "--verify", "--quiet", commit + "^{commit}") or "").strip()
-    out = subprocess.run(["git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", commit, "^" + base],
+    out = vcs_process("git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", commit, "^" + base,
                          cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if out.returncode != 0 and full and unread_here() and git_out("rev-parse", "--verify", "--quiet", base + "^{commit}"):
         raise Unread                                        # the base is here, and the walk met a tree the partial clone lacks: no answer
@@ -2511,7 +2511,7 @@ def triage_reading(head, base):
     (`tip_variants`); None where no commit changes them unsigned, and where the default branch names no Owner. The Owner is the default branch's, as
     `--check` reads them — never a stacked pull request's base, which a seat's branch can be. No git call of its own beyond
     the walk's: `--queue` asks this for every pull request."""
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, why = default_trunk(git) or base, []
     owners = owners_at(trunk, why)
     if not owners and not why:
@@ -2561,7 +2561,7 @@ def queue_actions(prs, branches=()):
     `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
     forks = [(p, "wait", "wait: from a fork, read it yourself", "") for p in prs if p.get("isCrossRepository")]
     prs = [p for p in prs if not p.get("isCrossRepository")]
-    git = lambda *a, **k: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True,
+    git = lambda *a, **k: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True,
                                          encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "refs/remotes/origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
@@ -2685,6 +2685,9 @@ def forge_closed(hours=24):
 
 def queue_cmd():
     """`--queue`: the open pull requests, one action each, in the order to take them — exit 3 where the forge cannot be read."""
+    refused = cli_git_refusal('queue')
+    if refused is not None:
+        return refused
     prs, why = forge_prs()
     if prs is None:
         print(why, file=sys.stderr)
@@ -2719,6 +2722,9 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
     An answer they take back or change (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
     the answer it replaces moves into the ship log, with the commit that wrote it. `onto` (FM-030, `--revoke`): the ref of an
     `answer/<id>` not merged, whose tip `t` was read from — the answer is taken back there, on top of it."""
+    refused = cli_git_refusal('answer')
+    if refused is not None:
+        return refused
     if len(words) < 2 or words[1] not in ("accept", "reject", "revoke"):
         print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change. "
               "An answer given already: `--answer <id> revoke \"<reason>\"`, or `--answer <id> accept|reject \"<option>\" --supersede`", file=sys.stderr)
@@ -2738,20 +2744,17 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
         return EXIT_LINT
     if t.get("answer") and not (supersede or verdict == "revoke"):
         print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten in place. "
-              f"To take it back: `{CMD} --answer {tid} revoke \"<reason>\"`; to change it: `{CMD} --answer {tid} accept|reject \"<option>\" --supersede` — "
+              f"To take it back: `{CMD} --answer {printed_arg(tid)} revoke \"<reason>\"`; to change it: `{CMD} --answer {printed_arg(tid)} accept|reject \"<option>\" --supersede` — "
               f"either way the answer it replaces moves into the ship log", file=sys.stderr)
         return EXIT_LINT
     if not t.get("answer") and (supersede or verdict == "revoke"):
-        print(f"--answer: {tid} carries no answer to " + ("revoke" if verdict == "revoke" else "supersede") + f" — answer it: `{CMD} --answer {tid} accept|reject`", file=sys.stderr)
+        print(f"--answer: {tid} carries no answer to " + ("revoke" if verdict == "revoke" else "supersede") + f" — answer it: `{CMD} --answer {printed_arg(tid)} accept|reject`", file=sys.stderr)
         return EXIT_LINT
     if verdict == "reject" and not text:
         print("--answer: a rejection carries its reason, and how the ask should be reworded", file=sys.stderr)
         return EXIT_LINT
     if verdict == "revoke" and not text:
         print("--answer: a revocation carries its reason — the ship log keeps it beside the answer it takes back", file=sys.stderr)
-        return EXIT_LINT
-    if vcs() != "git":
-        print(f"--answer: this is a git command; under Subversion, write the three lines and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
     path = TRACKER_DIR / t["file"]
     answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
@@ -2799,7 +2802,7 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
     return owner_change(tid, t, dict(
         flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write, onto=bool(onto),
         subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
-        again=f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else ""),
+        again=f'{CMD} --answer {printed_arg(tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
         said=lambda branch, pushed: (f"{tid} answered: {answer}\n  signed, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
                                      + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
                                      + seed_said(tid, seed))))
@@ -2811,12 +2814,12 @@ def seed_said(tid, seed):
     if not seed:
         return ""
     if not seed.get("when"):
-        return f"\n  no date read in your answer — {seed['why']}; the act shows *no date yet*: `{CMD} --due {tid} <time>` sets it"
+        return f"\n  no date read in your answer — {seed['why']}; the act shows *no date yet*: `{CMD} --due {printed_arg(tid)} <time>` sets it"
     if not seed.get("had"):
-        return f"\n  due: {seed['when']} — read from your answer's `{seed['words']}`, written with it; `{CMD} --due {tid} <time>` moves it"
+        return f"\n  due: {seed['when']} — read from your answer's `{seed['words']}`, written with it; `{CMD} --due {printed_arg(tid)} <time>` moves it"
     if parse_due(seed["had"]) == parse_due(seed["when"]):
         return f"\n  due: {seed['had']} — your answer names the same time"
-    return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {tid} {seed['when']}` moves it"
+    return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {printed_arg(tid)} {printed_arg(seed['when'])}` moves it"
 
 
 def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
@@ -2830,7 +2833,7 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
     his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
     if not his:
-        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {branch}`, "
+        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {printed_arg(branch)}`, "
                 f"then `{how['again']}`")
     said = "; ".join(f"`{sha}` {subject[:60]}" for sha, subject in his[:3]) + (f"; and {len(his) - 3} more" if len(his) > 3 else "")
     tip = (git("rev-parse", "--verify", "--quiet", branch).stdout or "").strip()
@@ -2842,13 +2845,13 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
         there = cat_blobs([f"{branch}:{rel}"]).get(f"{branch}:{rel}")
         t_ = extract(ROOT / rel, there) if there is not None else None
         if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
-            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {branch}`, then "
+            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {printed_arg(branch)}`, then "
                     f"`{how['again']}` — it commits on top, and nothing of yours is deleted" + held)
     if stray:
         return (f"it carries your commit(s) — {said} — and nothing of yours is deleted{held}; then merge it (its pull request), "
-                f"then `{how['again']}`; or `git switch {branch}` and run it there")
+                f"then `{how['again']}`; or `git switch {printed_arg(branch)}` and run it there")
     return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
-            f"or `git switch {branch}` and run it there")
+            f"or `git switch {printed_arg(branch)}` and run it there")
 
 
 def ics_text(value):
@@ -2886,7 +2889,7 @@ def invite_cmd(tid, trackers):
         return EXIT_LINT
     when = parse_due(act[3])
     if not when:
-        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {tid} <time>` first", file=sys.stderr)
+        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {printed_arg(tid)} <time>` first", file=sys.stderr)
         return EXIT_LINT
     what, answer, answered, due, window, asked = act
     body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))[1]
@@ -2897,7 +2900,7 @@ def invite_cmd(tid, trackers):
     name = CONFIG["name"] or ROOT.name
     said = ((f"{what}\nAsked: {asked}\n" if asked else "") + (f"Promised {answered}: {answer}. " if answer else "")
             + f"Owed to you, due {due}; it can still be done {window} minutes after. "
-            f'Done: {CMD} --done {tid} "<where the result is>" — moved: {CMD} --due {tid} <time>')
+             f'Done: {CMD} --done {printed_arg(tid)} "<where the result is>" — moved: {CMD} --due {printed_arg(tid)} <time>')
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT",
              f"UID:act-{tid.lower()}-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", "DTSTAMP:20000101T000000Z",
              f"SEQUENCE:{sequence}", f"DTSTART:{utc(when)}", f"DURATION:PT{window}M",
@@ -3034,6 +3037,9 @@ def owner_change(tid, t, how):
     is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(branch,
     ", pushed" or why not) → what it prints · onto (FM-030, `--revoke`): `answer/<id>` is not merged — their act on its way — and
     the change commits on top of it there, one branch per exchange, where every other flow refuses it."""
+    refused = cli_git_refusal(how["flag"][2:])
+    if refused is not None:
+        return refused
     flag, noun = how["flag"], how["noun"]
     step = lambda n, text: answer_step(tid, n, text, how["verb"])
     for p_ in answerers_problems():                           # a signature the configuration asks for and `[seats]` drops (FM-015)
@@ -3051,7 +3057,7 @@ def owner_change(tid, t, how):
         print(f"{flag}: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
         return EXIT_LINT
     signed = (seat_mode(seat, pend_name or me, pend_email) if SEATS else allowed.get(me)) == "signed"
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     dirty = changed_paths(git)
     if dirty:
         print(dirty_refusal(git, dirty), file=sys.stderr)
@@ -3152,7 +3158,7 @@ def owner_change(tid, t, how):
                 print(f"{flag}: `{branch}` exists and is not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
                 return EXIT_LINT
             if git("branch", "-D", branch).returncode != 0:
-                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {printed_arg(branch)}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
             print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{ref_name(trunk)}` — deleted, and cut fresh", file=sys.stderr)
         step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
@@ -5321,8 +5327,10 @@ def git_user():
     """The committer's own name, as git will write it — so `answered-by:` need not be typed. Read ONCE per run and
     kept (`configure` forgets it): the answer is the only place it is needed, and a run does not change who is typing."""
     global _GIT_USER
+    if vcs() == "svn":
+        return ""                                      # presentation only: no working-copy label can prove an answer's author
     if _GIT_USER is None:
-        out = subprocess.run(["git", "config", "user.name"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        out = vcs_process("git", "config", "user.name", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         _GIT_USER = out.stdout.strip() if out.returncode == 0 else ""
     return _GIT_USER
 
@@ -6743,9 +6751,9 @@ def session_rows():
 
 def sessions_cmd():
     """`--sessions`: the registry as Markdown on stdout — generated from the trailers, written nowhere."""
-    if vcs() != "git":
-        print("--sessions: the registry is read from git's commit trailers — this is no git repository", file=sys.stderr)
-        return EXIT_LINT
+    refused = cli_git_refusal('sessions')
+    if refused is not None:
+        return refused
     rows = session_rows()
     when = lambda st: f"{datetime.datetime.fromtimestamp(st[0]).strftime('%Y-%m-%d %H:%M')} · {st[1]}"
     cell = lambda v: (v or "—").replace("|", "\\|").replace("\n", " ")
@@ -6834,6 +6842,9 @@ def ratio_line(label, tot, merges=None):
 def ratio_cmd(since=None, until=None):
     """`--ratio`: records added : product added per Berlin day of the merge, and the rolling seven-day sums. Exit 0; 2 where
     there is nothing to read (no `[ratio]`, no git, no default branch, a date that is none)."""
+    refused = cli_git_refusal('ratio')
+    if refused is not None:
+        return refused
     section = CONFIG.get("ratio")
     if not isinstance(section, dict):
         print(f"--ratio: {CONFIG_NAME} has no [ratio] section, so there is no ratio to count — add `[ratio]` with `records = {json.dumps(ratio_defaults()['records'])}` "
@@ -6844,10 +6855,7 @@ def ratio_cmd(since=None, until=None):
     except ValueError as e:
         print(f"--ratio: {e}", file=sys.stderr)
         return 2
-    if vcs() != "git":
-        print("--ratio: the merges are read from git's first-parent history — this is no git repository", file=sys.stderr)
-        return 2
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git) or trunk_ref()             # origin's default as this clone fetched it (as `--answer` and the gate read it), else the local one
     if trunk is None:
         print("--ratio: no default branch (origin/HEAD, origin/main, origin/master, main or master) to read the merges from", file=sys.stderr)
@@ -7019,6 +7027,9 @@ def whoami():
     worktree's `user.email`, the worktree's folder, and the model and effort from the harness's log by `seat.harness`
     (`—` where there is none). A second line names the log and the directory its session was launched in, for a person to
     read. Exit 4 (the lint code) without a `seat.session`; exit 2 where two logs carry the id."""
+    refused = cli_git_refusal('whoami')
+    if refused is not None:
+        return refused
     sid = (git_out("config", "--get", "seat.session") or "").strip()
     if not sid:
         print("--whoami: this worktree has no `seat.session` — a seat's worktree carries one (`git config --worktree seat.session <id>`; the Owner's checkout none)", file=sys.stderr)
@@ -7044,6 +7055,9 @@ def session_trailer(message_file):
     (`whoami`'s reading). Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's clone); a
     trailer the message carries already is left alone — an amend, a rebase, a seat that typed it. A log that cannot be
     read, or two that carry the id, costs the commit its two trailers and a line on stderr — never the commit."""
+    refused = cli_git_refusal('session_trailer')
+    if refused is not None:
+        return refused
     sid = (git_out("config", "--get", "seat.session") or "").strip()
     if not sid or not message_file:
         return EXIT_OK
@@ -7054,7 +7068,7 @@ def session_trailer(message_file):
     if problem:
         print(f"--session-trailer: {problem}" + (" — no Model: or Effort: on this commit" if reading is None else ""), file=sys.stderr)
     trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
-    r = subprocess.run(["git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file],
+    r = vcs_process("git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file,
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     if r.returncode:
         print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
@@ -8472,17 +8486,20 @@ def done_cmd(words, trackers):
     """`--done <id> "<where the result is>"` — the Owner's act is done: `done:` gets the time and where its result is, the
     act leaves their list, and its record goes under `## Acts`. Their own change, made as `--answer` makes their answer: on
     `answer/<id>`, signed where their seat is `signed`, pushed (`owner_change`). The seats that hold `answer` may run it."""
+    refused = cli_git_refusal('done')
+    if refused is not None:
+        return refused
     tid, where = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
     t = next((x for x in trackers if x["id"] == tid), None)
     act = act_of(t) if t else None
     if not act and t and vcs() == "git":                    # R3: their answer — the act — may be on `answer/<id>`, not merged yet
-        git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
         if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0):
             there = cat_blobs([f"refs/heads/{branch}:{rel}"]).get(f"refs/heads/{branch}:{rel}")
             if there is not None and act_of(extract(ROOT / rel, there)):
                 print(f"--done: {tid}'s act is on `{branch}`, not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(
-                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
+                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {printed_arg(tid)} {printed_arg(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
                 return EXIT_LINT
     if not act:
         print(f"--done: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`; "
@@ -8490,9 +8507,6 @@ def done_cmd(words, trackers):
         return EXIT_LINT
     if not where:
         print("--done: say where the result is — a path in the repository, or a pointer to it; the record keeps it", file=sys.stderr)
-        return EXIT_LINT
-    if vcs() != "git":
-        print("--done: this is a git command; under Subversion, write `done:` and its record under `## Acts`, and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
     now, today = datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), datetime.date.today().isoformat()
     what, _answer, _answered, due, _window, _asked = act
@@ -8506,7 +8520,7 @@ def done_cmd(words, trackers):
         write=lambda lines, me, branch: (act_record(lines, fields,
                                                     f"**{today}** · done — {where}" + (f" ({facts})" if facts else "") + f" · {what}"
                                                     + (f" · due {due}" if due else "") + f" · {me}"), ""),
-        subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {tid} "{where}"',
+        subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {printed_arg(tid)} {printed_arg(where)}',
         said=lambda branch, pushed: f"{tid} done: {where}\n  signed, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
                                      + (f" — with what the repository says of it: {facts}" if facts else "")
                                      + ("\n  next: build — the seat's move follows" if "next" in fields else "")))
@@ -8516,6 +8530,9 @@ def due_cmd(words, trackers):
     """`--due <id> <time>` — the Owner's act moves: `due:` gets the new time, the old one goes into the record under
     `## Acts`. On a tracker whose act was done, it is a new act: `done:` leaves the front matter, its record stays. Their
     own change, made as `--answer` makes their answer (`owner_change`); the seats that hold `answer` may run it."""
+    refused = cli_git_refusal('due')
+    if refused is not None:
+        return refused
     tid, when = words[0].upper(), words[1].strip() if len(words) > 1 else ""
     t = next((x for x in trackers if x["id"] == tid), None)
     if not t:
@@ -8526,9 +8543,6 @@ def due_cmd(words, trackers):
         return EXIT_LINT
     if not parse_due(when):
         print(f"--due: {when!r} is not a time with its zone — `2026-09-26T07:30:00+02:00`, or `2026-09-26T05:30Z` for UTC", file=sys.stderr)
-        return EXIT_LINT
-    if vcs() != "git":
-        print("--due: this is a git command; under Subversion, write `due:` and its record under `## Acts`, and `svn commit` — the server signs for you", file=sys.stderr)
         return EXIT_LINT
     today, act = datetime.date.today().isoformat(), act_of(t)
     what, old = (act[0] if act else t.get("title") or tid), ("" if t.get("done") else t.get("due", ""))
@@ -8541,7 +8555,7 @@ def due_cmd(words, trackers):
         write=lambda lines, me, branch: (act_record(lines, {"due": when, "done": None},
                                                     f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}{before}")
                                                     + f" · {what} · {me}"), ""),
-        subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {tid} {when}",
+        subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {printed_arg(tid)} {printed_arg(when)}",
         said=lambda branch, pushed: f"{tid} due: {when}\n  signed, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
 
 
@@ -8554,6 +8568,9 @@ def revoke_cmd(words, trackers):
     `answer/<id>` is not merged — here or on `origin` — the act is on its way there: the tracker is read at its tip and
     the revocation commits on top of it, on that branch (one branch per exchange); else `answer/<id>` is cut as for any
     act of theirs. Made as `--answer` makes their answer (`owner_change`); the seats that hold `answer` may run it."""
+    refused = cli_git_refusal('revoke')
+    if refused is not None:
+        return refused
     tid, why = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
     t = next((x for x in trackers if x["id"] == tid), None)
     if not t:
@@ -8562,10 +8579,7 @@ def revoke_cmd(words, trackers):
     if not why:
         print("--revoke: a revocation carries its reason — the record keeps it beside what it revokes", file=sys.stderr)
         return EXIT_LINT
-    if vcs() != "git":
-        print("--revoke: this is a git command; under Subversion, write the revocation and `svn commit` — the server signs for you", file=sys.stderr)
-        return EXIT_LINT
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
     tip = next((ref for ref in (f"refs/heads/{branch}", f"refs/remotes/origin/{branch}") if git("rev-parse", "--verify", "-q", ref).returncode == 0), None)
     onto = tip if tip and git("branch", "--show-current").stdout.strip() != branch and (not trunk or git("merge-base", "--is-ancestor", tip, trunk).returncode != 0) else None
@@ -8585,7 +8599,7 @@ def revoke_cmd(words, trackers):
     return owner_change(tid, t, dict(
         flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "", onto=bool(onto),
         write=lambda lines, me, branch_: (act_record(lines, fields, f"**{today}** · done revoked — {why} · it was done {was} · {where} · {what} · {me}"), ""),
-        subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {tid} "{why}"',
+        subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {printed_arg(tid)} {printed_arg(why)}',
         said=lambda branch_, pushed: f"{tid} done revoked: {why}\n  signed, on `{branch_}`{pushed}\n  the act is owed again — it is back on your list; "
                                      f"the revocation is under `## {HEAD['acts']}`" + ("\n  next: owner — the act is yours again" if "next" in fields else "")))
 
@@ -8606,7 +8620,7 @@ def acted_on(trackers):
         if t.get("ask") or not t.get("asks_block"):
             continue
         rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-        log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        log = vcs_process("git", "log", *board_diff_args(), "-1", "--full-history", "--format=%h %ct", "-G", line_regex("ask:"), "--", rel, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         if log.returncode != 0 and unread_here():
             note_unread(f"the history of {rel}")         # the walk met an object the partial clone lacks: not read here
             continue
@@ -8807,6 +8821,63 @@ def drift_normalize(text):
 
 
 
+def printed_arg(token):
+    """Spell one argument for a copied command: a PowerShell literal on Windows, shlex.quote elsewhere.
+    CMD is already a command prefix; callers keep it intact and quote each argument separately."""
+    return "'" + token.replace("'", "''") + "'" if sys.platform == "win32" else shlex.quote(token)
+
+
+CLI_GIT_ONLY = {
+    "session_trailer": ("--session-trailer: Git commit-message trailers require a Git working copy", EXIT_LINT),
+    "whoami": ("--whoami: Git worktree identity requires a Git working copy", EXIT_LINT),
+    "session_check": ("--session-check: the Git-hook session capability is unavailable under Subversion", EXIT_LINT),
+    "commit_msg": ("--commit-msg: the Git-hook commit-message capability is unavailable under Subversion", EXIT_LINT),
+    "sessions": ("--sessions: the registry is read from git's commit trailers — this is no git repository", EXIT_LINT),
+    "ratio": ("--ratio: the merges are read from git's first-parent history — this is no git repository", 2),
+    "queue": ("--queue: not a git repository — the queue is read from GitHub with `gh`", EXIT_NO_FORGE),
+    "answer": ("--answer: signed answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "done": ("--done: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "due": ("--due: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "revoke": ("--revoke: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+}
+
+
+def cli_git_refusal(operation):
+    """Defensive handler entry for Git-only acts; main uses the pure preflight before setup."""
+    if vcs() == "git":
+        return None
+    diagnostic, code = CLI_GIT_ONLY[operation]
+    print(diagnostic, file=sys.stderr)
+    return code
+
+
+def cli_operation(args):
+    """Select the existing main handler without discovery, proof, processes or writes.
+    The caller retains argument validation and normalizes TortoiseSVN before this selection."""
+    ordered = (("html_only", args.html_only), ("vendor", args.vendor), ("brand", args.brand), ("init", args.init),
+               ("install_hook", args.install_hook), ("session_trailer", args.session_trailer), ("whoami", args.whoami),
+               ("session_check", args.session_check), ("commit_msg", args.commit_msg), ("session", args.session),
+               ("sessions", args.sessions), ("ratio", args.ratio), ("ratio_window", args.since or args.until),
+               ("queue", args.queue), ("schema", args.schema), ("new", args.new), ("invite", args.invite),
+               ("notify", args.notify), ("owner", args.owner), ("answered", args.answered), ("answer", args.answer),
+               ("done", args.done), ("due", args.due), ("revoke", args.revoke), ("clear_ask", args.clear_ask),
+               ("standup", args.standup), ("next", args.next), ("triage", args.triage), ("related", args.related))
+    for name, value in ordered:
+        selected = value is not None if name in ("brand", "standup") else bool(value)
+        if selected:
+            return name
+    return "check" if args.check else "write"
+
+
+def cli_preflight(args, backend):
+    """Return (one diagnostic, exit code), or (None, 0) to continue the existing handler and its proof.
+    Only the selected operation matters: an ignored lower-priority flag changes no capability."""
+    operation = cli_operation(args)
+    if operation == "ratio_window":
+        return "--since and --until go with --ratio", 2
+    return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(prog=os.environ.get("SHOALMARK_CMD") or "shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
@@ -8907,11 +8978,12 @@ def parse_args(argv):
              "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
-    add("--vendor", metavar="DIR", help="copy this tool into DIR — the themes it ships in brand/themes/ with it — with a PIN file of sha256 hashes: a pinned, self-contained copy. Only from a release: "
-                                            "the whole tool, a git checkout whose HEAD is at the tag of its VERSION, a clean tree — otherwise refused, nothing written. "
-                                            "The PIN's first line says where the copy came from; `--check` in the consumer reads it")
-    add("--partial", action="store_true", help="with --vendor: copy what the source has although files are missing, and name them in the PIN")
-    add("--allow-untagged", action="store_true", help="with --vendor: vendor from a working copy that is not at its release tag, or not clean — the PIN says `untagged <sha>`")
+    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR — its themes included — with a PIN of sha256 hashes. From a release: "
+                                            "a clean Git checkout at its VERSION tag, or an already-unpacked release archive holding RELEASE. Unzip first; a ZIP path is not a source argument. "
+                                            "An archive's complete inventory and exact raw bytes are validated before copying the tool files; its manifest verifies internal bytes, not external origin. "
+                                            "The PIN names the source; `--check` in the consumer reads it")
+    add("--partial", action="store_true", help="with --vendor: copy what a Git source has although files are missing, and name them in the PIN; never bypass an archive's required manifest, inventory or safe paths")
+    add("--allow-untagged", action="store_true", help="with --vendor: permit a Git working copy not at its release tag or not clean, or a fully validated tag-none archive dry run; the PIN records the untagged source. Never bypass archive validation")
     add("--version", action="version", version=__version__)
     return parser.parse_args(argv)
 

@@ -23,13 +23,14 @@ boundary/cache/source/history semantics, ceiling, digests and scanner remain fro
 
 A1/A2 critical READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in their final round, BOUNDED
 BOARD/INIT/INSTALL ONLY. This ordinary seat merge incorporates its exact functions, shared controls and three
-allowlist removals, 63 to 60. The prior combined A merge passed compile, unchanged core 302 in 65.602 s and 152 A
+allowlist removals, 63 to 60; the later C composition reduces that to 45. The prior combined A merge passed compile, unchanged core 302 in 65.602 s and 152 A
 controls in 42.777 s. This independent branch retains the same A product; its current-main checks are recorded
 here: changed Python compiles in 0.475 s, and unchanged core passes in 46.861 s. A's separate caller branch continues sixteen VCS migrations, retaining its two
 non-VCS dynamic starts. RV-3096–RV-3097 reserve that new caller scope; no closed A finding is reopened.
 
 C critical READY `f59a1c1`, Reviewed `05e02ac`, closes RV-3095 in its final round, BOUNDED CLI/PRESENTATION/
-DOCUMENTATION ONLY. Its actual callbacks and retained quoting checks pass; C is released for P composition.
+DOCUMENTATION ONLY. Its actual callbacks and retained quoting checks pass; This ordinary seat merge incorporates the exact C product and controls: compile0.251 s, unchanged
+core44.768 s, and all16 C methods3.162 s pass. Actual launch keys are45, retaining both A and C reductions.
 B corrective `eabbeef`, following initial NOT READY `c01940a`, is in its final independent verification of
 RV-3092–RV-3094 together. Its 232 controls pass and immutable c019 fails the 82 matching controls. No B closure
 or full public-chain acceptance is claimed before that verdict. RV-3003/RV-3004: recorded privately.
