@@ -14,42 +14,56 @@ hook: "A Subversion team without git could not run the reviewed copy: every comm
 
 ## What is true now
 
-**2026-10-13 — bounded common skeleton built; independent critical review is next.**
-On `fm/044-stage-1-skeleton`, the neutral refactor `4f1664d` follows the judged parent `170985c` (Owner filing #167 at
-`e6d1e27`). Its 19 wrapper controls also pass against that immutable parent; the refactor retains Git argv/cwd/environment,
-return/error and SVN byte/LF/XML semantics. The separate dispatch change selects Git/SVN once per configured ROOT,
-resets repository/dispatch caches on reconfiguration, and routes administrative-path discovery through that selection.
-SVN metadata starts no process; missing, empty, non-regular, symlinked or unreadable working-copy records refuse in one
-line with exit 4. Git own/common and linked-worktree directories, ancestor/nested disk metadata and symlink/filesystem
-aliases remain excluded. A Git request at the layer for an SVN target refuses before launch; arbitrary cwd cannot bypass
-it. Source HERE uses `source=True` only for the four fixed existing provenance reads; source acquisition/parsing is unchanged.
+**2026-10-13 — common-skeleton fixes built; independent critical verification is due.**
+Round 1 on `6d0c239` returned NOT READY at `05a95eb`, with addendum `e511d57`: RV-3085–RV-3088 identified
+same-named class-method scanner exemptions, old-root caches after refused configuration, source-path/context escapes,
+and merge-simplified or unavailable history accepted as proof. Those findings correct the earlier skeleton evidence;
+passing the original 243 core checks did not establish those boundaries. This fix forward changes those four controls,
+without expanding the retained launch list or the common-skeleton scope. No Builder verdict closes a finding.
 
-Final compile and all 243 `test_core.py` checks pass (33.044 s for core), including real local SVN with its executable
-available and Git absent, actual `--root --schema` metadata probes at the working-copy root/subdirectory, root-cache reset,
-linked-Git/admin positive/refusal cases and 26 ratchet controls. Existing FM-045 Git command classification retains 30
-commands with no unresolved/unclassified start, and its injected boundary/`git_out` calls are detected. Three selected R14
-signature/default-policy/every-parent controls pass on both the refactor and final dispatch (150.797 s for the latter), as recorded in the
-[check/caller evidence](evidence/stage-1-skeleton-checks-2026-10-13.md). Full suites and the retained five-job code matrix
-remain CI work after Owner push; no platform trial is claimed under D4.
+The scanner exempts descendants of the one digest-validated top-level boundary **by AST node identity** and includes
+class scope in launch keys. All repository caches/configuration bindings clear before fallible root discovery or metadata,
+configuration and policy reads; process/write enforcement remains. Source requests resolve the original path before
+lexical cancellation, require actual source HERE, launch canonical HERE and permit only capture/text/UTF-8/replace and
+the existing sanitized nested-Git environment. Executable, shell, input and other process/context overrides refuse before
+any attempted launch. The four existing source reads and supported wrapper semantics remain usable. Source HERE cannot
+substitute for consumer ROOT authority. A Git request for an SVN target still refuses in one line before launch.
 
-The transitional launch ratchet scans **Python process references in `shoalmark.py`**. Its initial ceiling and mutable
-allowlist identify function/operation/API/normalized call, preserve occurrence counts and compare prior list revisions;
-new literal, renamed, aliased/dynamic starts and list growth/resurrection fail, while migration can shrink the list.
-There are still **63 direct starts: 55 Git, 3 SVN and 5 non-VCS/dynamic**; all are declared in the
-[initial ceiling](../test_vcs_launch_ceiling.json) and [caller evidence](evidence/stage-1-skeleton-checks-2026-10-13.md).
-The scanner excludes generated hook shell, release scripts, fixtures and documentation tooling, whose existing controls
-remain. It is a static process-API ratchet, not proof against arbitrary Python obfuscation. Administrative-path discovery
-checks local file accessibility and guards paths; it supplies no SVN database integrity, history/author or protected-state
-proof. Shared commands, board read-only SVN capability, rights/guard and CLI migration remain dependent work: full-tool
-SVN without Git is **not** complete. The unresolved committed consumer policy anchor cannot be replaced by Source HERE;
-protected acceptance must conservatively refuse in its later guard slice. Archive source at `3c18008` remains separate;
-its non-Git `git_dirs` integration is preserved semantically, and eventual `archive_source` must explicitly use
-`source=True`. The [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md), D3/D4 holds and R14/R25/R26 remain
-retained. Dependent seats start only after independent critical skeleton review; this Builder supplies no verdict.
+The ratchet checks the unfiltered reachable graph and **every applicable child/parent multiset transition**, including
+merges equal to a stale parent and records-only descendants. Checked batches reuse identical commit/tree/blob objects,
+validate original object hashes and parent/tree evidence, and explicitly disable Git replacements. A graft-hidden parent,
+shallow or unavailable history, failed Git/object reads, invalid revision/JSON/UTF-8 evidence, historical growth or deletion
+after introduction deliberately fails the outer gate. Readable pre-introduction absence, genuine root introduction,
+explicit empty lists and valid shrink/merge remain supported. The native source-history proof checked 1,621 commits and
+1,486 distinct root trees in 0.333 s; that measures this checkout, not a general bound on all consumer histories.
 
-Current-main records at `ab7ed3f` (#168) are integrated locally before the critical handoff. Every product/test/configuration
-blob remains identical to the tested dispatch `6f00764`; FM-004 retains its command-applied P1 #2 build judgement and
-main's exact signed Part B/exchange, with main's FM-043 records retained. No dependent product branch is integrated.
+Changed-Python compile passes, and **302 core checks pass (72.568 s)**, including all 59 new review controls. Running
+those 59 controls against immutable `6d0c239` yields 17 passes and 42 failures (37.850 s), including real Git shrink,
+merge-resurrection/later-shrink graphs, unavailable metadata/objects, symlink-parent escape and launch-option overrides.
+FM-045 retains all 30 classified Git commands with no unread/unclassified start; its boundary/`git_out` injections refuse.
+The three selected R14 signature/default-policy/signers/every-parent tests pass (163.704 s). The
+[check/caller evidence](evidence/stage-1-skeleton-checks-2026-10-13.md) records exact control/hash limits. Full suites and the unchanged five-job R25 matrix remain CI work after Owner push; D4 assigns no platform
+trial from this one native observation. R14 trust/signers/default-branch/every-parent rules and R26 legacy remain retained.
+
+The original neutral refactor `4f1664d` follows the judged `170985c` parent (Owner filing #167 at `e6d1e27`); its 19 wrapper
+controls also pass against that immutable parent. The separate dispatch `6f00764` selects Git/SVN once per configured
+ROOT and routes administrative-path discovery through that selection. SVN metadata starts no process; missing, empty,
+non-regular, symlinked or unreadable working-copy records refuse in one line with exit 4. Git own/common and linked-worktree
+directories, ancestor/nested disk metadata and symlink/filesystem aliases remain excluded. Current-main #168 records at
+`ab7ed3f` are already integrated by ordinary local merge `6d0c239`, retaining signed records and command-applied FM-004
+judgement; no dependent product branch is integrated.
+
+There remain **63 direct starts: 55 Git, 3 SVN and 5 non-VCS/dynamic**, declared in the unchanged
+[initial ceiling](../test_vcs_launch_ceiling.json) and caller evidence. The 60 `git_out` and 9 `svn_run` domain callers
+are not thereby accepted for SVN. The scanner covers Python process references in `shoalmark.py`; generated hook shell,
+release scripts, fixtures and documentation tooling retain their separate controls. This static ratchet supplies no
+arbitrary Python/FFI obfuscation proof. Metadata guard checks local accessibility/path confinement, not SVN database
+integrity, author/history or protected-state proof. Full-tool SVN without Git remains incomplete. Shared commands, board,
+rights/guard and CLI are dependent work, held until independent critical common-skeleton READY. The committed consumer
+policy anchor remains unresolved and protected acceptance must conservatively refuse in its later guard slice. Archive
+source `3c18008` stays separate; its non-Git `git_dirs` integration point survives semantically, while eventual
+`archive_source` must use the corrected narrow `source=True` read. Source acquisition/parsing is unchanged. The
+[Builder brief](evidence/stage-1-builder-brief-2026-10-13.md), signed path and D3/D4 holds remain the acceptance sources.
 
 **2026-10-13 — filing recovered; no stage-1 build was supplied by the recovery.** This replacement carries the filing
 reviewed at `99050b9`, with RV-2735–RV-2737 corrected. The signed 12 October R23 lifts the hold for stage 1:
@@ -110,3 +124,4 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 | 2026-10-13 | FM-044 common-layer neutral refactor: only git_out/svn_run launch mechanics moved behind vcs_process. Immutable-parent/refactor wrapper contracts and real Git/SVN positive/refusal fixtures pass; compile and test_core pass; metadata dispatch, ratchet, independent critical review and dependent migrations remain due. |
 | 2026-10-13 | FM-044 bounded skeleton dispatch built after neutral refactor 4f1664d: cached ROOT selection, no-process SVN metadata, fail-closed administrative paths and constrained target/source process requests. Compile and 243 core checks pass; 63 retained direct starts and exact scanner/proof limits declared. Independent critical review next; dependent migrations, archive integration, CI and platform decisions remain due. |
 | 2026-10-13 | Integrated only immutable current-main #168 records at ab7ed3f by ordinary local merge before the critical handoff, retaining the exact 6f00764 product blobs, command-applied FM-004 judgement, main's signed records and FM-044 implementation evidence; INDEX regenerated. |
+| 2026-10-13 | Fixed forward round-1 RV-3085–RV-3088 after released e511d57: node-identity/class-scoped scanner, pre-fallible repository invalidation, original-path/canonical-HERE source confinement and complete checked reachable parent transitions with deliberate proof failures. Compile and 302 core checks pass; 59 targeted controls contrast 17 pass/42 fail on immutable 6d0c239 with 59 pass on the fix. Ceiling/list unchanged; critical verification remains due and dependent code held. |

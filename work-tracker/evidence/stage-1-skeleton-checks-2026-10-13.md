@@ -16,11 +16,55 @@ exclusions and the initial launch ratchet. Production stays in the standard-libr
 `vcs_process(program, *args, cwd=None, source=False, **options)` returns the unchanged CompletedProcess.
 `git_out` retains text/UTF-8/replace/nested_git_env and None on process failure. `svn_run` retains captured bytes,
 accepted history error codes, SvnUnreadable, LF normalization and XML handling. Git requests for an SVN consumer
-refuse before launch (one line, exit 4). Only `source=True` at exact HERE with one of the four existing source-provenance
-argv tuples can request source Git independently. The separately reviewed archive's future `archive_source`
+refuse before launch (one line, exit 4). `source=True` resolves the original cwd, requires actual HERE, launches canonical HERE
+and admits only the four fixed provenance argv tuples with capture/text/UTF-8/replace and the sanitized nested-Git environment.
+Executable/shell/input/other process or environment overrides refuse before any attempted start. The separately reviewed archive's future `archive_source`
 rev-parse call must pass `source=True`; its parser, manifest, pins and release acquisition were not imported here.
 
-## Completed checks
+## Round-1 correction and current proof
+
+The independent inline NOT READY verdict `05a95eb9711a009b8290d7ff79f085e8ebc0e863` and addendum
+`e511d57d45762e5972909a0dd6a88e32606b2bf0` review immutable `6d0c2399112c74d0109df72cbd1867709d909547`.
+RV-3085–RV-3088 remain for independent verification. The original passing checks below did not prove same-named class
+identity, all caches after refused configuration, original source-path/context confinement or every reachable historical
+parent transition. Earlier assertions of those boundaries were too broad; the current controls address their reproductions.
+
+The correction exempts only descendants of the digest-validated top-level boundary node, includes class scope in keys,
+invalidates all per-repository bindings/caches before the first fallible operation, validates the original source path and
+launches canonical HERE with bounded kwargs, and checks every applicable reachable child/parent list multiset transition.
+History proof explicitly disables replacements, hashes checked commit/tree/blob batches, validates original commit parent/
+tree headers against the full graph, distinguishes verified absent pre-introduction paths from failed reads, and rejects
+unavailable/shallow/grafted/invalid evidence deliberately at the outer ratchet gate. Later shrinking and records-only
+commits cannot hide an earlier growing merge transition. Git proof does not fetch missing objects.
+
+| Fix/control | Result | Measured duration |
+|---|---|---|
+| Changed Python compile (`shoalmark.py`, `test_core.py`, `test_vcs_skeleton.py`) | pass | 0.303 s |
+| Current test_core.py | 302 pass, including all 59 review controls | 72.568 s |
+| Same 59 review controls on immutable `6d0c239` production/scanner | 17 pass / 42 fail; negative prior-state contrast | 37.850 s |
+| Retained FM-045 classification plus boundary/git_out injections | same 30 commands; no unread/unclassified start; 2 injections detected | 5.841 s |
+| Retained selected R14 signature/default-policy/signers/every-parent controls | 3 pass | 163.704 s |
+| Checked reachable-history proof with source HEAD `e511d57` | 1,621 commits / 1,486 distinct root trees / 1 distinct list | 0.333 s |
+
+Core ran alongside the immutable-baseline and retained focused checks; these are observed native durations. The history
+reader uses one pinned graph and checked unique-object batches, rather than one process per unchanged historical path.
+The working allowlist SHA-256 remains `1da7caf437e6c782d03fdb556b8986fcc81125ac0dd9cc69950501ad11600347`;
+the ceiling remains `1eabbea359cde1c65db4a688c3ff609d6acda0a33e38bc0b84021f9fde9bf6a0`, byte-equal to `6d0c239`.
+The necessary frozen boundary digest changes only for RV-3087 confinement from
+`e2cd4c40729a6bbdc95ac0f9037600df5002b3e5fdee0e7774277d2fa57f732f` to
+`86d6d728c50b5803dfd53a3f6aa2a4948e104db716d3a7684fb43598237c6602`; no injected start or new key is admitted.
+
+The 59 controls include sync/async/nested same-name class methods; Git A to real SVN B validation/parsing/policy/marker/
+root-discovery refusals with every prior-root cache seeded, plus successful reconfiguration and retained write/process
+flags; four actual source reads, canonical source aliases/direct environment, lexical-HERE/actual-foreign symlink-parent
+escape, unresolved paths and pre-start option/context refusals; and real Git initial introduction, 63-to-62 migration,
+working resurrection, stale-parent merge/later shrink/records descendants, valid shrinking merge, actual unavailable Git/
+list/tree/parent objects, invalid historical JSON/UTF-8/shape/keys, explicit empty lists, duplicate growth, list deletion,
+armed command/revision faults, actual replace/graft hidden history, genuine root introduction and shallow history.
+The unavailable-Git fixture also invokes the actual outer gate and requires an explicit failing history check; an incidental
+exception is not its expected refusal. These controls do not accept injected launches by changing the list or ceiling.
+
+## Original completed checks
 
 | Tree/control | Result | Measured duration |
 |---|---|---|
@@ -41,7 +85,8 @@ They test explicit root and SVN subdirectory metadata dispatch, actual --root --
 admin tracker/write refusals, Git target refusal and arbitrary-cwd refusal. They are not the full init/new/index/check/
 board/triage chain or an assigned D4 platform proof. Metadata failures include failed/empty/incomplete Git answers,
 missing Git for a Git worktree, missing/unreadable SVN directory/marker, and missing/empty/non-regular/symlink/unreadable records.
-An unreadable marker refuses instead of selecting an empty lane; a refused reconfiguration clears old dispatch/metadata.
+An unreadable marker refuses instead of selecting an empty lane. The original control cleared dispatch/metadata only;
+RV-3086 now proves all repository caches clear before refused discovery/configuration as described above.
 The existing nested-Git environment, byte/text and error contracts run independently of the new dispatch controls.
 
 ## Remaining direct process sites
@@ -123,11 +168,12 @@ legacy interpretation remain unchanged.
 
 The scanner covers Python process APIs/references in shoalmark.py, including common imports/assignments, module/API
 aliases, dynamic argv/getattr/import/module-dictionary access, and changed or aliased boundary requests. Its whole
-boundary AST is frozen; added launches inside that function cannot hide behind its name. New names/normalized calls,
-additional occurrences, allowlist growth beyond the immutable SHA-256 ceiling and resurrection relative to committed
-list history fail. Removing a call requires removing its allowlist entry. The synthetic migration control has explicit
-imports and does not whitelist injected production code. Ordinary mapping get/file open methods are distinct from
-resolved webbrowser process APIs, preventing the scanner from treating them as launches.
+boundary AST is frozen; only the validated top-level node's descendants are exempt, and class-qualified methods keep
+separate keys. New names/normalized calls, additional occurrences, allowlist growth beyond the immutable SHA-256 ceiling
+and growth across any applicable reachable parent transition refuse. Working resurrection also refuses relative to every
+read historical list. Removing a call requires removing its allowlist entry. The synthetic migration has explicit imports
+and does not whitelist injected production code. Ordinary mapping get/file open remain distinct from resolved webbrowser
+process APIs. Failed required history is an explicit outer failing check, never an empty prior-list success.
 
 This is a static process-API control, not arbitrary-Python/FFI obfuscation proof. Generated hook shell, release scripts,
 fixtures and documentation tooling remain outside this scanner and retain their existing controls. The metadata layer

@@ -708,9 +708,45 @@ def configure(root=None):
     global ROOT, CONFIG, TRACKER_DIR, OUT, HTML_OUT, VIEW_DIR, REPO_BLOB, TAGS, CONSIDERED_FROM, TRIAGE_DAYS
     global KINDS, KIND_LABELS, KIND_RE, TITLE_RE, TRACKER_LINK_RE, H1_ID_RE, ROW_ID_RE, _IDS, FRONT_MATTER, CMD
     global HEAD, STATE_HEAD_RE, DONE_RE
-    global _VCS, _GIT_DIRS
+    global _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER
+    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED
+    global FREEZE_AT, FREEZE_TAG, CMD_OWN, WANTED_NUM
+    global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
+    # No path discovery, metadata/configuration read or validation may see the previous repository's state.
+    ROOT = TRACKER_DIR = OUT = HTML_OUT = VIEW_DIR = None
+    CONFIG, TAGS, CONSIDERED_FROM, KIND_LABELS, HEAD, FRONT_MATTER = {}, {}, {}, {}, {}, {}
+    ANSWERERS, SEATS, SEAT_RIGHTS = {}, {}, {}
+    KINDS, REPO_BLOB, _IDS, CMD, CMD_OWN = (), "", "", "", ""
+    TRIAGE_DAYS, FREEZE_AT, FREEZE_TAG, WANTED_NUM = 0, 0, "", None
+    KIND_RE = TITLE_RE = TRACKER_LINK_RE = H1_ID_RE = ROW_ID_RE = None
+    STATE_HEAD_RE = DONE_RE = ASKS_HEAD_RE = RAISED_HEAD_RE = ACTS_HEAD_RE = None
+    _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER = ("", None), None, None, None, None
+    DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT = [], {}, [], [], [], False
+    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED = False, None, {}, {}, set()    # the pre-commit run, what it stages, who wrote which line, and the trackers whose blame could not be read
+    global _BUILD, _CHANGES
+    _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
+    global _GUARD, _SIGNERS
+    _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
+    global _OWNER_POLICY, _OWNER_COMMITS
+    _OWNER_POLICY, _OWNER_COMMITS = None, {}
+    _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
+    _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
+    _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
+    global _SVN_NEW, _WALK, _WALK_FAILED
+    _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
+    _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
+    _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
+    global _WALK_COMMITS, _HAS_SESSIONS
+    _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
+    global _ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN
+    _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
+    _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
+    _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
+    _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
+    global LAZY_OFF, _PARTIAL
+    LAZY_OFF, _PARTIAL = False, None                    # git's own default for every read, until a run whose reads fetch nothing says otherwise (`lazy_fetch_off`)
+    BOARD_UNREAD.clear()
     ROOT = find_root(root)
-    _VCS, _GIT_DIRS = ("", None), None                   # even a reconfiguration that refuses must not reuse another root's selection/metadata
     _VCS = select_vcs(ROOT)
     path = ROOT / CONFIG_NAME
     text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
@@ -718,11 +754,9 @@ def configure(root=None):
     TRACKER_DIR = ROOT / tracker_folder(CONFIG)
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
-    global FREEZE_AT
     FREEZE_AT = CONFIG["freeze_at"]
     if isinstance(FREEZE_AT, bool) or not isinstance(FREEZE_AT, int) or FREEZE_AT < 0:
         raise SystemExit(f"{CONFIG_NAME}: `freeze_at` is a whole number of open trackers — the filing freeze holds at that count and above; 0 turns it off. Got {FREEZE_AT!r}")
-    global FREEZE_TAG
     FREEZE_TAG = CONFIG["freeze_tag"]
     if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
         raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
@@ -730,8 +764,6 @@ def configure(root=None):
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
-    global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED, _GIT_USER
-    _GIT_USER = None                                    # `git config user.name`, read at most once for this repository
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -759,30 +791,6 @@ def configure(root=None):
             raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
                              f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
-    COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED = False, None, {}, {}, set()    # the pre-commit run, what it stages, who wrote which line, and the trackers whose blame could not be read
-    global _BUILD, _CHANGES
-    _BUILD, _CHANGES = None, None                       # FM-033's judgement of this run, and the changes it judges (`changes_under_review`) — each read once
-    global _GUARD, _SIGNERS
-    _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
-    global _OWNER_POLICY, _OWNER_COMMITS
-    _OWNER_POLICY, _OWNER_COMMITS = None, {}
-    _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
-    _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
-    _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
-    global _SVN_NEW, _WALK, _WALK_FAILED
-    _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
-    _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
-    _WALK_FAILED = None                                 # the one line where git could not walk the commits a run judges (`walk_problems`)
-    global _WALK_COMMITS, _HAS_SESSIONS
-    _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
-    global _ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN
-    _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
-    _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
-    _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
-    _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
-    global LAZY_OFF, _PARTIAL
-    LAZY_OFF, _PARTIAL = False, None                    # git's own default for every read, until a run whose reads fetch nothing says otherwise (`lazy_fetch_off`)
-    BOARD_UNREAD.clear()
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
     if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
@@ -806,7 +814,6 @@ def configure(root=None):
     H1_ID_RE = re.compile(rf"^#\s+[*_~`]*((?:{alt})-\d+)\b")
     ROW_ID_RE = re.compile(rf"^\| \[((?:{alt})-\d+)\]")
     TRACKER_LINK_RE = re.compile(rf"\]\(((?:{alt})-\d+-[a-z0-9-]+\.md)\)")
-    global CMD_OWN
     try:
         CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
     except ValueError:
@@ -6393,9 +6400,20 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
         # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration.
         source_reads = (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("tag", "--points-at", "HEAD"),
                         ("status", "--porcelain", "--untracked-files=all"))
-        if program != "git" or cwd is None or _norm(cwd) != _norm(HERE) or args not in source_reads:
+        source_home = HERE
+        try:
+            resolved = pathlib.Path(cwd).resolve(strict=True) if cwd is not None else None
+            same_source = resolved is not None and resolved.samefile(source_home)
+        except (OSError, RuntimeError, TypeError, ValueError):
+            same_source = False
+        source_env = nested_git_env()
+        safe_options = {"capture_output": (True, False), "text": (True, False), "encoding": ("utf-8",), "errors": ("replace",)}
+        safe = all((value == source_env if key == "env" else key in safe_options and value in safe_options[key]) for key, value in options.items())
+        if program != "git" or not same_source or args not in source_reads or not safe:
             print("shoalmark: source provenance accepts only its fixed Git reads in the tool's source folder — nothing is started", file=sys.stderr)
             raise SystemExit(EXIT_LINT)
+        cwd = source_home                               # launch canonical HERE, never a checked alias's original spelling
+        options["env"] = source_env                     # no direct caller can inherit or supply another repository's context
     elif program == "git" and vcs() == "svn":
         print("shoalmark: this Git operation requires a Git working copy; the configured target is Subversion — nothing is started", file=sys.stderr)
         raise SystemExit(EXIT_LINT)

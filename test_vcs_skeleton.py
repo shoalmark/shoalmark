@@ -10,10 +10,13 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -124,7 +127,7 @@ PROCESS_APIS = {
 }
 PROCESS_METHODS = set().union(*PROCESS_APIS.values()) - {"get", "open"}     # ordinary mapping/file methods; webbrowser's resolved APIs are still checked
 LAUNCH_CEILING_SHA256 = "1eabbea359cde1c65db4a688c3ff609d6acda0a33e38bc0b84021f9fde9bf6a0"
-BOUNDARY_SHA256 = "e2cd4c40729a6bbdc95ac0f9037600df5002b3e5fdee0e7774277d2fa57f732f"
+BOUNDARY_SHA256 = "86d6d728c50b5803dfd53a3f6aa2a4948e104db716d3a7684fb43598237c6602"
 ALLOWLIST_PATH = "test_vcs_launch_allowlist.json"
 CEILING_PATH = "test_vcs_launch_ceiling.json"
 
@@ -172,7 +175,7 @@ def launch_sites(source):
         names = []
         while n in parents:
             n = parents[n]
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 names.append(n.name)
         return ".".join(reversed(names)) or "<module>"
 
@@ -198,6 +201,7 @@ def launch_sites(source):
     boundaries = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "vcs_process"]
     if len(boundaries) != 1 or ast_hash(boundaries[0]) != BOUNDARY_SHA256:
         problems.append("the reviewed vcs_process boundary changed or is missing/duplicated")
+    boundary_nodes = set(ast.walk(boundaries[0])) if len(boundaries) == 1 and ast_hash(boundaries[0]) == BOUNDARY_SHA256 else set()
     if "*" in imported:
         problems.append("a process module was imported by wildcard")
     for n in ast.walk(tree):
@@ -205,8 +209,8 @@ def launch_sites(source):
         module, _, api = canonical.rpartition(".")
         if module in PROCESS_APIS and api in PROCESS_APIS[module]:
             if isinstance(p, ast.Call) and p.func is n:
-                if function(p) == "vcs_process":
-                    continue                            # the entire boundary's AST is frozen above, not its name alone
+                if p in boundary_nodes:
+                    continue                            # only this validated top-level AST node's descendants are exempt
                 fn = function(p); op = operation(p); key = fn + "|" + op + "|" + canonical + "|" + ast_hash(p)
                 sites.append({"key": key, "function": fn, "operation": op, "call": ast.unparse(p)})
             else:
@@ -251,23 +255,139 @@ def ratchet_problems(source, allowed, ceiling, previous=()):
     return problems
 
 
-def previous_allowlists(fm):
-    """The current committed list and every parent of its last change: resurrection fails before commit and after later records-only commits."""
-    def git(*args):
-        r = subprocess.run(["git", *args], cwd=HERE, capture_output=True, text=True, encoding="utf-8", errors="replace", env=fm.nested_git_env())
-        return r.stdout.strip() if r.returncode == 0 else ""
+class RatchetHistoryError(ValueError):
+    """Required source history is unavailable/invalid, or contains an expanded parent transition."""
 
-    previous = []
-    current = git("show", "HEAD:" + ALLOWLIST_PATH)
-    if current:
-        previous.append(json.loads(current))
-    changed = git("log", "-1", "--format=%H", "--", ALLOWLIST_PATH)
-    if changed:
-        for parent in git("rev-list", "--parents", "-n", "1", changed).split()[1:]:
-            old = git("show", parent + ":" + ALLOWLIST_PATH)
-            if old:
-                previous.append(json.loads(old))
-    return previous
+
+def previous_allowlists(fm):
+    """Verify every reachable child/parent multiset transition; absent pre-introduction paths are not failed reads.
+
+    One unfiltered commit walk and checked tree/blob batches keep records-only history practical. The root-level
+    allowlist is looked up in actual tree objects; no path-history simplification can hide a merge or a retired key.
+    """
+    env = fm.nested_git_env()
+    env["GIT_NO_LAZY_FETCH"] = "1"                    # a missing local proof is not an invitation to fetch it
+
+    def fail(label):
+        raise RatchetHistoryError("launch history: " + label)
+
+    def git(*args, data=None):
+        try:
+            r = subprocess.run(["git", "--no-replace-objects", *args], cwd=HERE, capture_output=True, input=data, env=env)
+        except OSError:
+            fail("Git could not start for " + args[0])
+        if r.returncode:
+            fail(args[0] + " could not read required proof")
+        return r.stdout
+
+    def oid(value):
+        return re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value) is not None
+
+    def text(data):
+        try:
+            return data.decode("utf-8")
+        except UnicodeError:
+            fail("invalid UTF-8 metadata")
+
+    def batch(objects, kind):
+        objects = sorted(set(objects))
+        if not objects:
+            return {}
+        raw = git("cat-file", "--batch", data=("\n".join(objects) + "\n").encode("ascii"))
+        values, at = {}, 0
+        for wanted in objects:
+            end = raw.find(b"\n", at)
+            if end < 0:
+                fail("truncated " + kind + " batch header")
+            header = text(raw[at:end]).split()
+            if len(header) != 3 or header[:2] != [wanted, kind] or not header[2].isdigit():
+                fail("unavailable or invalid " + kind + " object")
+            size = int(header[2]); at = end + 1
+            value = raw[at:at + size]; at += size
+            if len(value) != size or raw[at:at + 1] != b"\n":
+                fail("truncated " + kind + " object")
+            at += 1
+            digest = hashlib.sha1 if len(wanted) == 40 else hashlib.sha256
+            if digest(kind.encode("ascii") + b" " + str(size).encode("ascii") + b"\0" + value).hexdigest() != wanted:
+                fail("invalid " + kind + " object hash")
+            values[wanted] = value
+        if at != len(raw):
+            fail("extra " + kind + " batch data")
+        return values
+
+    head = text(git("rev-parse", "--verify", "HEAD^{commit}")).strip()
+    if not oid(head):
+        fail("invalid HEAD revision")
+    if git("rev-parse", "--is-shallow-repository").strip() != b"false":
+        fail("source history is shallow or cannot establish its roots")
+    graph = {}
+    for row in text(git("log", "--reverse", "--topo-order", "--format=%H %P %T", head)).splitlines():
+        fields = row.split()
+        if len(fields) < 2 or not all(oid(value) and len(value) == len(head) for value in fields):
+            fail("invalid commit/parent/tree revisions")
+        commit, parents, tree = fields[0], fields[1:-1], fields[-1]
+        if commit in graph or any(parent not in graph for parent in parents):
+            fail("duplicate commit or unavailable/out-of-order parent")
+        graph[commit] = (parents, tree)
+    if head not in graph or next(reversed(graph), None) != head:
+        fail("required reachable commit graph is incomplete")
+
+    commits = batch(graph, "commit")
+    for commit, raw in commits.items():
+        headers = raw.split(b"\n\n", 1)[0].splitlines()
+        actual_tree = headers[0][5:] if headers and headers[0].startswith(b"tree ") else b""
+        actual_parents = [row[7:] for row in headers if row.startswith(b"parent ")]
+        parents, tree = graph[commit]
+        if actual_tree != tree.encode("ascii") or actual_parents != [parent.encode("ascii") for parent in parents]:
+            fail("commit object disagrees with required tree/parent graph")
+
+    trees = batch((tree for _, tree in graph.values()), "tree")
+    tree_lists = {}
+    width = len(head) // 2
+    for tree, raw in trees.items():
+        at, found, names = 0, None, set()
+        while at < len(raw):
+            space, nul = raw.find(b" ", at), raw.find(b"\0", at)
+            if space < at or nul <= space or nul + 1 + width > len(raw):
+                fail("invalid root tree entry")
+            mode, name = raw[at:space], raw[space + 1:nul]
+            if mode not in (b"40000", b"100644", b"100755", b"120000", b"160000") or not name or b"/" in name or name in names:
+                fail("invalid root tree mode/name")
+            names.add(name)
+            value = raw[nul + 1:nul + 1 + width].hex(); at = nul + 1 + width
+            if name == ALLOWLIST_PATH.encode("ascii"):
+                if mode not in (b"100644", b"100755"):
+                    fail("historical allowlist is not a regular blob")
+                found = value
+        tree_lists[tree] = found                       # verified absent path, not a failed object lookup
+    blobs = batch((value for value in tree_lists.values() if value is not None), "blob")
+    lists = {}
+    for sha, raw in blobs.items():
+        try:
+            values = json.loads(text(raw))
+        except (ValueError, TypeError):
+            fail("invalid historical allowlist JSON")
+        if not isinstance(values, list) or not all(isinstance(value, str) and value for value in values):
+            fail("historical allowlist is not a list of keys")
+        lists[sha] = values
+    try:
+        ceiling = (HERE / CEILING_PATH).read_bytes()
+        maximum = collections.Counter(row["key"] for row in json.loads(ceiling))
+    except (OSError, ValueError, TypeError, KeyError):
+        fail("immutable ceiling cannot be read")
+    if hashlib.sha256(ceiling).hexdigest() != LAUNCH_CEILING_SHA256:
+        fail("immutable ceiling changed")
+    states = {commit: (collections.Counter(lists[tree_lists[tree]]) if tree_lists[tree] is not None else None)
+              for commit, (_, tree) in graph.items()}
+    for commit, (parents, _) in graph.items():
+        current = states[commit]
+        if current is not None and current - maximum:
+            fail("historical allowlist exceeds its ceiling at " + commit[:7])
+        for parent in parents:
+            old = states[parent]
+            if old is not None and (current is None or current - old):
+                fail("allowlist grew or disappeared from parent " + parent[:7] + " to " + commit[:7])
+    return list(lists.values())
 
 
 def run_ratchet_controls(fm, check):
@@ -277,8 +397,13 @@ def run_ratchet_controls(fm, check):
     ceiling = [s["key"] for s in ceiling_rows]; allowed = json.loads((HERE / ALLOWLIST_PATH).read_text(encoding="utf-8"))
     source = Path(fm.__file__).read_text(encoding="utf-8")
     check("FM-044: immutable reviewed launch ceiling is unchanged", hashlib.sha256(ceiling_bytes).hexdigest() == LAUNCH_CEILING_SHA256)
-    problems = ratchet_problems(source, allowed, ceiling, previous_allowlists(fm))
-    check("FM-044: all production launch references are the boundary or retained starts: " + repr(problems), not problems)
+    try:
+        history = previous_allowlists(fm)
+    except RatchetHistoryError as error:
+        check("FM-044: required production launch history is readable and monotonic: " + str(error), False)
+    else:
+        problems = ratchet_problems(source, allowed, ceiling, history)
+        check("FM-044: all production launch references are the boundary or retained starts: " + repr(problems), not problems)
     injections = {
         "literal Git": 'def escaped():\n    return subprocess.run(["git", "gc"])\n',
         "literal SVN": 'def escaped():\n    return subprocess.run(["svn", "update"])\n',
@@ -474,3 +599,282 @@ def run_dispatch_controls(fm, check):
             check("FM-044: reconfigure retains Git priority for two same-folder markers", fm.vcs() == "git")
     finally:
         fm.configure(previous)
+
+
+def run_review_controls(fm, check, scanner=None):
+    """RV-3085–3088: independently reproduced class, refused-root, source-context and reachable-history failures."""
+    scanner = scanner or sys.modules[__name__]
+    print("\nFM-044: critical round-1 regression controls")
+    source = Path(fm.__file__).read_text(encoding="utf-8")
+    allowed = json.loads((HERE / ALLOWLIST_PATH).read_text(encoding="utf-8"))
+    ceiling = [row["key"] for row in json.loads((HERE / CEILING_PATH).read_text(encoding="utf-8"))]
+    for name, extra in {
+        "same-named class method": 'class ExtraLauncher:\n    def vcs_process(self):\n        return subprocess.run(["git", "gc"])\n',
+        "same-named async class method": 'class ExtraLauncher:\n    async def vcs_process(self):\n        return subprocess.run(["git", "gc"])\n',
+        "nested class method": 'class Outer:\n    class Inner:\n        def vcs_process(self):\n            return subprocess.run(["svn", "update"])\n',
+        "function-nested class method": 'def outer():\n    class ExtraLauncher:\n        def vcs_process(self):\n            return subprocess.run(["git", "gc"])\n',
+    }.items():
+        check("RV-3085: rejects " + name, bool(scanner.ratchet_problems(source + "\n" + extra, allowed, ceiling)))
+    run_review_root_controls(fm, check)
+    run_review_history_controls(fm, check, scanner, source, allowed, ceiling)
+
+
+def run_review_root_controls(fm, check):
+    """RV-3086/3087: two real roots, original symlink/parent resolution, and pre-start execution-context refusals."""
+    previous = fm.ROOT
+    real_run = subprocess.run
+    none = ("_GIT_DIRS", "_TRACKED", "_SVN_LOG", "_GIT_USER", "_STAGED", "_BUILD", "_CHANGES", "_GUARD", "_SIGNERS",
+            "_OWNER_POLICY", "_WALK", "_WALK_FAILED", "_ORIGIN_DEFAULT", "_TRUNK_UNTOLD", "_PARTIAL")
+    maps = ("_LINE_AUTHOR", "_SVN_BLAME", "_OWNER_COMMITS", "_MODES", "_TREES", "_VIEWS", "_SVN_NEW", "_WALK_COMMITS", "_HAS_SESSIONS", "DERIVED_FILES")
+    lists = ("BOARD_UNREAD", "DERIVED_COLUMNS", "DERIVED_NOTES", "INDEX_COLUMNS", "BOARD_COLUMNS")
+    flags = ("COMMITTING", "_ASK_ORIGIN", "LAZY_OFF", "DERIVER_LEFT")
+
+    def seed():
+        for name in none:
+            setattr(fm, name, "old Git A")
+        for name in maps:
+            getattr(fm, name).clear(); getattr(fm, name)["old Git A"] = "cached"
+        for name in lists:
+            getattr(fm, name)[:] = ["old Git A"]
+        for name in flags:
+            setattr(fm, name, True)
+        fm._BLAME_REFUSED.add("old Git A")
+        fm.ANSWERERS["old Git A"] = "signed"; fm.SEATS["old Git A"] = []; fm.SEAT_RIGHTS["old Git A"] = {"answer"}
+
+    def cleared():
+        return (all(getattr(fm, name) is None for name in none) and all(not getattr(fm, name) for name in (*maps, *lists, *flags))
+                and not fm._BLAME_REFUSED and all("old Git A" not in getattr(fm, name) for name in ("ANSWERERS", "SEATS", "SEAT_RIGHTS")))
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="fm044-root-review-") as tmp:
+            area = Path(tmp).resolve(); source = area / "source"; foreign = area / "foreign"
+            for root in (source, foreign):
+                root.mkdir()
+                real_run(["git", "init", "-q", str(root)], capture_output=True, check=True, env=fm.nested_git_env())
+                real_run(["git", "config", "user.name", "Fixture"], cwd=root, capture_output=True, check=True)
+                real_run(["git", "config", "user.email", "fixture@example.invalid"], cwd=root, capture_output=True, check=True)
+                real_run(["git", "config", "commit.gpgsign", "false"], cwd=root, capture_output=True, check=True)
+                (root / "note.txt").write_text(root.name + "\n", encoding="utf-8")
+                real_run(["git", "add", "note.txt"], cwd=root, capture_output=True, check=True, env=fm.nested_git_env())
+                real_run(["git", "commit", "-qm", "source fixture"], cwd=root, capture_output=True, check=True, env=fm.nested_git_env())
+            if not (shutil.which("svn") and shutil.which("svnadmin")):
+                print("  SKIP RV-3086/3087: real SVN consumer controls need svn and svnadmin")
+                return
+            server, target = area / "server", area / "svn"
+            real_run(["svnadmin", "create", str(server)], capture_output=True, check=True)
+            real_run(["svn", "checkout", "-q", server.as_uri(), str(target)], capture_output=True, check=True)
+            config = target / "shoalmark.toml"
+            for label, text in (("configuration validation", "freeze_at = -1\n"), ("configuration parsing", "this is not configuration\n"),
+                                ("policy validation", '[seats]\nbuilder = ["same", "same"]\n')):
+                fm.configure(source); seed(); config.write_text(text, encoding="utf-8")
+                refused = caught(lambda: fm.configure(target), SystemExit) is not None
+                check("RV-3086: " + label + " refusal clears every old-root cache", refused and cleared())
+            config.unlink()
+            fm.configure(source); seed()
+            with patch.object(fm.os, "lstat", side_effect=PermissionError("fixture marker denied")):
+                check("RV-3086: denied marker clears every old-root cache", refusal(lambda: fm.configure(target), fm) and cleared())
+            fm.configure(source); seed(); observed = []
+
+            def denied_root(_root):
+                observed.append(cleared() and fm._VCS == ("", None) and fm.CONFIG == {} and fm.ROOT is None)
+                raise SystemExit("fixture root discovery denied")
+
+            with patch.object(fm, "find_root", side_effect=denied_root):
+                check("RV-3086: all invalidation precedes fallible root discovery", caught(lambda: fm.configure(target), SystemExit) is not None and observed == [True] and cleared())
+            with patch.object(fm, "SAFE_WRITES", True), patch.object(fm, "_TRIPWIRE", True):
+                fm.configure(target)
+                check("RV-3086: successful reset retains process/write enforcement", fm.SAFE_WRITES and fm._TRIPWIRE and cleared() and fm.vcs() == "svn")
+            fm.configure(source)
+            check("RV-3086: Git reconfiguration succeeds after refused SVN roots", cleared() and fm.vcs() == "git" and fm.git_user() == "Fixture")
+            fm.configure(target)
+            starts = []
+
+            def monitor(argv, **options):
+                starts.append((argv, options))
+                return real_run(argv, **options)
+
+            with patch.object(fm, "HERE", source), patch.object(fm.subprocess, "run", side_effect=monitor):
+                for args in (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("tag", "--points-at", "HEAD"),
+                             ("status", "--porcelain", "--untracked-files=all")):
+                    before = len(starts); result = fm.git_out(*args, cwd=source, source=True)
+                    check("RV-3087: real fixed source read " + " ".join(args), result is not None and len(starts) == before + 1
+                          and starts[-1][1]["cwd"] == source and starts[-1][1]["env"] == fm.nested_git_env()
+                          and starts[-1][1]["capture_output"] and starts[-1][1]["text"] and starts[-1][1]["encoding"] == "utf-8" and starts[-1][1]["errors"] == "replace")
+                check("RV-3087: real source provenance still reports canonical source", fm.source_provenance()[1] == fm.git_out("rev-parse", "HEAD", cwd=source, source=True).strip())
+                before = len(starts)
+                result = fm.vcs_process("git", "rev-parse", "HEAD", cwd=source, source=True, capture_output=True)
+                check("RV-3087: direct fixed read supplies the sanitized source environment", result.returncode == 0 and len(starts) == before + 1
+                      and starts[-1][1]["cwd"] == source and starts[-1][1].get("env") == fm.nested_git_env())
+                wrong = foreign / "a" / "b" / "c"; wrong.mkdir(parents=True)
+                if os.name != "nt":
+                    source_alias = area / "source-alias"; source_alias.symlink_to(source, target_is_directory=True)
+                    before = len(starts)
+                    try:
+                        with redirect_stderr(io.StringIO()):
+                            result = fm.git_out("rev-parse", "HEAD", cwd=source_alias, source=True)
+                    except SystemExit:
+                        result = None
+                    check("RV-3087: legitimate source alias launches canonical HERE", result is not None and len(starts) == before + 1 and starts[-1][1]["cwd"] == source)
+                    alias = source / "a" / "b" / "c"; alias.parent.mkdir(parents=True)
+                    alias.symlink_to(wrong, target_is_directory=True)
+                    escape = str(alias) + "/../../.."
+                    before = len(starts)
+                    check("RV-3087: symlink/parent escape refuses before any attempted process", refusal(lambda: fm.git_out("rev-parse", "--show-toplevel", cwd=escape, source=True), fm) and len(starts) == before)
+                    loop = source / "loop"; loop.symlink_to(loop)
+                    before = len(starts)
+                    check("RV-3087: unresolved source path refuses before any attempted process", refusal(lambda: fm.git_out("rev-parse", "HEAD", cwd=loop, source=True), fm) and len(starts) == before)
+                for label, options in (("executable", {"executable": sys.executable}), ("shell", {"shell": True}),
+                                       ("process context", {"start_new_session": True}), ("input", {"input": "override"}),
+                                       ("foreign environment", {"env": {**fm.nested_git_env(), "GIT_DIR": str(foreign / ".git")}}),
+                                       ("inherited environment override", {"env": None})):
+                    before = len(starts)
+                    check("RV-3087: " + label + " refuses before any attempted process",
+                          refusal(lambda: fm.vcs_process("git", "rev-parse", "HEAD", cwd=source, source=True, capture_output=True, text=True, **options), fm) and len(starts) == before)
+                before = len(starts)
+                check("RV-3087: target/arbitrary cwd requests still refuse before start", refusal(lambda: fm.git_out("rev-parse", "HEAD"), fm)
+                      and refusal(lambda: fm.git_out("rev-parse", "HEAD", cwd=foreign), fm) and len(starts) == before)
+    finally:
+        fm.configure(previous)
+
+
+def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
+    """RV-3088: real reachable graphs, historical transitions, unavailable objects, and the actual outer gate."""
+    real_run = subprocess.run
+
+    class MigrateVersion(ast.NodeTransformer):
+        def visit_FunctionDef(self, node):
+            if node.name != "git_version":
+                return node
+            for call in ast.walk(node):
+                if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and ast.unparse(call.func) == "subprocess.run":
+                    call.func = ast.Name(id="vcs_process", ctx=ast.Load()); call.args = call.args[0].elts + call.args[1:]
+            return node
+
+    smaller = ast.unparse(ast.fix_missing_locations(MigrateVersion().visit(ast.parse(original)))) + "\n"
+    sites, errors = scanner.launch_sites(smaller); small_keys = [site["key"] for site in sites]
+    check("RV-3088: real version migration removes exactly one existing key", not errors and len(small_keys) == len(allowed) - 1
+          and len(collections.Counter(allowed) - collections.Counter(small_keys)) == 1
+          and not scanner.ratchet_problems(smaller, small_keys, ceiling, [allowed]))
+    with tempfile.TemporaryDirectory(prefix="fm044-history-review-") as tmp:
+        root = Path(tmp).resolve()
+        ceiling_bytes = (HERE / CEILING_PATH).read_bytes()
+        env = fm.nested_git_env(); env["GIT_CEILING_DIRECTORIES"] = str(root.parent)
+        fixture = SimpleNamespace(__file__=str(root / "shoalmark.py"), nested_git_env=lambda: dict(env))
+
+        def git(*args):
+            return real_run(["git", *args], cwd=root, capture_output=True, check=True, env=env).stdout.decode("utf-8").strip()
+
+        def write(source, keys):
+            (root / "shoalmark.py").write_text(source, encoding="utf-8")
+            (root / ALLOWLIST_PATH).write_text(json.dumps(keys) + "\n", encoding="utf-8")
+            (root / CEILING_PATH).write_bytes(ceiling_bytes)
+
+        def commit(message):
+            git("add", "."); git("commit", "-qm", message); return git("rev-parse", "HEAD")
+
+        def passes(source, keys):
+            try:
+                history = scanner.previous_allowlists(fixture)
+            except (ValueError, OSError):
+                return False
+            return not scanner.ratchet_problems(source, keys, ceiling, history)
+
+        def proof_refuses():
+            try:
+                scanner.previous_allowlists(fixture)
+            except Exception as error:
+                return type(error).__name__ == "RatchetHistoryError"
+            return False
+
+        git("init", "-q"); git("config", "user.name", "History fixture"); git("config", "user.email", "fixture@example.invalid")
+        git("config", "commit.gpgsign", "false")
+        (root / "record.txt").write_text("before introduction\n", encoding="utf-8"); first = commit("before introduction")
+        write(original, allowed)
+        with patch.object(scanner, "HERE", root):
+            check("RV-3088: readable first introduction with no earlier list succeeds", passes(original, allowed))
+            initial = commit("introduce launch ratchet")
+            check("RV-3088: readable absent introduction parent succeeds", passes(original, allowed))
+            git("checkout", "-qb", "shrinking"); write(smaller, small_keys); shrunk = commit("migrate version launch")
+            check("RV-3088: committed 63-to-62 migration succeeds", passes(smaller, small_keys))
+            write(original, allowed)
+            check("RV-3088: working-tree resurrection refuses readable history", not passes(original, allowed))
+            hidden = root / ".git-hidden"
+            (root / ".git").rename(hidden)
+            try:
+                check("RV-3088: actual unavailable Git history refuses", proof_refuses())
+                records = []
+                try:
+                    with redirect_stdout(io.StringIO()):
+                        scanner.run_ratchet_controls(fixture, lambda name, result: records.append((name, result)))
+                except Exception:
+                    records = []                         # incidental exception is not the deliberate outer failing check
+                check("RV-3088: unavailable history deliberately fails the outer ratchet gate", any(not value and "history" in name for name, value in records))
+            finally:
+                hidden.rename(root / ".git")
+            check("RV-3088: restored actual history still rejects working-tree resurrection", not passes(original, allowed))
+            git("checkout", "-fqb", "records", initial)
+            (root / "record.txt").write_text("records branch\n", encoding="utf-8"); records_base = commit("records-only branch")
+            git("merge", "--no-ff", "--no-commit", "shrinking"); write(original, allowed); bad_merge = commit("merge retaining stale source and list")
+            check("RV-3088: merge retaining stale parent's 63 keys refuses", not passes(original, allowed))
+            (root / "record.txt").write_text("after bad merge\n", encoding="utf-8"); commit("records after bad merge")
+            check("RV-3088: records descendant cannot hide bad merge", not passes(original, allowed))
+            write(smaller, small_keys); commit("shrink again after bad merge")
+            check("RV-3088: later shrink to 62 cannot hide historical growth", not passes(smaller, small_keys))
+            (root / "record.txt").write_text("after later shrink\n", encoding="utf-8"); commit("records after later shrink")
+            check("RV-3088: records descendant of later shrink still refuses bad history", not passes(smaller, small_keys))
+            git("replace", bad_merge, records_base)
+            try:
+                check("RV-3088: actual replace object cannot hide the bad merge transition", proof_refuses())
+            finally:
+                git("replace", "-d", bad_merge)
+            git("checkout", "-fqb", "valid-merge", records_base); git("merge", "--no-ff", "-m", "valid shrinking merge", "shrinking")
+            check("RV-3088: valid merge retaining 62 keys succeeds", passes(smaller, small_keys))
+            for label, rev in (("list blob", "HEAD:" + ALLOWLIST_PATH), ("root tree", "HEAD^{tree}"), ("required parent commit", initial)):
+                sha = git("rev-parse", rev); obj = root / ".git" / "objects" / sha[:2] / sha[2:]; hidden_obj = obj.with_name(obj.name + ".hidden")
+                obj.rename(hidden_obj)
+                try:
+                    check("RV-3088: actual unavailable " + label + " refuses", proof_refuses())
+                finally:
+                    hidden_obj.rename(obj)
+            for label, raw in (("invalid JSON", b"not JSON\n"), ("empty JSON", b""), ("invalid UTF-8", b'["\xff"]'),
+                               ("invalid JSON shape", b'{"keys":[]}'), ("invalid JSON key", b'[null]')):
+                git("checkout", "-fqb", label.replace(" ", "-"), initial)
+                (root / ALLOWLIST_PATH).write_bytes(raw); commit("historical " + label); write(original, allowed)
+                check("RV-3088: " + label + " in reachable history refuses deliberately", proof_refuses())
+            git("checkout", "-fqb", "empty-list", first); write(original, []); commit("explicit empty metadata list")
+            check("RV-3088: valid explicit zero-entry historical list is readable", scanner.previous_allowlists(fixture) == [[]])
+            git("checkout", "-fqb", "duplicate-growth", initial); write(original, allowed + allowed[:1]); commit("duplicate multiset growth"); write(original, allowed)
+            check("RV-3088: historical duplicate-key growth refuses", proof_refuses())
+            git("checkout", "-fqb", "deleted-list", initial); (root / ALLOWLIST_PATH).unlink(); commit("delete introduced list"); write(original, allowed)
+            check("RV-3088: deletion after introduction refuses", proof_refuses())
+            git("checkout", "-fqb", "read-faults", shrunk); write(smaller, small_keys)
+            for label, command in (("HEAD read", "rev-parse"), ("graph read", "log"), ("object batch read", "cat-file")):
+                hits = []
+                def failed(argv, _command=command, **options):
+                    if _command in argv and "--no-replace-objects" in argv:
+                        hits.append(argv)
+                        return subprocess.CompletedProcess(argv, 128, b"", b"fixture read denied")
+                    return real_run(argv, **options)
+                with patch.object(scanner.subprocess, "run", side_effect=failed):
+                    check("RV-3088: failed " + label + " refuses", proof_refuses() and len(hits) == 1)
+            hits = []
+            def invalid_revision(argv, **options):
+                if "--no-replace-objects" in argv and "HEAD^{commit}" in argv:
+                    hits.append(argv)
+                    return subprocess.CompletedProcess(argv, 0, b"invalid-revision\n", b"")
+                return real_run(argv, **options)
+            with patch.object(scanner.subprocess, "run", side_effect=invalid_revision):
+                check("RV-3088: successful malformed revision output refuses", proof_refuses() and len(hits) == 1)
+            graft = root / ".git" / "info" / "grafts"
+            graft.write_text(shrunk + "\n", encoding="ascii")
+            try:
+                check("RV-3088: actual graft cannot hide a required parent transition", proof_refuses())
+            finally:
+                graft.unlink()
+            git("checkout", "--orphan", "root-introduction", initial); write(original, allowed); commit("genuine root introduction")
+            check("RV-3088: readable genuine root introduction succeeds", passes(original, allowed))
+        clone = root / "shallow"
+        real_run(["git", "clone", "-q", "--depth=1", root.as_uri(), str(clone)], capture_output=True, check=True, env=env)
+        (clone / CEILING_PATH).write_bytes(ceiling_bytes)
+        with patch.object(scanner, "HERE", clone):
+            check("RV-3088: actual shallow required history refuses", proof_refuses())
