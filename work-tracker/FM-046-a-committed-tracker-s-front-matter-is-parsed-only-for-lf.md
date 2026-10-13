@@ -1,10 +1,9 @@
 ---
 id: FM-046
-status: In Progress
+status: Shipped
 considered: FM-033, FM-037
 tags: bug
 triaged: 2026-10-12
-next: review
 tier: P1
 hook: "A committed tracker's front matter is parsed only for LF line endings and not through one normalisation, so the same tracker can read two ways across line-endings and version-control layers"
 ---
@@ -13,7 +12,9 @@ hook: "A committed tracker's front matter is parsed only for LF line endings and
 
 ## What is true now
 
-2026-10-13 — Built on `fm/046-text-boundary`; independent critical code review is next. Status stays In Progress.
+**Shipped in v0.19.4, 2026-10-13:** built at `e948764` on `fm/046-text-boundary`, merged to main as
+`39e5763` (#165), tagged `v0.19.4` on `39e5763`. Advisory `GHSA-xh54-c5jg-j4fp` is public.
+Reviewed READY in critical round 2 at `51f333f`.
 Parsed committed tracker text returns LF from `cat_blobs` for Git and `svn_run` for Subversion, with the rights check's
 one-off normalisation removed. Physical Git lines, protected text and trusted signers explicitly request the Git
 reader's `raw=True` mode. Binary reads, hashes and the batch's byte offsets are unchanged.
@@ -26,7 +27,6 @@ each converted committed-text reader with LF, CRLF and missing snapshots, and lo
 
 Compile, all 158 core checks, 16 Owner-exemption tests, and 364 selected existing browser-free checks pass, with no FAIL or skip lines;
 the full suite is left to CI under BRIEF-2.md when the Owner opens the pull request.
-Review the diff and the handoff evidence before deciding it is ready.
 
 ## Done when
 
@@ -44,3 +44,4 @@ Review the diff and the handoff evidence before deciding it is ready.
 | 2026-10-13 | Built the shared committed-text boundaries and 28 explicit-byte controls; compile and 158 core checks pass. Review next. |
 | 2026-10-13 | Local full-suite runs stopped after Chrome prompted the Owner for keychain access; BRIEF-2 replaces them with browser-free selected checks, with the full suite left to CI. |
 | 2026-10-13 | Built explicit raw Git reads and persistent signed-history, converted-reader and filtered-clone controls. All 55 controls, 158 core checks, 16 Owner-exemption tests and 364 selected browser-free checks pass; compile passes. Review next. |
+| 2026-10-13 | **Shipped in v0.19.4:** build `e948764` on `fm/046-text-boundary`, reviewed READY in round 2 (`51f333f`), merged to main as `39e5763` (#165); tagged `v0.19.4` on `39e5763`. Advisory `GHSA-xh54-c5jg-j4fp` is public. |
