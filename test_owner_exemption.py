@@ -461,7 +461,7 @@ class OwnerExemption(unittest.TestCase):
         self.assertIsNotNone(match)
         settings = match["settings"]
         self.assertNotIn("continue-on-error", settings)
-        self.assertNotRegex(settings, r"(?m)^        if:")
+        self.assertIn("if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')", settings)
         command = re.search(r"\bSHOALMARK_CMD:\s*([^,}\n]+)", settings)
         command = command[1].strip().strip("\"'") if command else ""
         script = "\n".join(line[10:] for line in match["script"].splitlines())
