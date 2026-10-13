@@ -69,8 +69,6 @@ recorded transfer or P integration; other owned work continues. Planner reviews 
 including separately scoped critical acceptance; no branch helper pass means full Stage 1 READY. Public estimates remain
 seat hours, not a promise of all work today; native/full CI and D3/D4 holds remain.
 
-## Bounded API seams
-
 ## Concrete adapter agreements — 18:08 CEST
 
 The following messages are recorded before their serial integration. They agree implementation interfaces within the
@@ -95,6 +93,8 @@ existing signed scope; they grant no new authority, capability acceptance or own
 
 Implementation, actual public-entry controls and independent critical acceptance remain due. A, B and C continue
 other owned work while a dependent interface or review waits. RV-3003/RV-3004: recorded privately.
+
+## Bounded API seams
 
 | Seam | Producer / sole editor | Consumer / requirement |
 |---|---|---|
