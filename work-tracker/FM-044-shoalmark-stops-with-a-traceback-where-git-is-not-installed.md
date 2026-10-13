@@ -14,78 +14,49 @@ hook: "A Subversion team without git could not run the reviewed copy: every comm
 
 ## What is true now
 
-**2026-10-13 — independent critical READY, COMMON SKELETON ONLY; dependent seats dispatched.**
-The dedicated independent ROOT Reviewer `01a1358b` accepted exact `b72b9ae` at empty verdict `ef77527`, closing
-RV-3085–RV-3088 in their second and final verification round. The same-round addendum remains RV-3088 evidence.
-Independent controls reproduce the original defects and pass the corrections: 302 core checks, 52 scanner/cache/source
-checks, 43 history assertions, six restricted-PATH checks, retained FM-045 and three R14 controls. Post-verdict gate passes.
-Ordinary local merge `1fc12b0` integrates Owner #170 main `cab89ed` with exactly the accepted product tree; its clean gate
-passes in 4.524 s and 26 history-aware ratchet controls pass in 13.778 s. The critical READY remains inside its ancestry.
-A, B and C start their bounded slices from this accepted common product under the exclusive ownership below; Planner
-alone integrates shared functions and suites. This dispatch does not accept the full Stage 1 chain or new consumer authority.
+**2026-10-13 — common accepted; dependent builds moving; serial archive integration awaits its own review.**
+Dedicated independent ROOT Reviewer `01a1358b` accepted exact `b72b9ae` at `ef77527`, COMMON SKELETON ONLY,
+closing RV-3085–RV-3088 in their second and final round. No closed finding or verification round is reopened.
+Ordinary main merge `1fc12b0` preserves its exact product tree with Owner #170 `cab89ed` in ancestry; its clean gate
+and 26 ratchet controls pass. Dispatch `c599d5c` is independently records-READY at `84c8a6b`; RV-3057 P3 stale
+archive status is corrected forward here without a re-pass. The canonical brief and exclusive ownership remain.
 
-The scanner exempts descendants of the one digest-validated top-level boundary **by AST node identity** and includes
-class scope in launch keys. All repository caches/configuration bindings clear before fallible root discovery or metadata,
-configuration and policy reads; process/write enforcement remains. Source requests resolve the original path before
-lexical cancellation, require actual source HERE, launch canonical HERE and permit only capture/text/UTF-8/replace and
-the existing sanitized nested-Git environment. Executable, shell, input and other process/context overrides refuse before
-any attempted launch. The four existing source reads and supported wrapper semantics remain usable. Source HERE cannot
-substitute for consumer ROOT authority. A Git request for an SVN target still refuses in one line before launch.
+Accepted common keeps AST-node/class boundary identity, all-cache invalidation before fallible configure,
+canonical HERE resolution/constrained source options, deliberate metadata refusal and complete every-parent
+history monotonicity with checked original Git objects. The fixed launch ceiling and boundary digests remain.
+Independent acceptance included 302 core, 52 scanner/cache/source controls, 43 real history assertions, six
+restricted-PATH controls and retained FM-045/R14 proof. These prior results retain their original exact-head and
+native-platform limits; they do not accept later dependent code. Source HERE never supplies consumer authority.
 
-The ratchet checks the unfiltered reachable graph and **every applicable child/parent multiset transition**, including
-merges equal to a stale parent and records-only descendants. Checked batches reuse identical commit/tree/blob objects,
-validate original object hashes and parent/tree evidence, and explicitly disable Git replacements. A graft-hidden parent,
-shallow or unavailable history, failed Git/object reads, invalid revision/JSON/UTF-8 evidence, historical growth or deletion
-after introduction deliberately fails the outer gate. Readable pre-introduction absence, genuine root introduction,
-explicit empty lists and valid shrink/merge remain supported. The native source-history proof checked 1,621 commits and
-1,486 distinct root trees in 0.333 s; that measures this checkout, not a general bound on all consumer histories.
+A's first local board slice is committed at `ba6347c` after merging the C/P renamed-caller test correction `c974044`;
+B's bounded missing-proof adapter and owned process migrations/history refusals are on its separate builder branch;
+C's pure ordered CLI/capability/quoting first slice is `9612ace`. These are Builder results awaiting separate
+independent acceptance and serial P integration, not full Stage 1 READY. A continues init/install; B continues
+bounded history/rights work; C continues owned migrations and documentation. RV-3003/RV-3004: recorded privately.
+The original private tasking is supplied; implementation and verification remain their separate private hold.
 
-Changed-Python compile passes, and **302 core checks pass (72.568 s)**, including all 59 new review controls. Running
-those 59 controls against immutable `6d0c239` yields 17 passes and 42 failures (37.850 s), including real Git shrink,
-merge-resurrection/later-shrink graphs, unavailable metadata/objects, symlink-parent escape and launch-option overrides.
-FM-045 retains all 30 classified Git commands with no unread/unclassified start; its boundary/`git_out` injections refuse.
-The three selected R14 signature/default-policy/signers/every-parent tests pass (163.704 s). The
-[check/caller evidence](evidence/stage-1-skeleton-checks-2026-10-13.md) records exact control/hash limits. Full suites and the unchanged five-job R25 matrix remain CI work after Owner push; D4 assigns no platform
-trial from this one native observation. R14 trust/signers/default-branch/every-parent rules and R26 legacy remain retained.
+P alone edits main/configure/lint, shared bindings, canonical records and suites. Adapter agreements are recorded
+at `1b48e22`: explicit no-argument protected-refusal result, validated local install/property reads and empty SVN
+identity presentation without authority. Actual protected-request selection before writes and pure past-policy
+interpretation remain unresolved integration obligations. No adopted committed consumer policy baseline is
+supplied; required protected acceptance refuses, while harmless unguarded/local work stays distinct. No new
+adoption convention, rights change, signature substitute or pending-author exception is inferred.
 
-The original neutral refactor `4f1664d` follows the judged `170985c` parent (Owner filing #167 at `e6d1e27`); its 19 wrapper
-controls also pass against that immutable parent. The separate dispatch `6f00764` selects Git/SVN once per configured
-ROOT and routes administrative-path discovery through that selection. SVN metadata starts no process; missing, empty,
-non-regular, symlinked or unreadable working-copy records refuse in one line with exit 4. Git own/common and linked-worktree
-directories, ancestor/nested disk metadata and symlink/filesystem aliases remain excluded. Current-main #168 records at
-`ab7ed3f` are already integrated by ordinary local merge `6d0c239`, retaining signed records and command-applied FM-004
-judgement; no dependent product branch is integrated. The independently READY tasking records at
-`6134fae65103c44482babffc2322c229f3aa76f0` are integrated by an ordinary local records merge after the corrective
-product commit `049637c`. All product/control/list/ceiling blobs remain exact, signed records and command-applied
-judgements remain, and INDEX is regenerated. The exclusive dependent function/test allocation and conservative guard
-hold are current; the critical common prerequisite is now satisfied for their scoped implementation.
+This serial branch ordinarily integrates independently READY archive `b2e5195`, keeping `git_dirs` exactly common
+and adding only `source=True` to the archive's existing HERE top-level read. No source operation or raw start is added.
+All other accepted archive functions stay exact; real SVN positive fixtures replace empty-marker placeholders.
+Compile, all 302 unchanged core checks and 55 archive/workflow controls pass locally. A separate critical archive/
+common integration verdict and exact-head artifact are still due. A/B/C work does not wait on that review.
+The serial target still has 63 transitional direct starts (55 Git, 3 SVN, 5 dynamic/non-VCS); isolated builder
+reductions are not claimed as integrated. Each Builder removes only its migrated exact keys in the same commit,
+and P retains every parent's reductions. The scanner's Python scope supplies no general FFI/obfuscation proof.
 
-There remain **63 direct starts: 55 Git, 3 SVN and 5 non-VCS/dynamic**, declared in the unchanged
-[initial ceiling](../test_vcs_launch_ceiling.json) and caller evidence. The 60 `git_out` and 9 `svn_run` domain callers
-are not thereby accepted for SVN. The scanner covers Python process references in `shoalmark.py`; generated hook shell,
-release scripts, fixtures and documentation tooling retain their separate controls. This static ratchet supplies no
-arbitrary Python/FFI obfuscation proof. Metadata guard checks local accessibility/path confinement, not SVN database
-integrity, author/history or protected-state proof. Full-tool SVN without Git remains incomplete. Shared commands, board,
-rights/guard and CLI are dependent work now dispatched from the accepted common base. The committed consumer
-policy anchor remains unresolved and protected acceptance must conservatively refuse in its later guard slice. Archive
-source `3c18008` stays separate; its non-Git `git_dirs` integration point survives semantically, while eventual
-`archive_source` must use the corrected narrow `source=True` read. Source acquisition/parsing is unchanged. The
-[Builder brief](evidence/stage-1-builder-brief-2026-10-13.md), signed path and D3/D4 holds remain the acceptance sources.
-
-**2026-10-13 — filing recovered; no stage-1 build was supplied by the recovery.** This replacement carries the filing
-reviewed at `99050b9`, with RV-2735–RV-2737 corrected. The signed 12 October R23 lifts the hold for stage 1:
-Subversion with no git installed, including the release archive and its pending scoped re-review. FM-023 allocates
-that bounded stage and archive to v0.20.0. Plain-folder scope (D3) and where the no-git proof runs (D4) remain held
-until trial findings and the 20 October review; this recovery supplies no platform trial or implementation evidence.
-The records pass, Owner merge and Planner judgement preceded the stage-1 dispatch; implementation acceptance remains due.
-
-**Recorded failure, 2026-10-08, reviewed on v0.19.1.** Where `git` is not installed, every command except
-`--session-check` and `--queue`, which refuses in one line, stops with a Python traceback (`FileNotFoundError`) before
-it writes anything. The review observed this in a folder with no version control and in a Subversion working copy.
-Its first failing call was `git_dirs()` (`shoalmark.py:273`), reached when a command judges the tracker folder.
-The filing counted direct `git` calls in 53 places and `git_out` in the rest; only `git fetch` and `git ls-remote`
-catch a missing `git`. Every CI runner carries `git`, so no check ran without it. These are the filing and review's
-observations, not a fresh claim about v0.19.4.
+Full no-Git init/new/index/check/board/triage and rights/guard acceptance remain incomplete. Required five-job CI,
+native qualification, actual release workflow and later integrated review are due; D3/D4 remain held. Metadata
+accessibility/path confinement does not prove SVN database/history integrity or author/policy authority.
+The total dispatched Builder allowance remains 10.25–16.75 seat hours before separate archive/reviews and waits,
+not a promise of full completion today. Codex builds critical work today; Claude takes over tomorrow.
+Push stays DISABLED; Owner fetches and pushes each reviewed branch.
 
 ## Why
 
@@ -125,6 +96,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-13 18:18 CEST | Accepted common dispatch records READY `84c8a6b` retained; RV-3057 P3 corrected forward. A/B/C first bounded commits are moving in exclusive branches; P archive integration retains common guards and source confinement, with compile/302 core/55 archive controls passing. Separate affected integration review and full Stage 1 remain due. |
 | 2026-10-13 17:42 CEST | **Common critical READY and dependent dispatch:** independent `ef77527` closes RV-3085–RV-3088, COMMON SKELETON ONLY. Ordinary #170 merge `1fc12b0` preserves the exact product; clean gate and all 26 ratchet controls pass. A/B/C receive exclusive bounded tasking; Planner owns serial integration. Full Stage 1, protected SVN acceptance and CI remain due. |
 | 2026-10-13 | Independent records verdict ce014e4 merged in Owner PR #167 at e6d1e27; command-applied triage keeps P1 #3 build, and the seat sets In Progress before the common skeleton. Bounded Builder/dependent-seat brief recorded, with guard contract and D3/D4 holds explicit; no implementation or proof claimed. |
 | 2026-10-08 | Filed, for 0.19.2. |

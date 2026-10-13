@@ -22,7 +22,7 @@ and #170 planning records are merged, current main `cab89ed`. R14 and v0.19.4 ar
 is locally READY at `246ccdf1995fa416e8757682dcef3784d231c044`, retaining the completed separate critical re-check
 and exact unchanged workflow. RV-3040: recorded privately. Native Windows/full CI await Owner fetch/push/rerun.
 Archive critical READY `1ba6fc4` closed RV3070 in round2; #170 records integration `f117209` retains every product blob,
-passes its clean gate and has an exact-commit deterministic dry run. Its scoped records verification is running.
+passes its clean gate and has an exact-commit deterministic dry run. Its scoped records integration is READY at `b2e519584c3ed1a0f7018f54d6f82a1dacb62adb`; Owner fetch/push, CI and serial Stage 1 integration remain due.
 
 Common independent critical READY `ef77527` accepts `b72b9ae`, closing RV3085–RV3088 in round2, COMMON SKELETON ONLY.
 Ordinary main merge `1fc12b0` retains that exact product tree, passes its clean gate and26history-aware ratchet controls.
@@ -41,7 +41,7 @@ Reservations: R12 3040–3054; records 3055–3069; archive 3070–3084; stage30
 | Rank / step | Work and seat | Estimate | What can stop it / next movable work |
 |---|---|---|---|
 | 1 | R12 locally READY; Owner fetch/push and native CI | Owner/CI execution time | Native Windows/full CI failures; archive and stage seats continue. |
-| 2 | Archive accepted product plus current-main records; records Reviewer then P serial common/archive integration | records20–30 min; integration90–120 Builder min plus45–60 critical review | Actual integration/control findings or CI/release qualification; A/B/C move in owned functions. |
+| 2 | Archive product and current-main records locally READY at `b2e5195`; P serial common/archive integration | records complete; integration 90–120 Builder min plus 45–60 critical review | Actual integration/control findings or CI/release qualification; A/B/C move in owned functions. |
 | 3a | A Critical Builder: server-free local SVN tracked-board inventory/tripwire, then honest init/install and dependent controls | first60–90 min; full2.25–3.75 Builder h plus review/waits | Unreadable local metadata, shared function transfer or P/B seams hold affected controls. |
 | 3b | B Critical Builder: explicit missing-consumer-proof refusal/result first, then bounded history/rights/guard | first60–90 min; full4.5–7 Builder h plus1–2 review h | Missing adopted committed consumer baseline refuses protected acceptance; new authority needs a signed decision. Other local work continues. |
 | 3c | C Critical Builder: pure ordered CLI capability/refusals, quoting, controls and accurate docs | first30–45 min; full1.5–2.5 Builder h, private tasking separate | Actual A/B/P entry wiring, private fix verification or unavailable native shell proof; owned helper/control work continues. RV-3003/RV-3004: recorded privately. |
@@ -238,6 +238,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-13 18:18 CEST | RV-3057 P3 fixed forward: archive records READY `b2e5195` replaces the stale running-review paragraph and rank-2 row; inherited common records READY `84c8a6b` needs no re-pass. Serial integration and CI/release holds remain. |
 | 2026-10-13 17:42 CEST | **Dependent dispatch from critical common READY:** `ef77527` closes the four common findings; current-main merge `1fc12b0` retains its exact product and passes gate/ratchet. A first local board slice60–90 min (2.25–3.75 h total), B first missing-proof refusal60–90 min (4.5–7 h total), C first capability/control slice30–45 min (1.5–2.5 h plus private tasking). P owns serial shared/archive integration. RV-3003/RV-3004: recorded privately. |
 | 2026-10-13 | Stage-1 and B1 read-only preparation recorded with immutable-ref evidence; stage-1 build re-estimated from 4–8 h to 6–10.5 Builder hours before archive/review, and its guard capability contract remains a brief dependency. B1 has three conflicted paths/eight groups and a 2–4 h next-day integration estimate. R15 configuration switch verified on current main; no feature build, platform proof or publication claimed. |
 | 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |

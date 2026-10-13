@@ -3,7 +3,7 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: build
+next: review
 triaged: 2026-10-13
 tier: P1
 rank: 2
@@ -14,30 +14,39 @@ hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through
 
 ## What is true now
 
-**2026-10-13 — #154 replacement and the release archive.** The Part B work package is recovered on this branch with the Owner's exact signed 12 October RV-2734 replacement applied; its one records review remains pending. B1, the final probe prompt and what the first outside run needs are allocated to v0.20.1 by the signed FM-023 answer. Subversion without git remains a v0.20.0 target, not shipped functionality. The release archive's bundle was verified locally at `23e3f7a10299804e903094feafd43910a46fd2de`; its earlier READY is reported, and scoped RV-3020/RV-3021 review of `6379acd..23e3f7a` and stage-1 integration remain owed. The Owner's release-script change and archive dry run remain release prerequisites. Probe draft 3 runs in its separate session.
+**2026-10-13 — archive/common wiring implemented locally; independent integration review remains due.**
+Owner #168 preserves Part B's exact signed RV-2734 replacement and archived exchange; #170 planning records are
+on main at `cab89ed`. B1/final probe preparation remain allocated to v0.20.1, with Claude's site work tomorrow.
+The adoption result remains 0 of 3 in the 21 September synthetic run, not a measured real-consumer recommendation.
 
-**Run 2026-09-21: 0 of 3 recommend adopting — my prediction of 2 of 3 was wrong.** A (sceptical): *nicht übernehmen*;
-B (neutral): *jetzt nicht, frühestens an einer Paketgrenze neu prüfen*; C (time pressure): *jetzt nicht, eher gar nicht
-nötig*. Held: all three name two sources of truth; none adopted or touched the real working copy; all three cite
-their counts (before 4 files / 5–7 steps, after 1 command + 2 files / 3 steps — *a small gain*); all three found
-defects (fixed in 0.12.1). **What they did instead is the finding:** all three proposed the same cheaper thing to
-their Owner — a *Wartet auf Owner* section and a *next step / whose move* column in the plan they have; A added a
-small script that checks *fertig* against reality (test exists, changelog entry) and noted the tool checks a
-tracker's form, not that. Their reasons against: 60 files to create by hand, a rulebook to rewrite, a weekly pass
-and Owner homework before `--next` said anything, numbers that collided, English remnants, and no automatic gate
-on Subversion's command line — *the same discipline as today*. A would re-evaluate *if the board matters to the
-Owner, or several agents work at once*. **My flaw in the stand-in:** its changelog was half-rewritten (titles, not
-sentences); all three spent words on it. It pushed none toward adopting. Limits: three runs, one model family, an
-invented project. The Owner's ruling since: *pitch to the humans, convince the agents with evidence* — and: more
-R&D first on what agents want. Originally: The stand-in: a Subversion working copy of an invented project
-with a fair setup — `REGELWERK.md`, `CHANGELOG.md`, `PLAN.md` (60 packages with a status column, 19 done, 3 in
-progress, 2 blocked), acceptance files for packages 1–30, Owner questions inside changelog entries. Three fresh
-agents, blind to this being a rehearsal, each get the Owner's message and `ADOPT.de.md`; the framing varies:
-A sceptical (*"ich glaube, das haben wir schon"*), B neutral, C under time pressure mid-package.
+Archive critical READY `1ba6fc4` reviewed `79b17ba`, closed RV-3070 in round 2 and retained the earlier 85 independent
+product controls. Current-main archive records are independently READY at `b2e5195`, Reviewed `f117209`.
+The latter's local untagged dry-run checksum `e357518935af72527ffc803de11034cad51accd2579577f3315d17c4c87baa35`
+belongs to exact `f117209`, not this integration. Common critical READY `ef77527` reviewed `b72b9ae`, COMMON
+SKELETON ONLY, closing its four findings; exact-tree main integration `1fc12b0` and dispatch `c599d5c` follow it.
+Common dispatch records READY `84c8a6b` reports one P3 status fix, RV-3057, corrected forward in this record.
 
-**Prediction:** 2 of 3 recommend adopting (now or at a package boundary); at least 1 names two sources of truth as
-the risk; none adopts on its own; at least 1 finds a defect in the note or the tool. **What would count against the
-note:** an agent that installs into the real working copy, or a recommendation that does not cite its own counts.
+Planner's serial `fm/004-stage-integration` starts from that dispatched common product, retains its boundary,
+cache invalidation, metadata exclusions and history-aware scanner, and ordinarily merges archive READY `b2e5195`.
+The only overlapping production function, `git_dirs`, stays exact to accepted common. The archive's existing
+HERE top-level read now explicitly uses `source=True`; the four allowed source operations do not expand.
+Every other archive function stays AST-identical to its accepted product. Release workflow/build script stay
+byte-identical, and VERSION, CHANGELOG, signatures, legacy meanings and Git authority remain unchanged.
+
+Positive acquisition controls now use real local SVN working copies prepared before the production PATH is emptied.
+Git own/common-directory exclusions remain required as a subset of the expanded .git/.svn/ancestor/alias guards;
+every discovered administrative path still refuses writes. Empty or unreadable metadata remains a refusal.
+Changed Python compiles; unchanged core passes all 302 checks (approximately 71.5 s), and the exact existing
+archive/workflow block passes 55 controls in 27.907 s, with zero skips. Those checks include real no-Git/no-SVN
+acquisition, complete manifests, RV-3020/RV-3021, snapshot copying, raw bytes/PIN normalization, legacy Git path,
+unsafe sources, workflow refusal controls and expanded administrative guards. They are Planner checks, not a new
+independent verdict. The C-authored renamed-caller control `c974044` retains scanner assertions during migration.
+
+Next: commit and clean-tree gate, exact-final-head deterministic dry run, then independent critical integration review.
+An earlier archive checksum is never relabeled to a new head. Full SVN command/board/history/guard and P entry wiring,
+consumer policy adoption/proof, required five-job CI, native qualification, Owner release-script adaptation and real
+release workflow/publication remain due. D3/D4 remain held. This work supplies bounded acquisition/shared dispatch,
+not full Stage 1 or shipped SVN support. Push stays DISABLED; Owner fetches, pushes and merges.
 
 ## Second round — the Owner's question: *what do agents want, and how do we get a better-performing human owner?*
 
@@ -87,7 +96,12 @@ the limits are said: three runs, one model family, an invented project.
 
 | Date | Event |
 |---|---|
+| 2026-10-13 18:18 CEST | Serial archive/common wiring retains both independently accepted products: common `git_dirs` unchanged, existing archive HERE read marked source, real SVN positive fixtures and expanded administrative guards retained. Compile, 302 core and 55 scoped archive controls pass; exact-head artifact and separate critical integration review remain due. |
+| 2026-10-13 17:24 CEST | **Owner #170 records integrated locally** from `cab89ed`, retaining archive critical READY `1ba6fc4` and its exact product/workflow/release-script blobs. Current command-applied judgement and signed Part B/exchanges remain; INDEX regenerated. Scoped records verification and Owner-pushed CI remain. |
 | 2026-09-21 | Filed; prediction written before the runs. |
 | 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
 | 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
 | 2026-10-13 | Recovered Part B from `643ad4b` on current main, applied the exact signed RV-2734 prerequisite replacement and FM-023 release allocation; one records review pending, archive re-review and integration still owed. |
+| 2026-10-13 | Release archive integrated onto current 0.19.4: refactor `3ac2e9d`, behavior `94f6bc2`, source `570a773..23e3f7a`; relevant local controls and a commit-pinned dry run pass. Independent critical review, Owner publication, CI and release integration remain owed. |
+| 2026-10-13 | Final bounded archive qualification at `b62b341`: 158 core checks and 60 scoped controls pass; no-git missing-manifest refusal covered, deterministic checksum verified. Acquisition alone; independent critical review and release integration remain owed. |
+| 2026-10-13 | RV-3070: ordinary local integration of main `ab7ed3f` reconciles its signed Part B/history with the archive records; product/test blobs retain reviewed `3c18008`. Independent review reports 85 passing local controls; its remaining critical round 2, CI and release integration remain owed. |
