@@ -608,6 +608,7 @@ def run_binding_controls(fm, check, env, programs):
             ("duplicate first revision", lambda tree: tree.append(copy.deepcopy(tree[0]))),
             ("mismatched last revision", lambda tree: tree[0].set("revision", "999999")),
             ("duplicate first author", lambda tree: tree[0].append(copy.deepcopy(tree[0].find("author")))),
+            ("missing required copier author", lambda tree: tree[0].remove(tree[0].find("author"))),
             ("foreign changed path", lambda tree: tree[0].find("paths/path").__setattr__("text", "/beta/foreign.md")),
             ("no creation binding", lambda tree: [p.set("action", "M") for p in tree[0].find("paths")]),
         )
@@ -630,6 +631,11 @@ def run_binding_controls(fm, check, env, programs):
                 ("foreign info namespace", lambda tree: setattr(tree[0].find("relative-url"), "text", "^/beta/foreign.md"))):
             exercise("RV-3092: " + label + " cannot bind first-path history", cached_blame(copied), cache_refused,
                      xml_fault("info", change, lambda cmd: "--show-item" not in cmd))
+        retained_author = lambda value, _starts: isinstance(value, dict) and value.get(4) == ("owner", "1")
+        exercise("RV-3092: unused info author is not required for the checked original blame", lambda tool: tool.svn_blame(original), retained_author,
+                 xml_fault("info", lambda tree: tree[0].find("commit").remove(tree[0].find("commit/author")), lambda cmd: "--show-item" not in cmd))
+        exercise("RV-3092: unused later path-log author cannot erase valid original attribution", lambda tool: tool.svn_blame(original), retained_author,
+                 xml_fault("log", lambda tree: tree[0].remove(tree[0].find("author")), lambda cmd: "--stop-on-copy" in cmd))
 
         shipped = text.replace("status: Proposed", "status: Shipped") + "\n## Ship log\n\n| Date | What |\n| --- | --- |\n| 2026-10-13 | r1 |\n"
         for item in ("copied", "added", "replaced"):

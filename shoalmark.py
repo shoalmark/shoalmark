@@ -5339,12 +5339,12 @@ def svn_blame(rel):
             entry = info[0]
             if not re.fullmatch(r"[0-9]+", entry.get("revision") or "") or len(entry.findall("commit")) != 1 or len(entry.findall("relative-url")) != 1:
                 raise SvnUnreadable("svn info did not bind the path's committed revision")
-            _author, last = svn_proof_commit(entry.find("commit"), author=True)
+            _author, last = svn_proof_commit(entry.find("commit"))
             path = svn_relative_path(entry.findtext("relative-url"))
             if int(last) > int(entry.get("revision")) or path != svn_consumer_prefix() + "/" + rel:
                 raise SvnUnreadable("svn info printed inconsistent blame-path metadata")
             log = svn_run("log", "-q", "-v", "--stop-on-copy", "-r", last + ":1", rel, xml=True)
-            entries = svn_log_proof(log, paths=True, authors=True)
+            entries = svn_log_proof(log, paths=True)
             revisions = [int(e.get("revision")) for e in entries]
             if revisions[0] != int(last) or any(a <= b for a, b in zip(revisions, revisions[1:])):
                 raise SvnUnreadable("svn log did not bind the ordered path history to its committed revision")
@@ -5360,6 +5360,8 @@ def svn_blame(rel):
             if any(rev.isdigit() and int(rev) < at for _who, rev in out.values()):
                 by = MERGED_IN if svn_merged(at) else by
                 if by is not MERGED_IN:
+                    if not (by or "").strip():
+                        raise SvnUnreadable(f"svn log did not name the copied path's author at revision {at}")
                     through = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
                 out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
             if through:
@@ -6529,7 +6531,7 @@ def svn_proof_commit(commit, author=False):
     return who, commit.get("revision")
 
 
-def svn_log_proof(log, requested=None, paths=False, authors=False, merged=False, empty=False):
+def svn_log_proof(log, requested=None, paths=False, merged=False, empty=False):
     """Validate required log structure and bindings before any history classification."""
     if log is None or log.tag != "log" or any(e.tag != "logentry" for e in log):
         raise SvnUnreadable("svn log did not report the required history")
@@ -6553,8 +6555,6 @@ def svn_log_proof(log, requested=None, paths=False, authors=False, merged=False,
             fields = entry.findall(tag)
             if len(fields) > 1 or (tag != "paths" and any(len(f) for f in fields)):
                 raise SvnUnreadable("svn log printed ambiguous required fields")
-        if authors and not (entry.findtext("author") or "").strip():
-            raise SvnUnreadable("svn log did not name the path's required author")
         changed = entry.find("paths")
         if paths and (changed is None or not len(changed)):
             raise SvnUnreadable("svn log did not report the required changed paths")
