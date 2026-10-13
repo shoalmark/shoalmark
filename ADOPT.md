@@ -22,6 +22,18 @@ this beta is not for it yet. Tell your Owner so and stop here. A second system b
 
 On Subversion it reads its history from the server through svn, so offline its checks refuse; it passes the test
 suite, but it has not been used in real work and comes without a guarantee: say so in your report.
+SVN supplies no cryptographic commit signature. A server-authenticated revision author is distinct from a local
+working-copy label; unavailable author proof cannot be replaced by that label. Signed answer-branch acts, Git worktree
+identity, commit-trailer reports, the merge ratio and the forge queue require Git. `--session new` can generate an id
+on SVN, without proving uniqueness against a commit-trailer registry.
+
+An unpacked release archive can supply the tool without a Git source checkout: keep `RELEASE` and every required
+tool and probe file, then run that unpacked tool with `--root <project directory> --vendor <destination>`. It validates
+the complete inventory and exact raw bytes before copying the 19 tool files. The manifest establishes internal
+completeness; acquire the release from a source you trust. The existing `--allow-untagged` explicitly permits a
+fully validated tag-none dry run; `--partial` and `--allow-untagged` do not bypass archive validation. This acquisition
+path does not qualify all SVN gate, board, history, protection or installed-entry behavior. Those checks and native
+platform evidence remain necessary for the trial.
 
 ## The measurement (about 20 minutes, everything in a throwaway folder)
 
@@ -71,8 +83,10 @@ copy the board's two lines in `.gitignore`.
   sources of truth are the error the tool is meant to prevent.
 - **Switch at a work-item boundary,** not in the middle of one.
 - `--vendor tools/shoalmark`, `--init`, `--install-hook` in the real directory. **With Subversion:** the command line
-  has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it; TortoiseSVN runs
-  the gate itself after `--install-hook` and asks permission once.
+  has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it, then run
+  `<cmd> --check` after the commit to check its server history. TortoiseSVN's installed hook properties are a separate
+  entry path; the Windows qualification limit below still applies. With an installed copy below the project, use
+  `<cmd> --root <project directory>` to select the consumer working copy.
 - Way back: first remove from your hooks folder (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls
   the copy of the tool in the git directory: the hooks marked `# shoalmark`, and the line you added to a hook of your own
   (on Subversion, the `tsvn:` hook properties, which call `tools/shoalmark/shoalmark.py`). Delete the copy — on

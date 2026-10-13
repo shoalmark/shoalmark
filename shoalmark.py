@@ -8885,11 +8885,12 @@ def parse_args(argv):
              "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
-    add("--vendor", metavar="DIR", help="copy this tool into DIR — the themes it ships in brand/themes/ with it — with a PIN file of sha256 hashes: a pinned, self-contained copy. Only from a release: "
-                                            "the whole tool, a git checkout whose HEAD is at the tag of its VERSION, a clean tree — otherwise refused, nothing written. "
-                                            "The PIN's first line says where the copy came from; `--check` in the consumer reads it")
-    add("--partial", action="store_true", help="with --vendor: copy what the source has although files are missing, and name them in the PIN")
-    add("--allow-untagged", action="store_true", help="with --vendor: vendor from a working copy that is not at its release tag, or not clean — the PIN says `untagged <sha>`")
+    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR — its themes included — with a PIN of sha256 hashes. From a release: "
+                                            "a clean Git checkout at its VERSION tag, or an already-unpacked release archive holding RELEASE. Unzip first; a ZIP path is not a source argument. "
+                                            "An archive's complete inventory and exact raw bytes are validated before copying the tool files; its manifest verifies internal bytes, not external origin. "
+                                            "The PIN names the source; `--check` in the consumer reads it")
+    add("--partial", action="store_true", help="with --vendor: copy what a Git source has although files are missing, and name them in the PIN; never bypass an archive's required manifest, inventory or safe paths")
+    add("--allow-untagged", action="store_true", help="with --vendor: permit a Git working copy not at its release tag or not clean, or a fully validated tag-none archive dry run; the PIN records the untagged source. Never bypass archive validation")
     add("--version", action="version", version=__version__)
     return parser.parse_args(argv)
 
