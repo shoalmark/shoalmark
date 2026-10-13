@@ -15,24 +15,59 @@ Prepared 2026-10-13 by `stage_and_b1_inventory`, read-only Research support. Thi
 
 (Planner) From: 01a13517 planner (repo) · gpt-6.1-sol · xhigh
 
-The common source at `6d0c2399112c74d0109df72cbd1867709d909547` is committed and clean, with main `ab7ed3f` integrated; its dedicated ROOT critical Reviewer is `01a1358b-fa2e-7d41-9857-252c6f8a8daf`. The common verdict `05a95eb` and round-1 addendum `e511d57` are NOT READY; RV-3085–RV-3088 remain open. A/B/C code starts only after its critical COMMON SKELETON ONLY READY. Necessary common boundary-digest correction is confined to the explicit RV-3087 critical fix; no ceiling/list expansion is authorized. This allocation reserves functions and supplies tasking under the already judged FM-044; it changes no gate or authority rule.
+The common prerequisite is accepted at independent critical READY `ef775278ce4983787d8d17853c4f9cb8ed05ab69`,
+Reviewed `b72b9ae033d09308e569c88b04f16e25d91fe97b`, by dedicated ROOT Reviewer `01a1358b`.
+RV-3085–RV-3088 are CLOSED in round 2; RV-3089–3099 remain unused. Ordinary main integration
+`1fc12b08399a73aa00f196e9a611aa376c408bc0` has exactly the accepted product tree, current main `cab89ed`
+in ancestry, a passing clean gate and 26 passing ratchet controls. A/B/C start their bounded implementation after
+this dispatch commit, using that accepted API/ceiling/list and the ownership below. No further boundary digest,
+ceiling expansion or new exemption is authorized. This remains COMMON SKELETON ONLY, not full Stage 1 acceptance.
 
 The original proposed workflow left every allowlist reduction to later integration. That would prevent a migrating Builder from passing the required unchanged core/ratchet check. The corrected delegation permits A/B/C to remove only the exact keys for starts migrated in their own owned functions, in the same commit on their isolated worktrees. C retains exclusive ownership of scanner functions; no seat expands/rekeys the list, changes the fixed ceiling/boundary digests, or removes another seat's unmigrated key. P serially merges the code and combined removals, retaining all parent reductions. Each Builder supplies removed keys and actual local checks with its handoff.
 
-Current task estimates are A **2–3.5 h**, B **4.5–7 h** with an initial **60–90 minute** proof-interface/refusal deliverable, C **1.5–2.5 h**, and P **0.5–1 h** serial wiring plus the separately allocated **1–2 h** archive allowance. Including the already completed common Builder allowance, this is **10–16.5 Builder seat hours** before archive/integrated review. They may overlap under the function reservations; no full-stage finish today is promised. RV-3003/RV-3004: recorded privately. Original private tasking is now supplied from `7356d6e`; the missing-source stop is removed. Common critical READY remains the code-start gate.
+Current task estimates are A **2.25–3.75 h**, B **4.5–7 h** with an initial **60–90 minute** proof-interface/refusal deliverable, C **1.5–2.5 h**, and P **0.5–1 h** serial wiring plus the separately allocated **1–2 h** archive allowance. Including the already completed common Builder allowance, this is **10.25–16.75 Builder seat hours** before archive/integrated review. They may overlap under the function reservations; no full-stage finish today is promised. RV-3003/RV-3004: recorded privately. Original private tasking is now supplied from `7356d6e`; the missing-source stop is removed. The common critical code-start gate is satisfied; separate private implementation/verification and integrated acceptance remain due.
 
 ## Seats and exclusive ownership
 
 | Seat | Owns | Dependencies and stop | Estimate after reviewed common base |
 |---|---|---|---|
-| A, Critical Builder | Shared folder/write paths; board tripwire and bounded local SVN reads; shared report metadata; init/install and generated hook/property entry points. | Uses the reviewed metadata/process API and B's attribution results; no server operation in board mode. Cannot turn missing metadata/proof into empty success. Generated Git hooks must retain trusted-copy/root semantics. | 2–3.5 h, including focused controls. |
+| A, Critical Builder | Shared folder/write paths; board tripwire and bounded local SVN reads; shared report metadata; init/install and generated hook/property entry points. | Uses the reviewed metadata/process API and B's attribution results; no server operation in board mode. Cannot turn missing metadata/proof into empty success. Generated Git hooks must retain trusted-copy/root semantics. | 2.25–3.75 h: first local board slice60–90 min, init/install45–75 min, dependent controls30–60 min; excludes review/waits. |
 | B, Critical Builder | History, server author, existing rights and legacy meanings; Git signing/default-policy/every-parent judgement; protected guard and refusal before writes. | [Guard contract](svn-guard-contract-2026-10-13.md) governs. Missing adopted committed consumer proof permits conservative refusal. A new adoption anchor, changed rights or signature substitution needs a signed decision. | 4.5–7 h for the full bounded guard, contingent on the existing authority contract; first 60–90 min isolates the view/proof interface and missing-proof refusal. |
-| C, Critical Builder | CLI capability policy and Git-only refusals; parser/help; launch scanner and shrinking allowlist; printed-command helper; README/ADOPT. RV-3003/RV-3004: recorded privately. | Main wiring belongs to P. Supplied private tasking starts only after critical COMMON SKELETON ONLY READY. Quoting follows the supplied shell rule after that same prerequisite. No new flags/platform claims or legacy deletions inferred from routing work. | 1.5–2.5 h for routing/scanner/docs; separately scoped private tasking is outside this allowance. |
+| C, Critical Builder | CLI capability policy and Git-only refusals; parser/help; launch scanner and shrinking allowlist; printed-command helper; README/ADOPT. RV-3003/RV-3004: recorded privately. | Main wiring belongs to P. The critical common prerequisite is satisfied for the supplied private tasking. Quoting follows the supplied shell rule after that same prerequisite. No new flags/platform claims or legacy deletions inferred from routing work. | 1.5–2.5 h for routing/scanner/docs; separately scoped private tasking is outside this allowance. |
 | P, Planner integration | `configure`, `main`, `lint`; the common root/metadata/process boundary; suite wiring; canonical FM-044 record; reviewed archive/source integration. | Integrates reviewed seat patches serially. Owns shared wiring and preserves existing Git behavior. Common-boundary changes require their own concrete review scope; no Builder silently changes the frozen candidate boundary. | 0.5–1 h wiring/reconciliation; the brief's 1–2 h archive/release integration allowance remains separate. |
 
 The function appendix assigns every existing top-level production function to exactly one seat. A/B/C assignments are ownership reservations, not a request to modify every listed helper. Other helpers remain with P and are frozen unless a concrete integration need is agreed. Two concurrent Builders never edit the same function. Function transfer, including a helper newly discovered to need adaptation, must be recorded before editing.
 
 Module-level ownership follows those functions: P owns ROOT/backend/cache binding and source provenance wiring; A owns the board process classification and Git/TortoiseSVN generated hook templates; B owns policy/signers/guard/authority constants and retained Shipped classification; C owns parser/capability/printed-command declarations. Existing constants that need no change stay untouched. No concurrent seat edits `configure`, `main`, `lint`, the tracker or suite-global setup.
+
+## Concrete first-build agreements — 17:42 CEST
+
+A first builds the server-free tracked-board inventory and pure local predicate with the exact emitted argv
+`svn status --verbose --no-ignore --ignore-externals --depth infinity . --xml`, validating real WC output and refusing
+unavailable/malformed metadata before writes. `tracked_board_rels` retains its iterable consumer-relative path contract
+and the existing `_TRACKED` cache; P owns reset/binding. A supplies `test_vcs_shared.py`; no shared suite edits.
+
+B first retains `triage_guard() -> (refusals, report_line)` and supplies a narrow missing-proof SVN result/refusal adapter.
+No adopted consumer policy baseline is established here. Candidate configuration can identify a proof obligation but
+cannot prove its own authority or absence of older obligations. Ordinary unguarded/local rendering stays distinct.
+Any new pure validated-policy extraction is P-owned and must be agreed before B needs it; no second grammar or global
+binding of past revisions. B supplies `test_vcs_guard.py`; its first deliverable is60–90 min within4.5–7 h total.
+
+C supplies pure `cli_operation(args)` and `cli_preflight(args, backend)`: selection follows retained main precedence;
+preflight returns `(None, 0)` to continue existing proof or `(diagnostic, exit_code)` to refuse, with no discovery,
+process, print or write. Selected SVN `--session-check` and `--commit-msg` get one-line exit4 Git-hook capability
+refusals; internal non-Git `session_problems()` remains unchanged for normal SVN `--check`. P places preflight after
+final consumer ROOT/backend/Tortoise normalization and before proof/message/tracker/deriver/write side effects.
+A higher-priority selected shared/source command retains precedence over unused lower-priority flags. One printed-argument
+helper follows the supplied PowerShell/other-shell rule; command prefixes remain prefixes. C supplies `test_vcs_cli.py`.
+RV-3003/RV-3004: recorded privately.
+
+Each seat refreshes the read-only first-build inventory against the actual accepted dispatch base, owns its functions
+and standalone controls, removes only its own migrated exact keys in the same commit, and sends a clean exact handoff.
+A/B/C do not edit P's main/configure/lint/common boundaries/tracker/suite globals. Shared edits stop for an explicit
+recorded transfer or P integration; other owned work continues. Planner reviews and integrates seat patches serially,
+including separately scoped critical acceptance; no branch helper pass means full Stage 1 READY. Public estimates remain
+seat hours, not a promise of all work today; native/full CI and D3/D4 holds remain.
 
 ## Bounded API seams
 

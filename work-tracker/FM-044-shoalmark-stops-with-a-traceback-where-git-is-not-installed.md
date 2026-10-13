@@ -14,12 +14,15 @@ hook: "A Subversion team without git could not run the reviewed copy: every comm
 
 ## What is true now
 
-**2026-10-13 — common-skeleton fixes built; independent critical verification is due.**
-Round 1 on `6d0c239` returned NOT READY at `05a95eb`, with addendum `e511d57`: RV-3085–RV-3088 identified
-same-named class-method scanner exemptions, old-root caches after refused configuration, source-path/context escapes,
-and merge-simplified or unavailable history accepted as proof. Those findings correct the earlier skeleton evidence;
-passing the original 243 core checks did not establish those boundaries. This fix forward changes those four controls,
-without expanding the retained launch list or the common-skeleton scope. No Builder verdict closes a finding.
+**2026-10-13 — independent critical READY, COMMON SKELETON ONLY; dependent seats dispatched.**
+The dedicated independent ROOT Reviewer `01a1358b` accepted exact `b72b9ae` at empty verdict `ef77527`, closing
+RV-3085–RV-3088 in their second and final verification round. The same-round addendum remains RV-3088 evidence.
+Independent controls reproduce the original defects and pass the corrections: 302 core checks, 52 scanner/cache/source
+checks, 43 history assertions, six restricted-PATH checks, retained FM-045 and three R14 controls. Post-verdict gate passes.
+Ordinary local merge `1fc12b0` integrates Owner #170 main `cab89ed` with exactly the accepted product tree; its clean gate
+passes in 4.524 s and 26 history-aware ratchet controls pass in 13.778 s. The critical READY remains inside its ancestry.
+A, B and C start their bounded slices from this accepted common product under the exclusive ownership below; Planner
+alone integrates shared functions and suites. This dispatch does not accept the full Stage 1 chain or new consumer authority.
 
 The scanner exempts descendants of the one digest-validated top-level boundary **by AST node identity** and includes
 class scope in launch keys. All repository caches/configuration bindings clear before fallible root discovery or metadata,
@@ -55,7 +58,7 @@ judgement; no dependent product branch is integrated. The independently READY ta
 `6134fae65103c44482babffc2322c229f3aa76f0` are integrated by an ordinary local records merge after the corrective
 product commit `049637c`. All product/control/list/ceiling blobs remain exact, signed records and command-applied
 judgements remain, and INDEX is regenerated. The exclusive dependent function/test allocation and conservative guard
-hold are current; their code still waits for independent critical common-skeleton READY.
+hold are current; the critical common prerequisite is now satisfied for their scoped implementation.
 
 There remain **63 direct starts: 55 Git, 3 SVN and 5 non-VCS/dynamic**, declared in the unchanged
 [initial ceiling](../test_vcs_launch_ceiling.json) and caller evidence. The 60 `git_out` and 9 `svn_run` domain callers
@@ -63,7 +66,7 @@ are not thereby accepted for SVN. The scanner covers Python process references i
 release scripts, fixtures and documentation tooling retain their separate controls. This static ratchet supplies no
 arbitrary Python/FFI obfuscation proof. Metadata guard checks local accessibility/path confinement, not SVN database
 integrity, author/history or protected-state proof. Full-tool SVN without Git remains incomplete. Shared commands, board,
-rights/guard and CLI are dependent work, held until independent critical common-skeleton READY. The committed consumer
+rights/guard and CLI are dependent work now dispatched from the accepted common base. The committed consumer
 policy anchor remains unresolved and protected acceptance must conservatively refuse in its later guard slice. Archive
 source `3c18008` stays separate; its non-Git `git_dirs` integration point survives semantically, while eventual
 `archive_source` must use the corrected narrow `source=True` read. Source acquisition/parsing is unchanged. The
@@ -122,6 +125,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-13 17:42 CEST | **Common critical READY and dependent dispatch:** independent `ef77527` closes RV-3085–RV-3088, COMMON SKELETON ONLY. Ordinary #170 merge `1fc12b0` preserves the exact product; clean gate and all 26 ratchet controls pass. A/B/C receive exclusive bounded tasking; Planner owns serial integration. Full Stage 1, protected SVN acceptance and CI remain due. |
 | 2026-10-13 | Independent records verdict ce014e4 merged in Owner PR #167 at e6d1e27; command-applied triage keeps P1 #3 build, and the seat sets In Progress before the common skeleton. Bounded Builder/dependent-seat brief recorded, with guard contract and D3/D4 holds explicit; no implementation or proof claimed. |
 | 2026-10-08 | Filed, for 0.19.2. |
 | 2026-10-13 | Filing recovered from `99050b9` on current main; RV-2735–RV-2737 fixed, acceptance bounded to signed R23 and FM-023, records review next. |
