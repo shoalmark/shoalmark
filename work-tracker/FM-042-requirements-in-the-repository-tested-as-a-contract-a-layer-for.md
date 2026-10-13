@@ -1,12 +1,11 @@
 ---
 id: FM-042
-status: In Progress
+status: Parked
 considered: FM-006, FM-005, FM-023, FM-033
 tags: research
 kind-of-problem: complicated
-triaged: 2026-09-30
-rank: 10
-next: build
+triaged: 2026-10-13
+next: wait
 tier: P2
 hook: "Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading the implementation; test plans drift"
 ---

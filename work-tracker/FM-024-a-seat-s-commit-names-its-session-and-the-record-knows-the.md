@@ -1,14 +1,13 @@
 ---
 id: FM-024
-status: In Progress
+status: Parked
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-triaged: 2026-09-25
-rank: 9
+triaged: 2026-10-13
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
-next: review
+next: wait
 ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
 ask-kind: ruling
 ask-since: 2026-09-28
