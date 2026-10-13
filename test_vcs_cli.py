@@ -161,6 +161,44 @@ class CliControls(unittest.TestCase):
                     fm.revoke_cmd(["fm-044", text], [{**tracker, "done": "2026-10-13T12:00Z · result"}])
                     self.assertEqual(captures[-1]["again"], f"{prefix} --revoke {fm.printed_arg('FM-044')} {fm.printed_arg(text.replace(chr(34), chr(39)))}")
 
+    @unittest.skipUnless(shutil.which("git"), "Git fixture tool unavailable")
+    def test_real_git_identity_cache_rebind_missing_objects_and_message_trailers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            roots = [Path(directory) / "first", Path(directory) / "second"]
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            for root, name in zip(roots, ("First identity", "Second identity")):
+                subprocess.run([shutil.which("git"), "init", "-q", str(root)], check=True, capture_output=True, env=env)
+                for key, value in (("user.name", name), ("user.email", "fixture@example.invalid"), ("seat.session", "12345678"),
+                                   ("commit.gpgsign", "false")):
+                    subprocess.run([shutil.which("git"), "-C", str(root), "config", key, value], check=True, capture_output=True, env=env)
+                (root / "file.txt").write_text("fixture\n", encoding="utf-8")
+                subprocess.run([shutil.which("git"), "-C", str(root), "add", "file.txt"], check=True, capture_output=True, env=env)
+                subprocess.run([shutil.which("git"), "-C", str(root), "commit", "-qm", "fixture"], check=True, capture_output=True, env=env)
+            with patch.dict(os.environ, env, clear=True):
+                fm.configure(roots[0])
+                self.assertEqual(fm.git_user(), "First identity")
+                subprocess.run([shutil.which("git"), "-C", str(roots[0]), "config", "user.name", "Changed identity"], check=True, capture_output=True, env=env)
+                self.assertEqual(fm.git_user(), "First identity")
+                fm.configure(roots[1])
+                self.assertEqual(fm.git_user(), "Second identity")
+                fm.configure(roots[0])
+                self.assertEqual(fm.git_user(), "Changed identity")
+                head = subprocess.check_output([shutil.which("git"), "-C", str(roots[0]), "rev-parse", "HEAD"], env=env, text=True).strip()
+                absent = "0" * 40
+                self.assertEqual(fm.have_not([head, absent]), [absent])
+                message = roots[0] / "commit message.txt"
+                message.write_text("fixture subject\n", encoding="utf-8")
+                with patch.object(fm, "harness_id", return_value=""), contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(fm.session_trailer(str(message)), 0)
+                    self.assertEqual(fm.session_trailer(str(message)), 0)
+                text = message.read_text(encoding="utf-8")
+                self.assertEqual(text.count("Session: 12345678"), 1)
+                self.assertEqual(text.count("Worktree: first"), 1)
+                out = io.StringIO()
+                with patch.object(fm, "harness_reading", return_value=(None, "")), contextlib.redirect_stdout(out):
+                    self.assertEqual(fm.whoami(), 0)
+                self.assertIn("From: 12345678 fixture@example.invalid (first)", out.getvalue())
+
     @unittest.skipUnless(shutil.which("svn") and shutil.which("svnadmin"), "SVN fixture tools unavailable")
     def test_real_svn_wc_policy_and_session_new_without_git_or_any_process(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -182,10 +220,31 @@ assert fm.vcs()=='svn'
 results=[]
 for argv in json.loads(sys.argv[2]):
     results.append(fm.cli_preflight(fm.parse_args(argv),fm.vcs()))
+class UnreadableTrackers:
+    def __iter__(self): raise AssertionError('tracker iteration before capability refusal')
+trackers=UnreadableTrackers()
+handlers=[('session_trailer',lambda:fm.session_trailer('must not read or write')),
+          ('whoami',fm.whoami),('sessions',fm.sessions_cmd),('ratio',fm.ratio_cmd),('queue',fm.queue_cmd),
+          ('answer',lambda:fm.answer_cmd(['FM-044','accept'],trackers)),
+          ('done',lambda:fm.done_cmd(['FM-044','result'],trackers)),
+          ('due',lambda:fm.due_cmd(['FM-044','2026-10-14T12:00Z'],trackers)),
+          ('revoke',lambda:fm.revoke_cmd(['FM-044','reason'],trackers)),
+          ('answer',lambda:fm.owner_change('FM-044',None,{'flag':'--answer'}))]
+direct=[]
+for name,handler in handlers:
+    stdout,stderr=io.StringIO(),io.StringIO()
+    with contextlib.redirect_stdout(stdout),contextlib.redirect_stderr(stderr):
+        result=handler()
+    direct.append([name,result,stdout.getvalue(),stderr.getvalue()])
+presentations=[]
+for label in ('','<you>'):
+    text='---\\nid: FEAT-001\\nstatus: Proposed\\nhook: test\\nanswer: accepted\\nanswered-by: '+label+'\\n---\\n\\n# FEAT-001 — test\\n'
+    presentations.append(fm.extract(fm.TRACKER_DIR/'FEAT-001-test.md',text)['answered_by'])
 out=io.StringIO()
 with contextlib.redirect_stdout(out):
     code=fm.session_cmd(['new'])
-print(json.dumps({'backend':fm.vcs(),'results':results,'session':out.getvalue(),'code':code,'attempts':attempts}))
+print(json.dumps({'backend':fm.vcs(),'results':results,'direct':direct,'presentations':presentations,
+                  'session':out.getvalue(),'code':code,'attempts':attempts}))
 """, encoding="utf-8")
             before = {p.relative_to(wc).as_posix(): p.read_bytes() for p in wc.rglob("*") if p.is_file()}
             cases = [(name, argv) for name, argv in OPERATIONS if name in GIT_ONLY]
@@ -197,6 +256,11 @@ print(json.dumps({'backend':fm.vcs(),'results':results,'session':out.getvalue(),
             self.assertEqual(observed["backend"], "svn")
             self.assertEqual(observed["attempts"], [])
             self.assertEqual([r[1] for r in observed["results"]], [GIT_ONLY[name] for name, _ in cases])
+            for name, code, stdout, stderr in observed["direct"]:
+                self.assertEqual(code, GIT_ONLY[name])
+                self.assertEqual(stdout, "")
+                self.assertEqual(len(stderr.splitlines()), 1)
+            self.assertEqual(observed["presentations"], ["", ""])
             self.assertEqual(observed["code"], 0)
             self.assertRegex(observed["session"], r"^[0-9a-f]{8}\n$")
             after = {p.relative_to(wc).as_posix(): p.read_bytes() for p in wc.rglob("*") if p.is_file()}
