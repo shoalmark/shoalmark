@@ -49,6 +49,17 @@ def probe(root, scenario):
     sys.addaudithook(observe)
     fm = load_tool()
     tempfile.gettempdir()                           # fixture initializes stdlib's one-time temporary-directory probe before measurement
+    operation = "--html-only"
+    if scenario.startswith("setup:"):
+        _, mode, *fault = scenario.split(":")
+        operation = "--init" if mode == "init" else "--install-hook"
+        if fault:
+            original = fm.vcs_process
+            def failed(program, *args, **options):
+                if program == "svn" and args[:1] == (fault[0],):
+                    return subprocess.CompletedProcess([], 1, b"", b"svn: E155004: injected setup failure") if not options.get("text") else subprocess.CompletedProcess([], 1, "", "svn: E155004: injected setup failure")
+                return original(program, *args, **options)
+            fm.vcs_process = failed
     if scenario.startswith("start:"):
         cmd = json.loads(scenario[6:])
         original = fm.render_html
@@ -72,7 +83,7 @@ def probe(root, scenario):
     try:
         with redirect_stdout(out), redirect_stderr(err):
             try:
-                code = fm.main(["--root", str(root), "--html-only"])
+                code = fm.main(["--root", str(root), operation])
             except SystemExit as e:
                 code = e.code
     finally:
@@ -135,6 +146,15 @@ def run_board_local_controls(fm, check):
             (search / "svn").symlink_to(shutil.which("svn"))
             command(root, "svn", "add", "shoalmark.toml", "work-tracker")
             command(root, "svn", "commit", "-q", "-m", "local fixture", "--username", "fixture-author")
+            states = base / "board-states"
+            command(base, "svn", "checkout", "-q", server.as_uri(), str(states))
+            state_folder = states / "work-tracker"; (state_folder / "view").mkdir()
+            (state_folder / "index.html").write_bytes(b"versioned page\n")
+            (state_folder / "view" / "WORK-001.js").write_bytes(b"versioned view\n")
+            command(states, "svn", "add", "work-tracker/index.html", "work-tracker/view")
+            command(states, "svn", "commit", "-q", "-m", "versioned board controls")
+            nested_wc = base / "nested-working-copy"
+            command(base, "svn", "checkout", "-q", server.as_uri(), str(nested_wc))
             server.rename(base / "server-unavailable")
             got = measured(root, search)
             check("A1: real public SVN board succeeds with Git absent and server unavailable", got["code"] == 0 and got["git_absent"] and got["svn_present"] and "Recorded content" in (folder / "view" / "WORK-001.js").read_text(encoding="utf-8"))
@@ -229,6 +249,42 @@ def run_board_local_controls(fm, check):
             with redirect_stdout(out), redirect_stderr(err):
                 code = fm.board_run(gitroot)
             check("A1: real retained Git tracked-page protection", code == 0 and (gitfolder / "index.html").read_text(encoding="utf-8") == "committed page" and "git tracks it" in err.getvalue())
+            before = board_snapshot(state_folder)
+            got = measured(states, search)
+            check("A1: actual normal versioned page/views stay byte identical", got["code"] == 0 and board_snapshot(state_folder) == before and "file://" not in got["out"])
+            (state_folder / "index.html").write_bytes(b"locally modified versioned page\n")
+            (state_folder / "view" / "WORK-001.js").write_bytes(b"locally modified versioned view\n")
+            before = board_snapshot(state_folder)
+            got = measured(states, search)
+            check("A1: actual modified versioned page/views stay byte identical", got["code"] == 0 and board_snapshot(state_folder) == before)
+            command(states, "svn", "revert", "-R", "work-tracker")
+            for state in ("deleted", "missing", "replaced", "obstructed"):
+                page_path = state_folder / "index.html"
+                if state in ("deleted", "replaced"):
+                    command(states, "svn", "delete", "work-tracker/index.html")
+                    if state == "replaced":
+                        page_path.write_bytes(b"scheduled replacement page\n")
+                        command(states, "svn", "add", "work-tracker/index.html")
+                else:
+                    page_path.unlink()
+                    if state == "obstructed":
+                        page_path.mkdir()
+                before = board_snapshot(state_folder)
+                got = measured(states, search)
+                check(f"A1: actual {state} board path is never overwritten/recreated", got["code"] == (4 if state == "obstructed" else 0) and board_snapshot(state_folder) == before and (page_path.is_dir() if state == "obstructed" else not page_path.exists() if state in ("missing", "deleted") else page_path.read_bytes() == b"scheduled replacement page\n"))
+                if page_path.is_dir():
+                    page_path.rmdir()
+                command(states, "svn", "revert", "work-tracker/index.html")
+            command(states, "svn", "copy", "work-tracker/view/WORK-001.js", "work-tracker/view/WORK-002.js")
+            before = board_snapshot(state_folder)
+            got = measured(states, search)
+            check("A1: actual scheduled copied view remains protected", got["code"] == 0 and board_snapshot(state_folder) == before)
+            saved_view = base / "saved-view"
+            (folder / "view").rename(saved_view); nested_wc.rename(folder / "view")
+            before = board_snapshot(folder)
+            got = measured(root, search)
+            check("A1: actual nested WC ambiguity refuses before board writes", got["code"] == 4 and "nested Subversion working copy" in got["err"] and board_snapshot(folder) == before)
+            (folder / "view").rename(nested_wc); saved_view.rename(folder / "view")
             # Actual metadata failure occurs before the first board write.
             before = board_snapshot(folder)
             (root / ".svn" / "wc.db").rename(root / ".svn" / "wc.db-hidden")
@@ -241,6 +297,135 @@ def run_board_local_controls(fm, check):
 
 def run_shared_controls(fm, check):
     run_board_local_controls(fm, check)
+    run_svn_setup_controls(fm, check)
+
+
+def run_svn_setup_controls(fm, check):
+    print("\nFM-044 A2: honest local SVN initialization/property installation")
+    if not (shutil.which("svn") and shutil.which("svnadmin")):
+        print("  SKIP A2 real SVN fixtures: svn and svnadmin required")
+        return
+    previous = fm.ROOT
+    try:
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp).resolve(); server = base / "server"; search = base / "bin"
+            command(base, "svnadmin", "create", str(server))
+            search.mkdir(); (search / "svn").symlink_to(shutil.which("svn"))
+            roots = {}
+            for name in ("init", "info-fail", "add-fail", "propset-fail", "install", "install-info-fail", "install-proplist-fail", "install-propset-fail", "bad-db", "foreign"):
+                root = base / name
+                command(base, "svn", "checkout", "-q", server.as_uri(), str(root))
+                roots[name] = root
+                if name.startswith("install"):
+                    corpus(root)
+                    command(root, "svn", "add", "shoalmark.toml", "work-tracker")
+                    source = root / "tools" / "shoalmark"; source.mkdir(parents=True)
+                    (source / "shoalmark.py").write_bytes((HERE / "shoalmark.py").read_bytes())
+            server.rename(base / "server-unavailable")
+            root = roots["init"]
+            got = measured(root, search, "setup:init")
+            folder = root / "docs" / "work-tracker"
+            check("A2: actual no-Git/server-free init schedules tracker folder and ignores the board", got["code"] == 0 and got["git_absent"] and (folder / "TRIAGE.md").is_file() and command(root, "svn", "propget", "svn:ignore", "docs/work-tracker").stdout == b"index.html\nview\n\n")
+            check("A2: SVN init advice has no Git session setup or client-hook claim", "git config" not in got["out"] and "--session new" not in got["out"] and "SVN CLI runs no client hook" in got["out"])
+            before = {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file() and ".svn" not in p.parts}
+            got = measured(root, search, "setup:init")
+            after = {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file() and ".svn" not in p.parts}
+            check("A2: repeat no-Git init leaves scaffold and property bytes unchanged", got["code"] == 0 and before == after and not any(e[0] == "subprocess.Popen" and e[2][1:2] in (["add"], ["propset"]) for e in got["events"]))
+            fm.configure(root)
+            check("A2: genuine absent directory properties return an empty mapping", fm.svn_local_properties(".") == {})
+            value = "a pattern with spaces\n--literal-pattern\n"
+            command(root, "svn", "propset", "--", "svn:ignore", value, "docs/work-tracker")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                code = fm.svn_ignore_board()
+            expected = value + "index.html\nview\n"
+            check("A2: ignore setup preserves raw existing patterns/newlines", code == 0 and fm.svn_local_properties("docs/work-tracker")["svn:ignore"] == expected)
+            # Local option/peg-like paths stay literal rather than options or remote revision selectors.
+            for name in ("-local", "peg@HEAD"):
+                (root / name).mkdir()
+                command(root, "svn", "add", "./" + name + "@")
+                check(f"A2: local property target is literal ({name})", fm.svn_local_properties(name) == {})
+            for rel in ("../escape", "/absolute", "https://example.invalid/repo", "C:/foreign", ".svn"):
+                with patch.object(fm, "svn_run") as query:
+                    try:
+                        fm.svn_local_properties(rel); refused = False
+                    except fm.SvnUnreadable:
+                        refused = True
+                    check(f"A2: foreign/ambiguous/admin target refuses before query ({rel})", refused and not query.called)
+            linked = root / "linked"; linked.symlink_to(roots["foreign"], target_is_directory=True)
+            with patch.object(fm, "svn_run") as query:
+                try:
+                    fm.svn_local_properties("linked"); refused = False
+                except fm.SvnUnreadable:
+                    refused = True
+                check("A2: symlink property target refuses before query", refused and not query.called)
+            original = fm.svn_run
+            invalid_properties = [None, ET.fromstring("<info/>"), ET.fromstring('<properties><target path="foreign"/></properties>'),
+                                  ET.fromstring('<properties><target path="."><property name="p">one</property><property name="p">two</property></target></properties>'),
+                                  ET.fromstring('<properties><target path="."><property>unnamed</property></target></properties>'),
+                                  ET.fromstring('<properties><target path="."><property name="p" encoding="unknown">value</property></target></properties>')]
+            for n, bad in enumerate(invalid_properties):
+                def read(*args, xml=False, answers=()):
+                    return bad if args[0] == "proplist" else original(*args, xml=xml, answers=answers)
+                with patch.object(fm, "svn_run", side_effect=read):
+                    try:
+                        fm.svn_local_properties("."); refused = False
+                    except fm.SvnUnreadable:
+                        refused = True
+                    check(f"A2: malformed/mismatched property snapshot refuses {n}", refused)
+            with patch.object(fm, "svn_run", return_value=ET.fromstring(f'<info><entry kind="dir" path="."><wc-info><wcroot-abspath>{roots["foreign"]}</wcroot-abspath><schedule>normal</schedule></wc-info></entry></info>')) as query:
+                try:
+                    fm.svn_local_properties("."); refused = False
+                except fm.SvnUnreadable:
+                    refused = True
+                check("A2: foreign working-copy binding refuses before property read", refused and query.call_count == 1)
+            for shape in ("missing-path", "missing-root", "relative-root", "duplicate-entry"):
+                bad = ET.fromstring(ET.tostring(original("info", "./.@", xml=True)))
+                entry = bad.find("entry")
+                if shape == "missing-path":
+                    del entry.attrib["path"]
+                elif shape == "missing-root":
+                    entry.find("wc-info").remove(entry.find("wc-info/wcroot-abspath"))
+                elif shape == "relative-root":
+                    entry.find("wc-info/wcroot-abspath").text = "."
+                else:
+                    bad.append(ET.fromstring(ET.tostring(entry)))
+                with patch.object(fm, "svn_run", return_value=bad) as query:
+                    try:
+                        fm.svn_local_properties("."); refused = False
+                    except fm.SvnUnreadable:
+                        refused = True
+                    check(f"A2: incomplete local binding refuses before property read ({shape})", refused and query.call_count == 1)
+            for name, fault in (("info-fail", "info"), ("add-fail", "add"), ("propset-fail", "propset")):
+                got = measured(roots[name], search, "setup:init:" + fault)
+                check(f"A2: actual init path propagates injected {fault} failure", got["code"] == 4 and "already initialised" not in got["out"] and "failed" in got["err"] if fault != "info" else got["code"] == 4 and "nothing is written" in got["err"] and not (roots[name] / "shoalmark.toml").exists())
+                if fault != "info":
+                    check(f"A2: partial init is explicit after legitimate writes ({fault})", (roots[name] / "shoalmark.toml").exists() and "earlier" in got["err"] and "did not complete" in got["err"])
+            install = roots["install"]
+            got = measured(install, search, "setup:install")
+            fm.configure(install)
+            props = fm.svn_local_properties(".")
+            check("A2: actual no-Git/server-free property install retains generated format", got["code"] == 0 and got["git_absent"] and props == {prop: f"python %REPOROOT%/tools/shoalmark/shoalmark.py --tsvn-hook {kind}\ntrue\nhide\n" for prop, kind in fm.TSVN_HOOKS.items()})
+            got = measured(install, search, "setup:install")
+            check("A2: repeat installed properties perform no mutation", got["code"] == 0 and not any(e[0] == "subprocess.Popen" and e[2][1:2] in (["add"], ["propset"]) for e in got["events"]))
+            for name, fault in (("install-info-fail", "info"), ("install-proplist-fail", "proplist"), ("install-propset-fail", "propset")):
+                got = measured(roots[name], search, "setup:install:" + fault)
+                check(f"A2: actual install path refuses injected {fault} failure", got["code"] == 4 and "no successful installation is claimed" in got["err"])
+                fm.configure(roots[name])
+                check(f"A2: failed initial install does not invent installed properties ({fault})", fm.svn_local_properties(".") == {})
+            command(install, "svn", "propset", "--", "tsvn:startcommithook", "another tool\ntrue\nhide\n", ".")
+            got = measured(install, search, "setup:install")
+            fm.configure(install)
+            check("A2: existing non-shoalmark property is retained with refusal", got["code"] == 4 and fm.svn_local_properties(".")["tsvn:startcommithook"] == "another tool\ntrue\nhide\n" and "left alone" in got["err"])
+            (install / "tools" / "shoalmark" / "shoalmark.py").unlink()
+            got = measured(install, search, "setup:install")
+            check("A2: missing consumer tool refuses before any property mutation", got["code"] == 4 and "vendor it before installing" in got["err"] and not any(e[0] == "subprocess.Popen" and e[2][1:2] == ["propset"] for e in got["events"]))
+            broken = roots["bad-db"]
+            (broken / ".svn" / "wc.db").write_bytes(b"not a working-copy database")
+            got = measured(broken, search, "setup:init")
+            check("A2: actual corrupt WC refuses init before the first scaffold byte", got["code"] == 4 and not (broken / "shoalmark.toml").exists() and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
+    finally:
+        fm.configure(previous)
 
 
 if __name__ == "__main__":

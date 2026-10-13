@@ -443,28 +443,40 @@ def tracker_folder_problem(what="the board is not refreshed"):
 _TRACKED = None
 
 
-def svn_tracked_board_rels():
-    """One local status snapshot, never a server read. Unreadable metadata is not an empty inventory."""
+def svn_local_status():
+    """One validated local status snapshot; no server, authority or empty-success fallback."""
     status = svn_run("status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", xml=True)
     if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != ".":
         raise SvnUnreadable("local status did not identify the working-copy target")
-    wanted = (HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix())
     versioned = {"normal", "modified", "added", "replaced", "deleted", "missing", "conflicted", "merged"}
-    out, seen, root_seen = [], set(), False
+    out, root_seen = {}, False
     for entry in status.iter("entry"):
         rel = (entry.get("path") or "").replace("\\", "/")
         parts = pathlib.PurePosixPath(rel).parts
         if not rel or rel.startswith("/") or re.match(r"^[A-Za-z]:", rel) or ".." in parts:
             raise SvnUnreadable("local status printed an invalid working-copy path")
         rel = pathlib.PurePosixPath(rel).as_posix()
-        if rel in seen:
+        if rel in out:
             raise SvnUnreadable("local status printed a duplicate working-copy path")
-        seen.add(rel)
         wc = entry.find("wc-status")
         if wc is None or wc.get("item") is None or wc.get("props") is None:
             raise SvnUnreadable("local status printed incomplete working-copy metadata")
         item = wc.get("item")
         root_seen = root_seen or (rel == "." and item in versioned)
+        out[rel] = wc
+    if not root_seen:
+        raise SvnUnreadable("local status did not establish a versioned working-copy target")
+    return out
+
+
+def svn_tracked_board_rels():
+    """Versioned board paths in the local snapshot. Unreadable metadata is not an empty inventory."""
+    status = svn_local_status()
+    wanted = (HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix())
+    versioned = {"normal", "modified", "added", "replaced", "deleted", "missing", "conflicted", "merged"}
+    out = []
+    for rel, wc in status.items():
+        item = wc.get("item")
         relevant = any(rel == p or rel.startswith(p + "/") or p.startswith(rel + "/") for p in wanted)
         if not relevant:
             continue
@@ -472,8 +484,6 @@ def svn_tracked_board_rels():
             raise SvnUnreadable(f"local status cannot establish the board path {rel}")
         if item in versioned and any(rel == p or rel.startswith(p + "/") for p in wanted):
             out.append(rel)
-    if not root_seen:
-        raise SvnUnreadable("local status did not establish a versioned working-copy target")
     # An outer status does not descend into an unversioned nested working copy. Do not write its board as though unversioned.
     for directory in (TRACKER_DIR, VIEW_DIR):
         for path in (directory, *directory.parents):
@@ -9308,52 +9318,142 @@ COPY_HOOKS = {
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
+def svn_local_directory(rel):
+    """Validated consumer-local directory and literal target for init/install; never admitted by the board."""
+    raw = str(rel)
+    parts = pathlib.PurePosixPath(raw).parts
+    if vcs() != "svn" or not raw or pathlib.PurePosixPath(raw).is_absolute() or ".." in parts or re.match(r"^[A-Za-z]:", raw) or "://" in raw or "\\" in raw:
+        raise SvnUnreadable("the property target is not a consumer-relative directory")
+    rel = pathlib.PurePosixPath(raw).as_posix()
+    path = ROOT / rel
+    if not in_tree(path) or not real_inside(path) or in_git_dir_on_disk(path) or not path.is_dir():
+        raise SvnUnreadable("the property target is not a regular local directory outside administrative metadata")
+    for parent in (path, *path.parents):
+        if parent == _VCS[1]:
+            break
+        if disk_marker(parent / ".svn"):
+            raise SvnUnreadable("the property target is in another Subversion working copy")
+    target = "./" + rel + "@"                          # literal option/peg-like names, including the root .@
+    info = svn_run("info", target, xml=True)
+    entries = info.findall("entry") if info is not None and info.tag == "info" else []
+    if len(entries) != 1:
+        raise SvnUnreadable("local info did not identify one directory")
+    entry = entries[0]
+    wc = entry.find("wc-info")
+    wcroot = wc.findtext("wcroot-abspath") if wc is not None else None
+    try:
+        same_wc = bool(wcroot) and pathlib.Path(wcroot).is_absolute() and pathlib.Path(wcroot).resolve(strict=True).samefile(_VCS[1])
+    except (OSError, RuntimeError, TypeError, ValueError):
+        same_wc = False
+    if entry.get("kind") != "dir" or not entry.get("path") or pathlib.PurePosixPath(entry.get("path").replace("\\", "/")).as_posix() != rel or not same_wc or wc.findtext("schedule") not in ("normal", "add", "replace"):
+        raise SvnUnreadable("local info did not establish the configured working-copy directory")
+    return entry, target
+
+
+def svn_local_properties(rel):
+    """Raw local property text, including genuine absence only after validated directory and successful XML reads."""
+    import base64
+    entry, target = svn_local_directory(rel)
+    properties = svn_run("proplist", "--verbose", target, xml=True)
+    if properties is None or properties.tag != "properties" or any(child.tag != "target" for child in properties):
+        raise SvnUnreadable("local properties could not be read")
+    targets = list(properties)
+    if not targets:                                        # Subversion emits <properties/> for a directory with no properties
+        return {}
+    if len(targets) != 1 or targets[0].get("path") != entry.get("path"):
+        raise SvnUnreadable("local properties identified a different directory")
+    out = {}
+    for prop in targets[0]:
+        name = prop.get("name")
+        if prop.tag != "property" or not name or name in out or len(prop):
+            raise SvnUnreadable("local properties printed incomplete or duplicate values")
+        value = prop.text or ""
+        if prop.get("encoding") == "base64":
+            try:
+                value = base64.b64decode("".join(value.split()), validate=True).decode("utf-8")
+            except (ValueError, UnicodeError):
+                raise SvnUnreadable("a local property is not UTF-8 text")
+        elif prop.get("encoding") is not None:
+            raise SvnUnreadable("a local property has an unknown encoding")
+        out[name] = value
+    return out
+
+
+def svn_setup_command(*args):
+    """Init/install's explicit local mutation, with every failure reported instead of assumed success."""
+    try:
+        done = vcs_process("svn", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    except OSError as e:
+        raise SvnUnreadable(f"svn could not be run: {e}")
+    if done.returncode:
+        raise SvnUnreadable(" · ".join(done.stderr.strip().splitlines()[:2])[:300] or f"svn exited {done.returncode}")
+    return done
+
+
 def svn_ignore_board():
     """Subversion ignores by a property on the directory, and only a versioned directory can carry one: the tracker
     directory is scheduled for addition if it is not yet (nothing is committed), so the FIRST `svn add` of its
     contents already leaves the board out."""
-    svn = lambda *a: subprocess.run(["svn", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
     refused = tracker_folder_problem("no folder is made there, and the board is not ignored")      # the tracker folder, judged before it is made
     if refused:
         print(refused, file=sys.stderr)
         raise SystemExit(EXIT_LINT)
-    TRACKER_DIR.mkdir(parents=True, exist_ok=True)
-    if svn("info", rel).returncode:                         # not versioned yet
-        if svn("add", "--parents", "--depth=empty", rel).returncode:
-            print(f"could not `svn add {rel}` — add it, then run --install-hook for svn:ignore", file=sys.stderr)
-            return EXIT_LINT
-    lines = svn("propget", "svn:ignore", rel).stdout.split()        # an unset property is an error to svn, and empty to us
-    if not {"index.html", "view"} <= set(lines):
-        svn("propset", "svn:ignore", "\n".join(dict.fromkeys(lines + ["index.html", "view"])) + "\n", rel)
-        print(f"set svn:ignore on {rel}/ — the board is never committed")
-    return EXIT_OK
+    try:
+        status = svn_local_status()
+        wc = status.get(rel)
+        if wc is not None and (wc.get("item") not in ("normal", "modified", "added", "replaced", "unversioned", "ignored") or wc.get("switched") == "true" or wc.get("tree-conflicted") == "true"):
+            raise SvnUnreadable("the tracker directory's local status cannot be used for setup")
+        versioned = wc is not None and wc.get("item") in ("normal", "modified", "added", "replaced")
+        if wc is None and TRACKER_DIR.exists() and not any(status.get(p.relative_to(ROOT).as_posix()) is not None and status[p.relative_to(ROOT).as_posix()].get("item") in ("unversioned", "ignored") for p in TRACKER_DIR.parents if p != ROOT and in_tree(p)):
+            raise SvnUnreadable("local status did not establish the tracker directory")
+        TRACKER_DIR.mkdir(parents=True, exist_ok=True)
+        target = "./" + rel + "@"
+        if not versioned:
+            svn_setup_command("add", "--parents", "--depth=empty", "--no-ignore", target)
+        have = svn_local_properties(rel).get("svn:ignore", "")
+        missing = [line for line in ("index.html", "view") if line not in have.splitlines()]
+        if missing:
+            value = have + ("\n" if have and not have.endswith("\n") else "") + "\n".join(missing) + "\n"
+            svn_setup_command("propset", "--", "svn:ignore", value, target)
+            print(f"set svn:ignore on {rel}/ — unversioned board files are ignored; already versioned files stay versioned")
+        return EXIT_OK
+    except (SvnUnreadable, OSError) as e:
+        print(f"Subversion board setup failed: {e} — earlier local changes, if any, remain; correct the working copy and run again", file=sys.stderr)
+        return EXIT_LINT
 
 
 def install_hook_svn():
     """What Subversion has. Its command line runs NO client-side hook; TortoiseSVN does, from versioned properties,
     after asking the user once. The board is ignored by property, not by file."""
-    svn = lambda *a: subprocess.run(["svn", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
-    url = svn("info", "--show-item", "relative-url", ".")
-    if url.returncode:
-        print(f"--install-hook: `svn info` failed in {ROOT} — {url.stderr.strip() or 'is svn on the PATH?'}", file=sys.stderr)
-        return EXIT_LINT
-    here = pathlib.Path(__file__).resolve()
-    tool = here.relative_to(ROOT).as_posix() if ROOT in here.parents else "tools/shoalmark/shoalmark.py"
-    base = "%REPOROOT%" + url.stdout.strip().lstrip("^").rstrip("/")
     code = EXIT_OK
-    for prop, kind in TSVN_HOOKS.items():
-        # four lines: the command · wait for it · hide its window. TortoiseSVN is Windows: the interpreter is `python`
-        value = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
-        have = svn("propget", prop, ".").stdout
-        if have.strip() and "--tsvn-hook" not in have:
-            print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `python {base}/{tool} --tsvn-hook {kind}`", file=sys.stderr)
-            code = EXIT_LINT
-            continue
-        if have.strip() != value.strip():
-            svn("propset", prop, value, ".")
-            print(f"set {prop} on {ROOT.name}/ — TortoiseSVN asks once before it runs it")
-    code = svn_ignore_board() or code
+    try:
+        info, target = svn_local_directory(".")
+        url = info.findtext("relative-url") or ""
+        if not url.startswith("^/"):
+            raise SvnUnreadable("local info did not identify the repository-relative directory")
+        have_properties = svn_local_properties(".")
+        here = pathlib.Path(__file__).resolve()
+        tool = here.relative_to(ROOT).as_posix() if ROOT in here.parents else "tools/shoalmark/shoalmark.py"
+        tool_path = ROOT / tool
+        if write_problem(tool_path) or not tool_path.is_file():
+            raise SvnUnreadable(f"the consumer tool {tool} is not a regular local file; vendor it before installing properties")
+        base = "%REPOROOT%" + url.strip().lstrip("^").rstrip("/")
+        for prop, kind in TSVN_HOOKS.items():
+            # The retained Tortoise format: command, wait, hidden window; it still asks its user before running.
+            value = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
+            have = have_properties.get(prop, "")
+            if have.strip() and "--tsvn-hook" not in have:
+                print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `python {base}/{tool} --tsvn-hook {kind}`", file=sys.stderr)
+                code = EXIT_LINT
+                continue
+            if have.strip() != value.strip():
+                svn_setup_command("propset", "--", prop, value, target)
+                print(f"set {prop} on {ROOT.name}/ — TortoiseSVN asks once before it runs it")
+        code = svn_ignore_board() or code
+    except (SvnUnreadable, OSError) as e:
+        print(f"--install-hook: Subversion setup failed: {e} — earlier local changes, if any, remain; no successful installation is claimed", file=sys.stderr)
+        return EXIT_LINT
     print(f"Commit the property changes (`svn update` first if Subversion calls the directory out of date). `svn commit` on the command line runs no hook — Subversion has none on the client: "
           f"run `{CMD}` before it and commit the INDEX.md it writes (the contract in AGENTS.md says so). "
           f"`{CMD} --check` after the commit is what judges it.")
@@ -9734,6 +9834,12 @@ def init(key=None):
     if refused:
         print(refused, file=sys.stderr)
         return EXIT_LINT
+    if vcs() == "svn":
+        try:
+            svn_local_directory(".")                         # a corrupt/misbound root refuses before the first scaffold write
+        except (SvnUnreadable, OSError) as e:
+            print(f"--init: Subversion's local metadata could not be read: {e} — nothing is written", file=sys.stderr)
+            return EXIT_LINT
     wrote = []
     key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
     if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
@@ -9777,14 +9883,20 @@ def init(key=None):
     rel, have = TRACKER_DIR.relative_to(ROOT).as_posix(), had_ignore
     lines = [l for l in (f"{rel}/index.html", f"{rel}/view/") if l not in have.splitlines()]
     if svn:                                                 # Subversion ignores by property, not by file
-        svn_ignore_board()
+        if svn_ignore_board() != EXIT_OK:
+            print("--init did not complete; earlier scaffold files remain — correct the local setup and run again", file=sys.stderr)
+            return EXIT_LINT
     elif lines and (vcs() == "git" or ignore.exists()):     # no version control here (yet): nothing to ignore for
         put(ignore, have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(lines) + "\n")
         wrote.append(ignore)
     print("\n".join([f"wrote {p.relative_to(ROOT).as_posix()}" for p in wrote] or ["nothing to write — already initialised"]))
-    print(f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
-          f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; `{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
-          f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one); `seat.harness` (the id the harness gave the seat, for its `Model:` and `Effort:`) is `{CMD} --whoami`'s")
+    next_line = (f"next: the Owner writes the intent and the current path in {(TRACKER_DIR / 'TRIAGE.md').relative_to(ROOT).as_posix()}; "
+                 f"file the first tracker with `{CMD} --new \"…\"` — it becomes {KINDS[0]}-001; branches carry the id: `feat/{KINDS[0].lower()}-001-slug`; ")
+    if svn:
+        print(next_line + f"`{CMD} --install-hook` sets optional TortoiseSVN properties; SVN CLI runs no client hook: generate before committing and run `{CMD} --check` after the commit")
+    else:
+        print(next_line + f"`{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
+              f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one); `seat.harness` (the id the harness gave the seat, for its `Model:` and `Effort:`) is `{CMD} --whoami`'s")
     return EXIT_OK
 
 
