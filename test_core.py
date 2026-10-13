@@ -765,6 +765,9 @@ gti.configure(ROOT)
 
 # `last_worked_on` and `repos_naming` read git; their fixture repository lives in test_shoalmark.py.
 
+from test_vcs_skeleton import run_boundary_controls
+run_boundary_controls(gti, check)
+
 print()
 if FAILS:
     print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")

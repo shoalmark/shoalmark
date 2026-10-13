@@ -6306,6 +6306,14 @@ class SvnUnreadable(Exception):
 SVN_ANSWERS = ("E160006", "E195012")        # *no such revision*, and *the path is not in that revision*: an answer of the history, not a failure to read it
 
 
+def vcs_process(program, *args, cwd=None, **options):
+    """The Git/SVN process boundary. Return the process result unchanged; each caller keeps its output, environment and error contract.
+    The source HERE may need Git even when the configured consumer ROOT is Subversion, so the caller names the program explicitly."""
+    if program not in ("git", "svn"):
+        raise ValueError("the VCS process boundary accepts git or svn")
+    return subprocess.run([program, *args], cwd=cwd if cwd is not None else ROOT, **options)
+
+
 def svn_run(*args, xml=False, answers=()):
     """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where the answer is empty, or is an
     error code in `answers`. Where svn is not there or fails, SvnUnreadable with svn's own error: a done check that cannot read the
@@ -6313,7 +6321,7 @@ def svn_run(*args, xml=False, answers=()):
     All text reads, including `svn cat`, return LF line endings at this boundary."""
     import xml.etree.ElementTree as ET
     try:
-        done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True)
+        done = vcs_process("svn", *args, *(["--xml"] if xml else []), cwd=ROOT, capture_output=True)
     except OSError as e:
         raise SvnUnreadable(f"svn could not be run: {e}")
     stdout, stderr = (s.decode("utf-8", "replace") for s in (done.stdout, done.stderr))
@@ -6489,7 +6497,7 @@ SESSION_RECENT = 86400        # seconds: the board and the digest name the sessi
 
 def git_out(*a, cwd=None):
     """One git call's stdout, or None when it failed."""
-    r = subprocess.run(["git", *a], cwd=cwd or ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    r = vcs_process("git", *a, cwd=cwd or ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return r.stdout if r.returncode == 0 else None
 
 

@@ -1793,6 +1793,13 @@ def _git_starts(src):
     the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
     any case. A word of any other program that names git is not read."""
     tree = ast.parse(src)
+    # FM-044: classify callers of the transparent process boundary as the starts they request. The process boundary is exercised separately by core controls.
+    # Keep the existing Git command classification and forwarding-helper analysis: git_out still forwards the caller's own command/keywords.
+    tree.body = [n for n in tree.body if not (isinstance(n, ast.FunctionDef) and n.name == "vcs_process")]
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "vcs_process":
+            n.func = ast.copy_location(ast.Attribute(value=ast.Name(id="subprocess", ctx=ast.Load()), attr="run", ctx=ast.Load()), n.func)
+            n.args = [ast.copy_location(ast.List(elts=n.args, ctx=ast.Load()), n)]
     every = list(ast.walk(tree))           # every node, walked once
     parent = {c: n for n in every for c in ast.iter_child_nodes(n)}
     defs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}

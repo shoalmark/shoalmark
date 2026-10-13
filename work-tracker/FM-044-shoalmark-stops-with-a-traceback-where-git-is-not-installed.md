@@ -14,7 +14,18 @@ hook: "A Subversion team without git could not run the reviewed copy: every comm
 
 ## What is true now
 
-**2026-10-13 — merged filing judged for the bounded common skeleton.** Owner PR #167 merged the independently reviewed filing at `e6d1e27`; `ce014e4` is its records verdict. Today's command-applied worksheet keeps FM-044 **P1 #3 build**; the seat sets In Progress for this dispatch before any outside-tracker stage-1 commit. The [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md) supplies the first common layer, then dependent seats after independent critical skeleton review. Initial skeleton estimate: 1.5–2.5 Builder hours plus 30–60 min review; full stage estimate revised to 6–10.5 Builder hours before archive/review. No stage-1 code or runtime acceptance is supplied by this judgement. The brief retains D3/D4 holds and makes the guard capability contract a named dependency; any new authority rule needs a signed decision before that slice.
+**2026-10-13 — common skeleton, neutral refactor built; critical review and dependent slices remain due.**
+The judged parent is `170985c` (Owner filing #167 at `e6d1e27`). `git_out` and `svn_run` now start through the explicit
+`vcs_process(program, *args, cwd=None, **options)` boundary; their argv, cwd, Git environment, return/error, byte decoding,
+LF and XML contracts are retained. Nineteen contract controls pass against the immutable parent and the refactor, with
+real Git and local SVN fixtures; the refactor also checks the boundary's result identity and unknown-program refusal.
+Compile and `test_core.py` pass (15.877 s for core); the existing Git command classifier still reads 30 commands with no
+unresolved start. This first change supplies no new dispatch behavior. The [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md)
+remains the bounded acceptance and sequencing record: cached root selection, fail-closed metadata dispatch, target/source
+refusal controls and a shrinking launch ratchet are next; then independent critical skeleton review before dependent seats.
+All other direct production launches remain unmigrated. Archive source work remains separate at `3c18008`; its non-Git
+metadata integration point must survive. D3/D4 holds, the guard capability dependency, R14, R25 and R26 remain retained;
+no full-tool no-Git completion or platform proof is claimed.
 
 **2026-10-13 — filing recovered; no stage-1 build was supplied by the recovery.** This replacement carries the filing
 reviewed at `99050b9`, with RV-2735–RV-2737 corrected. The signed 12 October R23 lifts the hold for stage 1:
@@ -72,3 +83,4 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 | 2026-10-13 | Independent records verdict ce014e4 merged in Owner PR #167 at e6d1e27; command-applied triage keeps P1 #3 build, and the seat sets In Progress before the common skeleton. Bounded Builder/dependent-seat brief recorded, with guard contract and D3/D4 holds explicit; no implementation or proof claimed. |
 | 2026-10-08 | Filed, for 0.19.2. |
 | 2026-10-13 | Filing recovered from `99050b9` on current main; RV-2735–RV-2737 fixed, acceptance bounded to signed R23 and FM-023, records review next. |
+| 2026-10-13 | FM-044 common-layer neutral refactor: only git_out/svn_run launch mechanics moved behind vcs_process. Immutable-parent/refactor wrapper contracts and real Git/SVN positive/refusal fixtures pass; compile and test_core pass; metadata dispatch, ratchet, independent critical review and dependent migrations remain due. |
