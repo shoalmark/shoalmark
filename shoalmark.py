@@ -6463,6 +6463,14 @@ def svn_entry(*args, answers=()):
     return log.find("logentry") if log is not None else None
 
 
+def svn_consumer_prefix():
+    """The consumer's repository-relative path, not an authority/policy anchor. Missing metadata is not the root."""
+    relative = (svn_run("info", "--show-item", "relative-url", ".") or "").strip()
+    if not relative.startswith("^/") or "\n" in relative or "\r" in relative:
+        raise SvnUnreadable("svn info did not name the consumer's repository-relative path")
+    return ("/" + urllib.parse.unquote(relative[2:]).strip("/")).rstrip("/")
+
+
 def svn_shipped_moves(rels):
     """Subversion's reading of "what this run is judging", the one git's is: the change NOT YET COMMITTED — the trackers the working
     copy has modified, added or not yet `svn add`ed — else the NEWEST revision, at HEAD, that changed anything under the working
@@ -6476,8 +6484,18 @@ def svn_shipped_moves(rels):
         except SvnUnreadable as e:
             e.tracker = rels[rel]["id"]; raise                             # a failed read for this tracker names it
 
-    status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
-    for e in (status.iter("entry") if status is not None else []):
+    pending = {}
+    try:
+        status = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True)
+        if status is None or status.tag != "status" or status.find("target") is None:
+            raise SvnUnreadable("svn status did not report the required working-copy change view")
+        entries = list(status.iter("entry"))
+        if any(not e.get("path") or e.find("wc-status") is None or not e.find("wc-status").get("item") for e in entries):
+            raise SvnUnreadable("svn status printed working-copy entries that could not be read")
+    except SvnUnreadable as e:
+        e.checked = True                               # neither the pending nor newest checked change can be selected safely
+        raise
+    for e in entries:
         wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
         if rel in rels and wc is not None and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
             pending[rel] = wc.get("item") != "modified"                     # is it new to the repository
@@ -6488,11 +6506,17 @@ def svn_shipped_moves(rels):
     else:
         try:
             newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")              # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+            if newest is None or not re.fullmatch(r"[1-9][0-9]*", newest.get("revision") or ""):
+                raise SvnUnreadable("svn log did not name the required newest committed revision")
+            all_paths = list(newest.iter("path"))
+            if not all_paths or any(not p.text or not p.text.startswith("/") or p.get("action") not in ("M", "A", "R", "D") for p in all_paths):
+                raise SvnUnreadable("svn log did not report the newest revision's required changed paths")
+            base = svn_consumer_prefix()
         except SvnUnreadable as e:
             e.newest = True; raise
-        at = int(newest.get("revision")) if newest is not None else None
-        paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
-        touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
+        at = int(newest.get("revision"))
+        paths = {p.text for p in all_paths if p.get("action") in ("M", "A", "R")}
+        touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if base + "/" + rel in paths}
         was = lambda rel: read(rel, "cat", "-r", str(at - 1), rel, answers=SVN_ANSWERS)
     for rel, now in touched.items():
         if is_shipped(now) and not is_shipped(was(rel)):
@@ -6503,11 +6527,12 @@ def svn_ship_verdicts(names, at, records):
     """{name: "" when that revision is a revision behind the change, else why it is not} — one before `at`, the revision being judged
     (any, for a change not yet committed), that changed something under this working copy, with a path outside `records`, which are
     read from the working copy's root. One `svn info`, and one `svn log` for each revision named."""
-    base = ("/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")).rstrip("/")   # the working copy's own path in the repository — "" at its root
+    base = svn_consumer_prefix()
     out = {}
     for n in names:
         entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v", answers=SVN_ANSWERS)
-        inside = [p.text[len(base) + 1:] if p.text.startswith(base + "/") else p.text for p in entry.iter("path") if p.text] if entry is not None else []
+        inside = [(p.text[len(base) + 1:] if p.text.startswith(base + "/") else ".") for p in entry.iter("path")
+                  if p.text and (p.text == base or p.text.startswith(base + "/"))] if entry is not None else []
         out[n] = ("is not in the history" if entry is None
                   else "" if any(ratio_class(p, records, []) == "product" for p in inside) else f"changes nothing outside the records ({', '.join(records)})")
     return out
@@ -6564,13 +6589,15 @@ def ship_problems(trackers):
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
 
-    def unread(why, named=None, newest=False):
+    def unread(why, named=None, newest=False, checked=False):
         """F1: Subversion's history could not be read, so a move to Shipped cannot be judged — and is refused, not passed. The tracker it was
         reading for, where that is known; else every tracker that is Shipped in the working copy, the ones such a move could be. Where the
         read that failed is the NEWEST revision's — the change judged where nothing is pending, which only the server holds — and no tracker
         in the working copy is Shipped to name, the refusal says that instead: the newest revision is not judged, and is not passed unread (RV-2267)."""
         ids = [named] if named else [t["id"] for t in trackers if t.get("status") == "Shipped"]
-        if not ids and newest:
+        if not ids and checked:
+            out.append(f"Subversion's checked change could not be read, so a pending or newest move to `Shipped` is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again")
+        elif not ids and newest:
             out.append(f"Subversion's newest revision could not be read, so a move to `Shipped` in it is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again")
         if ids:
             out.append(f'{", ".join(ids[:5])}{f" and {len(ids) - 5} more" if len(ids) > 5 else ""}: Subversion\'s history could not be read, so a move to `Shipped` '
@@ -6596,7 +6623,7 @@ def ship_problems(trackers):
                        + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
                        + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
     except SvnUnreadable as e:
-        unread(e, e.tracker, e.newest)
+        unread(e, e.tracker, e.newest, getattr(e, "checked", False))
     return out
 
 

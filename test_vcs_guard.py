@@ -372,6 +372,76 @@ def run_guard_controls(fm, check):
                 check("FM-044 B: actual SVN " + label + " required blame metadata refuses without traceback", len(errors) == 2 and errors[0] == errors[1]
                       and sum("blame" in cmd for cmd in starts) == 1 and all(cmd[0] == "svn" for cmd in starts))
 
+            # Shipped proof is scoped to the configured consumer, including when a revision changes another project.
+            consumer, foreign = root / "consumer", root / "foreign"
+            consumer_home = consumer / "docs/work-tracker/FEAT-001-proof.md"
+            consumer_home.parent.mkdir(parents=True); foreign.mkdir()
+            consumer_home.write_text('---\nid: FEAT-001\nstatus: Proposed\n---\n\n# Fixture\n', encoding="utf-8")
+            (consumer / "product.txt").write_text("built\n", encoding="utf-8")
+            (foreign / "product.txt").write_text("foreign work\n", encoding="utf-8")
+            run("svn", "add", str(consumer), str(foreign))
+            run("svn", "commit", "-q", "-m", "consumer product fixture", "--username", "fixture-owner", cwd=root)
+            built_revision = run("svn", "info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).stdout.decode().strip()
+            consumer_home.write_text(consumer_home.read_text(encoding="utf-8") + "records-only consumer edit\n", encoding="utf-8")
+            (foreign / "product.txt").write_text("foreign product edit\n", encoding="utf-8")
+            run("svn", "commit", "-q", "-m", "consumer records and foreign product", "--username", "fixture-owner", cwd=root)
+            foreign_revision = run("svn", "info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).stdout.decode().strip()
+            small = base / "consumer-subtree"
+            run("svn", "checkout", "-q", server.as_uri() + "/consumer", str(small))
+            tracker = {"id": "FEAT-001", "status": "Proposed", "file": "FEAT-001-proof.md"}
+            rels = {"docs/work-tracker/FEAT-001-proof.md": tracker}
+            with patch.dict(os.environ, {"PATH": str(svn_only)}):
+                fm.configure(small)
+                verdicts = fm.svn_ship_verdicts(["r" + built_revision, "r" + foreign_revision], None, ["docs/"])
+                check("FM-044 B: real SVN own consumer product retains Shipped revision proof", verdicts["r" + built_revision] == "")
+                check("FM-044 B: real SVN foreign product cannot prove a consumer records-only revision", bool(verdicts["r" + foreign_revision]))
+                check("FM-044 B: real clean SVN newest non-Shipped change remains genuinely empty", list(fm.svn_shipped_moves(rels)) == [])
+
+            broken_info = (("empty", b""), ("not-relative", b"/consumer\n"))
+            for label, output in broken_info:
+                actual_run = subprocess.run
+
+                def injected_info(cmd, *args, **kwargs):
+                    done = actual_run(cmd, *args, **kwargs)
+                    if cmd[0] == "svn" and "relative-url" in cmd:
+                        return subprocess.CompletedProcess(cmd, 0, output, done.stderr)
+                    return done
+
+                with patch.dict(os.environ, {"PATH": str(svn_only)}), patch.object(fm.subprocess, "run", side_effect=injected_info):
+                    fm.configure(small)
+                    try:
+                        fm.svn_ship_verdicts(["r" + built_revision], None, ["docs/"])
+                    except fm.SvnUnreadable:
+                        refused = True
+                    else:
+                        refused = False
+                check("FM-044 B: actual SVN " + label + " consumer path proof cannot fall back to repository root", refused)
+
+            missing_changes = (
+                ("empty-status", "status", b""),
+                ("malformed-status", "status", b"<unrelated/>"),
+                ("empty-newest-log", "log", b""),
+                ("missing-newest-entry", "log", b"<log/>"),
+                ("bad-newest-revision", "log", b'<log><logentry revision="bad"><paths><path action="M">/consumer/product.txt</path></paths></logentry></log>'),
+                ("missing-newest-paths", "log", b'<log><logentry revision="8"/></log>'),
+            )
+            for label, operation, output in missing_changes:
+                actual_run = subprocess.run
+
+                def injected_change(cmd, *args, **kwargs):
+                    done = actual_run(cmd, *args, **kwargs)
+                    if cmd[0] == "svn" and cmd[1] == operation:
+                        return subprocess.CompletedProcess(cmd, 0, output, done.stderr)
+                    return done
+
+                with patch.dict(os.environ, {"PATH": str(svn_only)}), patch.object(fm.subprocess, "run", side_effect=injected_change):
+                    fm.configure(small)
+                    try:
+                        refused = bool(fm.ship_problems([tracker]))
+                    except (TypeError, ValueError):
+                        refused = False
+                check("FM-044 B: actual SVN " + label + " required checked change refuses even when local tracker is open", refused)
+
             # This is the pure protected-text comparison seam, not public-entry acceptance.
             with patch.dict(os.environ, {"PATH": str(restricted)}), patch.object(fm.subprocess, "Popen", side_effect=AssertionError("local comparison must start nothing")):
                 before = view(TRIAGE)
