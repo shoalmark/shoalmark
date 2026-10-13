@@ -1653,7 +1653,7 @@ def recover_relations(trackers):
     """FM-029, the Owner's scope — every reading prints the relation — for a record `--clear-ask` wrote before 0.18.1: it
     has no `**relation** —` line, and the proposal and the options left the file with the ask. The commit that wrote the
     answer still holds them. Found, never guessed: the commits whose diff adds an `answer:` line equal to the record's
-    answer (the answer's own normalisation on both sides), each read back with `git show`; the ONE whose revision holds
+    answer (the answer's own normalisation on both sides), each read back through `cat_blobs`; the ONE whose revision holds
     that `answer:` under that record's question (`ask:` against the record's `**<date>** · <question>` line) is the
     answer's commit, and its lines go through `answer_fields` and `answer_relation`, the reader a live answer goes
     through. The same answer text can close two exchanges — FM-007 was answered twice, word for word, on 09-22 — and
@@ -1663,8 +1663,8 @@ def recover_relations(trackers):
     R2). Sets `t["asks_recovered_all"]` = {(question, answer): (relation, the commit's short sha)} and
     `t["asks_recovered"]` = the newest record's.
 
-    Cost, and why it is spent only here: one `git log` for ALL the records asked about at once, and one `git show` per
-    commit that wrote a record's answer text — one per record, but for text reused. `extract` never calls it — every
+    Cost, and why it is spent only here: one `git log` for ALL the records asked about at once, and one batch read per
+    tracker of the commits that wrote its records' answer text. `extract` never calls it — every
     load, the pre-commit hook's included, would pay; FM-012 measured one git call per tracker at 504 calls and 15.2 s of a 16.8 s load. It runs where the relation is
     printed (`--answered`'s acted-on lines, the board's tracker view), and only for a record that lacks the line. The one
     `git log` is not one per record because each walks the whole history: 0.4 s a file on a 3,755-commit repository."""
@@ -1684,13 +1684,13 @@ def recover_relations(trackers):
 
 
 def recover_from_log(need):
-    """`recover_relations`' git work: {path relative to ROOT: tracker} — one `git log` for all of them, one `git show` per
-    commit that wrote a wanted answer's text."""
+    """`recover_relations`' git work: {path relative to ROOT: tracker} — one `git log` for all of them, one `cat_blobs`
+    batch per tracker for the commits that wrote its wanted answers' text."""
     git = lambda *a: subprocess.run(["git", "-c", "core.quotePath=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                                     errors="replace", env=nested_git_env())
     # `-G ^answer:` anchored as `line_regex` anchors it; `--full-history` as `acted_on` has it — an answer written on a
     # branch that merged back to content the trunk already had is not walked past; the prefixes named, whatever the
-    # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `git show <sha>:./<path>` reads them;
+    # user's `diff.noprefix`; paths relative to ROOT, as `need` holds them and `cat_blobs` reads them;
     # `-U0`: only the lines that changed
     log = git("log", *board_diff_args(), "--full-history", "--no-renames", "--ignore-submodules=none", "--relative", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
               "-U0", "-p", "--format=%x00%H %h", "-G", line_regex("answer:"), "--", *need)
@@ -1711,8 +1711,9 @@ def recover_from_log(need):
                 if said in found[rel] and head not in found[rel][said]:
                     found[rel][said].append(head)
     for rel, by_answer in found.items():
-        revisions = {head: answer_fields(parse_frontmatter(git("show", f"{head.partition(' ')[0]}:./{rel}").stdout)[0])
-                     for head in dict.fromkeys(h for heads in by_answer.values() for h in heads)}
+        heads = dict.fromkeys(h for heads in by_answer.values() for h in heads)
+        blobs = cat_blobs([f"{head.partition(' ')[0]}:./{rel}" for head in heads])
+        revisions = {head: answer_fields(parse_frontmatter(blobs.get(f"{head.partition(' ')[0]}:./{rel}") or "")[0]) for head in heads}
         for question, said in need[rel]["asks_recovered_all"]:
             holds = [(head, fields) for head, fields in revisions.items() if head in by_answer[said]
                      and answer_norm(fields["answer"]) == said and answer_norm(fields["ask"]) == question]
@@ -2204,11 +2205,11 @@ def refusal_record_in_place(parent, commit, path):
     where the parent has one, else at the body's end — and the rest of the body is the parent's byte for byte. Anything else — a line in *What is true now*, a line in a later `## Asks`, a moved
     heading, a second record — and it is not the tool's record, whatever the diff looked like."""
     def text_at(ref):
-        r = subprocess.run(["git", "-c", "core.quotePath=false", "show", f"{ref}:{path}"], cwd=ROOT, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", env=nested_git_env())
-        if r.returncode != 0 and specs_unread([f"{ref}:{path}"]):
+        spec = f"{ref}:{path}"
+        text = cat_blobs([spec]).get(spec)
+        if text is None and specs_unread([spec]):
             raise Unread                                    # not in the partial clone, as against not there
-        return r.stdout if r.returncode == 0 else None
+        return text
     def parts(text):
         body = parse_frontmatter(text)[1]
         front = text[: len(text) - len(body)]
@@ -2660,8 +2661,8 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{ref_name(trunk)}` first, by its own pull request, "
             f"never through yours" if stray else "")
     if how["flag"] in ("--done", "--due"):
-        there = git("show", f"{branch}:{rel}")
-        t_ = extract(ROOT / rel, there.stdout) if there.returncode == 0 else None
+        there = cat_blobs([f"{branch}:{rel}"]).get(f"{branch}:{rel}")
+        t_ = extract(ROOT / rel, there) if there is not None else None
         if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
             return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {branch}`, then "
                     f"`{how['again']}` — it commits on top, and nothing of yours is deleted" + held)
@@ -3200,7 +3201,7 @@ def dirty_refusal(git, dirty):
         if not KIND_RE.match(name) or not board_isfile(top / p_):      # the reading rule
             continue
         now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
-        was_ = (parse_frontmatter(git("show", f"HEAD:{p_}").stdout)[0].get("answer") or "").strip()
+        was_ = (parse_frontmatter(cat_blobs([f"HEAD:{p_}"]).get(f"HEAD:{p_}") or "")[0].get("answer") or "").strip()
         if now_ and now_ != was_:
             left.append((p_, "-".join(name.split("-")[:2]), now_.strip('"'), was_))
     if not left:
@@ -5401,9 +5402,9 @@ def line_author(path, needle):
         n = guarded_line(raw, key)
         line = raw.split("\n")[n - 1].rstrip("\r") if n is not None else None
         if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys
-            shown = [(rev, subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=ROOT, capture_output=True, env=nested_git_env())) for rev in tips]
-            _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for _rev, s in shown for l in s.stdout.decode("utf-8", errors="replace").split("\n")]
-            _LINE_AUTHOR[("unread", rel)] = bool(specs_unread([f"{rev}:{rel}" for rev, s in shown if s.returncode != 0]))     # a tip's copy the partial clone lacks
+            shown = cat_blobs([f"{rev}:{rel}" for rev in tips], raw=True)
+            _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for text in shown.values() if text is not None for l in text.split("\n")]
+            _LINE_AUTHOR[("unread", rel)] = bool(specs_unread([spec for spec, text in shown.items() if text is None]))     # a tip's copy the partial clone lacks
         if _LINE_AUTHOR[("unread", rel)]:
             out = (None, None, "unread", "")            # who set it is not read here — never "unattributed", which refuses it
         elif line is None:
@@ -5593,7 +5594,7 @@ def trusted_signers():
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git) if top is not None else None
     rel = signers_rel(top, below, str(path), trunk) if top is not None else None
-    blob = cat_blobs([f"{trunk}:{rel}"]).get(f"{trunk}:{rel}") if trunk else None
+    blob = cat_blobs([f"{trunk}:{rel}"], raw=True).get(f"{trunk}:{rel}") if trunk else None
     if blob is None and trunk and specs_unread([f"{trunk}:{rel}"]):      # the board's reads, in a partial clone that lacks it: never "not on the default branch"
         note_unread(f"the signers file on {ref_name(trunk)}")
         _SIGNERS = {"file": None, "why": f"`{rel}` on {ref_name(trunk)} is not in this partial clone, and the board's reads fetch nothing — `{CMD}` reads it",
@@ -6195,7 +6196,7 @@ def rights_problems(trackers):
     changes = changes_under_review()
     blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
                                          for rev in ([result] if result else []) + list(bases))))     # one call for every change (v0.19.1)
-    show = lambda rev, rel: (lambda t_: None if t_ is None else t_.replace("\r\n", "\n").replace("\r", "\n"))(blobs.get(f"{rev}:{rel}"))
+    show = lambda rev, rel: blobs.get(f"{rev}:{rel}")
     for bases, files, name, email, commit, result, label in changes:
         seat, where = seat_of(name, email), (label + " — " if label else "")
         on_line = set() if commit and len(bases) > 1 else {"ask"}        # a made merge's own `next: owner` is judged on its change, under its author
@@ -6308,23 +6309,25 @@ SVN_ANSWERS = ("E160006", "E195012")        # *no such revision*, and *the path 
 def svn_run(*args, xml=False, answers=()):
     """One `svn` call in the working copy — its output parsed where `xml`, else as text — or None where the answer is empty, or is an
     error code in `answers`. Where svn is not there or fails, SvnUnreadable with svn's own error: a done check that cannot read the
-    history it needs REFUSES, and never reads the failure as nothing changed (the cold audit's F1, the Owner's ruling)."""
+    history it needs REFUSES, and never reads the failure as nothing changed (the cold audit's F1, the Owner's ruling).
+    All text reads, including `svn cat`, return LF line endings at this boundary."""
     import xml.etree.ElementTree as ET
     try:
-        done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        done = subprocess.run(["svn", *args, *(["--xml"] if xml else [])], cwd=ROOT, capture_output=True)
     except OSError as e:
         raise SvnUnreadable(f"svn could not be run: {e}")
+    stdout, stderr = (s.decode("utf-8", "replace") for s in (done.stdout, done.stderr))
     if done.returncode != 0:
-        codes = re.findall(r"\bE\d{6}\b", done.stderr)
+        codes = re.findall(r"\bE\d{6}\b", stderr)
         if codes and all(c in answers for c in codes):
             return None
-        raise SvnUnreadable(" · ".join(l.strip() for l in done.stderr.strip().splitlines()[:2] if l.strip())[:300] or f"svn exited {done.returncode}")
-    if not done.stdout.strip():
+        raise SvnUnreadable(" · ".join(l.strip() for l in stderr.strip().splitlines()[:2] if l.strip())[:300] or f"svn exited {done.returncode}")
+    if not stdout.strip():
         return None
     if not xml:
-        return done.stdout
+        return stdout.replace("\r\n", "\n").replace("\r", "\n")
     try:
-        return ET.fromstring(done.stdout)
+        return ET.fromstring(stdout)
     except ET.ParseError:
         raise SvnUnreadable("svn printed XML that could not be read")
 
@@ -7001,13 +7004,15 @@ def commit_list(*revs):
     return got
 
 
-def cat_blobs(specs, env=None, types=None):
+def cat_blobs(specs, env=None, types=None, *, raw=False):
     """The text of each `<rev>:<path>` — one `git cat-file --batch` for all of them; None for one that is not there. `env`:
     the hook's own, where `:<path>` must read the index git hands it (FM-037). `types`, where given, gets each object's type —
     `blob` for a file, `tree` for a folder, `commit` for a submodule: one whose commit this clone holds, and one git answers
     `<oid> submodule` for — a header with no size and nothing after it — whose text is None. A header read no other way is
     no text, and nothing after it is read: where its object ends cannot be told, so neither can the next one's header. A
-    spec holding a line break is never asked — git would read it as two names, and answer each — and its text is None."""
+    spec holding a line break is never asked — git would read it as two names, and answer each — and its text is None.
+    Parsed text has LF line endings; `raw=True` preserves decoded physical text for comparisons and Git-line reads.
+    The batch's bytes and size offsets are left intact in either mode."""
     got = {s_: None for s_ in specs if "\n" in s_ or "\r" in s_}
     asked = [s_ for s_ in specs if s_ not in got]
     if not asked:
@@ -7035,7 +7040,8 @@ def cat_blobs(specs, env=None, types=None):
         size = int(m[2])
         if types is not None:
             types[spec] = m[1]
-        got[spec], i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
+        text, i = data[i:i + size].decode("utf-8", "replace"), i + size + 1
+        got[spec] = text if raw else text.replace("\r\n", "\n").replace("\r", "\n")
     return got
 
 
@@ -7252,7 +7258,7 @@ def guarded_sections(text, heads):
     English names are read as well and the first heading found is the one read, as `triage_home` reads them."""
     out = {}
     for k in GUARDED:
-        m = re.search(rf"^## (?:{re.escape(heads[k])}|{re.escape(DEFAULTS['headings'][k])})[ \t]*\n.*?(?=^## |\Z)", text, re.S | re.M) if text is not None else None
+        m = re.search(rf"^## (?:{re.escape(heads[k])}|{re.escape(DEFAULTS['headings'][k])})[ \t]*\r?\n.*?(?=^## |\Z)", text, re.S | re.M) if text is not None else None
         out[k] = m.group(0) if m else None
     return out
 
@@ -7334,7 +7340,7 @@ def triage_views(revs, env=None, prefix=None, modes=()):
     revs = [r for r in revs if r not in kept]
     at = lambda rev, path: f"{rev}:{path}"
     types = {}
-    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env, types)
+    configs = cat_blobs([at(r, prefix + CONFIG_NAME) for r in revs], env, types, raw=True)
     where = {}
     for r in revs:
         spec = at(r, prefix + CONFIG_NAME)
@@ -7349,7 +7355,7 @@ def triage_views(revs, env=None, prefix=None, modes=()):
             where[r] = (None, "", None, f"{prefix + CONFIG_NAME} at {view_label(r)} cannot be read here — {e}", "")
             continue
         where[r] = (tdir, (pathlib.PurePosixPath(folder) / "TRIAGE.md").as_posix(), heads, "", folder)
-    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why, _f) in where.items() if not why}), env)
+    texts = cat_blobs(sorted({at(r, home) for r, (_d, home, _h, why, _f) in where.items() if not why}), env, raw=True)
     read = {r: (tdir, home, False, {k: None for k in GUARDED}, heads, why, folder) if why else
                (tdir, home, texts.get(at(r, home)) is not None, guarded_sections(texts.get(at(r, home)), heads), heads, "", folder)
             for r, (tdir, home, heads, why, folder) in where.items()}
@@ -7512,7 +7518,7 @@ def guard_walk(*revs, keys=(), unread=False):
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if commits else ""
     revs_ = sorted({c for c, _p, _s, _f in commits} | {p for _c, ps, _s, _f in commits for p in ps})
     views = triage_views(revs_, prefix=prefix, modes={c for c, _p, _s, files in commits if prefix + CONFIG_NAME in files}) if commits else {}
-    kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys]) if commits else {}
+    kept = cat_blobs([f"{r}:{k}" for r in revs_ for k in keys], raw=True) if commits else {}
     changed = [(c, subject, next((views[r][1] for r in (c, *ps) if views[r][1]), "TRIAGE.md"),
                 guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
                               files, prefix, keys, unread, lambda c=c: tree_paths(c)))
@@ -7551,7 +7557,7 @@ def owners_at(rev, refused=None, owner_only=False):
         return {} if owner_only else may_answer()
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
     spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
-    text = cat_blobs([spec], types=types).get(spec)
+    text = cat_blobs([spec], types=types, raw=True).get(spec)
     kind = types.get(spec, "blob") if text is not None else path_mode(rev, prefix + CONFIG_NAME)
     if kind == "blob" and path_mode(rev, prefix + CONFIG_NAME) == "120000":       # a symlink: its text is no configuration
         kind = "120000"
@@ -7673,7 +7679,7 @@ def triage_pending(subject):
     staged = staged_files(parents, env)
     views = triage_views(["", *parents], env, prefix, {""} if prefix + CONFIG_NAME in staged else ())     # "" — the index: what this commit carries
     keys = signers_paths(trunk)
-    kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env)
+    kept = cat_blobs([f"{r}:{k}" for r in ["", *parents] for k in keys], env, raw=True)
     what = guard_changes(views[""], [views[p] for p in parents],
                          [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
                          staged, prefix, keys, not owners, lambda: tree_paths("", env))
@@ -8076,20 +8082,20 @@ def record_problems(t):
     """CLEARING AN ASK KEEPS THE RECORD. A tracker that had an answer and is losing it must carry the exchange in its
     body: an answer deleted from the front matter and written nowhere else is the Owner's ruling gone, and the next
     seat asks it again. Only in the pre-commit run, and only against what this commit stages — the comparison is with
-    `git show HEAD:<file>`, which is the version this commit is about to replace."""
+    HEAD's committed blob, which is the version this commit is about to replace."""
     if vcs() != "git" or not in_this_commit(t):
         return []
     rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-    was = subprocess.run(["git", "show", f"HEAD:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if was.returncode != 0:
+    was = cat_blobs([f"HEAD:{rel}"]).get(f"HEAD:{rel}")
+    if was is None:
         return []                                        # new file: there is no answer to lose
-    before, _body = parse_frontmatter(was.stdout)
+    before, _body = parse_frontmatter(was)
     had = (before.get("answer") or "").strip()
     if not had or t.get("answer"):
         return []
-    for h in merge_heads():                              # a merge loses an answer only if EVERY parent had it (FM-019)
-        other = subprocess.run(["git", "show", f"{h}:{rel}"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-        if not (parse_frontmatter(other.stdout)[0].get("answer") or "").strip():
+    parents = cat_blobs([f"{h}:{rel}" for h in merge_heads()])
+    for other in parents.values():                       # a merge loses an answer only if EVERY parent had it (FM-019)
+        if not (parse_frontmatter(other or "")[0].get("answer") or "").strip():
             return []
     quiet = lambda s: re.sub(r"\s+", " ", s.strip().strip('"').lower())
     text = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
@@ -8266,8 +8272,8 @@ def done_cmd(words, trackers):
         git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
         if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0):
-            there = git("show", f"refs/heads/{branch}:{rel}")
-            if there.returncode == 0 and act_of(extract(ROOT / rel, there.stdout)):
+            there = cat_blobs([f"refs/heads/{branch}:{rel}"]).get(f"refs/heads/{branch}:{rel}")
+            if there is not None and act_of(extract(ROOT / rel, there)):
                 print(f"--done: {tid}'s act is on `{branch}`, not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(
                     git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
                 return EXIT_LINT
@@ -8357,8 +8363,8 @@ def revoke_cmd(words, trackers):
     tip = next((ref for ref in (f"refs/heads/{branch}", f"refs/remotes/origin/{branch}") if git("rev-parse", "--verify", "-q", ref).returncode == 0), None)
     onto = tip if tip and git("branch", "--show-current").stdout.strip() != branch and (not trunk or git("merge-base", "--is-ancestor", tip, trunk).returncode != 0) else None
     if onto:
-        there = git("show", f"{onto}:{rel}")
-        t = extract(ROOT / rel, there.stdout) if there.returncode == 0 else t
+        there = cat_blobs([f"{onto}:{rel}"]).get(f"{onto}:{rel}")
+        t = extract(ROOT / rel, there) if there is not None else t
     if not t.get("done"):
         if not t.get("answer"):
             print(f"--revoke: {tid} carries neither `done:` nor `answer:`" + (f" on `{branch}`" if onto else "") + " — there is nothing of yours to revoke", file=sys.stderr)

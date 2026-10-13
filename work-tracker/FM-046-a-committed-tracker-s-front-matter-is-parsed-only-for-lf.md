@@ -4,7 +4,7 @@ status: In Progress
 considered: FM-033, FM-037
 tags: bug
 triaged: 2026-10-12
-next: build
+next: review
 tier: P1
 hook: "A committed tracker's front matter is parsed only for LF line endings and not through one normalisation, so the same tracker can read two ways across line-endings and version-control layers"
 ---
@@ -13,19 +13,20 @@ hook: "A committed tracker's front matter is parsed only for LF line endings and
 
 ## What is true now
 
-2026-10-12 — In Progress at the Owner's request; no implementation is built under this tracker yet. Next: build the
-shared normalisation of committed text for Git and Subversion, remove the earlier one-off, and verify the rules
-listed in Done when.
+2026-10-13 — Built on `fm/046-text-boundary`; independent critical code review is next. Status stays In Progress.
+Parsed committed tracker text returns LF from `cat_blobs` for Git and `svn_run` for Subversion, with the rights check's
+one-off normalisation removed. Physical Git lines, protected text and trusted signers explicitly request the Git
+reader's `raw=True` mode. Binary reads, hashes and the batch's byte offsets are unchanged.
 
-A tracker's front matter is parsed only when its `---` fences end in `\n`. A tracker committed with CRLF (`\r\n`) line
-endings — as a hand edit or an agent edit on a system whose editor or Git writes CRLF can produce — has `---\r\n`
-fences, which the parser does not recognise, so the tool reads the tracker as having no front matter. The tool's own
-writes are always LF, so it never produces such a tracker itself; the case arises only from an outside CRLF edit.
+`test_tracker_text.py` writes and verifies actual committed LF and CRLF bytes in disposable Git and Subversion
+repositories. Its 55 controls pass, with no skips: status/Shipped, answer/ask/triage/close, actual rights verdicts,
+the guard's section reader, rendered index, answer gate, judgement, answer branches, staged trackers, and synthetic
+SSH signatures with LF, CRLF and CR configuration/signers. They also exercise signed history through the gate,
+each converted committed-text reader with LF, CRLF and missing snapshots, and local filtered clones.
 
-The reads of committed tracker text are not all routed through one normalisation: one path normalises CRLF before
-parsing, others read the committed bytes raw. So the same tracker can be read two ways depending on which rule reads
-it. A committed tracker must read identically regardless of its line endings and of the version-control layer (Git or
-Subversion).
+Compile, all 158 core checks, 16 Owner-exemption tests, and 364 selected existing browser-free checks pass, with no FAIL or skip lines;
+the full suite is left to CI under BRIEF-2.md when the Owner opens the pull request.
+Review the diff and the handoff evidence before deciding it is ready.
 
 ## Done when
 
@@ -40,3 +41,6 @@ Subversion).
 | Date | Event |
 |---|---|
 | 2026-10-12 | Filed. |
+| 2026-10-13 | Built the shared committed-text boundaries and 28 explicit-byte controls; compile and 158 core checks pass. Review next. |
+| 2026-10-13 | Local full-suite runs stopped after Chrome prompted the Owner for keychain access; BRIEF-2 replaces them with browser-free selected checks, with the full suite left to CI. |
+| 2026-10-13 | Built explicit raw Git reads and persistent signed-history, converted-reader and filtered-clone controls. All 55 controls, 158 core checks, 16 Owner-exemption tests and 364 selected browser-free checks pass; compile passes. Review next. |
