@@ -161,6 +161,97 @@ class CliControls(unittest.TestCase):
                     fm.revoke_cmd(["fm-044", text], [{**tracker, "done": "2026-10-13T12:00Z · result"}])
                     self.assertEqual(captures[-1]["again"], f"{prefix} --revoke {fm.printed_arg('FM-044')} {fm.printed_arg(text.replace(chr(34), chr(39)))}")
 
+    def test_rv_3095_seed_report_preserves_existing_due_and_quotes_its_retry(self):
+        """RV-3095: a differing existing due reports a retry rather than falling through."""
+        prefix, tid = "python3 tools/shoalmark.py", "FM-044 O'Brien"
+        when, words = "2026-10-14T12:30:00+02:00", "2026-10-14T12:30:00+02:00"
+        cases = (("2026-10-13T12:30:00+02:00", "different"),
+                 ("2026-10-14T10:30:00Z", "equal"), ("", "absent"))
+        with patch.object(fm, "CMD", prefix):
+            for platform in ("darwin", "win32"):
+                quote = shlex.quote if platform == "darwin" else lambda token: "'" + token.replace("'", "''") + "'"
+                for had, kind in cases:
+                    with self.subTest(platform=platform, due=kind), patch.object(fm.sys, "platform", platform):
+                        seed = {"when": when, "words": words, "had": had}
+                        before = seed.copy()
+                        report = fm.seed_said(tid, seed)
+                        self.assertEqual(seed, before)
+                        self.assertIsInstance(report, str)
+                        if kind == "different":
+                            retry = f"{prefix} --due {quote(tid)} {quote(when)}"
+                            self.assertEqual(report, f"\n  your answer names {when} (`{words}`); `due:` is {had} already and is left — `{retry}` moves it")
+                            if platform == "darwin":
+                                self.assertEqual(shlex.split(retry), ["python3", "tools/shoalmark.py", "--due", tid, when])
+                            else:
+                                self.assertEqual(quote(tid)[1:-1].replace("''", "'"), tid)
+                                self.assertEqual(quote(when)[1:-1].replace("''", "'"), when)
+                        elif kind == "equal":
+                            self.assertEqual(report, f"\n  due: {had} — your answer names the same time")
+                            self.assertNotIn("--due", report)
+                        else:
+                            self.assertEqual(report, f"\n  due: {when} — read from your answer's `{words}`, written with it; `{prefix} --due {quote(tid)} <time>` moves it")
+
+    def test_rv_3095_actual_answer_date_write_and_said_callbacks(self):
+        """RV-3095: actual action-answer callbacks preserve a due already set and finish their report."""
+        prefix, when = "python3 tools/shoalmark.py", "2026-10-14T12:30:00+02:00"
+        cases = (("2026-10-13T12:30:00+02:00", "different"),
+                 ("2026-10-14T10:30:00Z", "equal"), ("", "absent"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "FM-044-test.md"
+            for platform in ("darwin", "win32"):
+                quote = shlex.quote if platform == "darwin" else lambda token: "'" + token.replace("'", "''") + "'"
+                for had, kind in cases:
+                    with self.subTest(platform=platform, due=kind):
+                        original = ("---\nid: FM-044\nstatus: In Progress\nnext: owner\n"
+                                    "ask: Will you act at the proposed hour?\nask-kind: action\n"
+                                    + (f"due: {had}\n" if had else "") + "---\n\n# FM-044 — control\n")
+                        path.write_text(original, encoding="utf-8")
+                        tracker = {"id": "FM-044", "file": path.name, "status": "In Progress",
+                                   "ask": "Will you act at the proposed hour?", "ask_kind": "action", "next": "owner"}
+                        if had:
+                            tracker["due"] = had
+                        before = tracker.copy()
+                        callbacks = []
+
+                        def exercise_callbacks(tid, given, how):
+                            self.assertEqual(tid, "FM-044")
+                            self.assertIs(given, tracker)
+                            self.assertEqual(how["check"](), "")
+                            lines, why = how["write"](original.split("\n"), "Owner fixture", "answer/fm-044")
+                            self.assertEqual(why, "")
+                            front, _ = fm.parse_frontmatter("\n".join(lines))
+                            self.assertEqual(front["due"], had or when)
+                            self.assertEqual(front["answer"], f'"accepted - {when}"')
+                            self.assertEqual(front["answered-by"], "Owner fixture")
+                            self.assertEqual(front["next"], "owner")
+                            callbacks.append("write")
+                            report = how["said"]("answer/fm-044", " — not pushed in this control")
+                            self.assertIsInstance(report, str)
+                            callbacks.append("said")
+                            self.assertIn(f"FM-044 answered: accepted - {when}\n", report)
+                            if kind == "different":
+                                self.assertIn(f"`due:` is {had} already and is left", report)
+                                retry = f"{prefix} --due {quote(tid)} {quote(when)}"
+                                self.assertIn(f"`{retry}` moves it", report)
+                                if platform == "darwin":
+                                    self.assertEqual(shlex.split(retry), ["python3", "tools/shoalmark.py", "--due", tid, when])
+                            elif kind == "equal":
+                                self.assertIn(f"due: {had} — your answer names the same time", report)
+                            else:
+                                self.assertIn(f"due: {when} — read from your answer's", report)
+                            return 0
+
+                        with patch.object(fm, "ROOT", root), patch.object(fm, "TRACKER_DIR", root), \
+                             patch.object(fm, "CMD", prefix), patch.object(fm.sys, "platform", platform), \
+                             patch.object(fm, "vcs", return_value="git"), \
+                             patch.object(fm, "owner_change", side_effect=exercise_callbacks), \
+                             patch.object(fm.subprocess, "run", side_effect=AssertionError("answer control must not launch a process")):
+                            self.assertEqual(fm.answer_cmd(["fm-044", "accept", when], [tracker]), 0)
+                        self.assertEqual(callbacks, ["write", "said"])
+                        self.assertEqual(tracker, before)
+                        self.assertEqual(path.read_text(encoding="utf-8"), original)
+
     @unittest.skipUnless(shutil.which("git"), "Git fixture tool unavailable")
     def test_real_git_identity_cache_rebind_missing_objects_and_message_trailers(self):
         with tempfile.TemporaryDirectory() as directory:

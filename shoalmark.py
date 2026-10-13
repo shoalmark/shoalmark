@@ -2726,7 +2726,7 @@ def seed_said(tid, seed):
         return f"\n  due: {seed['when']} — read from your answer's `{seed['words']}`, written with it; `{CMD} --due {printed_arg(tid)} <time>` moves it"
     if parse_due(seed["had"]) == parse_due(seed["when"]):
         return f"\n  due: {seed['had']} — your answer names the same time"
-        return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {printed_arg(tid)} {printed_arg(seed['when'])}` moves it"
+    return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {printed_arg(tid)} {printed_arg(seed['when'])}` moves it"
 
 
 def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
