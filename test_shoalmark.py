@@ -13469,24 +13469,36 @@ def _adopt_pins(read, tag_tool):
 
 
 _at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
-_pins_tags = subprocess.run(["git", "-C", str(HERE), "tag", "--list", "v*"], capture_output=True, text=True, env=_ENV).stdout.split() if (HERE / ".git").exists() else []
-if not _pins_tags:
-    _skipped("FM-006 · ADOPT's pins answer to the tag they name", 7, "this clone holds no release tag: the pins answer to the tag's own shoalmark.py (CI's fetch-depth 0 brings the tags)")
-else:
-    _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
-    check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
-          f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
-    _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
-    _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
-                 ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
-                 *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
-                 ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
-    for _what, _rev, _read, _tags, _want in _pins_ctl:
-        if not _held(_rev):
-            _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
-            continue
-        _got, _seen = _adopt_pins(_read, _tags)
-        check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+_pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
+check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
+      f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
+_changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
+_pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
+             ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
+             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
+             ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
+for _what, _rev, _read, _tags, _want in _pins_ctl:
+    if not _held(_rev):
+        _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
+        continue
+    _got, _seen = _adopt_pins(_read, _tags)
+    check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+
+
+# RV-3003/RV-3004: recorded privately.
+_fixture_tool = b"# a prepared release tool\n"
+_fixture_version = "0.19.4"
+_fixture_sum = hashlib.sha256(_fixture_tool).hexdigest()
+_fixture_docs = {"VERSION": (_fixture_version + "\n").encode(), "shoalmark.py": _fixture_tool,
+                 **{name: (chr(96) + "v" + _fixture_version + chr(96) + "\n" + _fixture_sum + "\n").encode()
+                    for name in ("ADOPT.md", "ADOPT.de.md")}}
+for _number, _documents, _expected in (
+        (1, _fixture_docs, True),
+        (2, {**_fixture_docs, "shoalmark.py": _fixture_tool.replace(b"\n", b"\r\n")}, True),
+        (3, {**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False),
+        (4, {**_fixture_docs, "ADOPT.de.md": _fixture_docs["ADOPT.de.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False)):
+    _result, _observed = _adopt_pins(_documents.__getitem__, lambda _tag: None)
+    check("RV-3003/RV-3004: recorded privately", _result == _expected)
 
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
@@ -14168,8 +14180,158 @@ def _ci_wf_regressions(text, root, shapes):
     return out
 
 
+
+def _ci_declared_checks(source, powershell=False):
+    """Count declared CI outputs without running a shell or the properties."""
+    import ast
+    functions = {node.name: node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef)}
+
+    def appends(node):
+        return (isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Attribute) and isinstance(node.value.func.value, ast.Name)
+                and node.value.func.value.id == "out" and node.value.func.attr == "append")
+
+    def emits(node):
+        return any(isinstance(part, ast.Call) and isinstance(part.func, ast.Attribute)
+                   and isinstance(part.func.value, ast.Name) and part.func.value.id == "out"
+                   for part in ast.walk(node))
+
+    def outputs(nodes, declared):
+        count = 0
+        for node in nodes:
+            if appends(node):
+                count += 1
+            elif not emits(node):
+                continue
+            elif isinstance(node, ast.With):
+                count += outputs(node.body, declared)
+            elif isinstance(node, ast.For):
+                count += size(node.iter, declared) * outputs(node.body, declared)
+                if any(emits(part) for part in node.orelse):
+                    raise ValueError("the CI output count is conditional")
+            elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "pwsh":
+                count += outputs(node.body if powershell else node.orelse, declared)
+            else:
+                raise ValueError("the CI output count is conditional")
+        return count
+
+    def helper(name):
+        function = functions[name]
+        last = function.body[-1]
+        if not (isinstance(last, ast.Return) and isinstance(last.value, ast.Name) and last.value.id == "out"):
+            raise ValueError("the CI helper output cannot be counted")
+        declared = {target.id: node.value for node in function.body if isinstance(node, ast.Assign)
+                    for target in node.targets if isinstance(target, ast.Name)}
+        if not (isinstance(declared.get("out"), ast.List) and not declared["out"].elts):
+            raise ValueError("the CI helper output cannot be counted")
+        return outputs(function.body, declared)
+
+    def size(value, declared):
+        if isinstance(value, (ast.List, ast.Tuple)):
+            return len(value.elts)
+        if isinstance(value, ast.Name) and value.id in declared:
+            return size(declared[value.id], declared)
+        if isinstance(value, ast.BinOp) and isinstance(value.op, ast.Add):
+            return size(value.left, declared) + size(value.right, declared)
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+            if value.func.id == "_ci_job_paths":
+                return helper(value.func.id)
+            if value.func.id in ("tuple", "list") and len(value.args) == 1 and not value.keywords:
+                generator = value.args[0]
+                if isinstance(generator, ast.GeneratorExp) and not any(part.ifs or part.is_async for part in generator.generators):
+                    count = 1
+                    for part in generator.generators:
+                        count *= size(part.iter, declared)
+                    return count
+        raise ValueError("the CI declarations cannot be counted")
+
+    properties = functions["_ci_wf_properties"]
+    returns = [node.value for node in properties.body if isinstance(node, ast.Return)]
+    declared = {target.id: node.value for node in properties.body if isinstance(node, ast.Assign)
+                for target in node.targets if isinstance(target, ast.Name)}
+    if len(returns) != 1:
+        raise ValueError("the CI property declarations cannot be counted")
+    count = size(returns[0], declared)
+    rows = 0
+    for node in functions["_ci_wf_regressions"].body:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AugAssign) else []
+        if any(isinstance(target, ast.Name) and target.id == "rows" for target in targets):
+            if isinstance(node, ast.AugAssign):
+                if not isinstance(node.op, ast.Add):
+                    raise ValueError("the CI regression declarations cannot be counted")
+                rows += size(node.value, {})
+            else:
+                rows = size(node.value, {})
+        elif isinstance(node, ast.For):
+            multiplicity = rows if isinstance(node.iter, ast.Name) and node.iter.id == "rows" else size(node.iter, {})
+            if any(isinstance(part, (ast.If, ast.For, ast.While)) for part in node.body):
+                raise ValueError("the CI regression count is conditional")
+            count += multiplicity * sum(appends(part) for part in node.body)
+        else:
+            count += int(appends(node))
+    return count + helper("_ci_install_failures") + helper("_ci_classifier_failures")
+
+
+def _ci_declaration_controls(source):
+    """Pure source controls; these run even where the CI shell is unavailable."""
+    import ast
+    count = _ci_declared_checks(source)
+    results = [_ci_declared_checks(source, powershell=True) == count + 2]
+    for name, variable in (("_ci_wf_properties", "return"), ("_ci_wf_regressions", "generator"),
+                           ("_ci_job_paths", "records"), ("_ci_install_failures", "name"),
+                           ("_ci_classifier_failures", "case")):
+        tree = ast.parse(source)
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name)
+        if variable == "return":
+            value = next(node.value for node in function.body if isinstance(node, ast.Return))
+            value.right.elts.append(ast.Tuple(elts=[ast.Constant("control"), ast.Constant(True)], ctx=ast.Load()))
+        elif variable == "generator":
+            value = next(node.value.args[0] for node in function.body if isinstance(node, ast.AugAssign)
+                         and isinstance(node.value, ast.Call) and isinstance(node.value.args[0], ast.GeneratorExp))
+            value.generators[0].iter.elts.append(ast.Constant("control"))
+        else:
+            loop = next(node for node in ast.walk(function) if isinstance(node, ast.For)
+                        and isinstance(node.iter, ast.Tuple) and any(isinstance(part, ast.Expr)
+                        and isinstance(part.value, ast.Call) and isinstance(part.value.func, ast.Attribute)
+                        and part.value.func.attr == "append" and isinstance(part.value.func.value, ast.Name)
+                        and part.value.func.value.id == "out" for child in node.body for part in ast.walk(child)))
+            loop.iter.elts.append(loop.iter.elts[0])
+        results.append(_ci_declared_checks(ast.unparse(tree)) == count + 1)
+    tree = ast.parse(source)
+    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_wf_regressions")
+    generator = next(node.value.args[0] for node in function.body if isinstance(node, ast.AugAssign)
+                     and isinstance(node.value, ast.Call) and isinstance(node.value.args[0], ast.GeneratorExp))
+    generator.generators[0].ifs.append(ast.Name(id="unknown", ctx=ast.Load()))
+    try:
+        _ci_declared_checks(ast.unparse(tree))
+    except ValueError:
+        results.append(True)
+    else:
+        results.append(False)
+    for mutation in ("conditional", "method"):
+        tree = ast.parse(source)
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_classifier_failures")
+        if mutation == "conditional":
+            function.body[-2] = ast.If(test=ast.Name(id="unknown", ctx=ast.Load()), body=[function.body[-2]], orelse=[])
+        else:
+            call = next(node for node in ast.walk(function.body[-2]) if isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute) and node.func.attr == "append")
+            call.func.attr = "extend"
+        try:
+            _ci_declared_checks(ast.unparse(ast.fix_missing_locations(tree)))
+        except ValueError:
+            results.append(True)
+        else:
+            results.append(False)
+    return results
+
+
+for _result in _ci_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
+    check("RV-3003/RV-3004: recorded privately", _result)
+
+
 if not _CI_BASH:
-    _skipped("FM-032 · ci.yml's tiers and time zones", 38, "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
+    _skipped("FM-032 · ci.yml's tiers and time zones", _ci_declared_checks(_CI_SOURCES["test_shoalmark.py"], powershell=bool(shutil.which("pwsh"))), "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
 else:
     with tempfile.TemporaryDirectory() as _ci_d:
         _ci_root = Path(_ci_d).resolve()

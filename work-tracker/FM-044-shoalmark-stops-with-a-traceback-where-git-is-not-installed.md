@@ -18,7 +18,7 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-13 — bounded common/A/C accepted; B final verification and A caller migration continue.**
+**2026-10-13 — bounded common/A/C accepted; final caller correction and local entry composition continue.**
 Current Owner main `3cac843` includes R12 READY `246ccdf`. Its CI/test/records changes are integrated on this
 feature branch; the production tool, signed TRIAGE, AGENTS and configuration match cab89ed before seat merges.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088. Dispatch
@@ -29,19 +29,24 @@ A1/A2 critical READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in 
 BOARD/INIT/INSTALL ONLY. This ordinary seat merge incorporates its exact functions, shared controls and three
 allowlist removals, 63 to 60; the later C composition reduces that to 45. The prior combined A merge passed compile, unchanged core 302 in 65.602 s and 152 A
 controls in 42.777 s. This independent branch retains the same A product; its current-main checks are recorded
-here: changed Python compiles in 0.475 s, and unchanged core passes in 46.861 s. A's separate caller commit `43b5600` completes sixteen VCS migrations and retains its two
-non-VCS dynamic starts. Its 97 controls, unchanged core and clean gate pass; independent critical review runs
-in a separate ROOT session before this branch imports that product. RV-3096–RV-3097 reserve that new caller scope; no closed A finding is reopened.
+here: changed Python compiles in 0.475 s, and unchanged core passes in 46.861 s. A's separate caller verdict `26606d3`, Reviewed `43b5600`, is NOT READY: RV-3096 P2 OPEN in its first
+round. Four new current-directory lookups fail before launch if that directory has been deleted. The Builder
+replaces those four expressions with explicit inherited dot and adds real immutable-before/after controls.
+The same independent ROOT Reviewer has one final verification left. This branch has not imported the caller
+product; RV-3097 is unused and no closed A finding is reopened.
 
 C critical READY `f59a1c1`, Reviewed `05e02ac`, closes RV-3095 in its final round, BOUNDED CLI/PRESENTATION/
-DOCUMENTATION ONLY. Its actual callbacks and retained quoting checks pass; This ordinary seat merge incorporates the exact C product and controls: compile0.251 s, unchanged
-core44.768 s, and all16 C methods3.162 s pass. Actual launch keys are45, retaining both A and C reductions.
+DOCUMENTATION ONLY. Its actual callbacks and retained quoting checks pass. This ordinary seat merge incorporates the exact C product and controls: compile 0.251 s, unchanged
+core 44.768 s, and all 16 C methods 3.162 s pass. Actual launch keys are 45, retaining both A and C reductions.
 B final NOT READY `99968f2`, Reviewed `eabbeef`, leaves RV-3092–RV-3094 P2 OPEN/HELD after their
 second/final rounds. Structural XML text/tails can become empty or credited blame, hide pending Shipped status,
 and pass malformed logs as product proof. The full inline verdict contains actual-read evidence and exact
 outstanding corrections; 232 scoped controls and 302 core passing cannot override those reproduced failures.
 B's readers and twenty-three migrations are excluded from this local branch. A structural validation proposal
-is prepared outside production for Owner disposition. No third verification or replacement finding is opened.
+is complete outside production for Owner disposition: 50 proposed controls fail on exact eabbeef and all
+293 pass on the candidate; a separate 538-scenario actual-read probe measures zero write opens. Its five
+reader changes and pure validator preserve common/source/scanner/ceiling and all forty keys. These are
+Builder development results, not another verdict, a READY line or permission to apply the held repair. No third verification or replacement finding is opened.
 RV-3003/RV-3004: recorded privately.
 
 Archive/common final NOT READY `eabee22`, Reviewed `284a4e8`, closes RV-3071 and leaves RV-3072 HELD with
