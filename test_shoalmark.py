@@ -13937,11 +13937,16 @@ def _ci_classifier_failures(script, root, shape):
     out = []
     real_git = shlex.quote(Path(shutil.which("git")).as_posix())
     subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
-    for name, command, replacement in (
-        ("git show fails", "show", "exit 23"),
-        ("git diff fails", "diff", "exit 23"),
-        ("a raw record has no terminated path", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md'"),
-        ("a raw record has an extra NUL", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md\\0\\0'"),
+    valid = ':100644 100644 ' + '1' * 40 + ' ' + '2' * 40 + ' M\\0work-tracker/FM-001-note.md\\0'
+    for name, command, replacement, wanted in (
+        ("git show fails", "show", "exit 23", "false"),
+        ("git diff fails", "diff", "exit 23", "false"),
+        ("a raw record has no terminated path", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md'", "false"),
+        ("a raw record has an extra NUL", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md\\0\\0'", "false"),
+        ("a valid raw record", "diff", "printf " + shlex.quote(valid), "true"),
+        ("an empty raw stream", "diff", ":", "false"),
+        ("stream control A", "diff", "printf " + shlex.quote(valid + ':100644 100644'), "false"),
+        ("stream control B", "diff", "printf " + shlex.quote(valid + valid.split('\\0', 1)[0]), "false"),
     ):
         with tempfile.TemporaryDirectory() as d:
             area = Path(d)
@@ -13955,8 +13960,8 @@ def _ci_classifier_failures(script, root, shape):
                                env=dict(_ENV, PATH=str(area) + os.pathsep + _ENV.get("PATH", ""), EVENT=event, BASE=base, HEAD_SHA=head,
                                         RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
             said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
-            out.append((f"the classifier keeps all code coverage when {name} (saw exit {r.returncode}, records={said.get('records')!r})",
-                        r.returncode == 0 and said.get("records") == "false"))
+            out.append((f"the classifier: {name} requires records={wanted!r} (saw exit {r.returncode}, records={said.get('records')!r})",
+                        r.returncode == 0 and said.get("records") == wanted))
     return out
 
 

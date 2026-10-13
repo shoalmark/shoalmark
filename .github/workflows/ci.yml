@@ -84,7 +84,7 @@ jobs:
               esac
             done < "$RUNNER_TEMP/tier.raw"
             nul=$(tr -cd '\000' < "$RUNNER_TEMP/tier.raw" | wc -c)
-            if [ "$entries" -eq 0 ] || [ "$((nul))" -ne "$((2 * entries))" ]; then
+            if [ -n "${head:-}" ] || [ "$entries" -eq 0 ] || [ "$((nul))" -ne "$((2 * entries))" ]; then
               records=false
             fi
           fi
