@@ -8925,12 +8925,18 @@ def pin_report():
     return lines
 
 
+def vendor_files():
+    """What `--vendor` copies, relative to the tool: the whole tool (`TOOL_FILES`), the brand's own files beside it, and the themes it ships (FM-002) — each
+    one that is a file here."""
+    return [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]
+
+
 def vendor(dest, partial=False, allow_untagged=False):
     """Copy this tool into `dest` and pin every file (FM-011). Refused — exit 4, nothing written — when the source is
     not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
     (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
     in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
-    copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]   # the themes it ships travel, pinned (FM-002)
+    copied = vendor_files()                                 # the themes it ships travel, pinned (FM-002)
     named = pathlib.Path(dest).absolute()
     dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
     for rel in copied + ["PIN"]:                            # the write rule for every file it writes — as the path is named, and under the folder it resolves to —
